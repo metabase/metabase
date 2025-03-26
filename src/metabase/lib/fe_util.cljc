@@ -195,12 +195,34 @@
                                                       (map lib.common/->op-arg)
                                                       args))))
 
+(defn- case-or-if-clause?
+  [clause]
+  (and (vector? clause)
+       (boolean (#{:case :if} (first clause)))))
+
+(defn- case-or-if-pairs
+  [args]
+  (mapv #(into [] %) (partition 2 args)))
+
+(defn- wrap-case-or-if-clause
+  [[op options & args]]
+  (if (even? (count args))
+    [op options (case-or-if-pairs args)]
+    [op options (case-or-if-pairs (butlast args)) (last args)]))
+
+(defn- fix-clause
+  [clause]
+  (cond-> clause
+    (case-or-if-clause? clause) wrap-case-or-if-clause))
+
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
   [operator :- :keyword
    args     :- [:sequential :any]
    options  :- [:maybe :map]]
-  (lib.options/ensure-uuid (into [operator options] (map lib.common/->op-arg) args)))
+  (fix-clause
+   (lib.options/ensure-uuid
+    (into [operator options] (map (comp fix-clause lib.common/->op-arg)) args))))
 
 (defn- expression-clause-with-in
   "Like [[expression-clause]], but also auto-converts `:=` and `:!=` to `:in` and `:not-in` when there are more than 2
