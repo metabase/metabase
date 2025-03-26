@@ -857,10 +857,10 @@
   (mt/test-driver :mysql
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people {:expression (lib/expression-clause :concat
-                                                                                  [(lib.metadata/field mp (mt/id :people :id))
-                                                                                   (lib.metadata/field mp (mt/id :people :zip))] nil)
-                                               :db-type "CHAR"}]]
+        (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
+                                                                                   [(lib.metadata/field mp (mt/id :people :id))
+                                                                                    (lib.metadata/field mp (mt/id :people :zip))] nil)
+                                                :db-type "CHAR"}]]]
                 {:keys [expression db-type]} expressions]
           (testing (str "Casting " db-type " to integer")
             (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
