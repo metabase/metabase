@@ -10964,9 +10964,6 @@ databaseChangeLog:
                   type: int
                   remarks: The table id of the subscription, used for filtering system events
                   constraints:
-                    referencedTableName: metabase_table
-                    referencedColumnNames: id
-                    foreignKeyName: fk_notification_subscription_table_id
                     deleteCascade: true
                     nullable: true
 
@@ -10975,7 +10972,10 @@ databaseChangeLog:
       author: qnkhuat
       comment: Index notification_subscription.table_id
       preConditions:
-      rollback: # will be removed with the column
+      rollback:
+        - dropIndex:
+            tableName: notification_subscription
+            indexName: idx_notification_subscription_table_id
       changes:
         - createIndex:
             tableName: notification_subscription
