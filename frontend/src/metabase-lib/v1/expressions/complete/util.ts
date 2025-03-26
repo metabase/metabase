@@ -120,6 +120,10 @@ export function isIdentifier(token: Token | null) {
   return token != null && token.type === TOKEN.Identifier;
 }
 
+export function isOperator(token: Token | null) {
+  return token != null && token.type === TOKEN.Operator;
+}
+
 export function isFieldReference(token: Token | null) {
   return token != null && token.type === TOKEN.Identifier && token.isReference;
 }
