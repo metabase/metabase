@@ -556,7 +556,7 @@ describe("issue 30039", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from ORDERS LIMIT 2");
     H.runNativeQuery();
-    cy.findAllByTestId("detail-shortcut").first().click();
+    cy.findAllByTestId("detail-shortcut").first().click({ force: true });
     cy.findByTestId("object-detail").should("be.visible");
 
     cy.realPress("{esc}");
