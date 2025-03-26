@@ -489,19 +489,9 @@
 (def ^:private standard-literal-expression-values
   (map second (vals standard-literal-expression-defs)))
 
-(defmethod driver/database-supports? [::driver/driver ::expression-literals]
-  [driver _feature database]
-  (driver/database-supports? driver :expressions database))
-
-;; top-level literal expressions not yet supported for these drivers
-(doseq [driver [:mongo :oracle :redshift :sqlite :sqlserver :vertica]]
-  (defmethod driver/database-supports? [driver ::expression-literals]
-    [_driver _feature _database]
-    false))
-
 (deftest ^:parallel basic-literal-expression-test
   (testing "basic literal expressions"
-    (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
       (is (= [[1 "" "foo" 0 12345 1.234 true false]
               [2 "" "foo" 0 12345 1.234 true false]]
              (mt/formatted-rows
@@ -516,7 +506,7 @@
   (doseq [[and-or eq-ne expected] [[:and :=  [standard-literal-expression-values]]
                                    [:or  :!= []]]]
     (testing (str "filter literal expressions with " and-or " " eq-ne)
-      (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+      (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
         (is (= expected
                (mt/formatted-rows
                 standard-literal-expression-row-formats
@@ -529,8 +519,7 @@
 (deftest ^:parallel nested-literal-expression-test
   (testing "nested literal expression"
     ;; TODO Fix this test for H2 (QUE-726)
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature ::expression-literals :nested-queries)
-                           :h2)
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
       (is (= [(into [1] standard-literal-expression-values)]
              (mt/formatted-rows
               standard-literal-expression-row-formats-with-id
@@ -546,7 +535,7 @@
   (testing "order-by integer literal expression"
     ;; Verify that :order-by of [:expression "One"] does NOT mean ORDER BY 1, which would result in ordering by the
     ;; first column in the select list $id. We want this to mean "order by the expression with value 1".
-    (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
       (is (= [[29 "20th Century Cafe" 1]
               [8  "25°"               1]]
              (mt/rows
@@ -560,8 +549,7 @@
 (deftest ^:parallel order-by-literal-expression-test
   ;; TODO Fix this test for H2 (QUE-726)
   (testing "order-by all literal expression types"
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature ::expression-literals)
-                           :h2)
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
       (is (= [[1 "" "foo" 0 12345 1.234 true false]
               [2 "" "foo" 0 12345 1.234 true false]]
              (mt/formatted-rows
@@ -577,7 +565,7 @@
   (doseq [[op expected] [[:and []]
                          [:or  [[true false]]]]]
     (testing (str "filter literal expressions with " op)
-      (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+      (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
         (is (= expected
                (mt/formatted-rows
                 [mt/boolish->bool mt/boolish->bool]
@@ -596,7 +584,7 @@
                                  [[:expression "True"]  [standard-literal-expression-values]]
                                  [[:expression "False"] []]]]
     (testing (str "filter literal expressions with " expression)
-      (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+      (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
         (is (= expected
                (mt/formatted-rows
                 standard-literal-expression-row-formats
@@ -609,8 +597,7 @@
 (deftest ^:parallel nested-and-filtered-literal-expression-test
   (testing "nested and filtered literal expression"
     ;; TODO Fix this test for H2 (QUE-726)
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature ::expression-literals :nested-queries)
-                           :h2)
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
       (is (= [[2 "Stout Burgers & Beers" true "Red Medicine" 1 2 "Bob's Burgers"]
               [3 "The Apple Pan" true "Red Medicine" 1 2 "Bob's Burgers"]
               [4 "Wurstküche" true "Red Medicine" 1 2 "Bob's Burgers"]]
@@ -649,8 +636,7 @@
 (deftest ^:parallel joined-literal-expression-test
   (testing "joined literal expression"
     ;; TODO Fix this test for H2 (QUE-726)
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature ::expression-literals :left-join :nested-queries)
-                           :h2)
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :left-join :nested-queries)
       (is (= [[2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "25°"]
               [2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "In-N-Out Burger"]
               [2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "The Apple Pan"]]

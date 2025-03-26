@@ -79,7 +79,8 @@
                               :uuid-type                true
                               :split-part               true
                               :uploads                  true
-                              :cast                     true}]
+                              :cast                     true
+                              :expression-literals      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]

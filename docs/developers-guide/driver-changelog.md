@@ -4,6 +4,10 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.55.0
+
+- Added a feature `:expression-literals` for drivers that support expressions consisting of a single string, number, or boolean literal value.
+
 ## Metabase 0.54.0
 
 - Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.
