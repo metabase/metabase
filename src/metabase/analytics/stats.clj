@@ -15,7 +15,7 @@
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.eid-translation :as eid-translation]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.internal-stats :as internal-stats]
@@ -138,8 +138,7 @@
    :embedding_app_origin_set             (boolean
                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                           (setting/get :embedding-app-origin))
-   :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (setting/get :embedding-app-origins-sdk)]
-                                                    (and sdk-origins (not= "localhost:*" sdk-origins))))
+   :embedding_app_origin_sdk_set         (not= "localhost:*" (setting/get :embedding-app-origins-sdk))
    :embedding_app_origin_interactive_set (setting/get :embedding-app-origins-interactive)
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)
