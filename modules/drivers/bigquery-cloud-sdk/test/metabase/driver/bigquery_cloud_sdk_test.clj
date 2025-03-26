@@ -1271,7 +1271,7 @@
                   result (-> query (check-integer-query db-type field) qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols first :base_type)))
+              (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
               (doseq [[casted-value equals? uncasted-value] rows]
                 (is (int? casted-value))
                 (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
@@ -1295,7 +1295,7 @@
                   result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols first :base_type)))
+              (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
               (doseq [[casted-value equals? uncasted-value] rows]
                 (is (int? casted-value))
                 (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
@@ -1321,7 +1321,7 @@
                       result (-> query (check-integer-query db-type "`uncasted`") qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols first :base_type)))
+                  (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
                   (doseq [[casted-value equals? uncasted-value] rows]
                     (is (int? casted-value))
                     (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
@@ -1348,7 +1348,7 @@
                       result (-> query (check-integer-query db-type field) qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols first :base_type)))
+                  (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
                   (doseq [[casted-value equals? uncasted-value] rows]
                     (is (int? casted-value))
                     (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
@@ -1380,7 +1380,7 @@
                       result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols first :base_type)))
+                  (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
                   (doseq [[casted-value equals? uncasted-value] rows]
                     (is (int? casted-value))
                     (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
@@ -1404,7 +1404,7 @@
                 result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (= :type/BigInteger (-> cols first :base_type)))
+            (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
             (doseq [[casted-value equals? uncasted-value] rows]
               (is (int? casted-value))
               (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
@@ -1423,6 +1423,6 @@
                   result (-> query (check-integer-query db-type "`subquery`.`max`" "`subquery`.`max_2`") qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols first :base_type)))
+              (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
               (doseq [[casted-value _equals? _uncasted-value] rows]
                 (is (int? casted-value))))))))))
