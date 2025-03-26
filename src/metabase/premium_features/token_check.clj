@@ -93,19 +93,13 @@
                   0
                   (locking-active-user-count))))
 
-(defn- embedding-settings
-  [embedded-dashboard-count embedded-question-count]
-  {:enabled-embedding-static      (boolean (and (setting/get :enable-embedding-sdk)
-                                                (or (> embedded-question-count 0)
-                                                    (> embedded-dashboard-count 0))))
-   :enabled-embedding-interactive (boolean (and (setting/get :enable-embedding-interactive)
-                                                (setting/get :embedding-app-origins-interactive)
-                                                (or (setting/get :jwt-enabled)
-                                                    (setting/get :saml-enabled)
-                                                    (setting/get :ldap-enabled)
-                                                    (setting/get :google-auth-enabled))))
-   :enabled-embedding-sdk         (boolean  (and (setting/get :enable-embedding-sdk)
-                                                 (setting/get :jwt-enabled)))})
+(defenterprise embedding-settings
+  "Boolean values that report on the state of different embedding configurations."
+  metabase-enterprise.embedding-data
+  [_embedded-dashboard-count _embedded-question-count]
+  {:enabled-embedding-static      false
+   :enabled-embedding-interactive false
+   :enabled-embedding-sdk         false})
 
 (defn- stats-for-token-request
   []
