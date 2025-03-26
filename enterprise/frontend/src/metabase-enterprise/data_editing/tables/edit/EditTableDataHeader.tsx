@@ -14,7 +14,7 @@ interface EditTableDataHeaderProps {
 export const EditTableDataHeader = ({
   table,
   onCreate,
-  onDelete,
+  // onDelete,
 }: EditTableDataHeaderProps) => {
   return (
     <Flex
@@ -34,11 +34,11 @@ export const EditTableDataHeader = ({
           variant="filled"
           onClick={onCreate}
         >{t`New record`}</Button>
-        <Button
+        {/* <Button
           leftSection={<Icon name="trash" />}
           disabled
           onClick={onDelete}
-        >{t`Delete`}</Button>
+        >{t`Delete`}</Button> */}
       </Group>
     </Flex>
   );

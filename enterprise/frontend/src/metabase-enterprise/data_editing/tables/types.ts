@@ -2,7 +2,6 @@ import type {
   ConcreteTableId,
   DatasetColumn,
   RowValue,
-  RowValues,
 } from "metabase-types/api";
 
 export type RowCellsWithPkValue = Record<DatasetColumn["name"], RowValue>;
@@ -12,18 +11,22 @@ export type TableInsertRowsRequest = {
   rows: RowCellsWithPkValue[];
 };
 
-export type TableInsertRowsResponse = { "created-rows": RowValues[] };
+export type TableInsertRowsResponse = {
+  "created-rows": Record<string, RowValue>[];
+};
 
 export type TableUpdateRowsRequest = {
   tableId: ConcreteTableId;
   rows: RowCellsWithPkValue[];
+  primaryKeyColumnName: string;
 };
 
-export type TableUpdateRowsResponse = { "rows-updated": number };
+export type TableUpdateRowsResponse = { updated: Record<string, RowValue>[] };
 
 export type TableDeleteRowsRequest = {
   tableId: ConcreteTableId;
   rows: RowCellsWithPkValue[];
+  primaryKeyColumnName: string;
 };
 
 export type TableDeleteRowsResponse = { success: boolean };

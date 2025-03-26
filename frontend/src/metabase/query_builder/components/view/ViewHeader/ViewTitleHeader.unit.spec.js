@@ -309,12 +309,11 @@ describe("ViewTitleHeader", () => {
         });
 
         it("offers to filter query results", () => {
-          const { onOpenModal } = setup({
+          setup({
             card,
             queryBuilderMode: "view",
           });
-          fireEvent.click(screen.getByText("Filter"));
-          expect(onOpenModal).toHaveBeenCalled();
+          expect(screen.getByText("Filter")).toBeInTheDocument();
         });
 
         it("offers to summarize query results", () => {

@@ -103,12 +103,12 @@ describe("scenarios > question > filter", () => {
     // Add filter as remapped Product ID (Product name)
     H.openOrdersTable();
     H.filter();
-
-    H.filterFieldPopover("Product ID")
-      .contains("Aerodynamic Linen Coat")
-      .click();
-
-    cy.findByTestId("apply-filters").click();
+    H.popover().within(() => {
+      cy.findByText("Product ID").click();
+      cy.findByText("Aerodynamic Linen Coat").click();
+      cy.button("Add filter").click();
+    });
+    H.runButtonOverlay().click();
 
     cy.log("Reported failing on v0.36.4 and v0.36.5.1");
     cy.findByTestId("loading-indicator").should("not.exist");
@@ -563,27 +563,23 @@ describe("scenarios > question > filter", () => {
   it("should reject a number literal", () => {
     H.openProductsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-
+    H.popover().findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: "3.14159" });
-
-    cy.button("Done").should("be.disabled");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Expecting boolean but found 3.14159");
+    H.popover().within(() => {
+      cy.button("Done").should("be.disabled");
+      cy.findByText("Expecting boolean but found 3.14159");
+    });
   });
 
   it("should reject a string literal", () => {
     H.openProductsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-
+    H.popover().findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: '"TheAnswer"' });
-
-    cy.button("Done").should("be.disabled");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText('Expecting boolean but found "TheAnswer"');
+    H.popover().within(() => {
+      cy.button("Done").should("be.disabled");
+      cy.findByText('Expecting boolean but found "TheAnswer"');
+    });
   });
 
   it.skip("column filters should work for metrics (metabase#15333)", () => {
@@ -739,10 +735,12 @@ describe("scenarios > question > filter", () => {
 
     cy.findByTestId("scalar-value").contains("5.41");
     H.filter();
-
-    H.filterField("Category").findByText("Gizmo").click();
-
-    cy.findByTestId("apply-filters").click();
+    H.popover().within(() => {
+      cy.findByText("Category").click();
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
+    H.runButtonOverlay().click();
     H.openNotebook();
 
     H.verifyNotebookQuery("Products", [

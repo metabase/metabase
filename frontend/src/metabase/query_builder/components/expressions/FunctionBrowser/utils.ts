@@ -8,12 +8,11 @@ import {
   type HelpText,
   type MBQLClauseFunctionConfig,
   MBQL_CLAUSES,
+  type StartRule,
 } from "metabase-lib/v1/expressions";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-
-import type { StartRule } from "../types";
 
 const EXPRESSION_CLAUSES = Array.from(EXPRESSION_FUNCTIONS).map(
   name => MBQL_CLAUSES[name],
@@ -51,6 +50,8 @@ function getCategoryName(category: string) {
       return t`String functions`;
     case "date":
       return t`Date functions`;
+    case "conversion":
+      return t`Conversions`;
     case "window":
       return t`Window functions`;
     case "aggregation":

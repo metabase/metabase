@@ -220,6 +220,7 @@ const SegmentFieldDetail = props => {
                 )}
                 <li className={CS.relative}>
                   <FieldTypeDetail
+                    databaseId={table.db_id}
                     field={entity}
                     foreignKeys={foreignKeys}
                     fieldTypeFormField={getFormField("semantic_type")}

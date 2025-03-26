@@ -5,22 +5,18 @@ import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
 import type { UpdatedRowCellsHandlerParams } from "../types";
 
-import {
-  EditingBodyCellBasicInput,
-  EditingBodyCellCategorySelect,
-  EditingBodyCellDatetime,
-  EditingBodyCellFKSelect,
-} from "./inputs";
+import S from "./EditingBodyCell.module.css";
+import { EditingBodyCellConditional } from "./inputs";
 
-interface EditingBodyCellProps<TRow, TValue> {
+interface EditingBodyCellWrapperProps<TRow, TValue> {
   column: DatasetColumn;
   cellContext: CellContext<TRow, TValue>;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onCellEditCancel: () => void;
 }
 
-export const EditingBodyCellConditional = (
-  props: EditingBodyCellProps<RowValues, RowValue>,
+export const EditingBodyCellWrapper = (
+  props: EditingBodyCellWrapperProps<RowValues, RowValue>,
 ) => {
   const {
     onCellEditCancel,
@@ -50,49 +46,14 @@ export const EditingBodyCellConditional = (
     [columnName, onCellEditCancel, onCellValueUpdate, rowIndex, initialValue],
   );
 
-  if (
-    column.semantic_type === "type/State" ||
-    column.semantic_type === "type/Country" ||
-    column.semantic_type === "type/Category"
-  ) {
-    return (
-      <EditingBodyCellCategorySelect
-        initialValue={initialValue}
-        datasetColumn={column}
-        onSubmit={doCellValueUpdate}
-        onCancel={onCellEditCancel}
-      />
-    );
-  }
-
-  if (column.semantic_type === "type/FK") {
-    return (
-      <EditingBodyCellFKSelect
-        initialValue={initialValue}
-        datasetColumn={column}
-        onSubmit={doCellValueUpdate}
-        onCancel={onCellEditCancel}
-      />
-    );
-  }
-
-  if (
-    column.effective_type === "type/Date" ||
-    column.effective_type === "type/DateTime" ||
-    column.effective_type === "type/DateTimeWithLocalTZ"
-  ) {
-    return (
-      <EditingBodyCellDatetime
-        initialValue={initialValue}
-        datasetColumn={column}
-        onSubmit={doCellValueUpdate}
-        onCancel={onCellEditCancel}
-      />
-    );
-  }
-
   return (
-    <EditingBodyCellBasicInput
+    <EditingBodyCellConditional
+      autoFocus
+      inputProps={{
+        variant: "unstyled",
+        className: S.inlineEditingInput,
+        size: "sm",
+      }}
       initialValue={initialValue}
       datasetColumn={column}
       onSubmit={doCellValueUpdate}

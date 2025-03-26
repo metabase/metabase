@@ -1,15 +1,12 @@
 (ns metabase-enterprise.data-editing.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-editing.test-util :as data-editing.tu]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2])
-  (:import
-   (clojure.lang IDeref)
-   (java.io Closeable)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,52 +22,17 @@
 
 (deftest feature-flag-required-test
   (mt/with-premium-features #{}
-    (let [url (table-url 1)]
+    (let [url (data-editing.tu/table-url 1)]
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 url))
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :put 402 url))
-      (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :delete 402 url)))))
-
-(defn- create-test-table! [driver db table-name]
-  (let [_     (driver/create-table! driver
-                                    (mt/id)
-                                    table-name
-                                    {:id   (driver/upload-type->database-type driver :metabase.upload/auto-incrementing-int-pk)
-                                     :name [:text]
-                                     :song  [:text]}
-                                    :primary-key [:id])
-        table (sync/create-table! db
-                                  {:name         table-name
-                                   :schema       nil
-                                   :display_name table-name})]
-    (sync/sync-fields-for-table! db table)
-    (:id table)))
-
-(defn- open-test-table!
-  "Sets up an anonymous table in the appdb. Return a box that can be deref'd for the table-id.
-
-  Returned box is java.io.Closeable so you can clean up with `with-open`.
-  Otherwise .close the box to drop the table when finished."
-  ^Closeable []
-  (let [driver     :h2
-        db         (t2/select-one :model/Database (mt/id))
-        table-name (str "temp_table_" (u/lower-case-en (random-uuid)))
-        cleanup    #(try (driver/drop-table! driver (mt/id) table-name) (catch Exception _))]
-    (try
-      (let [table-id (create-test-table! driver db table-name)]
-        (reify Closeable
-          IDeref
-          (deref [_] table-id)
-          (close [_] (cleanup))))
-      (catch Exception e
-        (cleanup)
-        (throw e)))))
+      (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 (str url "/delete"))))))
 
 (deftest table-operations-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/with-empty-h2-app-db
-      (with-open [table-ref (open-test-table!)]
+      (with-open [table-ref (data-editing.tu/open-test-table!)]
         (let [table-id @table-ref
-              url      (table-url table-id)]
+              url      (data-editing.tu/table-url table-id)]
           (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing true}})
           (testing "Initially the table is empty"
             (is (= [] (table-rows table-id))))
@@ -90,7 +52,8 @@
                    (table-rows table-id))))
 
           (testing "PUT should update the relevant rows and columns"
-            (is (= {:rows-updated 2}
+            (is (= {:updated [{:id 1, :name "Pidgey", :song "Join us now and share the software"}
+                              {:id 2, :name "Speacolumn", :song "Hold music"}]}
                    (mt/user-http-request :crowberto :put 200 url
                                          {:rows [{:id 1 :song "Join us now and share the software"}
                                                  {:id 2 :name "Speacolumn"}]})))
@@ -102,7 +65,7 @@
 
           (testing "DELETE should remove the corresponding rows"
             (is (= {:success true}
-                   (mt/user-http-request :crowberto :delete 200 url
+                   (mt/user-http-request :crowberto :post 200 (str url "/delete")
                                          {:rows [{:id 1}
                                                  {:id 2}]})))
             (is (= [[3 "Farfetch'd" "The land of lisp"]]
@@ -114,11 +77,11 @@
       (testing "40x returned if user/database not configured for editing"
         (let [test-endpoints
               (fn [flags]
-                (with-open [table-ref (open-test-table!)]
+                (with-open [table-ref (data-editing.tu/open-test-table!)]
                   (let [actions-enabled (:a flags)
                         editing-enabled (:d flags)
                         superuser       (:s flags)
-                        url             (table-url @table-ref)
+                        url             (data-editing.tu/table-url @table-ref)
                         settings        {:database-enable-table-editing (boolean editing-enabled)
                                          :database-enable-actions       (boolean actions-enabled)}
                         _               (t2/update! :model/Database (mt/id) {:settings settings})
@@ -132,7 +95,7 @@
                         (req user :put url {:rows [{:id 1 :song "Join us now and share the software"}]})
 
                         del-response
-                        (req user :delete url {:rows [{:id 1}]})]
+                        (req user :post (str url "/delete") {:rows [{:id 1}]})]
                     {:settings settings
                      :user     user
                      :responses {:create post-response
@@ -162,3 +125,105 @@
                   [verb  response] responses]
             (testing (format "%s user: %s, settings: %s" verb user settings)
               (is (= expected (error-or-ok response))))))))))
+
+(deftest create-table-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/with-empty-h2-app-db
+      (let [run-example
+            (fn [flags req-body]
+              (let [{table-name-prefix :name} req-body
+                    table-name      (str table-name-prefix "_" (System/currentTimeMillis))
+                    req-body'       (u/update-if-exists req-body :name (constantly table-name))
+                    driver          :h2
+                    db-id           (mt/id)
+                    editing-enabled (:d flags)
+                    superuser       (:s flags)
+                    settings        {:database-enable-table-editing (boolean editing-enabled)}
+                    _               (t2/update! :model/Database (mt/id) {:settings settings})
+                    user            (if superuser :crowberto :rasta)
+                    url             (format "ee/data-editing/database/%d/table" db-id)
+                    res             (delay (mt/user-http-request-full-response user :post url req-body'))
+                    cleanup!        #(try (driver/drop-table! driver db-id table-name) (catch Exception _))
+                    describe-table
+                    (fn []
+                      (-> (driver/describe-table driver (t2/select-one :model/Database db-id) {:name table-name})
+                          (update :name   {table-name table-name-prefix})
+                          (update :fields (partial mapv #(select-keys % [:name :base-type])))))]
+                (try
+                  (if (<= 200 (:status @res) 299)
+                    (merge
+                     {:status 200}
+                     (describe-table))
+                    (:status @res))
+                  (finally
+                    (cleanup!)))))]
+
+        (are [flags req-body expected]
+             (= expected (run-example flags req-body))
+
+          #{:s :d}
+          {}
+          400
+
+          #{:s :d}
+          {:name "a"}
+          400
+
+          #{:s :d}
+          {:name "a"
+           :columns [[{:name "id", :type "int"}]]}
+          400
+
+          #{:s :d}
+          {:name "a"
+           :columns [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          ;; =>
+          {:status 200
+           :name "a"
+           :fields [{:name "id"
+                     :base-type :type/BigInteger}]}
+
+          #{:s :d}
+          {:name "a"
+           :columns [{:name "id", :type "not-a-type"}]
+           :primary_key ["id"]}
+          ;; =>
+          400
+
+          ;; escaped quotes are not allowed for now
+          #{:s :d}
+          {:name "a\""
+           :columns [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          400
+          #{:s :d}
+          {:name "a`"
+           :columns [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          400
+
+          ;; underscores, dashes, spaces allowed
+          #{:s :d}
+          {:name "a_b1 -"
+           :columns [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          ;; =>
+          {:status 200
+           :name "a_b1 -"
+           :fields [{:name "id"
+                     :base-type :type/BigInteger}]}
+
+          ;; if not admin, denied
+          #{:d}
+          {:name        "a"
+           :columns     [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          403
+
+          ;; data editing disabled, denied
+          #{:s}
+          {:name        "a"
+           :columns     [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          400)))))

@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupGsheetsServiceAccountEndpoint } from "__support__/server-mocks";
+import { setupGdriveServiceAccountEndpoint } from "__support__/server-mocks";
 import { screen, within } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";
 
 function setupPremium(opts: SetupOpts) {
-  setupGsheetsServiceAccountEndpoint();
+  setupGdriveServiceAccountEndpoint();
   return setup({
     hasEnterprisePlugins: true,
     hasDWHAttached: true,

@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.channel.email :as email]
    [metabase.config :as config]
@@ -15,6 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -457,6 +459,50 @@
                     config/current-minor-version (constantly nil)]
         (is false? (@#'stats/csv-upload-available?))))))
 
+(deftest starburst-legacy-test
+  (testing "starburst with impersonation"
+    (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
+                                                      :name "starburst-legacy-test"
+                                                      :created_at (t/instant)
+                                                      :updated_at (t/instant)
+                                                      :details (json/encode {:impersonation true})}]
+      (is (= {:name :starburst-legacy-impersonation,
+              :available true,
+              :enabled true}
+             (m/find-first (fn [{key-name :name}]
+                             (= key-name :starburst-legacy-impersonation))
+                           (#'stats/snowplow-features-data))))))
+  (testing "starburst without impersonation"
+    (is (= {:name :starburst-legacy-impersonation,
+            :available true,
+            :enabled false}
+           (m/find-first (fn [{key-name :name}]
+                           (= key-name :starburst-legacy-impersonation))
+                         (#'stats/snowplow-features-data))))
+    (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
+                                                      :name "starburst-legacy-test"
+                                                      :created_at (t/instant)
+                                                      :updated_at (t/instant)
+                                                      :details (json/encode {:impersonation false})}]
+      (is (= {:name :starburst-legacy-impersonation,
+              :available true,
+              :enabled false}
+             (m/find-first (fn [{key-name :name}]
+                             (= key-name :starburst-legacy-impersonation))
+                           (#'stats/snowplow-features-data)))))
+
+    (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
+                                                      :name "starburst-legacy-test"
+                                                      :created_at (t/instant)
+                                                      :updated_at (t/instant)
+                                                      :details "{}"}]
+      (is (= {:name :starburst-legacy-impersonation,
+              :available true,
+              :enabled false}
+             (m/find-first (fn [{key-name :name}]
+                             (= key-name :starburst-legacy-impersonation))
+                           (#'stats/snowplow-features-data)))))))
+
 (deftest deployment-model-test
   (testing "deployment model correctly reports cloud/docker/jar"
     (with-redefs [premium-features/is-hosted? (constantly true)]
@@ -523,51 +569,6 @@
         (is (not (< (get query_executions k)
                     (get query_executions_24h k)))
             "There are never more query executions in the 24h version than all-of-time.")))))
-
-(deftest query-execution-24h-filtering-test
-  (let [before (#'stats/->snowplow-grouped-metric-info)
-        one-year-ago-defaults (assoc query-execution-defaults
-                                     :started_at (-> (t/offset-date-time)
-                                                     (t/minus (t/years 1))))]
-    (mt/with-temp [:model/User           u {}
-                   :model/QueryExecution _ one-year-ago-defaults
-                   :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-sdk-react")
-                   :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-iframe")
-                   :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-iframe")
-                   :model/QueryExecution _ (assoc one-year-ago-defaults
-                                                  :embedding_client "embedding-iframe"
-                                                  :executor_id (u/the-id u))
-                   :model/QueryExecution _ (assoc one-year-ago-defaults :context :public-question)
-                   :model/QueryExecution _ (assoc one-year-ago-defaults :context :public-csv-download)
-                   :model/QueryExecution _ query-execution-defaults
-                   :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-sdk-react")
-                   :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
-                   :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
-                   :model/QueryExecution _ (assoc query-execution-defaults :context :public-question)
-                   :model/QueryExecution _ (assoc query-execution-defaults :context :public-csv-download)]
-      (let [after (#'stats/->snowplow-grouped-metric-info)
-            before-internal (-> before :query-executions :internal)
-            after-internal (-> after :query-executions :internal)
-            before-24h-internal (-> before :query-executions-24h :internal)
-            after-24h-internal (-> after :query-executions-24h :internal)]
-        (is (= 2 (- after-internal before-internal)))
-        (is (= 1 (- after-24h-internal before-24h-internal)))
-        (is (= 2 (- (-> after :query-executions :sdk_embed)
-                    (-> before :query-executions :sdk_embed))))
-        (is (= 4 (- (-> after :query-executions :static_embed)
-                    (-> before :query-executions :static_embed))))
-        (is (= 4 (- (-> after :query-executions :public_link)
-                    (-> before :query-executions :public_link))))
-        (is (= 1 (- (-> after :query-executions :interactive_embed)
-                    (-> before :query-executions :interactive_embed))))
-        (is (= 1 (- (-> after :query-executions-24h :sdk_embed)
-                    (-> before :query-executions-24h :sdk_embed))))
-        (is (= 2 (- (-> after :query-executions-24h :static_embed)
-                    (-> before :query-executions-24h :static_embed))))
-        (is (= 2 (- (-> after :query-executions-24h :public_link)
-                    (-> before :query-executions-24h :public_link))))
-        (is (= 0 (- (-> after :query-executions-24h :interactive_embed)
-                    (-> before :query-executions-24h :interactive_embed))))))))
 
 (deftest snowplow-setting-tests
   (testing "snowplow formated settings"

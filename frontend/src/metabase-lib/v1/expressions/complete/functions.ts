@@ -5,14 +5,15 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { EXPRESSION_FUNCTIONS, MBQL_CLAUSES } from "../config";
 import { TOKEN } from "../tokenizer";
+import { getDatabase } from "../utils";
 
 import {
   content,
   expressionClauseCompletion,
   fuzzyMatcher,
-  getDatabase,
   isFieldReference,
   isIdentifier,
+  isOperator,
   tokenAtPos,
 } from "./util";
 
@@ -57,7 +58,11 @@ export function suggestFunctions({
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
 
-    if (!token || !isIdentifier(token) || isFieldReference(token)) {
+    if (
+      !token ||
+      !(isIdentifier(token) || isOperator(token)) ||
+      isFieldReference(token)
+    ) {
       return null;
     }
 

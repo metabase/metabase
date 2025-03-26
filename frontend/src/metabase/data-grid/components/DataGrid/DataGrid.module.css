@@ -20,13 +20,18 @@
   display: grid;
   top: 0;
   z-index: 2;
-  background-color: var(--mb-color-bg-white);
   border-bottom: 1px solid var(--mb-color-border);
+  height: 37px;
 }
 
 .bodyContainer {
   display: grid;
   position: relative;
+  outline: none;
+}
+
+.selectableBody {
+  user-select: none;
 }
 
 .row {

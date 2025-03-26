@@ -14,15 +14,19 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { MBQL_CLAUSES, format } from "metabase-lib/v1/expressions";
+import {
+  type ExpressionError,
+  MBQL_CLAUSES,
+  type StartRule,
+  diagnoseAndCompile,
+  format,
+} from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
-import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { FunctionBrowser } from "../FunctionBrowser";
 import { LayoutMain, LayoutSidebar } from "../Layout";
-import type { ClauseType, StartRule } from "../types";
 
 import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
@@ -33,25 +37,23 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
-import { diagnoseAndCompileExpression } from "./utils";
 
-type EditorProps<S extends StartRule> = {
+type EditorProps = {
   id?: string;
-  clause?: ClauseType<S> | null;
-  name: string;
+  clause?: Lib.Expressionable | null;
   query: Lib.Query;
   stageIndex: number;
-  startRule: S;
+  startRule: StartRule;
   expressionIndex?: number;
   reportTimezone?: string;
   readOnly?: boolean;
-  error?: ErrorWithMessage | Error | null;
+  error?: ExpressionError | Error | null;
   hasHeader?: boolean;
   onCloseEditor?: () => void;
 
   onChange: (
-    clause: ClauseType<S> | null,
-    error: ErrorWithMessage | null,
+    clause: Lib.ExpressionClause | null,
+    error: ExpressionError | null,
   ) => void;
   shortcuts?: Shortcut[];
 };
@@ -60,12 +62,9 @@ const EDITOR_WIDGET_HEIGHT = 220;
 const FB_HEIGHT = EDITOR_WIDGET_HEIGHT + 46;
 const FB_HEIGHT_WITH_HEADER = FB_HEIGHT + 48;
 
-export function Editor<S extends StartRule = "expression">(
-  props: EditorProps<S>,
-) {
+export function Editor(props: EditorProps) {
   const {
     id,
-    name,
     startRule = "expression",
     stageIndex,
     query,
@@ -118,7 +117,6 @@ export function Editor<S extends StartRule = "expression">(
     startRule,
     query,
     stageIndex,
-    name,
     expressionIndex,
     reportTimezone,
     metadata,
@@ -158,6 +156,7 @@ export function Editor<S extends StartRule = "expression">(
           id={id}
           ref={ref}
           data-testid="custom-expression-query-editor"
+          placeholder={t`Type your expression, press '[' for columns…`}
           className={S.editor}
           extensions={extensions}
           readOnly={readOnly || isFormatting}
@@ -227,8 +226,7 @@ export function Editor<S extends StartRule = "expression">(
   );
 }
 
-function useExpression<S extends StartRule = "expression">({
-  name,
+function useExpression({
   clause,
   startRule,
   stageIndex,
@@ -236,14 +234,14 @@ function useExpression<S extends StartRule = "expression">({
   expressionIndex,
   metadata,
   onChange,
-}: EditorProps<S> & {
+}: EditorProps & {
   metadata: Metadata;
 }) {
   const [source, setSource] = useState("");
   const [initialSource, setInitialSource] = useState("");
   const [isFormatting, setIsFormatting] = useState(true);
   const [isValidated, setIsValidated] = useState(false);
-  const errorRef = useRef<ErrorWithMessage | null>(null);
+  const errorRef = useRef<ExpressionError | null>(null);
 
   const formatExpression = useCallback(
     ({ initial = false }: { initial?: boolean }) => {
@@ -303,13 +301,13 @@ function useExpression<S extends StartRule = "expression">({
         return;
       }
 
-      const { clause, error } = diagnoseAndCompileExpression(source, {
+      const { error, expressionClause: clause } = diagnoseAndCompile({
+        source,
         startRule,
         query,
         stageIndex,
-        expressionIndex,
         metadata,
-        name,
+        expressionIndex,
       });
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
@@ -319,15 +317,13 @@ function useExpression<S extends StartRule = "expression">({
       }
     },
     [
-      name,
       query,
       stageIndex,
       startRule,
       metadata,
-      expressionIndex,
       handleChange,
       debouncedOnChange,
-      // prevError,
+      expressionIndex,
     ],
   );
 

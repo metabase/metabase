@@ -1,0 +1,15 @@
+.inlineEditingInput {
+  transition: none;
+  outline: 2px solid var(--mb-base-color-blue-50);
+  outline-offset: -2px;
+  border-color: transparent;
+  box-sizing: border-box;
+  font-weight: 700;
+  background-color: var(--mb-base-color-white);
+  border-radius: 0;
+
+  /** DateInput behaves a bit differently, therefore we need a style override for focused state */
+  &:focus {
+    outline: 2px solid var(--mb-base-color-blue-50);
+  }
+}

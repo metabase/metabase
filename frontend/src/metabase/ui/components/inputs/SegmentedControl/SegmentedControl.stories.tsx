@@ -53,3 +53,24 @@ export const FullWidth = {
     fullWidth: true,
   },
 };
+
+export const Color = {
+  args: {
+    data: [
+      {
+        label: "Light",
+        value: "light",
+      },
+      {
+        label: "Dark",
+        value: "dark",
+      },
+      {
+        label: "Transparent",
+        value: "transparent",
+      },
+    ],
+    color: "brand",
+    c: "var(--mb-color-text-white)",
+  },
+};

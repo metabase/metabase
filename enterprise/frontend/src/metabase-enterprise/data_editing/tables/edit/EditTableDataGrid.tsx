@@ -11,24 +11,41 @@ import {
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
-import type { DatasetData, RowValue, RowValues } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  DatasetData,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 
+import { canEditColumn } from "../../helpers";
 import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
-import { EditingBodyCellConditional } from "./EditingBodyCell";
+import { EditingBodyCellWrapper } from "./EditingBodyCell";
 import { useTableEditing } from "./use-table-editing";
 
 type EditTableDataGridProps = {
   data: DatasetData;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
+  onRowExpandClick: (rowIndex: number) => void;
 };
 
 export const EditTableDataGrid = ({
   data,
   onCellValueUpdate,
+  onRowExpandClick,
 }: EditTableDataGridProps) => {
   const { cols, rows } = useMemo(() => extractRemappedColumns(data), [data]);
+
+  const columnIdMap = useMemo(
+    () =>
+      cols.reduce(
+        (acc, col) => ({ ...acc, [col.name]: col }),
+        {} as Record<string, DatasetColumn>,
+      ),
+    [cols],
+  );
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
     useTableEditing();
@@ -53,7 +70,7 @@ export const EditTableDataGrid = ({
           );
         },
         editingCell: cellContext => (
-          <EditingBodyCellConditional
+          <EditingBodyCellWrapper
             cellContext={cellContext}
             column={column}
             onCellValueUpdate={onCellValueUpdate}
@@ -70,8 +87,9 @@ export const EditTableDataGrid = ({
   const rowId: RowIdColumnOptions = useMemo(
     () => ({
       variant: "expandButton",
+      onRowExpandClick,
     }),
-    [],
+    [onRowExpandClick],
   );
 
   const tableProps = useDataGridInstance({
@@ -87,17 +105,25 @@ export const EditTableDataGrid = ({
       e: React.MouseEvent<HTMLDivElement>,
       {
         cellId,
+        columnId,
       }: {
         cellId: string;
+        columnId: string;
       },
     ) => {
+      const column = columnIdMap[columnId];
+      // Disables editing for some columns, such as primary keys
+      if (column && !canEditColumn(column)) {
+        return;
+      }
+
       // Prevents event from bubbling up inside editing cell
       // Otherwise requires special handling in EditingBodyCell
       if (editingCellId !== cellId) {
         onCellClickToEdit(cellId);
       }
     },
-    [onCellClickToEdit, editingCellId],
+    [onCellClickToEdit, editingCellId, columnIdMap],
   );
 
   return (
