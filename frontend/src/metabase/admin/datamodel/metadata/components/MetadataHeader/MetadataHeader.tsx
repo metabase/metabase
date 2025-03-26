@@ -57,7 +57,7 @@ const MetadataHeader = ({
   }, [databases, selectedDatabaseId, onSelectDatabase]);
 
   return (
-    <Flex align="center" data-testid="admin-metadata-header" flex="1 0" py="xl">
+    <Flex align="center" data-testid="admin-metadata-header" flex="1" py="xl">
       <Text c="text-medium" display="flex" flex="0 0 auto">
         <Icon name="database" />
       </Text>
