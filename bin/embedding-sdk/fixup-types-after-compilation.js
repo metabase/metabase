@@ -3,6 +3,8 @@
 /* eslint-disable import/no-commonjs, import/order, no-console */
 const fs = require("fs");
 const path = require("path");
+const glob = require("glob");
+const { Extractor, ExtractorConfig } = require("@microsoft/api-extractor");
 
 const SDK_DIST_DIR_PATH = path.resolve("./resources/embedding-sdk/dist");
 
@@ -21,25 +23,13 @@ const REPLACES_MAP = {
   cljs: "target/cljs_release",
 };
 
-const traverseFilesTree = dir => {
-  try {
-    const results = [];
-    const list = fs.readdirSync(dir);
-    list.forEach(file => {
-      file = path.join(dir, file);
-      const stat = fs.statSync(file);
-      if (stat && stat.isDirectory()) {
-        results.push(...traverseFilesTree(file));
-      } else if (file.endsWith(".d.ts")) {
-        // Is a ".d.ts" file
-        results.push(file);
-      }
-    });
-    return results;
-  } catch (error) {
-    console.error(`Error when walking dir ${dir}`, error);
-  }
-};
+const API_EXTRACTOR_CONFIG_PATH = path.join(
+  __dirname,
+  "../../api-extractor.json",
+);
+const API_EXTRACTOR_CONFIG = ExtractorConfig.loadFileAndPrepare(
+  API_EXTRACTOR_CONFIG_PATH,
+);
 
 const getRelativePath = (fromPath, toPath) => {
   const relativePath = path.relative(path.dirname(fromPath), toPath);
@@ -72,14 +62,92 @@ const replaceAliasedImports = filePath => {
   console.log(`Edited file: ${filePath}`);
 };
 
-const fixupTypesAfterCompilation = () => {
+const removeUnresolvedReexports = filePath => {
+  if (!filePath.endsWith("index.d.ts")) {
+    return;
+  }
+
+  const fileContent = fs.readFileSync(filePath, { encoding: "utf8" });
+  const lines = fileContent.split(/\r?\n/);
+
+  let isModified = false;
+
+  const updatedContent = lines
+    .filter(line => {
+      if (!line.includes("export * from")) {
+        return true;
+      }
+
+      const target = line.match(/export \* from "(.*)"/)[1];
+      const dirPath = path.dirname(filePath);
+
+      const isUnresolved =
+        !fs.existsSync(path.resolve(dirPath, target)) &&
+        !fs.existsSync(`${path.resolve(dirPath, target)}.d.ts`);
+
+      if (isUnresolved) {
+        console.log(`Removing unresolved re-export: ${line}`);
+        isModified = true;
+      }
+
+      return !isUnresolved;
+    })
+    .join("\n");
+
+  if (isModified) {
+    fs.writeFileSync(filePath, updatedContent, { encoding: "utf-8" });
+  }
+};
+
+const fixupTypesAfterCompilation = ({ isWatchMode }) => {
   console.log("[dts fixup] Fixing SDK d.ts files...");
 
-  const dtsFilePaths = traverseFilesTree(SDK_DIST_DIR_PATH);
+  const dtsFilePaths = glob.sync(`${SDK_DIST_DIR_PATH}/**/*.d.ts`);
 
-  dtsFilePaths.forEach(replaceAliasedImports);
+  dtsFilePaths.forEach(filePath => {
+    replaceAliasedImports(filePath);
+    removeUnresolvedReexports(filePath);
+  });
 
   console.log("[dts fixup] Done!");
+
+  if (!isWatchMode) {
+    console.log("[dts fixup] Generate dts rollup...");
+
+    generateDtsRollup();
+
+    console.log("[dts fixup] Removing intermediate dts files...");
+
+    [
+      `${SDK_DIST_DIR_PATH}/enterprise`,
+      `${SDK_DIST_DIR_PATH}/frontend`,
+      `${SDK_DIST_DIR_PATH}/target`,
+    ].forEach(path => {
+      fs.rmSync(path, {
+        force: true,
+        recursive: true,
+      });
+    });
+
+    console.log("[dts fixup] Dts rollup done!");
+  }
+};
+
+const generateDtsRollup = () => {
+  const extractorResult = Extractor.invoke(API_EXTRACTOR_CONFIG, {
+    localBuild: true,
+    showVerboseMessages: true,
+  });
+
+  if (!extractorResult.succeeded) {
+    console.error(
+      `API Extractor completed with ${extractorResult.errorCount} errors` +
+        ` and ${extractorResult.warningCount} warnings`,
+    );
+    process.exitCode = 1;
+  }
+
+  console.log(`API Extractor completed successfully`);
 };
 
 const watchFilesAndFixThem = () => {
@@ -123,7 +191,7 @@ const isWatchMode = process.argv.includes("--watch");
 const run = async () => {
   // when running on a clean state and with --watch, the folder might not exist yet
   await waitForFolder(SDK_DIST_DIR_PATH);
-  fixupTypesAfterCompilation();
+  fixupTypesAfterCompilation({ isWatchMode });
 
   if (isWatchMode) {
     console.log("\n\n\n");
