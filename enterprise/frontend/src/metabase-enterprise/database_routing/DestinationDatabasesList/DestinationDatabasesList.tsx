@@ -32,7 +32,7 @@ export const DestinationDatabasesList = ({
   const isAdmin = useSelector(getUserIsAdmin);
 
   const destinationDbsReq = useListDatabasesQuery({
-    include_mirror_databases: primaryDatabaseId,
+    router_database_id: primaryDatabaseId,
   });
 
   const destinationDatabases = useMemo(

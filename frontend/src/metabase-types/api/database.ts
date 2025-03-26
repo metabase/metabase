@@ -116,7 +116,7 @@ export interface ListDatabasesRequest {
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
   include_analytics?: boolean;
-  include_mirror_databases?: DatabaseId;
+  router_database_id?: DatabaseId;
 }
 
 export interface ListDatabasesResponse {
