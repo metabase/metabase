@@ -5,6 +5,7 @@
   (:require
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->mirror-db-id]]
    [metabase.api.common :as api]
+   [metabase.database-routing.core :refer [with-database-routing-on]]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.store :as qp.store]
@@ -24,7 +25,8 @@
                        (rff metadata))))]
         (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
           (qp.store/with-metadata-provider mirror-db-id
-            (qp query rff*))))
+            (with-database-routing-on
+              (qp query rff*)))))
       (qp query rff))))
 
 (defenterprise attach-mirror-db-middleware
@@ -33,6 +35,6 @@
   :feature :database-routing
   [query]
   (let [database (lib.metadata/database (qp.store/metadata-provider))
-        mirror-db-id (router-db-or-id->mirror-db-id api/*current-user* database)]
+        mirror-db-id (router-db-or-id->mirror-db-id @api/*current-user* database)]
     (cond-> query
       mirror-db-id (assoc :mirror-database/id mirror-db-id))))

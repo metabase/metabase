@@ -29,5 +29,5 @@
   "Enterprise version. Returns a hash input that will be used for fields subject to database routing."
   :feature :database-routing
   [field]
-  (when-let [mirror-db-id (some->> field u/the-id field/field-id->database-id (router-db-or-id->mirror-db-id api/*current-user*))]
+  (when-let [mirror-db-id (some->> field u/the-id field/field-id->database-id (router-db-or-id->mirror-db-id @api/*current-user*))]
     {:mirror-db-id mirror-db-id}))

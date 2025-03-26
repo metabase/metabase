@@ -147,6 +147,10 @@
   {:api  #{metabase.core.initialization-status}
    :uses :any}
 
+  database-routing
+  {:api #{metabase.database-routing.core}
+   :uses #{premium-features}}
+
   db
   {:api  #{metabase.db metabase.db.metadata-queries metabase.db.query metabase.db.setup}
    :uses #{auth-provider config connection-pool driver legacy-mbql lib plugins query-processor task util}}
@@ -179,6 +183,7 @@
            auth-provider
            config
            connection-pool
+           database-routing
            db
            legacy-mbql
            lib
@@ -193,7 +198,8 @@
            sync
            task
            upload
-           util}}
+           util
+           enterprise/database-routing}}
 
   eid-translation
   {:api  #{metabase.eid-translation.core}
@@ -683,7 +689,7 @@
 
   enterprise/database-routing
   {:api #{metabase-enterprise.database-routing.core metabase-enterprise.database-routing.api}
-   :uses #{api events lib models premium-features query-processor util}}
+   :uses #{api config database-routing events lib models premium-features query-processor util}}
 
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init}

@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.table :as api.table]
    [metabase.config :as config]
+   [metabase.database-routing.core :as database-routing]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -1035,8 +1036,9 @@
       (do
         (quick-task/submit-task!
          (fn []
-           (sync/sync-db-metadata! db)
-           (sync/analyze-db! db)))
+           (database-routing/with-database-routing-off
+             (sync/sync-db-metadata! db)
+             (sync/analyze-db! db))))
         {:status :ok}))))
 
 (api.macros/defendpoint :post "/:id/dismiss_spinner"
@@ -1074,11 +1076,12 @@
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
-      (if *rescan-values-async*
-        (quick-task/submit-task!
-         (fn []
-           (sync/update-field-values! db)))
-        (sync/update-field-values! db))))
+      (database-routing/with-database-routing-off
+        (if *rescan-values-async*
+          (quick-task/submit-task!
+           (fn []
+             (sync/update-field-values! db)))
+          (sync/update-field-values! db)))))
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]
