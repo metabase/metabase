@@ -8,7 +8,7 @@ import {
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { useDispatch } from "metabase/lib/redux";
-import type { Settings } from "metabase-types/api";
+import type { Settings, UserId } from "metabase-types/api";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
@@ -31,12 +31,14 @@ function TestComponent() {
 const setup = ({
   settingStatus,
   updatedSettingStatus,
+  createdById = 2,
   folderStatus,
   isAdmin = true,
   errorCode,
 }: {
   settingStatus: GsheetsStatus;
   updatedSettingStatus?: GsheetsStatus;
+  createdById?: UserId;
   folderStatus: GsheetsStatus;
   isAdmin?: boolean;
   errorCode?: number;
@@ -45,6 +47,7 @@ const setup = ({
     gsheets: {
       status: updatedSettingStatus ?? settingStatus,
       folder_url: null,
+      "created-by-id": createdById,
     },
   });
 
@@ -61,9 +64,10 @@ const setup = ({
         gsheets: {
           status: settingStatus,
           folder_url: null,
+          "created-by-id": createdById,
         },
       }),
-      currentUser: createMockUser({ is_superuser: isAdmin }),
+      currentUser: createMockUser({ id: 2, is_superuser: isAdmin }),
     },
   });
 };
@@ -204,5 +208,17 @@ describe("GsheetsSyncStatus", () => {
     await waitFor(() =>
       expect(screen.queryByText(/Google/i)).not.toBeInTheDocument(),
     );
+  });
+
+  it("should not show the sync component if the user did not connect the folder", async () => {
+    setup({
+      settingStatus: "loading",
+      folderStatus: "loading",
+      createdById: 99,
+    });
+
+    await screen.findByText("Test Settings Update");
+
+    expect(screen.queryByText(/Google/i)).not.toBeInTheDocument();
   });
 });
