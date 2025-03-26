@@ -17,9 +17,7 @@
   string?)
 
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/key
-  (s/and string?
-         #(<= 11 (count %) 254)
-         #(re-matches #"mb_[A-Za-z0-9+/=]+" %)))
+  string?)
 
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/creator
   string?)
@@ -60,6 +58,10 @@
                    "admin" (u/the-id (perms/admin-group))
                    "all-users" (u/the-id (perms/all-users-group)))
         unhashed-key (u.secret/secret key)
+        _ (when-not (and (<= 11 (count key) 254)
+                         (re-matches #"mb_[A-Za-z0-9+/=]+" key))
+            (throw (ex-info (format "Invalid API key format. Key must be between 11-254 characters and start with 'mb_'.")
+                            {:name name})))
         prefix (api-key/prefix (u.secret/expose unhashed-key))
         creator (get-admin-user-by-email creator)]
 
