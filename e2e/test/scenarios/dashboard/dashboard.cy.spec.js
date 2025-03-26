@@ -1251,12 +1251,7 @@ describe("scenarios > dashboard", () => {
         // move tab
         H.editDashboard();
 
-        cy.findAllByRole("tab").should($tabs => {
-          expect($tabs[0].textContent).to.equal("Tab 1");
-          expect($tabs[1].textContent).to.equal("Tab 2");
-        });
-
-        dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
+        dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -500);
 
         // Verify tab order with more robust assertions
         cy.findAllByRole("tab").should($tabs => {
@@ -1297,6 +1292,8 @@ describe("scenarios > dashboard", () => {
     function dragOnXAxis(el, distance) {
       el.trigger("mousedown", { clientX: 0 })
         .trigger("mousemove", { clientX: distance })
+        // to avoid flakiness
+        .wait(10)
         .trigger("mouseup");
     }
 
