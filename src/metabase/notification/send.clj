@@ -16,7 +16,6 @@
   (:import
    (java.util.concurrent Callable Executors ExecutorService)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
-   (org.apache.logging.log4j ThreadContext)
    (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)

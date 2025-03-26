@@ -83,5 +83,5 @@
   [data]
   (let [f (temp-file)]
     (write-to-file f data)
-    (log/debug "stored data in temp file" {:length (.length f)})
+    (log/debug "stored data in temp file" {:length (.length ^File f)})
     (TempFileStorage. f)))
