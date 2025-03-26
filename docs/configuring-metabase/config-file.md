@@ -11,7 +11,9 @@ On self-hosted [Pro](https://www.metabase.com/product/pro) and [Enterprise](http
 - The current directory (the directory where the running Metabase JAR is located).
 - The path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md).
 
-The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file). Which means: if you define a setting in the config file, and then later change that setting in your Metabase application, keep in mind that the config file will overwrite that change whenever Metabase restarts.
+The settings in the config file work the same as if you'd set the settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file). Which means: if you define a setting in the config file, and then later change that setting in your Metabase application, keep in mind that the config file will overwrite that change whenever Metabase restarts. Let's reiterate that in a blockquote:
+
+> **Whenever Metabase restarts and loads your config file, the settings in the config file will _overwrite_ any changes to those settings made in the Metabase UI.**
 
 The config file settings are NOT treated as a hardcoded source of truth (like [environment variables](./environment-variables.md) are). Settings set by environment variables cannot be changed, even in the Admin settings in the application itself.
 
@@ -67,7 +69,7 @@ config:
       email: admin@example.com
 ```
 
-If the Metabase has already been set up, then `first @example.com` will be loaded as a normal user.
+If the Metabase has already been set up, then `first@example.com` will be loaded as a normal user.
 
 ## Databases
 
@@ -131,6 +133,42 @@ config:
 ```
 
 See [Uploads](../databases/uploads.md).
+
+## API keys
+
+You can use the config file to create API keys, which is useful for automated deployments and keeping API keys stable across environments.
+
+You can add API keys like so:
+
+```yaml
+{% raw %}
+version: 1
+config:
+  users:
+    - first_name: Cam
+      last_name: Era
+      password: 2cans3cans4cans
+      email: cam@example.com
+  api-keys:
+    - name: "Admin API key"
+      group: admin
+      description: "API key with admin permissions."
+      creator: cam@example.com
+      key: mb_firsttestapikey
+    - name: "All Users API key"
+      group: all-users
+      description: "API key with permissions of the All Users group."
+      creator: cam@example.com
+      key: mb_secondtestapikey
+{% endraw %}
+```
+
+- API keys that you create (the value of the `key`) must have the format `mb_` followed by a [Base64](https://en.wikipedia.org/wiki/Base64) string (if you're wearing formal attire, you'd say a _tetrasexagesimal_ string). So, `mb_` followed by letters and numbers. Concretely, the API key you create must satisfy the following regular expression: `mb_[A-Za-z0-9+/=]+`.
+- Only admins can create API keys. This means either a) the Metabase must already have at least one admin account, or b) you need to add an admin account in the `users` section of the config file.
+- The keys themselves can be assigned to non-admin groups. Meaning: the permissions for the key are defined by the `group`, not the `creator`.
+- If Metabase finds an existing API key with the same _name_ as a key in the config file, it will preserve the existing key (i.e., it won't overwrite the existing key with the key in the config file). If you want to overwrite the existing key, you'll need to [delete the existing key](../people-and-groups/api-keys.md#deleting-api-keys). If you want to keep both keys, you'll need to rename the key in the config file.
+
+> The config file also contains an [`api-key`](./environment-variables.md#mb_api_key) key in the `settings` section of the config file. This setting _doesn't_ create API keys; it's used for string-matching in the header for authenticating requests to the `/notify` endpoint.
 
 ## Referring to environment variables in the `config.yml`
 
