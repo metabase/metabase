@@ -59,11 +59,7 @@ export const EditTableDataContainer = ({
     id: tableId,
   });
 
-  const {
-    data: datasetData,
-    isLoading,
-    refetch: refetchTableDataQuery,
-  } = useGetTableDataQuery({
+  const { data: datasetData, isLoading } = useGetTableDataQuery({
     tableId,
   });
 
@@ -117,21 +113,12 @@ export const EditTableDataContainer = ({
       const response = await updateTableRows({
         tableId: tableId,
         rows: [updatedRowWithPk],
+        primaryKeyColumnName: pkColumn.name,
       });
 
       displayErrorIfExsits(response.error);
-
-      // TODO: do an optimistic data update here using RTK cache
-
-      refetchTableDataQuery();
     },
-    [
-      datasetData,
-      refetchTableDataQuery,
-      tableId,
-      updateTableRows,
-      displayErrorIfExsits,
-    ],
+    [datasetData, tableId, updateTableRows, displayErrorIfExsits],
   );
 
   const handleRowCreate = useCallback(
@@ -145,17 +132,8 @@ export const EditTableDataContainer = ({
       if (!response.error) {
         closeCreateRowModal();
       }
-
-      // TODO: do an optimistic data update here using RTK cache
-      refetchTableDataQuery();
     },
-    [
-      refetchTableDataQuery,
-      closeCreateRowModal,
-      tableId,
-      insertTableRows,
-      displayErrorIfExsits,
-    ],
+    [closeCreateRowModal, tableId, insertTableRows, displayErrorIfExsits],
   );
 
   const handleExpandedRowDetele = useCallback(
@@ -179,17 +157,15 @@ export const EditTableDataContainer = ({
       const response = await deleteTableRows({
         rows: [{ [pkColumn.name]: rowPkValue }],
         tableId: tableId,
+        primaryKeyColumnName: pkColumn.name,
       });
       displayErrorIfExsits(response.error);
-      // TODO: do an optimistic data update here using RTK cache
-      refetchTableDataQuery();
     },
     [
       tableId,
       datasetData,
       closeCreateRowModal,
       deleteTableRows,
-      refetchTableDataQuery,
       displayErrorIfExsits,
     ],
   );
