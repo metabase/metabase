@@ -752,7 +752,7 @@
     (is (= [{:type :table, :id "card__1"}]
            (lib/table-or-card-dependent-metadata lib.tu/metadata-provider-with-card "card__1")))))
 
-(deftest ^:parallel maybe-expand-temporal-expression-test
+(deftest ^:parallel expand-temporal-expression-test
   (let [update-temporal-unit (fn [expr temporal-type] (update-in expr [2 1] assoc :temporal-unit temporal-type))
         expr [:=
               {:lib/uuid "4fcaefe5-5c20-4cbc-98ed-6007b67843a4"}
@@ -760,7 +760,7 @@
               "2024-05-13T16:35"]]
     (testing "Expandable temporal units"
       (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} int?] start end]
-                                (#'lib.fe-util/maybe-expand-temporal-expression (update-temporal-unit expr unit)))
+                                (#'lib.fe-util/expand-temporal-expression (update-temporal-unit expr unit)))
         :hour "2024-05-13T16:00:00" "2024-05-13T16:59:59"
         :week "2024-05-12" "2024-05-18"
         :month "2024-05-01" "2024-05-31"
@@ -768,6 +768,6 @@
         :year  "2024-01-01" "2024-12-31")
       (testing "Non-expandable temporal units"
         (are [unit] (let [expr (update-temporal-unit expr unit)]
-                      (= expr
-                         (#'lib.fe-util/maybe-expand-temporal-expression expr)))
+                      (= false
+                         (#'lib.fe-util/expandable-temporal-expression? expr)))
           :minute :day)))))
