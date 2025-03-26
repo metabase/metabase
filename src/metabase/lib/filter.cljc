@@ -323,9 +323,9 @@
   [query stage-number [_value {:keys [base-type]} expr] style]
   (lib.metadata.calculation/display-name query
                                          stage-number
-                                         (if (clojure.core/and (string? expr) (isa? base-type :type/BigInteger))
-                                           (u.number/parse-bigint expr)
-                                           expr)
+                                         (cond-> expr
+                                           (clojure.core/and (string? expr) (isa? base-type :type/BigInteger))
+                                           u.number/parse-bigint)
                                          style))
 
 (defmethod lib.metadata.calculation/display-name-method :time-interval
