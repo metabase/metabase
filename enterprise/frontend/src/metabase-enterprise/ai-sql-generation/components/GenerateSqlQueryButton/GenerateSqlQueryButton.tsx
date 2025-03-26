@@ -21,7 +21,7 @@ export function GenerateSqlQueryButton({
   };
 
   return (
-    <Tooltip label={t`Generate SQL`}>
+    <Tooltip label={t`Generate SQL based on the prompt selected in the editor`}>
       <Button
         className={className}
         variant="subtle"

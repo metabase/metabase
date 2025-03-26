@@ -89,7 +89,6 @@ export const NativeQueryEditorSidebar = (
   };
 
   const query = question.query();
-  const queryText = Lib.rawNativeQuery(query);
   const databaseId = Lib.databaseID(query);
   const canRunQuery = runQuery && cancelQuery;
   const engine = question.database?.()?.engine;
@@ -125,10 +124,10 @@ export const NativeQueryEditorSidebar = (
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}
-      {databaseId != null && (
+      {nativeEditorSelectedText != null && databaseId != null && (
         <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
           className={CS.mt3}
-          prompt={queryText}
+          prompt={nativeEditorSelectedText}
           databaseId={databaseId}
           onGenerateQuery={onGenerateQuery}
         />
