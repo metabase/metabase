@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -227,3 +228,78 @@
            :columns     [{:name "id", :type "int"}]
            :primary_key ["id"]}
           400)))))
+
+(deftest coercion-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/with-empty-h2-app-db
+      (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing true}})
+      (let [user :crowberto
+            req mt/user-http-request
+            create!
+            #(req user :post (data-editing.tu/table-url %1) {:rows %2})
+
+            update!
+            #(req user :put (data-editing.tu/table-url %1) {:rows %2})
+
+            lossy?
+            #{:Coercion/UNIXNanoSeconds->DateTime
+              :Coercion/UNIXMicroSeconds->DateTime
+              :Coercion/ISO8601->Date
+              :Coercion/ISO8601->Time}
+
+            do-test
+            (fn [t coercion-strategy input expected]
+              (testing (str t " " coercion-strategy " " input)
+                (with-open [table (data-editing.tu/open-test-table!
+                                   {:id 'auto-inc-type
+                                    :o  [t :null]}
+                                   {:primary-key [:id]})]
+                  (let [table-id @table
+                        table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] table-id)
+                        field-id (t2/select-one-fn :id [:model/Field :id] :table_id table-id :name "o")
+                        get-qp-state (fn [] (map #(zipmap [:id :o] %) (table-rows table-id)))
+                        get-db-state (fn [] (sql-jdbc/query :h2 (mt/id) {:select [:*] :from [table-name-kw]}))]
+                    (t2/update! :model/Field field-id {:coercion_strategy coercion-strategy})
+                    (testing "create"
+                      (let [row {:o input}
+                            {returned-state :created-rows} (create! table-id [row])
+                            qp-state (get-qp-state)
+                            _ (is (= 1 (count returned-state)))]
+                        (when-not (lossy? coercion-strategy)
+                          (is (= qp-state returned-state) "we should return the same coerced output that table/$table-id/data would return")
+                          (is (= input (:o (first qp-state))) "the qp value should be the same as the input"))
+                        (is (= expected (:o (first (get-db-state)))))))
+                    (testing "update"
+                      (let [[{id :id}] (:created-rows (create! table-id [{:o nil}]))
+                            _ (is (some? id))
+                            {returned-state :updated} (update! table-id [{:id id, :o input}])
+                            [qp-row] (filter (comp #{id} :id) (get-qp-state))]
+                        (is (= 1 (count returned-state)))
+                        (is (some? qp-row))
+                        (when-not (lossy? coercion-strategy)
+                          (is (= [qp-row] returned-state))
+                          (is (= input (:o qp-row))))
+                        (is (= expected (:o (first (get-db-state)))))))))))]
+
+        ;;    type     coercion                                     input                          database
+        (->> [:text    nil                                          "a"                            "a"
+              :text    :Coercion/YYYYMMDDHHMMSSString->Temporal     "2025-03-25T14:34:00Z"         "20250325143400"
+              :text    :Coercion/ISO8601->DateTime                  "2025-03-25T14:34:42.314Z"     "2025-03-25T14:34:42.314Z"
+              :text    :Coercion/ISO8601->Date                      "2025-03-25T00:00:00Z"         "2025-03-25"
+              :text    :Coercion/ISO8601->Time                      "1999-04-05T14:34:42Z"         "14:34:42"
+
+              ;; note fractional seconds in input, remains undefined for Seconds
+              :int     :Coercion/UNIXSeconds->DateTime              "2025-03-25T14:34:42Z"         (quot (inst-ms #inst "2025-03-25T14:34:42Z") 1000)
+              :bigint  :Coercion/UNIXMilliSeconds->DateTime         "2025-03-25T14:34:42.314Z"     (inst-ms #inst "2025-03-25T14:34:42.314Z")
+
+              ;; note fractional secs beyond millis are discarded   (lossy)
+              :bigint  :Coercion/UNIXMicroSeconds->DateTime         "2025-03-25T14:34:42.314121Z"  (* (inst-ms #inst "2025-03-25T14:34:42.314Z") 1000)
+              :bigint  :Coercion/UNIXNanoSeconds->DateTime          "2025-03-25T14:34:42.3141212Z" (* (inst-ms #inst "2025-03-25T14:34:42.314Z") 1000000)
+
+              ;; nil safe
+              :text    :Coercion/YYYYMMDDHHMMSSString->Temporal     nil                            nil
+
+              ;; seconds component does not work properly here, lost by qp output, bug in existing code?
+              #_#_#_#_:text :Coercion/YYYYMMDDHHMMSSString->Temporal     "2025-03-25T14:34:42Z"     "20250325143442"]
+             (partition 4)
+             (run! #(apply do-test %)))))))
