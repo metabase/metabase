@@ -516,33 +516,34 @@
    expression-mode     :- [:enum :expression :aggregation :filter]
    expr                :- :any
    expression-position :- [:maybe :int]]
-  (let [[validator explainer] (clojure.core/case expression-mode
-                                :expression [expression-validator expression-explainer]
-                                :aggregation [aggregation-validator aggregation-explainer]
-                                :filter [filter-validator filter-explainer])]
-    (or (when-not (validator expr)
-          (let [error (explainer expr)
-                humanized (str/join ", " (me/humanize error))]
-            {:message (i18n/tru "Type error: {0}" humanized)}))
-        (when-let [dependency-path (and (= expression-mode :expression)
-                                        expression-position
-                                        (let [exprs (expressions query stage-number)
-                                              edited-expr (nth exprs expression-position)
-                                              edited-name (expression->name edited-expr)
-                                              deps (-> (m/index-by expression->name exprs)
-                                                       (assoc edited-name expr)
-                                                       (update-vals referred-expressions))]
-                                          (cyclic-definition deps)))]
-          {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " dependency-path))
-           :friendly true})
-        (when (and (= expression-mode :expression)
-                   (lib.util.match/match-one expr :offset))
-          {:message  (i18n/tru "OFFSET is not supported in custom columns")
-           :friendly true})
-        (when (and (= expression-mode :filter)
-                   (lib.util.match/match-one expr :offset))
-          {:message  (i18n/tru "OFFSET is not supported in custom filters")
-           :friendly true})
-        (when (= (first expr) :value)
-          {:message  (i18n/tru "Standalone constants are not supported.")
-           :friendly true}))))
+  (binding [lib.schema.expression/*suppress-expression-type-check?* false]
+    (let [[validator explainer] (clojure.core/case expression-mode
+                                  :expression [expression-validator expression-explainer]
+                                  :aggregation [aggregation-validator aggregation-explainer]
+                                  :filter [filter-validator filter-explainer])]
+      (or (when-not (validator expr)
+            (let [error (explainer expr)
+                  humanized (str/join ", " (me/humanize error))]
+              {:message (i18n/tru "Type error: {0}" humanized)}))
+          (when-let [dependency-path (and (= expression-mode :expression)
+                                          expression-position
+                                          (let [exprs (expressions query stage-number)
+                                                edited-expr (nth exprs expression-position)
+                                                edited-name (expression->name edited-expr)
+                                                deps (-> (m/index-by expression->name exprs)
+                                                         (assoc edited-name expr)
+                                                         (update-vals referred-expressions))]
+                                            (cyclic-definition deps)))]
+            {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " dependency-path))
+             :friendly true})
+          (when (and (= expression-mode :expression)
+                     (lib.util.match/match-one expr :offset))
+            {:message  (i18n/tru "OFFSET is not supported in custom columns")
+             :friendly true})
+          (when (and (= expression-mode :filter)
+                     (lib.util.match/match-one expr :offset))
+            {:message  (i18n/tru "OFFSET is not supported in custom filters")
+             :friendly true})
+          (when (= (first expr) :value)
+            {:message  (i18n/tru "Standalone constants are not supported.")
+             :friendly true})))))
