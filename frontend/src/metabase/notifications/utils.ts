@@ -148,7 +148,7 @@ export const getDefaultTableNotificationRequest = ({
       currentUserId,
       userCanAccessSettings,
     }),
-    condition: ["=", ["context", "event_info", "table_id"], tableId],
+    condition: ["=", ["context", "payload", "event_info", "table_id"], tableId],
     subscriptions: [
       {
         type: "notification-subscription/system-event",
