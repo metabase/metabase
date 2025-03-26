@@ -1,7 +1,7 @@
 ```ts
 type TablesPermissions = 
-  | UNRESTRICTED
-  | LEGACY_NO_SELF_SERVICE
-  | BLOCKED
+  | DataPermissionValue.UNRESTRICTED
+  | DataPermissionValue.LEGACY_NO_SELF_SERVICE
+  | DataPermissionValue.BLOCKED
 | {};
 ```

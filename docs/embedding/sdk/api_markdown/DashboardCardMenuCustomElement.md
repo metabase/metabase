@@ -1,5 +1,7 @@
 ```ts
-type DashboardCardMenuCustomElement = ({ question, }: {
+type DashboardCardMenuCustomElement = ({
+  question,
+}: {
   question: MetabaseQuestion;
  }) => ReactNode;
 ```

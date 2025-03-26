@@ -1,6 +1,6 @@
 ```ts
 type DownloadPermission = 
-  | FULL
-  | LIMITED
-  | NONE;
+  | DataPermissionValue.FULL
+  | DataPermissionValue.LIMITED
+  | DataPermissionValue.NONE;
 ```

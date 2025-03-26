@@ -1,7 +1,7 @@
 ```ts
 type FieldsPermissions = 
-  | UNRESTRICTED
-  | LEGACY_NO_SELF_SERVICE
-  | SANDBOXED
-  | BLOCKED;
+  | DataPermissionValue.UNRESTRICTED
+  | DataPermissionValue.LEGACY_NO_SELF_SERVICE
+  | DataPermissionValue.SANDBOXED
+  | DataPermissionValue.BLOCKED;
 ```
