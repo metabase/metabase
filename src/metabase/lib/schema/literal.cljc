@@ -30,8 +30,8 @@
   [:or :int [:fn u.number/bigint?]])
 
 (defmethod expression/type-of-method :dispatch-type/integer
-  [int]
-  (if (u.number/bigint? int) :type/BigInteger :type/Integer))
+  [val]
+  (if (u.number/bigint? val) :type/BigInteger :type/Integer))
 
 ;;; we should probably also restrict this to disallow NaN and positive/negative infinity, I don't know in what
 ;;; universe we'd want to allow those if they're not disallowed already.
