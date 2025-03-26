@@ -2,7 +2,7 @@ import type { JSX, ReactNode } from "react";
 import { useMemo } from "react";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
-import { skipToken, useListNotificationsQuery } from "metabase/api";
+import { skipToken, useAlertNotificationsQuery } from "metabase/api";
 import Pulses from "metabase/entities/pulses";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
@@ -33,7 +33,7 @@ const NotificationsAppInner = ({
 
   const dispatch = useDispatch();
 
-  const { data: questionNotifications = [] } = useListNotificationsQuery(
+  const { data: questionNotifications = [] } = useAlertNotificationsQuery(
     user
       ? {
           creator_or_recipient_id: user.id,

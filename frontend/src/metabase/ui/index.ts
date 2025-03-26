@@ -1,4 +1,4 @@
-export { rem, useMantineTheme } from "@mantine/core";
+export { rem, useMantineTheme, useModalsStack } from "@mantine/core";
 export type {
   MantineTheme,
   MantineThemeOverride,

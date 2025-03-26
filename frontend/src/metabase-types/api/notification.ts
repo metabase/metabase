@@ -204,18 +204,19 @@ type BaseNotification = {
   active: boolean;
   creator_id: UserId;
   creator: UserInfo;
+  handlers: NotificationHandler[];
 
   updated_at?: string;
   created_at?: string;
 };
 
 export type AlertNotification = BaseNotification &
-  NotificationCardPayload &
-  NotificationCronSubscription;
+  NotificationCardPayload & { subscriptions: NotificationCronSubscription[] };
 
 export type TableNotification = BaseNotification &
-  NotificationSystemEventPayload &
-  NotificationSystemEventSubscription;
+  NotificationSystemEventPayload & {
+    subscriptions: NotificationSystemEventSubscription[];
+  };
 
 export type Notification = AlertNotification | TableNotification;
 

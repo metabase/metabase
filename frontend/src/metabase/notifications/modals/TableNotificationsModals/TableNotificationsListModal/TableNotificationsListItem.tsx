@@ -1,20 +1,18 @@
 import cx from "classnames";
 import { type MouseEvent, useState } from "react";
-import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
+import { t } from "ttag";
 
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import { getNotificationHandlersGroupedByTypes } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
-import { isNotFalsy } from "metabase/lib/types";
-import { NotificationActionButton } from "metabase/notifications/modals/components";
+import {
+  HandlersInfo,
+  NotificationActionButton,
+} from "metabase/notifications/modals/shared/components";
 import { getUser } from "metabase/selectors/user";
-import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
+import { Box, Group, Text } from "metabase/ui";
 import type {
   NotificationChannel,
-  NotificationHandlerEmail,
-  NotificationHandlerHttp,
-  NotificationHandlerSlack,
   SystemEvent,
   TableNotification,
   User,
@@ -102,32 +100,15 @@ export const TableNotificationsListItem = ({
         )}
       </Group>
 
-      <Stack className={S.handlersContainer} gap="0.5rem" mt="1rem">
-        {emailHandler && (
-          <Group gap="sm" wrap="nowrap">
-            <FixedSizeIcon name="mail" size={16} c="text-secondary" />
-            <Text size="sm" lineClamp={1} c="inherit">
-              {formatEmailHandlerInfo(emailHandler, users)}
-            </Text>
-          </Group>
-        )}
-        {slackHandler && (
-          <Group gap="sm" wrap="nowrap">
-            <FixedSizeIcon name="slack" size={16} c="text-secondary" />
-            <Text size="sm" lineClamp={1} c="inherit">
-              {formatSlackHandlerInfo(slackHandler)}
-            </Text>
-          </Group>
-        )}
-        {hookHandlers && (
-          <Group gap="sm" wrap="nowrap">
-            <FixedSizeIcon name="webhook" size={16} c="text-secondary" />
-            <Text size="sm" lineClamp={1} c="inherit">
-              {formatHttpHandlersInfo(hookHandlers, httpChannelsConfig)}
-            </Text>
-          </Group>
-        )}
-      </Stack>
+      <HandlersInfo
+        emailHandler={emailHandler}
+        slackHandler={slackHandler}
+        hookHandlers={hookHandlers}
+        users={users}
+        httpChannelsConfig={httpChannelsConfig}
+        mt="1rem"
+      />
+
       {showHoverActions && (
         <div className={S.actionButtonContainer}>
           {canEdit ? (
@@ -158,59 +139,4 @@ const formatTitle = (sendCondition: SystemEvent): string => {
     case "event/data-editing-row-delete":
       return t`Notify when record is deleted`;
   }
-};
-
-const formatEmailHandlerInfo = (
-  emailHandler: NotificationHandlerEmail,
-  users: User[] | undefined,
-) => {
-  if (!users) {
-    return null;
-  }
-
-  const usersMap = _.indexBy(users, "id");
-
-  const emailRecipients = emailHandler.recipients
-    .map(recipient => {
-      if (recipient.type === "notification-recipient/raw-value") {
-        return recipient.details.value;
-      }
-      if (recipient.type === "notification-recipient/user") {
-        return usersMap[recipient.user_id]?.email;
-      }
-    })
-    .filter(isNotFalsy);
-
-  const maxEmailsToDisplay = 2;
-
-  if (emailRecipients.length > maxEmailsToDisplay) {
-    const restItemsLength = emailRecipients.length - maxEmailsToDisplay;
-    return [
-      emailRecipients.slice(0, maxEmailsToDisplay).join(", "),
-      ngettext(
-        msgid`${restItemsLength} other`,
-        `${restItemsLength} others`,
-        restItemsLength,
-      ),
-    ].join(", ");
-  }
-
-  return emailRecipients.join(", ");
-};
-
-const formatSlackHandlerInfo = (handler: NotificationHandlerSlack) => {
-  return handler.recipients[0]?.details.value;
-};
-
-const formatHttpHandlersInfo = (
-  handlers: NotificationHandlerHttp[],
-  httpChannelsConfig: NotificationChannel[] | undefined,
-) => {
-  return handlers
-    .map(
-      ({ channel_id }) =>
-        httpChannelsConfig?.find(({ id }) => channel_id === id)?.name ||
-        t`unknown`,
-    )
-    .join(", ");
 };

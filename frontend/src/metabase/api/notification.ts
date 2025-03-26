@@ -1,8 +1,10 @@
 import type {
+  AlertNotification,
   CreateNotificationRequest,
   ListNotificationsRequest,
   Notification,
   NotificationId,
+  TableNotification,
   UpdateNotificationRequest,
 } from "metabase-types/api/notification";
 
@@ -14,6 +16,7 @@ import {
   provideNotificationListTags,
   provideNotificationTags,
 } from "./tags";
+import { useMemo } from "react";
 
 export const notificationApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -102,3 +105,35 @@ export const {
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
 } = notificationApi;
+
+export const useTableNotificationsQuery = (
+  params: Parameters<typeof useListNotificationsQuery>[0],
+) => {
+  const { data, ...rest } = useListNotificationsQuery(params);
+  return {
+    data: useMemo(() => data?.filter(isTableNotification), [data]),
+    ...rest,
+  };
+};
+
+export const useAlertNotificationsQuery = (
+  params: Parameters<typeof useListNotificationsQuery>[0],
+) => {
+  const { data, ...rest } = useListNotificationsQuery(params);
+  return {
+    data: useMemo(() => data?.filter(isAlertNotification), [data]),
+    ...rest,
+  };
+};
+
+const isTableNotification = (
+  notification: Notification,
+): notification is TableNotification => {
+  return notification.payload_type === "notification/system-event";
+};
+
+const isAlertNotification = (
+  notification: Notification,
+): notification is AlertNotification => {
+  return notification.payload_type === "notification/card";
+};

@@ -25,10 +25,6 @@
   }
 }
 
-.handlersContainer {
-  color: var(--mb-color-text-secondary);
-}
-
 .actionButtonContainer {
   position: absolute;
 

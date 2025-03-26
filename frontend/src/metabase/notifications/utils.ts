@@ -7,12 +7,11 @@ import type {
   NotificationHandler,
   ScheduleSettings,
   SystemEvent,
-  SystemEvent,
   TableId,
   UserId,
 } from "metabase-types/api";
 
-import type { NotificationTriggerOption } from "./modals/CreateOrEditQuestionAlertModal/types";
+import type { NotificationTriggerOption } from "./modals/AlertsModals/CreateOrEditQuestionAlertModal/types";
 
 export const DEFAULT_ALERT_CRON_SCHEDULE = "0 0 8 * * ? *";
 export const DEFAULT_ALERT_SCHEDULE: ScheduleSettings = {

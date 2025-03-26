@@ -7,7 +7,7 @@ import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,
 } from "metabase/selectors/user";
-import { Button, Modal, Stack, rem } from "metabase/ui";
+import { Button, Modal, type ModalProps, Stack, rem } from "metabase/ui";
 import type { TableNotification } from "metabase-types/api";
 
 import { TableNotificationsListItem } from "./TableNotificationsListItem";
@@ -30,7 +30,8 @@ export const TableNotificationsListModal = ({
   onDelete,
   onUnsubscribe,
   onClose,
-}: TableNotificationsListModal) => {
+  ...modalProps
+}: TableNotificationsListModal & ModalProps) => {
   const user = useSelector(getUser);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
   const isAdmin = user?.is_superuser;
@@ -62,6 +63,7 @@ export const TableNotificationsListModal = ({
       onClose={onClose}
       padding="xl"
       title={t`Edit notifications`}
+      {...modalProps}
     >
       <Stack gap="lg" mb="lg" mt="1rem">
         {sortedNotifications.map(notification => {

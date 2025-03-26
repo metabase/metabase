@@ -16,7 +16,6 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   ChannelApiResponse,
   ChannelType,
-  CreateAlertNotificationRequest,
   Notification,
   NotificationCardSendCondition,
   NotificationChannelType,
@@ -28,7 +27,6 @@ import type {
   NotificationRecipient,
   NotificationRecipientRawValue,
   ScheduleSettings,
-  UpdateAlertNotificationRequest,
   User,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -41,6 +39,10 @@ export const formatTitle = ({ item, type }: NotificationListItem) => {
       return item.name;
     case "question-notification":
       return item.payload.card?.name || t`Alert`;
+    case "table-notification":
+      // Todo: implement propert title
+      return t`Table Notification`;
+    // return item.payload.table?.name || t`Table Notification`;
   }
 };
 

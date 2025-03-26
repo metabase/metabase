@@ -1,25 +1,31 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
 import {
-  useListNotificationsQuery,
+  useTableNotificationsQuery,
   useUnsubscribeFromNotificationMutation,
+  useUpdateNotificationMutation,
 } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
+import { DeleteConfirmModal } from "metabase/notifications/modals/shared/DeleteConfirmModal";
+import { UnsubscribeConfirmModal } from "metabase/notifications/modals/shared/UnsubscribeConfirmModal";
+import { addUndo } from "metabase/redux/undo";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
-import type { Notification, TableNotification } from "metabase-types/api";
+import type { TableNotification } from "metabase-types/api";
 
 import { CreateOrEditTableNotificationModal } from "./CreateOrEditTableNotificationModal/CreateOrEditTableNotificationModal";
 import { TableNotificationsListModal } from "./TableNotificationsListModal/TableNotificationsListModal";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
-import { useUpdateNotificationMutation } from "metabase/api";
-import { usePreviousDistinct } from "react-use";
 
 interface TableNotificationsModalProps {
   tableId: number;
 }
 
-type AlertModalMode = "list-modal" | "create-modal" | "update-modal";
+type AlertModalMode =
+  | "list-modal"
+  | "create-edit-modal"
+  | "delete-confirm-modal"
+  | "unsubscribe-confirm-modal";
 
 export const TableNotificationsTriggerButton = ({
   tableId,
@@ -27,28 +33,27 @@ export const TableNotificationsTriggerButton = ({
 }: TableNotificationsModalProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const { data } = useListNotificationsQuery({
+  const { data: tableNotifications } = useTableNotificationsQuery({
     table_id: tableId,
     include_inactive: false,
     payload_type: "notification/system-event",
   });
-  const tableNotifications = useMemo(
-    () => data?.filter(isTableNotification),
-    [data],
-  );
 
-  const [editingItem, setEditingItem] = useState<Notification | null>(null);
+  const [editingItem, setEditingItem] = useState<TableNotification | null>(
+    null,
+  );
 
   const [activeModal, setActiveModal] = useState<AlertModalMode | null>(null);
 
   const hasNotifications = tableNotifications && tableNotifications.length > 0;
   const handleOpen = () => {
     setIsOpen(true);
-    setActiveModal(!hasNotifications ? "create-modal" : "list-modal");
+    setActiveModal(!hasNotifications ? "create-edit-modal" : "list-modal");
   };
   const handleClose = () => {
     setIsOpen(false);
     setActiveModal(null);
+    setEditingItem(null);
   };
   const previousActiveModal = usePreviousDistinct(activeModal);
   const handleInternalModalClose = () => {
@@ -90,7 +95,7 @@ export const TableNotificationsTriggerButton = ({
   };
 
   const [unsubscribe] = useUnsubscribeFromNotificationMutation();
-  const handleUnsubscribe = async (alert: Notification) => {
+  const handleUnsubscribe = async (alert: TableNotification) => {
     const result = await unsubscribe(alert.id);
 
     if (result.error) {
@@ -135,36 +140,48 @@ export const TableNotificationsTriggerButton = ({
         <TableNotificationsListModal
           opened={isOpen}
           notifications={tableNotifications}
-          onCreate={() => setActiveModal("create-modal")}
+          onCreate={() => setActiveModal("create-edit-modal")}
           onEdit={notification => {
             setEditingItem(notification);
-            setActiveModal("update-modal");
+            setActiveModal("create-edit-modal");
           }}
           onClose={handleClose}
-          onDelete={handleDelete}
-          onUnsubscribe={handleUnsubscribe}
+          onDelete={notification => {
+            setEditingItem(notification);
+            setActiveModal("delete-confirm-modal");
+          }}
+          onUnsubscribe={notification => {
+            setEditingItem(notification);
+            setActiveModal("unsubscribe-confirm-modal");
+          }}
         />
       )}
 
-      {(activeModal === "create-modal" || activeModal === "update-modal") && (
+      {activeModal === "create-edit-modal" && (
         <CreateOrEditTableNotificationModal
           tableId={tableId}
-          notification={
-            activeModal === "update-modal" && editingItem
-              ? editingItem
-              : undefined
-          }
+          notification={editingItem}
           onClose={handleClose}
           onNotificationCreated={handleClose}
           onNotificationUpdated={handleClose}
         />
       )}
+      {activeModal === "delete-confirm-modal" && editingItem && (
+        <DeleteConfirmModal
+          title={t`Delete this notification?`}
+          onConfirm={() => handleDelete(editingItem)}
+          onClose={handleInternalModalClose}
+        />
+      )}
+
+      {activeModal === "unsubscribe-confirm-modal" && editingItem && (
+        <UnsubscribeConfirmModal
+          title={t`Unsubscribe from this notification?`}
+          description={t`You'll stop receiving this notification from now on. Depending on your organization’s permissions you might need to ask a moderator to be re-added in the future.`}
+          onConfirm={() => handleUnsubscribe(editingItem)}
+          onClose={handleInternalModalClose}
+        />
+      )}
     </>
   );
-};
-
-const isTableNotification = (
-  notification: Notification,
-): notification is TableNotification => {
-  return notification.payload_type === "notification/system-event";
 };

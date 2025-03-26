@@ -6,7 +6,6 @@ import {
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
   useListChannelsQuery,
-  useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
@@ -18,7 +17,10 @@ import {
   getHasConfiguredEmailChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { ChannelSetupModal } from "metabase/notifications/modals/ChannelSetupModal";
+import { ChannelSetupModal } from "metabase/notifications/modals/shared/ChannelSetupModal";
+import { AlertModalSettingsBlock } from "metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { AlertTriggerIcon } from "metabase/notifications/modals/shared/components/AlertTriggerIcon";
+import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannelsPicker";
 import { getDefaultTableNotificationRequest } from "metabase/notifications/utils";
 import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
@@ -28,13 +30,8 @@ import type {
   NotificationHandler,
   SystemEvent,
   TableNotification,
-  TableNotificationSendCondition,
   UpdateTableNotificationRequest,
 } from "metabase-types/api";
-
-import { AlertModalSettingsBlock } from "../../components/AlertModalSettingsBlock/AlertModalSettingsBlock";
-import { AlertTriggerIcon } from "../../components/AlertTriggerIcon";
-import { NotificationChannelsPicker } from "../../components/NotificationChannelsPicker";
 
 import type { TableNotificationTriggerOption } from "./types";
 
@@ -61,7 +58,7 @@ type CreateOrEditTableNotificationModalProps = {
   onClose: () => void;
 } & (
   | {
-      notification?: undefined;
+      notification: null;
       onNotificationCreated: () => void;
       onNotificationUpdated?: () => void;
     }
@@ -173,8 +170,6 @@ export const CreateOrEditTableNotificationModal = ({
       } else {
         onNotificationCreated();
       }
-
-      // await dispatch(updateUrl(question, { dirty: false }));
     }
   };
 

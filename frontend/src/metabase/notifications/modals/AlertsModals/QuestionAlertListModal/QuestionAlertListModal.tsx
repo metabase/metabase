@@ -3,16 +3,16 @@ import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
 import {
-  useListNotificationsQuery,
+  useAlertNotificationsQuery,
   useUnsubscribeFromNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
-import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
-import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
+import { DeleteConfirmModal } from "metabase/notifications/modals/shared/DeleteConfirmModal";
+import { UnsubscribeConfirmModal } from "metabase/notifications/modals/shared/UnsubscribeConfirmModal";
 import { addUndo } from "metabase/redux/undo";
 import type Question from "metabase-lib/v1/Question";
-import type { Notification } from "metabase-types/api";
+import type { AlertNotification } from "metabase-types/api";
 
 import { CreateOrEditQuestionAlertModal } from "../CreateOrEditQuestionAlertModal";
 
@@ -32,11 +32,13 @@ export const QuestionAlertListModal = ({
   question: Question;
   onClose: () => void;
 }) => {
-  const [editingItem, setEditingItem] = useState<Notification | null>(null);
+  const [editingItem, setEditingItem] = useState<AlertNotification | null>(
+    null,
+  );
 
   const dispatch = useDispatch();
 
-  const { data: questionNotifications } = useListNotificationsQuery({
+  const { data: questionNotifications } = useAlertNotificationsQuery({
     card_id: question.id(),
     include_inactive: false,
   });
@@ -60,7 +62,7 @@ export const QuestionAlertListModal = ({
     }
   };
 
-  const handleDelete = async (itemToDelete: Notification) => {
+  const handleDelete = async (itemToDelete: AlertNotification) => {
     const result = await updateNotification({
       ...itemToDelete,
       active: false,
@@ -88,7 +90,7 @@ export const QuestionAlertListModal = ({
     }
   };
 
-  const handleUnsubscribe = async (alert: Notification) => {
+  const handleUnsubscribe = async (alert: AlertNotification) => {
     const result = await unsubscribe(alert.id);
 
     if (result.error) {
@@ -122,16 +124,16 @@ export const QuestionAlertListModal = ({
           opened
           questionAlerts={questionNotifications}
           onCreate={() => setActiveModal("create-modal")}
-          onEdit={(notification: Notification) => {
+          onEdit={(notification: AlertNotification) => {
             setEditingItem(notification);
             setActiveModal("update-modal");
           }}
           onClose={onClose}
-          onDelete={(notification: Notification) => {
+          onDelete={notification => {
             setEditingItem(notification);
             setActiveModal("delete-confirm-modal");
           }}
-          onUnsubscribe={(notification: Notification) => {
+          onUnsubscribe={notification => {
             setEditingItem(notification);
             setActiveModal("unsubscribe-confirm-modal");
           }}
@@ -152,7 +154,7 @@ export const QuestionAlertListModal = ({
       )}
 
       {activeModal === "delete-confirm-modal" && editingItem && (
-        <DeleteAlertConfirmModal
+        <DeleteConfirmModal
           onConfirm={() => handleDelete(editingItem)}
           onClose={handleInternalModalClose}
         />

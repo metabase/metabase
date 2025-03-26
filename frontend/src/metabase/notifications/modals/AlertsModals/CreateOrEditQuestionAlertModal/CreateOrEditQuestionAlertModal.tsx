@@ -20,6 +20,10 @@ import {
   getHasConfiguredEmailChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { ChannelSetupModal } from "metabase/notifications/modals/shared/ChannelSetupModal";
+import { AlertModalSettingsBlock } from "metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { AlertTriggerIcon } from "metabase/notifications/modals/shared/components/AlertTriggerIcon";
+import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannelsPicker";
 import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
 import { updateUrl } from "metabase/query_builder/actions";
 import {
@@ -48,11 +52,6 @@ import type {
   ScheduleType,
   UpdateAlertNotificationRequest,
 } from "metabase-types/api";
-
-import { ChannelSetupModal } from "../shared/ChannelSetupModal";
-import { AlertModalSettingsBlock } from "../shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
-import { AlertTriggerIcon } from "../shared/components/AlertTriggerIcon";
-import { NotificationChannelsPicker } from "../shared/components/NotificationChannelsPicker";
 
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
 import type { NotificationTriggerOption } from "./types";
