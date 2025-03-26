@@ -217,7 +217,7 @@
   [:map
    {:encode/tool-api-request #(#_metabot-v3.u/recursive-update-keys update-keys % metabot-v3.u/safe->kebab-case-en)}
    [:model_id :int]
-   [:fields {:optional true} [:maybe [:sequential {:min 1} ::field]]]
+   [:fields {:optional true} [:maybe [:sequential ::field]]]
    [:filters {:optional true} [:maybe [:sequential ::filter]]]
    [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]])
