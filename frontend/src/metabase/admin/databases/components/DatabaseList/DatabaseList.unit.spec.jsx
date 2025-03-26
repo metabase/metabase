@@ -1,7 +1,7 @@
 import { render, screen } from "__support__/ui";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
-import DatabaseList from "./DatabaseList";
+import { DatabaseList } from "./DatabaseList";
 
 const CREATE_SAMPLE_DATABASE_BUTTON_LABEL = "Bring the sample database back";
 

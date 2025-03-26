@@ -1,4 +1,3 @@
-import { withRouter } from "react-router";
 import _ from "underscore";
 
 import LoadingAndGenericErrorWrapper from "metabase/components/LoadingAndGenericErrorWrapper";
@@ -9,12 +8,8 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import DatabaseList from "../components/DatabaseList";
-import {
-  addSampleDatabase,
-  closeSyncingModal,
-  deleteDatabase,
-} from "../database";
+import { DatabaseList } from "../components/DatabaseList";
+import { addSampleDatabase } from "../database";
 import {
   getAddSampleDatabaseError,
   getDeletes,
@@ -39,24 +34,16 @@ const mapStateToProps = (state) => ({
   }),
   isAddingSampleDatabase: getIsAddingSampleDatabase(state),
   addSampleDatabaseError: getAddSampleDatabaseError(state),
-
   engines: getSetting(state, "engines"),
-  showSyncingModal: getSetting(state, "show-database-syncing-modal"),
-
   deletes: getDeletes(state),
   deletionError: getDeletionError(state),
 });
 
 const mapDispatchToProps = {
-  // NOTE: still uses deleteDatabase from metabaseadmin/databases/databases.js
-  // rather than metabase/entities/databases since it updates deletes/deletionError
-  deleteDatabase: deleteDatabase,
   addSampleDatabase: addSampleDatabase,
-  closeSyncingModal,
 };
 
-export default _.compose(
-  withRouter,
+export const DatabaseListApp = _.compose(
   Database.loadList({
     reloadInterval: getReloadInterval,
     query,
