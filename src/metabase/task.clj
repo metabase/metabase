@@ -97,6 +97,10 @@
                        (ex-message (.getCause e)))
             (qs/delete-job scheduler job-key)))))))
 
+(defn- reset-errored-triggers! [^Scheduler scheduler]
+  (doseq [^TriggerKey tk (.getTriggerKeys scheduler nil)]
+    (.resetTriggerFromErrorState scheduler tk)))
+
 (defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
@@ -109,6 +113,7 @@
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
         (delete-jobs-with-no-class!)
+        (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
 
 ;;; this is a function mostly to facilitate testing.
