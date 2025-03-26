@@ -565,7 +565,6 @@ jobs:
               version: '${{ inputs.version }}',
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              generalChannelName: !isAutoRelease ? '${{ vars.SLACK_GENERAL_CHANNEL }}' : '',
             }).catch(console.error);
 
   manage-milestones:
