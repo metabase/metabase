@@ -172,6 +172,22 @@ export const databaseApi = Api.injectEndpoints({
           tag("card"),
         ]),
     }),
+    persistDatabase: builder.mutation<void, DatabaseId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/persist/database/${id}/persist`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("database", id)]),
+    }),
+    unpersistDatabase: builder.mutation<void, DatabaseId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/persist/database/${id}/unpersist`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("database", id)]),
+    }),
     syncDatabaseSchema: builder.mutation<void, DatabaseId>({
       query: (databaseId) => ({
         method: "POST",
@@ -248,6 +264,8 @@ export const {
   useCreateDatabaseMutation,
   useUpdateDatabaseMutation,
   useDeleteDatabaseMutation,
+  usePersistDatabaseMutation,
+  useUnpersistDatabaseMutation,
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,

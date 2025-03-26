@@ -48,6 +48,7 @@ export const DatabaseListApp = _.compose(
     reloadInterval: getReloadInterval,
     query,
     LoadingAndErrorWrapper: LoadingAndGenericErrorWrapper,
+    reload: true,
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(DatabaseList);

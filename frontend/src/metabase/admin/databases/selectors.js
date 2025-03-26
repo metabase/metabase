@@ -1,7 +1,3 @@
-// Database Edit
-export const getEditingDatabase = (state) =>
-  state.admin.databases.editingDatabase;
-
 // Database List
 export const getDeletes = (state) => state.admin.databases.deletes;
 export const getDeletionError = (state) => state.admin.databases.deletionError;

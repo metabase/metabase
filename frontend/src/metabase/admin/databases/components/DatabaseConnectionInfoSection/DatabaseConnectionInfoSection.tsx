@@ -11,8 +11,7 @@ import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Button, Flex, Tooltip } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId } from "metabase-types/api";
+import type { Database, DatabaseId } from "metabase-types/api";
 
 import { isDbModifiable } from "../../utils";
 import { DatabaseConnectionHealthInfo } from "../DatabaseConnectionHealthInfo";

@@ -7,8 +7,6 @@ import {
 } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -31,7 +29,6 @@ function setup({
       databases: [database],
     }),
   });
-  const metadata = getMetadata(state);
   setupDatabaseEndpoints(database);
   setupDatabaseUsageInfoEndpoint(database, {
     question: 0,
@@ -48,7 +45,7 @@ function setup({
 
   const utils = renderWithProviders(
     <DatabaseConnectionInfoSection
-      database={checkNotNull(metadata.database(database.id))}
+      database={database}
       dismissSyncSpinner={dismissSyncSpinner}
     />,
     { storeInitialState: state },
