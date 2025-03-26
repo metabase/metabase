@@ -2,15 +2,18 @@ import { type FormEvent, useState } from "react";
 import { jt, t } from "ttag";
 
 import { reloadSettings } from "metabase/admin/settings/settings";
+import { skipToken, useGetUserQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { CopyButton } from "metabase/components/CopyButton";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getUserName } from "metabase/lib/user";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
   Button,
-  Center,
   Flex,
+  Icon,
   Modal,
   Stack,
   Text,
@@ -22,8 +25,8 @@ import {
   useSaveGsheetsFolderLinkMutation,
 } from "metabase-enterprise/api";
 
+import Styles from "./Gdrive.module.css";
 import { trackSheetImportClick } from "./analytics";
-import disconnectIllustration from "./disconnect.svg?component";
 
 export function GdriveConnectionModal({
   isModalOpen,
@@ -69,12 +72,14 @@ export function GdriveConnectionModal({
 const ModalWrapper = ({
   children,
   onClose,
+  title,
 }: {
   children: React.ReactNode;
   onClose: () => void;
+  title?: string;
 }) => (
-  <Modal opened onClose={onClose} size="lg">
-    <Flex px="lg" pb="lg" gap="md" direction="column">
+  <Modal opened onClose={onClose} size="lg" padding="xl" title={title}>
+    <Flex gap="md" pt="lg" direction="column">
       {children}
     </Flex>
   </Modal>
@@ -202,6 +207,15 @@ function GoogleSheetsDisconnectModal({
   const [errorMessage, setErrorMessage] = useState("");
   const dispatch = useDispatch();
 
+  const gSheetsSetting = useSetting("gsheets");
+
+  const connectingUserId = gSheetsSetting?.["created-by-id"];
+  const folderUrl = gSheetsSetting?.folder_url;
+
+  const { data: connectingUser } = useGetUserQuery(
+    connectingUserId ? connectingUserId : skipToken,
+  );
+
   const [deleteFolderLink, { isLoading: isDeletingFolderLink }] =
     useDeleteGsheetsFolderLinkMutation();
 
@@ -220,27 +234,33 @@ function GoogleSheetsDisconnectModal({
       });
   };
 
+  const userName = getUserName(connectingUser);
+
   return (
-    <ModalWrapper onClose={onClose}>
-      <Flex justify="center" align="center" direction="column" gap="md" p="xl">
-        <Center p="md">
-          <Box component={disconnectIllustration} />
-        </Center>
-        <Text size="lg" fw="bold">
-          {reconnect
-            ? t`To add a new Google Drive folder, the existing one needs to be disconnected first.`
-            : t`Disconnect from Google Drive?`}
-        </Text>
-        <Text>
+    <ModalWrapper
+      onClose={onClose}
+      title={t`To add a new Google Drive folder, the existing one needs to be disconnected first`}
+    >
+      <Stack gap="md">
+        <DriveConnectionDisplay
+          folderUrl={folderUrl ?? ""}
+          userName={userName ?? ""}
+        />
+        <Text c="text-medium" pb="md">
           {reconnect
             ? // eslint-disable-next-line no-literal-metabase-strings -- admin only string
               t`Only one folder can be synced with Metabase at a time. Your tables and Google Sheets will remain in place.`
             : t`Your existing tables and Google Sheets will remain in place but they will no longer be updated automatically.`}
         </Text>
-        <Stack mt="sm">
-          <Stack w="13rem" mx="auto">
+        <Flex w="100%" gap="sm" justify="space-between">
+          <Text c="error" ta="start">
+            {errorMessage}
+          </Text>
+          <Flex justify="flex-end" gap="md">
+            <Button variant="outline" onClick={onClose}>
+              {t`Keep connected`}
+            </Button>
             <Button
-              fullWidth
               variant="filled"
               color="danger"
               loading={isDeletingFolderLink}
@@ -248,15 +268,34 @@ function GoogleSheetsDisconnectModal({
             >
               {t`Disconnect`}
             </Button>
-            <Button fullWidth variant="outline" onClick={onClose}>
-              {t`Keep connected`}
-            </Button>
-          </Stack>
-          <Text c="error" ta="center">
-            {errorMessage}
-          </Text>
-        </Stack>
-      </Flex>
+          </Flex>
+        </Flex>
+      </Stack>
     </ModalWrapper>
   );
 }
+const DriveConnectionDisplay = ({
+  folderUrl,
+  userName,
+}: {
+  folderUrl: string;
+  userName: string;
+}) => (
+  <ExternalLink href={folderUrl} target="_blank" className={Styles.plainLink}>
+    <Flex
+      bg="bg-light"
+      w="100%"
+      gap="sm"
+      p="md"
+      style={{ borderRadius: "0.5rem" }}
+    >
+      <Icon name="google_drive" mt="xs" />
+      <Box>
+        <Text fw="bold">{t`Google Drive connected`}</Text>
+        <Text c="text-medium" fz="sm" lh="140%">
+          {t`Connected by ${userName}`}
+        </Text>
+      </Box>
+    </Flex>
+  </ExternalLink>
+);
