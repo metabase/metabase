@@ -192,6 +192,9 @@ describe("admin > database > database routing", () => {
 
     it("should not leak destinations databases in the application", () => {
       cy.log("setup db routing via API");
+      cy.visit("/admin/databases/2");
+      cy.log("disable model actions");
+      cy.findByLabelText("Model actions").click({ force: true });
       configurDbRoutingViaAPI({
         router_database_id: 2,
         user_attribute: "role",
@@ -202,7 +205,7 @@ describe("admin > database > database routing", () => {
       });
 
       cy.log("validate setup was successful");
-      cy.visit("/admin/databases/2");
+      cy.reload();
       cy.findByLabelText("Enable database routing").should("be.checked");
       expandDbRouting();
       dbRoutingSection()
