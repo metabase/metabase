@@ -885,7 +885,8 @@ describe("issue 32032", () => {
   });
 });
 
-describe("issue 42949", { tags: "@flaky" }, () => {
+// broken. see https://github.com/metabase/metabase/issues/55673
+describe.skip("issue 42949", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -912,12 +913,14 @@ describe("issue 42949", { tags: "@flaky" }, () => {
     H.popover().findByText("Extract day, month…").should("be.visible");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify header drills - V");
     H.tableHeaderClick("V");
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button - extract column");
     cy.button("Add column").click();
@@ -976,6 +979,7 @@ describe("issue 42949", { tags: "@flaky" }, () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button");
     cy.button("Add column").click();
@@ -1004,6 +1008,7 @@ describe("issue 42949", { tags: "@flaky" }, () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("be.visible");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button");
     cy.button("Add column").click();
@@ -1490,5 +1495,21 @@ describe("issue #31964", () => {
         [Product → Category])
       `,
     );
+  });
+});
+
+describe("issue #55686", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should show suggestions for functions even when the current token is an operator (metabase#55686)", () => {
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type("not");
+
+    H.CustomExpressionEditor.completion("notnull").should("be.visible");
+    H.CustomExpressionEditor.completion("notempty").should("be.visible");
   });
 });

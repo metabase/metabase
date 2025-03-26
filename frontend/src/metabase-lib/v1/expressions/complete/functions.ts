@@ -13,6 +13,7 @@ import {
   fuzzyMatcher,
   isFieldReference,
   isIdentifier,
+  isOperator,
   tokenAtPos,
 } from "./util";
 
@@ -57,7 +58,11 @@ export function suggestFunctions({
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
 
-    if (!token || !isIdentifier(token) || isFieldReference(token)) {
+    if (
+      !token ||
+      !(isIdentifier(token) || isOperator(token)) ||
+      isFieldReference(token)
+    ) {
       return null;
     }
 
