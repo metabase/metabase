@@ -89,6 +89,16 @@
                        :expected-prefix (str field-id-prefix)
                        :field_id field_id})))))
 
+;; TODO: Refactor this, this is a quick fix
+(defn resolve-model-foreign-table-column
+  "Resolves model foreign table column by matching the field-id from the provided item with
+   the same id generated from the fields table id and position"
+  [{:keys [field_id] :as item} columns]
+  (let [column (->> columns
+                    (filter #(= field_id (str "t" (:table-id %) "/" (:position %))))
+                    first)]
+    (assoc item :column column)))
+
 (defn resolve-column
   "Resolve the reference `field_id` in filter `item` by finding the column in `columns` specified by `field_id`.
   `field-id-prefix` is used to check if the filter refers to a column from the right entity."

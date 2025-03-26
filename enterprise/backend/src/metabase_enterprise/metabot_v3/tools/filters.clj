@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.filters
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
@@ -225,7 +226,10 @@
         base-query (lib/query mp (lib.metadata/card mp model-id))
         visible-cols (lib/visible-columns base-query)
         filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
-        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        resolve-visible-column  (fn [{:keys [field_id] :as item}]
+                                  (if (str/starts-with? field_id "t")
+                                    (metabot-v3.tools.u/resolve-model-foreign-table-column item visible-cols)
+                                    (metabot-v3.tools.u/resolve-column item filter-field-id-prefix visible-cols)))
         projection (map (comp (juxt bucketed-column (fn [{:keys [column bucket]}]
                                                       (let [column (cond-> column
                                                                      bucket (assoc :unit (keyword bucket)))]
