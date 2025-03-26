@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
@@ -142,44 +143,64 @@
         int-field    (meta/field-metadata :venues :category-id)
         string-field (meta/field-metadata :venues :name)
         dt-field     (meta/field-metadata :users :last-login)
-        boolean-field (meta/field-metadata :venues :category-id)]
-    ;;
-    (testing "case pairs should be flattened"
-      (doseq [[clause parts] {(lib/case [[boolean-field int-field]])
-                              {:operator :case
-                               :options {}
-                               :args [boolean-field int-field]}
+        boolean-field (meta/field-metadata :venues :category-id)
+        test-cases {(lib/case [[boolean-field int-field]])
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field]}
 
-                              (lib/case [[boolean-field int-field]] nil)
-                              {:operator :case
-                               :options {}
-                               :args [boolean-field int-field]}
+                    (lib/case [[boolean-field int-field]] nil)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field]}
 
-                              (lib/case [[boolean-field int-field]] string-field)
-                              {:operator :case
-                               :options {}
-                               :args [boolean-field int-field string-field]}
+                    (lib/case [[boolean-field int-field]] string-field)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field string-field]}
 
-                              (lib/case [[boolean-field int-field] [boolean-field string-field]])
-                              {:operator :case
-                               :options {}
-                               :args [boolean-field int-field boolean-field string-field]}
+                    (lib/case [[boolean-field int-field] [boolean-field string-field]])
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field boolean-field string-field]}
 
-                              (lib/case [[boolean-field int-field] [boolean-field string-field]] nil)
-                              {:operator :case
-                               :options {}
-                               :args [boolean-field int-field boolean-field string-field]}
+                    (lib/case [[boolean-field int-field] [boolean-field string-field]] nil)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field boolean-field string-field]}
 
-                              (lib/case [[boolean-field int-field] [boolean-field string-field]] dt-field)
-                              {:operator :case
-                               :options {}
-                               :args [boolean-field int-field boolean-field string-field dt-field]}}]
-
+                    (lib/case [[boolean-field int-field] [boolean-field string-field]] dt-field)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field boolean-field string-field dt-field]}}]
+    (testing "case pairs should be flattened in expression parts"
+      (doseq [[clause parts] test-cases]
         (let [{:keys [operator options args]} parts
               res (lib.fe-util/expression-parts query -1 clause)]
           (is (=? operator (:operator res)))
           (is (=? options  (:options res)))
-          (is (=? (map :id args) (map :id (:args res)))))))))
+          (is (=? (map :id args) (map :id (:args res)))))))
+
+    (testing "case pairs should be unflattened in expression clause"
+      (doseq [[expected-expression parts] test-cases]
+        (let [{:keys [operator options args]} parts
+              actual-expression (lib.fe-util/expression-clause operator args options)
+              [expected-op _ expected-args] expected-expression
+              [actual-op _ actual-args] actual-expression]
+          (is (=? expected-op actual-op))
+          (is (=? (map :id expected-args) (map :id actual-args))))))
+
+    (testing "case/if should round-trip through expression-parts and expression-clause"
+      (doseq [[clause] test-cases]
+        (let [parts                     (lib.fe-util/expression-parts query clause)
+              round-tripped-expression  (lib.fe-util/expression-clause
+                                         (:operator parts)
+                                         (:args parts)
+                                         nil)
+              round-tripped-parts       (lib.fe-util/expression-parts query round-tripped-expression)]
+
+          (is (=? (:operator parts) (:operator round-tripped-parts)))
+          (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))))
 
 (deftest ^:parallel string-filter-parts-test
   (let [query  (lib.tu/venues-query)
