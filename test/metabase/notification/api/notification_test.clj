@@ -713,7 +713,7 @@
                     (apply list-notification-ids user #{rasta-noti lucky-noti} params))]
 
             (testing "return notifications where user is either creator or recipient"
-              (is (= (sort [rasta-noti lucky-noti])
+              (is (= #{rasta-noti lucky-noti}
                      (get-notification-ids :crowberto :creator_or_recipient_id (mt/user->id :rasta)))))))))))
 
 (deftest list-notifications-card-filter-test
@@ -728,7 +728,7 @@
                           :payload
                           :card_id)]
           (letfn [(get-notification-ids [user & params]
-                    (list-notification-ids user #{rasta-noti} params))]
+                    (apply list-notification-ids user #{rasta-noti} params))]
 
             (testing "admin can view"
               (is (= #{rasta-noti}
