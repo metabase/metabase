@@ -43,7 +43,9 @@
 (defn- table-id->pk
   [table-id]
   ;; TODO: support composite PKs
-  (api/check-404 (t2/select-one :model/Field :table_id table-id :semantic_type :type/PK)))
+  (let [pks (api/check-404 (t2/select-one :model/Field :table_id table-id :semantic_type :type/PK))]
+    (api/check-500 (= 1 (count pks)))
+    (first pks)))
 
 (defn- get-row-pk
   [pk-field row]
