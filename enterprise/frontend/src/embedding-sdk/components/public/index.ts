@@ -50,3 +50,5 @@ export { defineMetabaseTheme };
 export { SdkDebugInfo } from "./debug/SdkDebugInfo";
 
 export { MetabotQuestion } from "./MetabotQuestion";
+
+export { InteractiveAdHocQuestion } from "../private/InteractiveAdHocQuestion";
