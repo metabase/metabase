@@ -3,6 +3,7 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { isMac } from "metabase/lib/browser";
+import { PLUGIN_AI_SQL_GENERATION } from "metabase/plugins";
 import { canFormatForEngine } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
 import { NativeVariablesButton } from "metabase/query_builder/components/view/NativeVariablesButton";
@@ -47,6 +48,7 @@ interface NativeQueryEditorSidebarProps {
   toggleTemplateTagsEditor: () => void;
   toggleSnippetSidebar: () => void;
   onFormatQuery: () => void;
+  onGenerateQuery: (queryText: string) => void;
 }
 
 export const NativeQueryEditorSidebar = (
@@ -64,6 +66,7 @@ export const NativeQueryEditorSidebar = (
     snippets,
     features,
     onFormatQuery,
+    onGenerateQuery,
   } = props;
 
   // hide the snippet sidebar if there aren't any visible snippets/collections
@@ -119,6 +122,10 @@ export const NativeQueryEditorSidebar = (
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}
+      <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
+        prompt=""
+        onGenerateQuery={onGenerateQuery}
+      />
       {!!canRunQuery && (
         <RunButtonWithTooltip
           className={NativeQueryEditorSidebarS.RunButtonWithTooltipStyled}

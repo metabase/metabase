@@ -24,6 +24,7 @@ import "./email_allow_list";
 import "./email_restrict_recipients";
 import "./advanced_permissions";
 import "./ai-sql-fixer";
+import "./ai-sql-generation";
 import "./audit_app";
 import "./license";
 import "./model_persistence";

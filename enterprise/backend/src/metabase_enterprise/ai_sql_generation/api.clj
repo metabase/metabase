@@ -37,11 +37,11 @@
   "Generate a SQL query."
   [_route-params
    _query-params
-   {:keys [database instructions]} :- [:map
-                                       [:database ms/PositiveInt]
-                                       [:instructions :string]]]
+   {:keys [database prompt]} :- [:map
+                                 [:database ms/PositiveInt]
+                                 [:prompt :string]]]
   (-> (metabot-v3/generate-sql {:dialect (driver.u/database->driver database)
-                                :instructions instructions
+                                :instructions prompt
                                 :tables (database-tables database)})
       (select-keys [:generated_sql])))
 
