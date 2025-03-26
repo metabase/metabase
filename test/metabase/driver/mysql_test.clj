@@ -881,8 +881,8 @@
   (mt/test-driver :mysql
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[_table expressions] [[:people [{:expression "'123'" :db-type "CHAR"}
-                                                {:expression "'-123'" :db-type "CHAR"}]]]
+        (doseq [[_table expressions] [[:people [{:expression "'1238493839384848'" :db-type "CHAR"}
+                                                {:expression "'-12372636363626263'" :db-type "CHAR"}]]]
                 {:keys [expression db-type]} expressions]
           (testing (str "Casting " db-type " to integer from native query")
             (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
@@ -895,7 +895,7 @@
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (as-> q
                                       (lib/expression q "INTCAST" (lib/expression-clause :integer [(->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)] nil))))
-                      result (-> query (check-integer-query db-type "`uncasted`") qp/process-query)
+                      result (-> query (check-integer-query db-type "`UNCASTED`") qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
                   (is (= :type/BigInteger (-> cols first :base_type)))
