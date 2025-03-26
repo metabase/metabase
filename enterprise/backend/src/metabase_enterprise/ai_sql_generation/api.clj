@@ -17,7 +17,7 @@
 
 (defn- database-tables
   ([database-id]
-   (database-tables database nil))
+   (database-tables database-id nil))
   ([database-id {:keys [all-tables-limit] :or {all-tables-limit max-database-tables}}]
    (let [tables (t2/select [:model/Table :id :name :schema]
                            :db_id database-id
