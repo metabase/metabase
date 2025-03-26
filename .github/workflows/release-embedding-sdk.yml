@@ -1,5 +1,5 @@
 name: Release Metabase Embedding SDK for React
-run-name: Release SDK from ${{ inputs.branch }}
+run-name: Release SDK from ${{ inputs.branch }} - test
 
 on:
   workflow_dispatch:
@@ -70,7 +70,7 @@ jobs:
             const { mentionUserByGithubLogin, sendSlackMessage, githubRunLink } = require('${{ github.workspace }}/release/dist/index.cjs');
             const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
 
-            const title = `:rocket: *SDK release: ${sdkVersion}* :rocket:`
+            const title = `:rocket: *[TEST] SDK release: ${sdkVersion}* :rocket:`
             const runLink = githubRunLink(
               `:building_construction: _CI Run_ :building_construction:`,
               context.runId,
@@ -120,7 +120,7 @@ jobs:
             const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
 
             const runLink = githubRunLink(
-              `:x: ${sdkVersion} Release has failed`,
+              `:x: [TEST] ${sdkVersion} Release has failed`,
               context.runId,
               context.repo.owner,
               context.repo.repo,
@@ -157,7 +157,7 @@ jobs:
             const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
 
             const runLink = githubRunLink(
-              `:partydeploy: ${sdkVersion} Release is complete :partydeploy:`,
+              `:partydeploy: [TEST] ${sdkVersion} Release is complete :partydeploy:`,
               context.runId,
               context.repo.owner,
               context.repo.repo,
@@ -263,8 +263,8 @@ jobs:
         with:
           m2-cache-key: "release-sdk"
 
-      - name: Run unit tests
-        run: yarn embedding-sdk:test-unit
+      # - name: Run unit tests
+      #   run: yarn embedding-sdk:test-unit
 
   build-sdk:
     needs: [test, determine-sdk-version]
@@ -295,17 +295,17 @@ jobs:
         run: |
           yarn embedding-sdk:generate-changelog -o changelog-diff
 
-      - name: Build SDK bundle
-        run: yarn run build-embedding-sdk
+      # - name: Build SDK bundle
+      #   run: yarn run build-embedding-sdk
 
       - name: Generate SDK package.json in the build directory
         run: yarn run embedding-sdk:generate-package
 
-      - name: Upload built SDK package as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: metabase-sdk
-          path: ./resources/embedding-sdk
+      # - name: Upload built SDK package as artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: metabase-sdk
+      #     path: ./resources/embedding-sdk
 
       - name: Upload changelog diff
         uses: actions/upload-artifact@v4
@@ -350,54 +350,54 @@ jobs:
           cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
           mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
 
-      - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
-        run: |
-          git checkout -b update-sdk-version-${{ env.sdk_version }}
-          git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
-          git push origin HEAD
-          gh pr create --base ${{ inputs.branch }}\
-                       --assignee "${GITHUB_ACTOR}"\
-                       --title "docs(sdk): Update SDK version to ${{ env.sdk_version }}"\
-                       --body "Update Readme version references and published npm package version to ${{ env.sdk_version }}"
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      # - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
+      #   run: |
+      #     git checkout -b update-sdk-version-${{ env.sdk_version }}
+      #     git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
+      #     git push origin HEAD
+      #     gh pr create --base ${{ inputs.branch }}\
+      #                  --assignee "${GITHUB_ACTOR}"\
+      #                  --title "docs(sdk): Update SDK version to ${{ env.sdk_version }}"\
+      #                  --body "Update Readme version references and published npm package version to ${{ env.sdk_version }}"
+      # env:
+      #   GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
-      - name: Edit PR adding useful information (using Metabase bot app)
-        run: |
-          gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      # - name: Edit PR adding useful information (using Metabase bot app)
+      #   run: |
+      #     gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
+      #   env:
+      #     GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
-      - name: Auto approve PR (using GitHub Actions account)
-        run: |
-          gh pr review --approve
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Auto approve PR (using GitHub Actions account)
+      #   run: |
+      #     gh pr review --approve
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
-        run: |
-          gh pr merge --auto --squash
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      # - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
+      #   run: |
+      #     gh pr merge --auto --squash
+      #   env:
+      #     GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
-      - name: Retrieve build SDK package artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: metabase-sdk
-          path: sdk
+      # - name: Retrieve build SDK package artifact
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: metabase-sdk
+      #     path: sdk
 
-      - name: Publish to NPM
-        working-directory: sdk
-        run: |
-          echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-          # Please keep the value in sync with `inputs.branch`'s release branch
-          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable", "release-x.53.x": "53-stable", "release-x.54.x": "54-stable"}')[inputs.branch]}}
+      # - name: Publish to NPM
+      #   working-directory: sdk
+      #   run: |
+      #     echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
+      #     # Please keep the value in sync with `inputs.branch`'s release branch
+      #     npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable", "release-x.53.x": "53-stable", "release-x.54.x": "54-stable"}')[inputs.branch]}}
 
-      - name: Add `latest` tag to the latest release branch (`release-x.54.x`) deployment
-        if: ${{ inputs.branch == 'release-x.54.x' }}
-        working-directory: sdk
-        run: |
-          npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+      # - name: Add `latest` tag to the latest release branch (`release-x.54.x`) deployment
+      #   if: ${{ inputs.branch == 'release-x.54.x' }}
+      #   working-directory: sdk
+      #   run: |
+      #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]
@@ -418,13 +418,13 @@ jobs:
           git config --global user.email "github-automation@metabase.com"
           git config --global user.name "Metabase Automation"
 
-      - name: Create and push SDK version tag
-        run: |
-          git tag -a ${{ env.tag }} -m "Tagging SDK version ${{ env.tag }}"
-          git push origin ${{ env.tag }}
+      # - name: Create and push SDK version tag
+      #   run: |
+      #     git tag -a ${{ env.tag }} -m "Tagging SDK version ${{ env.tag }}"
+      #     git push origin ${{ env.tag }}
 
-      - name: Create and push SDK stable version tag
-        if: ${{ startsWith(inputs.branch, 'release-x.') }}
-        run: |
-          git tag -a -f ${{ env.stable_tag }} -m "Tagging SDK stable version ${{ env.stable_tag }}"
-          git push origin -f ${{ env.stable_tag }}
+      # - name: Create and push SDK stable version tag
+      #   if: ${{ startsWith(inputs.branch, 'release-x.') }}
+      #   run: |
+      #     git tag -a -f ${{ env.stable_tag }} -m "Tagging SDK stable version ${{ env.stable_tag }}"
+      #     git push origin -f ${{ env.stable_tag }}
