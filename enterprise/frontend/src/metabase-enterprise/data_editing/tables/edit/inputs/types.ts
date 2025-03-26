@@ -1,12 +1,10 @@
 import type { MantineSize, TextInputProps } from "metabase/ui";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
-
-import type { FieldWithMetadata } from "../../types";
+import type { DatasetColumn, Field, RowValue } from "metabase-types/api";
 
 export interface EditingBodyPrimitiveProps {
   autoFocus?: boolean;
   datasetColumn: DatasetColumn;
-  field?: FieldWithMetadata;
+  field?: Field;
   initialValue: RowValue;
   inputProps?: {
     size?: MantineSize;

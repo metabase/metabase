@@ -16,15 +16,13 @@ import {
 } from "metabase/ui";
 import type {
   DatasetColumn,
+  Field,
   RowValue,
   RowValues,
   Table,
 } from "metabase-types/api";
 
-import type {
-  FieldWithMetadata,
-  UpdatedRowCellsHandlerParams,
-} from "../../types";
+import type { UpdatedRowCellsHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 
 import S from "./EditingBaseRowModal.module.css";
@@ -40,7 +38,7 @@ interface EditingBaseRowModalProps {
   currentRowIndex?: number;
   currentRowData?: RowValues;
   isLoading?: boolean;
-  fieldMetadataMap?: Record<FieldWithMetadata["name"], FieldWithMetadata>;
+  fieldMetadataMap?: Record<Field["name"], Field>;
 }
 
 export function EditingBaseRowModal({
@@ -118,7 +116,6 @@ export function EditingBaseRowModal({
         >
           {datasetColumns.map((column, index) => {
             const field = fieldMetadataMap?.[column.name];
-            const isRequired = field?.database_required;
 
             return (
               <Fragment key={column.id}>
@@ -130,14 +127,7 @@ export function EditingBaseRowModal({
                       : "string"
                   }
                 />
-                <Text className={S.modalBodyColumn}>
-                  {column.display_name}
-                  {isRequired && (
-                    <Text component="span" c="var(--mb-color-error)">
-                      {" *"}
-                    </Text>
-                  )}
-                </Text>
+                <Text className={S.modalBodyColumn}>{column.display_name}</Text>
                 <EditingBodyCellConditional
                   autoFocus={false}
                   datasetColumn={column}

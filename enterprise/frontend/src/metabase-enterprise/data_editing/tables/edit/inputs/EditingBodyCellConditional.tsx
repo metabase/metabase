@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { canEditField } from "../../../helpers";
 
 import { EditingBodyCellBasicInput } from "./EditingBodyCellBasicInput";
@@ -15,8 +17,8 @@ export const EditingBodyCellConditional = (
   const placeholder = field?.database_default
     ? `<${field.database_default}>`
     : field?.database_is_nullable
-      ? "<null>"
-      : undefined;
+      ? t`Optional`
+      : t`Required`;
 
   if (
     column.semantic_type === "type/State" ||

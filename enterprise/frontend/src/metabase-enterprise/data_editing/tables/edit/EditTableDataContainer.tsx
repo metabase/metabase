@@ -22,9 +22,9 @@ import {
 import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { RowValue } from "metabase-types/api";
+import type { Field, RowValue } from "metabase-types/api";
 
-import type { FieldWithMetadata, UpdatedRowCellsHandlerParams } from "../types";
+import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
@@ -68,9 +68,9 @@ export const EditTableDataContainer = ({
       tableMetadata?.fields?.reduce(
         (acc, item) => ({
           ...acc,
-          [item.name]: item as FieldWithMetadata,
+          [item.name]: item as Field,
         }),
-        {} as Record<FieldWithMetadata["name"], FieldWithMetadata>,
+        {} as Record<Field["name"], Field>,
       ),
     [tableMetadata],
   );
