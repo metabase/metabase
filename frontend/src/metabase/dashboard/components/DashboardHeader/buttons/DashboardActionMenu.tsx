@@ -60,24 +60,15 @@ const DashboardActionMenuInner = ({
   useRegisterShortcut(
     [
       {
-        name: "Copy dashboard",
         id: "copy-dashboard",
-        shortcut: ["$mod+c"],
-        shortcutGroup: "dashboard",
         perform: () => dispatch(push(`${location?.pathname}/copy`)),
       },
       {
-        name: "Move dashboard",
         id: "move-dashboard",
-        shortcut: ["$mod+m"],
-        shortcutGroup: "dashboard",
         perform: () => canEdit && dispatch(push(`${location?.pathname}/move`)),
       },
       {
-        name: "Send tashboard to trash",
         id: "trash-dashboard",
-        shortcut: ["$mod+backspace"],
-        shortcutGroup: "dashboard",
         perform: () => dispatch(push(`${location?.pathname}/archive`)),
       },
     ],

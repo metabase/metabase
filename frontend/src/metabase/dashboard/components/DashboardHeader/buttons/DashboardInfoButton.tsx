@@ -23,9 +23,6 @@ export const DashboardInfoButton = () => {
     [
       {
         id: "info-dashboard",
-        name: "Toggle Dashboard Info",
-        shortcut: ["]"],
-        shortcutGroup: "dashboard",
         perform: handleClick,
       },
     ],

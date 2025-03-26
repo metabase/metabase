@@ -1,27 +1,32 @@
-import cx from "classnames";
 import { useKBar } from "kbar";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Styles from "metabase/css/core/index.css";
 import { METAKEY } from "metabase/lib/browser";
+import { shortcuts } from "metabase/palette/shortcuts";
 import {
-  Box,
   Group,
   Kbd,
   Modal,
   type ModalProps,
-  SimpleGrid,
+  ScrollArea,
+  Tabs,
   Text,
 } from "metabase/ui";
 
 // import S from "./PaletteShortcutsModal.module.css";
 
 export const GROUP_LABLES = {
-  global: `Site-wide shortcuts`,
+  global: `General`,
   dashboard: "Dashboard",
-  "edit-dashboard": "Edit Dashboard",
-} as const;
+  question: "Querying & the notebook",
+};
+
+const groupedShortcuts = _.groupBy(
+  _.mapObject(shortcuts, (val, id) => ({ id, ...val })),
+  "shortcutGroup",
+);
+const shortcutGroups = Object.keys(groupedShortcuts);
 
 export const PaletteShortcutsModal = ({
   onClose,
@@ -32,11 +37,6 @@ export const PaletteShortcutsModal = ({
 }) => {
   const { actions } = useKBar(state => ({ actions: state.actions }));
 
-  const shortcutActions = _.groupBy(
-    Object.values(actions).filter(action => action.shortcut),
-    "shortcutGroup",
-  );
-
   return (
     <Modal
       opened={open}
@@ -46,37 +46,58 @@ export const PaletteShortcutsModal = ({
       size="xl"
       styles={{
         content: {
-          maxHeight: "70vh",
+          height: "564px",
+          display: "flex",
+          flexDirection: "column",
+        },
+        body: {
+          flexGrow: 1,
+          height: 0,
+          paddingRight: 0,
         },
       }}
     >
-      <SimpleGrid cols={2}>
-        {Object.keys(shortcutActions).map(shortcutGroup => (
-          <Box
+      <Tabs orientation="vertical" defaultValue="global" pt="2rem" h="100%">
+        <Tabs.List miw={200}>
+          {shortcutGroups.map(shortcutGroup => (
+            <Tabs.Tab key={shortcutGroup} value={shortcutGroup}>
+              {GROUP_LABLES[shortcutGroup]}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+
+        {shortcutGroups.map(shortcutGroup => (
+          <Tabs.Panel
+            value={shortcutGroup}
             key={shortcutGroup}
-            className={cx(Styles.bordered, Styles.rounded)}
-            h="fit-content"
+            pl="lg"
+            style={{ height: "100%" }}
           >
-            {GROUP_LABLES[shortcutGroup] && (
-              <Text
-                className={cx(Styles.p1, Styles.textBold, Styles.borderBottom)}
-              >
-                {GROUP_LABLES[shortcutGroup]}
-              </Text>
-            )}
-            {shortcutActions[shortcutGroup].map(action => (
-              <Group
-                key={action.id}
-                justify="space-between"
-                className={cx(Styles.p1, Styles.borderBottom)}
-              >
-                <Text p={0}>{action.name}</Text>
-                <Shortcut shortcut={action.shortcut?.join("")} />
-              </Group>
-            ))}
-          </Box>
+            <ScrollArea h="100%" pr="lg">
+              {groupedShortcuts[shortcutGroup].map(shortcut => (
+                <Group
+                  key={shortcut.id}
+                  justify="space-between"
+                  style={{ borderRadius: "0.5rem" }}
+                  p="sm"
+                  my="sm"
+                  bg={
+                    Object.keys(actions).includes(shortcut.id)
+                      ? "brand-light"
+                      : undefined
+                  }
+                >
+                  <Text>
+                    {shortcut.name}
+                    {Object.keys(actions).includes(shortcut.id) ? "*" : null}
+                  </Text>
+                  <Shortcut shortcut={shortcut.shortcut[0]} />
+                </Group>
+              ))}
+            </ScrollArea>
+          </Tabs.Panel>
         ))}
-      </SimpleGrid>
+      </Tabs>
     </Modal>
   );
 };

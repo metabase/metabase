@@ -38,10 +38,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
   useRegisterShortcut(
     [
       {
-        name: "Toggle Shortcuts Modal",
         id: "shortcuts-modal",
-        shortcut: ["?"],
-        shortcutGroup: "global",
         perform: () => {
           if (currentNewModal) {
             handleModalClose();

@@ -45,9 +45,6 @@ export const AddFilterParameterButton = () => {
     [
       {
         id: "add-filter",
-        name: "Add Filter",
-        shortcut: ["f"],
-        shortcutGroup: "edit-dashboard",
         perform: () =>
           isOpened
             ? dispatch(hideAddParameterPopover())

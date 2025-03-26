@@ -23,9 +23,6 @@ export const EditDashboardButton = ({
     [
       {
         id: "edit-dashboard",
-        name: "Edit Dashboard",
-        shortcutGroup: "dashboard",
-        shortcut: ["e"],
         perform: onBeginEditing,
       },
     ],

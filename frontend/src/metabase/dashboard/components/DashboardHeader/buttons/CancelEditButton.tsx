@@ -11,9 +11,6 @@ export const CancelEditButton = (props: { onClick: () => void }) => {
   useRegisterShortcut([
     {
       id: "cancel-edit",
-      name: "Cancel Edit Dashboard",
-      shortcut: ["c"],
-      shortcutGroup: "edit-dashboard",
       perform: props.onClick,
     },
   ]);

@@ -19,6 +19,8 @@ import {
   getHasNativeWrite,
 } from "metabase/selectors/data";
 
+import { useRegisterShortcut } from "./useRegisterShortcut";
+
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
   ...props
@@ -187,20 +189,7 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
-    const diagnosticAction = {
-      id: "report-issue",
-      name: t`Report an issue`,
-      section: "basic",
-      icon: "bug",
-      keywords: "bug, issue, problem, error, diagnostic",
-      shortcut: ["$mod+f1"],
-      shortcutGroup: "global",
-      perform: () => {
-        dispatch(openDiagnostics());
-      },
-    };
-
-    return [...actions, ...browseActions, diagnosticAction];
+    return [...actions, ...browseActions /*diagnosticAction*/];
   }, [
     dispatch,
     hasDataAccess,
@@ -212,4 +201,9 @@ export const useCommandPaletteBasicActions = ({
   ]);
 
   useRegisterActions(initialActions, [initialActions]);
+
+  useRegisterShortcut(
+    [{ id: "report-issue", perform: () => dispatch(openDiagnostics()) }],
+    [openNewModal],
+  );
 };
