@@ -1,5 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Responsive as ReactGridLayout } from "react-grid-layout";
+import {
+  type ItemCallback,
+  Layout,
+  Responsive as ReactGridLayout,
+} from "react-grid-layout";
 
 import { useMantineTheme } from "metabase/ui";
 
@@ -195,14 +199,22 @@ export function GridLayout<T extends { id: number | null }>(
   // https://github.com/react-grid-layout/react-grid-layout#performance
   const children = useMemo(() => items.map(renderItem), [items, renderItem]);
 
-  // prevent user selection when dragging metabase#53842
+  // // prevent user selection when dragging metabase#53842
   const originalUserSelect = useRef(document.body.style.userSelect);
-  const disableTextSelection = useCallback(() => {
-    document.body.style.userSelect = "none";
-  }, []);
-  const enableTextSelection = useCallback(() => {
-    document.body.style.userSelect = originalUserSelect.current;
-  }, []);
+  const disableTextSelection = useCallback<ItemCallback>(
+    (...params) => {
+      document.body.style.userSelect = "none";
+      otherProps.onDragStart?.(...params);
+    },
+    [otherProps],
+  );
+  const enableTextSelection = useCallback<ItemCallback>(
+    (...params) => {
+      document.body.style.userSelect = originalUserSelect.current;
+      otherProps.onDragStop?.(...params);
+    },
+    [otherProps],
+  );
 
   return (
     <ReactGridLayout
