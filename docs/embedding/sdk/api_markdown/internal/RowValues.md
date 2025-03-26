@@ -1,0 +1,3 @@
+```ts
+type RowValues = RowValue[];
+```

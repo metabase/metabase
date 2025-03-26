@@ -20,7 +20,9 @@ You can embed a dashboard using the one of the dashboard components:
 
 ## Dashboard component props
 
-{% include_file "{{ dirname }}/types/InteractiveDashboard/EditableDashboard/interfaces/EditableDashboardProps.md" %}
+[EditableDashboardProps](./api_html/EditableDashboardProps.html)
+
+{% include_markdown_api "{{ dirname }}/api_markdown/EditableDashboardProps.md" %}
 
 _\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParameters` to declutter the user interface is fine._
 

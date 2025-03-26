@@ -1,0 +1,3 @@
+## Extends
+
+- `StackProps`
