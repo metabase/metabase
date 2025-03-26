@@ -1267,6 +1267,9 @@ describe("scenarios > dashboard", () => {
         // remove tab
         H.editDashboard();
         H.deleteTab("Copy of Tab 1");
+        // url is changed after removing the tab
+        // can be a side effect
+        cy.url().should("include", "tab-1");
         assertPreventLeave();
         H.saveDashboard();
 
@@ -1289,7 +1292,7 @@ describe("scenarios > dashboard", () => {
       el.trigger("mousedown", { clientX: 0 })
         .trigger("mousemove", { clientX: distance })
         // to avoid flakiness
-        .wait(10)
+        .wait(100)
         .trigger("mouseup");
     }
 
