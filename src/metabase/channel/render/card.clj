@@ -207,14 +207,15 @@
   ([timezone-id
     {card :card, dashcard :dashcard, result :result, :as _part}
     options :- [:maybe ::options]]
-   (let [options                       (merge {:channel.render/include-title?       true
-                                               :channel.render/include-description? true}
-                                              options)
-         {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
-     {:attachments attachments
-      :content     [:div {:style (style/style {:margin-top    :20px
-                                               :margin-bottom :20px})}
-                    content]})))
+   (log/with-context {:card_id (:id card)}
+     (let [options                       (merge {:channel.render/include-title?       true
+                                                 :channel.render/include-description? true}
+                                                options)
+           {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
+       {:attachments attachments
+        :content     [:div {:style (style/style {:margin-top    :20px
+                                                 :margin-bottom :20px})}
+                      content]}))))
 
 (mu/defn render-pulse-card-to-png :- bytes?
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."

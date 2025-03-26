@@ -213,6 +213,7 @@
 (defmacro with-context
   "Executes body with the given context map and message prefix in ThreadContext.
    The context map's keys and values are added to the ThreadContext individually.
+   Preserves any existing context values and restores them after execution.
 
    Example usage:
    (with-context {:notification_id 1}
@@ -222,12 +223,20 @@
   [context-map & body]
   (macros/case
     :clj `(let [ctx-map# ~context-map
-                ctx-keys# (keys ctx-map#)]
+                ctx-keys# (keys ctx-map#)
+                ;; Store original values before modifying
+                original-values# (into {}
+                                       (keep (fn [k#]
+                                               (when-let [v# (ThreadContext/get (name k#))]
+                                                 [(name k#) v#])))
+                                       ctx-keys#)]
             (try
               (doseq [k# ctx-keys#]
                 (ThreadContext/put (name k#) (str (get ctx-map# k#))))
               ~@body
               (finally
                 (doseq [k# ctx-keys#]
-                  (ThreadContext/remove (name k#))))))
+                  (if-let [original# (find original-values# (name k#))]
+                    (ThreadContext/put (name k#) (val original#))
+                    (ThreadContext/remove (name k#)))))))
     :cljs ~@body))
