@@ -1317,7 +1317,7 @@
                   :type :question}]
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (as-> q
-                                      (lib/expression q "INTCAST" (lib/expression-clause :integer [(->> q lib/visible-columns (filter #(= "uncasted" (:name %))) first)] nil))))
+                                      (lib/expression q "INTCAST" (lib/expression-clause :integer [(->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)] nil))))
                       result (-> query (check-integer-query db-type "`uncasted`") qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
