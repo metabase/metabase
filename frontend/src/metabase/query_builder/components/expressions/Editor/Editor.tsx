@@ -40,7 +40,7 @@ import { useExtensions } from "./extensions";
 
 type EditorProps = {
   id?: string;
-  clause?: Lib.ExpressionClause | null;
+  clause?: Lib.Expressionable | null;
   query: Lib.Query;
   stageIndex: number;
   startRule: StartRule;
