@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { t } from "ttag";
 import { isNull } from "underscore";
 
-import { useListUsersQuery } from "metabase/api";
+import { useListUserRecipientsQuery } from "metabase/api";
 import { getRelativeTime } from "metabase/lib/time";
 import { isNotNull } from "metabase/lib/types";
 import type { WrappedResult } from "metabase/search/types";
@@ -37,9 +37,7 @@ export const InfoTextEditedInfo = ({
   result: WrappedResult;
   isCompact?: boolean;
 }) => {
-  const { isLoading, data, error } = useListUsersQuery({
-    recipients: true,
-  });
+  const { isLoading, data, error } = useListUserRecipientsQuery();
 
   const users = data?.data ?? [];
 
