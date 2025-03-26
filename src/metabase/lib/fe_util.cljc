@@ -168,8 +168,13 @@
 
 (mu/defn expression-parts :- ExpressionParts
   "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
-  [query stage-index value]
-  (expression-parts-method query stage-index value))
+  ([query value]
+   (expression-parts-method query -1 value))
+
+  ([query :- ::lib.schema/query
+    stage-index :- :int
+    expression-clause :- ::lib.schema.expression/expression]
+   (expression-parts-method query stage-index expression-clause)))
 
 (defmethod lib.common/->op-arg :mbql/expression-parts
   [{:keys [operator options args] :or {options {}}}]
