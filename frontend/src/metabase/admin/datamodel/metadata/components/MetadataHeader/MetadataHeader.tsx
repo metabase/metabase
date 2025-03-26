@@ -59,10 +59,7 @@ const MetadataHeader = ({
   }, [databases, selectedDatabaseId, onSelectDatabase]);
 
   return (
-    <div
-      data-testid="admin-metadata-header"
-      className={cx(CS.flex, CS.alignCenter, CS.flexNoShrink, CS.py4)}
-    >
+    <Flex align="center" data-testid="admin-metadata-header" flex="1 0" py="xl">
       <Icon
         className={cx(CS.flex, CS.alignCenter, CS.flexNoShrink, CS.textMedium)}
         name="database"
@@ -99,7 +96,7 @@ const MetadataHeader = ({
           >{t`Table settings`}</Button>
         </Flex>
       )}
-    </div>
+    </Flex>
   );
 };
 
