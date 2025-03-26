@@ -50,6 +50,14 @@ export const userApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("user")]),
+      onQueryStarted: async (_request, { dispatch, queryFulfilled }) => {
+        const { data: user } = await queryFulfilled;
+        // entity framework compatibility
+        dispatch({
+          type: "metabase/entities/users/CREATE",
+          payload: { user },
+        });
+      },
     }),
     updatePassword: builder.mutation<void, UpdatePasswordRequest>({
       query: ({ id, old_password, password }) => ({
@@ -84,6 +92,14 @@ export const userApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
+      onQueryStarted: async (_request, { dispatch, queryFulfilled }) => {
+        const { data: user } = await queryFulfilled;
+        // entity framework compatibility
+        dispatch({
+          type: "metabase/entities/users/UPDATE",
+          payload: { user },
+        });
+      },
     }),
   }),
 });
