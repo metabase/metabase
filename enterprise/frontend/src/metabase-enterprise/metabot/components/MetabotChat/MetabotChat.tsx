@@ -2,12 +2,13 @@ import cx from "classnames";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Icon, Textarea, UnstyledButton } from "metabase/ui";
+import { Box, Button, Flex, Icon, Textarea, UnstyledButton } from "metabase/ui";
 
 import { useMetabotAgent } from "../../hooks";
 import { MetabotIcon } from "../MetabotIcon";
 
 import Styles from "./MetabotChat.module.css";
+import Microphone from "./microphone.svg?component";
 import { useAutoCloseMetabot } from "./useAutoCloseMetabot";
 
 const MIN_INPUT_HEIGHT = 42;
@@ -16,8 +17,13 @@ const ANIMATION_DURATION_MS = 300;
 interface MetabotChatProps {
   onClose: () => void;
   onResult?: (result: Record<string, any>) => void;
+  withMicrophone?: boolean;
 }
-export const MetabotChat = ({ onClose, onResult }: MetabotChatProps) => {
+export const MetabotChat = ({
+  onClose,
+  onResult,
+  withMicrophone,
+}: MetabotChatProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [input, setMessage] = useState("");
@@ -143,6 +149,16 @@ export const MetabotChat = ({ onClose, onResult }: MetabotChatProps) => {
             }
           }}
         />
+        {withMicrophone && (
+          <Button
+            leftSection={
+              <Microphone style={{ width: 16, height: 16 }} fill="white" />
+            }
+            radius="md"
+            size="sm"
+            variant="filled"
+          />
+        )}
         <UnstyledButton
           h="1rem"
           onClick={handleClose}
