@@ -162,11 +162,13 @@ config:
       key: mb_secondtestapikey
 {% endraw %}
 ```
+Some things to know about creating API keys with the config file:
 
 - API keys that you create (the value of the `key`) must have the format `mb_` followed by a [Base64](https://en.wikipedia.org/wiki/Base64) string (if you're wearing formal attire, you'd say a _tetrasexagesimal_ string). So, `mb_` followed by letters and numbers. Concretely, the API key you create must satisfy the following regular expression: `mb_[A-Za-z0-9+/=]+`.
 - Only admins can create API keys. This means either a) the Metabase must already have at least one admin account, or b) you need to add an admin account in the `users` section of the config file.
 - The keys themselves can be assigned to non-admin groups. Meaning: the permissions for the key are defined by the `group`, not the `creator`.
-- If Metabase finds an existing API key with the same _name_ as a key in the config file, it will preserve the existing key (i.e., it won't overwrite the existing key with the key in the config file). If you want to overwrite the existing key, you'll need to [delete the existing key](../people-and-groups/api-keys.md#deleting-api-keys). If you want to keep both keys, you'll need to rename the key in the config file.
+- If Metabase finds an existing API key with the same _name_ as a key in the config file, it will preserve the existing key (i.e., it won't overwrite the existing key with the key in the config file). For example, if you initially set up an API key, then later regenerate the key in the Metabase user interface, loading Metabase with the config file won't overwrite that regenerated key (which means the `key` in the config file will no longer work).
+- If you _do_ want to overwrite the existing key from the config file, you'll need to first [delete the existing key](../people-and-groups/api-keys.md#deleting-api-keys). If you want to keep both keys, you'll need to rename the key in the config file.
 
 > The config file also contains an [`api-key`](./environment-variables.md#mb_api_key) key in the `settings` section of the config file. This setting _doesn't_ create API keys; it's used for string-matching in the header for authenticating requests to the `/notify` endpoint.
 
