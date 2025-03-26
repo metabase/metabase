@@ -1267,6 +1267,9 @@ describe("scenarios > dashboard", () => {
         // remove tab
         H.editDashboard();
         H.deleteTab("Copy of Tab 1");
+        // url is changed after removing the tab
+        // can be a side effect
+        cy.url().should("include", "tab-1");
         assertPreventLeave();
         H.saveDashboard();
 
