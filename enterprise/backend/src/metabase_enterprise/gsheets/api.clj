@@ -40,7 +40,7 @@
 ;;   - user copies their Google Drive share link into MB form and hits submit
 ;; - FE sends :post "api/ee/gsheets/folder" w/ folder url string as `request.body.url`
 ;;   - BE forwards request to :post "/api/v2/mb/connections" w/ body:
-;;     `{:type "gdrive" :secret {:resources ["the-url"]}}`
+;;     `{:type "[gdrive|google_spreadsheet]" :secret {:resources ["the-url"]}}`
 ;;     - on unexceptional status:
 ;;       - BE sets `gsheets.status` to `"loading"`
 ;;       - BE returns the gsheets shape: `{:status "loading" :folder_url "the-url" :folder-upload-time <epoch-time> :gdrive/conn-id <uuid>}}`
@@ -125,7 +125,7 @@
 (mr/def :gdrive/connection
   [:map {:description "A Harbormaster Gdrive Connection"}
    [:id :string]
-   [:type [:= "gdrive"]]
+   [:type [:enum "gdrive" "google_spreadsheet"]]
    [:status [:enum "initializing" "syncing" "active" "error"]]
    [:last-sync-at [:maybe :time/zoned-date-time]]
    [:last-sync-started-at [:maybe :time/zoned-date-time]]
@@ -134,7 +134,7 @@
 
 (defn- is-gdrive?
   "Is this connection a gdrive connection?"
-  [{:keys [type] :as _conn}] (= "gdrive" type))
+  [{:keys [type] :as _conn}] (or (= "google_spreadsheet" type) (= "gdrive" type)))
 
 (defn- normalize-gdrive-conn
   "Normalize the gdrive connection shape from harbormaster, mostly parsing times."
@@ -180,10 +180,24 @@
     (throw (ex-info "Cannot fetch Google Drive connection: ID is nil" {})))
   (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
 
+(defn- url-type [url]
+  (cond
+    (re-matches #"^(https|http)://docs.google.com/spreadsheets/.*" url)
+    "google_spreadsheet"
+
+    (re-matches #"^(https|http)://drive.google.com/file/.*" url)
+    "google_spreadsheet"
+
+    (re-matches #"^(https|http)://drive.google.com/drive/.*" url)
+    "gdrive"
+
+    :else
+    (throw (ex-info (tru "Invalid URL: {0}" url) {:status-code 400}))))
+
 (mu/defn- hm-create-gdrive-conn! :- :hm-client/http-reply
-  "Creating a gdrive connection on HM starts the sync w/ drive folder."
-  [drive-folder-url]
-  (hm.client/make-request :post "/api/v2/mb/connections" {:type "gdrive" :secret {:resources [drive-folder-url]}}))
+  "Creating a gdrive connection on HM starts the sync w/ drive folder or sheet."
+  [resource-url]
+  (hm.client/make-request :post "/api/v2/mb/connections" {:type (url-type resource-url) :secret {:resources [resource-url]}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; FE <-> MB APIs
@@ -240,13 +254,17 @@
   this window, we'll error out, reset the gsheets status, and suggest trying again."
   (* 10 60))
 
+(defn- gsheets-safe
+  "Return the gsheets setting, or fetch it from the db if it's not in the cache."
+  []
+  (or (gsheets)
+      (do (log/warn "CACHE MISS ON GSHEETS")
+          (some-> (t2/select-one :model/Setting :key "gsheets")
+                  :value
+                  json/decode+kw))))
+
 (defn- handle-get-folder [attached-dwh]
-  (let [conn-id (or (:gdrive/conn-id (gsheets))
-                    (do (log/warn "CACHE MISS ON GSHEETS")
-                        (some-> (t2/select-one :model/Setting :key "gsheets")
-                                :value
-                                json/decode+kw
-                                :gdrive/conn-id)))
+  (let [conn-id (:gdrive/conn-id (gsheets-safe))
         [sstatus {conn :body}] (try (hm-get-gdrive-conn conn-id)
                                     ;; missing id:
                                     (catch Exception _
@@ -307,6 +325,27 @@
       (reset-gsheets-status!)
       (error-response-in-body (tru "No attached dwh found.")))
     (handle-get-folder attached-dwh)))
+
+(mu/defn- hm-sync-conn! :- :hm-client/http-reply
+  "Sync a (presumably a gdrive) connection on HM."
+  [conn-id]
+  (hm.client/make-request :put (str "/api/v2/mb/connections/" conn-id "/sync")))
+
+(api.macros/defendpoint :post "/folder/sync"
+  "Force a sync of the folder now.
+
+  Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
+  []
+  (let [sheet-config (gsheets-safe)]
+    (when-not (some? sheet-config)
+      (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync" :event_detail "fail - no config"})
+      (error-response-in-body (tru "No attached google sheet(s) found.")))
+    (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync"})
+    (analytics/inc! :metabase-gsheets/connection-manually-synced)
+    (hm-sync-conn! (:gdrive/conn-id sheet-config))
+    (gsheets! (assoc sheet-config
+                     :status "loading"
+                     :folder-upload-time (seconds-from-epoch-now)))))
 
 (api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."

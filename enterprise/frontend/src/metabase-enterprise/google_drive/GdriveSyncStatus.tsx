@@ -3,6 +3,7 @@ import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
@@ -21,13 +22,18 @@ export const GdriveSyncStatus = () => {
   const previousSettingStatus = usePrevious(settingStatus);
   const dispatch = useDispatch();
   const isAdmin = useSelector(getUserIsAdmin);
+  const currentUser = useSelector(getCurrentUser);
+  const isCurrentAdmin =
+    isAdmin &&
+    gsheetsSetting?.["created-by-id"] &&
+    currentUser.id === gsheetsSetting?.["created-by-id"];
   const [forceHide, setForceHide] = useState(
-    !isAdmin || settingStatus !== "loading",
+    !isCurrentAdmin || settingStatus !== "loading",
   );
   const [syncError, setSyncError] = useState({ error: false, message: "" });
   const [dbId, setDbId] = useState<DatabaseId | undefined>();
 
-  const shouldPoll = isAdmin && settingStatus === "loading";
+  const shouldPoll = isCurrentAdmin && settingStatus === "loading";
 
   const { currentData: folderSync, error: apiError } = useGetGsheetsFolderQuery(
     shouldPoll ? undefined : skipToken,
@@ -75,7 +81,7 @@ export const GdriveSyncStatus = () => {
     }
   }, [settingStatus, previousSettingStatus, syncError]);
 
-  if (forceHide || !isAdmin) {
+  if (forceHide || !isCurrentAdmin) {
     return null;
   }
 
@@ -96,7 +102,6 @@ export const GdriveSyncStatus = () => {
     <GsheetsSyncStatusView
       status={displayStatus}
       db_id={dbId}
-      error={syncError.message ?? ""}
       onClose={() => setForceHide(true)}
     />
   );
@@ -105,12 +110,10 @@ export const GdriveSyncStatus = () => {
 function GsheetsSyncStatusView({
   status,
   db_id,
-  error,
   onClose,
 }: {
   status: GsheetsStatus;
   db_id?: DatabaseId;
-  error?: string;
   onClose: () => void;
 }) {
   const title = match(status)
@@ -121,10 +124,6 @@ function GsheetsSyncStatusView({
   const itemTitle = match(status)
     .with("complete", () => t`Start exploring`)
     .otherwise(() => t`Google Sheets`);
-
-  if (error) {
-    console.error(error);
-  }
 
   const description = match(status)
     .with("complete", () => t`Files sync every 15 minutes`)

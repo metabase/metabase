@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
+import type { UserId } from "./user";
 
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
@@ -327,6 +328,14 @@ interface AdminSettings {
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
+  gsheets: {
+    status: "not-connected" | "loading" | "complete" | "error";
+    folder_url: string | null;
+    error?: string;
+    db_id?: number | null;
+    "folder-upload-time"?: number | null; // timestamp
+    "created-by-id"?: UserId | null;
+  };
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
@@ -370,11 +379,6 @@ interface PublicSettings {
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
-  gsheets: {
-    status: "not-connected" | "loading" | "complete" | "error";
-    folder_url: string | null;
-    error?: string;
-  };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
