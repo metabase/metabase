@@ -136,7 +136,7 @@
 
 (defn- data-rows-to-disk!
   [qp-result]
-  (log/debug "Storing data rows to disk")
+  (log/debugf "Storing %d rows to disk" (:row_count qp-result))
   (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))
 
 (defn execute-dashboard-subscription-card
@@ -251,11 +251,15 @@
             tabs-with-cards    (filter #(seq (:cards %)) tabs)
             should-render-tab? (< 1 (count tabs-with-cards))]
         (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
-                          (concat
-                           (when should-render-tab?
-                             [(tab->part tab)])
-                           (dashcards->part cards parameters))))))
-      (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) parameters))))
+                          (do
+                            (log/debugf "Rendering tab %s with %d cards" (:name tab) (count cards))
+                            (concat
+                             (when should-render-tab?
+                               [(tab->part tab)])
+                             (dashcards->part cards parameters)))))))
+      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)]
+        (log/debugf "Rendering dashboard with %d cards" (count dashcards))
+        (dashcards->part dashcards parameters)))))
 
 (mu/defn execute-card :- [:maybe ::Part]
   "Returns the result for a card."
