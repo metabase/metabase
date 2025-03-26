@@ -137,9 +137,7 @@
    :embedding_app_origin_set             (boolean
                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                           (setting/get :embedding-app-origin))
-                                         ;; n.b. the getter for [[embedding-app-origins-sdk]] adds localhost:*, using
-                                         ;; setting/get doesn't, but we don't want to count that anyway:
-   :embedding_app_origin_sdk_set         (boolean (setting/get :embedding-app-origins-sdk))
+   :embedding_app_origin_sdk_set         (not= "localhost:*" (setting/get :embedding-app-origins-sdk))
    :embedding_app_origin_interactive_set (setting/get :embedding-app-origins-interactive)
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)
