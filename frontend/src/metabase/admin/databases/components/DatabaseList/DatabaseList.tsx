@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -23,7 +24,6 @@ const query = {
 
 interface DatabaseListProps {
   databases: Database[];
-  hasSampleDatabase: boolean;
   engines: Record<string, Engine>;
   deletes: Array<any>;
   deletionError: any;
@@ -38,7 +38,6 @@ export const DatabaseList = ({
   children,
   databases,
   addSampleDatabase,
-  hasSampleDatabase,
   isAddingSampleDatabase,
   addSampleDatabaseError,
   engines,
@@ -47,6 +46,10 @@ export const DatabaseList = ({
   isAdmin,
 }: DatabaseListProps) => {
   const error = deletionError || addSampleDatabaseError;
+
+  const hasSampleDatabase = useMemo(() => {
+    return databases.some(db => db.is_sample);
+  }, [databases]);
 
   return (
     <>
