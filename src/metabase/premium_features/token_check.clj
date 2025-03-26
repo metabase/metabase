@@ -331,8 +331,9 @@
     "Get the features associated with the system's premium features token."
     []
     (try
-      (or (some-> (premium-embedding-token) valid-token->features)
-          #{})
+      (or
+       (some-> (premium-embedding-token) valid-token->features)
+       #{})
       (catch Throwable e
         (cached-logger (premium-embedding-token) e)
         #{}))))

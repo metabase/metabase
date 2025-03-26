@@ -85,14 +85,10 @@
   {:channel_type  (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
    :details       mi/transform-json})
 
-(def ^:private channel-template-details-type
-  #{:email/handlebars-text
-    :email/handlebars-resource})
-
 (mr/def ::ChannelTemplateEmailDetails
   [:merge
    [:map
-    [:type                            (apply ms/enum-keywords-and-strings channel-template-details-type)]
+    [:type                            (apply ms/enum-keywords-and-strings #{:email/handlebars-text :email/handlebars-resource})]
     [:subject                         string?]
     [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]]
    [:multi {:dispatch (comp keyword :type)}
@@ -100,6 +96,18 @@
      [:map
       [:path string?]]]
     [:email/handlebars-text
+     [:map
+      [:body string?]]]]])
+
+(mr/def ::ChannelTemplateSlackDetails
+  [:merge
+   [:map
+    [:type (apply ms/enum-keywords-and-strings #{:slack/handlebars-text})]]
+   [:multi {:dispatch (comp keyword :type)}
+    [:slack/handlebars-resource
+     [:map
+      [:path string?]]]
+    [:slack/handlebars-text
      [:map
       [:body string?]]]]])
 
@@ -112,6 +120,9 @@
     [:channel/email
      [:map
       [:details ::ChannelTemplateEmailDetails]]]
+    [:channel/slack
+     [:map
+      [:details ::ChannelTemplateSlackDetails]]]
     [::mc/default :any]]])
 
 (defn- check-valid-channel-template
