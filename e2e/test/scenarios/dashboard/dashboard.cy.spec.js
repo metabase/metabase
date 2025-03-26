@@ -1292,7 +1292,7 @@ describe("scenarios > dashboard", () => {
       el.trigger("mousedown", { clientX: 0 })
         .trigger("mousemove", { clientX: distance })
         // to avoid flakiness
-        .wait(10)
+        .wait(100)
         .trigger("mouseup");
     }
 
