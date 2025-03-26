@@ -137,6 +137,39 @@
                   1]}
           (lib/expression-parts (lib.tu/venues-query) -1 (lib/= (lib/ref (meta/field-metadata :products :id))
                                                                 1)))))
+(deftest ^:parallel case-or-if-parts-test
+  (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        int-field    (meta/field-metadata :venues :category-id)
+        string-field (meta/field-metadata :venues :name)
+        dt-field     (meta/field-metadata :users :last-login)
+        boolean-field (meta/field-metadata :venues :category-id)]
+    ;;
+    (testing "case pairs should be flattened"
+      (doseq [[clause parts] {(lib/case [[boolean-field int-field]] nil)
+                              {:operator :case
+                               :options {}
+                               :args [boolean-field int-field]}
+
+                              (lib/case [[boolean-field int-field]] string-field)
+                              {:operator :case
+                               :options {}
+                               :args [boolean-field int-field string-field]}
+
+                              (lib/case [[boolean-field int-field] [boolean-field string-field]] nil)
+                              {:operator :case
+                               :options {}
+                               :args [boolean-field int-field boolean-field string-field]}
+
+                              (lib/case [[boolean-field int-field] [boolean-field string-field]] dt-field)
+                              {:operator :case
+                               :options {}
+                               :args [boolean-field int-field boolean-field string-field dt-field]}}]
+
+        (let [{:keys [operator options args]} parts
+              res (lib.fe-util/expression-parts query -1 clause)]
+          (is (=? operator (:operator res)))
+          (is (=? options  (:options res)))
+          (is (=? (map :id args) (map :id (:args res)))))))))
 
 (deftest ^:parallel string-filter-parts-test
   (let [query  (lib.tu/venues-query)
