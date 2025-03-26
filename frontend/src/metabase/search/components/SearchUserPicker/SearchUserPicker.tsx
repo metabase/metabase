@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import { without } from "underscore";
 
-import { useUserListQuery } from "metabase/common/hooks";
+import { useListUserRecipientsQuery } from "metabase/api";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
 import {
   SearchUserItemContainer,
@@ -23,11 +23,9 @@ export const SearchUserPicker = ({
   value: UserId[];
   onChange: (value: UserId[]) => void;
 }) => {
-  const { isLoading, data } = useUserListQuery({
-    query: { recipients: true },
-  });
+  const { isLoading, data } = useListUserRecipientsQuery();
 
-  const users = data ?? [];
+  const users = data?.data ?? [];
 
   const [userFilter, setUserFilter] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState(value);
