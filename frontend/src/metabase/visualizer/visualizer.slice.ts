@@ -32,7 +32,6 @@ import type {
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
-import { getCards, getDatasets } from "./selectors";
 import {
   canCombineCard,
   copyColumn,
@@ -152,40 +151,10 @@ export const addDataSource = createAsyncThunk<
   throw new Error(`Unsupported data source type: ${type}`);
 });
 
-export const addColumn = createAsyncThunk<
-  void,
-  {
-    dataSource: VisualizerDataSource;
-    column: DatasetColumn;
-  }
->(
-  "metabase/visualizer/addColumn",
-  ({ dataSource, column }, { dispatch, getState }) => {
-    const cards = getCards(getState());
-    const datasetMap = getDatasets(getState());
-
-    const card = cards.find(card => card.id === dataSource.sourceId);
-    const dataset = datasetMap[dataSource.id];
-
-    const dataSourceMap = Object.fromEntries(
-      cards.map(card => {
-        const dataSource = createDataSource("card", card.id, card.name);
-        return [dataSource.id, dataSource];
-      }),
-    );
-
-    dispatch(
-      addColumnInner({
-        dataSource,
-        column,
-        card,
-        dataset,
-        datasetMap,
-        dataSourceMap,
-      }),
-    );
-  },
-);
+export const addColumn = createAction<{
+  dataSource: VisualizerDataSource;
+  column: DatasetColumn;
+}>("metabase/visualizer/addColumn");
 
 export const removeDataSource = createAction<VisualizerDataSource>(
   "metabase/visualizer/removeDataSource",
@@ -546,6 +515,32 @@ const visualizerSlice = createSlice({
           state.loadingDatasets[`card:${cardId}`] = false;
         }
         state.error = action.error.message || "Failed to fetch card query";
+      })
+      .addCase(addColumn, (state, action) => {
+        const { cards, datasets } = state;
+        const { column, dataSource } = action.payload;
+
+        const card = cards.find(card => card.id === dataSource.sourceId);
+        const dataset = datasets[dataSource.id];
+
+        const dataSourceMap = Object.fromEntries(
+          cards.map(card => {
+            const dataSource = createDataSource("card", card.id, card.name);
+            return [dataSource.id, dataSource];
+          }),
+        );
+
+        maybeUpdateHistory(
+          state,
+          addColumnInner({
+            dataSource,
+            dataset,
+            column,
+            dataSourceMap,
+            datasetMap: datasets,
+            card,
+          }),
+        );
       })
       .addDefaultCase((state, action) => {
         maybeUpdateHistory(state, action);
