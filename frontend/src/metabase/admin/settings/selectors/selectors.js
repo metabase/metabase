@@ -423,7 +423,7 @@ export const getSettings = createSelector(
   (settings, warnings) =>
     settings.map(setting =>
       warnings[setting.key]
-        ? { ...setting, warning: warnings[setting.key] } // ??? what do warnings do?
+        ? { ...setting, warning: warnings[setting.key] }
         : setting,
     ),
 );
@@ -479,12 +479,6 @@ export const getSections = createSelector(
     const sections = getSectionsWithPlugins();
     const settingsByKey = _.groupBy(settings, "key");
     const sectionsWithAPISettings = {};
-    // const adminSettingInfo = Object.fromEntries(settings.map(setting => ([setting.key, setting.value])));
-    // const adminKeys = Object.keys(adminSettingInfo);
-    // const propertiesKeys = Object.keys(derivedSettingValues);
-    // const adminNotProps = adminKeys.filter(key => !propertiesKeys.includes(key));
-    // const propsNotAdmin = propertiesKeys.filter(key => !adminKeys.includes(key));
-
     for (const [slug, section] of Object.entries(sections)) {
       const isHidden = section.getHidden?.(derivedSettingValues);
 
@@ -494,10 +488,10 @@ export const getSections = createSelector(
 
       const settings = section.settings.map(function (setting) {
         const apiSetting =
-          settingsByKey[setting.key] && settingsByKey[setting.key][0]; // stupid data format, all of these have 1 array element
+          settingsByKey[setting.key] && settingsByKey[setting.key][0]; // unnecessary array, these all have 1 element
 
         if (apiSetting) {
-          const value = setting.showActualValue // never used
+          const value = setting.showActualValue // showActualValue is never used
             ? derivedSettingValues[setting.key]
             : apiSetting.value;
           return {
