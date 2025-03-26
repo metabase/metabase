@@ -181,6 +181,6 @@
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Invalid API key format"
-                 (config.file/initialize!)))))
-        (finally
-          (cleanup-config!))))))
+                 (config.file/initialize!))))
+          (finally
+            (cleanup-config!)))))))
