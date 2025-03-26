@@ -213,9 +213,9 @@
 
 (deftest skip-existing-api-keys-with-same-prefix-test
   (mt/with-premium-features #{:config-text-file}
-    (mt/with-temp [:model/User admin {:email "admin@test.com"
-                                      :first_name "Admin"
-                                      :is_superuser true}]
+    (mt/with-temp [:model/User _ {:email "admin@test.com"
+                                  :first_name "Admin"
+                                  :is_superuser true}]
       (try
         ;; First, create an API key with a specific name
         (binding [config.file/*config* {:version 1
