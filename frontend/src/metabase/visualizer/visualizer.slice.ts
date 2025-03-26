@@ -309,6 +309,28 @@ const visualizerHistoryItemSlice = createSlice({
       state.columns = state.columns.filter(col => col.name !== name);
       delete state.columnValuesMapping[name];
     },
+    handleDropInner: (
+      state,
+      action: PayloadAction<{
+        event: DragEndEvent;
+        datasetMap: Record<VisualizerDataSourceId, Dataset>;
+        dataSourceMap: Record<VisualizerDataSourceId, VisualizerDataSource>;
+      }>,
+    ) => {
+      if (!state.display) {
+        return;
+      }
+
+      const { event, ...ctx } = action.payload;
+
+      if (isCartesianChart(state.display)) {
+        cartesianDropHandler(state, event, ctx);
+      } else if (state.display === "funnel") {
+        funnelDropHandler(state, event);
+      } else if (state.display === "pie") {
+        pieDropHandler(state, event);
+      }
+    },
   },
   extraReducers: builder => {
     builder
@@ -319,21 +341,6 @@ const visualizerHistoryItemSlice = createSlice({
         }
         if (!state.settings?.["card.title"]) {
           state.settings["card.title"] = getDefaultVisualizationName();
-        }
-      })
-      .addCase(handleDrop, (state, action) => {
-        if (!state.display) {
-          return;
-        }
-
-        const event = action.payload;
-
-        if (isCartesianChart(state.display)) {
-          cartesianDropHandler(state, event);
-        } else if (state.display === "funnel") {
-          funnelDropHandler(state, event);
-        } else if (state.display === "pie") {
-          pieDropHandler(state, event);
         }
       })
       .addCase(addDataSource.fulfilled, (state, action) => {
@@ -456,7 +463,19 @@ const visualizerSlice = createSlice({
       })
       .addCase(handleDrop, (state, action) => {
         state.draggedItem = null;
-        maybeUpdateHistory(state, action);
+        maybeUpdateHistory(
+          state,
+          handleDropInner({
+            event: action.payload,
+            datasetMap: state.datasets,
+            dataSourceMap: Object.fromEntries(
+              state.cards.map(card => {
+                const dataSource = createDataSource("card", card.id, card.name);
+                return [dataSource.id, dataSource];
+              }),
+            ),
+          }),
+        );
       })
       .addCase(removeDataSource, (state, action) => {
         const source = action.payload;
@@ -716,7 +735,7 @@ function maybeCombineDataset(
   return state;
 }
 
-const { addColumnInner } = visualizerHistoryItemSlice.actions;
+const { addColumnInner, handleDropInner } = visualizerHistoryItemSlice.actions;
 
 export const { setTitle, updateSettings, removeColumn, setDisplay } =
   visualizerHistoryItemSlice.actions;

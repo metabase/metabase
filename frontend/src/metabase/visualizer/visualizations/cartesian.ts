@@ -1,4 +1,5 @@
 import type { DragEndEvent } from "@dnd-kit/core";
+import _ from "underscore";
 
 import { isCartesianChart } from "metabase/visualizations";
 import {
@@ -19,12 +20,20 @@ import type { Card, Dataset, DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerDataSource,
+  VisualizerDataSourceId,
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
 
 export const cartesianDropHandler = (
   state: VisualizerHistoryItem,
   { active, over }: DragEndEvent,
+  {
+    dataSourceMap,
+    datasetMap,
+  }: {
+    dataSourceMap: Record<VisualizerDataSourceId, VisualizerDataSource>;
+    datasetMap: Record<VisualizerDataSourceId, Dataset>;
+  },
 ) => {
   if (!over) {
     return;
@@ -51,6 +60,14 @@ export const cartesianDropHandler = (
 
     if (isSuitableColumn(column)) {
       addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
+      if (column.id) {
+        maybeImportDimensionsFromOtherDataSources(
+          state,
+          column.id,
+          _.omit(datasetMap, dataSource.id),
+          dataSourceMap,
+        );
+      }
     }
   }
 
