@@ -265,4 +265,23 @@ describe("suggestFunctions", () => {
       expect(results).toEqual(RESULTS_NO_TEMPLATE);
     });
   });
+
+  it("should complete functions whose name starts with the an operator name as a prefix (metabase#55686)", async () => {
+    const completer = setup({ startRule: "expression" });
+    const results = await completer("not|");
+    expect(results?.options.map(result => result.displayLabel)).toEqual([
+      "notIn",
+      "notnull",
+      "notempty",
+      "doesNotContain",
+      "now",
+      "interval",
+      "intervalStartingFrom",
+      "length",
+      "monthName",
+      "month",
+      "minute",
+      "contains",
+    ]);
+  });
 });
