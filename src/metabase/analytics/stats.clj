@@ -16,7 +16,6 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models.humanization :as humanization]
@@ -138,8 +137,9 @@
    :embedding_app_origin_set             (boolean
                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                           (setting/get :embedding-app-origin))
-   :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (setting/get :embedding-app-origins-sdk)]
-                                                    (and sdk-origins (not= "localhost:*" sdk-origins))))
+                                         ;; n.b. the getter for [[embedding-app-origins-sdk]] adds localhost:*, using
+                                         ;; setting/get doesn't, but we don't want to count that anyway:
+   :embedding_app_origin_sdk_set         (boolean (setting/get :embedding-app-origins-sdk))
    :embedding_app_origin_interactive_set (setting/get :embedding-app-origins-interactive)
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)
