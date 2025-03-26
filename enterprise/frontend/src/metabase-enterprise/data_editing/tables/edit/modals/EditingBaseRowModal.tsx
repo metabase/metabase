@@ -38,8 +38,8 @@ interface EditingBaseRowModalProps {
   opened: boolean;
   currentRowIndex?: number;
   currentRowData?: RowValues;
+  fieldMetadataMap: Record<Field["name"], Field>;
   isLoading?: boolean;
-  fieldMetadataMap?: Record<Field["name"], Field>;
 }
 
 type EditingFormValues = Record<string, RowValue>;
@@ -53,8 +53,8 @@ export function EditingBaseRowModal({
   opened,
   currentRowIndex,
   currentRowData,
-  isLoading,
   fieldMetadataMap,
+  isLoading,
 }: EditingBaseRowModalProps) {
   const isEditingMode = !!currentRowData;
 
@@ -122,7 +122,7 @@ export function EditingBaseRowModal({
             </Modal.Title>
             <Group
               gap="xs"
-              mr={rem(-5) /* alings cross with modal right padding */}
+              mr={rem(-5) /* aligns cross with modal right padding */}
             >
               {isEditingMode && currentRowIndex != null && (
                 <ActionIcon variant="subtle">

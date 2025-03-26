@@ -11,7 +11,12 @@ import {
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
-import type { DatasetData, Field, RowValue, RowValues } from "metabase-types/api";
+import type {
+  DatasetData,
+  Field,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 
 import { canEditField } from "../../helpers";
 import type { UpdatedRowCellsHandlerParams } from "../types";
@@ -22,7 +27,7 @@ import { useTableEditing } from "./use-table-editing";
 
 type EditTableDataGridProps = {
   data: DatasetData;
-  fieldMetadataMap?: Record<Field["name"], Field>;
+  fieldMetadataMap: Record<Field["name"], Field>;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onRowExpandClick: (rowIndex: number) => void;
 };

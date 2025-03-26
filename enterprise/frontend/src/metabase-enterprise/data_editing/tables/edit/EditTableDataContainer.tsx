@@ -6,15 +6,14 @@ import {
   useGetDatabaseMetadataQuery,
   useGetTableDataQuery,
   useGetTableQuery,
-  useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { GenericError } from "metabase/components/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { Box, Flex, Stack, Text } from "metabase/ui";
+import { extractRemappedColumns } from "metabase/visualizations";
 import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
-import type { Field } from "metabase-types/api";
 
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
@@ -41,31 +40,23 @@ export const EditTableDataContainer = ({
   const { data: table, isLoading: tableIdLoading } = useGetTableQuery({
     id: tableId,
   });
-  const { data: tableMetadata } = useGetTableQueryMetadataQuery({
-    id: tableId,
-  });
-
-  const tableFieldMetadataMap = useMemo(
-    () =>
-      tableMetadata?.fields?.reduce(
-        (acc, item) => ({
-          ...acc,
-          [item.name]: item,
-        }),
-        {} as Record<Field["name"], Field>,
-      ),
-    [tableMetadata],
-  );
 
   const { data: datasetData, isLoading } = useGetTableDataQuery({
     tableId,
   });
+
+  const { cols: remappedCols } = useMemo(() => {
+    return datasetData
+      ? extractRemappedColumns(datasetData.data)
+      : { cols: undefined };
+  }, [datasetData]);
 
   const {
     isCreateRowModalOpen,
     expandedRowIndex,
     isInserting,
     closeCreateRowModal,
+    tableFieldMetadataMap,
 
     handleRowCreate,
     handleCellValueUpdate,
@@ -82,7 +73,7 @@ export const EditTableDataContainer = ({
     return null;
   }
 
-  if (!datasetData || !tableFieldMetadataMap) {
+  if (!datasetData || !tableFieldMetadataMap || !remappedCols) {
     // TODO: show error
     return null;
   }
@@ -133,15 +124,15 @@ export const EditTableDataContainer = ({
         onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleExpandedRowDelete}
-        datasetColumns={datasetData.data.cols}
+        datasetColumns={remappedCols}
         currentRowIndex={expandedRowIndex}
         currentRowData={
           expandedRowIndex !== undefined
             ? datasetData.data.rows[expandedRowIndex]
             : undefined
         }
-        isLoading={isInserting}
         fieldMetadataMap={tableFieldMetadataMap}
+        isLoading={isInserting}
       />
     </>
   );

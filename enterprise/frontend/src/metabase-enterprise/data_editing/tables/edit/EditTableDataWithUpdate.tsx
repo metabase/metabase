@@ -25,6 +25,7 @@ export const EditTableDataWithUpdate = ({
     expandedRowIndex,
     isInserting,
     closeCreateRowModal,
+    tableFieldMetadataMap,
 
     handleRowCreate,
     handleCellValueUpdate,
@@ -36,13 +37,14 @@ export const EditTableDataWithUpdate = ({
     <div className={cx(S.tableRoot, className)}>
       <EditTableDataGrid
         data={data}
+        fieldMetadataMap={tableFieldMetadataMap}
         onCellValueUpdate={handleCellValueUpdate}
         onRowExpandClick={handleModalOpenAndExpandedRow}
       />
       <EditingBaseRowModal
         opened={isCreateRowModalOpen}
         onClose={closeCreateRowModal}
-        onValueChange={handleCellValueUpdate}
+        onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleExpandedRowDelete}
         datasetColumns={data.cols}
@@ -52,6 +54,7 @@ export const EditTableDataWithUpdate = ({
             ? data.rows[expandedRowIndex]
             : undefined
         }
+        fieldMetadataMap={tableFieldMetadataMap}
         isLoading={isInserting}
       />
     </div>

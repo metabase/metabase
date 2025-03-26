@@ -1,7 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useGetTableQueryMetadataQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -14,6 +15,7 @@ import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
   DatasetData,
+  Field,
   RowValue,
 } from "metabase-types/api";
 
@@ -41,6 +43,22 @@ export const useTableCRUD = ({
   const [updateTableRows] = useUpdateTableRowsMutation();
   const [insertTableRows, { isLoading: isInserting }] =
     useInsertTableRowsMutation();
+
+  const { data: tableMetadata } = useGetTableQueryMetadataQuery({
+    id: tableId,
+  });
+
+  const tableFieldMetadataMap = useMemo(() => {
+    return (
+      tableMetadata?.fields?.reduce(
+        (acc, item) => ({
+          ...acc,
+          [item.name]: item,
+        }),
+        {} as Record<Field["name"], Field>,
+      ) || {}
+    );
+  }, [tableMetadata]);
 
   const displayErrorIfExists = useCallback(
     (error: any) => {
@@ -170,6 +188,7 @@ export const useTableCRUD = ({
     expandedRowIndex,
     isInserting,
     closeCreateRowModal,
+    tableFieldMetadataMap,
 
     handleRowCreate,
     handleCellValueUpdate,
