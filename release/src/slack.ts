@@ -183,8 +183,8 @@ async function getSlackChannelId(
     channel => channel.name === channelName,
   )?.id;
   const nextCursor = response.response_metadata?.next_cursor;
-  if (nextCursor) {
-    return maybeChannelId || (await getSlackChannelId(channelName, nextCursor));
+  if (!maybeChannelId && nextCursor) {
+    return await getSlackChannelId(channelName, nextCursor);
   }
 
   return maybeChannelId;
