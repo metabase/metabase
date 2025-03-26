@@ -154,7 +154,7 @@ FROM
 LIMIT 10000
 ```
 
-The result of this query is used to provide better suggestions in the Metabase UI (such as filter dropdowns and auto-binning).
+Metabase uses the results of this query to provide better suggestions in the Metabase UI (such as filter dropdowns and auto-binning).
 To avoid putting strain on your database, Metabase only runs fingerprinting queries the [first time](#initial-sync-scan-and-fingerprinting) you set up a database connection. To change this default, you can turn ON [Periodically refingerprint tables](#periodically-refingerprint-tables).
 
 ## Further reading

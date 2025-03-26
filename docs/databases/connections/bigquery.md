@@ -34,7 +34,7 @@ For more information on **roles** in BigQuery, see [Google Cloud Platform's docu
 
 > **You can only download the key once**. If you delete the key, you'll need to create another service account with the same roles.
 
-## Settings
+## Edit connection details
 
 You can edit these settings at any time. Just remember to save your changes.
 
@@ -84,6 +84,10 @@ We suggest you leave this off unless you're doing manual [timezone](../../config
 ### Include User ID and query hash in queries
 
 This can be useful for [auditing](../../usage-and-performance-tools/usage-analytics.md) and debugging, but prevents BigQuery from caching results and may increase your costs.
+
+### Alternate hostname
+
+If you want to use a different hostname to connect to BigQuery. Format: `https://<hostname>:<port>`.
 
 ### Re-run queries for simple explorations
 
