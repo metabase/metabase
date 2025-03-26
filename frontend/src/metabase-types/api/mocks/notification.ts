@@ -1,5 +1,5 @@
 import type {
-  Notification,
+  AlertNotification,
   NotificationCronSubscription,
   NotificationHandlerEmail,
   NotificationHandlerSlack,
@@ -8,8 +8,8 @@ import type {
 import { createMockUserInfo } from "metabase-types/api/mocks/user";
 
 export const createMockNotification = (
-  opts?: Partial<Notification>,
-): Notification => ({
+  opts?: Partial<AlertNotification>,
+): AlertNotification => ({
   payload_id: 7,
   payload: {
     id: 7,

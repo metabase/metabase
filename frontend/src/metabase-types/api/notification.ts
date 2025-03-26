@@ -1,7 +1,7 @@
 import type { Card, CardId } from "metabase-types/api/card";
 import type { Channel } from "metabase-types/api/notification-channels";
 import type { PaginationRequest } from "metabase-types/api/pagination";
-import type { TableId } from "metabase-types/api/table";
+import type { Table, TableId } from "metabase-types/api/table";
 import type { UserId, UserInfo } from "metabase-types/api/user";
 
 export type NotificationId = number;
@@ -143,6 +143,7 @@ export type NotificationSystemEventSubscription = {
   id?: number;
   notification_id?: number;
   table_id: TableId;
+  table?: Table;
   created_at?: string;
   updated_at?: string;
   ui_display_type?: null;
@@ -193,6 +194,7 @@ export type UpdateTableNotificationRequest = NotificationSystemEventPayload & {
   active: boolean;
   handlers: NotificationHandler[];
   subscriptions: NotificationSystemEventSubscription[];
+  condition: Condition;
 };
 
 export type UpdateNotificationRequest =
@@ -216,6 +218,7 @@ export type AlertNotification = BaseNotification &
 export type TableNotification = BaseNotification &
   NotificationSystemEventPayload & {
     subscriptions: NotificationSystemEventSubscription[];
+    condition: Condition;
   };
 
 export type Notification = AlertNotification | TableNotification;

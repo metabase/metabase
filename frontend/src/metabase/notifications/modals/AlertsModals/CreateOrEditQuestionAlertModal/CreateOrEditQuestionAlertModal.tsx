@@ -87,7 +87,7 @@ type CreateOrEditQuestionAlertModalProps = {
   onClose: () => void;
 } & (
   | {
-      editingNotification?: undefined;
+      editingNotification?: null;
       onAlertCreated: () => void;
       onAlertUpdated?: () => void;
     }

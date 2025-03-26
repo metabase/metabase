@@ -2,7 +2,7 @@ import { fireEvent, screen } from "@testing-library/react";
 
 import { renderWithTheme } from "__support__/ui";
 import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
-import type { Notification } from "metabase-types/api";
+import type { AlertNotification } from "metabase-types/api";
 import {
   createMockNotification,
   createMockNotificationCronSubscription,
@@ -15,7 +15,7 @@ import {
 import { NotificationCard } from "./NotificationCard";
 
 const getQuestionAlertItem = (
-  opts?: Partial<Notification>,
+  opts?: Partial<AlertNotification>,
 ): QuestionNotificationListItem => ({
   item: createMockNotification(opts),
   type: "question-notification",

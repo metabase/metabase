@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import type {
   AlertNotification,
   CreateNotificationRequest,
@@ -16,7 +18,6 @@ import {
   provideNotificationListTags,
   provideNotificationTags,
 } from "./tags";
-import { useMemo } from "react";
 
 export const notificationApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -126,13 +127,13 @@ export const useAlertNotificationsQuery = (
   };
 };
 
-const isTableNotification = (
+export const isTableNotification = (
   notification: Notification,
 ): notification is TableNotification => {
   return notification.payload_type === "notification/system-event";
 };
 
-const isAlertNotification = (
+export const isAlertNotification = (
   notification: Notification,
 ): notification is AlertNotification => {
   return notification.payload_type === "notification/card";

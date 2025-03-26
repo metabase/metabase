@@ -11,7 +11,7 @@ import {
 import { TableNotificationsListModal } from "./TableNotificationsListModal";
 
 export default {
-  title: "Notifications/AlertListModal",
+  title: "Notifications/TableNotificationsListModal",
   component: TableNotificationsListModal,
 };
 
@@ -32,7 +32,7 @@ const Template: StoryFn<
   );
 };
 
-const questionAlerts = [
+const tableNotifications = [
   createMockNotification({
     handlers: [
       createMockNotificationHandlerEmail(),
@@ -45,7 +45,7 @@ export const Default = {
   render: Template,
 
   args: {
-    questionAlerts,
+    tableNotifications,
     onCreate: action("onCreate"),
     onEdit: action("onEdit"),
     onClose: action("onClose"),

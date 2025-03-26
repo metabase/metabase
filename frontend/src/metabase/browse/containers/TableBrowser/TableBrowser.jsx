@@ -36,9 +36,9 @@ const getSchemaName = props => {
 const getReloadInterval = (_state, _props, tables = []) =>
   tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
 
-const getTableUrl = ({ table, metadata, database }) => {
+export const getTableUrl = ({ table, metadata, database }) => {
   if (database && PLUGIN_DATA_EDITING.isDatabaseTableEditingEnabled(database)) {
-    return `/browse/databases/${database.id}/tables/${table.id}`;
+    return Urls.tableView(database.id, table.id);
   }
 
   const metadataTable = metadata?.table(table.id);

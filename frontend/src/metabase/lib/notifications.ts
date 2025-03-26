@@ -27,6 +27,7 @@ import type {
   NotificationRecipient,
   NotificationRecipientRawValue,
   ScheduleSettings,
+  SystemEvent,
   User,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -39,12 +40,28 @@ export const formatTitle = ({ item, type }: NotificationListItem) => {
       return item.name;
     case "question-notification":
       return item.payload.card?.name || t`Alert`;
-    case "table-notification":
-      // Todo: implement propert title
-      return t`Table Notification`;
-    // return item.payload.table?.name || t`Table Notification`;
+    case "table-notification": {
+      const subscription = item.subscriptions[0];
+      return (
+        t`${subscription.table!.display_name} table - ${formatEventName(subscription.event_name)}` ||
+        t`Table Notification`
+      );
+    }
   }
 };
+
+function formatEventName(event_name: SystemEvent) {
+  switch (event_name) {
+    case "event/data-editing-row-create":
+      return t`Row created`;
+    case "event/data-editing-row-update":
+      return t`Row updated`;
+    case "event/data-editing-row-delete":
+      return t`Row deleted`;
+    default:
+      return event_name;
+  }
+}
 
 const getRecipientIdentity = (recipient: NotificationRecipient) => {
   if (recipient.type === "notification-recipient/user") {

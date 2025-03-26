@@ -48,7 +48,7 @@ export const TableNotificationsTriggerButton = ({
   const hasNotifications = tableNotifications && tableNotifications.length > 0;
   const handleOpen = () => {
     setIsOpen(true);
-    setActiveModal(!hasNotifications ? "create-edit-modal" : "list-modal");
+    setActiveModal(hasNotifications ? "list-modal" : "create-edit-modal");
   };
   const handleClose = () => {
     setIsOpen(false);

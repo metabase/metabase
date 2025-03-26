@@ -18,8 +18,8 @@ import {
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
+  AlertNotification,
   ChannelApiResponse,
-  Notification,
   NotificationChannel,
 } from "metabase-types/api";
 import {
@@ -409,7 +409,7 @@ function setup({
   isSlackSetup?: boolean;
   isHttpSetup?: boolean;
   webhooksResult?: NotificationChannel[];
-  editingNotification?: Notification;
+  editingNotification?: AlertNotification;
   onAlertCreatedMock?: jest.Mock;
   onAlertUpdatedMock?: jest.Mock;
 }) {

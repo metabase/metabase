@@ -20,8 +20,7 @@ import { AlertListModal } from "./AlertListModal";
 
 type AlertModalMode =
   | "list-modal"
-  | "create-modal"
-  | "update-modal"
+  | "create-edit-modal"
   | "delete-confirm-modal"
   | "unsubscribe-confirm-modal";
 
@@ -46,10 +45,10 @@ export const QuestionAlertListModal = ({
   const [updateNotification] = useUpdateNotificationMutation();
   const [unsubscribe] = useUnsubscribeFromNotificationMutation();
 
+  const hasNotifications =
+    questionNotifications && questionNotifications.length > 0;
   const [activeModal, setActiveModal] = useState<AlertModalMode>(
-    !questionNotifications || questionNotifications.length === 0
-      ? "create-modal"
-      : "list-modal",
+    hasNotifications ? "list-modal" : "create-edit-modal",
   );
 
   const previousActiveModal = usePreviousDistinct(activeModal);
@@ -123,10 +122,10 @@ export const QuestionAlertListModal = ({
         <AlertListModal
           opened
           questionAlerts={questionNotifications}
-          onCreate={() => setActiveModal("create-modal")}
+          onCreate={() => setActiveModal("create-edit-modal")}
           onEdit={(notification: AlertNotification) => {
             setEditingItem(notification);
-            setActiveModal("update-modal");
+            setActiveModal("create-edit-modal");
           }}
           onClose={onClose}
           onDelete={notification => {
@@ -140,13 +139,9 @@ export const QuestionAlertListModal = ({
         />
       )}
 
-      {(activeModal === "create-modal" || activeModal === "update-modal") && (
+      {activeModal === "create-edit-modal" && (
         <CreateOrEditQuestionAlertModal
-          editingNotification={
-            activeModal === "update-modal" && editingItem
-              ? editingItem
-              : undefined
-          }
+          editingNotification={editingItem}
           onClose={handleInternalModalClose}
           onAlertCreated={handleInternalModalClose}
           onAlertUpdated={handleInternalModalClose}
