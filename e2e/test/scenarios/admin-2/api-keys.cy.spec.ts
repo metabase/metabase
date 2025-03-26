@@ -153,7 +153,11 @@ describe("scenarios > admin > settings > API keys", () => {
     H.createApiKey("Personal API Key", ALL_USERS_GROUP_ID);
 
     H.visitApiKeySettings().then(({ response }) => {
-      const { created_at, updated_at } = response?.body[0];
+      if (!response) {
+        throw new Error("api keys are not defined");
+      }
+
+      const { created_at, updated_at } = response.body[0];
       // on creation, created_at and updated_at should be the same
       expect(created_at).to.equal(updated_at);
     });
@@ -168,7 +172,11 @@ describe("scenarios > admin > settings > API keys", () => {
     cy.findByLabelText("The API key").should("include.value", "mb_");
 
     cy.wait("@getKeys").then(({ response }) => {
-      const { created_at, updated_at } = response?.body[0];
+      if (!response) {
+        throw new Error("keys are not defined");
+      }
+
+      const { created_at, updated_at } = response.body[0];
       // after regeneration, created_at and updated_at should be different
       // they're too close to check via UI though
       expect(created_at).to.not.equal(updated_at);
