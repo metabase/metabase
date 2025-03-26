@@ -145,7 +145,12 @@
         boolean-field (meta/field-metadata :venues :category-id)]
     ;;
     (testing "case pairs should be flattened"
-      (doseq [[clause parts] {(lib/case [[boolean-field int-field]] nil)
+      (doseq [[clause parts] {(lib/case [[boolean-field int-field]])
+                              {:operator :case
+                               :options {}
+                               :args [boolean-field int-field]}
+
+                              (lib/case [[boolean-field int-field]] nil)
                               {:operator :case
                                :options {}
                                :args [boolean-field int-field]}
@@ -154,6 +159,11 @@
                               {:operator :case
                                :options {}
                                :args [boolean-field int-field string-field]}
+
+                              (lib/case [[boolean-field int-field] [boolean-field string-field]])
+                              {:operator :case
+                               :options {}
+                               :args [boolean-field int-field boolean-field string-field]}
 
                               (lib/case [[boolean-field int-field] [boolean-field string-field]] nil)
                               {:operator :case
