@@ -1,13 +1,15 @@
 name: E2E Cross-version Component Tests for Embedding SDK
 
 on:
-  push:
-    branches:
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - "release-**"
+  # push:
+  #   branches:
+  #     - "release-**"
+  # pull_request:
+  #   types: [opened, synchronize, reopened, ready_for_review]
+  #   branches:
+  #     - "release-**"
+  #--- remove this line and uncomment the lines above to re-enable the workflow
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
