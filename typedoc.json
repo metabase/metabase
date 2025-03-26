@@ -13,7 +13,24 @@
   "outputs": [
     {
       "name": "html",
-      "path": "docs/embedding/sdk/api_html"
+      "path": "docs/embedding/sdk/api_html",
+      "hideGenerator": true,
+      "navigation": {
+        "includeCategories": false,
+        "includeGroups": false,
+        "includeFolders": false,
+        "compactFolders": true,
+        "excludeReferences": true
+      },
+      "visibilityFilters": {
+        "protected": false,
+        "private": false,
+        "inherited": false,
+        "external": false,
+        "@alpha": false,
+        "@beta": false
+      },
+      "includeHierarchySummary": false
     },
     {
       "name": "markdown",
