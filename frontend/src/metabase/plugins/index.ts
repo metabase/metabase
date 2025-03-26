@@ -56,6 +56,7 @@ import type {
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
+  DatabaseId,
   Database as DatabaseType,
   Dataset,
   DatasetError,
@@ -627,7 +628,9 @@ export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
 };
 
 export type GenerateSqlQueryButtonProps = {
+  className?: string;
   prompt: string;
+  databaseId: DatabaseId;
   onGenerateQuery: (queryText: string) => void;
 };
 

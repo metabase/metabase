@@ -11,6 +11,7 @@ import { PreviewQueryButton } from "metabase/query_builder/components/view/Previ
 import { SnippetSidebarButton } from "metabase/query_builder/components/view/SnippetSidebarButton";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { Box, Tooltip } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
@@ -87,8 +88,10 @@ export const NativeQueryEditorSidebar = (
     return command + " " + shortcut;
   };
 
+  const query = question.query();
+  const queryText = Lib.rawNativeQuery(query);
+  const databaseId = Lib.databaseID(query);
   const canRunQuery = runQuery && cancelQuery;
-
   const engine = question.database?.()?.engine;
   const canFormatQuery = engine != null && canFormatForEngine(engine);
 
@@ -122,10 +125,14 @@ export const NativeQueryEditorSidebar = (
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}
-      <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
-        prompt=""
-        onGenerateQuery={onGenerateQuery}
-      />
+      {databaseId != null && (
+        <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
+          className={CS.mt3}
+          prompt={queryText}
+          databaseId={databaseId}
+          onGenerateQuery={onGenerateQuery}
+        />
+      )}
       {!!canRunQuery && (
         <RunButtonWithTooltip
           className={NativeQueryEditorSidebarS.RunButtonWithTooltipStyled}

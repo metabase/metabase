@@ -1,5 +1,35 @@
-import type { GenerateSqlQueryButtonProps } from "metabase/plugins";
+import { t } from "ttag";
 
-export function GenerateSqlQueryButton(_props: GenerateSqlQueryButtonProps) {
-  return null;
+import type { GenerateSqlQueryButtonProps } from "metabase/plugins";
+import { Button, Icon, Tooltip } from "metabase/ui";
+import { useGenerateSqlQueryMutation } from "metabase-enterprise/api";
+
+export function GenerateSqlQueryButton({
+  className,
+  prompt,
+  databaseId,
+  onGenerateQuery,
+}: GenerateSqlQueryButtonProps) {
+  const isEmpty = prompt.trim().length === 0;
+  const [generateSql, { isLoading }] = useGenerateSqlQueryMutation();
+
+  const handleClick = async () => {
+    const { data } = await generateSql({ prompt, database_id: databaseId });
+    if (data) {
+      onGenerateQuery(data.generated_sql);
+    }
+  };
+
+  return (
+    <Tooltip label={t`Generate SQL`}>
+      <Button
+        className={className}
+        variant="subtle"
+        leftSection={<Icon name="sparkles" />}
+        loading={isLoading}
+        disabled={isEmpty}
+        onClick={handleClick}
+      />
+    </Tooltip>
+  );
 }

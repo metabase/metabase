@@ -16,11 +16,11 @@
   100)
 
 (defn- database-tables
-  ([database]
+  ([database-id]
    (database-tables database nil))
-  ([database {:keys [all-tables-limit] :or {all-tables-limit max-database-tables}}]
+  ([database-id {:keys [all-tables-limit] :or {all-tables-limit max-database-tables}}]
    (let [tables (t2/select [:model/Table :id :name :schema]
-                           :db_id database
+                           :db_id database-id
                            :active true
                            :visibility_type nil
                            {:limit all-tables-limit})
@@ -37,12 +37,12 @@
   "Generate a SQL query."
   [_route-params
    _query-params
-   {:keys [database prompt]} :- [:map
-                                 [:database ms/PositiveInt]
-                                 [:prompt :string]]]
-  (-> (metabot-v3/generate-sql {:dialect (driver.u/database->driver database)
+   {:keys [prompt database_id]} :- [:map
+                                    [:prompt :string]
+                                    [:database_id ms/PositiveInt]]]
+  (-> (metabot-v3/generate-sql {:dialect (driver.u/database->driver database_id)
                                 :instructions prompt
-                                :tables (database-tables database)})
+                                :tables (database-tables database_id)})
       (select-keys [:generated_sql])))
 
 (def ^{:arglists '([request respond raise])} routes
