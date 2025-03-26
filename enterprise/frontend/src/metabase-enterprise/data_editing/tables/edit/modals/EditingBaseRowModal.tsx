@@ -17,15 +17,13 @@ import {
 } from "metabase/ui";
 import type {
   DatasetColumn,
+  Field,
   RowValue,
   RowValues,
   Table,
 } from "metabase-types/api";
 
-import type {
-  FieldWithMetadata,
-  UpdatedRowCellsHandlerParams,
-} from "../../types";
+import type { UpdatedRowCellsHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 
 import S from "./EditingBaseRowModal.module.css";
@@ -41,7 +39,7 @@ interface EditingBaseRowModalProps {
   currentRowIndex?: number;
   currentRowData?: RowValues;
   isLoading?: boolean;
-  fieldMetadataMap?: Record<FieldWithMetadata["name"], FieldWithMetadata>;
+  fieldMetadataMap?: Record<Field["name"], Field>;
 }
 
 type EditingFormValues = Record<string, RowValue>;
@@ -77,21 +75,27 @@ export function EditingBaseRowModal({
     [fieldMetadataMap, datasetColumns],
   );
 
-  const { isValid, resetForm, setFieldValue, handleSubmit, errors } = useFormik(
-    {
-      initialValues: {} as EditingFormValues,
-      onSubmit: onRowCreate,
-      validate: validateForm,
-      validateOnMount: true,
-    },
-  );
+  const {
+    isValid,
+    resetForm,
+    setFieldValue,
+    handleSubmit,
+    errors,
+    validateForm: revalidateForm,
+  } = useFormik({
+    initialValues: {} as EditingFormValues,
+    onSubmit: onRowCreate,
+    validate: validateForm,
+    validateOnMount: true,
+  });
 
   // Clear new row data when modal is opened
   useEffect(() => {
     if (opened) {
       resetForm();
+      revalidateForm();
     }
-  }, [opened, resetForm]);
+  }, [opened, resetForm, revalidateForm]);
 
   const handleValueEdit = useCallback(
     (key: string, value: RowValue) => {
@@ -140,7 +144,6 @@ export function EditingBaseRowModal({
           >
             {datasetColumns.map((column, index) => {
               const field = fieldMetadataMap?.[column.name];
-              const isRequired = field?.database_required;
 
               return (
                 <Fragment key={column.id}>
@@ -154,11 +157,6 @@ export function EditingBaseRowModal({
                   />
                   <Text className={S.modalBodyColumn}>
                     {column.display_name}
-                    {isRequired && (
-                      <Text component="span" c="var(--mb-color-error)">
-                        {" *"}
-                      </Text>
-                    )}
                   </Text>
                   <ModalEditingInput
                     isEditingMode={isEditingMode}
@@ -195,7 +193,7 @@ type EditingInputWithEventsProps = {
   isEditingMode: boolean;
   initialValue?: RowValue;
   datasetColumn: DatasetColumn;
-  field?: FieldWithMetadata;
+  field?: Field;
   onSubmitValue: (key: string, value: RowValue) => void;
   onChangeValue: (key: string, value: RowValue) => void;
   error?: boolean;

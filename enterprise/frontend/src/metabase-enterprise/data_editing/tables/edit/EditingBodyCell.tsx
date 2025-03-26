@@ -1,16 +1,21 @@
 import type { CellContext } from "@tanstack/react-table";
 import { useCallback } from "react";
 
-import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Field,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 
-import type { FieldWithMetadata, UpdatedRowCellsHandlerParams } from "../types";
+import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditingBodyCell.module.css";
 import { EditingBodyCellConditional } from "./inputs";
 
 interface EditingBodyCellWrapperProps<TRow, TValue> {
   column: DatasetColumn;
-  field?: FieldWithMetadata;
+  field?: Field;
   cellContext: CellContext<TRow, TValue>;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onCellEditCancel: () => void;
