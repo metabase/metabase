@@ -161,7 +161,8 @@
                                             :config {:api-keys [{:name "ENV API Key"
                                                                  :key "{{env MB_API_KEY_FROM_ENV}}"
                                                                  :creator "admin@test.com"
-                                                                 :group "admin"}]}}]
+                                                                 :group "admin"}]}}
+                      advanced-config.file/*env*    (assoc @#'advanced-config.file/*env* :MB_API_KEY_FROM_ENV "mb_envvariablekey123")]
               (is (= :ok (config.file/initialize!)))
               (testing "API key should be created from env var"
                 (is (api-key-exists? "ENV API Key")))))
@@ -170,15 +171,16 @@
 
       (testing "should validate format of API key from environment variable"
         (try
-          (mt/with-temp-env-var-value! ["MB_INVALID_API_KEY" "invalid_key_format"]
-            (binding [config.file/*config* {:version 1
-                                            :config {:api-keys [{:name "Invalid ENV API Key"
-                                                                 :key "{{env MB_INVALID_API_KEY}}"
-                                                                 :creator "admin@test.com"
-                                                                 :group "admin"}]}}]
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"Invalid API key format"
-                   (config.file/initialize!)))))
-          (finally
-            (cleanup-config!)))))))
+          ;; (mt/with-temp-env-var-value! ["MB_INVALID_API_KEY" "invalid_key_format"]
+          (binding [config.file/*config* {:version 1
+                                          :config {:api-keys [{:name "Invalid ENV API Key"
+                                                               :key "{{env MB_INVALID_API_KEY}}"
+                                                               :creator "admin@test.com"
+                                                               :group "admin"}]}}
+                    advanced-config.file/*env*    (assoc @#'advanced-config.file/*env* :MB_INVALID_API_KEY "invalid_key_format")]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Invalid API key format"
+                 (config.file/initialize!)))))
+        (finally
+          (cleanup-config!))))))
