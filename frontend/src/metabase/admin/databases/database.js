@@ -6,7 +6,6 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
-import { MetabaseApi } from "metabase/services";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
 
@@ -18,11 +17,6 @@ export const ADDING_SAMPLE_DATABASE =
   "metabase/admin/databases/ADDING_SAMPLE_DATABASE";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 export const UNPERSIST_DATABASE = "metabase/admin/databases/UNPERSIST_DATABASE";
-export const DISMISS_SYNC_SPINNER =
-  "metabase/admin/databases/DISMISS_SYNC_SPINNER";
-export const CREATE_DATABASE = "metabase/admin/databases/CREATE_DATABASE";
-export const CREATE_DATABASE_STARTED =
-  "metabase/admin/databases/CREATE_DATABASE_STARTED";
 export const DELETE_DATABASE_STARTED =
   "metabase/admin/databases/DELETE_DATABASE_STARTED";
 export const DELETE_DATABASE_FAILED =
@@ -52,11 +46,8 @@ export const createDatabase = function (database) {
 
   return async function (dispatch) {
     try {
-      dispatch({ type: CREATE_DATABASE_STARTED });
       const action = await dispatch(Databases.actions.create(database));
       const savedDatabase = Databases.HACK_getObjectFromAction(action);
-
-      dispatch({ type: CREATE_DATABASE });
 
       return savedDatabase;
     } catch (error) {
@@ -103,19 +94,6 @@ export const deleteDatabase = function (databaseId) {
     }
   };
 };
-
-export const dismissSyncSpinner = createThunkAction(
-  DISMISS_SYNC_SPINNER,
-  function (databaseId) {
-    return async function () {
-      try {
-        await MetabaseApi.db_dismiss_sync_spinner({ dbId: databaseId });
-      } catch (error) {
-        console.error("error dismissing sync spinner for database", error);
-      }
-    };
-  },
-);
 
 const deletes = handleActions(
   {

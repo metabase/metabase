@@ -29,16 +29,11 @@ import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSecti
 import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import { NewDatabasePermissionsModal } from "../components/NewDatabasePermissionsModal";
-import {
-  deleteDatabase,
-  dismissSyncSpinner,
-  updateDatabase,
-} from "../database";
+import { deleteDatabase, updateDatabase } from "../database";
 
 interface DatabaseEditAppProps {
   children: React.ReactNode;
   params: { databaseId: string };
-  dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
@@ -47,14 +42,12 @@ interface DatabaseEditAppProps {
 }
 
 const mapDispatchToProps = {
-  dismissSyncSpinner,
   updateDatabase,
   deleteDatabase,
 };
 
 function DatabaseEditAppInner({
   children,
-  dismissSyncSpinner,
   params,
   updateDatabase,
   deleteDatabase,
@@ -69,16 +62,19 @@ function DatabaseEditAppInner({
   const [pollingInterval, setPollingInterval] = useState<number>();
   const {
     currentData: database,
+    isLoading,
     error,
     refetch: refetchDatabase,
   } = useGetDatabaseQuery({ id: databaseId }, { pollingInterval });
 
-  useEffect(() => {
-    const isSyncing = database?.initial_sync_status === "incomplete";
-    setPollingInterval(isSyncing ? 2000 : undefined);
-  }, [database?.initial_sync_status]);
+  useEffect(
+    function pollDatabaseWhileSyncing() {
+      const isSyncing = database?.initial_sync_status === "incomplete";
+      setPollingInterval(isSyncing ? 2000 : undefined);
+    },
+    [database?.initial_sync_status],
+  );
 
-  const isLoading = !database?.id && !error;
   const crumbs = _.compact([
     [t`Databases`, "/admin/databases"],
     database?.name && [database?.name],
@@ -113,10 +109,7 @@ function DatabaseEditAppInner({
                   gap={{ base: "2rem", sm: "5.5rem" }}
                   mb={{ base: "3rem", sm: "5.5rem" }}
                 >
-                  <DatabaseConnectionInfoSection
-                    database={database}
-                    dismissSyncSpinner={dismissSyncSpinner}
-                  />
+                  <DatabaseConnectionInfoSection database={database} />
 
                   <DatabaseModelFeaturesSection
                     database={database}

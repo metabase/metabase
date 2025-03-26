@@ -188,6 +188,14 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("database", id)]),
     }),
+    dismissDatabaseSyncSpinner: builder.mutation<void, DatabaseId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/database/${id}/dismiss_spinner`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("database"), idTag("database", id)]),
+    }),
     syncDatabaseSchema: builder.mutation<void, DatabaseId>({
       query: (databaseId) => ({
         method: "POST",
@@ -266,6 +274,7 @@ export const {
   useDeleteDatabaseMutation,
   usePersistDatabaseMutation,
   useUnpersistDatabaseMutation,
+  useDismissDatabaseSyncSpinnerMutation,
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
