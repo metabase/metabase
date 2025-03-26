@@ -30,8 +30,10 @@ export const getDefaultCellTemplate = <TRow, TValue>(
   isTruncated: boolean,
   onExpand: (columnName: string, content: React.ReactNode) => void,
 ) => {
-  return function Cell(cellContext: CellContext<TRow, TValue>) {
-    const { cell, getValue, row } = cellContext;
+  return function Cell(
+    cellContext: CellContext<TRow, TValue> & { isSelected?: boolean },
+  ) {
+    const { cell, getValue, row, isSelected } = cellContext;
     const value = getValue();
     const backgroundColor = getBackgroundColor?.(value, row?.index);
 
@@ -43,6 +45,7 @@ export const getDefaultCellTemplate = <TRow, TValue>(
 
     return (
       <BodyCell
+        isSelected={isSelected}
         rowIndex={row.index}
         columnId={id}
         value={value}
@@ -115,6 +118,7 @@ export const getDataColumn = <TRow, TValue>(
     meta: {
       wrap,
       enableReordering: true,
+      enableSelection: true,
       headerClickTargetSelector,
     },
   };

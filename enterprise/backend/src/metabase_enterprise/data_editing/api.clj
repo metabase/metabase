@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-editing.api
   (:require
    [clojure.data :refer [diff]]
+   [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -59,57 +60,61 @@
               query (-> (lib/query mp (lib.metadata/table mp table-id))
                         (lib/filter (apply lib/in (lib.metadata/field mp (:id pk-field)) pk-values))
                         qp/userland-query-with-default-constraints)]
-          (-> (qp/process-query query)
-              :data
-              qp-result->row-map
-              (#(group-by (fn [x] (get x (keyword (:name pk-field)))) %))
-              (update-vals first)))))))
+          (->> (qp/process-query query)
+               :data
+               qp-result->row-map
+               (m/index-by #(get-row-pk pk-field %))))))))
 
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]}]
-  (let [created-rows (:created-rows (perform-bulk-action! :bulk/create table-id rows))]
-    (doseq [row created-rows]
+   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+  (let [res (perform-bulk-action! :bulk/create table-id rows)]
+    (doseq [row (:created-rows res)]
       (events/publish-event! :event/data-editing-row-create
                              {:table_id    table-id
                               :created_row row
-                              :actor_id    api/*current-user-id*}))))
+                              :actor_id    api/*current-user-id*}))
+    res))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]}]
-  (let [pk-field   (table-id->pk table-id)
-        id->db-row (query-db-rows table-id pk-field rows)]
-    (doseq [row rows]
-      (let [;; well, this is a trick, but I haven't figured out how to do single row update
-            result        (:rows-updated (perform-bulk-action! :bulk/update table-id [row]))
-            row-before    (get id->db-row (get-row-pk pk-field row))
-            [_ changes _] (diff row-before row)]
-        (when (pos-int? result)
-          (events/publish-event! :event/data-editing-row-update
-                                 {:table_id    table-id
-                                  :updated_row row
-                                  :before_row  row-before
-                                  :changes     changes
-                                  :actor_id    api/*current-user-id*}))))))
+   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+  (if (empty? rows)
+    {:updated []}
+    (let [pk-field   (table-id->pk table-id)
+          id->db-row (query-db-rows table-id pk-field rows)]
+      (doseq [row rows]
+        (let [;; well, this is a trick, but I haven't figured out how to do single row update
+              result        (:rows-updated (perform-bulk-action! :bulk/update table-id [row]))
+              row-before    (get id->db-row (get-row-pk pk-field row))
+              [_ changes _] (diff row-before row)]
+          (when (pos-int? result)
+            (events/publish-event! :event/data-editing-row-update
+                                   {:table_id    table-id
+                                    :updated_row row
+                                    :before_row  row-before
+                                    :changes     changes
+                                    :actor_id    api/*current-user-id*}))))
+      {:updated (vals (query-db-rows table-id pk-field rows))})))
 
-(api.macros/defendpoint :delete "/table/:table-id"
+(api.macros/defendpoint :post "/table/:table-id/delete"
   "Delete row(s) from the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]}]
+   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (let [pk-field    (table-id->pk table-id)
-        id->db-rows (query-db-rows table-id pk-field rows)]
-    (perform-bulk-action! :bulk/delete table-id rows)
+        id->db-rows (query-db-rows table-id pk-field rows)
+        res         (perform-bulk-action! :bulk/delete table-id rows)]
     (doseq [row rows]
       (events/publish-event! :event/data-editing-row-delete
                              {:table_id    table-id
                               :deleted_row (get id->db-rows (get-row-pk pk-field row))
-                              :actor_id    api/*current-user-id*}))))
+                              :actor_id    api/*current-user-id*}))
+    res))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
 ;; model (e.g are admins trusted with writing arbitrary SQL cases anyway, will non admins ever call this?)

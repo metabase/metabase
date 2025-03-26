@@ -36,8 +36,8 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       TableDeleteRowsRequest
     >({
       query: ({ tableId, rows }) => ({
-        method: "DELETE",
-        url: `/api/ee/data-editing/table/${tableId}`,
+        method: "POST",
+        url: `/api/ee/data-editing/table/${tableId}/delete`,
         body: { rows },
       }),
     }),

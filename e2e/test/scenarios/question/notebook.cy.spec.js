@@ -405,12 +405,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.filter();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summaries").click();
-
-    H.filterField("Max of Name", {
-      operator: "Starts with",
+    H.popover().within(() => {
+      cy.findByText("Summaries").click();
+      cy.findByText("Max of Name").click();
     });
+    H.selectFilterOperator("Starts with");
+    H.popover().findByPlaceholderText("Enter some text").should("be.visible");
   });
 
   it("should treat max/min on a category as a string filter (metabase#22154)", () => {
@@ -427,11 +427,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.filter();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summaries").click();
-    H.filterField("Min of Vendor", {
-      operator: "ends with",
+    H.popover().within(() => {
+      cy.findByText("Summaries").click();
+      cy.findByText("Min of Vendor").click();
     });
+    H.selectFilterOperator("Ends with");
+    H.popover().findByPlaceholderText("Enter some text").should("be.visible");
   });
 
   it("should prompt to join with a model if the question is based on a model", () => {
@@ -1124,6 +1125,157 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
       locale: "en",
+    });
+  });
+
+  it("should support browser based navigation (metabase#55162)", () => {
+    cy.intercept(`/api/table/${PRODUCTS_ID}/fks`).as("tableFK");
+    H.createQuestion(
+      { query: { "source-table": PRODUCTS_ID }, name: "products" },
+      { visitQuestion: true, wrapId: true },
+    );
+
+    cy.get("@questionId").then(PRODUCT_QUESTION_ID => {
+      cy.findByRole("button", { name: /Editor/ }).click();
+      cy.findByRole("button", { name: /Visualization/ }).click();
+
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products/notebook`,
+      );
+
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      cy.go("forward");
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products/notebook`,
+      );
+
+      H.openQuestionActions("Turn into a model");
+
+      H.modal()
+        .findByRole("button", { name: "Turn this into a model" })
+        .click();
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/notebook`,
+      );
+
+      H.openQuestionActions("Edit metadata");
+      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      H.openQuestionActions("Edit metadata");
+
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      );
+
+      H.datasetEditBar().findByText("Query").click();
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      );
+
+      cy.go("forward");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/query`,
+      );
+
+      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/query`,
+      );
+
+      cy.go("back");
+
+      // This should work, but doesn't (metabase#55486)
+      // cy.location("pathname").should(
+      //   "equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      // );
+
+      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+
+      cy.findAllByTestId("row-id-cell")
+        .first()
+        .findByRole("button", { hidden: true })
+        .click({ force: true });
+
+      // Cannot navigate back and forth to details modal (metabase#55487)
+      // cy.go("back");
+
+      // cy.location("pathname").should(
+      //   "equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products`,
+      // );
+
+      // cy.go("forward");
+
+      // cy.location("pathname").should(
+      //   "equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products/1`,
+      // );
+
+      /**
+       * foreign key relation orders should work, but it consistently fails in CI
+       */
+      // cy.wait("@tableFK");
+
+      // H.modal().findByTestId("fk-relation-orders").click();
+
+      // cy.location("pathname").should("contain", "/question");
+      // cy.findByTestId("filter-pill").should("contain.text", "Product ID is 1");
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      H.openQuestionActions("Turn back to saved question");
+
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      // Going back returns us to a model URL, which it should not (metabase#55488)
+      // cy.go("back");
+      // cy.location("pathname").should(
+      //   "not.equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products`,
+      // );
     });
   });
 });
