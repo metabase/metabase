@@ -10885,6 +10885,25 @@ databaseChangeLog:
               UPDATE core_user SET locale = 'zh_CN' WHERE locale = 'zh';
       rollback: # nothing to do; zh_CN is backwards compatible
 
+  - changeSet:
+      id: v54.2025-03-25T16:34:12
+      author: edpaget
+      comment: Add index to field_usage query_execution_id column to support faster deletes
+      rollback: # cannot rollback an index on a fk in mysql
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: field_usage
+                indexName: idx_field_usage_query_execution_id
+      changes:
+        - createIndex:
+            tableName: field_usage
+            columns:
+              - column:
+                  name: query_execution_id
+            indexName: idx_field_usage_query_execution_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
