@@ -11,7 +11,12 @@ import {
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
-import type { Dataset, Field, RowValue, RowValues } from "metabase-types/api";
+import type {
+  DatasetData,
+  Field,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 
 import { canEditField } from "../../helpers";
 import type { UpdatedRowCellsHandlerParams } from "../types";
@@ -21,8 +26,8 @@ import { EditingBodyCellWrapper } from "./EditingBodyCell";
 import { useTableEditing } from "./use-table-editing";
 
 type EditTableDataGridProps = {
-  data: Dataset;
-  fieldMetadataMap?: Record<Field["name"], Field>;
+  data: DatasetData;
+  fieldMetadataMap: Record<Field["name"], Field>;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onRowExpandClick: (rowIndex: number) => void;
 };
@@ -33,10 +38,7 @@ export const EditTableDataGrid = ({
   onCellValueUpdate,
   onRowExpandClick,
 }: EditTableDataGridProps) => {
-  const { cols, rows } = useMemo(
-    () => extractRemappedColumns(data.data),
-    [data.data],
-  );
+  const { cols, rows } = useMemo(() => extractRemappedColumns(data), [data]);
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
     useTableEditing();

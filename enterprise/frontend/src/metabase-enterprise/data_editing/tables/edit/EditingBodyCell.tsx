@@ -42,7 +42,7 @@ export const EditingBodyCellWrapper = (
     (value: RowValue) => {
       if (value !== initialValue) {
         onCellValueUpdate({
-          data: { [columnName]: value },
+          updatedData: { [columnName]: value },
           rowIndex,
         });
       }
