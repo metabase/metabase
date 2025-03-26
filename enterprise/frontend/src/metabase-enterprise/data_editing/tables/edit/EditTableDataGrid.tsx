@@ -11,14 +11,9 @@ import {
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
-import type {
-  DatasetColumn,
-  DatasetData,
-  RowValue,
-  RowValues,
-} from "metabase-types/api";
+import type { DatasetData, Field, RowValue, RowValues } from "metabase-types/api";
 
-import { canEditColumn } from "../../helpers";
+import { canEditField } from "../../helpers";
 import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
@@ -27,25 +22,18 @@ import { useTableEditing } from "./use-table-editing";
 
 type EditTableDataGridProps = {
   data: DatasetData;
+  fieldMetadataMap?: Record<Field["name"], Field>;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onRowExpandClick: (rowIndex: number) => void;
 };
 
 export const EditTableDataGrid = ({
   data,
+  fieldMetadataMap,
   onCellValueUpdate,
   onRowExpandClick,
 }: EditTableDataGridProps) => {
   const { cols, rows } = useMemo(() => extractRemappedColumns(data), [data]);
-
-  const columnIdMap = useMemo(
-    () =>
-      cols.reduce(
-        (acc, col) => ({ ...acc, [col.name]: col }),
-        {} as Record<string, DatasetColumn>,
-      ),
-    [cols],
-  );
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
     useTableEditing();
@@ -73,6 +61,7 @@ export const EditTableDataGrid = ({
           <EditingBodyCellWrapper
             cellContext={cellContext}
             column={column}
+            field={fieldMetadataMap?.[column.name]}
             onCellValueUpdate={onCellValueUpdate}
             onCellEditCancel={onCellEditCancel}
           />
@@ -82,7 +71,13 @@ export const EditTableDataGrid = ({
 
       return options;
     });
-  }, [cols, editingCellId, onCellEditCancel, onCellValueUpdate]);
+  }, [
+    cols,
+    fieldMetadataMap,
+    editingCellId,
+    onCellEditCancel,
+    onCellValueUpdate,
+  ]);
 
   const rowId: RowIdColumnOptions = useMemo(
     () => ({
@@ -111,9 +106,9 @@ export const EditTableDataGrid = ({
         columnId: string;
       },
     ) => {
-      const column = columnIdMap[columnId];
+      const field = fieldMetadataMap?.[columnId];
       // Disables editing for some columns, such as primary keys
-      if (column && !canEditColumn(column)) {
+      if (!canEditField(field)) {
         return;
       }
 
@@ -123,7 +118,7 @@ export const EditTableDataGrid = ({
         onCellClickToEdit(cellId);
       }
     },
-    [onCellClickToEdit, editingCellId, columnIdMap],
+    [onCellClickToEdit, editingCellId, fieldMetadataMap],
   );
 
   return (

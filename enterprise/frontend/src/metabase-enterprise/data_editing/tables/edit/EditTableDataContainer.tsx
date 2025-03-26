@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -5,6 +6,7 @@ import {
   useGetDatabaseMetadataQuery,
   useGetTableDataQuery,
   useGetTableQuery,
+  useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { GenericError } from "metabase/components/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
@@ -12,6 +14,7 @@ import { closeNavbar } from "metabase/redux/app";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
+import type { Field } from "metabase-types/api";
 
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
@@ -38,6 +41,21 @@ export const EditTableDataContainer = ({
   const { data: table, isLoading: tableIdLoading } = useGetTableQuery({
     id: tableId,
   });
+  const { data: tableMetadata } = useGetTableQueryMetadataQuery({
+    id: tableId,
+  });
+
+  const tableFieldMetadataMap = useMemo(
+    () =>
+      tableMetadata?.fields?.reduce(
+        (acc, item) => ({
+          ...acc,
+          [item.name]: item,
+        }),
+        {} as Record<Field["name"], Field>,
+      ),
+    [tableMetadata],
+  );
 
   const { data: datasetData, isLoading } = useGetTableDataQuery({
     tableId,
@@ -64,7 +82,7 @@ export const EditTableDataContainer = ({
     return null;
   }
 
-  if (!datasetData) {
+  if (!datasetData || !tableFieldMetadataMap) {
     // TODO: show error
     return null;
   }
@@ -83,6 +101,7 @@ export const EditTableDataContainer = ({
             <Box pos="relative" className={S.gridWrapper}>
               <EditTableDataGrid
                 data={datasetData.data}
+                fieldMetadataMap={tableFieldMetadataMap}
                 onCellValueUpdate={handleCellValueUpdate}
                 onRowExpandClick={handleModalOpenAndExpandedRow}
               />
@@ -111,7 +130,7 @@ export const EditTableDataContainer = ({
       <EditingBaseRowModal
         opened={isCreateRowModalOpen}
         onClose={closeCreateRowModal}
-        onValueChange={handleCellValueUpdate}
+        onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleExpandedRowDelete}
         datasetColumns={datasetData.data.cols}
@@ -122,6 +141,7 @@ export const EditTableDataContainer = ({
             : undefined
         }
         isLoading={isInserting}
+        fieldMetadataMap={tableFieldMetadataMap}
       />
     </>
   );
