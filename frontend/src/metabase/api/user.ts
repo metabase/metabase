@@ -52,7 +52,7 @@ export const userApi = Api.injectEndpoints({
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("user")]),
       onQueryStarted: async (_request, { dispatch, queryFulfilled }) => {
         const { data: user } = await queryFulfilled;
-        // for compatibility with code that relies on the entity framework
+        // entity framework compatibility
         dispatch({
           type: "metabase/entities/users/CREATE",
           payload: { user },
@@ -94,7 +94,7 @@ export const userApi = Api.injectEndpoints({
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
       onQueryStarted: async (_request, { dispatch, queryFulfilled }) => {
         const { data: user } = await queryFulfilled;
-        // for compatibility with code that relies on the entity framework
+        // entity framework compatibility
         dispatch({
           type: "metabase/entities/users/UPDATE",
           payload: { user },
