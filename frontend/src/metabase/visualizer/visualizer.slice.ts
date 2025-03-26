@@ -50,6 +50,7 @@ import {
   addDimensionColumnToCartesianChart,
   addMetricColumnToCartesianChart,
   cartesianDropHandler,
+  maybeImportDimensionsFromOtherDataSources,
   removeColumnFromCartesianChart,
 } from "./visualizations/cartesian";
 import {
@@ -160,11 +161,29 @@ export const addColumn = createAsyncThunk<
 >(
   "metabase/visualizer/addColumn",
   ({ dataSource, column }, { dispatch, getState }) => {
-    const card = getCards(getState()).find(
-      card => card.id === dataSource.sourceId,
+    const cards = getCards(getState());
+    const datasetMap = getDatasets(getState());
+
+    const card = cards.find(card => card.id === dataSource.sourceId);
+    const dataset = datasetMap[dataSource.id];
+
+    const dataSourceMap = Object.fromEntries(
+      cards.map(card => {
+        const dataSource = createDataSource("card", card.id, card.name);
+        return [dataSource.id, dataSource];
+      }),
     );
-    const dataset = getDatasets(getState())[dataSource.id];
-    dispatch(addColumnInner({ dataSource, column, card, dataset }));
+
+    dispatch(
+      addColumnInner({
+        dataSource,
+        column,
+        card,
+        dataset,
+        datasetMap,
+        dataSourceMap,
+      }),
+    );
   },
 );
 
@@ -244,6 +263,8 @@ const visualizerHistoryItemSlice = createSlice({
         dataSource: VisualizerDataSource;
         dataset: Dataset;
         column: DatasetColumn;
+        dataSourceMap: Record<VisualizerDataSourceId, VisualizerDataSource>;
+        datasetMap: Record<VisualizerDataSourceId, Dataset>;
         card?: Card;
       }>,
     ) => {
@@ -251,6 +272,8 @@ const visualizerHistoryItemSlice = createSlice({
         dataSource,
         dataset,
         column: originalColumn,
+        dataSourceMap,
+        datasetMap,
         card,
       } = action.payload;
       if (!state.display) {
@@ -271,10 +294,24 @@ const visualizerHistoryItemSlice = createSlice({
         addColumnToFunnel(state, column, columnRef, dataSource, dataset, card);
         return;
       }
-      state.columns.push(column);
-      state.columnValuesMapping[column.name] = [columnRef];
       if (isCartesianChart(state.display)) {
         addColumnToCartesianChart(state, column, columnRef, dataSource, card);
+
+        const dimension = state.settings["graph.dimensions"] ?? [];
+        const isDimension = dimension.includes(column.name);
+
+        if (isDimension && column.id) {
+          const datasets = card
+            ? _.omit(datasetMap, `card:${card.id}`)
+            : datasetMap;
+
+          maybeImportDimensionsFromOtherDataSources(
+            state,
+            column.id,
+            datasets,
+            dataSourceMap,
+          );
+        }
       } else if (state.display === "pie") {
         addColumnToPieChart(state, column);
       }

@@ -15,7 +15,7 @@ import {
   shouldSplitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import { isCategory, isDate } from "metabase-lib/v1/types/utils/isa";
-import type { Card, DatasetColumn } from "metabase-types/api";
+import type { Card, Dataset, DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerDataSource,
@@ -296,5 +296,39 @@ function removeDimensionFromMultiSeriesChart(
   removedColumns.forEach(name => {
     state.columns = state.columns.filter(col => col.name !== name);
     delete state.columnValuesMapping[name];
+  });
+}
+
+export function maybeImportDimensionsFromOtherDataSources(
+  state: VisualizerHistoryItem,
+  dimensionId: number,
+  datasetMap: Record<string, Dataset>,
+  dataSourceMap: Record<string, VisualizerDataSource>,
+) {
+  Object.entries(datasetMap).forEach(([dataSourceId, dataset]) => {
+    const dataSource = dataSourceMap[dataSourceId];
+    const matchingDimension = dataset.data.cols.find(
+      col => col.id === dimensionId,
+    );
+    if (matchingDimension) {
+      const columnRef = createVisualizerColumnReference(
+        dataSource,
+        matchingDimension,
+        extractReferencedColumns(state.columnValuesMapping),
+      );
+      const column = copyColumn(
+        columnRef.name,
+        matchingDimension,
+        dataSource.name,
+        state.columns,
+      );
+
+      state.columns.push(column);
+      state.columnValuesMapping[column.name] = [columnRef];
+      if (!state.settings["graph.dimensions"]) {
+        state.settings["graph.dimensions"] = [];
+      }
+      state.settings["graph.dimensions"].push(column.name);
+    }
   });
 }
