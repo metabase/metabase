@@ -1,5 +1,3 @@
-/* eslint-disable jest/expect-expect */
-/* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectButtonInHeader"] }] */
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 

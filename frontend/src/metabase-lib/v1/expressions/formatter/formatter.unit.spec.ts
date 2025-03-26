@@ -1,5 +1,3 @@
-/* eslint-disable jest/expect-expect */
-
 import expression from "ts-dedent";
 
 import type { Expression } from "metabase-types/api";
@@ -11,9 +9,11 @@ import type { StartRule } from "../types";
 import { format } from "./formatter";
 
 function setup(printWidth: number, startRule: StartRule = "expression") {
-  async function isFormatted(expressions: string | string[]): Promise<void> {
+  async function assertFormatted(
+    expressions: string | string[],
+  ): Promise<void> {
     if (!Array.isArray(expressions)) {
-      return isFormatted([expressions]);
+      return assertFormatted([expressions]);
     }
     for (const source of expressions) {
       const options = {
@@ -39,15 +39,15 @@ function setup(printWidth: number, startRule: StartRule = "expression") {
       expect(result).toBe(source);
     }
   }
-  return { isFormatted };
+  return { assertFormatted };
 }
 
 describe("format", () => {
   describe("printWidth = 25", () => {
-    const { isFormatted } = setup(25);
+    const { assertFormatted } = setup(25);
 
     it("formats nested arithmetic expressions", async () => {
-      await isFormatted([
+      await assertFormatted([
         expression`
           1 + 2 - 3 + 4 / 5
         `,
@@ -85,7 +85,7 @@ describe("format", () => {
     });
 
     it("formats function calls", async () => {
-      await isFormatted([
+      await assertFormatted([
         expression`
           concat(
             "http://mysite.com/user/",
@@ -121,7 +121,7 @@ describe("format", () => {
     });
 
     it("formats chained function calls", async () => {
-      await isFormatted([
+      await assertFormatted([
         expression`
           concat("a", "b")
           AND concat("c", "d")
@@ -162,8 +162,8 @@ describe("format", () => {
     });
 
     it("formats unary operators", async () => {
-      const { isFormatted } = setup(25, "boolean");
-      await isFormatted([
+      const { assertFormatted } = setup(25, "boolean");
+      await assertFormatted([
         expression`
           NOT [Total] < 10
         `,

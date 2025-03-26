@@ -255,6 +255,13 @@ module.exports = {
       ],
       rules: {
         "jest/valid-title": ["error", { ignoreTypeOfDescribeName: true }],
+        "jest/expect-expect": [
+          "error",
+          {
+            "assertFunctionNames": ["expect*", "assert*"],
+            "additionalTestBlockFunctions": []
+          }
+        ],
       },
     },
     {

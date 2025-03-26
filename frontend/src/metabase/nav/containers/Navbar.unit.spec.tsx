@@ -1,4 +1,3 @@
-/* eslint-disable jest/expect-expect */
 import type { Store } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
