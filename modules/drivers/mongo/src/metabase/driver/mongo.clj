@@ -220,7 +220,10 @@
                                                             "object"     {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
                                                                                    "then" "$$item.v"
                                                                                    "else" nil}}
-                                                            "type"       {"$type" "$$item.v"}}}}}}
+                                                            "type"       {"$type" "$$item.v"}
+                                                            "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
+                                                                                       "args" ["$$item.v" {"$type" "$$item.v"}]
+                                                                                       "lang" "js"}}}}}}}
                        {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
                        {"$project" {"path"       "$kvs.k"
                                     "result"     {"$literal" false}

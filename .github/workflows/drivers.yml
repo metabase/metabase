@@ -368,6 +368,7 @@ jobs:
         env:
           MONGO_INITDB_ROOT_USERNAME: metabase
           MONGO_INITDB_ROOT_PASSWORD: metasample123
+        command: ["--noscripting"]
     name: ${{ matrix.version.name }}
     steps:
     - uses: actions/checkout@v4
