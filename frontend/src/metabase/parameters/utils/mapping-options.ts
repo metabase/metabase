@@ -245,7 +245,8 @@ export function getMappingOptionByTarget(
 
   const { query, columns } = getParameterColumns(question, parameter);
   const stageCount = Lib.stageCount(query);
-  const stageIndex = getStageIndexFromTarget(target) ?? stageCount - 1;
+  const lastStageIndex = stageCount - 1;
+  const stageIndex = getStageIndexFromTarget(target) ?? lastStageIndex;
   const stageColumns = columns
     .filter(column => column.stageIndex === stageIndex)
     .map(({ column }) => column);
