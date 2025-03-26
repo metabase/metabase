@@ -4,6 +4,12 @@
   overflow: hidden;
 }
 
+.tableRoot {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
 .gridWrapper {
   overflow: hidden;
   flex-grow: 1;

@@ -25,6 +25,7 @@ import { Scalar } from "./visualizations/Scalar";
 import { ScatterPlot } from "./visualizations/ScatterPlot";
 import { SmartScalar } from "./visualizations/SmartScalar";
 import Table from "./visualizations/Table/Table";
+import { TableEditable } from "./visualizations/TableEditable";
 import { Text } from "./visualizations/Text";
 import { WaterfallChart } from "./visualizations/WaterfallChart";
 
@@ -54,6 +55,8 @@ export default function () {
   registerVisualization(LinkViz);
   registerVisualization(Text);
   registerVisualization(IFrameViz);
+
+  registerVisualization(TableEditable);
 
   setDefaultVisualization(Table);
 }

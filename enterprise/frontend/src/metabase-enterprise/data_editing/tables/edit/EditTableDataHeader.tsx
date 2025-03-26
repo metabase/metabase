@@ -8,13 +8,11 @@ import { EditTableDataBackButton } from "./EditTableDataBackButton";
 interface EditTableDataHeaderProps {
   table: Table;
   onCreate: () => void;
-  onDelete: () => void;
 }
 
 export const EditTableDataHeader = ({
   table,
   onCreate,
-  // onDelete,
 }: EditTableDataHeaderProps) => {
   return (
     <Flex
@@ -34,11 +32,6 @@ export const EditTableDataHeader = ({
           variant="filled"
           onClick={onCreate}
         >{t`New record`}</Button>
-        {/* <Button
-          leftSection={<Icon name="trash" />}
-          disabled
-          onClick={onDelete}
-        >{t`Delete`}</Button> */}
       </Group>
     </Flex>
   );

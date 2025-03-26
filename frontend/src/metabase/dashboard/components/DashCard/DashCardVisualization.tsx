@@ -163,6 +163,7 @@ export function DashCardVisualization({
           </Flex>
         );
       }
+
       return (
         <ClickBehaviorSidebarOverlay
           dashcard={dashcard}
@@ -214,6 +215,7 @@ export function DashCardVisualization({
       isPublicOrEmbedded,
       isEditing,
       downloadsEnabled,
+      card: dashcard.card,
     });
 
     if (!shouldShowDashCardMenu) {
@@ -245,6 +247,7 @@ export function DashCardVisualization({
     dashcard.dashboard_id,
     dashboard.id,
     downloadsEnabled,
+    dashcard.card,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
