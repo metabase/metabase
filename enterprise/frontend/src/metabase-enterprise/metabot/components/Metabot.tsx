@@ -35,7 +35,7 @@ export const Metabot = () => {
 
   return (
     <ErrorBoundary errorComponent={() => null}>
-      <MetabotChat onClose={onClose} withMicrophone />
+      <MetabotChat onClose={onClose} />
     </ErrorBoundary>
   );
 };
