@@ -49,6 +49,16 @@ export const MetabotChat = ({
       .catch(err => console.error(err))
       .finally(() => textareaRef.current?.focus());
   };
+  const handleSpeech = (input: string) => {
+    resetInput();
+    metabot
+      .submitInput(input.trim())
+      .then(result => {
+        onResult?.(result);
+      })
+      .catch(err => console.error(err))
+      .finally(() => textareaRef.current?.focus());
+  };
 
   const handleClose = useCallback(() => {
     resetInput();
@@ -149,7 +159,7 @@ export const MetabotChat = ({
             }
           }}
         />
-        {withMicrophone && <MicrophoneButton />}
+        {withMicrophone && <MicrophoneButton onSpeechResult={handleSpeech} />}
         <UnstyledButton
           h="1rem"
           onClick={handleClose}
