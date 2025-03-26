@@ -1,0 +1,3 @@
+```ts
+type LimitClause = number;
+```

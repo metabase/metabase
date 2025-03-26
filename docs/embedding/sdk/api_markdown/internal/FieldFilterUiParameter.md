@@ -1,0 +1,27 @@
+## Extends
+
+- [`ValuePopulatedParameter`](ValuePopulatedParameter.md)
+
+## Properties
+
+| Property | Type | Inherited from |
+| ------ | ------ | ------ |
+| <a id="default"></a> `default?` | `any` | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`default`](ValuePopulatedParameter.md#default) |
+| <a id="display-name"></a> `display-name?` | `string` | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`display-name`](ValuePopulatedParameter.md#display-name) |
+| <a id="fields"></a> `fields` | `Field`[] | - |
+| <a id="filteringparameters"></a> `filteringParameters?` | `string`[] | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`filteringParameters`](ValuePopulatedParameter.md#filteringparameters) |
+| <a id="hasvariabletemplatetagtarget"></a> `hasVariableTemplateTagTarget?` | `boolean` | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`hasVariableTemplateTagTarget`](ValuePopulatedParameter.md#hasvariabletemplatetagtarget) |
+| <a id="id"></a> `id` | `string` | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`id`](ValuePopulatedParameter.md#id) |
+| <a id="ismultiselect"></a> `isMultiSelect?` | `boolean` | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`isMultiSelect`](ValuePopulatedParameter.md#ismultiselect) |
+| <a id="name"></a> `name` | `string` | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`name`](ValuePopulatedParameter.md#name) |
+| <a id="options"></a> `options?` | [`ParameterOptions`](ParameterOptions.md) | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`options`](ValuePopulatedParameter.md#options) |
+| <a id="required"></a> `required?` | `boolean` | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`required`](ValuePopulatedParameter.md#required) |
+| <a id="sectionid"></a> `sectionId?` | `string` | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`sectionId`](ValuePopulatedParameter.md#sectionid) |
+| <a id="slug"></a> `slug` | `string` | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`slug`](ValuePopulatedParameter.md#slug) |
+| <a id="target"></a> `target?` | [`ParameterTarget`](ParameterTarget.md) | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`target`](ValuePopulatedParameter.md#target) |
+| <a id="temporal_units"></a> `temporal_units?` | [`TemporalUnit`](TemporalUnit.md)[] | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`temporal_units`](ValuePopulatedParameter.md#temporal_units) |
+| <a id="type"></a> `type` | `string` | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`type`](ValuePopulatedParameter.md#type) |
+| <a id="value"></a> `value?` | `any` | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`value`](ValuePopulatedParameter.md#value) |
+| <a id="values_query_type"></a> `values_query_type?` | [`ValuesQueryType`](ValuesQueryType.md) | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`values_query_type`](ValuePopulatedParameter.md#values_query_type) |
+| <a id="values_source_config"></a> `values_source_config?` | [`ValuesSourceConfig`](ValuesSourceConfig.md) | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`values_source_config`](ValuePopulatedParameter.md#values_source_config) |
+| <a id="values_source_type"></a> `values_source_type?` | [`ValuesSourceType`](ValuesSourceType.md) | [`ValuePopulatedParameter`](ValuePopulatedParameter.md).[`values_source_type`](ValuePopulatedParameter.md#values_source_type) |
