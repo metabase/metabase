@@ -1249,15 +1249,10 @@ describe("scenarios > dashboard", () => {
         H.saveDashboard();
 
         // move tab
-        H.editDashboard();
-
-        dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -500);
-
-        // Verify tab order with more robust assertions
-        cy.findAllByRole("tab").should($tabs => {
-          expect($tabs[0].textContent).to.equal("Tab 2");
-          expect($tabs[1].textContent).to.equal("Tab 1");
-        });
+        dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
+        // assert tab order is now correct and ui has caught up to result of dragging the tab
+        cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
+        cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
 
         assertPreventLeave();
         H.saveDashboard();
