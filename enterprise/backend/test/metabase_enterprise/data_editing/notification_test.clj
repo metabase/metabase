@@ -132,8 +132,8 @@
    (fn []
      (mt/user-http-request
       :crowberto
-      :delete
-      (data-editing.tu/table-url (mt/id :categories))
+      :post
+      (format "%s/delete" (data-editing.tu/table-url (mt/id :categories)))
       {:rows [{:ID 1}]}))
 
    {:channel/slack (fn [[message :as msgs]]
