@@ -326,11 +326,12 @@
 (lib.common/defop integer [x])
 
 (mu/defn value :- ::lib.schema.expression/expression
-  [value :- [:or :string number? :boolean [:fn u.number/bigint?]]]
-  (let [base-type (lib.schema.expression/type-of value)]
+  "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
+  [literal :- [:or :string number? :boolean [:fn u.number/bigint?]]]
+  (let [base-type (lib.schema.expression/type-of literal)]
     (lib.options/ensure-uuid [:value
                               {:base-type base-type, :effective-type base-type}
-                              (cond-> value (u.number/bigint? value) str)])))
+                              (cond-> literal (u.number/bigint? literal) str)])))
 
 (mu/defn- expression-metadata :- ::lib.schema.metadata/column
   [query                 :- ::lib.schema/query

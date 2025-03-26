@@ -11,6 +11,8 @@
    [metabase.util.number :as u.number]
    [metabase.util.time.impl-common :as u.time.impl-common]))
 
+(comment metabase.lib.schema.literal.jvm/keep-me)
+
 (defmethod expression/type-of-method :dispatch-type/nil
   [_nil]
   :type/*)
