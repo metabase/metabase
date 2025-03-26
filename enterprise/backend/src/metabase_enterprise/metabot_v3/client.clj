@@ -80,6 +80,9 @@
 (defn- fix-sql-endpoint []
   (str (ai-proxy-base-url) "/v1/sql/fix"))
 
+(defn- generate-sql-endpoint []
+  (str (ai-proxy-base-url) "/v1/sql/generate"))
+
 (mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response-v2
   "Make a V2 request to the AI Proxy."
   [{:keys [context messages conversation-id session-id state]}
@@ -178,6 +181,22 @@
     (if (= (:status response) 200)
       (:body response)
       (throw (ex-info (format "Error in request to AI service: unexpected status code: %d %s"
+                              (:status response) (:reason-phrase response))
+                      {:request (assoc options :body body)
+                       :response response})))))
+
+(mu/defn generate-sql
+  "Ask the AI service to generate SQL given instructions, dialect, and an optional schema_ddl."
+  [body :- [:map
+            [:instructions :string]
+            [:dialect :keyword]
+            [:schema_ddl {:optional true} :string]]]
+  (let [url (generate-sql-endpoint)
+        options (build-request-options body)
+        response (post! url options)]
+    (if (= (:status response) 200)
+      (:body response)
+      (throw (ex-info (format "Error calling AI service for SQL generation: %d %s"
                               (:status response) (:reason-phrase response))
                       {:request (assoc options :body body)
                        :response response})))))

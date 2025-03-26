@@ -180,6 +180,10 @@
   "Should Metabase suggest SQL fixes?"
   :ai-sql-fixer)
 
+(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-generation?
+  "Should Metabase suggest SQL fixes?"
+  :ai-sql-generation)
+
 (define-premium-feature enable-upload-management?
   "Should we allow admins to clean up tables created from uploads?"
   :upload-management)

@@ -9,4 +9,5 @@
  [metabase-enterprise.metabot-v3.api
   routes]
  [metabase-enterprise.metabot-v3.client
-  fix-sql])
+  fix-sql
+  generate-sql])
