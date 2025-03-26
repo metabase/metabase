@@ -79,9 +79,9 @@
   for `X-METABASE-SESSION`. If neither is found then no keyword is bound to the request."
   [handler]
   (fn [request respond raise]
-    (let [request (or (wrap-session-key-with-strategy :best request)
-                      request)]
-      (handler request respond raise))))
+    (let [request (or (wrap-session-key-with-strategy :best request) request)]
+      (log/with-context {:mb-session-key (:metabase-session-key request)}
+        (handler request respond raise)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             wrap-current-user-info                                             |
