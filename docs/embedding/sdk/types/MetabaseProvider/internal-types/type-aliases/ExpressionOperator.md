@@ -1,3 +1,0 @@
-```ts
-type ExpressionOperator = string;
-```

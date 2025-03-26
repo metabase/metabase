@@ -33,6 +33,9 @@ import {
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkQuestionId } from "embedding-sdk/types/question";
 
+/**
+ * @interface
+ */
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId: SdkQuestionId;
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];

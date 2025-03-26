@@ -1,3 +1,0 @@
-```ts
-type OrderByClause = OrderBy[];
-```

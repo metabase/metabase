@@ -36,7 +36,9 @@ export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
 // declared. `const authConfig = defineMetabaseAuthConfig({})` will have the type of
 // `MetabaseAuthConfig` and even provide autocompletion for js users depending on their
 // IDE configuration.
-
+/**
+ * Defines a Metabase auth config.
+ */
 export const defineMetabaseAuthConfig = (
   config: MetabaseAuthConfig,
 ): MetabaseAuthConfig => config;
