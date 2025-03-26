@@ -672,7 +672,7 @@ function updateQuestion() {
 
 function removeSourceColumns() {
   cy.findByTestId("fields-picker").click();
-  H.popover().findByText("Select none").click();
+  H.popover().findByText("Select all").click();
 }
 
 function createAdHocQuestion(questionName) {

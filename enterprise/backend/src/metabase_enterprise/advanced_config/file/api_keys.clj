@@ -3,6 +3,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
+   [metabase.models.api-key :as api-key]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
@@ -10,11 +11,15 @@
    [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/name
   string?)
 
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/key
-  string?)
+  (s/and string?
+         #(<= 11 (count %) 254)
+         #(re-matches #"mb_[A-Za-z0-9+/=]+" %)))
 
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/creator
   string?)
@@ -55,7 +60,13 @@
                    "admin" (u/the-id (perms/admin-group))
                    "all-users" (u/the-id (perms/all-users-group)))
         unhashed-key (u.secret/secret key)
+        prefix (api-key/prefix (u.secret/expose unhashed-key))
         creator (get-admin-user-by-email creator)]
+
+    ;; Check if there's an existing API key with the same prefix
+    (when (t2/exists? :model/ApiKey :key_prefix prefix)
+      (throw (ex-info (format "API key with prefix '%s' already exists. Keys must have unique prefixes." prefix)
+                      {:name name :prefix prefix})))
 
     (if-let [existing-api-key (select-api-key name)]
       (do

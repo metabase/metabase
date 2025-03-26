@@ -8,15 +8,15 @@ import { FilterColumnPicker } from "./FilterColumnPicker";
 
 interface SetupOpts {
   query: Lib.Query;
-  stageIndex: number;
+  stageIndexes: number[];
 }
 
-function setup({ query, stageIndex }: SetupOpts) {
+function setup({ query, stageIndexes }: SetupOpts) {
   setupFieldsValuesEndpoints(SAMPLE_DB_FIELD_VALUES);
   renderWithProviders(
     <FilterColumnPicker
       query={query}
-      stageIndex={stageIndex}
+      stageIndexes={stageIndexes}
       checkItemIsSelected={() => false}
       onColumnSelect={jest.fn()}
       onSegmentSelect={jest.fn()}
@@ -25,11 +25,11 @@ function setup({ query, stageIndex }: SetupOpts) {
   );
 }
 
-describe("FilterModal", () => {
+describe("FilterColumnPicker", () => {
   test("The info icon should exist on each column", () => {
     const query = createQuery();
-    const stageIndex = 0;
-    setup({ query, stageIndex });
+    const stageIndexes = [0];
+    setup({ query, stageIndexes });
     expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
       1,
     );
@@ -37,8 +37,8 @@ describe("FilterModal", () => {
 
   test("Searching by displayName should works (#39622)", () => {
     const query = createQuery();
-    const stageIndex = 0;
-    setup({ query, stageIndex });
+    const stageIndexes = [0];
+    setup({ query, stageIndexes });
 
     screen.getByText("User").click();
     fireEvent.change(screen.getByTestId("list-search-field"), {

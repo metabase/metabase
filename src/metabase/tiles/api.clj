@@ -135,21 +135,6 @@
 
 ;;; ---------------------------------------------------- ENDPOINTS ----------------------------------------------------
 
-(defn- int-or-string
-  "Parse a string into an integer if it can be otherwise return the string. Intended to determine whether something is a
-  field id or a field name."
-  [x]
-  (if (re-matches #"\d+" x)
-    (Integer/parseInt x)
-    x))
-
-(defn- field-ref
-  "Makes a field reference for `id-or-name`. If id, the type information can be determined, if a string, must be
-  provided. Since we deal exclusively with lat/long fields, assumed to be a float."
-  [id-or-name]
-  (let [id-or-name' (int-or-string id-or-name)]
-    [:field id-or-name' (when (string? id-or-name') {:base-type :type/Float})]))
-
 (defn- tiles-query
   "Transform a card's query into a query finding coordinates in a particular region.
 
@@ -157,10 +142,8 @@
   - add [:inside lat lon bounding-region coordings] filter
   - limit query results to `tile-coordinate-limit` number of results
   - only select lat and lon fields rather than entire query's fields"
-  [query zoom x y lat-field lon-field]
-  (let [query         (mbql.normalize/normalize query)
-        lat-field-ref (field-ref lat-field)
-        lon-field-ref (field-ref lon-field)]
+  [query zoom x y lat-field-ref lon-field-ref]
+  (let [query (mbql.normalize/normalize query)]
     (-> query
         native->source-query
         (update :query query-with-inside-filter
@@ -176,16 +159,16 @@
 
 (mr/def :api.tiles/route-params
   [:map
-   [:zoom        ms/Int]
-   [:x           ms/Int]
-   [:y           ms/Int]
-   [:lat-field   :api.tiles/field-id-or-name]
-   [:lon-field   :api.tiles/field-id-or-name]])
+   [:zoom      ms/Int]
+   [:x         ms/Int]
+   [:y         ms/Int]
+   [:lat-field :string]
+   [:lon-field :string]])
 
 (defn- result->points
-  [{{:keys [rows cols]} :data} lat-field lon-field]
-  (let [lat-key (qp.util/field-ref->key (field-ref lat-field))
-        lon-key (qp.util/field-ref->key (field-ref lon-field))
+  [{{:keys [rows cols]} :data} lat-field-ref lon-field-ref]
+  (let [lat-key (qp.util/field-ref->key lat-field-ref)
+        lon-key (qp.util/field-ref->key lon-field-ref)
         find-fn (fn [lat-or-lon-key]
                   (first (keep-indexed
                           (fn [idx col] (when (= (qp.util/field-ref->key (:field_ref col)) lat-or-lon-key) idx))
@@ -217,6 +200,8 @@
    {:keys [query]} :- [:map
                        [:query ms/JSONString]]]
   (let [query         (json/decode+kw query)
+        lat-field     (mbql.normalize/normalize (json/decode+kw lat-field))
+        lon-field     (mbql.normalize/normalize (json/decode+kw lon-field))
         updated-query (tiles-query query zoom x y lat-field lon-field)
         result        (qp/process-query
                        (qp/userland-query updated-query {:executed-by api/*current-user-id*
@@ -226,8 +211,10 @@
 
 (defn process-tiles-query-for-card
   "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG"
-  [card-id parameters zoom x y lat-field lon-field]
-  (let [result
+  [card-id parameters zoom x y lat-field-ref lon-field-ref]
+  (let [lat-field-ref (mbql.normalize/normalize lat-field-ref)
+        lon-field-ref (mbql.normalize/normalize lon-field-ref)
+        result
         (qp.card/process-query-for-card
          card-id
          :api
@@ -237,16 +224,18 @@
                        (fn [query info]
                          (-> query
                              (update :info merge info)
-                             (tiles-query zoom x y lat-field lon-field)
+                             (tiles-query zoom x y lat-field-ref lon-field-ref)
                              qp/userland-query
                              qp/process-query)))})
-        points (result->points result lat-field lon-field)]
+        points (result->points result lat-field-ref lon-field-ref)]
     (tiles-response result zoom points)))
 
 (defn process-tiles-query-for-dashcard
   "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG"
-  [dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field]
-  (let [result
+  [dashboard-id dashcard-id card-id parameters zoom x y lat-field-ref lon-field-ref]
+  (let [lat-field-ref (mbql.normalize/normalize lat-field-ref)
+        lon-field-ref (mbql.normalize/normalize lon-field-ref)
+        result
         (qp.dashboard/process-query-for-dashcard
          :dashboard-id  dashboard-id
          :dashcard-id   dashcard-id
@@ -258,10 +247,10 @@
                          (fn [query info]
                            (-> query
                                (update :info merge info)
-                               (tiles-query zoom x y lat-field lon-field)
+                               (tiles-query zoom x y lat-field-ref lon-field-ref)
                                qp/userland-query
                                qp/process-query))))
-        points (result->points result lat-field lon-field)]
+        points (result->points result lat-field-ref lon-field-ref)]
     (tiles-response result zoom points)))
 
 (api.macros/defendpoint :get "/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
@@ -274,7 +263,9 @@
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
-  (let [parameters (json/decode+kw parameters)]
+  (let [parameters (json/decode+kw parameters)
+        lat-field  (json/decode+kw lat-field)
+        lon-field  (json/decode+kw lon-field)]
     (process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field)))
 
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
@@ -289,5 +280,7 @@
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
-  (let [parameters (json/decode+kw parameters)]
+  (let [parameters (json/decode+kw parameters)
+        lat-field  (json/decode+kw lat-field)
+        lon-field  (json/decode+kw lon-field)]
     (process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))

@@ -48,12 +48,13 @@ describe("scenarios > models", () => {
       assertIsModel();
 
       H.filter();
-      H.filterField("Vendor", {
-        operator: "Contains",
-        value: "Fisher",
+      H.popover().findByText("Vendor").click();
+      H.selectFilterOperator("Contains");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("Fisher");
+        cy.button("Add filter").click();
       });
-
-      cy.findByTestId("apply-filters").click();
+      H.runButtonOverlay().click();
       cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({
@@ -98,12 +99,13 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     H.filter();
-    H.filterField("VENDOR", {
-      operator: "Contains",
-      value: "Fisher",
+    H.popover().findByText("VENDOR").click();
+    H.selectFilterOperator("Contains");
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("Fisher");
+      cy.button("Add filter").click();
     });
-
-    cy.findByTestId("apply-filters").click();
+    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
@@ -163,30 +165,14 @@ describe("scenarios > models", () => {
       });
     });
 
-    // Filtering on the long column is currently broken in master (metabase#47863),
-    // but this works in the release-x.50.x branch.
-    //
-    // filter();
-    // filterField(
-    //   "TOTAL_NUMBER_OF_PEOPLE_FROM_EACH_STATE_SEPARATED_BY_STATE_AND_THEN_WE_DO_A_COUNT",
-    //   {
-    //     operator: "Contains",
-    //     value: "A",
-    //   },
-    // );
-
-    // cy.findByTestId("apply-filters").click();
-    // cy.wait("@dataset").then(({ response }) => {
-    //   expect(response.body.error).to.not.exist;
-    // });
-
     H.filter();
-    H.filterField("COUN", {
-      operator: "Greater than",
-      value: 30,
+    H.popover().findByText("COUN").click();
+    H.selectFilterOperator("Greater than");
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("30");
+      cy.button("Add filter").click();
     });
-
-    cy.findByTestId("apply-filters").click();
+    H.runButtonOverlay().click();
     cy.wait("@dataset").then(({ response }) => {
       expect(response.body.error).to.not.exist;
     });
@@ -477,10 +463,10 @@ describe("scenarios > models", () => {
       cy.wait("@dataset");
 
       H.filter();
-      H.filterField("Discount", {
-        operator: "Not empty",
-      });
-      cy.findByTestId("apply-filters").click();
+      H.popover().findByText("Discount").click();
+      H.selectFilterOperator("Not empty");
+      H.popover().button("Add filter").click();
+      H.runButtonOverlay().click();
       cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({

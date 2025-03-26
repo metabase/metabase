@@ -95,7 +95,7 @@ export function checkCanBeModel(question: Question) {
     return true;
   }
 
-  return (question.legacyQuery() as NativeQuery)
+  return (question.legacyNativeQuery() as NativeQuery)
     .templateTags()
     .every(isSupportedTemplateTagForModel);
 }

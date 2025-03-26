@@ -263,7 +263,7 @@ describe("issue 20438", () => {
     cy.button("Add filter").click();
     cy.wait("@getEmbed");
 
-    cy.findAllByTestId("cell-data")
+    cy.findAllByRole("gridcell")
       // One of product titles for Doohickey
       .should("contain", "Small Marble Shoes")
       // One of product titles for Gizmo
@@ -440,8 +440,8 @@ describe("issues 20845, 25031", () => {
           });
         });
 
-        cy.findByTestId("column-header").should("contain", "COUNT(*)");
-        cy.findByTestId("cell-data").should("contain", "5");
+        H.tableInteractiveHeader("COUNT(*)");
+        cy.findByRole("gridcell").should("contain", "5");
       });
     });
 
@@ -615,10 +615,10 @@ describe("issue 27643", { tags: "@external" }, () => {
     it("in static embedding and in public question scenarios (metabase#27643-2)", () => {
       cy.log("Test the question");
       H.visitQuestion("@questionId");
-      cy.findAllByTestId("cell-data").should("contain", "true");
+      cy.findAllByRole("gridcell").should("contain", "true");
       H.toggleFilterWidgetValues(["false"]);
       H.queryBuilderMain().button("Get Answer").click();
-      cy.findAllByTestId("cell-data").should("contain", "false");
+      cy.findAllByRole("gridcell").should("contain", "false");
 
       cy.log("Test the embedded question");
       cy.get("@questionId").then(question => {
@@ -627,9 +627,9 @@ describe("issue 27643", { tags: "@external" }, () => {
           params: {},
         });
 
-        cy.findAllByTestId("cell-data").should("contain", "true");
+        cy.findAllByRole("gridcell").should("contain", "true");
         H.toggleFilterWidgetValues(["false"]);
-        cy.findAllByTestId("cell-data").should("contain", "false");
+        cy.findAllByRole("gridcell").should("contain", "false");
       });
 
       cy.log("Test the public question");
@@ -638,9 +638,9 @@ describe("issue 27643", { tags: "@external" }, () => {
         cy.signInAsAdmin();
         H.visitPublicQuestion(questionId);
 
-        cy.findAllByTestId("cell-data").should("contain", "true");
+        cy.findAllByRole("gridcell").should("contain", "true");
         H.toggleFilterWidgetValues(["false"]);
-        cy.findAllByTestId("cell-data").should("contain", "false");
+        cy.findAllByRole("gridcell").should("contain", "false");
       });
     });
   });
@@ -690,7 +690,7 @@ describe("issue 30535", () => {
       cy.visit(iframe.src);
     });
 
-    cy.findByRole("table").within(() => {
+    cy.findByRole("grid").within(() => {
       // The sandboxed user has an attribute cat="Widget"
       cy.findAllByText("Widget");
       // Sandboxing shouldn't affect results so we should see other product categories as well

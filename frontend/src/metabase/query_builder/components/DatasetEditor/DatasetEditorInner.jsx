@@ -158,7 +158,7 @@ function getSidebar(
     return (
       <TagEditorSidebar
         {...props}
-        query={question.legacyQuery()}
+        query={question.legacyNativeQuery()}
         onClose={toggleTemplateTagsEditor}
       />
     );
@@ -238,7 +238,7 @@ const _DatasetEditorInner = props => {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return calcInitialEditorHeight({
-      query: question.legacyQuery(),
+      query: question.legacyNativeQuery(),
       viewHeight: height,
     });
   }, [question, height]);

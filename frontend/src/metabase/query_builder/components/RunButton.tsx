@@ -11,11 +11,12 @@ interface RunButtonProps {
   className?: string;
   isRunning: boolean;
   isDirty: boolean;
-  compact?: boolean;
   circular?: boolean;
-  borderless?: boolean;
+  medium?: boolean;
   hidden?: boolean;
-  onRun: () => void;
+  onlyIcon?: boolean;
+  iconSize?: number;
+  onRun?: () => void;
   onCancel?: () => void;
 }
 
@@ -26,7 +27,6 @@ const RunButton = forwardRef(function RunButton(
     onRun,
     onCancel,
     className,
-    compact,
     circular,
     hidden,
     ...props
@@ -35,26 +35,25 @@ const RunButton = forwardRef(function RunButton(
 ) {
   const icon = getButtonIcon(isRunning, isDirty);
   const ariaLabel = getButtonLabel(isRunning, isDirty);
-  const buttonLabel = compact || (!isRunning && !isDirty) ? null : ariaLabel;
 
   return (
     <Button
       {...props}
-      icon={icon}
-      primary={isDirty}
+      ref={ref}
       className={cx(className, QueryBuilderS.RunButton, {
         [QueryBuilderS.RunButtonHidden]: hidden,
-        [QueryBuilderS.RunButtonCompact]:
-          circular && !props.borderless && compact,
+        [QueryBuilderS.RunButtonCircular]: circular,
         [CS.circular]: circular,
       })}
+      classNames={{
+        icon: QueryBuilderS.RunButtonIcon,
+      }}
+      icon={icon}
+      primary={isDirty}
       data-testid="run-button"
-      onClick={isRunning ? onCancel : onRun}
-      ref={ref}
       aria-label={ariaLabel}
-    >
-      {buttonLabel}
-    </Button>
+      onClick={isRunning ? onCancel : onRun}
+    />
   );
 });
 

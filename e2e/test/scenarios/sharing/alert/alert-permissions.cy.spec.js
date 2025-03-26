@@ -61,7 +61,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
       // Check that changes stuck
       cy.wait("@updatedAlert").then(({ response: { body } }) => {
-        expect(body.subscriptions[0].cron_schedule).to.equal("0 0 8 ? * 2");
+        expect(body.subscriptions[0].cron_schedule).to.equal("0 0 8 ? * 2 *");
       });
     });
   });
@@ -135,7 +135,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
       // Check that changes stuck
       cy.wait("@updatedAlert").then(({ response: { body } }) => {
-        expect(body.subscriptions[0].cron_schedule).to.equal("0 0 8 ? * 2");
+        expect(body.subscriptions[0].cron_schedule).to.equal("0 0 8 ? * 2 *");
       });
 
       H.modal().findByText("Check on Monday at 8:00 AM");

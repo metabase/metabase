@@ -13,6 +13,16 @@ import {
 } from "./utils";
 
 describe("scheduleSettingsToCron", () => {
+  it("converts every_n_minutes schedule to cron", () => {
+    const settings: ScheduleSettings = {
+      schedule_type: "every_n_minutes",
+      schedule_minute: 10,
+      schedule_hour: null,
+    };
+    const cron = scheduleSettingsToCron(settings);
+    expect(cron).toEqual("0 0/10 * * * ? *");
+  });
+
   it("converts hourly schedule to cron", () => {
     const settings: ScheduleSettings = {
       schedule_type: "hourly",
@@ -20,7 +30,7 @@ describe("scheduleSettingsToCron", () => {
       schedule_hour: 1,
     };
     const cron = scheduleSettingsToCron(settings);
-    expect(cron).toEqual("0 1 1 * * ?");
+    expect(cron).toEqual("0 1 1 * * ? *");
   });
 
   it("converts daily schedule to cron", () => {
@@ -30,7 +40,7 @@ describe("scheduleSettingsToCron", () => {
       schedule_hour: 14,
     };
     const cron = scheduleSettingsToCron(settings);
-    expect(cron).toEqual("0 30 14 * * ?");
+    expect(cron).toEqual("0 30 14 * * ? *");
   });
 
   it("converts weekly schedule to cron", () => {
@@ -41,7 +51,7 @@ describe("scheduleSettingsToCron", () => {
       schedule_hour: 12,
     };
     const cron = scheduleSettingsToCron(settings);
-    expect(cron).toEqual("0 0 12 ? * 2");
+    expect(cron).toEqual("0 0 12 ? * 2 *");
   });
 
   it("converts 'first Wednesday of the month at 9:15am' to cron", () => {
@@ -53,7 +63,7 @@ describe("scheduleSettingsToCron", () => {
       schedule_hour: 9,
     };
     const cron = scheduleSettingsToCron(settings);
-    expect(cron).toEqual("0 15 9 ? * 4#1");
+    expect(cron).toEqual("0 15 9 ? * 4#1 *");
   });
 
   it("converts 'last calendar day of the month' to cron", () => {
@@ -64,7 +74,7 @@ describe("scheduleSettingsToCron", () => {
       schedule_hour: 16,
     };
     const cron = scheduleSettingsToCron(settings);
-    expect(cron).toEqual("0 45 16 L * ?");
+    expect(cron).toEqual("0 45 16 L * ? *");
   });
 
   it("converts 'monthly on the 15th' to cron", () => {
@@ -75,7 +85,7 @@ describe("scheduleSettingsToCron", () => {
       schedule_hour: 23,
     };
     const cron = scheduleSettingsToCron(settings);
-    expect(cron).toEqual("0 5 23 15 * ?");
+    expect(cron).toEqual("0 5 23 15 * ? *");
   });
 
   it("missing minute and hour should default to wildcard", () => {
@@ -83,7 +93,7 @@ describe("scheduleSettingsToCron", () => {
       schedule_type: "daily",
     };
     const cron = scheduleSettingsToCron(settings);
-    expect(cron).toEqual("0 * * * * ?");
+    expect(cron).toEqual("0 * * * * ? *");
   });
 });
 
@@ -103,6 +113,13 @@ describe("cronToScheduleSettings", () => {
   });
 
   describe("schedule type determination", () => {
+    it('sets schedule type to "every_n_minutes" when minute is "0/15"', () => {
+      const cron = `0 0/15 * * * ?`;
+      expect(cronToScheduleSettings(cron)?.schedule_type).toBe(
+        "every_n_minutes",
+      );
+    });
+
     it('sets schedule type to "hourly" when hour is "*" and both dayOfMonth and dayOfWeek are "*"', () => {
       const cron = "0 30 * * * *";
       expect(cronToScheduleSettings(cron)?.schedule_type).toBe("hourly");
@@ -121,6 +138,11 @@ describe("cronToScheduleSettings", () => {
     it('sets schedule type to "monthly" when dayOfMonth is specific', () => {
       const cron = "0 30 8 15 * ?";
       expect(cronToScheduleSettings(cron)?.schedule_type).toBe("monthly");
+    });
+
+    it('sets schedule type to "cron" when isCustomSchedule is true', () => {
+      const cron = "0 30 8 15 * ?";
+      expect(cronToScheduleSettings(cron, true)?.schedule_type).toBe("cron");
     });
   });
 
@@ -191,6 +213,19 @@ describe("cronToScheduleSettings", () => {
         expect.objectContaining({
           schedule_minute: 20,
           schedule_hour: 3,
+        }),
+      );
+    });
+  });
+
+  describe("every n minutes schedule determination", () => {
+    it('sets schedule type to "every_n_minutes" when minute is "0/15"', () => {
+      const cron = `0 0/15 * * * ?`;
+      expect(cronToScheduleSettings(cron)).toEqual(
+        expect.objectContaining({
+          schedule_type: "every_n_minutes",
+          schedule_minute: 15,
+          schedule_hour: null,
         }),
       );
     });

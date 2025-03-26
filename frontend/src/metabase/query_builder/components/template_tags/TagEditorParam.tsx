@@ -60,7 +60,6 @@ interface Props {
   embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
   database?: Database | null;
   databases: Database[];
-  databaseFields?: Field[];
   metadata: Metadata;
   originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;

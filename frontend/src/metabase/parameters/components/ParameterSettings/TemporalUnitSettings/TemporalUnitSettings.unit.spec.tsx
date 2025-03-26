@@ -112,7 +112,7 @@ describe("TemporalUnitSettings", () => {
       }),
     });
     await userEvent.click(await screen.findByText("All"));
-    await userEvent.click(await screen.findByLabelText("Select none"));
+    await userEvent.click(await screen.findByLabelText("Select all"));
     expect(onChangeTemporalUnits).toHaveBeenCalledWith(["minute"]);
   });
 });

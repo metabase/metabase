@@ -1,3 +1,4 @@
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import {
   LLMSuggestionQuestionInfo,
   SaveQuestionForm,
@@ -21,6 +22,7 @@ export const SaveQuestionModal = ({
   targetCollection,
   ...modalProps
 }: SaveQuestionModalProps) => {
+  useEscapeToCloseModal(modalProps.onClose);
   return (
     <SaveQuestionProvider
       question={question}
@@ -39,7 +41,7 @@ export const SaveQuestionModal = ({
       initialCollectionId={initialCollectionId}
       targetCollection={targetCollection}
     >
-      <Modal.Root padding="2.5rem" {...modalProps}>
+      <Modal.Root padding="2.5rem" {...modalProps} closeOnEscape={false}>
         <Modal.Overlay />
         <Modal.Content data-testid="save-question-modal">
           <Modal.Header>

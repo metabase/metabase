@@ -1,20 +1,13 @@
 import { snippetCompletion } from "@codemirror/autocomplete";
 import Fuse from "fuse.js";
 
-import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { getHelpText } from "../helper-text-strings";
 import { TOKEN, tokenize } from "../tokenizer";
 import type { HelpText, MBQLClauseFunctionConfig, Token } from "../types";
 
 import type { Completion } from "./types";
-
-export function getDatabase(query: Lib.Query, metadata: Metadata) {
-  const databaseId = Lib.databaseID(query);
-  return metadata.database(databaseId);
-}
 
 export function expressionClauseCompletion(
   clause: MBQLClauseFunctionConfig,
@@ -125,6 +118,10 @@ export function content(source: string, token: Token): string {
 
 export function isIdentifier(token: Token | null) {
   return token != null && token.type === TOKEN.Identifier;
+}
+
+export function isOperator(token: Token | null) {
+  return token != null && token.type === TOKEN.Operator;
 }
 
 export function isFieldReference(token: Token | null) {

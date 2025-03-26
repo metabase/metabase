@@ -1,6 +1,7 @@
 import { isValidCronExpression } from "cron-expression-validator";
 import cronstrue from "cronstrue";
 import { t } from "ttag";
+import { memoize } from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { has24HourModeSetting } from "metabase/lib/time";
@@ -21,7 +22,9 @@ function translateErrorMessage(message: string) {
     "? can only be specified for Day-of-Month -OR- Day-of-Week": t`You must use ? in the day-of-week or day-of-month field`,
     "Unexpected end of expression": t`Invalid cron expression`,
   };
-  return errorMessageMap[message];
+  // Some messages are dynamic and do not have translation mapping,
+  // so we've decided to return them as is.
+  return errorMessageMap[message] || message;
 }
 
 export function validateCronExpression(
@@ -63,4 +66,27 @@ export function explainCronExpression(cronExpression: string) {
     locale: MetabaseSettings.get("site-locale"),
     use24HourTimeFormat: has24HourModeSetting(),
   });
+}
+
+function lowerCaseFirstLetter(str: string) {
+  return str.charAt(0).toLowerCase() + str.slice(1);
+}
+
+export const getScheduleExplanation = memoize(
+  (cronExpression: string): string | null => {
+    try {
+      const readableSchedule = lowerCaseFirstLetter(
+        explainCronExpression(cronExpression),
+      );
+      return readableSchedule;
+    } catch {
+      return null;
+    }
+  },
+);
+
+export function formatCronExpressionForUI(cronExpression: string): string {
+  const [, ...partsWithoutSeconds] = cronExpression.split(" ");
+  const partsWithoutSecondsAndYear = partsWithoutSeconds.slice(0, -1);
+  return partsWithoutSecondsAndYear.join(" ");
 }

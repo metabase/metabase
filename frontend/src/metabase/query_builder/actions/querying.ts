@@ -18,6 +18,7 @@ import {
   getFirstQueryResult,
   getIsResultDirty,
   getIsRunning,
+  getNativeEditorSelectedText,
   getOriginalQuestion,
   getOriginalQuestionWithParameterValues,
   getQueryResults,
@@ -267,3 +268,31 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
     return { type: CANCEL_QUERY };
   }
 };
+
+export const runQuestionOrSelectedQuery =
+  () => (dispatch: Dispatch, getState: GetState) => {
+    const question = getQuestion(getState());
+    if (!question) {
+      return;
+    }
+
+    const isRunning = getIsRunning(getState());
+    if (isRunning) {
+      dispatch(cancelQuery());
+    }
+
+    const query = question.query();
+    const queryInfo = Lib.queryDisplayInfo(query);
+    const selectedText = getNativeEditorSelectedText(getState());
+    if (queryInfo.isNative && selectedText) {
+      const selectedQuery = Lib.withNativeQuery(query, selectedText);
+      dispatch(
+        runQuestionQuery({
+          overrideWithQuestion: question.setQuery(selectedQuery),
+          shouldUpdateUrl: false,
+        }),
+      );
+    } else {
+      dispatch(runQuestionQuery());
+    }
+  };

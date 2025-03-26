@@ -4,6 +4,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -88,6 +89,14 @@
                                                           :id                    field-id
                                                           :field                 fieldd})))
     fieldd))
+
+(mu/defn remapped-field :- [:maybe ::lib.schema.metadata/column]
+  "Given a metadata source and a column's metadata, return the metadata for the field it's being remapped to, if any."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  (when (lib.types.isa/foreign-key? column)
+    (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
+      (field metadata-providerable remap-field-id))))
 
 (mu/defn setting :- any?
   "Get the value of a Metabase setting for the instance we're querying."

@@ -55,26 +55,34 @@ export const HeaderCellWithColumnInfo = memo(
         : null;
     }, [renderTableHeader, column, columnIndex, theme]);
 
+    const cellContent = (
+      <div className={S.headerPillWrapper}>
+        {headerCellOverride != null ? (
+          headerCellOverride
+        ) : (
+          <HeaderCellPill name={name} sort={sort} align={align} />
+        )}
+      </div>
+    );
+
     return (
       <HeaderCellWrapper className={className} variant={variant} align={align}>
-        <QueryColumnInfoPopover
-          position="bottom-start"
-          query={query}
-          stageIndex={-1}
-          column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
-          timezone={timezone}
-          disabled={infoPopoversDisabled || isMousePressed}
-          openDelay={500}
-          showFingerprintInfo
-        >
-          <div className={S.headerPillWrapper}>
-            {headerCellOverride != null ? (
-              headerCellOverride
-            ) : (
-              <HeaderCellPill name={name} sort={sort} align={align} />
-            )}
-          </div>
-        </QueryColumnInfoPopover>
+        {infoPopoversDisabled ? (
+          cellContent
+        ) : (
+          <QueryColumnInfoPopover
+            position="bottom-start"
+            query={query}
+            stageIndex={-1}
+            column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
+            timezone={timezone}
+            disabled={isMousePressed}
+            openDelay={500}
+            showFingerprintInfo
+          >
+            {cellContent}
+          </QueryColumnInfoPopover>
+        )}
       </HeaderCellWrapper>
     );
   },

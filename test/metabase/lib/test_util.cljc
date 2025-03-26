@@ -8,6 +8,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -20,6 +21,7 @@
    [metabase.lib.test-util.metadata-providers.remap :as providers.remap]
    [metabase.lib.test-util.metadata-providers.with-cards-for-queries :as providers.cards-for-queries]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.namespaces :as shared.ns]))
@@ -230,24 +232,29 @@
                          {:table table, :table-id table-id :metadata? true,  :native? true,  :card-name (keyword (name table) "native")}
                          {:table table, :table-id table-id :metadata? false, :native? false, :card-name (keyword (name table) "no-metadata")}]))
               (map-indexed (fn [idx {:keys [table table-id metadata? native? card-name]}]
-                             [card-name
-                              (merge
-                               {:lib/type      :metadata/card
-                                :id            (inc idx)
-                                :database-id   (:id (lib.metadata/database metadata-provider))
-                                :name          (str "Mock " (name table) " card")
-                                :dataset-query (if native?
-                                                 {:database (:id (lib.metadata/database metadata-provider))
-                                                  :type     :native
-                                                  :native   {:query (str "SELECT * FROM " (name table))}}
-                                                 {:database (:id (lib.metadata/database metadata-provider))
-                                                  :type     :query
-                                                  :query    {:source-table table-id}})}
-                               (when metadata?
-                                 {:result-metadata
-                                  (->> (lib.metadata/fields metadata-provider table-id)
-                                       (sort-by :id)
-                                       (mapv #(if native? (dissoc % :table-id :id :fk-target-field-id) %)))}))])))
+                             (let [eid (u/generate-nano-id)]
+                               [card-name
+                                (merge
+                                 {:lib/type      :metadata/card
+                                  :id            (inc idx)
+                                  :entity_id     eid
+                                  :database-id   (:id (lib.metadata/database metadata-provider))
+                                  :name          (str "Mock " (name table) " card")
+                                  :dataset-query (if native?
+                                                   {:database (:id (lib.metadata/database metadata-provider))
+                                                    :type     :native
+                                                    :native   {:query (str "SELECT * FROM " (name table))}}
+                                                   {:database (:id (lib.metadata/database metadata-provider))
+                                                    :type     :query
+                                                    :query    {:source-table table-id}})}
+                                 (when metadata?
+                                   {:result-metadata
+                                    (cond->> (lib.metadata/fields metadata-provider table-id)
+                                      true    (sort-by :id)
+                                      native? (mapv #(-> %
+                                                         (dissoc :table-id :id :fk-target-field-id)
+                                                         (assoc :ident (lib.metadata.ident/native-ident
+                                                                        (:name %) eid)))))}))]))))
         table-key-and-ids))
 
 (defn- make-mock-cards-special-cases

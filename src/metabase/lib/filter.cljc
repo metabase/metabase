@@ -326,6 +326,10 @@
       ;; negate `expr` and then generate a description. That would require porting that stuff to pMBQL tho.
       :not       (i18n/tru "not {0}" expr))))
 
+(defmethod lib.metadata.calculation/display-name-method :value
+  [query stage-number [_value _opts expr] style]
+  (lib.metadata.calculation/display-name query stage-number expr style))
+
 (defmethod lib.metadata.calculation/display-name-method :time-interval
   [query stage-number [_tag _opts expr n unit] style]
   (if (clojure.core/or

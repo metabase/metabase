@@ -16,7 +16,7 @@ export function Shortcuts({
   className?: string;
 }) {
   return (
-    <Flex gap="sm" className={className}>
+    <Flex gap="sm" className={className} wrap="wrap">
       {shortcuts.map((shortcut, index) => (
         <Button
           key={index}

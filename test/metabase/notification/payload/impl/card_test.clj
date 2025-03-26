@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.impl.card-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -434,3 +435,55 @@
                 :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
               (t2/select [:model/TaskHistory :status :task_details] :task "notification-send"
                          {:order-by [[:started_at :asc]]}))))))
+
+(defn- email->attachment-line-count
+  [email]
+  (let [attachment (m/find-first #(= "text/csv" (:content-type %)) (:message email))]
+    (if attachment
+      (with-open [rdr (io/reader (:content attachment))]
+        (count (line-seq rdr)))
+      nil)))
+
+(deftest card-attachment-limit-test
+  (testing "#55522"
+    (testing "by default card attachment returns all rows"
+      (notification.tu/with-card-notification
+        [notification {:card     {:dataset_query (mt/mbql-query orders)}
+                       :handlers [@notification.tu/default-email-handler]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [emails]
+            (is (= 18761 (email->attachment-line-count (first emails)))))})))
+
+    (testing "respect attachment limit env if set"
+      (mt/with-temporary-setting-values [attachment-row-limit 10]
+        (notification.tu/with-card-notification
+          [notification {:card     {:dataset_query (mt/mbql-query orders)}
+                         :handlers [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [emails]
+              (is (= 11 (email->attachment-line-count (first emails)))))}))))
+
+    (testing "respect query limit if set"
+      (notification.tu/with-card-notification
+        [notification {:card     {:dataset_query (mt/mbql-query orders {:limit 10})}
+                       :handlers [@notification.tu/default-email-handler]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [emails]
+            (is (= 11 (email->attachment-line-count (first emails)))))})))
+
+    (testing "attachment limit env > query limit"
+      (mt/with-temporary-setting-values [attachment-row-limit 10]
+        (notification.tu/with-card-notification
+          [notification {:card     {:dataset_query (mt/mbql-query orders {:limit 20})}
+                         :handlers [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [emails]
+              (is (= 11 (email->attachment-line-count (first emails)))))}))))))

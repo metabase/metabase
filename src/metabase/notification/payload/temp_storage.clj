@@ -4,6 +4,7 @@
   Currently used to store card's rows data when sending notification since it can be large and we don't want to keep it in memory."
   (:require
    [clojure.java.io :as io]
+   [metabase.util.log :as log]
    [metabase.util.random :as random]
    [taoensso.nippy :as nippy])
   (:import
@@ -82,4 +83,5 @@
   [data]
   (let [f (temp-file)]
     (write-to-file f data)
+    (log/debug "stored data in temp file" {:length (.length ^File f)})
     (TempFileStorage. f)))

@@ -705,6 +705,9 @@
     ;; Does this driver support UUID type
     :uuid-type
 
+    ;; Does this driver support splitting strings and extracting a part?
+    :split-part
+
     ;; True if this driver requires `:temporal-unit :default` on all temporal field refs, even if no temporal
     ;; bucketing was specified in the query.
     ;; Generally false, but a few time-series based analytics databases (eg. Druid) require it.
@@ -722,6 +725,9 @@
 
     ;; Does this driver support the :distinct-where function?
     :distinct-where
+
+    ;; Does this driver support casting?
+    :cast
 
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test

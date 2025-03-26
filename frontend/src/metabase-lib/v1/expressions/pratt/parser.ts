@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { CompileError } from "../errors";
 import { OPERATOR, TOKEN, tokenize } from "../tokenizer";
 
 import {
@@ -28,7 +29,7 @@ import {
   WS,
 } from "./syntax";
 import type { Hooks, Node, NodeType, Token } from "./types";
-import { CompileError, assert } from "./types";
+import { assert } from "./types";
 
 interface ParserOptions {
   hooks?: Hooks;
@@ -68,6 +69,7 @@ export function lexify(expression: string) {
     }
     start = token.end;
     let text = expression.slice(token.start, token.end);
+    let value = undefined;
     const pos = token.start;
     let length = token.end - token.start;
     let type = BAD_TOKEN;
@@ -77,6 +79,7 @@ export function lexify(expression: string) {
         break;
       case TOKEN.String:
         type = STRING;
+        value = token.value;
         break;
       case TOKEN.Identifier:
         type = text[0] === "[" ? FIELD : IDENTIFIER;
@@ -144,7 +147,7 @@ export function lexify(expression: string) {
       }
     }
 
-    lexs.push({ type, text, length, pos });
+    lexs.push({ type, text, length, pos, value });
   }
 
   // This simplifies the parser
@@ -258,10 +261,15 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
         }
       }
     } else if (token.type.leftOperands !== 0) {
-      // Subtraction is a special case because it might actually be negation
       if (token.type === SUB) {
+        // Subtraction is a special case because it might actually be negation
+        // ie. -42
         node = createASTNode(token, node, NEGATIVE, counter);
         hooks.onCreateNode?.(token, node);
+      } else if (token.type === ADD) {
+        // Addition is a special case because it might actually be just a unary plus
+        // ie. +42
+        continue;
       } else {
         const err = new CompileError(t`Expected expression`, {
           token,

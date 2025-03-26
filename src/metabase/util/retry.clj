@@ -57,7 +57,8 @@
           {:keys [^long max-attempts ^long initial-interval-millis
                   ^double multiplier ^double randomization-factor
                   ^long max-interval-millis
-                  retry-on-result-pred retry-on-exception-pred]}]
+                  ^Callable retry-on-result-pred
+                  ^Callable retry-on-exception-pred]}]
   (let [interval-fn (IntervalFunction/ofExponentialRandomBackoff
                      initial-interval-millis multiplier
                      randomization-factor max-interval-millis)

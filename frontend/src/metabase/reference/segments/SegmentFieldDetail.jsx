@@ -139,7 +139,7 @@ const SegmentFieldDetail = props => {
           hasRevisionHistory={false}
           onSubmit={handleSubmit}
           endEditing={endEditing}
-          reinitializeForm={handleReset()}
+          reinitializeForm={handleReset}
           submitting={isSubmitting}
           revisionMessageFormField={getFormField("revision_message")}
         />
@@ -220,6 +220,7 @@ const SegmentFieldDetail = props => {
                 )}
                 <li className={CS.relative}>
                   <FieldTypeDetail
+                    databaseId={table.db_id}
                     field={entity}
                     foreignKeys={foreignKeys}
                     fieldTypeFormField={getFormField("semantic_type")}

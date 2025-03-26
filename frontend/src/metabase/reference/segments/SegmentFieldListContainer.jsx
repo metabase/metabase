@@ -11,10 +11,10 @@ import * as actions from "metabase/reference/reference";
 import SegmentFieldList from "metabase/reference/segments/SegmentFieldList";
 
 import {
-  getDatabaseId,
   getIsEditing,
   getSegment,
   getSegmentId,
+  getTable,
   getUser,
 } from "../selectors";
 
@@ -24,7 +24,7 @@ const mapStateToProps = (state, props) => ({
   user: getUser(state, props),
   segment: getSegment(state, props),
   segmentId: getSegmentId(state, props),
-  databaseId: getDatabaseId(state, props),
+  table: getTable(state, props),
   isEditing: getIsEditing(state, props),
 });
 

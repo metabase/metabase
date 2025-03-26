@@ -183,16 +183,18 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
 }
 
 function getTargetsForNativeQuestion(question: Question): Target[] {
-  const legacyQuery = question.legacyQuery() as NativeQuery;
+  const legacyNativeQuery = question.legacyNativeQuery() as NativeQuery;
 
   return [
-    ...getTargetsForDimensionOptions(legacyQuery),
-    ...getTargetsForVariables(legacyQuery),
+    ...getTargetsForDimensionOptions(legacyNativeQuery),
+    ...getTargetsForVariables(legacyNativeQuery),
   ];
 }
 
-function getTargetsForDimensionOptions(legacyQuery: NativeQuery): Target[] {
-  return legacyQuery
+function getTargetsForDimensionOptions(
+  legacyNativeQuery: NativeQuery,
+): Target[] {
+  return legacyNativeQuery
     .dimensionOptions()
     .all()
     .map(templateTagDimension => {
@@ -228,8 +230,8 @@ function getTargetsForDimensionOptions(legacyQuery: NativeQuery): Target[] {
     });
 }
 
-function getTargetsForVariables(legacyQuery: NativeQuery): Target[] {
-  return legacyQuery.variables().map(templateTagVariable => {
+function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
+  return legacyNativeQuery.variables().map(templateTagVariable => {
     const { name, id, type } = checkNotNull(templateTagVariable.tag());
     const target: ClickBehaviorTarget = { type: "variable", id: name };
     const parentType = type

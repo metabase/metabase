@@ -1615,8 +1615,8 @@
                                        {:id               (meta/id :venues :name)
                                         :semantic-type    :type/Name}]})
           venues-id       (lib.metadata/field metadata-provider (meta/id :venues :id))]
-      (testing `lib.field/remapped-field
-        (is (nil? (#'lib.field/remapped-field metadata-provider venues-id))))
+      (testing `lib.metadata/remapped-field
+        (is (nil? (lib.metadata/remapped-field metadata-provider venues-id))))
       (testing `lib.field/search-field
         (is (=? {:id   (meta/id :venues :name)
                  :name "NAME"}
@@ -1634,11 +1634,11 @@
           venues-name       (lib.metadata/field metadata-provider (meta/id :venues :name))]
       (testing `lib.types.isa/searchable?
         (is (lib.types.isa/searchable? venues-name)))
-      (testing `lib.field/remapped-field
-        (let [remapped-field (#'lib.field/remapped-field metadata-provider venues-name)]
+      (testing `lib.metadata/remapped-field
+        (let [remapped-field (lib.metadata/remapped-field metadata-provider venues-name)]
           (is (=? {:id   (meta/id :categories :name)
                    :name "NAME"}
-                  (#'lib.field/remapped-field metadata-provider venues-name)))
+                  (lib.metadata/remapped-field metadata-provider venues-name)))
           (is (lib.types.isa/searchable? remapped-field))))
       (testing `lib.field/search-field
         (is (=? {:id   (meta/id :categories :name)

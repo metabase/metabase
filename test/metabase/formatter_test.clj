@@ -106,7 +106,12 @@
       (is (= ["2"    "0.001"]   [(format 2.001 nil)   (format 0.001 nil)]))
       (is (= ["2.01" "0.006"]   [(format 2.006 nil)   (format 0.006 nil)]))
       (is (= ["2"    "0.0049"]  [(format 2.0049 nil)  (format 0.0049 nil)]))
-      (is (= ["2"    "0.005"]   [(format 2.00499 nil) (format 0.00499 nil)])))
+      (is (= ["2"    "0.005"]   [(format 2.00499 nil) (format 0.00499 nil)]))
+      ;; Test small numbers with many decimal places
+      (is (= ["2"    "0.0014"]  [(format 2.0013593702702702702M nil)
+                                 (format 0.0013593702702702702M nil)]))
+      (is (= ["2"    "0.000012"] [(format 2.0000123456789M nil)
+                                  (format 0.0000123456789M nil)])))
     (testing "Column Settings"
       (letfn [(fmt-with-type
                 ([type value] (fmt-with-type type value nil))

@@ -387,7 +387,9 @@
        [:parameters {:optional true} ms/JSONString]]]
   (let [unsigned   (unsign-and-translate-ids token)
         card-id    (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
-        parameters (json/decode+kw parameters)]
+        parameters (json/decode+kw parameters)
+        lat-field    (json/decode+kw lat-field)
+        lon-field    (json/decode+kw lon-field)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field)))
 
@@ -405,5 +407,7 @@
        [:parameters {:optional true} ms/JSONString]]]
   (let [unsigned     (unsign-and-translate-ids token)
         dashboard-id (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard])
-        parameters   (json/decode+kw parameters)]
+        parameters   (json/decode+kw parameters)
+        lat-field    (json/decode+kw lat-field)
+        lon-field    (json/decode+kw lon-field)]
     (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))

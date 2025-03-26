@@ -46,6 +46,10 @@ Rest in peace, Internet Explorer.
 
 We collect anonymous Metabase usage data to improve the product. We don't collect your data.
 
+## [Accessibility](./accessibility.md)
+
+Notes on Metabase's accessibility.
+
 ## [Command line commands](./commands.md)
 
 Metabase's CLI.

@@ -158,9 +158,6 @@ describe("DataGrid", () => {
   });
 
   afterEach(() => {
-    act(() => {
-      jest.runAllTimers();
-    });
     jest.useRealTimers();
   });
 

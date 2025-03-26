@@ -20,6 +20,7 @@ export type CodeMirrorEditorProps = {
   query: Lib.Query;
   onChange?: (queryText: string) => void;
   readOnly?: boolean;
+  onRunQuery?: () => void;
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
   onSelectionChange?: (range: SelectionRange) => void;
@@ -47,12 +48,13 @@ export const CodeMirrorEditor = forwardRef<
     query,
     onChange,
     readOnly,
+    onRunQuery,
     onSelectionChange,
     onRightClickSelection,
     onCursorMoveOverCardTag,
   } = props;
 
-  const extensions = useExtensions(query);
+  const extensions = useExtensions({ query, onRunQuery });
 
   const engine = Lib.engine(query);
   const placeholder = getPlaceholderText(engine);

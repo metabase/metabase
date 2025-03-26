@@ -1,3 +1,4 @@
+import { useHotkeys } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
@@ -41,7 +42,6 @@ import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDataReferenceStack,
-  getDatabaseFields,
   getDatabasesList,
   getDocumentTitle,
   getEmbeddedParameterVisibility,
@@ -80,7 +80,6 @@ import {
   getSnippetCollectionId,
   getTableForeignKeyReferences,
   getTableForeignKeys,
-  getTables,
   getTimeseriesXDomain,
   getUiControls,
   getVisibleTimelineEventIds,
@@ -137,7 +136,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     card: getCard(state),
     originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
-    tables: getTables(state),
 
     metadata: getMetadata(state),
 
@@ -168,7 +166,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
-    databaseFields: getDatabaseFields(state),
     sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
@@ -227,6 +224,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB,
     locationChanged,
     setUIControls,
+    runQuestionOrSelectedQuery,
     cancelQuery,
     isBookmarked,
     createBookmark,
@@ -237,6 +235,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isLoadingComplete,
     closeQB,
     route,
+    queryBuilderMode,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -403,6 +402,14 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       }),
     [question, isNewQuestion],
   );
+
+  const handleCmdEnter = () => {
+    if (queryBuilderMode !== "notebook") {
+      runQuestionOrSelectedQuery();
+    }
+  };
+
+  useHotkeys([["mod+Enter", handleCmdEnter]]);
 
   return (
     <>

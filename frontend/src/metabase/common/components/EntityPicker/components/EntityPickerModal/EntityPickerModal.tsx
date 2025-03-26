@@ -98,6 +98,7 @@ export interface EntityPickerModalProps<
   isLoadingTabs?: boolean;
   searchExtraButtons?: ReactNode[];
   children?: ReactNode;
+  disableCloseOnEscape?: boolean;
 }
 
 export function EntityPickerModal<
@@ -122,6 +123,7 @@ export function EntityPickerModal<
   onConfirm,
   onItemSelect,
   isLoadingTabs = false,
+  disableCloseOnEscape = false,
   children,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -335,10 +337,10 @@ export function EntityPickerModal<
     event => {
       if (event.key === "Escape") {
         event.stopPropagation();
-        onClose();
+        !disableCloseOnEscape && onClose();
       }
     },
-    { capture: true, once: true },
+    { capture: true },
   );
 
   const titleId = useUniqueId("entity-picker-modal-title-");

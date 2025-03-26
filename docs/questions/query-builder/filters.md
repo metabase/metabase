@@ -24,6 +24,7 @@ Depending on the data type of the column, Metabase will present different filter
 - **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, whether it contains, starts with, or ends with a substring, or whether the row is empty or not.
 - **Date columns** give you a lot of options to filter by specific date ranges, relative date ranges, and more.
 - **Structured data columns**, typically JSON or XML, can only be filtered by "Is empty" or "Not empty". Some databases, however, support [JSON unfolding](../../data-modeling/json-unfolding.md), which allows you to split up JSON data into separate columns, which you can then filter on.
+- **Latitude and longitude columns** will have the same options as numeric columns, but also a special "Inside" filter type that will let you filter on both latitude and longitude simultaneously.
 
 ## Filter multiple columns
 

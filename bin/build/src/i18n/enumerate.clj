@@ -183,7 +183,7 @@
   (when (str/blank? filename)
     (println "Please provide a filename argument. Eg: ")
     (println "  clj -X:build i18n.enumerate/enumerate :filename \"\\\"$POT_BACKEND_NAME\\\"\"")
-    (println "  clj -X:build i18n.enumerate/enumerate :filename '\"metabase.pot\"'")
+    (println "  clj -X:build i18n.enumerate/enumerate :filename '\"metabase.po\"'")
     (System/exit 1))
   (let [{:keys [valid-usages entry-count bad-forms]} (create-pot-file! roots filename)]
     (println (format "Found %d forms for translations" valid-usages))

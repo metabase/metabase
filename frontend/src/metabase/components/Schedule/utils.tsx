@@ -71,6 +71,12 @@ export const getScheduleDefaults = (
   schedule: ScheduleSettings,
 ): ScheduleSettings => {
   return match<ScheduleSettings>(schedule)
+    .with({ schedule_type: "every_n_minutes" }, () => ({
+      schedule_day: null,
+      schedule_frame: null,
+      schedule_hour: null,
+      schedule_minute: 10,
+    }))
     .with({ schedule_type: "hourly" }, () => ({
       schedule_day: null,
       schedule_frame: null,
@@ -97,6 +103,12 @@ export const getScheduleDefaults = (
     }))
     .with({ schedule_type: "monthly" }, () => ({
       schedule_frame: "first",
+      schedule_hour: defaultHour,
+      schedule_minute: 0,
+    }))
+    .with({ schedule_type: "cron" }, () => ({
+      schedule_day: null,
+      schedule_frame: null,
       schedule_hour: defaultHour,
       schedule_minute: 0,
     }))

@@ -31,6 +31,7 @@ export const AutoWidthSelect = <Value extends string>({
     <Select
       styles={{
         wrapper: { width },
+        root: { flexShrink: 0 },
       }}
       value={value}
       {...props}

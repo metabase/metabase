@@ -4,6 +4,7 @@ import { Component } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import { setupCardEndpoints } from "__support__/server-mocks/card";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { deserializeCardFromUrl } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
@@ -243,6 +244,19 @@ jest.mock("metabase/core/components/Link", () => ({ to: href, ...props }) => (
   <a href={href} {...props} />
 ));
 
+function getQuestionFromUrl(relativeUrl) {
+  const url = new URL(relativeUrl, document.location.href);
+  const card = deserializeCardFromUrl(url.hash);
+  return new Question(card, getMetadata());
+}
+
+function areQuestionUrlsEquivalent(url1, url2) {
+  return Lib.areLegacyQueriesEqual(
+    getQuestionFromUrl(url1).datasetQuery(),
+    getQuestionFromUrl(url2).datasetQuery(),
+  );
+}
+
 describe("QuestionDataSource", () => {
   const GUI_TEST_CASE = {
     SAVED_GUI_QUESTION: {
@@ -372,10 +386,12 @@ describe("QuestionDataSource", () => {
           const node = screen.queryByText(
             new RegExp(question.legacyQueryTable().displayName()),
           );
-          expect(node.closest("a")).toHaveAttribute(
-            "href",
-            ML_Urls.getUrl(question.legacyQueryTable().newQuestion()),
-          );
+          expect(
+            areQuestionUrlsEquivalent(
+              node.closest("a").href,
+              ML_Urls.getUrl(question.legacyQueryTable().newQuestion()),
+            ),
+          ).toBe(true);
         });
 
         it("displays table link in object detail view", () => {
@@ -383,10 +399,12 @@ describe("QuestionDataSource", () => {
           const node = screen.queryByText(
             new RegExp(question.legacyQueryTable().displayName()),
           );
-          expect(node.closest("a")).toHaveAttribute(
-            "href",
-            ML_Urls.getUrl(question.legacyQueryTable().newQuestion()),
-          );
+          expect(
+            areQuestionUrlsEquivalent(
+              node.closest("a").href,
+              ML_Urls.getUrl(question.legacyQueryTable().newQuestion()),
+            ),
+          ).toBe(true);
         });
       });
     });
@@ -430,15 +448,19 @@ describe("QuestionDataSource", () => {
           const products = screen.queryByText(/Products/);
 
           expect(orders).toBeInTheDocument();
-          expect(orders.closest("a")).toHaveAttribute(
-            "href",
-            ML_Urls.getUrl(getAdHocOrdersQuestion()),
-          );
+          expect(
+            areQuestionUrlsEquivalent(
+              orders.closest("a").href,
+              ML_Urls.getUrl(getAdHocOrdersQuestion()),
+            ),
+          ).toBe(true);
           expect(products).toBeInTheDocument();
-          expect(products.closest("a")).toHaveAttribute(
-            "href",
-            ML_Urls.getUrl(getAdHocProductsQuestion()),
-          );
+          expect(
+            areQuestionUrlsEquivalent(
+              products.closest("a").href,
+              ML_Urls.getUrl(getAdHocProductsQuestion()),
+            ),
+          ).toBe(true);
         });
       });
     });
@@ -458,20 +480,26 @@ describe("QuestionDataSource", () => {
           const people = screen.queryByText(/People/);
 
           expect(orders).toBeInTheDocument();
-          expect(orders.closest("a")).toHaveAttribute(
-            "href",
-            ML_Urls.getUrl(getAdHocOrdersQuestion()),
-          );
+          expect(
+            areQuestionUrlsEquivalent(
+              orders.closest("a").href,
+              ML_Urls.getUrl(getAdHocOrdersQuestion()),
+            ),
+          ).toBe(true);
           expect(products).toBeInTheDocument();
-          expect(products.closest("a")).toHaveAttribute(
-            "href",
-            ML_Urls.getUrl(getAdHocProductsQuestion()),
-          );
+          expect(
+            areQuestionUrlsEquivalent(
+              products.closest("a").href,
+              ML_Urls.getUrl(getAdHocProductsQuestion()),
+            ),
+          ).toBe(true);
           expect(people).toBeInTheDocument();
-          expect(people.closest("a")).toHaveAttribute(
-            "href",
-            ML_Urls.getUrl(getAdHocPeopleQuestion()),
-          );
+          expect(
+            areQuestionUrlsEquivalent(
+              people.closest("a").href,
+              ML_Urls.getUrl(getAdHocPeopleQuestion()),
+            ),
+          ).toBe(true);
         });
       });
     });

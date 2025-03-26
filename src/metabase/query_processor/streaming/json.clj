@@ -12,7 +12,8 @@
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
-   (java.nio.charset StandardCharsets)))
+   (java.nio.charset StandardCharsets)
+   (metabase.formatter NumericWrapper TextWrapper)))
 
 (set! *warn-on-reflection* true)
 
@@ -72,9 +73,10 @@
                      ;; does mean that all JSON values are strings. Any other strategy requires some level of
                      ;; inference to know if we should or should not parse a string (or not stringify an object).
                      (let [res (formatter (streaming.common/format-value r))]
-                       (if-some [num-str (:num-str res)]
-                         num-str
-                         res)))
+                       (cond
+                         (instance? NumericWrapper res) (:num-str res)
+                         (instance? TextWrapper res)    (:text-str res)
+                         :else                          res)))
                    @ordered-formatters cleaned-row))
              writer {})
             (.flush writer))))

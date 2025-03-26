@@ -290,24 +290,6 @@ describe("scenarios > collection pinned items overview", () => {
       .findByText("Orders, Count, Grouped by Created At (year)")
       .should("exist");
   });
-
-  it("should allow switching between different pages for a pinned question (metabase#23515)", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-      collection_position: 1,
-    });
-
-    cy.visit("/collection/root");
-    cy.wait("@getPinnedItems");
-    cy.wait("@getCardQuery");
-
-    cy.findByLabelText("Next page").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rows 4-6 of first 2000").should("be.visible");
-
-    cy.findByLabelText("Previous page").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rows 1-3 of first 2000").should("be.visible");
-  });
 });
 
 const openRootCollection = () => {

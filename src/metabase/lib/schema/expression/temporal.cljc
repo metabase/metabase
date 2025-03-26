@@ -55,6 +55,9 @@
   (mbql-clause/define-tuple-mbql-clause op :- :type/Integer
     [:schema [:ref ::expression/temporal]]))
 
+(mbql-clause/define-tuple-mbql-clause :date :- :type/Date
+  [:schema [:ref ::expression/string]])
+
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit
   [:enum

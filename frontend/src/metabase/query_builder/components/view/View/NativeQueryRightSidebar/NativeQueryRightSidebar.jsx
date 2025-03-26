@@ -40,7 +40,7 @@ export const NativeQueryRightSidebar = props => {
     .with({ isShowingTemplateTagsEditor: true }, () => (
       <TagEditorSidebar
         {...props}
-        query={question.legacyQuery()}
+        query={question.legacyNativeQuery()}
         onClose={toggleTemplateTagsEditor}
       />
     ))
