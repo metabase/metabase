@@ -8,8 +8,6 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
-import Users from "metabase/entities/users";
-import { useDispatch } from "metabase/lib/redux";
 import type { User } from "metabase-types/api";
 
 import { UserForm } from "../../forms/UserForm";
@@ -20,7 +18,6 @@ interface EditUserModalProps {
 }
 
 export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
-  const dispatch = useDispatch();
   const userId = params.userId ? parseInt(params.userId) : null;
   const { data: user, isLoading } = useGetUserQuery(userId ?? skipToken);
   const [updateUser] = useUpdateUserMutation();
@@ -32,18 +29,12 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
     }
 
     // first name and last name keys need to be present, so they can potentially be removed
-    const newUser = await updateUser({
+    await updateUser({
       id: userId,
       first_name: null,
       last_name: null,
       ...newValues,
     }).unwrap();
-
-    // for compatibility with code that relies on the entity framework
-    dispatch({
-      type: Users.actionTypes.UPDATE,
-      payload: { user: newUser },
-    });
 
     onClose();
   };
