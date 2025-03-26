@@ -41,7 +41,7 @@
   "Calculate query executions over a window of the the previous UTC day 00:00-23:59"
   []
   (let [yesterday-utc (t/minus (t/offset-date-time (t/zone-offset "+00")) (t/days 1))]
-    (update-keys
-     (t2/select-one query-execution-statistics
-                    {:where [:= [:cast :started_at :date] [:cast yesterday-utc :date]]})
-     #(keyword (str "query_executions_" (name %))))))
+    (-> (t2/select-one query-execution-statistics
+                       {:where [:= [:cast :started_at :date] [:cast yesterday-utc :date]]})
+        (dissoc :row_count)
+        (update-keys #(keyword (str "query_executions_" (name %)))))))
