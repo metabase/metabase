@@ -39,6 +39,16 @@
    [:options ::lib.schema.common/options]
    [:args [:sequential :any]]])
 
+(def ^:private ExpressionArg
+  [:or
+   :string
+   :boolean
+   :int
+   :float
+   ::lib.schema.metadata/column
+   ::lib.schema.metadata/segment
+   ::lib.schema.metadata/metric])
+
 (def ^:private expandable-time-units #{:hour})
 
 (def ^:private expandable-date-units #{:week :month :quarter :year})
@@ -169,7 +179,7 @@
   [_query _stage-number metric]
   metric)
 
-(mu/defn expression-parts :- ExpressionParts
+(mu/defn expression-parts :- [:or ExpressionArg ExpressionParts]
   "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
   ([query value]
    (expression-parts-method query -1 value))
