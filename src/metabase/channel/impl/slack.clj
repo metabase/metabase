@@ -204,9 +204,9 @@
    :event/data-editing-row-update {:channel_type :channel/slack
                                    :details      {:type :slack/handlebars-text
                                                   :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has updated a from {{payload.event_info.table.name}}\n\n"
-                                                             "## Changes:"
+                                                             "## Update:"
                                                              "\n\n"
-                                                             "{{#each payload.event_info.changes}}\n"
+                                                             "{{#each payload.event_info.update}}\n"
                                                              "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
                                                              "{{/each}}")}}
    :event/data-editing-row-delete {:channel_type :channel/slack

@@ -1,7 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
+import type { StartRule } from "metabase-lib/v1/expressions";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-
-import type { StartRule } from "../types";
 
 import { getFilteredClauses } from "./utils";
 
@@ -33,10 +32,10 @@ describe("getFilteredClauses", () => {
 
     // The array should be sorted
     expect(results.map(group => group.category)).toEqual(
-      ["date", "logical", "math", "string"].sort(),
+      ["conversion", "date", "logical", "math", "string"].sort(),
     );
 
-    const dateFunctions = results[0];
+    const dateFunctions = results[1];
 
     // The array should be sorted
     expect(dateFunctions.clauses.map(clause => clause.structure)).toEqual(

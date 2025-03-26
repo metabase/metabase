@@ -230,9 +230,7 @@ Your browser should automatically open the app. By default, the app runs on [htt
 In your app, you'll see an embedded `InteractiveQuestion` component.
 
 ```javascript
-<MetabaseProvider authConfig={authConfig} theme={theme}>
-  <InteractiveQuestion questionId={questionId} />
-</MetabaseProvider>
+{% include_file "{{ dirname }}/snippets/quickstart-with-sample-app/example.tsx" snippet="example" %}
 ```
 
 ![Embedded Metabase components](../images/interactive-question-sample-app.png)

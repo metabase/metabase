@@ -47,6 +47,7 @@ export interface DataGridProps<TData>
   extends DataGridInstance<TData>,
     DataGridStylesProps {
   emptyState?: React.ReactNode;
+  isSortingDisabled?: boolean;
   theme?: DataGridTheme;
 }
 
@@ -56,10 +57,12 @@ export const DataGrid = function DataGrid<TData>({
   virtualGrid,
   measureRoot,
   columnsReordering,
+  selection,
   emptyState,
   theme,
   classNames,
   styles,
+  isSortingDisabled,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
@@ -124,10 +127,14 @@ export const DataGrid = function DataGrid<TData>({
     ],
   );
 
-  const isEmpty = table.getRowModel().rows.length === 0;
-
+  const rowsCount = table.getRowModel().rows.length;
   const backgroundColor =
-    theme?.cell?.backgroundColor ?? "var(--mb-color-bg-white)";
+    theme?.cell?.backgroundColor ?? "var(--mb-color-background)";
+  const stickyElementsBackgroundColor =
+    theme?.stickyBackgroundColor ??
+    (backgroundColor == null || backgroundColor === "transparent"
+      ? "var(--mb-color-background)"
+      : backgroundColor);
 
   return (
     <DataGridThemeProvider theme={theme}>
@@ -135,6 +142,7 @@ export const DataGrid = function DataGrid<TData>({
         <div
           className={cx(S.table, classNames?.root)}
           data-testid="table-root"
+          data-rows-count={rowsCount}
           style={{
             fontSize: theme?.fontSize ?? DEFAULT_FONT_SIZE,
             backgroundColor,
@@ -147,9 +155,10 @@ export const DataGrid = function DataGrid<TData>({
             role="grid"
             ref={gridRef}
             style={{
-              paddingRight: isAddColumnButtonSticky
-                ? `${ADD_COLUMN_BUTTON_WIDTH}px`
-                : 0,
+              paddingRight:
+                hasAddColumnButton && isAddColumnButtonSticky
+                  ? `${ADD_COLUMN_BUTTON_WIDTH}px`
+                  : 0,
               ...styles?.tableGrid,
             }}
             onScroll={onScroll}
@@ -157,13 +166,20 @@ export const DataGrid = function DataGrid<TData>({
             <div
               data-testid="table-header"
               className={cx(S.headerContainer, classNames?.headerContainer)}
-              style={styles?.headerContainer}
+              style={{
+                backgroundColor: stickyElementsBackgroundColor,
+                ...styles?.headerContainer,
+              }}
             >
               {table.getHeaderGroups().map(headerGroup => (
                 <div
                   key={headerGroup.id}
                   className={cx(S.row, classNames?.row)}
-                  style={{ height: `${HEADER_HEIGHT}px`, ...styles?.row }}
+                  style={{
+                    height: `${HEADER_HEIGHT}px`,
+                    backgroundColor,
+                    ...styles?.row,
+                  }}
                 >
                   {virtualPaddingLeft ? (
                     <div style={{ width: virtualPaddingLeft }} />
@@ -189,7 +205,7 @@ export const DataGrid = function DataGrid<TData>({
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor,
+                            backgroundColor: stickyElementsBackgroundColor,
                           }
                         : {
                             width,
@@ -205,7 +221,11 @@ export const DataGrid = function DataGrid<TData>({
                       ) : (
                         <SortableHeader
                           className={cx(S.headerCell, classNames?.headerCell)}
-                          style={styles?.headerCell}
+                          style={{
+                            backgroundColor: stickyElementsBackgroundColor,
+                            ...styles?.headerCell,
+                          }}
+                          isSortingDisabled={isSortingDisabled}
                           header={header}
                           onClick={onHeaderCellClick}
                         >
@@ -228,11 +248,15 @@ export const DataGrid = function DataGrid<TData>({
               ))}
             </div>
 
-            {isEmpty && emptyState}
+            {rowsCount === 0 && emptyState}
 
             <div
               data-testid="table-body"
-              className={cx(S.bodyContainer, classNames?.bodyContainer)}
+              className={cx(S.bodyContainer, classNames?.bodyContainer, {
+                [S.selectableBody]: selection.isEnabled,
+              })}
+              tabIndex={0}
+              onKeyDown={selection.handlers.handleCellsKeyDown}
               style={{
                 display: "grid",
                 position: "relative",
@@ -249,7 +273,9 @@ export const DataGrid = function DataGrid<TData>({
                     role="row"
                     key={row.id}
                     ref={rowMeasureRef}
+                    data-dataset-index={row.index}
                     data-index={virtualRow.index}
+                    data-allow-page-break-after="true"
                     className={cx(S.row, classNames?.row)}
                     style={{
                       position: "absolute",
@@ -280,7 +306,7 @@ export const DataGrid = function DataGrid<TData>({
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor,
+                            backgroundColor: stickyElementsBackgroundColor,
                             ...styles?.bodyCell,
                           }
                         : {
@@ -290,6 +316,7 @@ export const DataGrid = function DataGrid<TData>({
                       return (
                         <div
                           key={cell.id}
+                          data-column-id={cell.column.id}
                           className={cx(S.bodyCell, classNames?.bodyCell)}
                           onClick={e =>
                             onBodyCellClick?.(e, {
@@ -298,12 +325,21 @@ export const DataGrid = function DataGrid<TData>({
                               cellId: cell.id,
                             })
                           }
+                          onMouseDown={e =>
+                            selection.handlers.handleCellMouseDown(e, cell)
+                          }
+                          onMouseUp={e =>
+                            selection.handlers.handleCellMouseUp(e, cell)
+                          }
+                          onMouseOver={e =>
+                            selection.handlers.handleCellMouseOver(e, cell)
+                          }
                           style={style}
                         >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
+                          {flexRender(cell.column.columnDef.cell, {
+                            ...cell.getContext(),
+                            isSelected: selection.isCellSelected(cell),
+                          })}
                         </div>
                       );
                     })}

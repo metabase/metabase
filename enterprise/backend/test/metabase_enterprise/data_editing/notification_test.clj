@@ -37,7 +37,7 @@
           (let [channel-type->captured-message (notification.tu/with-captured-channel-send!
                                                  (request-fn))]
             (doseq [[channel-type assert-fn] channel-type->assert-fns]
-              (testing (format "chanel-type = %s" channel-type)
+              (testing (format "channel-type = %s" channel-type)
                 (assert-fn (get channel-type->captured-message channel-type))))))))))
 
 (deftest create-row-notification-test
@@ -98,7 +98,7 @@
                                              [{:type "section",
                                                :text
                                                {:type "mrkdwn",
-                                                :text "*Crowberto Corv has updated a from CATEGORIES*\n*Changes:*\n• NAME : Updated Category"}}]}]
+                                                :text "*Crowberto Corv has updated a from CATEGORIES*\n*Update:*\n• NAME : Updated Category"}}]}]
                               :channel-id "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
@@ -112,16 +112,16 @@
                               #"NAME: Updated Category"))))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
-                     (is (=? {:body {:event_info {:actor       {:common_name "Crowberto Corv"
-                                                                :email "crowberto@metabase.com"
-                                                                :first_name "Crowberto"
-                                                                :last_name "Corv"}
-                                                  :actor_id    (mt/user->id :crowberto),
-                                                  :updated_row {:ID 1 :NAME "Updated Category"}
-                                                  :before_row  {:ID 1 :NAME (mt/malli=? :string)}
-                                                  :changes     {:NAME "Updated Category"}
-                                                  :table       {:name "CATEGORIES"}
-                                                  :table_id    (mt/id :categories)}
+                     (is (=? {:body {:event_info {:actor    {:common_name "Crowberto Corv"
+                                                             :email "crowberto@metabase.com"
+                                                             :first_name "Crowberto"
+                                                             :last_name "Corv"}
+                                                  :actor_id (mt/user->id :crowberto),
+                                                  :after    {:ID 1 :NAME "Updated Category"}
+                                                  :before   {:ID 1 :NAME (mt/malli=? :string)}
+                                                  :update   {:NAME "Updated Category"}
+                                                  :table    {:name "CATEGORIES"}
+                                                  :table_id (mt/id :categories)}
                                      :event_name :event/data-editing-row-update,
                                      :type "system_event"}}
                              req)))}))
@@ -132,8 +132,8 @@
    (fn []
      (mt/user-http-request
       :crowberto
-      :delete
-      (data-editing.tu/table-url (mt/id :categories))
+      :post
+      (format "%s/delete" (data-editing.tu/table-url (mt/id :categories)))
       {:rows [{:ID 1}]}))
 
    {:channel/slack (fn [[message :as msgs]]

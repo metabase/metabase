@@ -1,0 +1,14 @@
+{
+  "name": "embedding-snippets",
+  "version": "0.0.0",
+  "private": true,
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express-session": "^1.18.1",
+    "cors": "^2.8.5",
+    "express": "^5.0.1",
+    "express-session": "^1.18.1",
+    "jsonwebtoken": "^9.0.2",
+    "next": "^15.2.2"
+  }
+}

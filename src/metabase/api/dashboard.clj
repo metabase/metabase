@@ -853,31 +853,43 @@
   [dashboard-id dashcard table-id]
   (let [tab-id  (:dashboard_tab_id dashcard)
         table   (t2/select-one [:model/Table :db_id :name] table-id)
-        ;; To keep things simple for now, we don't make any attempt to deduplicate or reuse these cards.
-        ;; This lets us dashboard cards, which helps keep them hidden and have their lifecycle handled implicitly.
+        card    (some->> dashcard :card_id (t2/select-one [:model/Card :id :dataset_query :display]))
+        ;; If the currently attached card is not editing the expected the table, then create a new one.
+        keep?    (and (= :table-editable (:display card))
+                      (= table-id (get-in card [:dataset_query :query :source-table])))
+        _        (when (and card (not keep?))
+                   (log/warnf "Detaching card %s from dashcard %s as it not editing the expected table (%s)"
+                              (:id card)
+                              (:id dashcard)
+                              table-id))
+        ;; To keep things simple for now, we don't make any attempt to further deduplicate these cards.
+        ;; This especially keeps things simple if we decide to promote them to a first class "editable", by saving them
+        ;; into a collection.
+        ;;
+        ;; We use dashboard cards, which helps keep them hidden and have their lifecycle handled implicitly.
         ;; We need to watch out for other ways they could "leak", for example, in search.
         ;; We've handled search for now by filtering on :display, but that's quite opinionated and coupled.
-        ;; ;;
-        ;; It does mean that we could create a lot of garbage, but it shouldn't be a big problem in our PoC.
+        ;;
+        ;; Adding and removing tables can create a lot of garbage, but it shouldn't be a big problem in our PoC.
         ;; We could also change from archiving to deleting them when they are orphaned.
-        card    {:dashboard_id           dashboard-id
-                 :dashboard_tab_id       tab-id
-                 :collection_position    nil
-                 :dataset_query          {:database (:db_id table)
-                                          :query    {:source-table table-id}
-                                          :type     :query}
-                 :description            nil
-                 :display                "table-editable"
-                 :name                   (:name table)
-                 :result_metadata        nil
-                 :type                   "question"
-                 ;; Redundant with :display, but just in case it's useful. Revisit once FE is built.
-                 :visualization_settings {:editable? true}}
-        ;; We always create a new card, rather than risk pockets of stale state, e.g., when we've changed the table.
-        ;; This also saves us checking that the existing card is a dashboard card, has the right display type, etc.
-        card-id (:id (card/create-card! card @api/*current-user* true false))]
+        card-map {:dashboard_id           dashboard-id
+                  :dashboard_tab_id       tab-id
+                  :collection_position    nil
+                  :dataset_query          {:database (:db_id table)
+                                           :query    {:source-table table-id}
+                                           :type     :query}
+                  :description            nil
+                  :display                "table-editable"
+                  :name                   (:name table)
+                  :result_metadata        nil
+                  :type                   "question"
+                  ;; Redundant with :display, but just in case it's useful. Revisit once FE is built.
+                  :visualization_settings {:editable? true}}
+        card-id (if keep?
+                  (:id card)
+                  (:id (card/create-card! card-map @api/*current-user* true false)))]
     (-> dashcard
-        ;; This is a downside to creating a new card. If we find more pockets like this we should pivot to reusing
+        ;; This is a downside to creating a new card. If we find more pockets like this, we should pivot to reusing
         ;; the existing card.
         (u/update-if-exists :parameter_mappings #(walk/postwalk (fn [x] (if (:card_id x) (assoc x :card_id card-id) x)) %))
         (assoc :dashboard_id dashboard-id

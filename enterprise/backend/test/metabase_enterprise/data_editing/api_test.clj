@@ -25,7 +25,7 @@
     (let [url (data-editing.tu/table-url 1)]
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 url))
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :put 402 url))
-      (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :delete 402 url)))))
+      (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 (str url "/delete"))))))
 
 (deftest table-operations-test
   (mt/with-premium-features #{:table-data-editing}
@@ -52,7 +52,8 @@
                    (table-rows table-id))))
 
           (testing "PUT should update the relevant rows and columns"
-            (is (= {:rows-updated 2}
+            (is (= {:updated [{:id 1, :name "Pidgey", :song "Join us now and share the software"}
+                              {:id 2, :name "Speacolumn", :song "Hold music"}]}
                    (mt/user-http-request :crowberto :put 200 url
                                          {:rows [{:id 1 :song "Join us now and share the software"}
                                                  {:id 2 :name "Speacolumn"}]})))
@@ -64,7 +65,7 @@
 
           (testing "DELETE should remove the corresponding rows"
             (is (= {:success true}
-                   (mt/user-http-request :crowberto :delete 200 url
+                   (mt/user-http-request :crowberto :post 200 (str url "/delete")
                                          {:rows [{:id 1}
                                                  {:id 2}]})))
             (is (= [[3 "Farfetch'd" "The land of lisp"]]
@@ -94,7 +95,7 @@
                         (req user :put url {:rows [{:id 1 :song "Join us now and share the software"}]})
 
                         del-response
-                        (req user :delete url {:rows [{:id 1}]})]
+                        (req user :post (str url "/delete") {:rows [{:id 1}]})]
                     {:settings settings
                      :user     user
                      :responses {:create post-response

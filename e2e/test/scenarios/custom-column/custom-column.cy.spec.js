@@ -4,7 +4,8 @@ import { dedent } from "ts-dedent";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID, PEOPLE } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column", () => {
   beforeEach(() => {
@@ -1193,14 +1194,14 @@ describe("scenarios > question > custom column > help text", () => {
     H.enterCustomColumnDetails({ formula: "lower(", blur: false });
     H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
-      .should("contain", "lower(text)");
+      .should("contain", "lower(value)");
   });
 
   it("should appear after a field reference", () => {
     H.enterCustomColumnDetails({ formula: "lower([Category]", blur: false });
     H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
-      .should("contain", "lower(text)");
+      .should("contain", "lower(value)");
   });
 
   it("should not appear while outside a function", () => {
@@ -1247,6 +1248,101 @@ describe("scenarios > question > custom column > help text", () => {
     H.CustomExpressionEditor.helpText()
       .should("be.visible")
       .should("contain", "round([Temperature])");
+  });
+
+  describe("scenarios > question > custom column > help text > visibility", () => {
+    beforeEach(() => {
+      H.enterCustomColumnDetails({ formula: "round(", blur: false });
+    });
+
+    it("should be possible to show and hide the help text when there are no suggestions", () => {
+      assertHelpTextIsVisible();
+
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertNeitherAreVisible();
+
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertHelpTextIsVisible();
+    });
+
+    it("should show the help text again when the suggestions are closed", () => {
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+
+      cy.log("suggestions should be visible");
+      assertSuggestionsAreVisible();
+
+      cy.log("help text should remain visible when suggestions are picked");
+      // helptext should re-open when suggestion is picked
+      H.CustomExpressionEditor.selectCompletion("Rating");
+      assertHelpTextIsVisible();
+    });
+
+    it("should be possible to close the help text", () => {
+      cy.log("hide help text by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertNeitherAreVisible();
+
+      cy.log("type to see suggestions");
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+      assertSuggestionsAreVisible();
+
+      cy.log("help text should remain hidden after selecting a suggestion");
+      H.CustomExpressionEditor.selectCompletion("Rating");
+      assertNeitherAreVisible();
+    });
+
+    it("should be possible to prefer showing the help text over the suggestions", () => {
+      cy.log("type to see suggestions");
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+      assertSuggestionsAreVisible();
+
+      cy.log("show help text by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertHelpTextIsVisible();
+
+      cy.log("help text should remain shown after finishing typing");
+      H.CustomExpressionEditor.type("ing], ", { focus: false });
+      assertHelpTextIsVisible();
+    });
+
+    it("should be possible to prefer showing the suggestion when typing", () => {
+      cy.log("type to see suggestions");
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+      assertSuggestionsAreVisible();
+
+      cy.log("show help text by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertHelpTextIsVisible();
+
+      cy.log("show suggestions again by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertSuggestionsAreVisible();
+
+      cy.log("help text should remain shown after finishing typing");
+      H.CustomExpressionEditor.type("ing], ", { focus: false });
+      assertNeitherAreVisible();
+    });
+
+    function assertSuggestionsAreVisible() {
+      cy.log("suggestions should be visible");
+      H.CustomExpressionEditor.helpText().should("not.exist");
+      H.CustomExpressionEditor.completions()
+        .findAllByRole("option")
+        .should("be.visible");
+    }
+    function assertHelpTextIsVisible() {
+      cy.log("help text should be visible");
+      H.CustomExpressionEditor.helpText().should("be.visible");
+      H.CustomExpressionEditor.completions()
+        .findByRole("option")
+        .should("not.exist");
+    }
+    function assertNeitherAreVisible() {
+      H.CustomExpressionEditor.helpText().should("not.exist");
+      H.CustomExpressionEditor.completions()
+        .findByRole("option")
+        .should("not.exist");
+    }
   });
 });
 
@@ -1382,6 +1478,83 @@ describe("scenarios > question > custom column > distinctIf", () => {
   });
 });
 
+describe("scenarios > question > custom column > path", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  function assertTableData({ title, value }) {
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractive()
+      .findAllByTestId("header-cell")
+      .last()
+      .should("have.text", title);
+
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .last()
+      .should("have.text", value);
+  }
+
+  it("should allow to use a path function", () => {
+    const CC_NAME = "URL_URL";
+    const questionDetails = {
+      name: "path from url",
+      query: {
+        "source-table": PEOPLE_ID,
+        limit: 1,
+        expressions: {
+          [CC_NAME]: [
+            "concat",
+            "http://",
+            ["domain", ["field", PEOPLE.EMAIL, null]],
+            ".com/my/path",
+          ],
+        },
+      },
+      type: "model",
+    };
+
+    H.createQuestion(questionDetails, {
+      wrapId: true,
+      idAlias: "modelId",
+    });
+
+    cy.get("@modelId").then(modelId => {
+      H.setModelMetadata(modelId, field => {
+        if (field.name === CC_NAME) {
+          return { ...field, semantic_type: "type/URL" };
+        }
+
+        return field;
+      });
+
+      H.visitModel(modelId);
+    });
+
+    H.openNotebook();
+
+    cy.log("add a new expression");
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: `Path([${CC_NAME}])`,
+      name: "extracted path",
+    });
+
+    H.popover().button("Done").click();
+    H.visualize();
+    cy.findByTestId("table-scroll-container").scrollTo("right");
+
+    const extractedValue = "/my/path";
+    assertTableData({
+      title: "extracted path",
+      value: extractedValue,
+    });
+  });
+});
+
 describe("scenarios > question > custom column > function browser", () => {
   beforeEach(() => {
     H.restore();
@@ -1495,5 +1668,62 @@ describe("scenarios > question > custom column > function browser", () => {
       cy.findByText("now").click();
     });
     H.CustomExpressionEditor.value().should("equal", "now");
+  });
+});
+
+describe("scenarios > question > custom column > splitPart", () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("People").click();
+    });
+
+    cy.findByLabelText("Custom column").click();
+  });
+
+  function assertTableData({ title, value }) {
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractive()
+      .findAllByTestId("header-cell")
+      .last()
+      .should("have.text", title);
+
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .last()
+      .should("have.text", value);
+  }
+
+  it("should be possible to split a custom column", () => {
+    const CC_NAME = "Split Title";
+
+    H.enterCustomColumnDetails({
+      formula: "splitPart([Name], ' ', 1)",
+      name: CC_NAME,
+    });
+    H.popover().button("Done").click();
+
+    cy.findByLabelText("Row limit").click();
+    cy.findByPlaceholderText("Enter a limit").type(1).blur();
+
+    H.visualize();
+
+    H.tableInteractiveScrollContainer().scrollTo("right");
+    assertTableData({ title: CC_NAME, value: "Hudson" });
+  });
+
+  it("should show a message when index is below 1", () => {
+    H.enterCustomColumnDetails({
+      formula: "splitPart([Name], ' ', 0)",
+    });
+
+    H.popover().button("Done").should("be.disabled");
+    H.popover().should("contain", "Expected positive integer but found 0");
   });
 });
