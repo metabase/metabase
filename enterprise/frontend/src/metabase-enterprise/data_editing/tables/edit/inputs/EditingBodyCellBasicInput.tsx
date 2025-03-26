@@ -8,6 +8,7 @@ export const EditingBodyCellBasicInput = ({
   initialValue,
   onSubmit,
   onCancel,
+  onChangeValue,
 }: EditingBodyPrimitiveProps) => {
   return (
     <Input
@@ -20,8 +21,12 @@ export const EditingBodyCellBasicInput = ({
           onSubmit(event.currentTarget.value);
         }
       }}
+      onChange={event => {
+        // Convert empty string to null
+        onChangeValue?.(event.currentTarget.value || null);
+      }}
       onBlur={event => {
-        onSubmit(event.currentTarget.value);
+        onSubmit(event.currentTarget.value || null);
       }}
       {...inputProps}
     />

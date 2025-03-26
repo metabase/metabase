@@ -33,6 +33,7 @@ export const EditingBodyCellCategorySelect = ({
   withCreateNew = true,
   getDropdownLabelText = DefaultItemLabelTextGetter,
   onSubmit,
+  onChangeValue,
   onCancel,
 }: EditingBodyCellCategorySelectProps) => {
   const { data: fieldData, isLoading } = useGetFieldValuesQuery(
@@ -62,9 +63,10 @@ export const EditingBodyCellCategorySelect = ({
     (value: string) => {
       setValue(value);
       onSubmit(value);
+      onChangeValue?.(value);
       combobox.toggleDropdown();
     },
-    [onSubmit, setValue, combobox],
+    [onSubmit, setValue, onChangeValue, combobox],
   );
 
   return (
@@ -78,9 +80,10 @@ export const EditingBodyCellCategorySelect = ({
           value={value}
           pointer
           onClick={() => combobox.openDropdown()}
-          onChange={noop}
           {...inputProps}
           className={cx(S.fakeInput, inputProps?.className)}
+          // Disable input editing when the dropdown is open (UX)
+          onChange={noop}
         />
       </Combobox.Target>
 
