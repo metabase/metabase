@@ -29,7 +29,7 @@ To create an alert:
 2. Click on the sharing icon in the top-right of the screen.
 3. Select **Create an alert**.
 4. Select what you want to be alerted about. The alert options will depend on the question's visualization. See [types of alerts](#types-of-alerts).
-5. Select when you want Metabase to check the results. Metabase can check for results by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the venerable [cron syntax](https://en.wikipedia.org/wiki/Cron).
+5. Select when you want Metabase to check the results. Metabase can check for results by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
 6. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md).
 
 You'll also have the option to only send the alert once. To test the alert, you can hit the **Send now** button. But just make sure that the question returns results. If the question doesn't return any results, Metabase won't send the alert.
@@ -115,12 +115,12 @@ Admins:
 
 Once you set up an alert to a Slack channel, avoid changing the name of that channel in Slack. If you rename the channel in Slack, but you want Metabase to continue to send alerts to that renamed channel, you'll need to update the alert in Metabase to point to the new channel name.
 
-## Alert expiration
+## Alert expiration and special cases
 
-Some circumstances will automatically delete alerts:
+Some circumstances will automatically change or delete alerts:
 
 - **You rename the target Slack channel**. Well, technically the alert won't get deleted, but Metabase will no longer have anywhere to send the alerts to. You'll need to update the alert's target channel in Metabase to the new channel's name.
-- **If the question gets edited in such a way that the alert doesn't make sense anymore**, the alert will get deleted. For example, if someone removes the goal line from a question with a goal line alert, Metabase will delete the alert.
+- **If a goal line is removed from the question powering a "Goal line" alert**, the alert will change to a "Results" type alert.
 - **If the question is deleted**, Metabase will delete any alerts set up for that question.
 
 Alerts will continue to work _even if the person who set up the alert no longer has an active account_. For example, if an alert with multiple recipients (or to a Slack channel) was set up by someone whose account has since been deactivated, that alert will continue to work (though Metabase will stop sending the alerts to the deactivated account).
