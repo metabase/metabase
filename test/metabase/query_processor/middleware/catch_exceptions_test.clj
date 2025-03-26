@@ -57,7 +57,7 @@
                                     (update cause :stacktrace sequential?))))))))))
   (testing "SQLExceptions that include stack traces should have them removed"
     (let [e1 (ex-info "mock databricks jdbc driver exception" {:level 1})
-          e2 (SQLException. "mock sql exception\n\tat stacktrace" e1)
+          e2 (SQLException. "mock sql exception\n\tat line1\n\tat line2\n\tat line3" e1)
           e3 (ex-info "mock exception" {:level 3} e2)]
       (is (= {:status     :failed
               :class      clojure.lang.ExceptionInfo
@@ -66,7 +66,7 @@
               :ex-data    {:level 1}
               :via        [{:status        :failed
                             :class         java.sql.SQLException,
-                            :error         "mock sql exception\n\tat stacktrace",
+                            :error         "mock sql exception\n\tat line1\n\tat line2\n\tat line3",
                             :stacktrace    true
                             :state nil}
                            {:status     :failed

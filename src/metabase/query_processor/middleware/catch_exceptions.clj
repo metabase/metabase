@@ -67,7 +67,7 @@
           (when (isa? (:class m) SQLException)
             ;; Some JDBC drivers (e.g. Databricks) return a stacktrace in the
             ;; error message that we don't want to show the user
-            {:error (first (str/split (get m :error "") #"\n\tat "))}))
+            {:error (first (str/split (get m :error "") #"\n\tat " 2))}))
         maps))
 
 (mu/defn exception-response :- [:map [:status :keyword]]
