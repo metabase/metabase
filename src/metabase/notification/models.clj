@@ -502,7 +502,7 @@
   (t2/hydrate notification-or-notifications
               :creator
               :payload
-              :subscriptions
+              [:subscriptions :table]
               [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
