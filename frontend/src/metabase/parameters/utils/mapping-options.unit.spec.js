@@ -645,6 +645,31 @@ describe("getMappingOptionByTarget", () => {
       );
     });
 
+    it("should ignore targets with invalid stage index", () => {
+      const mappingOptions = [
+        {
+          sectionName: "Order",
+          name: "Created At",
+          icon: "calendar",
+          target: [
+            "dimension",
+            ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+            { "stage-number": 0 },
+          ],
+        },
+      ];
+
+      const target = [
+        "dimension",
+        ["field", "CREATED_AT", { "base-type": "type/Text" }],
+        { "stage-number": 1 },
+      ];
+
+      expect(
+        getMappingOptionByTarget(mappingOptions, target, question),
+      ).toBeUndefined();
+    });
+
     it("should return undefined if option is not found", () => {
       const card = createMockCard({
         dataset_query: createMockStructuredDatasetQuery({
