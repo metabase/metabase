@@ -210,3 +210,42 @@
                (config.file/initialize!))))
         (finally
           (cleanup-config!))))))
+
+(deftest skip-existing-api-keys-with-same-prefix-test
+  (mt/with-premium-features #{:config-text-file}
+    (mt/with-temp [:model/User admin {:email "admin@test.com"
+                                      :first_name "Admin"
+                                      :is_superuser true}]
+      (try
+        ;; First, create an API key with a specific name
+        (binding [config.file/*config* {:version 1
+                                        :config {:api-keys [{:name "Duplicate Name Key"
+                                                             :key "mb_original123"
+                                                             :creator "admin@test.com"
+                                                             :group "admin"}]}}]
+          (config.file/initialize!)
+          (testing "Original API key is created"
+            (is (api-key-exists? "Duplicate Name Key"))
+            (let [original-key (t2/select-one :model/ApiKey :name "Duplicate Name Key")
+                  original-key-prefix (:key_prefix original-key)]
+
+              ;; Now attempt to create another key with the same name but different prefix
+              (binding [config.file/*config* {:version 1
+                                              :config {:api-keys [{:name "Duplicate Name Key"
+                                                                   :key "mb_different456" ;; different key with different prefix
+                                                                   :creator "admin@test.com"
+                                                                   :group "admin"}
+                                                                  {:name "Another Key"
+                                                                   :key "mb_original789" ;; same prefix as original key
+                                                                   :creator "admin@test.com"
+                                                                   :group "admin"}]}}]
+                (config.file/initialize!)
+                (testing "Second key with same name is skipped (no error about duplicate prefix)"
+                  (let [key-after-attempt (t2/select-one :model/ApiKey :name "Duplicate Name Key")]
+                    (is (= (:id original-key) (:id key-after-attempt)))
+                    (is (= original-key-prefix (:key_prefix key-after-attempt)))))
+
+                (testing "New key with same prefix as original is created without error"
+                  (is (api-key-exists? "Another Key")))))))
+        (finally
+          (cleanup-config!))))))
