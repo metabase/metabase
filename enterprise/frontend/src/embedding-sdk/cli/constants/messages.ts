@@ -80,12 +80,12 @@ export const getMetabaseInstanceSetupCompleteMessage = (
 
 export const getNoTenantMessage = (unsampledTableNames: string[]) => {
   const tables = unsampledTableNames.join(", ");
-  const warningTitle = `Sandboxing is not configured for the following tables: ${tables}.`;
+  const warningTitle = `Row and column security is not configured for the following tables: ${tables}.`;
 
   return `
   ${yellow(warningTitle)}
 
-  To demo data sandboxing, you'll need at least one tenant.
+  To demo row and column security, you'll need at least one tenant.
   You can assign your tenant's ID to your user attribute, e.g., "customer_id: 5".
 `;
 };
