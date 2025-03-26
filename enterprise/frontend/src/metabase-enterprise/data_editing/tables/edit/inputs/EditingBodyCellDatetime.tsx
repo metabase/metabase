@@ -16,6 +16,7 @@ export const EditingBodyCellDatetime = ({
   initialValue,
   datasetColumn,
   onSubmit,
+  onChangeValue,
   onCancel,
 }: EditingBodyPrimitiveProps) => {
   const isDateTime =
@@ -30,6 +31,14 @@ export const EditingBodyCellDatetime = ({
 
   const [value, setValue] = useState<Date | null>(initialDateValue);
   const [isFocused, setFocused] = useState(false);
+
+  const handleChange = useCallback(
+    (value: Date | null) => {
+      setValue(value);
+      onChangeValue?.(value ? value.toISOString() : null);
+    },
+    [onChangeValue],
+  );
 
   const handleFocus = useCallback(() => {
     setFocused(true);
@@ -62,7 +71,7 @@ export const EditingBodyCellDatetime = ({
       classNames={{ input: inputProps?.className }}
       // Keeps popover mounted when focused to improve time editing UX
       popoverProps={{ opened: isFocused }}
-      onChange={setValue}
+      onChange={handleChange}
       onBlur={handleBlur}
       onFocus={handleFocus}
       onKeyUp={handleKeyUp}

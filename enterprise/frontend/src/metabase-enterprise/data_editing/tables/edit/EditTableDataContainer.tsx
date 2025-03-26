@@ -272,7 +272,7 @@ export const EditTableDataContainer = ({
       <EditingBaseRowModal
         opened={isCreateRowModalOpen}
         onClose={closeCreateRowModal}
-        onValueChange={handleCellValueUpdate}
+        onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleExpandedRowDetele}
         datasetColumns={datasetData.data.cols}

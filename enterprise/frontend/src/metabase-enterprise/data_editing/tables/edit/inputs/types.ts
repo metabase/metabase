@@ -12,7 +12,9 @@ export interface EditingBodyPrimitiveProps {
     className?: string;
     placeholder?: string;
     disabled?: boolean;
+    error?: TextInputProps["error"];
   };
+  onChangeValue?: (value: RowValue) => unknown;
   onSubmit: (value: RowValue) => unknown;
   onCancel: () => unknown;
 }
