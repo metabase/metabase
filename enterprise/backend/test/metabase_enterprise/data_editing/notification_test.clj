@@ -37,7 +37,7 @@
           (let [channel-type->captured-message (notification.tu/with-captured-channel-send!
                                                  (request-fn))]
             (doseq [[channel-type assert-fn] channel-type->assert-fns]
-              (testing (format "chanel-type = %s" channel-type)
+              (testing (format "channel-type = %s" channel-type)
                 (assert-fn (get channel-type->captured-message channel-type))))))))))
 
 (deftest create-row-notification-test
@@ -98,7 +98,7 @@
                                              [{:type "section",
                                                :text
                                                {:type "mrkdwn",
-                                                :text "*Crowberto Corv has updated a from CATEGORIES*\n*Changes:*\n• NAME : Updated Category"}}]}]
+                                                :text "*Crowberto Corv has updated a from CATEGORIES*\n*Update:*\n• NAME : Updated Category"}}]}]
                               :channel-id "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
@@ -119,7 +119,7 @@
                                                   :actor_id (mt/user->id :crowberto),
                                                   :after    {:ID 1 :NAME "Updated Category"}
                                                   :before   {:ID 1 :NAME (mt/malli=? :string)}
-                                                  :changes  {:NAME "Updated Category"}
+                                                  :update   {:NAME "Updated Category"}
                                                   :table    {:name "CATEGORIES"}
                                                   :table_id (mt/id :categories)}
                                      :event_name :event/data-editing-row-update,

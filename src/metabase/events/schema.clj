@@ -219,9 +219,9 @@
                                         ::data-editing-events
                                         [:map
                                          ;; there could be no changes when update
-                                         [:changes [:maybe :map]]
-                                         [:after   [:maybe :map]]
-                                         [:before  :map]]])
+                                         [:update [:maybe :map]]
+                                         [:after  [:maybe :map]]
+                                         [:before :map]]])
 (mr/def :event/data-editing-row-delete [:merge
                                         ::data-editing-events
                                         [:map
