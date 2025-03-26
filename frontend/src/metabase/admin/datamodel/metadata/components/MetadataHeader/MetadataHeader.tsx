@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useLayoutEffect } from "react";
 import { Link } from "react-router";
 import { push, replace } from "react-router-redux";
@@ -11,7 +10,7 @@ import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Button, Flex, Icon } from "metabase/ui";
+import { Button, Flex, Icon, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
@@ -60,10 +59,10 @@ const MetadataHeader = ({
 
   return (
     <Flex align="center" data-testid="admin-metadata-header" flex="1 0" py="xl">
-      <Icon
-        className={cx(CS.flex, CS.alignCenter, CS.flexNoShrink, CS.textMedium)}
-        name="database"
-      />
+      <Text c="text-medium" display="flex" flex="0 0 auto">
+        <Icon name="database" />
+      </Text>
+
       <div className={CS.h2}>
         <DatabaseDataSelector
           databases={databases}
