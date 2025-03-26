@@ -63,10 +63,10 @@ export function EditingBaseRowModal({
 
   const handleValueChange = useCallback(
     (key: string, value: RowValue) => {
-      if (isEditingMode && currentRowIndex) {
+      if (isEditingMode && currentRowIndex != null) {
         onValueChange({
           rowIndex: currentRowIndex,
-          data: {
+          updatedData: {
             [key]: value,
           },
         });
@@ -94,7 +94,7 @@ export function EditingBaseRowModal({
             gap="xs"
             mr={rem(-5) /* alings cross with modal right padding */}
           >
-            {isEditingMode && currentRowIndex !== undefined && (
+            {isEditingMode && currentRowIndex != null && (
               <ActionIcon variant="subtle">
                 <Icon
                   name="trash"

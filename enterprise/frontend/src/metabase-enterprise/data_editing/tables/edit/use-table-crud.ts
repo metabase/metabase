@@ -20,9 +20,11 @@ import type {
 export const useTableCRUD = ({
   tableId,
   datasetData,
+  refetchTableDataQuery,
 }: {
   tableId: ConcreteTableId;
   datasetData: DatasetData | null | undefined;
+  refetchTableDataQuery?: () => void;
 }) => {
   const [
     isCreateRowModalOpen,
@@ -83,8 +85,16 @@ export const useTableCRUD = ({
       });
 
       displayErrorIfExists(response.error);
+
+      refetchTableDataQuery?.();
     },
-    [datasetData, tableId, updateTableRows, displayErrorIfExists],
+    [
+      datasetData,
+      updateTableRows,
+      tableId,
+      displayErrorIfExists,
+      refetchTableDataQuery,
+    ],
   );
 
   const handleRowCreate = useCallback(
@@ -97,9 +107,17 @@ export const useTableCRUD = ({
       displayErrorIfExists(response.error);
       if (!response.error) {
         closeCreateRowModal();
+      } else {
+        refetchTableDataQuery?.();
       }
     },
-    [closeCreateRowModal, tableId, insertTableRows, displayErrorIfExists],
+    [
+      insertTableRows,
+      tableId,
+      displayErrorIfExists,
+      closeCreateRowModal,
+      refetchTableDataQuery,
+    ],
   );
 
   const handleExpandedRowDelete = useCallback(
@@ -126,13 +144,16 @@ export const useTableCRUD = ({
         primaryKeyColumnName: pkColumn.name,
       });
       displayErrorIfExists(response.error);
+
+      refetchTableDataQuery?.();
     },
     [
-      tableId,
       datasetData,
       closeCreateRowModal,
       deleteTableRows,
+      tableId,
       displayErrorIfExists,
+      refetchTableDataQuery,
     ],
   );
 
