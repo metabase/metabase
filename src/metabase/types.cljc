@@ -436,6 +436,14 @@
      (clj->js (into {} (for [tyype (distinct (mapcat descendants [:type/* :Semantic/* :Relation/*]))]
                          [(name tyype) (u/qualified-name tyype)])))))
 
+#?(:cljs
+   (def ^:export LEVEL_ONE_TYPES
+     "Return js array of level one types formatted as velues of [[TYPE]] js object.
+
+     Level one types are children (ie. direct descendats) of :type/*."
+     (to-array (distinct (map u/qualified-name
+                              (filter #((parents %) :type/*) (descendants :type/*)))))))
+
 (coercion-hierarchies/define-types! :Coercion/UNIXNanoSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
 (coercion-hierarchies/define-types! :Coercion/UNIXMicroSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
 (coercion-hierarchies/define-types! :Coercion/UNIXMilliSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
