@@ -1,16 +1,11 @@
-import cx from "classnames";
-
-import AdminS from "metabase/css/admin.module.css";
-import CS from "metabase/css/core/index.css";
+import { Box, Flex, Icon } from "metabase/ui";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFormattingSettings, FieldId } from "metabase-types/api";
 
-import FieldSeparator from "../FieldSeparator";
-
-import { CurrencyPicker } from "./CurrencyPicker";
-import { FkTargetPicker } from "./FkTargetPicker";
-import { SemanticTypePicker } from "./SemanticTypePicker";
+import { CurrencyPicker } from "../CurrencyPicker";
+import { FkTargetPicker } from "../FkTargetPicker";
+import { SemanticTypePicker } from "../SemanticTypePicker";
 
 interface SemanticTypeAndTargetPickerProps {
   className?: string;
@@ -20,7 +15,7 @@ interface SemanticTypeAndTargetPickerProps {
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
 }
 
-const SemanticTypeAndTargetPicker = ({
+export const SemanticTypeAndTargetPicker = ({
   className,
   field,
   idFields,
@@ -57,9 +52,10 @@ const SemanticTypeAndTargetPicker = ({
   };
 
   return (
-    <div
+    <Flex
+      align="center"
       data-testid="semantic-type-target-picker"
-      className={hasSeparator ? cx(CS.flex, CS.alignCenter) : undefined}
+      display={hasSeparator ? "flex" : "block"}
     >
       <SemanticTypePicker
         className={className}
@@ -68,37 +64,38 @@ const SemanticTypeAndTargetPicker = ({
         onChange={handleChangeSemanticType}
       />
 
-      {showCurrencyTypeSelect && hasSeparator && <FieldSeparator />}
+      {showCurrencyTypeSelect && hasSeparator && (
+        <Box color="text-medium" px="md">
+          <Icon name="chevronright" size={12} />
+        </Box>
+      )}
 
       {showCurrencyTypeSelect && (
         <CurrencyPicker
-          className={cx(
-            AdminS.TableEditorFieldTarget,
-            hasSeparator ? CS.mt0 : CS.mt1,
-            className,
-          )}
+          className={className}
+          mt={hasSeparator ? 0 : "xs"}
           value={getFieldCurrency(field)}
           onChange={handleChangeCurrency}
         />
       )}
 
-      {showFKTargetSelect && hasSeparator && <FieldSeparator />}
+      {showFKTargetSelect && hasSeparator && (
+        <Box color="text-medium" px="md">
+          <Icon name="chevronright" size={12} />
+        </Box>
+      )}
 
       {showFKTargetSelect && (
         <FkTargetPicker
-          className={cx(
-            AdminS.TableEditorFieldTarget,
-            CS.textWrap,
-            hasSeparator ? CS.mt0 : CS.mt1,
-            className,
-          )}
-          field={field}
+          className={className}
+          field={field.getPlainObject()}
           idFields={idFields}
+          mt={hasSeparator ? 0 : "xs"}
           value={field.fk_target_field_id}
           onChange={handleChangeTarget}
         />
       )}
-    </div>
+    </Flex>
   );
 };
 
@@ -114,6 +111,3 @@ const getFieldCurrency = (field: Field) => {
 
   return "USD";
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SemanticTypeAndTargetPicker;

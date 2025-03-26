@@ -15,7 +15,6 @@ const Detail = ({
   placeholder,
   subtitleClass,
   url,
-  icon,
   isEditing,
   field,
 }) => (
@@ -56,7 +55,6 @@ Detail.propTypes = {
   description: PropTypes.string,
   placeholder: PropTypes.string,
   subtitleClass: PropTypes.string,
-  icon: PropTypes.string,
   isEditing: PropTypes.bool,
   field: PropTypes.object,
 };

@@ -104,7 +104,7 @@ describe("scenarios > model indexes", () => {
 
     // change the entity key to a foreign key so no key exists
     H.sidebar()
-      .findByText(/entity key/i)
+      .findByDisplayValue(/entity key/i)
       .click();
 
     H.popover()
