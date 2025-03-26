@@ -33,7 +33,7 @@ export function SegmentList({ style }: SegmentListProps) {
   const loadingError = useSelector(getError);
   const adminLink = useSelector(state =>
     getDocsUrl(state, {
-      page: "data-modeling/segments-and-metrics",
+      page: "data-modeling/segments",
       anchor: "creating-a-segment",
     }),
   );

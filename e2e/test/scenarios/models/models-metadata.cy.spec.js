@@ -47,7 +47,7 @@ describe("scenarios > models metadata", () => {
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
-      H.setColumnType("No special type", "Cost");
+      H.setColumnType("No semantic type", "Currency");
       H.saveMetadataChanges();
 
       cy.log(
@@ -66,7 +66,7 @@ describe("scenarios > models metadata", () => {
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
-      H.setColumnType("No special type", "Cost");
+      H.setColumnType("No semantic type", "Currency");
 
       cy.findByTestId("dataset-edit-bar").button("Cancel").click();
       H.modal().button("Discard changes").click();
@@ -89,7 +89,7 @@ describe("scenarios > models metadata", () => {
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
-      H.setColumnType("No special type", "Cost");
+      H.setColumnType("No semantic type", "Currency");
       H.saveMetadataChanges();
 
       cy.findAllByTestId("header-cell")
@@ -140,7 +140,7 @@ describe("scenarios > models metadata", () => {
 
     H.mapColumnTo({ table: "Orders", column: "Subtotal" });
     H.renameColumn("Subtotal", "Pre-tax");
-    H.setColumnType("No special type", "Cost");
+    H.setColumnType("No semantic type", "Currency");
     H.saveMetadataChanges();
 
     cy.findAllByTestId("header-cell")
@@ -172,8 +172,8 @@ describe("scenarios > models metadata", () => {
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit metadata").click();
     H.openColumnOptions("USER_ID");
-    H.setColumnType("No special type", "Foreign Key");
-    H.sidebar().findByText("Select a target").click();
+    H.setColumnType("No semantic type", "Foreign Key");
+    H.sidebar().findByPlaceholderText("Select a target").click();
     H.popover().findByText("People → ID").click();
     H.saveMetadataChanges();
     // TODO: Not much to do with it at the moment beyond saving it.
@@ -223,7 +223,7 @@ describe("scenarios > models metadata", () => {
 
     H.openColumnOptions("SUBTOTAL");
     H.mapColumnTo({ table: "Orders", column: "Subtotal" });
-    H.setColumnType("No special type", "Cost");
+    H.setColumnType("No semantic type", "Currency");
     H.saveMetadataChanges();
 
     cy.log("Revision 1");
@@ -238,7 +238,7 @@ describe("scenarios > models metadata", () => {
     cy.log("Revision 2");
     H.openColumnOptions("TAX");
     H.mapColumnTo({ table: "Orders", column: "Tax" });
-    H.setColumnType("No special type", "Cost");
+    H.setColumnType("No semantic type", "Currency");
     H.saveMetadataChanges();
 
     cy.findAllByTestId("header-cell")

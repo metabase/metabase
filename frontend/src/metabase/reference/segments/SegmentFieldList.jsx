@@ -66,6 +66,7 @@ const propTypes = {
   setError: PropTypes.func.isRequired,
   updateField: PropTypes.func.isRequired,
   user: PropTypes.object.isRequired,
+  table: PropTypes.object.isRequired,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
   onSubmit: PropTypes.func,
@@ -80,6 +81,7 @@ const SegmentFieldList = props => {
     loadingError,
     loading,
     user,
+    table,
     isEditing,
     startEditing,
     endEditing,
@@ -165,6 +167,7 @@ const SegmentFieldList = props => {
                       entity.name && (
                         <li className={CS.relative} key={entity.id}>
                           <Field
+                            databaseId={table.db_id}
                             field={entity}
                             foreignKeys={foreignKeys}
                             url={`/reference/segments/${segment.id}/fields/${entity.id}`}
