@@ -213,33 +213,27 @@
 (defmacro with-context
   "Executes body with the given context map and message prefix in ThreadContext.
    The context map's keys and values are added to the ThreadContext individually.
-   The message is stored with the key '_message'.
 
    Example usage:
-   (with-context {:context {:notification_id 1}
-                  :message \"[Notification 1]\"}
+   (with-context {:stack {:notification_id 1}
+                  :map \"Notification 1\"}
      (log/infof \"Hello\"))
 
-   ThreadContext will contain: {\"notification_id\" \"1\", \"_message\" \"[Notification 1]\"}"
-  [{:keys [context message]} & body]
+   ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
+  [{:keys [map stack]} & body]
   (macros/case
-    :clj `(let [ctx-keys# (when ~context (keys ~context))]
+    :clj `(let [ctx-map# ~map
+                ctx-stack# ~stack
+                ctx-keys# (keys ctx-map#)]
             (try
-              (when ~message
-                (ThreadContext/push ~message))
-              (when ~context
-                (doseq [k# ctx-keys#]
-                  (ThreadContext/put (name k#) (str (get ~context k#)))))
+              (when ctx-stack#
+                (ThreadContext/push ctx-stack#))
+              (doseq [k# ctx-keys#]
+                (ThreadContext/put (name k#) (str (get ctx-map# k#))))
               ~@body
               (finally
-                (when ~message
+                (when ctx-stack#
                   (ThreadContext/pop))
-                (when ~context
-                  (doseq [k# ctx-keys#]
-                    (ThreadContext/remove (name k#)))))))
+                (doseq [k# ctx-keys#]
+                  (ThreadContext/remove (name k#))))))
     :cljs ~@body))
-
-#_(with-context {:message "LEVEL 1"}
-    (with-context {:message "LEVEL 2"
-                   :context {:sup 1}}
-      (info "Hello" {:a 1})))
