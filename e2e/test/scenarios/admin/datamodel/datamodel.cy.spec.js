@@ -249,10 +249,7 @@ describe("scenarios > admin > datamodel > field", () => {
 
           cy.log("Make sure custom mapping appears in QB");
           H.openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
-          cy.get("[data-testid=cell-data]").should(
-            "contain",
-            remappedNullValue,
-          );
+          cy.findAllByRole("gridcell").should("contain", remappedNullValue);
         },
       );
     });
@@ -729,6 +726,8 @@ describe("scenarios > admin > datamodel > segments", () => {
           aggregation: [["count"]],
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
+      }).then(({ body }) => {
+        cy.wrap(body.id).as("segmentId");
       });
     });
 
@@ -753,6 +752,17 @@ describe("scenarios > admin > datamodel > segments", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`Fields in ${SEGMENT_NAME}`);
       cy.findAllByText("Discount");
+    });
+
+    it("should not crash when editing field in segment field detail page (metabase#55322)", () => {
+      cy.get("@segmentId").then(segmentId => {
+        cy.visit(`/reference/segments/${segmentId}/fields/${ORDERS.TAX}`);
+      });
+
+      cy.button(/Edit/).should("be.visible").realClick();
+
+      cy.findByPlaceholderText("No description yet").should("be.visible");
+      cy.get("main").findByText("Something’s gone wrong").should("not.exist");
     });
 
     it("should show up in UI list", () => {

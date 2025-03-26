@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.embed.app-origins-sdk :as aos]
    [metabase.embed.settings :as embed.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -41,23 +42,23 @@
   (mt/with-premium-features #{:embedding :embedding-sdk}
     (mt/with-temporary-setting-values [enable-embedding-sdk true]
       (let [origin-value "localhost:*"]
-        (embed.settings/embedding-app-origins-sdk! origin-value)
+        (aos/embedding-app-origins-sdk! origin-value)
         (testing "All localhosty origins should be ignored, so the result should be \"localhost:*\""
-          (embed.settings/embedding-app-origins-sdk! (str origin-value " localhost:8080"))
-          (is (= "localhost:*" (embed.settings/embedding-app-origins-sdk))))
+          (aos/embedding-app-origins-sdk! (str origin-value " localhost:8080"))
+          (is (= "localhost:*" (aos/embedding-app-origins-sdk))))
         (testing "Normal ips are added to the list"
-          (embed.settings/embedding-app-origins-sdk! (str origin-value " " other-ip))
-          (is (= (str "localhost:* " other-ip) (embed.settings/embedding-app-origins-sdk))))))))
+          (aos/embedding-app-origins-sdk! (str origin-value " " other-ip))
+          (is (= (str "localhost:* " other-ip) (aos/embedding-app-origins-sdk))))))))
 
 (deftest enable-embedding-SDK-false-returns-nothing
   (mt/with-premium-features #{:embedding :embedding-sdk}
     (mt/with-temporary-setting-values [enable-embedding-sdk false]
-      (embed.settings/embedding-app-origins-sdk! "")
+      (aos/embedding-app-origins-sdk! "")
       (let [origin-value (str "localhost:* " other-ip " "
                               (str/join " " (map #(str "localhost:" %) (range 1000 2000))))]
-        (embed.settings/embedding-app-origins-sdk! origin-value)
+        (aos/embedding-app-origins-sdk! origin-value)
         (is (not (and (embed.settings/enable-embedding-sdk)
-                      (embed.settings/embedding-app-origins-sdk))))))))
+                      (aos/embedding-app-origins-sdk))))))))
 
 (defn- depricated-setting-throws [f env & [reason]]
   (is (thrown-with-msg?
@@ -146,21 +147,21 @@
   (testing (str "origin sync with expected-behavior: " expected-behavior)
     (let [unsyncd-setting {:embedding-app-origin              #_:clj-kondo/ignore (embed.settings/embedding-app-origin)
                            :embedding-app-origins-interactive (embed.settings/embedding-app-origins-interactive)
-                           :embedding-app-origins-sdk         (embed.settings/embedding-app-origins-sdk)}]
+                           :embedding-app-origins-sdk         (aos/embedding-app-origins-sdk)}]
       ;; called for side effects
       (#'embed.settings/sync-origins-settings! env)
       (cond
         (= expected-behavior :no-op)
         (do (is (= (:embedding-app-origins-interactive unsyncd-setting)
                    (embed.settings/embedding-app-origins-interactive)))
-            (is (= (#'embed.settings/add-localhost (:embedding-app-origins-sdk unsyncd-setting))
-                   (embed.settings/embedding-app-origins-sdk))))
+            (is (= (#'aos/add-localhost (:embedding-app-origins-sdk unsyncd-setting))
+                   (aos/embedding-app-origins-sdk))))
 
         (= expected-behavior :sets-both)
         (do (is (= (:mb-embedding-app-origin env)
                    (embed.settings/embedding-app-origins-interactive)))
-            (is (= (#'embed.settings/add-localhost (:mb-embedding-app-origin env))
-                   (embed.settings/embedding-app-origins-sdk))))
+            (is (= (#'aos/add-localhost (:mb-embedding-app-origin env))
+                   (aos/embedding-app-origins-sdk))))
 
         :else (throw (ex-info "Invalid expected-behavior in test-origin-sync." {:expected-behavior expected-behavior}))))))
 
