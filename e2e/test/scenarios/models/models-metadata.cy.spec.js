@@ -25,10 +25,7 @@ describe("scenarios > models metadata", () => {
         type: "model",
       };
 
-      H.createQuestion(modelDetails).then(({ body: { id } }) => {
-        cy.visit(`/model/${id}`);
-        cy.wait("@dataset");
-      });
+      H.createQuestion(modelDetails, { visitQuestion: true, wrapId: true });
     });
 
     it("should edit GUI model metadata", () => {
@@ -50,7 +47,7 @@ describe("scenarios > models metadata", () => {
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
-      H.setColumnType("No special type", "Cost");
+      H.setColumnType("No semantic type", "Currency");
       H.saveMetadataChanges();
 
       cy.log(
@@ -64,13 +61,12 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Subtotal");
     });
 
-    it("allows for canceling changes", () => {
-      H.openQuestionActions();
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
+    it("allows for canceling changes, back navigation (metabase#55162)", () => {
+      H.openQuestionActions("Edit metadata");
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
-      H.setColumnType("No special type", "Cost");
+      H.setColumnType("No semantic type", "Currency");
 
       cy.findByTestId("dataset-edit-bar").button("Cancel").click();
       H.modal().button("Discard changes").click();
@@ -78,6 +74,13 @@ describe("scenarios > models metadata", () => {
       cy.findAllByTestId("header-cell")
         .should("contain", "Subtotal")
         .and("not.contain", "Pre-tax");
+
+      // Ensure back navigation works correctly metabase#55162
+      H.openQuestionActions("Edit metadata");
+      cy.go("back");
+      cy.get("@questionId").then(id => {
+        cy.location("pathname").should("equal", `/model/${id}-gui-model`);
+      });
     });
 
     it("clears custom metadata when a model is turned back into a question", () => {
@@ -86,7 +89,7 @@ describe("scenarios > models metadata", () => {
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
-      H.setColumnType("No special type", "Cost");
+      H.setColumnType("No semantic type", "Currency");
       H.saveMetadataChanges();
 
       cy.findAllByTestId("header-cell")
@@ -137,7 +140,7 @@ describe("scenarios > models metadata", () => {
 
     H.mapColumnTo({ table: "Orders", column: "Subtotal" });
     H.renameColumn("Subtotal", "Pre-tax");
-    H.setColumnType("No special type", "Cost");
+    H.setColumnType("No semantic type", "Currency");
     H.saveMetadataChanges();
 
     cy.findAllByTestId("header-cell")
@@ -169,8 +172,8 @@ describe("scenarios > models metadata", () => {
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit metadata").click();
     H.openColumnOptions("USER_ID");
-    H.setColumnType("No special type", "Foreign Key");
-    H.sidebar().findByText("Select a target").click();
+    H.setColumnType("No semantic type", "Foreign Key");
+    H.sidebar().findByPlaceholderText("Select a target").click();
     H.popover().findByText("People → ID").click();
     H.saveMetadataChanges();
     // TODO: Not much to do with it at the moment beyond saving it.
@@ -220,7 +223,7 @@ describe("scenarios > models metadata", () => {
 
     H.openColumnOptions("SUBTOTAL");
     H.mapColumnTo({ table: "Orders", column: "Subtotal" });
-    H.setColumnType("No special type", "Cost");
+    H.setColumnType("No semantic type", "Currency");
     H.saveMetadataChanges();
 
     cy.log("Revision 1");
@@ -235,7 +238,7 @@ describe("scenarios > models metadata", () => {
     cy.log("Revision 2");
     H.openColumnOptions("TAX");
     H.mapColumnTo({ table: "Orders", column: "Tax" });
-    H.setColumnType("No special type", "Cost");
+    H.setColumnType("No semantic type", "Currency");
     H.saveMetadataChanges();
 
     cy.findAllByTestId("header-cell")

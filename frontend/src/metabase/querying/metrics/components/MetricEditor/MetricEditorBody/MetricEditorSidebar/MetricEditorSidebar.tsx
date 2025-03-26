@@ -10,7 +10,7 @@ export function MetricEditorSidebar() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const docsUrl = useSelector(state =>
     getDocsUrl(state, {
-      page: "data-modeling/segments-and-metrics",
+      page: "data-modeling/metrics",
       anchor: "creating-a-metric",
     }),
   );
