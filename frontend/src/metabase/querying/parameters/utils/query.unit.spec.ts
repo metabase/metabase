@@ -70,7 +70,7 @@ describe("applyParameter", () => {
     ): ParameterTarget {
       const column = findColumn(tableName, columnName);
       const columnRef = Lib.legacyRef(query, stageIndex, column);
-      return ["dimension", columnRef] as ParameterTarget;
+      return ["dimension", columnRef, { "stage-number": stageIndex }];
     }
 
     it.each<FilterParameterCase>([
@@ -325,6 +325,26 @@ describe("applyParameter", () => {
         });
       },
     );
+
+    it("should ignore parameters with stage index out of range (metabase#55678)", () => {
+      const query = Lib.appendStage(createQuery());
+      const stageIndex = 1;
+      const column = Lib.filterableColumns(query, stageIndex)[0];
+      const columnRef = Lib.legacyRef(query, stageIndex, column);
+      const target: ParameterTarget = [
+        "dimension",
+        columnRef,
+        { "stage-number": stageIndex },
+      ];
+      const queryWithParameter = applyParameter(
+        query,
+        stageIndex,
+        "number/=",
+        target,
+        10,
+      );
+      expect(queryWithParameter).toBe(query);
+    });
   });
 
   describe("temporal unit parameters", () => {
@@ -344,7 +364,7 @@ describe("applyParameter", () => {
     const findColumn = columnFinder(query, columns);
     const column = findColumn("ORDERS", "CREATED_AT");
     const columnRef = Lib.legacyRef(query, stageIndex, column);
-    const target = ["dimension", columnRef] as ParameterTarget;
+    const target: ParameterTarget = ["dimension", columnRef];
 
     it.each<TemporalUnitParameterCase>([
       {
