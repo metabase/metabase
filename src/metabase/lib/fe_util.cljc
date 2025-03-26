@@ -79,8 +79,11 @@
 
 (defn- expand-case-or-if-expression
   [[op options clause-pairs fallback]]
-  (let [clauses (into [] cat clause-pairs)]
-    (into [op options] (conj clauses fallback))))
+  (let [clauses (into [] cat clause-pairs)
+        clauses-with-fallback (if (nil? fallback)
+                                clauses
+                                (conj clauses fallback))]
+    (into [op options] clauses-with-fallback)))
 
 (defn- column-metadata-from-ref
   [query stage-number a-ref]
