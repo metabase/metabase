@@ -1,6 +1,9 @@
-/* eslint-disable react/prop-types */
-import { useCallback, useMemo, useState } from "react";
-import { Responsive as ReactGridLayout } from "react-grid-layout";
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  type ItemCallback,
+  Layout,
+  Responsive as ReactGridLayout,
+} from "react-grid-layout";
 
 import { useMantineTheme } from "metabase/ui";
 
@@ -9,33 +12,95 @@ import "react-resizable/css/styles.css";
 
 import { generateGridBackground } from "./utils";
 
-export function GridLayout({
-  items,
-  itemRenderer,
-  breakpoints,
-  layouts,
-  cols: columnsMap,
-  width: gridWidth,
-  margin: marginMap,
-  rowHeight,
-  isEditing,
-  onLayoutChange,
-  ...props
-}) {
+// We need to omit onLayoutChange and margin from the props of ReactGridLayout
+// because we're overriding them in OwnProps
+type OmittedPropsFromGridLayout = Omit<
+  ReactGridLayout.ResponsiveProps,
+  "onLayoutChange" | "margin"
+>;
+// We need to make cols, width and margin mandatory from the props of ReactGridLayout
+type RequiredPropsFromGridLayout = Required<
+  Pick<
+    ReactGridLayout.ResponsiveProps,
+    "cols" | "width" | "margin" | "rowHeight"
+  >
+>;
+type OwnProps<T extends { id: number | null }> = {
+  /**
+   * Items to render in the grid
+   */
+  items: T[];
+
+  /**
+   * The function that renders the item
+   * @param props - the props for the item renderer
+   * @param props.item - the item to render
+   * @param props.gridItemWidth - the width of the grid item
+   * @param props.breakpoint - the current breakpoint
+   * @param props.totalNumGridCols - the total number of grid columns
+   * @returns the rendered item
+   */
+  itemRenderer: (props: {
+    item: T;
+    gridItemWidth: number;
+    breakpoint: "desktop" | "mobile";
+    totalNumGridCols: number;
+  }) => React.ReactNode;
+
+  /**
+   * Are we in editing mode?
+   */
+  isEditing: boolean;
+
+  /**
+   * Called when the layout changes
+   * @param layout - the new layout
+   * @param breakpoint - the current breakpoint
+   */
+  onLayoutChange: (layout: {
+    layout: ReactGridLayout.Layout[];
+    breakpoint: "desktop" | "mobile";
+  }) => void;
+
+  /**
+   * The breakpoints for the grid
+   */
+  margin?: Record<string, [number, number]>;
+};
+
+export function GridLayout<T extends { id: number | null }>(
+  props: OwnProps<T> & OmittedPropsFromGridLayout & RequiredPropsFromGridLayout,
+) {
+  const {
+    items,
+    itemRenderer,
+    breakpoints,
+    layouts = {},
+    cols: columnsMap = {},
+    width: gridWidth = 0,
+    margin: marginMap = {},
+    rowHeight,
+    isEditing,
+    onLayoutChange,
+    ...otherProps
+  } = props;
   const theme = useMantineTheme();
 
   const [currentBreakpoint, setCurrentBreakpoint] = useState(
-    ReactGridLayout.utils.getBreakpointFromWidth(breakpoints, gridWidth),
+    (ReactGridLayout as any).utils.getBreakpointFromWidth(
+      breakpoints,
+      gridWidth,
+    ),
   );
 
   const onLayoutChangeWrapped = useCallback(
-    (nextLayout) => {
+    (currentLayout: ReactGridLayout.Layout[]) => {
       onLayoutChange({
-        layout: nextLayout,
+        layout: currentLayout,
         // Calculating the breakpoint right here,
         // so we're definitely passing the most recent one
         // Workaround for https://github.com/react-grid-layout/react-grid-layout/issues/889
-        breakpoint: ReactGridLayout.utils.getBreakpointFromWidth(
+        breakpoint: (ReactGridLayout as any).utils.getBreakpointFromWidth(
           breakpoints,
           gridWidth,
         ),
@@ -44,7 +109,7 @@ export function GridLayout({
     [onLayoutChange, breakpoints, gridWidth],
   );
 
-  const onBreakpointChange = useCallback((newBreakpoint) => {
+  const onBreakpointChange = useCallback((newBreakpoint: string) => {
     setCurrentBreakpoint(newBreakpoint);
   }, []);
 
@@ -68,6 +133,7 @@ export function GridLayout({
     const [horizontalMargin] = margin;
     const totalHorizontalMargin = marginSlotsCount * horizontalMargin;
     const freeSpace = gridWidth - totalHorizontalMargin;
+
     return {
       width: freeSpace / cols,
       height: rowHeight,
@@ -75,9 +141,14 @@ export function GridLayout({
   }, [cols, gridWidth, rowHeight, margin]);
 
   const renderItem = useCallback(
-    (item) => {
+    (item: T) => {
       const itemLayout = layout.find((l) => String(l.i) === String(item.id));
+      if (!itemLayout) {
+        return null;
+      }
+
       const gridItemWidth = cellSize.width * itemLayout.w;
+
       return itemRenderer({
         item,
         gridItemWidth,
@@ -93,8 +164,7 @@ export function GridLayout({
     if (isEditing) {
       lowestLayoutCellPoint += Math.ceil(window.innerHeight / cellSize.height);
     }
-    // eslint-disable-next-line no-unused-vars
-    const [horizontalMargin, verticalMargin] = margin;
+    const verticalMargin = margin[1];
     return (cellSize.height + verticalMargin) * lowestLayoutCellPoint;
   }, [cellSize.height, layout, margin, isEditing]);
 
@@ -129,6 +199,23 @@ export function GridLayout({
   // https://github.com/react-grid-layout/react-grid-layout#performance
   const children = useMemo(() => items.map(renderItem), [items, renderItem]);
 
+  // // prevent user selection when dragging metabase#53842
+  const originalUserSelect = useRef(document.body.style.userSelect);
+  const disableTextSelection = useCallback<ItemCallback>(
+    (...params) => {
+      document.body.style.userSelect = "none";
+      otherProps.onDragStart?.(...params);
+    },
+    [otherProps],
+  );
+  const enableTextSelection = useCallback<ItemCallback>(
+    (...params) => {
+      document.body.style.userSelect = originalUserSelect.current;
+      otherProps.onDragStop?.(...params);
+    },
+    [otherProps],
+  );
+
   return (
     <ReactGridLayout
       breakpoints={breakpoints}
@@ -139,11 +226,15 @@ export function GridLayout({
       rowHeight={rowHeight}
       isDraggable={isEditing && !isMobile}
       isResizable={isEditing && !isMobile}
-      {...props}
+      {...otherProps}
       autoSize={false}
       onLayoutChange={onLayoutChangeWrapped}
       onBreakpointChange={onBreakpointChange}
       style={style}
+      onDragStart={disableTextSelection}
+      onDragStop={enableTextSelection}
+      onResizeStart={disableTextSelection}
+      onResizeStop={enableTextSelection}
     >
       {children}
     </ReactGridLayout>
