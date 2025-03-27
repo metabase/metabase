@@ -5,13 +5,7 @@ import type { SelectOption } from "metabase/ui";
 import { EditingBodyCellCategorySelect } from "./EditingBodyCellCategorySelect";
 import type { EditingBodyPrimitiveProps } from "./types";
 
-export const EditingBodyCellFKSelect = ({
-  autoFocus,
-  initialValue,
-  datasetColumn,
-  onSubmit,
-  onCancel,
-}: EditingBodyPrimitiveProps) => {
+export const EditingBodyCellFKSelect = (props: EditingBodyPrimitiveProps) => {
   const getDropdownLabelText = useCallback(
     (item: SelectOption) => `[${item.value}]: ${item.label}`,
     [],
@@ -19,13 +13,9 @@ export const EditingBodyCellFKSelect = ({
 
   return (
     <EditingBodyCellCategorySelect
-      autoFocus={autoFocus}
-      initialValue={initialValue}
-      datasetColumn={datasetColumn}
-      withCreateNew={false}
+      {...props}
       getDropdownLabelText={getDropdownLabelText}
-      onSubmit={onSubmit}
-      onCancel={onCancel}
+      withCreateNew={false}
     />
   );
 };
