@@ -144,11 +144,11 @@
          :payload (payload notification)
          :context (default-context)))
 
-(defmulti should-send-notification?
+(defmulti skip-reason
   "Determine whether a notification should be sent. Default to true."
   {:arglists '([notification-payload])}
   :payload_type)
 
-(defmethod should-send-notification? :default
+(defmethod skip-reason :default
   [_notification-payload]
-  true)
+  nil)
