@@ -101,10 +101,41 @@
     (when bar-width
       [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
 
+(defn calculate-pct-widths
+  "Calculate the widths for label and minibar as percentages.
+   Returns a vector of [label-width minibar-width] in the format '<value>%'.
+   
+   The minibar-width is calculated as 70% of cell-width unless that would exceed 100px,
+   in which case it's the percentage equivalent to 100px of the cell-width.
+   The label-width is calculated as the remaining percentage (100% - minibar-width)."
+  [cell-width]
+  (let [minibar-percent 70
+        minibar-max-px  70
+        minibar-max-percent (if (> cell-width 0)
+                              (min minibar-percent
+                                   (int (* (/ minibar-max-px cell-width) 100)))
+                              0)
+        label-percent (- 100 minibar-max-percent)]
+    [(str label-percent "%")
+     (str minibar-max-percent "%")]))
+
 (defn- render-minibar
-  "Return hiccup html structure for a numeric column cell with mini bar charts enabled. We use nested tables
-  as opposed to absolute and relative positioning for email client compatibility."
-  [val {:keys [min max]}]
+  "Generates a Hiccup HTML structure for displaying a cell in a column with minibar charts enabled.
+   We use nested tables as opposed to absolute/relative positioning for email client compatibility.
+
+  Creates a cell with two components:
+  1. A label showing the numeric value
+  2. A visual bar chart representing the value relative to the data range
+
+  Params:
+  - val: A NumericWrapper containing the value to display (:num-value)
+  - min/max: Map containing the minimum and maximum values in the dataset
+  - col-styles: Column styling options including width specifications
+
+  Returns:
+  - Hiccup data structure for rendering HTML, or
+  - Formatted value alone if not a valid numeric value"
+  [val {:keys [min max]} col-styles]
   (if-let [num (:num-value val)] ;; Assumes NumericWrapper
     (let [is-neg?        (< num 1)
           has-neg?       (< min 0)
@@ -112,11 +143,14 @@
           pct-full       (int (* (/ (abs num) normalized-max) 100))
           pct-left       (- style/mb-width pct-full)
           neg-pct-full   (int (Math/floor (* pct-full 0.49)))
-          neg-pct-left   (- 49 neg-pct-full)]
-      [:table {:style (style/style {:width "100px" :border "0" :border-collapse "collapse"})}
+          neg-pct-left   (- 49 neg-pct-full)
+          cell-width     (or (:min-width col-styles) 100)
+          [label-width
+           bar-width]    (calculate-pct-widths cell-width)]
+      [:table {:style (style/style {:width (str cell-width "px") :border "0" :border-collapse "collapse"})}
        [:tr
-        [:td {:style (style/style {:width "30%" :vertical-align "middle" :padding-right "10px"})} (h val)]
-        [:td {:style (style/style {:width "70%" :vertical-align "middle" :padding "0"})}
+        [:td {:style (style/style {:width label-width :vertical-align "middle" :padding-right "10px"})} (h val)]
+        [:td {:style (style/style {:width bar-width :vertical-align "middle" :padding "0"})}
          [:table {:style (style/style {:width "100%" :border-collapse "collapse"})}
           [:tr
            ;; Minibars for series that contain negative values have a dividing center line representing 0
@@ -145,11 +179,16 @@
     (h val)))
 
 (defn- render-table-body
-  "Render Hiccup `<tbody>` of a `<table>`.
+  "Renders the body (<tbody>) of an HTML table as a Hiccup data structure.
 
-  `get-background-color` is a function that returned the background color for the current cell; it is invoked like
-
-    (get-background-color cell-value column-name row-index)"
+  Params:
+  - get-background-color: Function that determines cell background colors
+  - column-names: Sequence of column names/identifiers
+  - rows: Sequence of row data, each containing cell values
+  - columns: Column configuration objects with type information
+  - minibar-cols: Columns that should display mini-bar visualizations instead of raw values
+  - col->styles: Map of column names to their style specifications
+  - row-index?: Boolean flag to include row index numbers (1-based)"
   [get-background-color column-names rows columns minibar-cols col->styles row-index?]
   [:tbody
    (for [[row-idx {:keys [row bar-width]}] (m/indexed rows)]
@@ -173,16 +212,16 @@
                         (when (= col-idx (dec (count row)))
                           {:border-right 0}))}
            (if-let [minibar-col (first (filter #(= (:name column) (:name %)) minibar-cols))]
-             (render-minibar cell (get-in minibar-col [:fingerprint :type :type/Number]))
+             (render-minibar cell (get-in minibar-col [:fingerprint :type :type/Number]) (get col->styles (:name column)))
              (h cell))]))])])
 
 (defn- get-min-width
   "Get the min width for a column with text wrapping enabled. In the happy path, column widths are supplied in viz settings
   and the correct index into column widths is found by grabbing the index of the column in the column definitions list whose
   name matches the column-name key of the text wrap viz setting. If this breaks down we default to an arbitrary 100px"
-  [col-idx column-widths]
+  [column-widths col-idx]
   (let [col-width (if col-idx (nth column-widths col-idx) 100)]
-    (- col-width (* font-size td-x-padding-em 2))))
+    (int (- col-width (* font-size td-x-padding-em 2)))))
 
 (defn- get-text-align
   [text-align]
@@ -207,24 +246,35 @@
            (::mb.viz/text-wrapping col-setting)
            (assoc column-name (merge {:white-space "normal"}
                                      (if column-widths
-                                       {:min-width (format "%spx" (get-min-width column-index column-widths))}
+                                       {:min-width (format "%spx" (get-min-width column-widths column-index))}
                                        ;; Text wrapping enabled but no column widths supplied, default to 780px
                                        {:max-width "780px"})))
 
            ;; text alignment
            (::mb.viz/text-align col-setting)
-           (assoc column-name {:text-align (get-text-align (::mb.viz/text-align col-setting))}))))
+           (assoc column-name {:text-align (get-text-align (::mb.viz/text-align col-setting))})
+
+           ;; minibar
+           (::mb.viz/show-mini-bar col-setting)
+           (assoc column-name (if column-widths
+                                {:width (nth column-widths column-index)
+                                 :min-width (get-min-width column-widths column-index)}
+                                {})))))
      {}
      column-settings)))
 
 (defn render-table
-  "This function returns the HTML data structure for the pulse table.
+  "Generates a complete HTML table as a Hiccup data structure for displaying tabular data.
 
-  `color-selector` is a function that returns the background color for a given cell.
-  `column-names-map` contains keys:
-    `:col-names`, which is the is display_names of the visible columns
-    `:cols-for-color-lookup`, is the original column names, which the color-selector requires for color lookup.
-  If `normalized-zero` is set (defaults to 0), render values less than it as negative"
+  Params:
+  - color-selector: Function that determines background colors for cells
+  - column-names-map: Map containing:
+      :col-names - Display names of visible columns to show in the UI
+      :cols-for-color-lookup - Original column names needed for color determination
+  - rows-with-header: Sequence where first element is the header row and remaining elements are data rows
+  - columns: Filtered column definitions
+  - viz-settings: Visualization settings map controlling display options
+  - minibar-cols: Columns that should display mini-bar visualizations"
   ([color-selector {:keys [col-names cols-for-color-lookup]} [header & rows] columns viz-settings minibar-cols]
    (let [col->styles        (column->viz-setting-styles columns viz-settings)
          row-index?         (:table.row_index viz-settings)
@@ -244,7 +294,6 @@
      [:table {:style       (style/style {:max-width     "100%"
                                          :white-space   "nowrap"
                                          :border        (str "1px solid " style/color-border)
-                                         :width         "1%"
                                          :border-radius "6px"
                                          :margin-bottom "6px"})
               :cellpadding "0"
