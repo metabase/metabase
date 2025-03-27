@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback } from "react";
 import { t } from "ttag";
 
 import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
@@ -25,10 +24,15 @@ export const DatabaseDangerZoneSection = ({
   const [isSavedFieldsModalOpen, saveFieldsModal] = useDisclosure(false);
   const [isDeleteDbModalOpen, deleteDbModal] = useDisclosure(false);
 
-  const handleDeleteDatabase = useCallback(
-    () => deleteDatabase(database.id),
-    [deleteDatabase, database.id],
-  );
+  const handleDiscardFieldValues = async () => {
+    return discardDatabaseFieldValues(database.id).then(() =>
+      saveFieldsModal.close(),
+    );
+  };
+
+  const handleDeleteDatabase = async () => {
+    return deleteDatabase(database.id).then(() => deleteDbModal.close());
+  };
 
   const hasCompletedSync = isSyncCompleted(database);
   const shouldHideSection =
@@ -57,8 +61,9 @@ export const DatabaseDangerZoneSection = ({
               opened={isSavedFieldsModalOpen}
               title={t`Discard saved field values`}
               onClose={saveFieldsModal.close}
-              onConfirm={() => discardDatabaseFieldValues(database.id)}
+              onConfirm={handleDiscardFieldValues}
               padding="xl"
+              data-testid="discard-field-values-confirm-modal"
             />
           </>
         )}
@@ -76,6 +81,7 @@ export const DatabaseDangerZoneSection = ({
               database={database}
               onClose={deleteDbModal.close}
               onDelete={handleDeleteDatabase}
+              data-testid="remove-database-confirm-modal"
             />
           </>
         )}

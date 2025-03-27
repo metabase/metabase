@@ -57,8 +57,6 @@ export interface DeleteDatabaseModalProps {
   database: Pick<Database, "id" | "name" | "router_user_attribute">;
 }
 
-// TODO: port to mantine components
-
 export const DeleteDatabaseModal = ({
   opened,
   database,
@@ -66,6 +64,7 @@ export const DeleteDatabaseModal = ({
   defaultDatabaseRemovalMessage,
   onClose,
   onDelete,
+  ...props
 }: DeleteDatabaseModalProps) => {
   const dispatch = useDispatch();
 
@@ -124,6 +123,7 @@ export const DeleteDatabaseModal = ({
       title={title || t`Delete the ${database.name} database?`}
       onClose={onClose}
       padding="xl"
+      {...props}
     >
       <LoadingAndErrorWrapper loading={loading}>
         <Stack
