@@ -6,7 +6,8 @@
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.style :as style]
    [metabase.formatter]
-   [metabase.models.visualization-settings :as mb.viz])
+   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.util :as u])
   (:import
    (metabase.formatter NumericWrapper)))
 
@@ -194,7 +195,9 @@
     (reduce
      (fn [acc [col-key col-setting]]
        (let [column-name   (::mb.viz/column-name col-key)
-             column-index  (first (keep-indexed #(when (= (:name %2) column-name) %1) columns))]
+             column-index  (first (keep-indexed
+                                   (fn [idx col] (when (= (:name col) column-name) idx))
+                                   columns))]
          (cond-> acc
            ;; text wrapping
            (::mb.viz/text-wrapping col-setting)
@@ -224,7 +227,7 @@
   ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows] columns viz-settings]
    (let [col->styles        (column->viz-setting-styles columns viz-settings)
          row-index?         (:table.row_index viz-settings)
-         pivot-grouping-idx (get (zipmap col-names (range)) "pivot-grouping")
+         pivot-grouping-idx (u/index-of #{"pivot-grouping"} col-names)
          col-names          (cond->> col-names
                               pivot-grouping-idx (m/remove-nth pivot-grouping-idx))
          header             (cond-> header
