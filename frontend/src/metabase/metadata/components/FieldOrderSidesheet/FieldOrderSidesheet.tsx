@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import Tables from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -26,18 +26,17 @@ interface OwnProps {
 
 interface Props extends OwnProps {
   table: Table;
-  onUpdateFieldOrder: (table: Table, fieldOrder: FieldId[]) => void;
-  onUpdateTable: (table: Table, name: string, value: TableFieldOrder) => void;
 }
 
-const FieldOrderSidesheetBase = ({
-  isOpen,
-  table,
-  onClose,
-  onUpdateTable,
-}: Props) => {
+const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
+  const dispatch = useDispatch();
+
+  const handleDragAndDrop = (fieldOrder: FieldId[]) => {
+    dispatch(Tables.actions.setFieldOrder(table, fieldOrder));
+  };
+
   const handleFieldOrderChange = (value: TableFieldOrder) => {
-    onUpdateTable(table, "field_order", value);
+    dispatch(Tables.actions.setFieldOrder(table, "field_order", value));
   };
 
   return (
@@ -54,11 +53,6 @@ const FieldOrderSidesheetBase = ({
   );
 };
 
-const mapDispatchToProps = {
-  onUpdateFieldOrder: Tables.actions.setFieldOrder,
-  onUpdateTable: Tables.actions.updateProperty,
-};
-
 export const FieldOrderSidesheet = _.compose(
   Tables.load({
     id: (_state: State, { tableId }: OwnProps) => tableId,
@@ -70,5 +64,4 @@ export const FieldOrderSidesheet = _.compose(
     requestType: "fetchMetadataDeprecated",
     selectorName: "getObjectUnfiltered",
   }),
-  connect(null, mapDispatchToProps),
 )(FieldOrderSidesheetBase);
