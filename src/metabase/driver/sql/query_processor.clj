@@ -1433,7 +1433,7 @@
 
 (defn- parent-honeysql-col-effective-type-map
   [field]
-  (when-let [field-id (and (integer? (second field)) (second field))]
+  (when-let [field-id (and (vector? field) (= 3 (count field)) (= :field (first field)) (integer? (second field)) (second field))]
     (when-let [field-metadata (lib.metadata/field (qp.store/metadata-provider) field-id)]
       {:effective-type (:effective-type field-metadata)})))
 
