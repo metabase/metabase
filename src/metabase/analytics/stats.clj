@@ -939,6 +939,9 @@
    {:name      :ai-sql-fixer
     :available (premium-features/enable-ai-sql-fixer?)
     :enabled   (premium-features/enable-ai-sql-fixer?)}
+   {:name      :ai-sql-generation
+    :available (premium-features/enable-ai-sql-generation?)
+    :enabled   (premium-features/enable-ai-sql-generation?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}])

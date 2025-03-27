@@ -8,6 +8,7 @@
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
    [metabase-enterprise.ai-sql-fixer.api]
+   [metabase-enterprise.ai-sql-generation.api]
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
@@ -36,6 +37,7 @@
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
+   :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :etl-connections            (deferred-tru "ETL Connections")
    :table-data-editing         (deferred-tru "Editing Table Data")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
@@ -66,6 +68,7 @@
   routes here and follow the convention."
   {"/advanced-permissions"       (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
    "/ai-sql-fixer"               (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
+   "/ai-sql-generation"          (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes

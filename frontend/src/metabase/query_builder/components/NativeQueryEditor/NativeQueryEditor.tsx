@@ -439,6 +439,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 features={sidebarFeatures}
                 onShowPromptInput={this.togglePromptVisibility}
                 onFormatQuery={this.formatQuery}
+                onGenerateQuery={this.onChange}
                 {...this.props}
               />
             )}
