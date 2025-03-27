@@ -59,6 +59,10 @@ export function applyParameter(
     return query;
   }
 
+  if (stageIndex >= Lib.stageCount(query)) {
+    return query;
+  }
+
   if (isTemporalUnitParameter(type)) {
     return applyTemporalUnitParameter(query, stageIndex, target, value);
   } else {
