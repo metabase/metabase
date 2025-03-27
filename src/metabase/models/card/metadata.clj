@@ -256,3 +256,10 @@ saved later when it is ready."
     (do
       (log/debug "Attempting to infer result metadata for Card")
       (assoc card :result_metadata (infer-metadata query)))))
+
+(defn assert-valid-idents
+  "Given a card (or updates being made to a card) check the `:result_metadata` has correctly formed idents."
+  [{cols :result_metadata :as _card-or-changes}]
+  (when-let [missing (seq (remove :ident cols))]
+    (throw (ex-info "Some columns in :result_metadata are missing :idents; these are required"
+                    {:missing missing}))))
