@@ -15,15 +15,10 @@
 
 (comment metabase.formatter/keep-me)
 
-(def ^:private max-bar-width 106)
-(def ^:private font-size 12)
-(def ^:private td-x-padding-em 1)
-(def ^:private td-y-padding-em 0.75)
-
 (defn- bar-th-style []
   (merge
    (style/font-style)
-   {:font-size       (format "%spx" font-size)
+   {:font-size       (format "%spx" style/font-size)
     :font-weight     700
     :color           style/color-text-dark
     :border-bottom   (str "2px solid " style/color-border)
@@ -32,24 +27,24 @@
 (defn- bar-td-style []
   (merge
    (style/font-style)
-   {:font-size      (format "%spx" font-size)
+   {:font-size      (format "%spx" style/font-size)
     :font-weight    400
     :text-align     :left
     :color          style/color-text-dark
     :border-bottom  (str "1px solid " style/color-border)
     :border-right   (str "1px solid " style/color-border)
-    :padding        (format "%sem %sem" td-y-padding-em td-x-padding-em)}))
+    :padding        (format "%sem %sem" style/td-y-padding-em style/td-x-padding-em)}))
 
 (defn- bar-td-row-index-style []
   (merge
    (style/font-style)
-   {:font-size      (format "%spx" font-size)
+   {:font-size      (format "%spx" style/font-size)
     :font-weight    400
     :text-align     :right
     :color          style/color-text-light
     :border-bottom  (str "1px solid " style/color-border)
     :border-right   (str "1px solid " style/color-border)
-    :padding        (format "%sem %sem" td-y-padding-em td-x-padding-em)}))
+    :padding        (format "%sem %sem" style/td-y-padding-em style/td-x-padding-em)}))
 
 (defn- bar-th-style-numeric []
   (merge (style/font-style) (bar-th-style) {:text-align :right}))
@@ -105,15 +100,14 @@
   "Calculate the widths for label and minibar as percentages.
    Returns a vector of [label-width minibar-width] in the format '<value>%'.
    
-   The minibar-width is calculated as 70% of cell-width unless that would exceed 100px,
+   The minibar-width is calculated as 70% of cell-width unless that would exceed `max-bar-width`,
    in which case it's the percentage equivalent to 100px of the cell-width.
    The label-width is calculated as the remaining percentage (100% - minibar-width)."
   [cell-width]
   (let [minibar-percent 70
-        minibar-max-px  70
         minibar-max-percent (if (> cell-width 0)
                               (min minibar-percent
-                                   (int (* (/ minibar-max-px cell-width) 100)))
+                                   (int (* (/ style/max-bar-width cell-width) 100)))
                               0)
         label-percent (- 100 minibar-max-percent)]
     [(str label-percent "%")
@@ -221,7 +215,7 @@
   name matches the column-name key of the text wrap viz setting. If this breaks down we default to an arbitrary 100px"
   [column-widths col-idx]
   (let [col-width (if col-idx (nth column-widths col-idx) 100)]
-    (int (- col-width (* font-size td-x-padding-em 2)))))
+    (int (- col-width (* style/font-size style/td-x-padding-em 2)))))
 
 (defn- get-text-align
   [text-align]
