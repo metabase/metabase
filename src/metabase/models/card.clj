@@ -719,6 +719,14 @@
                                                   (lib/query (:dataset_query card))
                                                   lib/suggested-name))))
 
+(defn- generate-card-entity-id
+  [card]
+  (let [eid (or (:entity_id card)
+                (-> card :dataset_query :info :card-entity-id)
+                (u/generate-nano-id))]
+    (cond-> card
+      (not= (:entity_id card) eid) (assoc :entity_id eid))))
+
 (defn- add-card-entity-id-to-query
   "Queries now carry the card's entity ID in the `:info` block; make sure that's populated on reading the card."
   [card]
@@ -846,6 +854,8 @@
   (-> card
       (assoc :metabase_version config/mb-version-string)
       maybe-normalize-query
+      generate-card-entity-id
+      add-card-entity-id-to-query
       card.metadata/populate-result-metadata
       pre-insert
       populate-query-fields
@@ -877,6 +887,7 @@
       (apply-dashboard-question-updates)
 
       maybe-normalize-query
+      add-card-entity-id-to-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
       ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
       ;; verified-result-metadata? flag (see #37009).

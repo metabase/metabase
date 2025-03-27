@@ -341,8 +341,10 @@
                                                        "Filter: expensive venues" (:id where-snippet)})})}]
     (qp.store/with-metadata-provider (mt/id)
       (testing "multiple snippets are correctly expanded in parent query"
-        (is (= (mt/native-query
-                 {:query "SELECT name, price FROM venues WHERE price > 2", :params nil})
+        (is (= (assoc-in (mt/native-query
+                           {:query  "SELECT name, price FROM venues WHERE price > 2"
+                            :params nil})
+                         [:info :card-entity-id] (:entity_id card))
                (substitute-params (:dataset_query card)))))
       (testing "multiple snippets are expanded from saved sub-query"
         (is (=? (mt/native-query
