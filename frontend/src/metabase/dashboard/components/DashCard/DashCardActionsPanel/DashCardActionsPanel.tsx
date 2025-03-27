@@ -74,6 +74,7 @@ function DashCardActionsPanelInner({
     supportPreviewing,
     supportsSeries,
     disableClickBehavior,
+    disableReplaceCard,
   } = getVisualizationRaw(series) ?? {};
 
   const buttons = [];
@@ -179,7 +180,12 @@ function DashCardActionsPanelInner({
     }
   }
 
-  if (!isLoading && dashcard && !isVirtualDashCard(dashcard)) {
+  if (
+    !isLoading &&
+    dashcard &&
+    !isVirtualDashCard(dashcard) &&
+    !disableReplaceCard
+  ) {
     buttons.push(
       <DashCardActionButton
         key="replace-question"
