@@ -83,9 +83,10 @@
                     fmt.date/date->iso-string)]
     (into [:between options column-arg] (map formatter) interval)))
 
-(defn- expandable-case-or-if-expression?
-  [[op _options & _args]]
-  (boolean (#{:case :if} op)))
+(defn- case-or-if-expression?
+  [clause]
+  (and (vector? clause)
+       (boolean (#{:case :if} (first clause)))))
 
 (defn- expand-case-or-if-expression
   [[op options clause-pairs fallback]]
@@ -121,7 +122,7 @@
   [query stage-number value]
   (let [[op options & args] (cond-> value
                               (expandable-temporal-expression? value) expand-temporal-expression
-                              (expandable-case-or-if-expression? value) expand-case-or-if-expression)]
+                              (case-or-if-expression? value) expand-case-or-if-expression)]
     {:lib/type :mbql/expression-parts
      :operator op
      :options  options
@@ -195,11 +196,6 @@
                                                       (map lib.common/->op-arg)
                                                       args))))
 
-(defn- case-or-if-clause?
-  [clause]
-  (and (vector? clause)
-       (boolean (#{:case :if} (first clause)))))
-
 (defn- case-or-if-pairs
   [args]
   (mapv #(into [] %) (partition 2 args)))
@@ -213,7 +209,7 @@
 (defn- fix-clause
   [clause]
   (cond-> clause
-    (case-or-if-clause? clause) wrap-case-or-if-clause))
+    (case-or-if-expression? clause) wrap-case-or-if-clause))
 
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
