@@ -1,4 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import {
+  SAMPLE_METADATA,
+  createQueryWithClauses,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
@@ -588,6 +593,81 @@ describe("getMappingOptionByTarget", () => {
       expect(getMappingOptionByTarget([mappingOption], target, question)).toBe(
         mappingOption,
       );
+    });
+
+    it("should not confuse columns from different stages", () => {
+      const query = Lib.appendStage(
+        createQueryWithClauses({
+          breakouts: [
+            {
+              columnName: "CREATED_AT",
+              tableName: "ORDERS",
+              temporalBucketName: "Month",
+            },
+          ],
+        }),
+      );
+      const question = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
+        query,
+      );
+
+      const mappingOptions = [
+        {
+          sectionName: "Order",
+          name: "Created At",
+          icon: "calendar",
+          target: [
+            "dimension",
+            ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+            { "stage-number": 0 },
+          ],
+        },
+        {
+          sectionName: "Order",
+          name: "Created At",
+          icon: "calendar",
+          target: [
+            "dimension",
+            ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+            { "stage-number": 1 },
+          ],
+        },
+      ];
+
+      const target = [
+        "dimension",
+        ["field", "CREATED_AT", { "base-type": "type/Text" }],
+        { "stage-number": 1 },
+      ];
+
+      expect(getMappingOptionByTarget(mappingOptions, target, question)).toBe(
+        mappingOptions[1],
+      );
+    });
+
+    it("should ignore targets with invalid stage index", () => {
+      const mappingOptions = [
+        {
+          sectionName: "Order",
+          name: "Created At",
+          icon: "calendar",
+          target: [
+            "dimension",
+            ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+            { "stage-number": 0 },
+          ],
+        },
+      ];
+
+      const target = [
+        "dimension",
+        ["field", "CREATED_AT", { "base-type": "type/Text" }],
+        { "stage-number": 1 },
+      ];
+
+      expect(
+        getMappingOptionByTarget(mappingOptions, target, question),
+      ).toBeUndefined();
     });
 
     it("should return undefined if option is not found", () => {
