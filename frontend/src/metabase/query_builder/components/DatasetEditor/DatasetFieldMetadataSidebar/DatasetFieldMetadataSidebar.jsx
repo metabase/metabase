@@ -67,8 +67,8 @@ function getSemanticTypeOptions() {
 }
 
 const visibilityTypeOptions = FIELD_VISIBILITY_TYPES.filter(
-  type => type.id !== "sensitive",
-).map(type => ({
+  (type) => type.id !== "sensitive",
+).map((type) => ({
   name: getVisibilityTypeName(type),
   value: type.id,
 }));
@@ -125,7 +125,7 @@ function DatasetFieldMetadataSidebar({
   const [tab, setTab] = useState(TAB.SETTINGS);
 
   const handleFormattingSettingsChange = useCallback(
-    settings => {
+    (settings) => {
       onFieldMetadataChange({ settings });
     },
     [onFieldMetadataChange],
@@ -158,7 +158,7 @@ function DatasetFieldMetadataSidebar({
   }, [tab, hasColumnFormattingOptions]);
 
   const onLastEssentialFieldKeyDown = useCallback(
-    e => {
+    (e) => {
       const isNextFieldAction = !e.shiftKey && e.key === "Tab";
       if (isNextFieldAction && isLastField) {
         e.preventDefault();
@@ -174,7 +174,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleDisplayNameChange = useCallback(
-    e =>
+    (e) =>
       onFieldMetadataChangeDebounced({
         display_name: e.target.value,
       }),
@@ -182,7 +182,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleDescriptionChange = useCallback(
-    e =>
+    (e) =>
       onFieldMetadataChangeDebounced({
         description: e.target.value,
       }),
@@ -190,7 +190,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleSemanticTypeChange = useCallback(
-    value =>
+    (value) =>
       onFieldMetadataChange({
         semantic_type: value,
       }),
@@ -198,7 +198,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleFKTargetChange = useCallback(
-    value =>
+    (value) =>
       onFieldMetadataChange({
         fk_target_field_id: value,
       }),
@@ -206,7 +206,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleVisibilityTypeChange = useCallback(
-    value =>
+    (value) =>
       onFieldMetadataChange({
         visibility_type: value,
       }),
@@ -214,7 +214,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleShouldIndexChange = useCallback(
-    e =>
+    (e) =>
       onFieldMetadataChange({
         should_index: e.target.checked,
       }),
@@ -302,7 +302,7 @@ function DatasetFieldMetadataSidebar({
               <Tabs value={tab} onChange={setTab}>
                 {hasColumnFormattingOptions ? (
                   <Tabs.List px="1rem">
-                    {TAB_OPTIONS.map(option => (
+                    {TAB_OPTIONS.map((option) => (
                       <Tabs.Tab
                         value={option.value}
                         key={`tab-${option.value}`}
@@ -324,7 +324,7 @@ function DatasetFieldMetadataSidebar({
                       }}
                       onChange={handleVisibilityTypeChange}
                     >
-                      {visibilityTypeOptions.map(option => (
+                      {visibilityTypeOptions.map((option) => (
                         <Radio
                           key={`visibility-type-${option.value}`}
                           value={option.value}

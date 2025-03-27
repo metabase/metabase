@@ -38,7 +38,7 @@ describe(
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
       preparePermissions();
-      createSandboxingDashboardAndQuestions().then(result => {
+      createSandboxingDashboardAndQuestions().then((result) => {
         const { data } = result.body;
         items = {
           dashboard: data.find(
@@ -75,11 +75,11 @@ describe(
         rowsShouldContainGizmosAndWidgets([response]),
       );
 
-      getFieldValuesForProductCategories().then(response =>
+      getFieldValuesForProductCategories().then((response) =>
         valuesShouldContainGizmosAndWidgets(response.body.values),
       );
 
-      getParameterValuesForProductCategories().then(response =>
+      getParameterValuesForProductCategories().then((response) =>
         valuesShouldContainGizmosAndWidgets(response.body.values),
       );
     });
@@ -100,10 +100,10 @@ describe(
         H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
           rowsShouldContainOnlyGizmos([response as DatasetResponse]),
         );
-        getFieldValuesForProductCategories().then(response =>
+        getFieldValuesForProductCategories().then((response) =>
           valuesShouldContainOnlyGizmos(response.body.values),
         );
-        getParameterValuesForProductCategories().then(response =>
+        getParameterValuesForProductCategories().then((response) =>
           valuesShouldContainOnlyGizmos(response.body.values),
         );
       });
@@ -119,10 +119,10 @@ describe(
         H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
           rowsShouldContainOnlyGizmos([response as DatasetResponse]),
         );
-        getFieldValuesForProductCategories().then(response =>
+        getFieldValuesForProductCategories().then((response) =>
           valuesShouldContainOnlyGizmos(response.body.values),
         );
-        getParameterValuesForProductCategories().then(response =>
+        getParameterValuesForProductCategories().then((response) =>
           valuesShouldContainOnlyGizmos(response.body.values),
         );
       });
@@ -138,10 +138,10 @@ describe(
         H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
           rowsShouldContainOnlyGizmos([response as DatasetResponse]),
         );
-        getFieldValuesForProductCategories().then(response =>
+        getFieldValuesForProductCategories().then((response) =>
           valuesShouldContainOnlyGizmos(response.body.values),
         );
-        getParameterValuesForProductCategories().then(response =>
+        getParameterValuesForProductCategories().then((response) =>
           valuesShouldContainOnlyGizmos(response.body.values),
         );
       });
@@ -174,18 +174,18 @@ describe(
           cy.log("Should not return any data, and return an error");
           cy.wait(
             new Array(items.questions.length).fill("@dashcardQuery"),
-          ).then(apiResponses => {
+          ).then((apiResponses) => {
             apiResponses.forEach(({ response }) => {
               expect(response?.body.data.rows).to.have.length(0);
               expect(response?.body.error_type).to.contain("invalid-query");
             });
           });
 
-          getFieldValuesForProductCategories().then(response => {
+          getFieldValuesForProductCategories().then((response) => {
             expect(response.body.values).to.have.length(0);
           });
 
-          getParameterValuesForProductCategories().then(response => {
+          getParameterValuesForProductCategories().then((response) => {
             expect(response.body.values).to.have.length(0);
           });
         });
@@ -261,7 +261,7 @@ describe(
           },
         };
 
-        Object.values(users).forEach(user => cy.createUserFromRawData(user));
+        Object.values(users).forEach((user) => cy.createUserFromRawData(user));
 
         cy.log("Show the permissions configuration for the Sample Database");
         cy.visit("/admin/permissions/data/database/1");

@@ -177,7 +177,7 @@ describe("DataSelector", () => {
     const { rerender } = render(<DataSelector {...props} />);
 
     // we call rerenderWith to add more data after a fetch function was called
-    const rerenderWith = nextMetadata => {
+    const rerenderWith = (nextMetadata) => {
       rerender(
         <DataSelector
           {...props}

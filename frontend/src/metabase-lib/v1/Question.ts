@@ -365,7 +365,7 @@ class Question {
     const table = this.metadata().table(sourceTableId);
 
     const hasSinglePk =
-      table?.fields?.filter(field => field.isPK())?.length === 1;
+      table?.fields?.filter((field) => field.isPK())?.length === 1;
     const { isNative } = Lib.queryDisplayInfo(this.query());
 
     return !isNative && !Lib.hasClauses(query, -1) && hasSinglePk;
@@ -593,7 +593,7 @@ class Question {
 
   setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
     const metadata = this.getResultMetadata();
-    const newMetadata = metadata.map(column => {
+    const newMetadata = metadata.map((column) => {
       const columnDiff = metadataDiff[column.name];
       return columnDiff ? { ...column, ...columnDiff } : column;
     });
@@ -632,7 +632,7 @@ class Question {
   }
 
   setParameter(id: ParameterId, parameter: ParameterObject) {
-    const newParameters = this.parameters().map(oldParameter =>
+    const newParameters = this.parameters().map((oldParameter) =>
       oldParameter.id === id ? parameter : oldParameter,
     );
 
@@ -695,7 +695,7 @@ class Question {
   }
 
   isDirtyComparedToWithoutParameters(originalQuestion: Question) {
-    const [a, b] = [this, originalQuestion].map(q => {
+    const [a, b] = [this, originalQuestion].map((q) => {
       return (
         q &&
         new Question(q.card(), this.metadata())

@@ -116,7 +116,7 @@ describe("DashboardSharingMenu", () => {
   });
 
   describe("pdf export", () => {
-    ["admin", "non-admin"].forEach(userType => {
+    ["admin", "non-admin"].forEach((userType) => {
       it(`should show the "Export as PDF" menu item for ${userType}`, async () => {
         setupDashboardSharingMenu({ isAdmin: userType === "admin" });
         await openMenu();

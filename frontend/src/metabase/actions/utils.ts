@@ -45,7 +45,7 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
 
 const getOptionsFromArray = (
   options: (number | string)[],
-): ActionFormOption[] => options.map(o => ({ name: o, value: o }));
+): ActionFormOption[] => options.map((o) => ({ name: o, value: o }));
 
 function getSampleOptions(fieldType: FieldType) {
   return fieldType === "number"
@@ -253,7 +253,7 @@ export const getForm = (
   );
   return {
     fields: sortedParams
-      .map(param => getFormField(param, fieldSettings[param.id] ?? {}))
+      .map((param) => getFormField(param, fieldSettings[param.id] ?? {}))
       .filter(Boolean) as ActionFormFieldProps[],
   };
 };
@@ -289,11 +289,11 @@ export const getFormValidationSchema = (
   fieldSettings: FieldSettingsMap = {},
 ) => {
   const schema = Object.values(fieldSettings)
-    .filter(fieldSetting =>
+    .filter((fieldSetting) =>
       // only validate fields that are present in the form
-      parameters.find(parameter => parameter.id === fieldSetting.id),
+      parameters.find((parameter) => parameter.id === fieldSetting.id),
     )
-    .map(fieldSetting => {
+    .map((fieldSetting) => {
       let yupType = getFieldValidationType(fieldSetting);
 
       if (fieldSetting.required) {

@@ -56,7 +56,7 @@ export function SelectEmbedTypePane({
     utm: utmTags,
   });
 
-  const isPublicSharingEnabled = useSelector(state =>
+  const isPublicSharingEnabled = useSelector((state) =>
     getSetting(state, "enable-public-sharing"),
   );
 

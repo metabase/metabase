@@ -59,7 +59,7 @@ export function SearchResults({
   });
   const dispatch = useDispatch();
   const list = useMemo(() => {
-    return data?.data?.map(item => Search.wrapEntity(item, dispatch));
+    return data?.data?.map((item) => Search.wrapEntity(item, dispatch));
   }, [data, dispatch]);
 
   return (
@@ -89,7 +89,7 @@ export function SearchResults({
 
       {!error && !isFetching && list.length > 0 && (
         <ul>
-          {list.map(item => (
+          {list.map((item) => (
             <li key={`${item.id}_${item.model}`}>
               <SearchResult
                 result={item}

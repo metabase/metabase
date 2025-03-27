@@ -8,7 +8,7 @@ import { Box, Button, Icon } from "metabase/ui";
 
 export function MetricEditorSidebar() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     getDocsUrl(state, {
       page: "data-modeling/segments-and-metrics",
       anchor: "creating-a-metric",

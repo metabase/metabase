@@ -66,7 +66,7 @@ function getDisabledSaveButtonTooltip(
   }
 
   const names = missingRequiredParams
-    .map(param => `"${param.name}"`)
+    .map((param) => `"${param.name}"`)
     .join(", ");
 
   return ngettext(

@@ -73,7 +73,7 @@ const meta: Meta<typeof SimpleDataPickerView> = {
     onClick: action("on-click"),
     options: SHORT_OPTIONS,
   },
-  render: args => {
+  render: (args) => {
     return (
       <Popover opened trapFocus>
         <Popover.Dropdown>
@@ -90,7 +90,7 @@ export default meta;
 type Story = StoryObj<typeof SimpleDataPickerView>;
 
 export const WithoutPopover: Story = {
-  render: args => <SimpleDataPickerView {...args} />,
+  render: (args) => <SimpleDataPickerView {...args} />,
 };
 
 export const NoOptions: Story = {
