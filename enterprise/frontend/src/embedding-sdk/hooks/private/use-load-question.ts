@@ -54,6 +54,7 @@ export function useLoadQuestion({
   // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
   initialSqlParameters,
+  onQuestionChanged,
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
   const dispatch = useSdkDispatch();
 
@@ -158,7 +159,10 @@ export function useLoadQuestion({
           ...params,
           originalQuestion,
           cancelDeferred: deferred(),
-          onQuestionChange: question => mergeQuestionState({ question }),
+          onQuestionChange: question => {
+            onQuestionChanged?.(question);
+            return mergeQuestionState({ question });
+          },
           onClearQueryResults: () =>
             mergeQuestionState({ queryResults: [null] }),
         }),

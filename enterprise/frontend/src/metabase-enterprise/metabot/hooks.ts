@@ -46,10 +46,18 @@ export const useMetabotAgent = () => {
     dismissUserMessage: (messageIndex: number) =>
       dispatch(dismissUserMessage(messageIndex)),
     submitInput: useCallback(
-      async (message: string) => {
+      async (
+        message: string,
+        { skipHistory = false }: { skipHistory?: boolean } = {},
+      ) => {
         const context = getChatContext();
-        const history = sendMessageReq.data?.history || [];
+        const history = skipHistory ? [] : sendMessageReq.data?.history || [];
         const state = sendMessageReq.data?.state || {};
+
+        if (skipHistory) {
+          console.log("Skipping submitInput history");
+        }
+
         return await dispatch(
           submitInput({ message, context, history, state }),
         );

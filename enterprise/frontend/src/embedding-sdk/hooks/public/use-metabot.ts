@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePrevious } from "react-use";
 
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
@@ -21,12 +22,18 @@ export interface UseMetabotHookResult {
   summarizeChartFromElement(element: HTMLElement): void;
 }
 
-export function useMetabot(): UseMetabotHookResult {
+export function useMetabot({
+  latestMBQL,
+}: {
+  latestMBQL?: string;
+} = {}): UseMetabotHookResult {
   const metabot = useMetabotAgent();
   const [messages, setMessages] = useState<MetabotMessage[]>([]);
   const [latestQuestionPath, setLatestQuestionPath] = useState<string | null>(
     null,
   );
+
+  // const previousMBQL = usePrevious(latestMBQL);
 
   const status = useMemo(() => {
     if (metabot.isDoingScience) {
@@ -37,37 +44,65 @@ export function useMetabot(): UseMetabotHookResult {
   }, [metabot]);
 
   function sendMessage(content: string) {
+    let modifiedContent = content;
+
+    const lastQuestionPath = messages
+      .filter(message => message.sender === "bot" && message.questionPath)
+      .slice(-1)?.[0]?.questionPath;
+
+    let lastQuestionMBQL = "";
+
+    try {
+      lastQuestionMBQL = atob(
+        lastQuestionPath?.replace("/question#", "") ?? "",
+      );
+    } catch (error) {}
+
+    const hasMBQLChanged = lastQuestionMBQL !== latestMBQL;
+
+    console.log("lastQuestionMBQL", {
+      lastQuestionMBQL,
+      latestMBQL,
+      hasMBQLChanged,
+    });
+
+    if (latestMBQL) {
+      modifiedContent = `${content}\n\n<instruction>You must build a query based on this MBQL: ${latestMBQL}. Make sure to prioritize breakouts and aggregation from this MBQL query, plus the user's natural language query above.</instruction>`;
+    }
+
     // Add user message to history
     const userMessage: MetabotMessage = {
       id: `user-${Date.now()}`,
-      content,
+      content: modifiedContent,
       sender: "user",
       timestamp: Date.now(),
     };
 
     setMessages(prevMessages => [...prevMessages, userMessage]);
 
-    metabot.submitInput(content).then(result => {
-      // Extract question path from result
-      const questionPath = (
-        result?.payload as any
-      )?.payload?.data?.reactions?.find(
-        (reaction: { type: string; url: string }) =>
-          reaction.type === "metabot.reaction/redirect",
-      )?.url;
+    metabot
+      .submitInput(modifiedContent, { skipHistory: false })
+      .then(result => {
+        // Extract question path from result
+        const questionPath = (
+          result?.payload as any
+        )?.payload?.data?.reactions?.find(
+          (reaction: { type: string; url: string }) =>
+            reaction.type === "metabot.reaction/redirect",
+        )?.url;
 
-      // Add bot response to history
-      const botMessage: MetabotMessage = {
-        id: `bot-${Date.now()}`,
-        content: metabot.userMessages[metabot.userMessages.length - 1] || "",
-        sender: "bot",
-        timestamp: Date.now(),
-        questionPath,
-      };
+        // Add bot response to history
+        const botMessage: MetabotMessage = {
+          id: `bot-${Date.now()}`,
+          content: metabot.userMessages[metabot.userMessages.length - 1] || "",
+          sender: "bot",
+          timestamp: Date.now(),
+          questionPath,
+        };
 
-      setMessages(prevMessages => [...prevMessages, botMessage]);
-      setLatestQuestionPath(questionPath);
-    });
+        setMessages(prevMessages => [...prevMessages, botMessage]);
+        setLatestQuestionPath(questionPath);
+      });
   }
 
   async function summarizeChartFromElement(element: HTMLElement) {

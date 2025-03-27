@@ -59,6 +59,7 @@ export const InteractiveQuestionProvider = ({
   initialSqlParameters,
   withDownloads,
   variant,
+  onQuestionChanged,
 }: InteractiveQuestionProviderProps) => {
   const {
     id: questionId,
@@ -123,6 +124,9 @@ export const InteractiveQuestionProvider = ({
     options,
     deserializedCard,
     initialSqlParameters,
+    onQuestionChanged: question => {
+      onQuestionChanged?.(question);
+    },
   });
 
   const globalPlugins = useSdkSelector(getPlugins);
@@ -151,8 +155,14 @@ export const InteractiveQuestionProvider = ({
     onReset: loadAndQueryQuestion,
     onNavigateBack,
     queryQuestion,
-    replaceQuestion,
-    updateQuestion,
+    replaceQuestion(question) {
+      onQuestionChanged?.(question);
+      return replaceQuestion(question);
+    },
+    updateQuestion(question, options) {
+      onQuestionChanged?.(question);
+      return updateQuestion(question, options);
+    },
     navigateToNewCard,
     plugins: combinedPlugins,
     question,

@@ -26,6 +26,7 @@ type InteractiveQuestionConfig = {
     question: MetabaseQuestion | undefined,
     context: { isNewQuestion: boolean },
   ) => void;
+  onQuestionChanged?: (question: Question) => void;
   entityTypeFilter?: EntityTypeFilterKeys[];
 
   /** Is the save question button visible? */

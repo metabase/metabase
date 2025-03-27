@@ -4,6 +4,7 @@ import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
+import type Question from "metabase-lib/v1/Question";
 
 import {
   InteractiveQuestionProvider,
@@ -14,6 +15,7 @@ import { InteractiveQuestionDefaultView } from "./InteractiveQuestionDefaultView
 interface InteractiveAdHocQuestionProps {
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config
   onNavigateBack: () => void;
+  onQuestionChanged?: (question: Question) => void;
   title: SdkQuestionTitleProps;
   height?: number;
   plugins?: MetabasePluginsConfig;
@@ -27,6 +29,7 @@ export const InteractiveAdHocQuestion = ({
   height,
   plugins,
   children,
+  onQuestionChanged,
 }: InteractiveAdHocQuestionProps) => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionPath),
@@ -52,6 +55,7 @@ export const InteractiveAdHocQuestion = ({
       deserializedCard={deserializedCard}
       componentPlugins={plugins}
       onNavigateBack={onNavigateBack}
+      onQuestionChanged={onQuestionChanged}
     >
       {children ?? (
         <InteractiveQuestionDefaultView

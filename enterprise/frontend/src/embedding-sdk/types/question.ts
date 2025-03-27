@@ -18,6 +18,7 @@ export interface LoadSdkQuestionParams {
   deserializedCard?: Card;
   questionId?: CardId | null;
   initialSqlParameters?: ParameterValues;
+  onQuestionChanged?: (question: Question) => void;
 }
 
 export interface NavigateToNewCardParams {
