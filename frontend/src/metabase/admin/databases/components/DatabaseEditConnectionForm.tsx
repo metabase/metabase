@@ -7,7 +7,7 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { GenericError } from "metabase/components/ErrorPages";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import {
   DatabaseForm,
@@ -95,7 +95,7 @@ export const DatabaseEditConnectionForm = withRouter(
             <Text my="md">{t`This database is managed by Metabase Cloud and cannot be modified.`}</Text>
           )}
         </LoadingAndErrorWrapper>
-        <LeaveConfirmationModal
+        <LeaveRouteConfirmModal
           isEnabled={isDirty && !isCallbackScheduled}
           route={route}
         />
