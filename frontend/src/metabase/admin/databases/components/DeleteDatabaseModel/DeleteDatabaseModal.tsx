@@ -9,8 +9,7 @@ import Alert from "metabase/core/components/Alert";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input";
 import { MetabaseApi } from "metabase/services";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseUsageInfo } from "metabase-types/api";
+import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import ContentRemovalConfirmation from "../ContentRemovalConfirmation";
 
@@ -46,13 +45,17 @@ const getErrorMessage = (error: any) => {
 };
 
 export interface DeleteDatabaseModalProps {
+  title: string;
+  defaultDatabaseRemovalMessage: string;
   onClose: () => void;
-  onDelete: (database: Database) => void;
-  database: Database;
+  onDelete: () => Promise<void>;
+  database: Pick<Database, "id" | "name" | "router_user_attribute">;
 }
 
-const DeleteDatabaseModal = ({
+export const DeleteDatabaseModal = ({
   database,
+  title,
+  defaultDatabaseRemovalMessage,
   onClose,
   onDelete,
 }: DeleteDatabaseModalProps) => {
@@ -70,7 +73,7 @@ const DeleteDatabaseModal = ({
     e.preventDefault();
 
     try {
-      await onDelete(database);
+      await onDelete();
       onClose();
     } catch (error) {
       setError(error);
@@ -99,7 +102,7 @@ const DeleteDatabaseModal = ({
 
   return (
     <ModalContent
-      title={t`Delete the ${database.name} database?`}
+      title={title || t`Delete the ${database.name} database?`}
       onClose={onClose}
     >
       <LoadingAndErrorWrapper loading={loading}>
@@ -139,7 +142,7 @@ const DeleteDatabaseModal = ({
             isHidden={!isContentRemovalConfirmed && hasContent}
           >
             <Alert icon="warning" variant="error">
-              {t`This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone!`}
+              {defaultDatabaseRemovalMessage}
             </Alert>
           </DeleteDatabaseModalSection>
           <DeleteDatabaseModalSection
@@ -173,6 +176,3 @@ const DeleteDatabaseModal = ({
     </ModalContent>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DeleteDatabaseModal;

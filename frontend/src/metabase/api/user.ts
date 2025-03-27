@@ -101,6 +101,9 @@ export const userApi = Api.injectEndpoints({
         });
       },
     }),
+    listUserAttributes: builder.query<string[], void>({
+      query: () => "/api/mt/user/attributes",
+    }),
   }),
 });
 
@@ -113,4 +116,5 @@ export const {
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useUpdateUserMutation,
+  useListUserAttributesQuery,
 } = userApi;
