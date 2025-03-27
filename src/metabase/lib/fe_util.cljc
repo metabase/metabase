@@ -36,6 +36,7 @@
   [:or
    :string
    :boolean
+   :keyword
    :int
    :float
    ::lib.schema.metadata/column
@@ -586,6 +587,15 @@
    [:unit     {:optional true} [:maybe ::lib.schema.filter/exclude-date-filter-unit]]
    [:values   [:sequential number?]]])
 
+(mu/defn- make-expression-parts :- ExpressionParts
+  "Build a mbql/expression-parts map with a new uuid"
+  [operator :- :keyword
+   args :- [:sequential [:or ExpressionArg ExpressionParts]]]
+  {:lib/type :mbql/expression-parts
+   :operator operator
+   :options  {:lib/uuid (str (random-uuid))}
+   :args     args})
+
 (mu/defn exclude-date-filter-clause :- ::lib.schema.expression/expression
   "Creates an exclude date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[exclude-date-filter-parts]]."
@@ -596,10 +606,10 @@
   (let [column (lib.temporal-bucket/with-temporal-bucket column nil)
         expr   (if (= operator :!=)
                  (case unit
-                   :hour-of-day (lib.expression/get-hour column)
-                   :day-of-week (lib.expression/get-day-of-week column :iso)
-                   :month-of-year (lib.expression/get-month column)
-                   :quarter-of-year (lib.expression/get-quarter column))
+                   :hour-of-day (make-expression-parts :get-hour [column])
+                   :day-of-week (make-expression-parts :get-day-of-week [column :iso])
+                   :month-of-year (make-expression-parts :get-month [column])
+                   :quarter-of-year (make-expression-parts :get-quarter [column]))
                  column)]
     (expression-clause-with-in operator (into [expr] values) {})))
 
