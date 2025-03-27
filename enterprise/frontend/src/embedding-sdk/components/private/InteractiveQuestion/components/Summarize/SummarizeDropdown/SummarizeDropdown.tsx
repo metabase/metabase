@@ -24,7 +24,7 @@ export const SummarizeDropdown = (
   const label = match(aggregationItems.length)
     .with(0, () => t`Summarize`)
     .with(1, () => t`1 summary`)
-    .otherwise(value => jt`${value} summaries`);
+    .otherwise((value) => jt`${value} summaries`);
 
   const [selectedAggregationItem, setSelectedAggregationItem] =
     useState<SDKAggregationItem>();

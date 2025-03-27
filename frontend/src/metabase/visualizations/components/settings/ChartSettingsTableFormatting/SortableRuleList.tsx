@@ -45,16 +45,16 @@ export const SortableRuleList = ({
     id: TempId;
     newIndex: number;
   }) => {
-    const oldIndex = rulesWithIDs.findIndex(rule => getId(rule) === id);
+    const oldIndex = rulesWithIDs.findIndex((rule) => getId(rule) === id);
 
     onMove(oldIndex, newIndex);
   };
 
   const handleRemove = (id: TempId) =>
-    onRemove(rulesWithIDs.findIndex(rule => getId(rule) === id));
+    onRemove(rulesWithIDs.findIndex((rule) => getId(rule) === id));
 
   const handleEdit = (id: TempId) =>
-    onEdit(rulesWithIDs.findIndex(rule => getId(rule) === id));
+    onEdit(rulesWithIDs.findIndex((rule) => getId(rule) === id));
 
   const renderItem = ({ item, id }: { item: RuleWithId; id: TempId }) => (
     <Sortable id={id} draggingStyle={{ opacity: 0.5 }}>

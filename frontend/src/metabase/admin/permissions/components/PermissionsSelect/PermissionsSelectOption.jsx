@@ -36,7 +36,7 @@ export function PermissionsSelectOption({
       onMouseEnter={() => setShouldShowTooltip(true)}
       onMouseLeave={() => setShouldShowTooltip(false)}
     >
-      <Tooltip label={hint} opened={shouldShowTooltip}>
+      <Tooltip label={hint} disabled={!hint} opened={shouldShowTooltip}>
         <IconContainer color={iconColor}>
           <Icon name={icon} />
         </IconContainer>

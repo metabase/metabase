@@ -13,7 +13,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.number :as u.number]))
 
 (comment lib/keep-me)
 
@@ -541,6 +542,15 @@
                                                          100)
                                                   nil))))))
 
+(deftest ^:parallel diagnose-expression-literals-test
+  (testing "top-level literals are not allowed"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          expr  [:value {:lib/uuid (str (random-uuid)) :effective-type :type/Integer} 1]]
+      (doseq [mode [:expression :filter]]
+        (is (=? {:message  "Standalone constants are not supported."
+                 :friendly true}
+                (lib.expression/diagnose-expression query 0 mode expr nil)))))))
+
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
     #{:type/Date :type/Text} "2024-07-02"))
@@ -589,3 +599,10 @@
     #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789+07:00"
     #{:type/DateTime :type/Text} "2024-07-02 12:34:56-03:00"
     #{:type/DateTime :type/Text} "2024-07-02 12:34+02:03"))
+
+(deftest ^:parallel value-test
+  (are [expected value] (=? expected (lib.expression/value value))
+    [:value {:base-type :type/Text} "abc"]       "abc"
+    [:value {:base-type :type/Integer} 123]      123
+    [:value {:base-type :type/Boolean} false]    false
+    [:value {:base-type :type/BigInteger} "123"] (u.number/bigint "123")))

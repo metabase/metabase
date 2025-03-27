@@ -34,6 +34,7 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
+import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -42,6 +43,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  BaseEntityId,
   BaseUser,
   Bookmark,
   CacheableDashboard,
@@ -60,6 +62,7 @@ import type {
   ModelCacheRefreshStatus,
   Pulse,
   Revision,
+  TableId,
   User,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
@@ -313,7 +316,7 @@ export const PLUGIN_COLLECTIONS = {
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
-  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "" as BaseEntityId | "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
@@ -326,9 +329,8 @@ export const PLUGIN_COLLECTIONS = {
   canCleanUp: (_collection: Collection) => false as boolean,
   useGetCleanUpMenuItems: (
     _collection: Collection,
-  ): { menuItems: JSX.Element[]; showIndicator: boolean } => ({
+  ): { menuItems: JSX.Element[] } => ({
     menuItems: [],
-    showIndicator: false,
   }),
   cleanUpRoute: null as React.ReactElement | null,
   cleanUpAlert: (() => null) as (props: {
@@ -528,9 +530,18 @@ export const PLUGIN_EMBEDDING = {
   isInteractiveEmbeddingEnabled: (_state: State) => false,
 };
 
+export interface SimpleDataPickerProps {
+  filterByDatabaseId: number | null;
+  selectedEntity?: TableId;
+  isInitiallyOpen: boolean;
+  triggerElement: ReactNode;
+  setSourceTableFn: (tableId: TableId) => void;
+  entityTypes: EmbeddingEntityType[];
+}
+
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
-  SimpleDataPicker: (_props: any) => null,
+  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -569,7 +580,7 @@ export const PLUGIN_AUDIT = {
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
-type GsheetConnectionModalProps = {
+type GdriveConnectionModalProps = {
   isModalOpen: boolean;
   onClose: () => void;
   reconnect: boolean;
@@ -577,11 +588,13 @@ type GsheetConnectionModalProps = {
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   UploadManagementTable: PluginPlaceholder,
-  GsheetsSyncStatus: PluginPlaceholder,
-  GsheetConnectionModal:
-    PluginPlaceholder as ComponentType<GsheetConnectionModalProps>,
-  GsheetMenuItem: PluginPlaceholder as ComponentType<{ onClick: () => void }>,
-  GsheetConnectButton: PluginPlaceholder,
+  GdriveSyncStatus: PluginPlaceholder,
+  GdriveConnectionModal:
+    PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
+  GdriveSidebarMenuItem: PluginPlaceholder as ComponentType<{
+    onClick: () => void;
+  }>,
+  GdriveDbMenu: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {

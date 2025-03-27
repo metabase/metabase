@@ -29,7 +29,7 @@ module.exports = {
       ImportDeclaration(node) {
         if (node.source.value === "e2e/support") {
           const hImportSpecifier = node.specifiers.find(
-            specifier =>
+            (specifier) =>
               specifier.type === "ImportSpecifier" &&
               specifier.imported.name === "H",
           );

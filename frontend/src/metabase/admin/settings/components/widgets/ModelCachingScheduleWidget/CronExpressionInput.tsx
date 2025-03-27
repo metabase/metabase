@@ -3,21 +3,31 @@ import { jt, msgid, ngettext, t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { validateCronExpression } from "metabase/lib/cron";
-import { Icon, Text, TextInput, Tooltip } from "metabase/ui";
+import {
+  Flex,
+  type FlexProps,
+  Icon,
+  Text,
+  TextInput,
+  Tooltip,
+} from "metabase/ui";
 
 import S from "./CronExpressionInput.module.css";
 import { CustomScheduleExplainer } from "./CustomScheduleExplainer";
 
-type CronExpressionInputProps = {
+type CronExpressionInputProps = Omit<FlexProps, "onChange"> & {
   value: string;
   onChange: (value: string) => void;
   onBlurChange: (value: string) => void;
+  showExplainer?: boolean;
 };
 
 export function CronExpressionInput({
   onChange,
   onBlurChange,
   value,
+  showExplainer = true,
+  ...flexProps
 }: CronExpressionInputProps) {
   const [error, setError] = useState<string | null>(null);
   const handleChange = (cronExpression: string) => {
@@ -44,24 +54,26 @@ export function CronExpressionInput({
   };
 
   return (
-    <>
+    <Flex direction="column" {...flexProps}>
       <CustomScheduleInputHint />
       <TextInput
         placeholder="For example 5   0   *   Aug   ?"
-        size="lg"
+        size="md"
         fw={600}
         error={error}
         errorProps={{ fz: ".875rem", lh: "1.3rem" }}
         type="text"
         labelProps={{ fw: 600 }}
         value={value}
-        onChange={event => handleChange(event.target.value)}
-        onBlur={event => handleBlur(event.target.value)}
+        onChange={(event) => handleChange(event.target.value)}
+        onBlur={(event) => handleBlur(event.target.value)}
         rightSection={<CronFormatTooltip />}
       />
 
-      {value && !error && <CustomScheduleExplainer cronExpression={value} />}
-    </>
+      {showExplainer && value && !error && (
+        <CustomScheduleExplainer cronExpression={value} />
+      )}
+    </Flex>
   );
 }
 

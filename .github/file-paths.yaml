@@ -26,10 +26,14 @@ frontend_sources: &frontend_sources
   - "babel.config.json"
   - ".eslintrc.js"
   - "postcss.config.js"
+  - "rspack.config.js"
   - "webpack.config.js"
   - "webpack.embedding-sdk.config.js"
   - "webpack.static-viz.config.js"
   - ".nvmrc"
+
+frontend_embedding_sdk_sources:
+  - "enterprise/frontend/src/embedding-sdk/**"
 
 frontend_specs: &frontend_specs
   - *shared_specs

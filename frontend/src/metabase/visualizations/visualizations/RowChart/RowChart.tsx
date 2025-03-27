@@ -391,7 +391,7 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
     data,
     chartColumns,
     getColumnValueFormatter(),
-  ).map(series => {
+  ).map((series) => {
     const seriesCard = {
       ...card,
       name: series.seriesName,
@@ -433,7 +433,7 @@ RowChartVisualization.placeholderSeries = [
       dataset_query: { type: "null" },
     },
     data: {
-      rows: _.range(0, 11).map(i => [i, i]),
+      rows: _.range(0, 11).map((i) => [i, i]),
       cols: [
         { name: "x", base_type: "type/Integer" },
         { name: "y", base_type: "type/Integer" },

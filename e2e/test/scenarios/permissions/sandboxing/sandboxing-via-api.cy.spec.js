@@ -187,7 +187,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
     function verifyCategoryList(visibleCategories) {
       H.popover().within(() => {
-        allCategories.forEach(value => {
+        allCategories.forEach((value) => {
           if (visibleCategories.includes(value)) {
             cy.findByText(value).should("be.visible");
           } else {
@@ -443,7 +443,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       });
     });
 
-    ["remapped", "default"].forEach(test => {
+    ["remapped", "default"].forEach((test) => {
       it(`${test.toUpperCase()} version:\n drill-through should work on implicit joined tables with sandboxes (metabase#13641)`, () => {
         const QUESTION_NAME = "13641";
 
@@ -520,7 +520,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.findByText("See these Orders").click();
 
         cy.log("Reported failing on v1.37.0.2");
-        cy.wait("@dataset").then(xhr => {
+        cy.wait("@dataset").then((xhr) => {
           expect(xhr.response.body.error).not.to.exist;
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -673,7 +673,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.signInAsSandboxedUser();
 
         H.openOrdersTable({
-          callback: xhr => expect(xhr.response.body.error).not.to.exist,
+          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
         });
 
         cy.wait("@datasetQuery");
@@ -808,7 +808,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
         H.openOrdersTable({
-          callback: xhr => expect(xhr.response.body.error).not.to.exist,
+          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
         });
         H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
         H.assertDatasetReqIsSandboxed({
@@ -828,7 +828,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       });
     });
 
-    ["remapped", "default"].forEach(test => {
+    ["remapped", "default"].forEach((test) => {
       it(`${test.toUpperCase()} version:\n should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (metabase#13642)`, () => {
         const QUESTION_NAME = "13642";
         const PRODUCTS_ALIAS = "Products";
@@ -902,7 +902,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Orders").click();
 
-        cy.wait("@dataset").then(xhr => {
+        cy.wait("@dataset").then((xhr) => {
           expect(xhr.response.body.error).not.to.exist;
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -970,7 +970,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Products? → ID/).click();
 
-      H.visualize(response => {
+      H.visualize((response) => {
         expect(response.body.error).to.not.exist;
       });
 
@@ -1112,9 +1112,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       H.sidebar().findByText("Email this dashboard").should("exist");
 
       // test that user is sandboxed - normal users has over 2000 rows
-      H.getDashboardCards()
-        .findByText(/Rows 1-\d of 11/)
-        .should("exist");
+      H.getDashboardCard().within(() => {
+        H.assertTableRowsCount(11);
+      });
       H.assertDatasetReqIsSandboxed({
         requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
         columnId: ORDERS.USER_ID,
@@ -1137,7 +1137,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.signInAsSandboxedUser();
 
       H.openOrdersTable({
-        callback: xhr => expect(xhr.response.body.error).not.to.exist,
+        callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1191,7 +1191,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.signInAsSandboxedUser();
 
       H.openReviewsTable({
-        callback: xhr => expect(xhr.response.body.error).not.to.exist,
+        callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
       });
       H.assertQueryBuilderRowCount(57); // test that user is sandboxed - normal users has 1,112 rows
       H.assertDatasetReqIsSandboxed();
@@ -1218,9 +1218,10 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
         // test that user is sandboxed - normal users has over 2000 rows
-        H.getDashboardCards()
-          .findByText(/Rows 1-\d of 11/)
-          .should("exist");
+        H.getDashboardCard().within(() => {
+          H.assertTableRowsCount(11);
+        });
+
         H.assertDatasetReqIsSandboxed({
           requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
           columnId: ORDERS.USER_ID,
@@ -1233,7 +1234,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           .findByPlaceholderText("Enter user names or email addresses")
           .click();
         H.popover().findByText("User 1").click();
-        H.sendEmailAndAssert(email => {
+        H.sendEmailAndAssert((email) => {
           expect(email.html).to.include("Orders in a dashboard");
           expect(email.html).to.include("37.65");
           expect(email.html).not.to.include("148.23"); // Order for user with ID 3

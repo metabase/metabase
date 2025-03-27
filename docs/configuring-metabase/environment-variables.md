@@ -69,9 +69,7 @@ The email address users should be referred to if they encounter a problem.
 
 Maximum number of rows to return for aggregated queries via the API.
 
-Must be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
-  This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
-  See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
+Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
@@ -234,6 +232,14 @@ Inline styling and inline scripts are not supported.
 
 Replace the word “Metabase” wherever it appears.
 
+### `MB_ATTACHMENT_ROW_LIMIT`
+
+- Type: positive-integer
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `attachment-row-limit`.
+
+Row limit in file attachments excluding the header.
+
 ### `MB_ATTACHMENT_TABLE_ROW_LIMIT`
 
 - Type: positive-integer
@@ -243,6 +249,14 @@ Maximum number of rows to render in an alert or subscription image.
 
 Range: 1-100. To limit the total number of rows included in the file attachment
         for an email dashboard subscription, use MB_UNAGGREGATED_QUERY_ROW_LIMIT.
+
+### `MB_BACKFILL_ENTITY_IDS_REPEAT_MS`
+
+- Type: integer
+- Default: `2000`
+- [Exported as](../installation-and-operation/serialization.md): `backfill-entity-ids-repeat-ms`.
+
+Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely.
 
 ### `MB_BCC_ENABLED`
 
@@ -363,11 +377,11 @@ Whether or not the default GeoJSON maps are enabled.
 
 ### `MB_DOWNLOAD_ROW_LIMIT`
 
-- Type: integer
+- Type: positive-integer
 - Default: `null`
 - [Exported as](../installation-and-operation/serialization.md): `download-row-limit`.
 
-Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.
+Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.
 
 ### `MB_EE_AI_FEATURES_ENABLED`
 
@@ -395,7 +409,7 @@ This feature is experimental.
 - Default: `gpt-4-turbo-preview`
 - [Configuration file name](./config-file.md): `ee-openai-model`
 
-The OpenAI Model (e.g. gpt-4, gpt-3.5-turbo).
+The OpenAI Model (e.g. 'gpt-4', 'gpt-3.5-turbo').
 
 This feature is experimental.
 
@@ -473,6 +487,18 @@ SMTP secure connection protocol. (tls, ssl, starttls, or none).
 
 SMTP username.
 
+### `MB_EMBEDDING_APP_ORIGIN [DEPRECATED]`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+> DEPRECATED: 0.51.0
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `embedding-app-origin`
+
+Allow this origin to embed the full Metabase application.
+
 ### `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -500,7 +526,7 @@ Allow Metabase SDK access to these space delimited origins.
 - [Exported as](../installation-and-operation/serialization.md): `embedding-homepage`.
 - [Configuration file name](./config-file.md): `embedding-homepage`
 
-Embedding homepage status, indicating if its visible, hidden or has been dismissed.
+Embedding homepage status, indicating if it's visible, hidden or has been dismissed.
 
 ### `MB_EMBEDDING_SECRET_KEY`
 
@@ -509,6 +535,17 @@ Embedding homepage status, indicating if its visible, hidden or has been dismiss
 - [Configuration file name](./config-file.md): `embedding-secret-key`
 
 Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.
+
+### `MB_ENABLE_EMBEDDING [DEPRECATED]`
+
+> DEPRECATED: 0.51.0
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `enable-embedding`.
+- [Configuration file name](./config-file.md): `enable-embedding`
+
+Allow admins to securely embed questions and dashboards within other applications?
 
 ### `MB_ENABLE_EMBEDDING_INTERACTIVE`
 
@@ -533,6 +570,17 @@ Allow admins to embed Metabase via the SDK?
 - [Configuration file name](./config-file.md): `enable-embedding-static`
 
 Allow admins to embed Metabase via static embedding?
+
+### `MB_ENABLE_FIELD_USAGE_ANALYSIS`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-field-usage-analysis`
+
+Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the
+    application database.
+
+    Turn off by default since we haven't had an user-facing feature that uses this data yet.
 
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
@@ -578,13 +626,6 @@ Allow caching results of queries that take a long time to run.
 
 Allow users to explore data using X-rays.
 
-### `MB_ENUM_CARDINALITY_THRESHOLD`
-
-- Type: integer
-- Default: `60`
-
-Enumerated field values with cardinality at or below this point are treated as enums in the pseudo-ddl used in some model prompts.
-
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
 - Type: boolean
@@ -615,6 +656,15 @@ Client ID for Google Sign-In.
 - [Configuration file name](./config-file.md): `google-auth-enabled`
 
 Is Google Sign-in currently enabled?
+
+### `MB_GSHEETS`
+
+- Type: json
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `gsheets`.
+- [Configuration file name](./config-file.md): `gsheets`
+
+Information about Google Sheets Integration.
 
 ### `MB_HEALTH_CHECK_LOGGING_ENABLED`
 
@@ -652,14 +702,6 @@ Custom URL for the help link.
 
 To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’.
 
-### `MB_IS_METABOT_ENABLED`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `is-metabot-enabled`
-
-Is Metabot enabled?
-
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
 - Type: integer
@@ -681,7 +723,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
 - Default: `email`
 - [Configuration file name](./config-file.md): `jwt-attribute-email`
 
-Key to retrieve the JWT users email address.
+Key to retrieve the JWT user's email address.
 
 ### `MB_JWT_ATTRIBUTE_FIRSTNAME`
 
@@ -691,7 +733,7 @@ Key to retrieve the JWT users email address.
 - Default: `first_name`
 - [Configuration file name](./config-file.md): `jwt-attribute-firstname`
 
-Key to retrieve the JWT users first name.
+Key to retrieve the JWT user's first name.
 
 ### `MB_JWT_ATTRIBUTE_GROUPS`
 
@@ -701,7 +743,7 @@ Key to retrieve the JWT users first name.
 - Default: `groups`
 - [Configuration file name](./config-file.md): `jwt-attribute-groups`
 
-Key to retrieve the JWT users groups.
+Key to retrieve the JWT user's groups.
 
 ### `MB_JWT_ATTRIBUTE_LASTNAME`
 
@@ -711,7 +753,7 @@ Key to retrieve the JWT users groups.
 - Default: `last_name`
 - [Configuration file name](./config-file.md): `jwt-attribute-lastname`
 
-Key to retrieve the JWT users last name.
+Key to retrieve the JWT user's last name.
 
 ### `MB_JWT_ENABLED`
 
@@ -944,7 +986,7 @@ Search base for users. (Will be searched recursively).
 - Default: `(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))`
 - [Configuration file name](./config-file.md): `ldap-user-filter`
 
-User lookup filter. The placeholder {login} will be replaced by the user supplied login.
+User lookup filter. The placeholder '{login}' will be replaced by the user supplied login.
 
 ### `MB_LDAP_USER_PROVISIONING_ENABLED`
 
@@ -996,36 +1038,6 @@ The custom illustration for the login page.
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
-### `MB_METABOT_DEFAULT_EMBEDDING_MODEL`
-
-- Type: string
-- Default: `text-embedding-ada-002`
-
-The default embeddings model to be used for metabot.
-
-### `MB_METABOT_FEEDBACK_URL`
-
-- Type: string
-- Default: `https://amtix3l3qvitb2qxstaqtcoqby0monuf.lambda-url.us-east-1.on.aws/`
-- [Configuration file name](./config-file.md): `metabot-feedback-url`
-
-The URL to which metabot feedback is posted.
-
-### `MB_METABOT_GET_PROMPT_TEMPLATES_URL`
-
-- Type: string
-- Default: `https://stkxezsr2kcnkhusi3fgcc5nqm0ttgfx.lambda-url.us-east-1.on.aws/`
-- [Configuration file name](./config-file.md): `metabot-get-prompt-templates-url`
-
-The URL in which metabot versioned prompt templates are stored.
-
-### `MB_METABOT_PROMPT_GENERATOR_TOKEN_LIMIT`
-
-- Type: integer
-- Default: `6000`
-
-When attempting to assemble prompts, the threshold at which prompt will no longer be appended to.
-
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
 - Type: keyword
@@ -1033,7 +1045,7 @@ When attempting to assemble prompts, the threshold at which prompt will no longe
 - [Exported as](../installation-and-operation/serialization.md): `native-query-autocomplete-match-style`.
 - [Configuration file name](./config-file.md): `native-query-autocomplete-match-style`
 
-Matching style for native query editors autocomplete. Can be "substring", "prefix", or "off". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off.
+Matching style for native query editor's autocomplete. Can be "substring", "prefix", or "off". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off.
 
 ### `MB_NESTED_FIELD_COLUMNS_VALUE_LENGTH_LIMIT`
 
@@ -1109,40 +1121,9 @@ The base URL where dashboard notitification links will point to instead of the M
 ### `MB_NOTIFICATION_THREAD_POOL_SIZE`
 
 - Type: integer
-- Default: `2`
+- Default: `3`
 
 The size of the thread pool used to send notifications.
-
-### `MB_NUM_METABOT_CHOICES`
-
-- Type: integer
-- Default: `1`
-
-Number of potential responses metabot will request. The first valid response is selected.
-
-### `MB_OPENAI_API_KEY`
-
-- Type: string
-- Default: `null`
-- [Configuration file name](./config-file.md): `openai-api-key`
-
-The OpenAI API Key.
-
-### `MB_OPENAI_MODEL`
-
-- Type: string
-- Default: `gpt-4-turbo-preview`
-- [Configuration file name](./config-file.md): `openai-model`
-
-The OpenAI Model (e.g. gpt-4-turbo-preview, gpt-4, gpt-3.5-turbo).
-
-### `MB_OPENAI_ORGANIZATION`
-
-- Type: string
-- Default: `null`
-- [Configuration file name](./config-file.md): `openai-organization`
-
-The OpenAI Organization ID.
 
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
@@ -1172,7 +1153,7 @@ Token for premium features. Go to the MetaStore to get yours!
 ### `MB_QUERY_ANALYSIS_ENABLED`
 
 - Type: boolean
-- Default: `true`
+- Default: `false`
 - [Configuration file name](./config-file.md): `query-analysis-enabled`
 
 Whether or not we analyze any queries at all.
@@ -1346,7 +1327,7 @@ Enable group membership synchronization with SAML.
 - [Configuration file name](./config-file.md): `saml-identity-provider-certificate`
 
 Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,
-open it in a text editor, then copy and paste the certificates contents here.
+open it in a text editor, then copy and paste the certificate's contents here.
 
 ### `MB_SAML_IDENTITY_PROVIDER_ISSUER`
 
@@ -1356,8 +1337,19 @@ open it in a text editor, then copy and paste the certificates contents here.
 - Default: `null`
 - [Configuration file name](./config-file.md): `saml-identity-provider-issuer`
 
-This is a unique identifier for the IdP. Often referred to as Entity ID or simply Issuer. Depending
+This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending
 on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`.
+
+### `MB_SAML_IDENTITY_PROVIDER_SLO_URI`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `saml-identity-provider-slo-uri`
+
+This is the URL where your users go to logout of your identity provider. Depending on which IdP you're
+using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`.
 
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
@@ -1432,7 +1424,7 @@ Is SCIM currently enabled?
 ### `MB_SEARCH_ENGINE`
 
 - Type: keyword
-- Default: `:in-place`
+- Default: `:appdb`
 
 Which engine to use when performing search. Supported values are :in-place and :appdb.
 
@@ -1459,7 +1451,7 @@ Should new email notifications be sent to admins, for all new SSO users?
 - Default: `:lax`
 - [Configuration file name](./config-file.md): `session-cookie-samesite`
 
-Value for the session cookies `SameSite` directive.
+Value for the session cookie's `SameSite` directive.
 
 See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
         Read more about [interactive Embedding](../embedding/interactive-embedding.md).
@@ -1607,14 +1599,15 @@ Bot user OAuth token for connecting the Metabase Slack app. This should be used 
 
 The name of the channel where bug reports should be posted.
 
-### `[DEPRECATED] MB_SLACK_FILES_CHANNEL`
+### `MB_SLACK_FILES_CHANNEL [DEPRECATED]`
+
+> DEPRECATED: 0.54.0
 
 - Type: string
 - Default: `metabase_files`
 - [Configuration file name](./config-file.md): `slack-files-channel`
-- Deprecated since: `v0.54.0`
 
-The name of the channel to which Metabase files should be initially uploaded. Deprecated (and does nothing) starting with metabase v0.54.0.
+The name of the channel to which Metabase files should be initially uploaded.
 
 ### `MB_SOURCE_ADDRESS_HEADER`
 
@@ -1623,7 +1616,7 @@ The name of the channel to which Metabase files should be initially uploaded. De
 - [Exported as](../installation-and-operation/serialization.md): `source-address-header`.
 - [Configuration file name](./config-file.md): `source-address-header`
 
-Identify the source of HTTP requests by this headers value, instead of its remote address.
+Identify the source of HTTP requests by this header's value, instead of its remote address.
 
 ### `MB_SQL_JDBC_FETCH_SIZE`
 
@@ -1693,9 +1686,7 @@ Process batches updates synchronously. If true, all `submit!` calls will be proc
 
 Maximum number of rows to return specifically on :rows type queries via the API.
 
-Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT.
-        This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
-        See also MB_AGGREGATED_QUERY_ROW_LIMIT.
+Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT. See also MB_AGGREGATED_QUERY_ROW_LIMIT.
 
 ### `MB_UPDATE_CHANNEL`
 
@@ -1704,7 +1695,34 @@ Must be less than 1048575, and less than the number configured in MB_AGGREGATED_
 - [Exported as](../installation-and-operation/serialization.md): `update-channel`.
 - [Configuration file name](./config-file.md): `update-channel`
 
-Well notify you here when theres a new version of this type of release.
+We'll notify you here when there's a new version of this type of release.
+
+### `MB_UPLOADS_DATABASE_ID [DEPRECATED]`
+
+> DEPRECATED: 0.50.0
+
+- Type: integer
+- Default: `null`
+
+Database ID for uploads.
+
+### `MB_UPLOADS_ENABLED [DEPRECATED]`
+
+> DEPRECATED: 0.50.0
+
+- Type: boolean
+- Default: `false`
+
+Whether or not uploads are enabled.
+
+### `MB_UPLOADS_SCHEMA_NAME [DEPRECATED]`
+
+> DEPRECATED: 0.50.0
+
+- Type: string
+- Default: `null`
+
+Schema name for uploads.
 
 ### `MB_UPLOADS_SETTINGS`
 
@@ -1713,6 +1731,15 @@ Well notify you here when theres a new version of this type of release.
 - [Configuration file name](./config-file.md): `uploads-settings`
 
 Upload settings.
+
+### `MB_UPLOADS_TABLE_PREFIX [DEPRECATED]`
+
+> DEPRECATED: 0.50.0
+
+- Type: string
+- Default: `null`
+
+Prefix for upload table names.
 
 ### `MB_USER_VISIBILITY`
 

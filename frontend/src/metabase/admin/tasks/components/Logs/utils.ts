@@ -17,7 +17,7 @@ export function mergeLogs(logArrays: Log[][]) {
     ["timestamp", "process_uuid", "msg"],
     ["asc", "asc", "asc"],
   )
-    .filter(log => {
+    .filter((log) => {
       const key = logEventKey(log);
       const keep = prevLogKey !== key;
       if (keep) {
@@ -44,14 +44,14 @@ export function hasLog(logs: Log[], targetLog: Log): boolean {
 
 export function filterLogs(logs: Log[], processUUID: string) {
   return logs.filter(
-    ev =>
+    (ev) =>
       !processUUID || processUUID === "ALL" || ev.process_uuid === processUUID,
   );
 }
 
 export function getAllProcessUUIDs(logs: Log[]) {
   const uuids = new Set<string>();
-  logs.forEach(log => uuids.add(log.process_uuid));
+  logs.forEach((log) => uuids.add(log.process_uuid));
   return [...uuids].filter(Boolean).sort();
 }
 

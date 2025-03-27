@@ -9,7 +9,7 @@ import { UpsellCard } from "./components";
 import { UPGRADE_URL } from "./constants";
 
 export const UpsellSSO = ({ source }: { source: string }) => {
-  const tokenFeatures = useSelector(state =>
+  const tokenFeatures = useSelector((state) =>
     getSetting(state, "token-features"),
   );
 

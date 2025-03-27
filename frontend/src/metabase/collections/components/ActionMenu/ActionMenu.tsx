@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -18,7 +19,7 @@ import {
   isItemPinned,
   isPreviewEnabled,
 } from "metabase/collections/utils";
-import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
@@ -51,7 +52,7 @@ function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
   const normalizedItemModel = normalizeItemModel(item);
 
   return bookmarks.some(
-    bookmark =>
+    (bookmark) =>
       bookmark.type === normalizedItemModel && bookmark.item_id === item.id,
   );
 }
@@ -82,7 +83,7 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps & ActionMenuStateProps) {
   const dispatch = useDispatch();
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
   const canPin = canPinItem(item, collection);
   const canPreview = canPreviewItem(item, collection);
@@ -148,10 +149,6 @@ function ActionMenu({
     );
   }, [item, dispatch]);
 
-  const handleStartDeletePermanently = useCallback(() => {
-    setShowDeleteModal(true);
-  }, []);
-
   const handleDeletePermanently = useCallback(() => {
     const Entity = entityForObject(item);
     dispatch(Entity.actions.delete(item));
@@ -172,17 +169,17 @@ function ActionMenu({
         onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
         onTogglePreview={canPreview ? handleTogglePreview : undefined}
         onRestore={canRestore ? handleRestore : undefined}
-        onDeletePermanently={
-          canDelete ? handleStartDeletePermanently : undefined
-        }
+        onDeletePermanently={canDelete ? openModal : undefined}
       />
-      {showDeleteModal && (
-        <ConfirmDeleteModal
-          name={item.name}
-          onClose={() => setShowDeleteModal(false)}
-          onDelete={handleDeletePermanently}
-        />
-      )}
+      <ConfirmModal
+        opened={modalOpened}
+        confirmButtonText={t`Delete permanently`}
+        data-testid="delete-confirmation"
+        message={t`This can't be undone.`}
+        title={t`Delete ${item.name} permanently?`}
+        onConfirm={handleDeletePermanently}
+        onClose={closeModal}
+      />
     </>
   );
 }

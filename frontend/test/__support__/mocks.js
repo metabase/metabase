@@ -6,6 +6,8 @@ global.window.matchMedia = () => ({
   removeEventListener: () => {},
 });
 
+HTMLElement.prototype.scrollIntoView = () => {}; // used under the hood in Mantine's Select component
+
 global.window.ResizeObserver = class ResizeObserver {
   observe() {}
 
@@ -28,7 +30,7 @@ jest.mock("@uiw/react-codemirror", () => {
         {...rest}
         value={props.value ?? ""}
         // @ts-expect-error: We cannot provide the update argument to onChange
-        onChange={evt => props.onChange?.(evt.target.value, undefined)}
+        onChange={(evt) => props.onChange?.(evt.target.value, undefined)}
         autoFocus
       />
     );

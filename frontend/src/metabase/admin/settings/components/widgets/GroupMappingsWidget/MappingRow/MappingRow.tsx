@@ -1,6 +1,6 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type * as React from "react";
-import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,7 +9,7 @@ import type {
   GroupIds,
   UserGroupsType,
 } from "metabase/admin/types";
-import Confirm from "metabase/components/Confirm";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { isAdminGroup } from "metabase/lib/groups";
@@ -45,22 +45,21 @@ const MappingRow = ({
   onChange,
   onDeleteMapping,
 }: MappingRowProps) => {
-  const [showDeleteMappingModal, setShowDeleteMappingModal] = useState(false);
+  const [
+    deleteGroupMappingModalOpened,
+    { open: openDeleteGroupMappingModal, close: closeDeleteGroupMappingModal },
+  ] = useDisclosure();
+  const [
+    deleteMappingModalOpened,
+    { open: openDeleteMappingModal, close: closeDeleteMappingModal },
+  ] = useDisclosure();
 
   // Mappings may receive group ids even from the back-end
   // if the groups themselves have been deleted.
   // Let's ensure this row works with the ones that exist.
-  const selectedGroupIdsFromGroupsThatExist = selectedGroupIds.filter(id =>
+  const selectedGroupIdsFromGroupsThatExist = selectedGroupIds.filter((id) =>
     _.findWhere(groups, { id: id }),
   );
-
-  const handleShowDeleteMappingModal = () => {
-    setShowDeleteMappingModal(true);
-  };
-
-  const handleHideDeleteMappingModal = () => {
-    setShowDeleteMappingModal(false);
-  };
 
   const handleConfirmDeleteMapping = (
     whatToDoAboutGroups: DeleteMappingModalValueType,
@@ -85,9 +84,9 @@ const MappingRow = ({
       case "clear":
         return () =>
           Promise.all(
-            groupIds.map(async id => {
+            groupIds.map(async (id) => {
               try {
-                if (!isAdminGroup(groups.find(group => group.id === id))) {
+                if (!isAdminGroup(groups.find((group) => group.id === id))) {
                   await clearGroupMember({ id });
                 }
               } catch (error) {
@@ -98,9 +97,9 @@ const MappingRow = ({
       case "delete":
         return () =>
           Promise.all(
-            groupIds.map(async id => {
+            groupIds.map(async (id) => {
               try {
-                if (!isAdminGroup(groups.find(group => group.id === id))) {
+                if (!isAdminGroup(groups.find((group) => group.id === id))) {
                   await deleteGroup({ id });
                 }
               } catch (error) {
@@ -114,7 +113,7 @@ const MappingRow = ({
   };
 
   const firstGroupInMapping = groups.find(
-    group => group.id === selectedGroupIdsFromGroupsThatExist[0],
+    (group) => group.id === selectedGroupIdsFromGroupsThatExist[0],
   );
 
   const isMappingLinkedOnlyToAdminGroup =
@@ -122,13 +121,9 @@ const MappingRow = ({
     selectedGroupIdsFromGroupsThatExist.length === 1 &&
     isAdminGroup(firstGroupInMapping);
 
-  const shouldUseDeleteMappingModal =
+  const shouldUseDeleteGroupMappingModal =
     selectedGroupIdsFromGroupsThatExist.length > 0 &&
     !isMappingLinkedOnlyToAdminGroup;
-
-  const onDelete = shouldUseDeleteMappingModal
-    ? () => handleShowDeleteMappingModal()
-    : () => onDeleteMapping({ name });
 
   return (
     <>
@@ -143,21 +138,30 @@ const MappingRow = ({
         </td>
         <td className={AdminS.TableActions}>
           <div className={cx(CS.floatRight, CS.mr1)}>
-            {shouldUseDeleteMappingModal ? (
-              <DeleteButton onDelete={onDelete} />
-            ) : (
-              <Confirm action={onDelete} title={t`Delete this mapping?`}>
-                <DeleteButton />
-              </Confirm>
-            )}
+            <DeleteButton
+              onDelete={() =>
+                shouldUseDeleteGroupMappingModal
+                  ? openDeleteGroupMappingModal()
+                  : openDeleteMappingModal()
+              }
+            />
           </div>
         </td>
       </tr>
-      {showDeleteMappingModal && (
+      <ConfirmModal
+        opened={deleteMappingModalOpened}
+        title={t`Delete this mapping?`}
+        onClose={closeDeleteMappingModal}
+        onConfirm={() => {
+          onDeleteMapping({ name });
+          closeDeleteMappingModal();
+        }}
+      />
+      {deleteGroupMappingModalOpened && (
         <DeleteGroupMappingModal
           name={name}
           groupIds={selectedGroupIds}
-          onHide={handleHideDeleteMappingModal}
+          onHide={closeDeleteGroupMappingModal}
           onConfirm={handleConfirmDeleteMapping}
         />
       )}

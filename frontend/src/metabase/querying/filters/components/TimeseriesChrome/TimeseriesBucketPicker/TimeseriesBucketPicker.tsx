@@ -79,7 +79,7 @@ function TimeseriesBucketDropdown({
     column,
   );
 
-  const availableItems = availableBuckets.map(bucket => {
+  const availableItems = availableBuckets.map((bucket) => {
     const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
     return {
       bucket,
@@ -89,7 +89,7 @@ function TimeseriesBucketDropdown({
   });
 
   const handleChange = (newValue: TemporalUnit) => {
-    const newItem = availableItems.find(item => item.value === newValue);
+    const newItem = availableItems.find((item) => item.value === newValue);
     const newBucket = newItem?.bucket ?? null;
     const newColumn = Lib.withTemporalBucket(column, newBucket);
     onChange(newColumn);

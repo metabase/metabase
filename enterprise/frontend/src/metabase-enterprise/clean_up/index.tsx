@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import { UserHasSeen } from "metabase/components/UserHasSeen/UserHasSeen";
 import { ForwardRefLink } from "metabase/core/components/Link";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import * as Urls from "metabase/lib/urls";
@@ -16,7 +17,7 @@ import { canCleanUp } from "./utils";
 if (hasPremiumFeature("collection_cleanup")) {
   PLUGIN_COLLECTIONS.canCleanUp = canCleanUp;
 
-  PLUGIN_COLLECTIONS.useGetCleanUpMenuItems = collection => {
+  PLUGIN_COLLECTIONS.useGetCleanUpMenuItems = (collection) => {
     const canCleanupCollection = canCleanUp(collection);
 
     const { currentData: collectionItems } = useListCollectionItemsQuery(
@@ -45,21 +46,30 @@ if (hasPremiumFeature("collection_cleanup")) {
     if (!canCleanupCollection || !hasCollectionItems) {
       return {
         menuItems: [],
-        showIndicator: false,
       };
     }
 
     return {
       menuItems: [
-        <Menu.Item
+        <UserHasSeen
           key="collections-cleanup"
-          leftSection={<Icon name="archive" />}
-          component={ForwardRefLink}
-          to={`${Urls.collection(collection)}/cleanup`}
-          rightSection={hasStaleItems && <Badge>Recommended</Badge>}
-        >{t`Clear out unused items`}</Menu.Item>,
+          id="clean-stale-items"
+          withContext={hasStaleItems}
+        >
+          {() => (
+            <Menu.Item
+              leftSection={<Icon name="archive" />}
+              component={ForwardRefLink}
+              to={`${Urls.collection(collection)}/cleanup`}
+              rightSection={
+                hasStaleItems ? <Badge>{t`Recommended`}</Badge> : null
+              }
+            >
+              {t`Clear out unused items`}
+            </Menu.Item>
+          )}
+        </UserHasSeen>,
       ],
-      showIndicator: hasStaleItems,
     };
   };
 

@@ -53,7 +53,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.7.0
         with:
-          babashka-version: 1.12.196
+          babashka-version: 1.12.197
       - name: Check bb runs
         run: bb --version
       - name: bb task list
@@ -135,6 +135,8 @@ jobs:
       - name: Build static-viz frontend
         if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
         run: yarn build-static-viz
+        env:
+          MB_EDITION: ${{ matrix.job.edition }}
       - name: Download Static Viz Bundle Artifact
         if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
         uses: actions/download-artifact@v4

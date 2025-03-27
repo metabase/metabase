@@ -41,7 +41,7 @@
 (defmethod mi/perms-objects-set :model/DashboardCard
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
-                   (t2/select-one [:model/Card :dataset_query] :id (u/the-id (:card_id dashcard))))
+                   (t2/select-one [:model/Card :dataset_query :card_schema] :id (u/the-id (:card_id dashcard))))
         series (or (:series dashcard)
                    (series dashcard))]
     (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
@@ -89,7 +89,7 @@
           dashcard-id->series (when (seq dashcard-ids)
                                 (as-> (t2/select
                                        [:model/Card :id :name :description :display :dataset_query :type :database_id
-                                        :visualization_settings :collection_id :series.dashboardcard_id]
+                                        :visualization_settings :collection_id :card_schema :series.dashboardcard_id]
                                        {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
                                         :where     [:in :series.dashboardcard_id dashcard-ids]
                                         :order-by  [[:series.position :asc]]}) series

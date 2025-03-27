@@ -192,7 +192,7 @@ describe("scenarios > admin > performance > strategy form", () => {
       }
     };
 
-    ["default policy", "Sample Database"].forEach(itemName => {
+    ["default policy", "Sample Database"].forEach((itemName) => {
       const model = itemName === "default policy" ? "root" : "database";
       const expectedNumberOfOptions = itemName === "default policy" ? 4 : 5;
 
@@ -298,8 +298,8 @@ describe("scenarios > admin > performance > strategy form", () => {
         });
 
         it(`can save a new daily schedule policy - for ${itemName}`, () => {
-          [12, 1, 11].forEach(time => {
-            ["AM", "PM"].forEach(amPm => {
+          [12, 1, 11].forEach((time) => {
+            ["AM", "PM"].forEach((amPm) => {
               cy.log(`Test daily at ${time} ${amPm}`);
               selectScheduleType("daily");
               cy.findAllByRole("textbox").eq(1).click();
@@ -336,10 +336,10 @@ describe("scenarios > admin > performance > strategy form", () => {
             cy.findByLabelText(amPm).next().click();
             saveCacheStrategyForm({ strategyType: "schedule", model });
             formLauncher(itemName, "currently", "Scheduled: weekly");
-            cy.findAllByRole("textbox").then(searchBoxes => {
+            cy.findAllByRole("textbox").then((searchBoxes) => {
               const values = Cypress._.map(
                 searchBoxes,
-                box => (box as HTMLInputElement).value,
+                (box) => (box as HTMLInputElement).value,
               );
               expect(values).to.deep.equal(["weekly", day, hour]);
             });

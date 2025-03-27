@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import { isWithinIframe } from "metabase/lib/dom";
 import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { Button, Text } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 import type {
   CustomClickActionWithCustomView,
   LegacyDrill,
@@ -25,16 +25,20 @@ export const NativeQueryClickFallback: LegacyDrill = ({ question }) => {
       section: "info",
       type: "custom",
       view: ({ dispatch }) => (
-        <Text>{jt`${(
-          <Button
-            key="button"
-            variant="subtle"
-            p={0}
-            onClick={() => dispatch(setUIControls({ modal: MODAL_TYPES.SAVE }))}
-          >
-            {t`Save`}
-          </Button>
-        )} this question to drill-thru.`}</Text>
+        <Flex display="flex" align="baseline" gap="0.25rem">
+          {jt`${(
+            <Button
+              key=""
+              variant="subtle"
+              p={0}
+              onClick={() =>
+                dispatch(setUIControls({ modal: MODAL_TYPES.SAVE }))
+              }
+            >
+              {t`Save`}
+            </Button>
+          )} this question to drill-through.`}
+        </Flex>
       ),
     } as CustomClickActionWithCustomView,
   ];

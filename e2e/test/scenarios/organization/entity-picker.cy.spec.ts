@@ -1021,7 +1021,106 @@ describe("scenarios > organization > entity picker", () => {
       });
     });
   });
+
+  describe("keyboard navigation", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should handle esc properly", () => {
+      cy.visit("/");
+
+      // New Collection Flow
+      H.newButton("Collection").click();
+      H.modal()
+        .findByLabelText(/Collection it's saved in/)
+        .click();
+
+      H.entityPickerModalTab("Collections").click();
+      H.entityPickerModal()
+        .button(/New collection/)
+        .click();
+
+      closeAndAssertModal(H.collectionOnTheGoModal);
+      closeAndAssertModal(H.entityPickerModal);
+      closeAndAssertModal(() =>
+        cy.findByRole("dialog", { name: "New collection" }),
+      );
+
+      // New Dashboard
+      H.newButton("Dashboard").click();
+      H.modal()
+        .findByLabelText(/Which collection/)
+        .click();
+
+      H.entityPickerModalTab("Collections").click();
+      H.entityPickerModal()
+        .button(/New collection/)
+        .click();
+
+      closeAndAssertModal(H.collectionOnTheGoModal);
+      closeAndAssertModal(H.entityPickerModal);
+
+      closeAndAssertModal(() =>
+        cy.findByRole("dialog", { name: "New dashboard" }),
+      );
+
+      H.newButton("Question").click();
+      H.entityPickerModalLevel(2).findByText("People").click();
+      H.queryBuilderHeader().findByRole("button", { name: "Save" }).click();
+
+      H.modal()
+        .findByLabelText(/Where do you/)
+        .click();
+      H.entityPickerModalTab("Browse").click();
+
+      H.entityPickerModal()
+        .button(/New dashboard/)
+        .click();
+
+      closeAndAssertModal(H.dashboardOnTheGoModal);
+      H.entityPickerModal()
+        .button(/New collection/)
+        .click();
+
+      closeAndAssertModal(H.collectionOnTheGoModal);
+
+      closeAndAssertModal(H.entityPickerModal);
+
+      closeAndAssertModal(() =>
+        cy.findByRole("dialog", { name: "Save new question" }),
+      );
+
+      H.visitQuestion(ORDERS_QUESTION_ID);
+      H.openQuestionActions("Add to dashboard");
+      H.entityPickerModalTab("Dashboards").click();
+
+      H.entityPickerModal()
+        .button(/New dashboard/)
+        .click();
+
+      closeAndAssertModal(H.dashboardOnTheGoModal);
+      closeAndAssertModal(H.entityPickerModal);
+
+      H.openQuestionActions("Duplicate");
+      H.modal()
+        .findByLabelText(/Where do you/)
+        .click();
+      H.entityPickerModalTab("Browse").click();
+      closeAndAssertModal(H.entityPickerModal);
+      closeAndAssertModal(() =>
+        cy.findByRole("heading", { name: /Duplicate/ }),
+      );
+    });
+  });
 });
+
+function closeAndAssertModal(modalGetterFn: () => Cypress.Chainable) {
+  modalGetterFn().should("exist");
+  cy.realPress("Escape");
+  modalGetterFn().should("not.exist");
+}
 
 function createTestCards() {
   const types = ["question", "model", "metric"] as const;
@@ -1037,8 +1136,8 @@ function createTestCards() {
     },
   ];
 
-  types.forEach(type => {
-    suffixes.forEach(suffix => {
+  types.forEach((type) => {
+    suffixes.forEach((suffix) => {
       collections.forEach(({ id, name }) => {
         H.createQuestion({
           ...cardDetails,
@@ -1050,7 +1149,7 @@ function createTestCards() {
     });
   });
 
-  suffixes.forEach(suffix => {
+  suffixes.forEach((suffix) => {
     H.createQuestion({
       ...cardDetails,
       name: `Orders Dashboard question ${suffix}`,
@@ -1076,8 +1175,8 @@ function createTestCollections() {
     },
   ];
 
-  suffixes.forEach(suffix => {
-    collections.forEach(collection =>
+  suffixes.forEach((suffix) => {
+    collections.forEach((collection) =>
       H.createCollection({
         ...collection,
         name: `${collection.name} ${suffix}`,
@@ -1105,8 +1204,8 @@ function createTestDashboards() {
     },
   ];
 
-  suffixes.forEach(suffix => {
-    dashboards.forEach(dashboard =>
+  suffixes.forEach((suffix) => {
+    dashboards.forEach((dashboard) =>
       H.createDashboard({ ...dashboard, name: `${dashboard.name} ${suffix}` }),
     );
   });
@@ -1146,7 +1245,7 @@ function createTestDashboardWithEmptyCard(
 }
 
 function selectQuestionFromDashboard(dashboardDetails?: H.DashboardDetails) {
-  createTestDashboardWithEmptyCard(dashboardDetails).then(dashboard => {
+  createTestDashboardWithEmptyCard(dashboardDetails).then((dashboard) => {
     H.visitDashboard(dashboard.id);
     H.editDashboard();
     H.getDashboardCard().button("Select question").click();
@@ -1192,11 +1291,11 @@ function assertSearchResults({
   notFoundItems?: string[];
   totalFoundItemsCount?: number;
 }) {
-  foundItems.forEach(item => {
+  foundItems.forEach((item) => {
     cy.findByText(item).should("exist");
   });
 
-  notFoundItems.forEach(item => {
+  notFoundItems.forEach((item) => {
     cy.findByText(item).should("not.exist");
   });
 
@@ -1213,7 +1312,7 @@ function assertSearchResults({
 }
 
 function testCardSearchForNormalUser({ tabs }: { tabs: string[] }) {
-  tabs.forEach(tab => {
+  tabs.forEach((tab) => {
     cy.log("root collection - automatically selected");
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab(tab).click();
@@ -1312,7 +1411,7 @@ function testCardSearchForInaccessibleRootCollection({
   tabs: string[];
   isRootSelected: boolean;
 }) {
-  tabs.forEach(tab => {
+  tabs.forEach((tab) => {
     if (isRootSelected) {
       cy.log("inaccessible root collection - automatically selected");
       H.entityPickerModal().within(() => {
@@ -1408,7 +1507,7 @@ function testCardSearchForInaccessibleRootCollection({
 }
 
 function testCardSearchForAllPersonalCollections({ tabs }: { tabs: string[] }) {
-  tabs.forEach(tab => {
+  tabs.forEach((tab) => {
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab(tab).click();
       cy.findByText("All personal collections").click();

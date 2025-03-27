@@ -7,11 +7,11 @@ import { ArchiveModal } from "metabase/components/ArchiveModal";
 import { connect } from "metabase/lib/redux";
 import { setArchivedQuestion } from "metabase/query_builder/actions";
 
-const mapDispatchToProps = dispatch => ({
-  archive: question => dispatch(setArchivedQuestion(question, true)),
+const mapDispatchToProps = (dispatch) => ({
+  archive: (question) => dispatch(setArchivedQuestion(question, true)),
 });
 
-const getLabels = question => {
+const getLabels = (question) => {
   const type = question.type();
 
   if (type === "question") {

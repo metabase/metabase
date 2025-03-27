@@ -78,11 +78,23 @@ describe(
       getLdapCard().findByText("Set up").should("exist");
     });
 
-    it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
+    it("should not reset previously populated fields when schema validation fails for just one of them", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
       enterLdapSettings();
       enterLdapPort("0");
+      cy.button("Save and enable").click();
+      cy.wait("@updateLdapSettings");
+
+      cy.findAllByText("nullable integer greater than 0").should("exist");
+      cy.findByDisplayValue("localhost").should("exist");
+    });
+
+    it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
+      cy.visit("/admin/settings/authentication/ldap");
+
+      enterLdapSettings();
+      enterLdapPort("1");
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
 
@@ -228,7 +240,7 @@ const getLdapCard = () => {
   return cy.findByText("LDAP").parent().parent();
 };
 
-const enterLdapPort = value => {
+const enterLdapPort = (value) => {
   H.typeAndBlurUsingLabel("LDAP Port", value);
 };
 

@@ -11,7 +11,10 @@ import {
   getIsSavedQuestionChanged,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import {
+  getEmbedOptions,
+  getIsEmbeddingIframe,
+} from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 
@@ -50,12 +53,18 @@ export const getRouterHash = (state: State, props: RouterProps) => {
   return props?.location?.hash ?? window.location.hash;
 };
 
-export const getIsAdminApp = createSelector([getRouterPath], path => {
+export const getIsAdminApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/admin/");
 });
 
 export const getIsCollectionPathVisible = createSelector(
-  [getQuestion, getDashboard, getRouterPath, getIsEmbedded, getEmbedOptions],
+  [
+    getQuestion,
+    getDashboard,
+    getRouterPath,
+    getIsEmbeddingIframe,
+    getEmbedOptions,
+  ],
   (question, dashboard, path, isEmbedded, embedOptions) => {
     if (isEmbedded && !embedOptions.breadcrumbs) {
       return false;
@@ -63,7 +72,7 @@ export const getIsCollectionPathVisible = createSelector(
 
     return (
       ((question != null && question.isSaved()) || dashboard != null) &&
-      PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path))
+      PATHS_WITH_COLLECTION_BREADCRUMBS.some((pattern) => pattern.test(path))
     );
   },
 );
@@ -72,7 +81,7 @@ export const getIsQuestionLineageVisible = createSelector(
   [getIsSavedQuestionChanged, getRouterPath],
   (isSavedQuestionChanged, path) =>
     isSavedQuestionChanged &&
-    PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
+    PATHS_WITH_QUESTION_LINEAGE.some((pattern) => pattern.test(path)),
 );
 
 export const getIsNavBarEnabled = createSelector(
@@ -80,7 +89,7 @@ export const getIsNavBarEnabled = createSelector(
     getUser,
     getRouterPath,
     getIsEditingDashboard,
-    getIsEmbedded,
+    getIsEmbeddingIframe,
     getEmbedOptions,
   ],
   (currentUser, path, isEditingDashboard, isEmbedded, embedOptions) => {
@@ -91,7 +100,7 @@ export const getIsNavBarEnabled = createSelector(
       return false;
     }
 
-    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
+    return !PATHS_WITHOUT_NAVBAR.some((pattern) => pattern.test(path));
   },
 );
 
@@ -126,7 +135,7 @@ export const getIsAppBarVisible = createSelector(
     getRouterHash,
     getIsAdminApp,
     getIsEditingDashboard,
-    getIsEmbedded,
+    getIsEmbeddingIframe,
     getIsEmbeddedAppBarVisible,
   ],
   (
@@ -149,34 +158,34 @@ export const getIsAppBarVisible = createSelector(
     ) {
       return false;
     }
-    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
+    return !PATHS_WITHOUT_NAVBAR.some((pattern) => pattern.test(path));
   },
 );
 
 export const getIsLogoVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => {
-    return !isEmbedded || embedOptions.logo;
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) => {
+    return !isEmbeddingIframe || embedOptions.logo;
   },
 );
 
 export const getIsSearchVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => {
-    return !isEmbedded || embedOptions.search;
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) => {
+    return !isEmbeddingIframe || embedOptions.search;
   },
 );
 
 export const getIsNewButtonVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => {
-    return !isEmbedded || embedOptions.new_button;
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) => {
+    return !isEmbeddingIframe || embedOptions.new_button;
   },
 );
 
 export const getIsProfileLinkVisible = createSelector(
-  [getIsEmbedded],
-  isEmbedded => !isEmbedded,
+  [getIsEmbeddingIframe],
+  (isEmbeddingIframe) => !isEmbeddingIframe,
 );
 
 export const getErrorPage = (state: State) => {
@@ -196,15 +205,19 @@ export const getCollectionId = createSelector(
 
 export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
   [
-    getIsEmbedded,
+    getIsEmbeddingIframe,
     getEmbedOptions,
     getIsAppBarVisible,
     (state: State) => state.app.isNavbarOpen,
   ],
-  (isEmbedded, embedOptions, isAppBarVisible, isNavbarOpen) => {
+  (isEmbeddingIframe, embedOptions, isAppBarVisible, isNavbarOpen) => {
     // in an embedded instance, when the app bar is hidden, but the nav bar is not
     // we need to force the sidebar to be open or else it will be totally inaccessible
-    if (isEmbedded && embedOptions.side_nav === true && !isAppBarVisible) {
+    if (
+      isEmbeddingIframe &&
+      embedOptions.side_nav === true &&
+      !isAppBarVisible
+    ) {
       return true;
     }
 
@@ -218,7 +231,7 @@ export const getIsDndAvailable = (state: State) => {
 
 export const getCustomHomePageDashboardId = createSelector(
   [getUser],
-  user => user?.custom_homepage?.dashboard_id || null,
+  (user) => user?.custom_homepage?.dashboard_id || null,
 );
 
 export const getHasDismissedCustomHomePageToast = (state: State) => {

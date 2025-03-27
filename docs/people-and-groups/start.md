@@ -58,10 +58,6 @@ Create keys to authenticate API calls.
 
 Metabase supports user provisioning via the SCIM protocol.
 
-## [Accessibility](./accessibility.md)
-
-Notes on Metabase's accessibility.
-
 [azure-ad]: ./saml-azure.md
 [google-sign-in]: ./google-and-ldap.md#enabling-google-sign-in
 [jwt]: ./authenticating-with-jwt.md

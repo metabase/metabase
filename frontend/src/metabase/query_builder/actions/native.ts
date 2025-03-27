@@ -137,7 +137,7 @@ export const insertSnippet =
     if (!question) {
       return;
     }
-    const query = question.legacyQuery() as NativeQuery;
+    const query = question.legacyNativeQuery() as NativeQuery;
     const nativeEditorCursorOffset = getNativeEditorCursorOffset(getState());
     const nativeEditorSelectedText = getNativeEditorSelectedText(getState());
     const selectionStart =
@@ -162,7 +162,7 @@ export const setTemplateTag = createThunkAction(
       if (!question) {
         return;
       }
-      const query = question.legacyQuery() as NativeQuery;
+      const query = question.legacyNativeQuery() as NativeQuery;
       const newQuestion = query.setTemplateTag(tag.name, tag).question();
       dispatch(updateQuestion(newQuestion));
     };
@@ -178,7 +178,7 @@ export const setTemplateTagConfig = createThunkAction(
       if (!question) {
         return;
       }
-      const query = question.legacyQuery() as NativeQuery;
+      const query = question.legacyNativeQuery() as NativeQuery;
       const newQuestion = query.setTemplateTagConfig(tag, parameter).question();
       dispatch(updateQuestion(newQuestion));
     };

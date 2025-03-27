@@ -75,9 +75,9 @@ describe("issue 6239", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    H.CustomExpressionEditor.type("CountIf([Total] > 0)").blur();
+    H.CustomExpressionEditor.type("CountIf([Total] > 0)").format();
 
-    cy.findByPlaceholderText("Something nice and descriptive").type("CE");
+    H.CustomExpressionEditor.nameInput().type("CE");
     cy.button("Done").click();
 
     cy.findByTestId("aggregate-step").contains("CE").should("exist");
@@ -240,7 +240,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
     cy.signInAsAdmin();
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
       ({ body }) => {
-        const tableId = body.find(table => table.name === "orders").id;
+        const tableId = body.find((table) => table.name === "orders").id;
         H.openTable({
           database: WRITABLE_DB_ID,
           table: tableId,
@@ -297,7 +297,7 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
       ({ body }) => {
-        const tableId = body.find(table => table.name === "orders").id;
+        const tableId = body.find((table) => table.name === "orders").id;
         H.openTable({
           database: WRITABLE_DB_ID,
           table: tableId,
@@ -314,14 +314,14 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
     cy.findByText("Pick a function or metric").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: "Percentile([Subtotal], 0.1)" });
-    cy.findByPlaceholderText("Something nice and descriptive")
-      .as("name")
-      .click();
+    H.enterCustomColumnDetails({
+      formula: "Percentile([Subtotal], 0.1)",
+      format: true,
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Function Percentile expects 1 argument").should("not.exist");
-    cy.get("@name").type("Expression name");
+    H.CustomExpressionEditor.nameInput().type("Expression name");
     cy.button("Done").should("not.be.disabled").click();
     // Todo: Add positive assertions once this is fixed
 
@@ -429,24 +429,22 @@ function addSummarizeCustomExpression(formula, name) {
   H.summarize({ mode: "notebook" });
   H.popover().contains("Custom Expression").click();
 
-  H.expressionEditorWidget().within(() => {
-    H.enterCustomColumnDetails({
-      formula,
-      name,
-    });
-    cy.button("Done").click();
+  H.enterCustomColumnDetails({
+    formula,
+    name,
+    format: true,
   });
+  H.expressionEditorWidget().button("Done").click();
 }
 
 function addCustomColumn(formula, name) {
   cy.findByText("Custom column").click();
-  H.expressionEditorWidget().within(() => {
-    H.enterCustomColumnDetails({
-      formula,
-      name,
-    });
-    cy.button("Done").click();
+  H.enterCustomColumnDetails({
+    formula,
+    name,
+    format: true,
   });
+  H.expressionEditorWidget().button("Done").click();
 }
 
 describe("issue 17514", () => {
@@ -576,7 +574,7 @@ describe("issue 17514", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
-      cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByTestId("save-question-modal").within((modal) => {
         cy.findByText("Save").click();
       });
 
@@ -663,7 +661,7 @@ describe("issue 17910", () => {
     cy.intercept("POST", "/api/card").as("card");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@card");
@@ -692,7 +690,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
     cy.signInAsAdmin();
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
-      const tableId = body.find(table => table.name === "orders").id;
+      const tableId = body.find((table) => table.name === "orders").id;
       H.openTable({
         database: WRITABLE_DB_ID,
         table: tableId,
@@ -795,13 +793,13 @@ describe("issue 18207", () => {
 
   it("should be possible to group by a string expression (metabase#18207)", () => {
     H.popover().contains("Custom Expression").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: "Max([Vendor])",
-        name: "LastVendor",
-      });
-      cy.findByText("Done").click();
+
+    H.enterCustomColumnDetails({
+      formula: "Max([Vendor])",
+      name: "LastVendor",
     });
+
+    H.expressionEditorWidget().button("Done").click();
 
     cy.findByTestId("aggregate-step").contains("LastVendor").should("exist");
 
@@ -969,10 +967,10 @@ describe("issue 19341", () => {
       );
       cy.findByTestId("loading-indicator").should("not.exist");
 
-      cy.findAllByTestId("result-item").then($result => {
+      cy.findAllByTestId("result-item").then(($result) => {
         const searchResults = $result.toArray();
         const modelTypes = new Set(
-          searchResults.map(k => k.getAttribute("data-model-type")),
+          searchResults.map((k) => k.getAttribute("data-model-type")),
         );
 
         expect(modelTypes).not.to.include("card");
@@ -1146,7 +1144,7 @@ const createQ1PlusQ2Question = (questionId1, questionId2) => {
 
 const assertQ1PlusQ2Joins = () => {
   H.getNotebookStep("join").within(() => {
-    cy.findAllByTestId("notebook-cell-item").then(items => {
+    cy.findAllByTestId("notebook-cell-item").then((items) => {
       cy.wrap(items[0]).should("contain", QUESTION_1.name);
       cy.wrap(items[1]).should("contain", QUESTION_2.name);
     });
@@ -1281,7 +1279,7 @@ describe("issue 20809", () => {
 
     cy.button("Done").click();
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
