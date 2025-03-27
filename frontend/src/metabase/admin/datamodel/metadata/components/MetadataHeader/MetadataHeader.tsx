@@ -82,9 +82,9 @@ const MetadataHeader = ({
       {selectedDatabaseId && selectedSchemaId && selectedTableId && (
         <Flex
           align="center"
+          flex="1 0 auto"
           gap="md"
           justify="flex-end"
-          flex="1 0 auto"
           mx="xl"
         >
           <Button
