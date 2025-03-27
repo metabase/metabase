@@ -205,10 +205,10 @@ const addCustomColumn = () => {
 function verifyHelptextPosition(text) {
   H.CustomExpressionEditor.get()
     .findByText(text)
-    .then($element => {
+    .then(($element) => {
       const { left: textLeft } = $element[0].getBoundingClientRect();
 
-      H.CustomExpressionEditor.helpText().then($element => {
+      H.CustomExpressionEditor.helpText().then(($element) => {
         const { left: helpTextLeft } = $element[0].getBoundingClientRect();
 
         expect(helpTextLeft).to.be.closeTo(textLeft, 5);

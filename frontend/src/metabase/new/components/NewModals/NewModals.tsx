@@ -17,7 +17,7 @@ import type { WritebackAction } from "metabase-types/api";
 export const NewModals = withRouter((props: WithRouterProps) => {
   const currentNewModal = useSelector(currentOpenModal);
   const dispatch = useDispatch();
-  const collectionId = useSelector(state =>
+  const collectionId = useSelector((state) =>
     Collections.selectors.getInitialCollectionId(state, props),
   );
 

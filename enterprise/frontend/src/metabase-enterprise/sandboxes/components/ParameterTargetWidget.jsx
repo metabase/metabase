@@ -47,7 +47,7 @@ export default class ParameterTargetWidget extends Component {
         }
       >
         <ParameterTargetList
-          onChange={target => {
+          onChange={(target) => {
             onChange(target);
             this.popover.current.close();
           }}

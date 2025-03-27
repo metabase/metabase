@@ -18,7 +18,9 @@ export function enclosingFunction(doc: string, pos: number) {
 
       const args =
         cursor.node.getChildren("ArgList")?.[0]?.getChildren("Arg") ?? [];
-      const argIndex = args.findIndex(arg => arg.from <= pos && arg.to >= pos);
+      const argIndex = args.findIndex(
+        (arg) => arg.from <= pos && arg.to >= pos,
+      );
 
       if (value.endsWith(")") && cursor.to === pos) {
         // do not show help when cursor is placed after closing )

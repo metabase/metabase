@@ -87,7 +87,7 @@ describe("AccordionList", () => {
     const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
     const sections = ["Widgets", "Doohickeys"];
 
-    sections.forEach(name => {
+    sections.forEach((name) => {
       const SECTION = screen.queryByText(name);
       expect(SEARCH_FIELD.compareDocumentPosition(SECTION)).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
@@ -148,13 +148,13 @@ describe("AccordionList", () => {
 });
 
 function assertAbsence(array) {
-  array.forEach(item => {
+  array.forEach((item) => {
     expect(screen.queryByText(item)).not.toBeInTheDocument();
   });
 }
 
 function assertPresence(array) {
-  array.forEach(item => {
+  array.forEach((item) => {
     expect(screen.getByText(item)).toBeInTheDocument();
   });
 }

@@ -12,7 +12,7 @@ export type Plan =
 export const getPlan = (features?: TokenFeatures | null): Plan => {
   if (features) {
     const hasAnyProFeatures = tokenFeatures.some(
-      feature =>
+      (feature) =>
         feature !== "hosting" &&
         feature !== "attached_dwh" &&
         features[feature],
@@ -35,4 +35,4 @@ export const getPlan = (features?: TokenFeatures | null): Plan => {
 
 const ssoFeatures = ["sso_google", "sso_jwt", "sso_ldap", "sso_saml"] as const;
 export const hasAnySsoFeature = (features?: TokenFeatures | null): boolean =>
-  features != null && ssoFeatures.some(ssoFeature => features[ssoFeature]);
+  features != null && ssoFeatures.some((ssoFeature) => features[ssoFeature]);

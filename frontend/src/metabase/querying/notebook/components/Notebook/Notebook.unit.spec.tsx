@@ -104,7 +104,7 @@ const dataPickerValueMap: Record<
     tabDisplayName: "Tables",
     recentItem: TEST_RECENT_TABLE,
     itemPickerData: checkNotNull(MOCK_DATABASE.tables).map(
-      table => table.display_name,
+      (table) => table.display_name,
     ),
     pickerColIdx: 2, // tables are always level 2 in the data picker
   },
@@ -161,7 +161,7 @@ function setup({
     ["selections"],
   );
 
-  const collectionItems = TEST_ENTITY_TYPES.map(entityType =>
+  const collectionItems = TEST_ENTITY_TYPES.map((entityType) =>
     createMockCollectionItem({
       model: entityType as CollectionItemModel,
       collection: TEST_COLLECTION,
@@ -219,7 +219,7 @@ function createSummarizedQuestion(type: CardType) {
 describe("Notebook", () => {
   it.each<CardType>(["question", "model"])(
     "should have regular copy for the summarize step for %s queries",
-    type => {
+    (type) => {
       setup({
         question: createSummarizedQuestion(type),
       });
@@ -254,7 +254,7 @@ describe("Notebook", () => {
 
   it.each<CardType>(["question", "model"])(
     "should be able to remove the summarize step for %s queries",
-    type => {
+    (type) => {
       setup({
         question: createSummarizedQuestion(type),
       });
@@ -355,7 +355,7 @@ describe("Notebook", () => {
 
     describe.each<DataPickerValue["model"]>(TEST_ENTITY_TYPES)(
       "when filtering with %s",
-      entityType => {
+      (entityType) => {
         it(`should show the Collection item picker when modelsFilterList=[${entityType}]`, async () => {
           setup({
             question: createSummarizedQuestion("question"),
@@ -437,7 +437,7 @@ const assertDataInPickerColumn = ({
   columnIndex: number;
   data: string[];
 }) => {
-  data.forEach(d => {
+  data.forEach((d) => {
     expect(
       within(screen.getByTestId(`item-picker-level-${columnIndex}`)).getByText(
         d,
@@ -447,7 +447,7 @@ const assertDataInPickerColumn = ({
 };
 
 const assertDataInRecents = ({ data }: { data: string[] }) => {
-  data.forEach(d => {
+  data.forEach((d) => {
     expect(
       within(screen.getByRole("tabpanel", { name: /Recents/ })).getByText(d),
     ).toBeInTheDocument();

@@ -11,7 +11,7 @@ export default {
   argTypes: { onChange: { action: "onChange" } },
 };
 
-const Template: StoryFn<SliderProps> = args => {
+const Template: StoryFn<SliderProps> = (args) => {
   const value = [10, 40];
 
   return (

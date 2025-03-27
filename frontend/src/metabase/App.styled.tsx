@@ -14,10 +14,10 @@ export const AppContentContainer = styled.div<{
 }>`
   flex-grow: 1;
   display: flex;
-  flex-direction: ${props => (props.isAdminApp ? "column" : "row")};
+  flex-direction: ${(props) => (props.isAdminApp ? "column" : "row")};
   position: relative;
   overflow: hidden;
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.isAdminApp ? "var(--mb-color-bg-white)" : color("content")};
 
   @media print {

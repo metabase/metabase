@@ -68,7 +68,7 @@ export const MoveQuestionModal = ({
       ...update,
     })
       .unwrap()
-      .then(async updatedCard => {
+      .then(async (updatedCard) => {
         // HACK: entity framework would previously keep the qb in sync
         // with changing where the question lived
         dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
@@ -96,7 +96,7 @@ export const MoveQuestionModal = ({
             .unwrap()
             .catch(() => undefined); // we can fallback to navigation w/o this info
           const dashcard = dashboard?.dashcards.find(
-            c => c.card_id === question.id(),
+            (c) => c.card_id === question.id(),
           );
 
           if (!dashboard || !dashcard) {
@@ -114,7 +114,7 @@ export const MoveQuestionModal = ({
 
         onClose();
       })
-      .catch(e => {
+      .catch((e) => {
         setErrorMessage(getResponseErrorMessage(e));
       });
   };
@@ -174,7 +174,7 @@ export const MoveQuestionModal = ({
             </Box>
             <Radio.Group
               value={`${!deleteOldDashcardsState}`}
-              onChange={val => setDeleteOldDashcardsState(val !== "true")}
+              onChange={(val) => setDeleteOldDashcardsState(val !== "true")}
               mt="2rem"
             >
               <Radio

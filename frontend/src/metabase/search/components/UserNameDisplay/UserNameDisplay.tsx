@@ -19,7 +19,7 @@ export const UserNameDisplay = ({
   >(UserApi.list);
   const users = value?.data ?? [];
 
-  const selectedUserList = users.filter(user => userIdList.includes(user.id));
+  const selectedUserList = users.filter((user) => userIdList.includes(user.id));
 
   const getDisplayValue = () => {
     if (isLoading) {

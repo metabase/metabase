@@ -73,7 +73,7 @@ const propTypes = {
   "data-testid": PropTypes.string,
 };
 
-const FieldList = props => {
+const FieldList = (props) => {
   const {
     style,
     entities,
@@ -96,16 +96,16 @@ const FieldList = props => {
     handleReset,
   } = useFormik({
     initialValues: {},
-    onSubmit: fields =>
+    onSubmit: (fields) =>
       onSubmit(entities, fields, { ...props, resetForm: handleReset }),
   });
 
-  const getFormField = name => ({
+  const getFormField = (name) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
 
-  const getNestedFormField = id => ({
+  const getNestedFormField = (id) => ({
     display_name: getFormField(`${id}.display_name`),
     description: getFormField(`${id}.description`),
     semantic_type: getFormField(`${id}.semantic_type`),
@@ -169,7 +169,7 @@ const FieldList = props => {
                     // respect the column sort order
                     .sort((a, b) => a.position - b.position)
                     .map(
-                      entity =>
+                      (entity) =>
                         entity &&
                         entity.id &&
                         entity.name && (

@@ -61,7 +61,7 @@ describe("DateIntervalPicker", () => {
 
   describe.each<RelativeIntervalDirection>(["last", "next"])(
     "%s",
-    direction => {
+    (direction) => {
       const defaultValue = getDefaultValue(direction);
 
       it("should change the interval", async () => {

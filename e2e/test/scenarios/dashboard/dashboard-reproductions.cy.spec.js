@@ -50,8 +50,8 @@ describe("issue 12578", () => {
     H.popover().findByText("1 minute").click();
 
     // Mock slow card request
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
-      req.on("response", res => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+      req.on("response", (res) => {
         res.setDelay(99999);
       });
     }).as("dashcardQuery");
@@ -82,23 +82,23 @@ describe("issue 12926", () => {
   };
 
   function slowDownCardQuery(as) {
-    cy.intercept("POST", "/api/card/*/query", req => {
-      req.on("response", res => {
+    cy.intercept("POST", "/api/card/*/query", (req) => {
+      req.on("response", (res) => {
         res.setDelay(300000);
       });
     }).as(as);
   }
 
   function slowDownDashcardQuery() {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
-      req.on("response", res => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+      req.on("response", (res) => {
         res.setDelay(5000);
       });
     }).as("dashcardQuerySlowed");
   }
 
   function restoreDashcardQuery() {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
       // calling req.continue() will make cypress skip all previously added intercepts
       req.continue();
     }).as("dashcardQueryRestored");
@@ -129,7 +129,7 @@ describe("issue 12926", () => {
         cy.visit(`/dashboard/${dashboard_id}`);
       });
 
-      cy.window().then(win => {
+      cy.window().then((win) => {
         cy.spy(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
       });
 
@@ -199,7 +199,7 @@ describe("issue 12926", () => {
 
       H.saveDashboard();
 
-      cy.wait("@cardQuerySlowed").then(xhrProxy =>
+      cy.wait("@cardQuerySlowed").then((xhrProxy) =>
         expect(xhrProxy.state).to.eq("Errored"),
       );
 
@@ -287,7 +287,7 @@ describe("issue 16559", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.createDashboard(dashboardDetails).then(response => {
+    H.createDashboard(dashboardDetails).then((response) => {
       H.visitDashboard(response.body.id);
     });
 
@@ -541,8 +541,8 @@ describe("issue 21830", () => {
         url: "/api/dashboard/*/dashcard/*/card/*/query",
         middleware: true,
       },
-      req => {
-        req.on("response", res => {
+      (req) => {
+        req.on("response", (res) => {
           // throttle the response to simulate a mobile 3G connection
           res.setThrottle(100);
         });
@@ -631,7 +631,7 @@ describe("issue 28756", () => {
     cy.signInAsNormalUser();
     cy.clock();
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       H.visitDashboard(dashboardId);
       cy.tick(TOAST_TIMEOUT);
 
@@ -693,7 +693,7 @@ describe("issue 29076", () => {
 });
 
 describe("issue 31274", () => {
-  const createTextCards = length => {
+  const createTextCards = (length) => {
     return Array.from({ length }).map((_, index) => {
       return H.getTextCardDetails({
         size_x: 2,
@@ -776,7 +776,7 @@ describe("issue 31697", () => {
     },
   };
 
-  const getQuestionDetails = segment => ({
+  const getQuestionDetails = (segment) => ({
     display: "line",
     query: {
       "source-table": ORDERS_ID,
@@ -817,7 +817,7 @@ describe("issue 31766", () => {
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
 
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
   }
@@ -889,7 +889,7 @@ describe("issue 31766", () => {
 describe("issue 34382", () => {
   const createDashboardWithCards = () => {
     const getParameterMapping = ({ card_id }, parameters) => ({
-      parameter_mappings: parameters.map(parameter => ({
+      parameter_mappings: parameters.map((parameter) => ({
         card_id,
         parameter_id: parameter.id,
         target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
@@ -1013,7 +1013,7 @@ describe("should not redirect users to other pages when linking an entity (metab
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
 
-    cy.url().then(url => {
+    cy.url().then((url) => {
       cy.wrap(url).as("originUrl");
     });
 
@@ -1025,7 +1025,7 @@ describe("should not redirect users to other pages when linking an entity (metab
       cy.findByText(TEST_DASHBOARD_NAME).click();
     });
 
-    cy.url().then(currentURL => {
+    cy.url().then((currentURL) => {
       cy.get("@originUrl").should("eq", currentURL);
     });
 
@@ -1044,7 +1044,7 @@ describe("should not redirect users to other pages when linking an entity (metab
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
 
-    cy.url().then(url => {
+    cy.url().then((url) => {
       cy.wrap(url).as("originUrl");
     });
 
@@ -1057,7 +1057,7 @@ describe("should not redirect users to other pages when linking an entity (metab
       cy.findByText(TEST_QUESTION_NAME).click();
     });
 
-    cy.url().then(currentURL => {
+    cy.url().then((currentURL) => {
       cy.get("@originUrl").should("eq", currentURL);
     });
 
@@ -1285,7 +1285,7 @@ describe("issue 39863", () => {
           dashboard_tab_id: TAB_2.id,
         }),
       ],
-    }).then(dashboard => H.visitDashboard(dashboard.id));
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
 
     // Initial query for 1st tab
     cy.wait("@dashcardQuery");
@@ -1348,7 +1348,7 @@ describe("issue 39863", () => {
           dashboard_tab_id: TAB_2.id,
         }),
       ],
-    }).then(dashboard => H.visitDashboard(dashboard.id));
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
 
     // Initial query for 1st tab
     cy.wait("@dashcardQuery");
@@ -1420,7 +1420,7 @@ describe("issue 40695", () => {
           card_id: ORDERS_COUNT_QUESTION_ID,
         }),
       ],
-    }).then(dashboard => H.visitDashboard(dashboard.id));
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
 
     H.editDashboard();
     cy.findByTestId("edit-bar").button("Cancel").click();
@@ -1503,7 +1503,7 @@ describe("issue 42165", () => {
   });
 
   it("should use card name instead of series names when navigating to QB from dashcard title", () => {
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       H.visitDashboard(dashboardId);
 
       H.filterWidget().click();
@@ -1526,7 +1526,7 @@ describe("issue 47170", () => {
     cy.request("POST", `/api/bookmark/dashboard/${ORDERS_DASHBOARD_ID}`);
 
     H.createDashboard({ name: "Dashboard A" }, { wrapId: true }).then(
-      dashboardId => {
+      (dashboardId) => {
         cy.request("POST", `/api/bookmark/dashboard/${dashboardId}`);
       },
     );
@@ -1537,8 +1537,10 @@ describe("issue 47170", () => {
         url: "/api/dashboard/*",
         middleware: true,
       },
-      req => {
-        req.continue(res => new Promise(resolve => setTimeout(resolve, 1000)));
+      (req) => {
+        req.continue(
+          (res) => new Promise((resolve) => setTimeout(resolve, 1000)),
+        );
       },
     );
   });
@@ -1642,7 +1644,7 @@ describe("issue 49556", () => {
           ],
         }),
       ],
-    }).then(dashboard => H.visitDashboard(dashboard.id));
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
   });
 
   it("unlinks the filter when it is removed (metabase#49556)", () => {

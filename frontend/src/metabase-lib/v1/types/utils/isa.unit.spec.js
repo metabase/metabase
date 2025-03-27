@@ -40,7 +40,7 @@ describe("isa", () => {
       createMockColumn({ base_type: TYPE.Integer }),
       createMockColumn({ base_type: TYPE.BigInteger }),
       createMockColumn({ base_type: TYPE.BigInteger, name: "solid" }),
-    ])("should should return true for numeric columns", column => {
+    ])("should should return true for numeric columns", (column) => {
       expect(isMetric(column)).toBe(true);
     });
 
@@ -52,7 +52,7 @@ describe("isa", () => {
       createMockColumn({ base_type: TYPE.BigInteger, name: "orders-id" }),
     ])(
       "should should return false for breakout, ID, non-summable columns",
-      column => {
+      (column) => {
         expect(isMetric(column)).toBe(false);
       },
     );

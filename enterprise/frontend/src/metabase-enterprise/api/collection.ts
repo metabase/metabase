@@ -7,7 +7,7 @@ import type {
 import { EnterpriseApi } from "./api";
 
 export const collectionApi = EnterpriseApi.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listStaleCollectionItems: builder.query<
       ListStaleCollectionItemsResponse,
       ListStaleCollectionItemsRequest
@@ -17,7 +17,7 @@ export const collectionApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/stale/${collectionId}`,
         params,
       }),
-      providesTags: response =>
+      providesTags: (response) =>
         provideCollectionItemListTags(response?.data ?? [], [
           "card",
           "dashboard",

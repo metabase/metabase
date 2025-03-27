@@ -29,7 +29,7 @@ export function GridLayout({
   );
 
   const onLayoutChangeWrapped = useCallback(
-    nextLayout => {
+    (nextLayout) => {
       onLayoutChange({
         layout: nextLayout,
         // Calculating the breakpoint right here,
@@ -44,7 +44,7 @@ export function GridLayout({
     [onLayoutChange, breakpoints, gridWidth],
   );
 
-  const onBreakpointChange = useCallback(newBreakpoint => {
+  const onBreakpointChange = useCallback((newBreakpoint) => {
     setCurrentBreakpoint(newBreakpoint);
   }, []);
 
@@ -75,8 +75,8 @@ export function GridLayout({
   }, [cols, gridWidth, rowHeight, margin]);
 
   const renderItem = useCallback(
-    item => {
-      const itemLayout = layout.find(l => String(l.i) === String(item.id));
+    (item) => {
+      const itemLayout = layout.find((l) => String(l.i) === String(item.id));
       const gridItemWidth = cellSize.width * itemLayout.w;
       return itemRenderer({
         item,
@@ -89,7 +89,7 @@ export function GridLayout({
   );
 
   const height = useMemo(() => {
-    let lowestLayoutCellPoint = Math.max(...layout.map(l => l.y + l.h));
+    let lowestLayoutCellPoint = Math.max(...layout.map((l) => l.y + l.h));
     if (isEditing) {
       lowestLayoutCellPoint += Math.ceil(window.innerHeight / cellSize.height);
     }

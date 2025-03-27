@@ -11,7 +11,7 @@ export const selectOverrides = {
       withScrollArea: false,
       allowDeselect: false,
       inputWrapperOrder: ["label", "description", "input", "error"],
-      renderOption: item => (
+      renderOption: (item) => (
         <DefaultSelectItem {...item.option} selected={item.checked} />
       ),
       clearButtonProps: {

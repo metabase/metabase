@@ -25,10 +25,10 @@ const SettingText = ({
     )}
     defaultValue={setting.value || setting.default || ""}
     placeholder={setting.placeholder}
-    onChange={fireOnChange ? e => onChange(e.target.value) : null}
+    onChange={fireOnChange ? (e) => onChange(e.target.value) : null}
     onBlur={
       !fireOnChange
-        ? e => {
+        ? (e) => {
             const value = setting.value || setting.default || "";
             const nextValue = e.target.value;
             if (nextValue !== value) {

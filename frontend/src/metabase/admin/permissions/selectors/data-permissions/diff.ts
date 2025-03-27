@@ -13,7 +13,7 @@ export const getIsDirty = createSelector(
   (state: State) => state,
   (permissions, originalPermissions, state) =>
     !_.isEqual(permissions, originalPermissions) ||
-    PLUGIN_DATA_PERMISSIONS.hasChanges.some(hasChanges => hasChanges(state)),
+    PLUGIN_DATA_PERMISSIONS.hasChanges.some((hasChanges) => hasChanges(state)),
 );
 
 interface DiffProps {

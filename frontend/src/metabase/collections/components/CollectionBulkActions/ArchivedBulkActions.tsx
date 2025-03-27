@@ -50,17 +50,17 @@ export const ArchivedBulkActions = ({
   const showRestore = isRootTrashCollection(collection);
 
   const canRestore = useMemo(() => {
-    return selected.every(item => item.can_restore);
+    return selected.every((item) => item.can_restore);
   }, [selected]);
 
   const handleBulkRestore = () => {
-    const actions = selected.map(item => item.setArchived(false));
+    const actions = selected.map((item) => item.setArchived(false));
     Promise.all(actions).finally(() => clearSelected());
   };
 
   // delete
   const canDelete = useMemo(() => {
-    return selected.every(item => item.can_delete);
+    return selected.every((item) => item.can_delete);
   }, [selected]);
 
   const handleBulkDeletePermanentlyStart = async () => {
@@ -69,7 +69,7 @@ export const ArchivedBulkActions = ({
   };
 
   const handleBulkDeletePermanently = async () => {
-    const actions = selected.map(item => item.delete());
+    const actions = selected.map((item) => item.delete());
     Promise.all(actions).finally(() => clearSelected());
     dispatch(
       addUndo({
@@ -87,7 +87,7 @@ export const ArchivedBulkActions = ({
 
   // move
   const canMove = useMemo(() => {
-    return selected.every(item => canMoveItem(item, collection));
+    return selected.every((item) => canMoveItem(item, collection));
   }, [selected, collection]);
 
   const handleBulkMoveStart = () => {

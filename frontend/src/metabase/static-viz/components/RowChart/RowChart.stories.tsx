@@ -13,7 +13,7 @@ export default {
   component: RowChart,
 };
 
-const Template: StoryFn<StaticRowChartProps> = args => {
+const Template: StoryFn<StaticRowChartProps> = (args) => {
   return <RowChart {...args} />;
 };
 

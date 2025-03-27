@@ -41,7 +41,7 @@ const FILTER_MODEL_MAP: Record<EntityTypeFilterKeys, DataPickerValue["model"]> =
 const mapEntityTypeFilterToDataPickerModels = (
   entityTypeFilter: InteractiveQuestionProviderProps["entityTypeFilter"],
 ): InteractiveQuestionContextType["modelsFilterList"] => {
-  return entityTypeFilter?.map(entityType => FILTER_MODEL_MAP[entityType]);
+  return entityTypeFilter?.map((entityType) => FILTER_MODEL_MAP[entityType]);
 };
 
 export const InteractiveQuestionProvider = ({

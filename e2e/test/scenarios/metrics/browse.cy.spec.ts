@@ -126,7 +126,7 @@ describe("scenarios > browse > metrics", () => {
       cy.visit("/browse/metrics");
       H.navigationSidebar().findByText("Metrics").should("be.visible");
 
-      ALL_METRICS.forEach(metric => {
+      ALL_METRICS.forEach((metric) => {
         findMetric(metric.name).should("be.visible");
       });
     });
@@ -149,7 +149,7 @@ describe("scenarios > browse > metrics", () => {
     });
 
     it("should open the collections in a new tab when alt-clicking a metric", () => {
-      cy.on("window:before:load", win => {
+      cy.on("window:before:load", (win) => {
         // prevent Cypress opening in a new window/tab and spy on this method
         cy.stub(win, "open").as("open");
       });
@@ -190,7 +190,7 @@ describe("scenarios > browse > metrics", () => {
       metricsTable()
         .findByText(/This is a/)
         .should("be.visible")
-        .then(el => H.assertIsEllipsified(el[0]));
+        .then((el) => H.assertIsEllipsified(el[0]));
 
       metricsTable()
         .findByText(/This is a/)
@@ -379,7 +379,7 @@ describe("scenarios > browse > metrics", () => {
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
 
       toggleVerifiedMetricsFilter();
-      cy.get<{ request: Request }>("@setSetting").should(xhr => {
+      cy.get<{ request: Request }>("@setSetting").should((xhr) => {
         expect(xhr.request.body).to.deep.equal({ value: false });
       });
 
@@ -387,7 +387,7 @@ describe("scenarios > browse > metrics", () => {
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
 
       toggleVerifiedMetricsFilter();
-      cy.get<{ request: Request }>("@setSetting").should(xhr => {
+      cy.get<{ request: Request }>("@setSetting").should((xhr) => {
         expect(xhr.request.body).to.deep.equal({ value: true });
       });
       cy.wait("@setSetting");
@@ -402,8 +402,8 @@ describe("scenarios > browse > metrics", () => {
     });
 
     it("should respect the user setting on wether or not to only show verified metrics", () => {
-      cy.intercept("GET", "/api/session/properties", req => {
-        req.continue(res => {
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
           res.body["browse-filter-only-verified-metrics"] = true;
           res.send();
         });
@@ -418,8 +418,8 @@ describe("scenarios > browse > metrics", () => {
         .findByLabelText("Show verified metrics only")
         .should("be.checked");
 
-      cy.intercept("GET", "/api/session/properties", req => {
-        req.continue(res => {
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
           res.body["browse-filter-only-verified-metrics"] = true;
           res.send();
         });
@@ -437,7 +437,7 @@ describe("scenarios > browse > metrics", () => {
 function createMetrics(
   metrics: StructuredQuestionDetailsWithName[] = ALL_METRICS,
 ) {
-  metrics.forEach(metric => H.createQuestion(metric));
+  metrics.forEach((metric) => H.createQuestion(metric));
 }
 
 function metricsTable() {

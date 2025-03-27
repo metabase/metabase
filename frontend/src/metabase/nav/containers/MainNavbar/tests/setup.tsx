@@ -145,7 +145,7 @@ export async function setup({
     dashboardId = openDashboard.id;
     dashboardsForState[openDashboard.id] = {
       ...openDashboard,
-      dashcards: openDashboard.dashcards.map(c => c.id),
+      dashcards: openDashboard.dashcards.map((c) => c.id),
     };
     dashboardsForEntities.push(openDashboard);
   }
@@ -181,7 +181,7 @@ export async function setup({
   renderWithProviders(
     <Route
       path={route}
-      component={props => <MainNavbar {...props} isOpen />}
+      component={(props) => <MainNavbar {...props} isOpen />}
     />,
     {
       storeInitialState,

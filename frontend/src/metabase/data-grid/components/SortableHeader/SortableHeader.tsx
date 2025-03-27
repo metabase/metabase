@@ -119,7 +119,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
           className={S.resizeHandle}
           onMouseDown={resizeHandler}
           onTouchStart={resizeHandler}
-          onMouseOver={e => e.stopPropagation()}
+          onMouseOver={(e) => e.stopPropagation()}
         />
       ) : null}
     </div>

@@ -80,8 +80,8 @@ const initialState: SdkState = {
   fetchRefreshTokenFn: null,
 };
 
-export const sdk = createReducer(initialState, builder => {
-  builder.addCase(refreshTokenAsync.pending, state => {
+export const sdk = createReducer(initialState, (builder) => {
+  builder.addCase(refreshTokenAsync.pending, (state) => {
     state.token = { ...state.token, loading: true };
   });
 
@@ -98,11 +98,11 @@ export const sdk = createReducer(initialState, builder => {
     state.loginStatus = { status: "error", error };
   });
 
-  builder.addCase(initAuth.pending, state => {
+  builder.addCase(initAuth.pending, (state) => {
     state.loginStatus = { status: "loading" };
   });
 
-  builder.addCase(initAuth.fulfilled, state => {
+  builder.addCase(initAuth.fulfilled, (state) => {
     state.loginStatus = { status: "success" };
   });
 

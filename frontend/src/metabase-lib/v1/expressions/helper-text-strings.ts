@@ -1388,7 +1388,7 @@ export const getHelpText = (
   database: Database,
   reportTimezone?: string,
 ): HelpText | undefined => {
-  const helperTextConfig = HELPER_TEXT_STRINGS.find(h => h.name === name);
+  const helperTextConfig = HELPER_TEXT_STRINGS.find((h) => h.name === name);
 
   if (!helperTextConfig) {
     return;
@@ -1428,5 +1428,5 @@ export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
 
 export const getFunctionByStructure = (structure: string) =>
   HELPER_TEXT_STRINGS.find(
-    h => h.structure.toLowerCase() === structure.toLowerCase(),
+    (h) => h.structure.toLowerCase() === structure.toLowerCase(),
   )?.name;

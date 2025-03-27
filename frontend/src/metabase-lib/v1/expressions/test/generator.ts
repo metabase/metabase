@@ -78,7 +78,7 @@ export function generateExpression(
   const randomizeCase = (str: string) =>
     str
       .split("")
-      .map(ch => (randomInt(10) < 3 ? ch.toUpperCase() : ch))
+      .map((ch) => (randomInt(10) < 3 ? ch.toUpperCase() : ch))
       .join("");
 
   const format = (node: Node): string => {

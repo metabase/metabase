@@ -809,7 +809,7 @@ describe("tokenizer", () => {
   });
 
   describe("garbage", () => {
-    const types = (expr: string) => tokenize(expr).tokens.map(t => t.type);
+    const types = (expr: string) => tokenize(expr).tokens.map((t) => t.type);
     const errors = (expr: string) => tokenize(expr).errors;
 
     it("should ignore garbage", () => {

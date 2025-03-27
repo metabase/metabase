@@ -165,13 +165,13 @@ describe("issue 39487", () => {
   }
 
   function measureInitialValues() {
-    measureDatetimeFilterPickerHeight().then(initialPickerHeight => {
+    measureDatetimeFilterPickerHeight().then((initialPickerHeight) => {
       cy.wrap(initialPickerHeight).as("initialPickerHeight");
     });
-    measureNextButtonRect().then(nextButtonRect => {
+    measureNextButtonRect().then((nextButtonRect) => {
       cy.wrap(nextButtonRect).as("nextButtonRect");
     });
-    measurePreviousButtonRect().then(previousButtonRect => {
+    measurePreviousButtonRect().then((previousButtonRect) => {
       cy.wrap(previousButtonRect).as("previousButtonRect");
     });
   }
@@ -183,24 +183,24 @@ describe("issue 39487", () => {
   }
 
   function assertDatetimeFilterPickerHeightDidNotChange() {
-    cy.get("@initialPickerHeight").then(initialPickerHeight => {
-      measureDatetimeFilterPickerHeight().then(height => {
+    cy.get("@initialPickerHeight").then((initialPickerHeight) => {
+      measureDatetimeFilterPickerHeight().then((height) => {
         expect(height).to.eq(initialPickerHeight);
       });
     });
   }
 
   function assertPreviousButtonRectDidNotChange() {
-    cy.get("@previousButtonRect").then(previousButtonRect => {
-      measurePreviousButtonRect().then(rect => {
+    cy.get("@previousButtonRect").then((previousButtonRect) => {
+      measurePreviousButtonRect().then((rect) => {
         expect(rect).to.deep.eq(previousButtonRect);
       });
     });
   }
 
   function assertNextButtonRectDidNotChange() {
-    cy.get("@nextButtonRect").then(nextButtonRect => {
-      measureNextButtonRect().then(rect => {
+    cy.get("@nextButtonRect").then((nextButtonRect) => {
+      measureNextButtonRect().then((rect) => {
         expect(rect).to.deep.eq(nextButtonRect);
       });
     });
@@ -306,7 +306,7 @@ describe("issue 49270", () => {
     H.openOrdersTable();
     cy.icon("sum").click();
 
-    cy.intercept("POST", "/api/dataset", request => {
+    cy.intercept("POST", "/api/dataset", (request) => {
       request.reply({ statusCode: 500, delay: 1000 });
     });
 
@@ -357,7 +357,7 @@ describe("issue 53170", () => {
       cy.findByLabelText("Add column").click();
       H.popover().within(() => {
         cy.findByText("Combine columns").click();
-        cy.button("Done").then($button => {
+        cy.button("Done").then(($button) => {
           const buttonRight = $button[0].getBoundingClientRect().right;
           cy.window().its("innerWidth").should("be.gt", buttonRight);
         });

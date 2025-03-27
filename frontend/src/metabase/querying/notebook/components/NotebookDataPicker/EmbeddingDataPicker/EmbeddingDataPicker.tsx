@@ -61,7 +61,9 @@ export function EmbeddingDataPicker({
     return undefined;
   }, [canChangeDatabase, databaseId, metadata]);
 
-  const entityTypes = useSelector(state => getEmbedOptions(state).entity_types);
+  const entityTypes = useSelector(
+    (state) => getEmbedOptions(state).entity_types,
+  );
 
   if (isDataSourceCountLoading) {
     return null;

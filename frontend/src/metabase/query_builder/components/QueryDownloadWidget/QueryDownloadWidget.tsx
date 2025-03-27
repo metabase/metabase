@@ -56,7 +56,7 @@ const QueryDownloadWidget = ({
         <QueryDownloadPopover
           question={question}
           result={result}
-          onDownload={opts => {
+          onDownload={(opts) => {
             setIsPopoverOpen(false);
             handleDownload(opts);
           }}

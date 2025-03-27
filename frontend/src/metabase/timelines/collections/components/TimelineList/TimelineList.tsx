@@ -15,7 +15,7 @@ const TimelineList = ({
 }: TimelineListProps): JSX.Element => {
   return (
     <ListRoot>
-      {timelines.map(timeline => (
+      {timelines.map((timeline) => (
         <TimelineCard
           key={timeline.id}
           timeline={timeline}

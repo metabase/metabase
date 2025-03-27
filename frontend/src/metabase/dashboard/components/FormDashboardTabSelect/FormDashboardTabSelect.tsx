@@ -32,7 +32,7 @@ export const FormDashboardTabSelect = ({
 
   const options = useMemo(() => {
     return (
-      currentData?.tabs?.map(tab => ({
+      currentData?.tabs?.map((tab) => ({
         label: tab.name,
         value: `${tab.id}`,
       })) ?? []

@@ -116,7 +116,7 @@ export const DashCardMenu = ({
         <QueryDownloadPopover
           question={question}
           result={result}
-          onDownload={opts => {
+          onDownload={(opts) => {
             close();
             handleDownload(opts);
           }}

@@ -17,7 +17,7 @@ import { canCleanUp } from "./utils";
 if (hasPremiumFeature("collection_cleanup")) {
   PLUGIN_COLLECTIONS.canCleanUp = canCleanUp;
 
-  PLUGIN_COLLECTIONS.useGetCleanUpMenuItems = collection => {
+  PLUGIN_COLLECTIONS.useGetCleanUpMenuItems = (collection) => {
     const canCleanupCollection = canCleanUp(collection);
 
     const { currentData: collectionItems } = useListCollectionItemsQuery(

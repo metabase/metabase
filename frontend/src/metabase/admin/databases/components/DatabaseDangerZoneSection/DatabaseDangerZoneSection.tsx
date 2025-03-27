@@ -42,7 +42,7 @@ export const DatabaseDangerZoneSection = ({
   const hasCompletedSync = isSyncCompleted(database);
   const shouldHideSection =
     database.is_attached_dwh ||
-    [hasCompletedSync, isAdmin].every(bool => bool === false);
+    [hasCompletedSync, isAdmin].every((bool) => bool === false);
 
   if (shouldHideSection) {
     return null;

@@ -139,7 +139,7 @@ export function specificDateFilterClause({
   return ML.specific_date_filter_clause(
     operator,
     column,
-    values.map(value => moment(value)),
+    values.map((value) => moment(value)),
     hasTime,
   );
 }
@@ -216,7 +216,7 @@ export function timeFilterClause({
   return ML.time_filter_clause(
     operator,
     column,
-    values.map(value => moment(value)),
+    values.map((value) => moment(value)),
   );
 }
 

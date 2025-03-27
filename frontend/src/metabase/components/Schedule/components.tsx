@@ -49,7 +49,7 @@ export const SelectFrequency = ({
 
   const scheduleTypeOptions = useMemo(
     () =>
-      scheduleOptions.map(option => ({
+      scheduleOptions.map((option) => ({
         label: scheduleOptionNames[option] || capitalize(option),
         value: option,
       })),
@@ -140,7 +140,7 @@ export const SelectTime = ({
             lh="1rem"
             radius="sm"
             value={amPm.toString()}
-            onChange={value =>
+            onChange={(value) =>
               updateSchedule(
                 "schedule_hour",
                 hourTo24HourFormat(hour, parseInt(value)),

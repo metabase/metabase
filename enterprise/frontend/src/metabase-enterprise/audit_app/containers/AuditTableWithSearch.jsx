@@ -25,7 +25,7 @@ const AuditTableWithSearch = ({ placeholder = t`Search`, table, ...props }) => (
         {...props}
         table={
           search
-            ? updateIn(table, ["card", "dataset_query", "args"], args =>
+            ? updateIn(table, ["card", "dataset_query", "args"], (args) =>
                 (args || []).concat(search),
               )
             : table

@@ -37,7 +37,7 @@ const assetsResolverPlugin = {
   name: "assetsResolver",
   setup(build) {
     // Redirect all paths starting with "assets/" to "resources/"
-    build.onResolve({ filter: /^assets\// }, args => {
+    build.onResolve({ filter: /^assets\// }, (args) => {
       return {
         path: path.join(
           __dirname,
@@ -53,8 +53,8 @@ const assetsResolverPlugin = {
 const specBlacklist = ["/embedding-sdk/", "/cross-version/"];
 
 function getSplittableSpecs(specs) {
-  return specs.filter(spec => {
-    return !specBlacklist.some(blacklistedPath =>
+  return specs.filter((spec) => {
+    return !specBlacklist.some((blacklistedPath) =>
       spec.includes(blacklistedPath),
     );
   });

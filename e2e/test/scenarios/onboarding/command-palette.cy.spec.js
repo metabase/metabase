@@ -18,8 +18,8 @@ describe("command palette", () => {
     cy.intercept(
       "GET",
       "**/search?q=Company&context=command-palette&include_dashboard_questions=true&limit=20",
-      req => {
-        req.reply(res => {
+      (req) => {
+        req.reply((res) => {
           const orderedNames = ["Products", "Orders", "Reviews", "People"];
           res.body.data = res.body.data.sort((a, b) => {
             return orderedNames.indexOf(a.name) - orderedNames.indexOf(b.name);

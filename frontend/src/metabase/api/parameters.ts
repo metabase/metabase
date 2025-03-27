@@ -8,12 +8,12 @@ import { Api } from "./api";
 import { idTag } from "./tags";
 
 export const parametersApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getParameterValues: builder.query<
       ParameterValues,
       GetParameterValuesRequest
     >({
-      query: params => ({
+      query: (params) => ({
         method: "POST",
         url: `/api/dataset/parameter/values`,
         params,
@@ -26,7 +26,7 @@ export const parametersApi = Api.injectEndpoints({
       ParameterValues,
       SearchParameterValuesRequest
     >({
-      query: params => ({
+      query: (params) => ({
         method: "POST",
         url: `/api/dataset/parameter/search/${params.query}`,
         params,

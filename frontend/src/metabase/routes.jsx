@@ -68,7 +68,7 @@ import { createEntityIdRedirect } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
-export const getRoutes = store => {
+export const getRoutes = (store) => {
   const applicationName = getApplicationName(store.getState());
   const hasUserSetup = getSetting(store.getState(), "has-user-setup");
 

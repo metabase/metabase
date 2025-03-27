@@ -58,11 +58,11 @@ const DataSelectorDatabaseSchemaPicker = ({
     return <DataSelectorLoading />;
   }
 
-  const sections: Sections = databases.map(database => ({
+  const sections: Sections = databases.map((database) => ({
     name: database.is_saved_questions ? t`Saved Questions` : database.name,
     items:
       !database.is_saved_questions && database.getSchemas().length > 1
-        ? database.getSchemas().map(schema => ({
+        ? database.getSchemas().map((schema) => ({
             schema,
             name: schema.displayName() ?? "",
           }))
@@ -111,9 +111,9 @@ const DataSelectorDatabaseSchemaPicker = ({
   }
 
   let openSection = selectedSchema
-    ? databases.findIndex(db => db.id === selectedSchema.database?.id)
+    ? databases.findIndex((db) => db.id === selectedSchema.database?.id)
     : selectedDatabase
-      ? databases.findIndex(db => db.id === selectedDatabase.id)
+      ? databases.findIndex((db) => db.id === selectedDatabase.id)
       : -1;
 
   if (openSection >= 0 && databases[openSection]?.getSchemas().length === 1) {

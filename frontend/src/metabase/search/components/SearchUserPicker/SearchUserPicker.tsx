@@ -33,7 +33,7 @@ export const SearchUserPicker = ({
   const isSelected = (user: UserListResult) =>
     selectedUserIds.includes(user.id);
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users.filter((user) => {
     return (
       user.common_name.toLowerCase().includes(userFilter.toLowerCase()) &&
       !isSelected(user)
@@ -59,7 +59,7 @@ export const SearchUserPicker = ({
   };
 
   const generateUserListElements = (userList: UserListResult[]) => {
-    return userList.map(user => (
+    return userList.map((user) => (
       <UserListElement
         key={user.id}
         isSelected={isSelected(user)}
@@ -82,8 +82,8 @@ export const SearchUserPicker = ({
             p="xs"
             mah="30vh"
           >
-            {selectedUserIds.map(userId => {
-              const user = users.find(user => user.id === userId);
+            {selectedUserIds.map((userId) => {
+              const user = users.find((user) => user.id === userId);
               return (
                 <SelectedUserButton
                   data-testid="selected-user-button"
@@ -108,7 +108,7 @@ export const SearchUserPicker = ({
               placeholder={t`Search for someone…`}
               value={userFilter}
               tabIndex={0}
-              onChange={event => setUserFilter(event.currentTarget.value)}
+              onChange={(event) => setUserFilter(event.currentTarget.value)}
               mt="-0.25rem"
               miw="18ch"
             />

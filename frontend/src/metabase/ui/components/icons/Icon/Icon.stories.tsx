@@ -24,7 +24,7 @@ const argTypes = {
 const ListTemplate = () => {
   return (
     <Box>
-      {iconNames.map(icon => (
+      {iconNames.map((icon) => (
         <Box key={icon} display="inline-block" w="100px" m="20px" ta="center">
           <p>{icon}</p>
           <Icon name={icon} />

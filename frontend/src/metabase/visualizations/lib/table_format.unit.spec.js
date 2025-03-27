@@ -34,7 +34,7 @@ describe("compileFormatter", () => {
       "ends-with",
     ];
 
-    textFormatters.forEach(factoryName => {
+    textFormatters.forEach((factoryName) => {
       const factory = OPERATOR_FORMATTER_FACTORIES[factoryName]("", "#fff");
       expect(factory("foo")).toBeNull();
       expect(factory("")).toBeNull();

@@ -63,7 +63,7 @@ const Field = ({
               <SemanticTypePicker
                 field={field}
                 value={semanticType}
-                onChange={value => {
+                onChange={(value) => {
                   formField.semantic_type.onChange({
                     target: {
                       name: formField.semantic_type.name,
@@ -111,7 +111,7 @@ const Field = ({
                       formField.fk_target_field_id.value ||
                       field.fk_target_field_id
                     }
-                    onChange={value => {
+                    onChange={(value) => {
                       formField.fk_target_field_id.onChange({
                         target: {
                           name: formField.fk_target_field_id.name,

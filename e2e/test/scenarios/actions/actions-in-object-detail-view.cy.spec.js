@@ -54,7 +54,7 @@ describe(
     describe("in dashboard", () => {
       beforeEach(() => {
         asAdmin(() => {
-          cy.get("@modelId").then(modelId => {
+          cy.get("@modelId").then((modelId) => {
             H.createImplicitActions({ modelId });
 
             H.createQuestionAndDashboard({
@@ -103,7 +103,7 @@ describe(
 
         permissionLevels.forEach(({ name, permissionFn }) => {
           it(`should be able to run update and delete actions when enabled for a ${name} user`, () => {
-            cy.get("@modelId").then(modelId => {
+            cy.get("@modelId").then((modelId) => {
               permissionFn(() => {
                 cy.log(
                   `As ${name} user: verify there are no model actions to run`,
@@ -130,7 +130,7 @@ describe(
                 cy.log(`As ${name} user: verify update form gets prefilled`);
                 openUpdateObjectModal();
                 actionExecuteModal().within(() => {
-                  cy.wait("@prefetchValues").then(request => {
+                  cy.wait("@prefetchValues").then((request) => {
                     const firstScoreRow = request.response.body;
 
                     actionForm().within(() => {
@@ -155,7 +155,7 @@ describe(
                 );
                 openUpdateObjectModal();
                 actionExecuteModal().within(() => {
-                  cy.wait("@prefetchValues").then(request => {
+                  cy.wait("@prefetchValues").then((request) => {
                     const secondScoreRow = request.response.body;
 
                     actionForm().within(() => {
@@ -191,7 +191,7 @@ describe(
 
       cy.signInAsAdmin();
 
-      cy.get("@modelId").then(modelId => {
+      cy.get("@modelId").then((modelId) => {
         H.createImplicitActions({ modelId });
         visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
         openUpdateObjectModal();

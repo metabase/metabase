@@ -25,7 +25,7 @@ export default {
   },
 };
 
-const Template: StoryFn<StaticQuestionComponentProps> = args => {
+const Template: StoryFn<StaticQuestionComponentProps> = (args) => {
   return <StaticQuestion {...args} />;
 };
 

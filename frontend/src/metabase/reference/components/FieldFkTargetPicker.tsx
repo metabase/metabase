@@ -19,7 +19,7 @@ export const FieldFkTargetPicker = ({
   onChange,
 }: Props) => {
   const dispatch = useDispatch();
-  const idFields = useSelector(state => {
+  const idFields = useSelector((state) => {
     return Databases.selectors.getIdFields(state, { databaseId });
   });
 

@@ -37,7 +37,7 @@ function setup(opts = {}) {
       onSearchChange={onSearchChange}
       value={value}
       options={options}
-      optionRenderer={option => renderValue(fields, formatOptions, option[0])}
+      optionRenderer={(option) => renderValue(fields, formatOptions, option[0])}
       {...opts}
     />,
   );

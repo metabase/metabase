@@ -155,7 +155,7 @@ function PlaceholderInput({
         id={id}
         fullWidth
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         data-testid="placeholder-input"
       />
     </div>

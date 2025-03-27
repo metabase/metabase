@@ -32,7 +32,7 @@ const STEPS: NotebookStepDef[] = [
     clauseType: "data",
     valid: (_query, stageIndex) => stageIndex === 0,
     active: () => true,
-    revert: query => query,
+    revert: (query) => query,
     canRevert: () => false,
   },
   {
@@ -131,7 +131,7 @@ const STEPS: NotebookStepDef[] = [
         return Lib.removeClause(query, stageIndex, clause);
       }, query);
     },
-    canRevert: type => type !== "metric",
+    canRevert: (type) => type !== "metric",
   },
   {
     type: "sort",
@@ -280,7 +280,7 @@ function getStageSteps(
         Boolean(active || openSteps[id]),
       testID: getTestId(STEP, itemIndex),
       revert: STEP.canRevert(question.type())
-        ? query => STEP.revert(query, stageIndex, itemIndex ?? undefined)
+        ? (query) => STEP.revert(query, stageIndex, itemIndex ?? undefined)
         : null,
       // `actions`, `next` and `previous` will be set later
       actions: [],
@@ -291,11 +291,11 @@ function getStageSteps(
   }
 
   // get the currently visible steps, flattening "items"
-  const steps = STEPS.flatMap(STEP => {
+  const steps = STEPS.flatMap((STEP) => {
     if (STEP.subSteps) {
       // add 1 for the initial or next action button
       const itemIndexes = _.range(0, STEP.subSteps(query, stageIndex) + 1);
-      return itemIndexes.map(itemIndex => getStep(STEP, itemIndex));
+      return itemIndexes.map((itemIndex) => getStep(STEP, itemIndex));
     }
 
     return [getStep(STEP)];

@@ -412,7 +412,7 @@ describe("AdminSettingInput", () => {
 async function findPut() {
   const calls = fetchMock.calls();
   const [putUrl, putDetails] =
-    calls.find(call => call[1]?.method === "PUT") ?? [];
+    calls.find((call) => call[1]?.method === "PUT") ?? [];
 
   const body = ((await putDetails?.body) as string) ?? "{}";
 

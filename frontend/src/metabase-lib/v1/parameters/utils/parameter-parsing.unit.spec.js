@@ -370,7 +370,7 @@ describe("parameters/utils/parameter-values", () => {
         type: "number/=",
       };
 
-      const runGetParameterValueFromQueryParams = value =>
+      const runGetParameterValueFromQueryParams = (value) =>
         getParameterValueFromQueryParams(numberParameter, {
           [numberParameter.slug]: value,
         });

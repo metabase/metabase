@@ -479,7 +479,7 @@ function changeSorting(columnName, direction) {
   cy.wait("@dataset");
 }
 
-["postgres", "mysql"].forEach(dialect => {
+["postgres", "mysql"].forEach((dialect) => {
   describe(
     `Object Detail > composite keys (${dialect})`,
     { tags: ["@external"] },
@@ -494,7 +494,7 @@ function changeSorting(columnName, direction) {
       });
 
       it("can show object detail modal for items with composite keys", () => {
-        H.getTableId({ name: TEST_TABLE }).then(tableId => {
+        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
@@ -511,7 +511,7 @@ function changeSorting(columnName, direction) {
         // this bug only manifests on tables without single integer primary keys
         // it is also reproducible on tables with string keys
 
-        H.getTableId({ name: TEST_TABLE }).then(tableId => {
+        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
@@ -545,7 +545,7 @@ function changeSorting(columnName, direction) {
       });
 
       it("can show object detail modal for items with no primary key", () => {
-        H.getTableId({ name: TEST_TABLE }).then(tableId => {
+        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 

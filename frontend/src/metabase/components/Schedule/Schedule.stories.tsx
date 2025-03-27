@@ -47,7 +47,7 @@ export default {
   decorators: [ReduxDecorator],
 };
 
-const Template: StoryFn<typeof Schedule> = args => {
+const Template: StoryFn<typeof Schedule> = (args) => {
   const [
     {
       cronString,

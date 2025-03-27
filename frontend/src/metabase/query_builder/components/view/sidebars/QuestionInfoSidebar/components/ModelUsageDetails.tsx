@@ -52,7 +52,7 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
 
   return (
     <Stack gap="sm">
-      {filtered.map(card => {
+      {filtered.map((card) => {
         return (
           <Link
             to={Urls.question(card)}

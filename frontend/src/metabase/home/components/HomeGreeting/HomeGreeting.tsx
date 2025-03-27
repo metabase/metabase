@@ -52,7 +52,7 @@ const MetabotGreeting = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      setBuffer(prevBuffer => {
+      setBuffer((prevBuffer) => {
         const newBuffer = [...prevBuffer, event.key];
         if (newBuffer.length > 10) {
           newBuffer.shift();

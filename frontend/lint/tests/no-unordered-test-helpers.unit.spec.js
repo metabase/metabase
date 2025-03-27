@@ -73,14 +73,14 @@ const invalidCases = [
 ];
 
 ruleTester.run("no-unordered-test-helpers", rule, {
-  valid: blockTypes.flatMap(blockType =>
-    validCases.map(testCase => ({
+  valid: blockTypes.flatMap((blockType) =>
+    validCases.map((testCase) => ({
       code: blockWrapper(testCase, blockType),
     })),
   ),
 
-  invalid: blockTypes.flatMap(blockType =>
-    invalidCases.map(testCase => ({
+  invalid: blockTypes.flatMap((blockType) =>
+    invalidCases.map((testCase) => ({
       code: blockWrapper(testCase, blockType),
       errors: [orderError],
     })),

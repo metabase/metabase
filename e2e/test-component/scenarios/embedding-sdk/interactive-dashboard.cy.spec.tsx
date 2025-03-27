@@ -78,7 +78,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   });
 
   it("should be able to display custom question layout when clicking on dashboard cards", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(
         <InteractiveDashboard
           dashboardId={dashboardId}
@@ -130,7 +130,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
 
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
-        cy.get(dashboardIdAlias).then(dashboardId => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
           mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
         });
 
@@ -161,7 +161,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   });
 
   it('should drill dashboards with filter values and not showing "Question not found" error (EMB-84)', () => {
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
 
@@ -174,7 +174,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
      * This seems to be the only reliable way to force the error to stay, and we will resolve
      * the promise that will cause the error to go away manually after asserting that it's not there.
      */
-    cy.intercept("get", "/api/card/*", req => {
+    cy.intercept("get", "/api/card/*", (req) => {
       return promise.then(() => {
         req.continue();
       });

@@ -87,7 +87,7 @@ export const CleanupCollectionTable = ({
         </tr>
       </thead>
       <TBody>
-        {items.map(item => (
+        {items.map((item) => (
           <tr key={itemKeyFn(item)}>
             {/* Select */}
             <Columns.Select.Cell

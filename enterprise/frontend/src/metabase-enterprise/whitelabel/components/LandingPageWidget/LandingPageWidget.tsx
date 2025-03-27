@@ -53,7 +53,7 @@ export function LandingPageWidget({ onChange, settingValues }: Props) {
         aria-label={t`Landing page custom destination`}
         data-testid="landing-page"
         placeholder="/"
-        onBlurChange={e => handleChange(e.target.value)}
+        onBlurChange={(e) => handleChange(e.target.value)}
       />
     </div>
   );

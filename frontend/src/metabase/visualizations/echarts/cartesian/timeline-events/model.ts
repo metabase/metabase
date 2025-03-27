@@ -84,7 +84,7 @@ export const mergeOverlappingTimelineEventGroups = (
 
   const mergedGroups: TimelineEventGroup[] = [];
 
-  sortedGroups.forEach(currentGroup => {
+  sortedGroups.forEach((currentGroup) => {
     if (mergedGroups.length === 0) {
       mergedGroups.push(currentGroup);
       return;
@@ -124,7 +124,7 @@ const getTimelineEventsInsideRange = (
   range: DateRange,
 ) => {
   const [min, max] = range;
-  return timelineEvents.filter(event => {
+  return timelineEvents.filter((event) => {
     return (
       (min.isSame(event.timestamp) || min.isBefore(event.timestamp)) &&
       (max.isSame(event.timestamp) || max.isAfter(event.timestamp))

@@ -57,7 +57,7 @@ describe("time-series chrome filter widget", () => {
         );
 
         cy.log("Make sure we display all the operators");
-        operators.forEach(operator => {
+        operators.forEach((operator) => {
           cy.findByRole("option", { name: operator }).should("be.visible");
         });
       });

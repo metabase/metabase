@@ -106,7 +106,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
 
     const updateHeaderWidths = useCallback(
       (newHeaderWidths: Partial<HeaderWidthType>) => {
-        setHeaderWidths(prevHeaderWidths => ({
+        setHeaderWidths((prevHeaderWidths) => ({
           ...prevHeaderWidths,
           ...newHeaderWidths,
         }));
@@ -135,7 +135,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
 
     const getColumnTitle = useCallback(
       function (columnIndex: number) {
-        const column = data.cols.filter(col => !isPivotGroupColumn(col))[
+        const column = data.cols.filter((col) => !isPivotGroupColumn(col))[
           columnIndex
         ];
         return getTitleForColumn(column, settings);
@@ -144,7 +144,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     );
 
     function isColumnCollapsible(columnIndex: number) {
-      const columns = data.cols.filter(col => !isPivotGroupColumn(col));
+      const columns = data.cols.filter((col) => !isPivotGroupColumn(col));
       if (typeof settings.column != "function") {
         throw new Error(
           `Invalid pivot table settings format, missing nested column settings: ${JSON.stringify(
@@ -233,7 +233,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       if (columnsChanged) {
         const newLeftHeaderWidths = getLeftHeaderWidths({
           rowIndexes: pivoted?.rowIndexes,
-          getColumnTitle: idx => getColumnTitle(idx),
+          getColumnTitle: (idx) => getColumnTitle(idx),
           leftHeaderItems: pivoted?.leftHeaderItems,
           font: { fontFamily, fontSize },
         });

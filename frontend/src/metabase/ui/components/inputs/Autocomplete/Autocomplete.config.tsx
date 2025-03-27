@@ -10,7 +10,7 @@ export const autocompleteOverrides: MantineThemeOverride["components"] = {
       comboboxProps: {
         withinPortal: true,
       },
-      renderOption: item => <DefaultSelectItem {...item.option} />,
+      renderOption: (item) => <DefaultSelectItem {...item.option} />,
       maxDropdownHeight: 512,
       withScrollArea: false,
     },

@@ -43,7 +43,7 @@ const FilterDropdownInner = ({
     .with(0, () => t`Filter`)
     .with(1, () => t`1 filter`)
     .otherwise(
-      value =>
+      (value) =>
         c("{0} refers to a number greater than 1 (i.e. 2 filters, 10 filters)")
           .t`${value} filters`,
     );

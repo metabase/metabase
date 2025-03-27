@@ -33,7 +33,7 @@ function isOperator(char: number) {
  *
  * This is hard to express in the grammar, so we use this tokenizer to match them.
  */
-export const reference = new ExternalTokenizer(input => {
+export const reference = new ExternalTokenizer((input) => {
   const current = input.next;
 
   if (current !== OPEN_BRACKET) {

@@ -384,7 +384,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       // Click anywhere outside to close the popover
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("15705D").click();
-      H.sendEmailAndAssert(email => {
+      H.sendEmailAndAssert((email) => {
         expect(email.html).not.to.include(
           "An error occurred while displaying this card.",
         );
@@ -404,7 +404,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       // Click outside popover to close it and at the same time check that the text card content is shown as expected
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(TEXT_CARD).click();
-      H.sendEmailAndAssert(email => {
+      H.sendEmailAndAssert((email) => {
         expect(email.html).to.include(TEXT_CARD);
       });
     });
@@ -435,7 +435,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         },
       );
 
-      H.sendEmailAndAssert(email => {
+      H.sendEmailAndAssert((email) => {
         expect(email.html).to.include(dashboardDetails.name);
         expect(email.html).to.include(questionDetails.name);
       });
@@ -753,7 +753,7 @@ function assignRecipients({
   cy.findByText("Email it").click();
 
   const userInput = users
-    .map(user => `${user.first_name} ${user.last_name}{enter}`)
+    .map((user) => `${user.first_name} ${user.last_name}{enter}`)
     .join("");
 
   cy.findByPlaceholderText("Enter user names or email addresses")

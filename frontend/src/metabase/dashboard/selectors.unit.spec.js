@@ -358,7 +358,7 @@ describe("dashboard/selectors", () => {
       })
       .value();
 
-    const setup = positions => {
+    const setup = (positions) => {
       const newStateChain = chain(multiCardState);
 
       positions.forEach((position, index) => {

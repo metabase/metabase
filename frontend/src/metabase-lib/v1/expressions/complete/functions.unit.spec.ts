@@ -126,7 +126,7 @@ describe("suggestFunctions", () => {
 
   const RESULTS_NO_TEMPLATE = {
     ...RESULTS,
-    options: RESULTS.options.map(option => ({
+    options: RESULTS.options.map((option) => ({
       ...option,
       apply: undefined,
     })),
@@ -177,7 +177,7 @@ describe("suggestFunctions", () => {
       const completer = setup({ startRule });
       const results = await completer("offse|");
       const options = results?.options.filter(
-        option => option.label === "offset",
+        (option) => option.label === "offset",
       );
       expect(options).toEqual([]);
     });
@@ -186,7 +186,7 @@ describe("suggestFunctions", () => {
       const completer = setup({ startRule });
       const results = await completer("cas|");
       const options = results?.options.filter(
-        option => option.label === "case",
+        (option) => option.label === "case",
       );
       expect(options).toEqual([
         {
@@ -209,7 +209,7 @@ describe("suggestFunctions", () => {
       });
       const results = await completer("rege|");
       expect(
-        results?.options.find(option => option.label === "regexextract"),
+        results?.options.find((option) => option.label === "regexextract"),
       ).toBe(undefined);
     });
 
@@ -220,7 +220,7 @@ describe("suggestFunctions", () => {
       });
       const results = await completer("rege|");
       expect(
-        results?.options.find(option => option.label === "regexextract"),
+        results?.options.find((option) => option.label === "regexextract"),
       ).toEqual({
         label: "regexextract",
         displayLabel: "regexextract",
@@ -269,7 +269,7 @@ describe("suggestFunctions", () => {
   it("should complete functions whose name starts with the an operator name as a prefix (metabase#55686)", async () => {
     const completer = setup({ startRule: "expression" });
     const results = await completer("not|");
-    expect(results?.options.map(result => result.displayLabel)).toEqual([
+    expect(results?.options.map((result) => result.displayLabel)).toEqual([
       "notIn",
       "notnull",
       "notempty",

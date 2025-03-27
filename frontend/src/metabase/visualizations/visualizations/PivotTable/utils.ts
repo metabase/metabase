@@ -34,9 +34,9 @@ export function updateValueWithCurrentColumns(
   columns: DatasetColumn[],
 ): PivotTableColumnSplitSetting {
   const migratedValue = migratePivotColumnSplitSetting(storedValue, columns);
-  const currentQueryColumnNames = columns.map(c => c.name);
+  const currentQueryColumnNames = columns.map((c) => c.name);
   const currentSettingColumnNames = Object.values(migratedValue).flatMap(
-    columnNames => columnNames ?? [],
+    (columnNames) => columnNames ?? [],
   );
   const toAdd = _.difference(
     currentQueryColumnNames,
@@ -57,14 +57,14 @@ export function updateValueWithCurrentColumns(
   // remove toRemove
   const value: ColumnNameColumnSplitSetting = _.mapObject(
     migratedValue,
-    columnNames =>
-      columnNames?.filter(columnName => !toRemove.includes(columnName)),
+    (columnNames) =>
+      columnNames?.filter((columnName) => !toRemove.includes(columnName)),
   );
 
   // add toAdd to first partitions where it matches the filter
   for (const columnName of toAdd) {
     for (const { columnFilter: filter, name } of partitions) {
-      const column = columns.find(c => c.name === columnName);
+      const column = columns.find((c) => c.name === columnName);
       if (column != null && (filter == null || filter(column))) {
         value[name] = value[name] ?? [];
         value[name].push(column.name);
@@ -85,7 +85,7 @@ export function addMissingCardBreakouts(
 ): PivotTableColumnSplitSetting {
   const { rows = [], columns = [] } = setting;
   const breakoutColumns = availableColumns.filter(
-    column => column.source === "breakout",
+    (column) => column.source === "breakout",
   );
   if (breakoutColumns.length <= columns.length + rows.length) {
     return setting;
@@ -138,7 +138,7 @@ export function getLeftHeaderWidths({
       Math.max(
         // we need to use the depth index because the data is in depth order, not row index order
         ...(cellValues[depthIndex]?.values?.map(
-          value =>
+          (value) =>
             measureText(value, {
               weight: "normal",
               family: fontFamily,

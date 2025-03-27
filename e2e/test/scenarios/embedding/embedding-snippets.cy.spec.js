@@ -16,7 +16,7 @@ function highlightedTexts() {
   return cy.findAllByTestId("highlighted-text");
 }
 
-features.forEach(feature => {
+features.forEach((feature) => {
   describe(`[tokenFeatures=${feature}] scenarios > embedding > code snippets`, () => {
     beforeEach(() => {
       H.restore();

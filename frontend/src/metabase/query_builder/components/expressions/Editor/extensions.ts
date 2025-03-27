@@ -153,7 +153,7 @@ function highlighting() {
  * Expands -> to → when the user is typing.
  */
 function expander() {
-  return EditorView.updateListener.of(update => {
+  return EditorView.updateListener.of((update) => {
     if (!update.docChanged) {
       return;
     }

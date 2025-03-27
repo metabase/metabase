@@ -11,9 +11,9 @@ export const getCrumbs = (
   if (collection && collection.path) {
     return [
       ...collection.path
-        .map(id => collectionsById[id])
+        .map((id) => collectionsById[id])
         .filter(isNotNull)
-        .map(collection => [collection.name, () => callback(collection.id)]),
+        .map((collection) => [collection.name, () => callback(collection.id)]),
       [collection.name],
     ];
   } else {

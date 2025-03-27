@@ -248,9 +248,9 @@ describe("scenarios > embedding > full app", () => {
         H.popover().findByText("Orders").click();
 
         // Multi-stage data picker
-        cy.intercept("GET", "/api/search*", req => {
+        cy.intercept("GET", "/api/search*", (req) => {
           if (req.query.limit === "0") {
-            req.continue(res => {
+            req.continue((res) => {
               // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
               res.body.total = 100;
             });
@@ -817,9 +817,9 @@ describe("scenarios > embedding > full app", () => {
       searchParameters,
     } = {}) {
       if (isMultiStageDataPicker) {
-        cy.intercept("GET", "/api/search*", req => {
+        cy.intercept("GET", "/api/search*", (req) => {
           if (req.query.limit === "0") {
-            req.continue(res => {
+            req.continue((res) => {
               // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
               res.body.total = 100;
             });
@@ -854,7 +854,7 @@ describe("scenarios > embedding > full app", () => {
     function selectCard({ cardName, cardType, collectionNames }) {
       H.popover().within(() => {
         cy.findByText(cardTypeToLabel[cardType]).click();
-        collectionNames.forEach(collectionName =>
+        collectionNames.forEach((collectionName) =>
           cy.findByText(collectionName).click(),
         );
         cy.findByText(cardName).click();
@@ -1376,7 +1376,7 @@ describe("scenarios > embedding > full app", () => {
             size_y: 8,
           }),
         ],
-      }).then(dashboard => {
+      }).then((dashboard) => {
         visitDashboardUrl({
           url: `/dashboard/${dashboard.id}`,
           qs: { header: false },
@@ -1501,7 +1501,7 @@ describe("scenarios > embedding > full app", () => {
         .findByText("I am a very long text card")
         .should("not.be.visible");
       cy.findByTestId("dashboard-parameters-widget-container").then(
-        $dashboardParameters => {
+        ($dashboardParameters) => {
           const dashboardParametersRect =
             $dashboardParameters[0].getBoundingClientRect();
           expect(dashboardParametersRect.x).to.equal(0);
@@ -1523,7 +1523,7 @@ describe("scenarios > embedding > full app", () => {
             text: "I am a text card",
           }),
         ],
-      }).then(dashboard => {
+      }).then((dashboard) => {
         H.visitFullAppEmbeddingUrl({
           url: `/dashboard/${dashboard.id}`,
           onBeforeLoad(window) {
@@ -1538,7 +1538,7 @@ describe("scenarios > embedding > full app", () => {
           type: "frame",
           frame: {
             mode: "fit",
-            height: Cypress.sinon.match(value => value > 1000),
+            height: Cypress.sinon.match((value) => value > 1000),
           },
         },
       });
@@ -1550,7 +1550,7 @@ describe("scenarios > embedding > full app", () => {
           type: "frame",
           frame: {
             mode: "fit",
-            height: Cypress.sinon.match(value => value < 1000),
+            height: Cypress.sinon.match((value) => value < 1000),
           },
         },
       });
@@ -1574,8 +1574,8 @@ describe("scenarios > embedding > full app", () => {
 
     it("should allow downloading question results when logged in via Google SSO (metabase#39848)", () => {
       const CSRF_TOKEN = "abcdefgh";
-      cy.intercept("GET", "/api/user/current", req => {
-        req.on("response", res => {
+      cy.intercept("GET", "/api/user/current", (req) => {
+        req.on("response", (res) => {
           res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
         });
       });
@@ -1591,7 +1591,7 @@ describe("scenarios > embedding > full app", () => {
 
       H.exportFromDashcard(".csv");
 
-      cy.wait("@CsvDownload").then(interception => {
+      cy.wait("@CsvDownload").then((interception) => {
         expect(
           interception.request.headers["x-metabase-anti-csrf-token"],
         ).to.equal(CSRF_TOKEN);
@@ -1629,18 +1629,18 @@ describe("scenarios > embedding > full app", () => {
   });
 });
 
-const visitQuestionUrl = urlOptions => {
+const visitQuestionUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getCardQuery");
 };
 
-const visitDashboardUrl = urlOptions => {
+const visitDashboardUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
 };
 
-const visitXrayDashboardUrl = urlOptions => {
+const visitXrayDashboardUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getXrayDashboard");
 };
@@ -1648,7 +1648,7 @@ const visitXrayDashboardUrl = urlOptions => {
 const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
   cy.request("GET", `/api/dashboard/${dashboardId}`).then(({ body }) => {
     cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-      dashcards: body.dashcards.map(card => ({
+      dashcards: body.dashcards.map((card) => ({
         ...card,
         visualization_settings: {
           click_behavior: {
@@ -1666,7 +1666,7 @@ const sideNav = () => {
   return cy.findByTestId("main-navbar-root");
 };
 
-const selectDataSource = dataSource => {
+const selectDataSource = (dataSource) => {
   H.popover().findByRole("link", { name: dataSource }).click();
 };
 
@@ -1674,6 +1674,6 @@ const selectDataSource = dataSource => {
  *
  * @param {string} dataSource  When using with QA database, the first option would be the table from the QA database.
  */
-const selectFirstDataSource = dataSource => {
+const selectFirstDataSource = (dataSource) => {
   H.popover().findAllByRole("link", { name: dataSource }).first().click();
 };

@@ -237,7 +237,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.get("[data-testid=cell-data]").contains(drillCellText).first().click();
       H.popover().within(() => {
         cy.findByText("Break out by…").click();
-        menuItems.forEach(item => {
+        menuItems.forEach((item) => {
           cy.findByText(item).click();
         });
       });

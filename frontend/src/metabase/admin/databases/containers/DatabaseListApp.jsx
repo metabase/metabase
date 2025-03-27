@@ -25,14 +25,14 @@ import {
 const RELOAD_INTERVAL = 2000;
 
 const getReloadInterval = (_state, _props, databases = []) => {
-  return databases.some(d => isSyncInProgress(d)) ? RELOAD_INTERVAL : 0;
+  return databases.some((d) => isSyncInProgress(d)) ? RELOAD_INTERVAL : 0;
 };
 
 const query = {
   ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
 };
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   isAdmin: getUserIsAdmin(state),
   hasSampleDatabase: Database.selectors.getHasSampleDatabase(state, {
     entityQuery: query,

@@ -112,7 +112,7 @@ const setup = async ({
       dashboards: {
         [dashboard.id]: {
           ...dashboard,
-          dashcards: dashcards.map(dc => dc.id),
+          dashcards: dashcards.map((dc) => dc.id),
         },
       },
       dashcards: indexBy(dashcards, "id"),

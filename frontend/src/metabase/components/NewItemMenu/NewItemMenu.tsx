@@ -52,10 +52,12 @@ const NewItemMenu = ({
   onCloseNavbar,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
-  const entityTypes = useSelector(state => getEmbedOptions(state).entity_types);
+  const entityTypes = useSelector(
+    (state) => getEmbedOptions(state).entity_types,
+  );
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
-  const lastUsedDatabaseId = useSelector(state =>
+  const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
   );
 

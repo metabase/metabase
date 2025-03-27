@@ -60,7 +60,7 @@ function stringifyValue(value: string | null): string {
 
 function getData({ field, value }: Pick<Props, "field" | "value">) {
   const options = getCompatibleSemanticTypes(field, value)
-    .map(option => ({
+    .map((option) => ({
       label: option.name,
       value: stringifyValue(option.id),
       section: option.section,

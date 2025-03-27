@@ -27,7 +27,7 @@ export function deserializeStringParameterValue(
 export function serializeNumberParameterValue(
   value: NumberValue[],
 ): ParameterValueOrArray {
-  return value.map(item => {
+  return value.map((item) => {
     return typeof item === "number" ? item : String(item);
   });
 }
@@ -109,13 +109,13 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // entire month, `2020-04`
   {
     regex: /^([0-9]{4})-([0-9]{2})$/,
-    serialize: value => {
+    serialize: (value) => {
       if (value.type === "month") {
         const { year, month } = value;
         return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const year = parseInt(match[1]);
       const month = parseInt(match[2]);
       if (isFinite(year) && month >= 1 && month <= 12) {
@@ -130,13 +130,13 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // entire quarter, `Q2`
   {
     regex: /^Q([1-4])-([0-9]{4})$/,
-    serialize: value => {
+    serialize: (value) => {
       if (value.type === "quarter") {
         const { year, quarter } = value;
         return `Q${quarter}-${year.toString().padStart(4, "0")}`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const year = parseInt(match[2]);
       const quarter = parseInt(match[1]);
       if (isFinite(year) && quarter >= 1 && quarter <= 4) {
@@ -151,13 +151,13 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // single day, `2020-01-02` or `2020-01-02T:10:20:00`
   {
     regex: /^([\d-T:]+)$/,
-    serialize: value => {
+    serialize: (value) => {
       if (value.type === "specific" && value.operator === "=") {
         const [date] = value.values;
         return serializeDate(date, value.hasTime);
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const date = dayjs(match[1]);
       if (date.isValid()) {
         return {
@@ -172,13 +172,13 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // before day, `~2020-01-02` or `~2020-01-02T:10:20:00`
   {
     regex: /^~([\d-T:]+)$/,
-    serialize: value => {
+    serialize: (value) => {
       if (value.type === "specific" && value.operator === "<") {
         const [date] = value.values;
         return `~${serializeDate(date, value.hasTime)}`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const date = dayjs(match[1]);
       if (date.isValid()) {
         return {
@@ -193,13 +193,13 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // after day, `2020-01-02~` or `2020-01-02T:10:20:00~`
   {
     regex: /^([\d-T:]+)~$/,
-    serialize: value => {
+    serialize: (value) => {
       if (value.type === "specific" && value.operator === ">") {
         const [date] = value.values;
         return `${serializeDate(date, value.hasTime)}~`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const date = dayjs(match[1]);
       if (date.isValid()) {
         return {
@@ -214,13 +214,13 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // day range, `2020-01-02~2020-05-10` or `2020-01-02T05:08:00~2020-05-10T10:21:00`
   {
     regex: /^([\d-T:]+)~([\d-T:]+)$/,
-    serialize: value => {
+    serialize: (value) => {
       if (value.type === "specific" && value.operator === "between") {
         const [date1, date2] = value.values;
         return `${serializeDate(date1, value.hasTime)}~${serializeDate(date2, value.hasTime)}`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const date1 = dayjs(match[1]);
       const date2 = dayjs(match[2]);
       if (date1.isValid() && date2.isValid()) {
@@ -262,12 +262,12 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // `thismonth`, `thisyear`
   {
     regex: /^this(\w+)$/,
-    serialize: value => {
+    serialize: (value) => {
       if (value.type === "relative" && value.value === 0) {
         return `this${value.unit}`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const unit = match[1];
       if (isDatePickerTruncationUnit(unit)) {
         return {
@@ -283,7 +283,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
     regex: /^previous(\w+)$/,
     // TODO serialize properly when legacy `getFilterTitle` is removed
     serialize: () => undefined,
-    deserialize: match => {
+    deserialize: (match) => {
       const unit = match[1];
       if (isDatePickerTruncationUnit(unit)) {
         return {
@@ -297,7 +297,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // `past30days`, `past30days~`. `~` means `includeCurrent`
   {
     regex: /^past(\d+)(\w+)s(~)?$/,
-    serialize: value => {
+    serialize: (value) => {
       if (
         value.type === "relative" &&
         value.value !== 0 &&
@@ -309,7 +309,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
         return `past${-value.value}${value.unit}s${suffix}`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const value = parseInt(match[1]);
       const unit = match[2];
       const suffix = match[3];
@@ -326,7 +326,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // `next30days`, `next30days~`. `~` means `includeCurrent`
   {
     regex: /^next(\d+)(\w+)s(~)?$/,
-    serialize: value => {
+    serialize: (value) => {
       if (
         value.type === "relative" &&
         value.value !== 0 &&
@@ -338,7 +338,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
         return `next${value.value}${value.unit}s${suffix}`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const value = parseInt(match[1]);
       const unit = match[2];
       const suffix = match[3];
@@ -355,7 +355,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // `past30days-from-2years`
   {
     regex: /^past(\d+)(\w+)s-from-(\d+)(\w+)s$/,
-    serialize: value => {
+    serialize: (value) => {
       if (
         value.type === "relative" &&
         value.value !== 0 &&
@@ -367,7 +367,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
         return `past${-value.value}${value.unit}s-from-${-value.offsetValue}${value.offsetUnit}s`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const value = parseInt(match[1]);
       const unit = match[2];
       const offsetValue = parseInt(match[3]);
@@ -391,7 +391,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // `next30days-from-2years`
   {
     regex: /^next(\d+)(\w+)s-from-(\d+)(\w+)s$/,
-    serialize: value => {
+    serialize: (value) => {
       if (
         value.type === "relative" &&
         value.value !== 0 &&
@@ -403,7 +403,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
         return `next${value.value}${value.unit}s-from-${value.offsetValue}${value.offsetUnit}s`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const value = parseInt(match[1]);
       const unit = match[2];
       const offsetValue = parseInt(match[3]);
@@ -427,14 +427,14 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // `exclude-hours-1-23`
   {
     regex: /^exclude-hours-([-\d]+)$/,
-    serialize: value => {
+    serialize: (value) => {
       if (value.type === "exclude" && value.unit === "hour-of-day") {
         return `exclude-hours-${value.values.join("-")}`;
       }
     },
-    deserialize: match => {
-      const hours = match[1].split("-").map(value => parseInt(value));
-      if (hours.every(value => value >= 0 && value <= 23)) {
+    deserialize: (match) => {
+      const hours = match[1].split("-").map((value) => parseInt(value));
+      if (hours.every((value) => value >= 0 && value <= 23)) {
         return {
           type: "exclude",
           operator: "!=",
@@ -447,17 +447,17 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // `exclude-days-Mon-San`
   {
     regex: /^exclude-days-([-\w]+)$/,
-    serialize: value => {
+    serialize: (value) => {
       if (value.type === "exclude" && value.unit === "day-of-week") {
-        const dayNames = value.values.map(dayNumber => DAYS[dayNumber - 1]);
+        const dayNames = value.values.map((dayNumber) => DAYS[dayNumber - 1]);
         return `exclude-days-${dayNames.join("-")}`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const dayNumbers = match[1]
         .split("-")
-        .map(value => DAYS.indexOf(value) + 1);
-      if (dayNumbers.every(dayNumber => dayNumber > 0)) {
+        .map((value) => DAYS.indexOf(value) + 1);
+      if (dayNumbers.every((dayNumber) => dayNumber > 0)) {
         return {
           type: "exclude",
           operator: "!=",
@@ -470,17 +470,19 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // `exclude-months-Jan-Dec`
   {
     regex: /^exclude-months-([-\w]+)$/,
-    serialize: value => {
+    serialize: (value) => {
       if (value.type === "exclude" && value.unit === "month-of-year") {
-        const monthNames = value.values.map(dayNumber => MONTHS[dayNumber - 1]);
+        const monthNames = value.values.map(
+          (dayNumber) => MONTHS[dayNumber - 1],
+        );
         return `exclude-months-${monthNames.join("-")}`;
       }
     },
-    deserialize: match => {
+    deserialize: (match) => {
       const monthNumbers = match[1]
         .split("-")
-        .map(value => MONTHS.indexOf(value) + 1);
-      if (monthNumbers.every(monthNumber => monthNumber > 0)) {
+        .map((value) => MONTHS.indexOf(value) + 1);
+      if (monthNumbers.every((monthNumber) => monthNumber > 0)) {
         return {
           type: "exclude",
           operator: "!=",
@@ -493,14 +495,14 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   // `exclude-quarters-1-4`
   {
     regex: /^exclude-quarters-([-\d]+)$/,
-    serialize: value => {
+    serialize: (value) => {
       if (value.type === "exclude" && value.unit === "quarter-of-year") {
         return `exclude-quarters-${value.values.join("-")}`;
       }
     },
-    deserialize: match => {
-      const quarters = match[1].split("-").map(value => parseInt(value));
-      if (quarters.every(value => value >= 1 && value <= 4)) {
+    deserialize: (match) => {
+      const quarters = match[1].split("-").map((value) => parseInt(value));
+      if (quarters.every((value) => value >= 1 && value <= 4)) {
         return {
           type: "exclude",
           operator: "!=",

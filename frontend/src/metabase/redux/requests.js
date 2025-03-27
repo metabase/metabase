@@ -26,7 +26,7 @@ export const setRequestError = createAction(
 );
 export const setRequestUnloaded = createAction(
   "metabase/requests/SET_REQUEST_UNLOADED",
-  statePath => ({ statePath }),
+  (statePath) => ({ statePath }),
 );
 
 const initialRequestState = {
@@ -76,7 +76,7 @@ const requestStateReducer = handleActions(
       }),
     },
     [setRequestUnloaded]: {
-      next: state => ({
+      next: (state) => ({
         ...state,
         loaded: false,
         error: null,
@@ -98,7 +98,7 @@ function requestStateReducerRecursive(state, action) {
   }
 }
 
-const isBulkInvalidation = statePath => {
+const isBulkInvalidation = (statePath) => {
   // Bulk invalidations only have a statePath with a length of 2
   return statePath.length <= 2;
 };
@@ -109,7 +109,7 @@ export default (state = {}, action) => {
     const hasStateToUpdate = !!getIn(state, statePath);
 
     if (hasStateToUpdate || !isBulkInvalidation(statePath)) {
-      state = updateIn(state, action.payload.statePath, subState =>
+      state = updateIn(state, action.payload.statePath, (subState) =>
         requestStateReducerRecursive(subState, action),
       );
     }

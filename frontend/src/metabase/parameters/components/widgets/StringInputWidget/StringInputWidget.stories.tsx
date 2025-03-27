@@ -8,7 +8,7 @@ export default {
   component: StringInputWidget,
 };
 
-const Template: StoryFn<typeof StringInputWidget> = args => {
+const Template: StoryFn<typeof StringInputWidget> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleSetValue = (v: string[] | undefined) => {

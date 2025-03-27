@@ -60,7 +60,7 @@ export const columnFinder =
     tableName: string | undefined | null,
     columnName: string,
   ): Lib.ColumnMetadata => {
-    const column = columns.find(column => {
+    const column = columns.find((column) => {
       const displayInfo = Lib.displayInfo(query, 0, column);
 
       // for non-table columns - aggregations, custom columns
@@ -90,7 +90,7 @@ export const findBinningStrategy = (
   }
   const buckets = Lib.availableBinningStrategies(query, 0, column);
   const bucket = buckets.find(
-    bucket => Lib.displayInfo(query, 0, bucket).displayName === bucketName,
+    (bucket) => Lib.displayInfo(query, 0, bucket).displayName === bucketName,
   );
   if (!bucket) {
     throw new Error(`Could not find binning strategy ${bucketName}`);
@@ -109,7 +109,7 @@ export const findTemporalBucket = (
 
   const buckets = Lib.availableTemporalBuckets(query, 0, column);
   const bucket = buckets.find(
-    bucket => Lib.displayInfo(query, 0, bucket).displayName === bucketName,
+    (bucket) => Lib.displayInfo(query, 0, bucket).displayName === bucketName,
   );
   if (!bucket) {
     throw new Error(`Could not find temporal bucket ${bucketName}`);
@@ -123,7 +123,7 @@ export const findAggregationOperator = (
 ) => {
   const operators = Lib.availableAggregationOperators(query, 0);
   const operator = operators.find(
-    operator =>
+    (operator) =>
       Lib.displayInfo(query, 0, operator).shortName === operatorShortName,
   );
   if (!operator) {
@@ -135,7 +135,7 @@ export const findAggregationOperator = (
 export const findSegment = (query: Lib.Query, segmentName: string) => {
   const stageIndex = 0;
   const segment = Lib.availableSegments(query, stageIndex).find(
-    segment =>
+    (segment) =>
       Lib.displayInfo(query, stageIndex, segment).displayName === segmentName,
   );
   if (!segment) {
@@ -276,7 +276,7 @@ export const queryDrillThru = (
     clickObject.data,
     clickObject.dimensions,
   );
-  const drill = drills.find(drill => {
+  const drill = drills.find((drill) => {
     const drillInfo = Lib.displayInfo(query, stageIndex, drill);
     return drillInfo.type === drillType;
   });
@@ -320,7 +320,7 @@ export const getJoinQueryHelpers = (
   );
 
   const defaultStrategy = Lib.availableJoinStrategies(query, stageIndex).find(
-    strategy => Lib.displayInfo(query, stageIndex, strategy).default,
+    (strategy) => Lib.displayInfo(query, stageIndex, strategy).default,
   );
 
   if (!defaultStrategy) {
@@ -328,7 +328,7 @@ export const getJoinQueryHelpers = (
   }
 
   const defaultOperator = Lib.joinConditionOperators(query, stageIndex).find(
-    operator => Lib.displayInfo(query, stageIndex, operator).default,
+    (operator) => Lib.displayInfo(query, stageIndex, operator).default,
   );
 
   if (!defaultOperator) {

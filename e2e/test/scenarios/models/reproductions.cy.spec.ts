@@ -336,7 +336,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
     H.saveQuestion("Nested Model", { wrapId: true, idAlias: "nestedModelId" });
 
     cy.log("Make sure this works for the deeply nested models as well");
-    cy.get("@nestedModelId").then(nestedModelId => {
+    cy.get("@nestedModelId").then((nestedModelId) => {
       H.createQuestion(
         {
           type: "model",
@@ -1367,7 +1367,7 @@ describe("issue 32037", () => {
 
     H.tableInteractive().should("be.visible");
     cy.button("Save changes").should("not.exist");
-    cy.get("@modelPathname").then(modelPathname => {
+    cy.get("@modelPathname").then((modelPathname) => {
       cy.location("pathname").should("eq", modelPathname);
     });
   }

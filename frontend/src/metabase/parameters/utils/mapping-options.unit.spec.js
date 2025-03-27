@@ -83,7 +83,7 @@ describe("parameters/utils/mapping-options", () => {
         // add instances to the `metadata` instance
         metadata.questions[dataset.id()] = dataset;
         metadata.tables[virtualCardTable.id] = virtualCardTable;
-        virtualCardTable.fields.forEach(f => {
+        virtualCardTable.fields.forEach((f) => {
           metadata.fields[f.uniqueId] = f;
         });
       });
@@ -127,7 +127,7 @@ describe("parameters/utils/mapping-options", () => {
           tables: [
             createMockTable({
               id: `card__${card.id}`,
-              fields: (table.fields ?? []).map(field => ({
+              fields: (table.fields ?? []).map((field) => ({
                 ...field,
                 table_id: `card__${card.id}`,
               })),
@@ -375,7 +375,7 @@ describe("parameters/utils/mapping-options", () => {
   });
 
   describe("iframe dashcard", () => {
-    const createIframeDashcard = iframeContent =>
+    const createIframeDashcard = (iframeContent) =>
       createMockDashboardCard({
         visualization_settings: {
           virtual_card: {
@@ -385,7 +385,7 @@ describe("parameters/utils/mapping-options", () => {
         },
       });
 
-    const getIframeOptions = iframeContent =>
+    const getIframeOptions = (iframeContent) =>
       getParameterMappingOptions(
         undefined,
         null,
@@ -393,8 +393,8 @@ describe("parameters/utils/mapping-options", () => {
         createIframeDashcard(iframeContent),
       );
 
-    const expectedTagOptions = tags =>
-      tags.map(tag => ({
+    const expectedTagOptions = (tags) =>
+      tags.map((tag) => ({
         name: tag,
         icon: "string",
         isForeign: false,
@@ -434,7 +434,7 @@ describe("parameters/utils/mapping-options", () => {
   });
 
   describe("link dashcard", () => {
-    const createLinkDashcard = linkUrl =>
+    const createLinkDashcard = (linkUrl) =>
       createMockDashboardCard({
         visualization_settings: {
           virtual_card: {
@@ -446,7 +446,7 @@ describe("parameters/utils/mapping-options", () => {
         },
       });
 
-    const getLinkOptions = linkUrl =>
+    const getLinkOptions = (linkUrl) =>
       getParameterMappingOptions(
         undefined,
         null,
@@ -454,8 +454,8 @@ describe("parameters/utils/mapping-options", () => {
         createLinkDashcard(linkUrl),
       );
 
-    const expectedTagOptions = tags =>
-      tags.map(tag => ({
+    const expectedTagOptions = (tags) =>
+      tags.map((tag) => ({
         name: tag,
         icon: "string",
         isForeign: false,

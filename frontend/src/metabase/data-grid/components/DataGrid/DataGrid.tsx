@@ -170,7 +170,7 @@ export const DataGrid = function DataGrid<TData>({
                 ...styles?.headerContainer,
               }}
             >
-              {table.getHeaderGroups().map(headerGroup => (
+              {table.getHeaderGroups().map((headerGroup) => (
                 <div
                   key={headerGroup.id}
                   className={cx(S.row, classNames?.row)}
@@ -187,7 +187,7 @@ export const DataGrid = function DataGrid<TData>({
                     items={table.getState().columnOrder}
                     strategy={horizontalListSortingStrategy}
                   >
-                    {virtualColumns.map(virtualColumn => {
+                    {virtualColumns.map((virtualColumn) => {
                       const header = headerGroup.headers[virtualColumn.index];
 
                       const headerCell = flexRender(
@@ -260,7 +260,7 @@ export const DataGrid = function DataGrid<TData>({
                 ...styles?.bodyContainer,
               }}
             >
-              {virtualRows.map(virtualRow => {
+              {virtualRows.map((virtualRow) => {
                 const row = table.getRowModel().rows[virtualRow.index];
                 return (
                   <div
@@ -289,7 +289,7 @@ export const DataGrid = function DataGrid<TData>({
                       />
                     ) : null}
 
-                    {virtualColumns.map(virtualColumn => {
+                    {virtualColumns.map((virtualColumn) => {
                       const cell = row.getVisibleCells()[virtualColumn.index];
                       const isPinned = cell.column.getIsPinned();
                       const width = cell.column.getSize();
@@ -312,16 +312,16 @@ export const DataGrid = function DataGrid<TData>({
                           key={cell.id}
                           data-column-id={cell.column.id}
                           className={cx(S.bodyCell, classNames?.bodyCell)}
-                          onClick={e =>
+                          onClick={(e) =>
                             onBodyCellClick?.(e, cell.row.index, cell.column.id)
                           }
-                          onMouseDown={e =>
+                          onMouseDown={(e) =>
                             selection.handlers.handleCellMouseDown(e, cell)
                           }
-                          onMouseUp={e =>
+                          onMouseUp={(e) =>
                             selection.handlers.handleCellMouseUp(e, cell)
                           }
-                          onMouseOver={e =>
+                          onMouseOver={(e) =>
                             selection.handlers.handleCellMouseOver(e, cell)
                           }
                           style={style}

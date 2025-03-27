@@ -27,7 +27,7 @@ function PeopleListingApp({ children, isAdmin }) {
     handlePreviousPage,
   } = usePeopleQuery(PAGE_SIZE);
 
-  const handleSearchChange = e => {
+  const handleSearchChange = (e) => {
     updateSearchInputValue(e.target.value);
   };
 
@@ -76,6 +76,6 @@ PeopleListingApp.propTypes = {
   isAdmin: PropTypes.bool,
 };
 
-export default connect(state => ({
+export default connect((state) => ({
   isAdmin: getUserIsAdmin(state),
 }))(PeopleListingApp);

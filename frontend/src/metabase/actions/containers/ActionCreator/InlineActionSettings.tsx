@@ -96,7 +96,7 @@ const InlineActionSettings = ({
     useDisclosure(false);
   const hasSharingPermission = isAdmin && isPublicSharingEnabled;
 
-  const handleTogglePublic: ChangeEventHandler<HTMLInputElement> = event => {
+  const handleTogglePublic: ChangeEventHandler<HTMLInputElement> = (event) => {
     const isPublic = event.target.checked;
 
     if (isPublic) {

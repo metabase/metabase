@@ -14,12 +14,12 @@ export const StepRoot = styled.section<Props>`
   border-radius: 0.5rem;
   padding: 1rem 2rem;
   margin-bottom: 1.75rem;
-  background-color: ${props =>
+  background-color: ${(props) =>
     color(props.isCompleted ? "bg-white" : "bg-medium")};
 `;
 
 export const StepTitle = styled.div<Props>`
-  color: ${props => (props.isCompleted ? color("success") : color("brand"))};
+  color: ${(props) => (props.isCompleted ? color("success") : color("brand"))};
   font-size: 1rem;
   font-weight: 700;
   margin: 0.5rem 0;
@@ -36,9 +36,9 @@ export const StepLabel = styled.div<Props>`
   width: 2.625rem;
   height: 2.625rem;
   border: 1px solid
-    ${props => (props.isCompleted ? color("success") : color("border"))};
+    ${(props) => (props.isCompleted ? color("success") : color("border"))};
   border-radius: 50%;
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.isCompleted ? color("success") : color("bg-white")};
 `;
 

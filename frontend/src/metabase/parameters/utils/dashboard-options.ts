@@ -88,7 +88,7 @@ export function getDefaultOptionForParameterSectionMap(): Record<
 
     const defaultOperator = defaultSectionToParameter[sectionId];
     const defaultOption = options.find(
-      option => option.type === defaultOperator,
+      (option) => option.type === defaultOperator,
     );
 
     if (!defaultOption) {

@@ -34,7 +34,7 @@ export const QuestionList = memo(function QuestionList({
   dashcard,
 }: QuestionListProps) {
   const enabledCardIds = useMemo(
-    () => new Set(enabledCards.map(card => card.id)),
+    () => new Set(enabledCards.map((card) => card.id)),
     [enabledCards],
   );
 
@@ -76,7 +76,7 @@ export const QuestionList = memo(function QuestionList({
           card.dashboard_id === dashcard.dashboard_id,
       );
 
-      setCards(prev => [...prev, ...cards]);
+      setCards((prev) => [...prev, ...cards]);
       setHasMore(cards.length === PAGE_SIZE);
     },
     [dashcard, debouncedSearchText],
@@ -104,7 +104,7 @@ export const QuestionList = memo(function QuestionList({
           radius={0}
           leftSection={<Icon className={S.SearchInputIcon} name="search" />}
           placeholder={t`Search for a question`}
-          onChange={e => setSearchText(e.target.value)}
+          onChange={(e) => setSearchText(e.target.value)}
         />
       </Flex>
       <LoadingAndErrorWrapper
@@ -120,12 +120,12 @@ export const QuestionList = memo(function QuestionList({
         <Box m={0} p={0} w="100%">
           {hasQuestionsToShow && (
             <div>
-              {cards.map(card => (
+              {cards.map((card) => (
                 <QuestionListItem
                   key={card.id}
                   card={card}
                   isEnabled={enabledCardIds.has(card.id)}
-                  onChange={value => onSelect(card, value)}
+                  onChange={(value) => onSelect(card, value)}
                 />
               ))}
 

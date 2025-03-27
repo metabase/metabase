@@ -4,7 +4,7 @@ import { highlight } from "./utils";
 // Since we need the classnames for this test, we mock the module.
 jest.mock("./HighlightExpression.module.css", () => {
   const { tags } = jest.requireActual("@lezer/highlight");
-  return Object.fromEntries(Object.keys(tags).map(name => [name, name]));
+  return Object.fromEntries(Object.keys(tags).map((name) => [name, name]));
 });
 
 describe("highlight", () => {

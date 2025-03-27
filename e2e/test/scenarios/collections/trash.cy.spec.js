@@ -113,16 +113,16 @@ describe("scenarios > collections > trash", () => {
     it("should be able to trash & restore dashboards/collections/questions on entity page and from parent collection", () => {
       cy.log("create test resources");
       cy.log("Bookmark the resources to test metabase#44224");
-      createCollection({ name: "Collection A" }).then(collection => {
+      createCollection({ name: "Collection A" }).then((collection) => {
         cy.request("POST", `/api/bookmark/collection/${collection.id}`);
       });
-      createDashboard({ name: "Dashboard A" }).then(dashboard => {
+      createDashboard({ name: "Dashboard A" }).then((dashboard) => {
         cy.request("POST", `/api/bookmark/dashboard/${dashboard.id}`);
       });
       createNativeQuestion({
         name: "Question A",
         native: { query: "select 1;" },
-      }).then(question => {
+      }).then((question) => {
         cy.request("POST", `/api/bookmark/card/${question.id}`);
       });
 
@@ -131,7 +131,7 @@ describe("scenarios > collections > trash", () => {
       cy.log("should be able to move to trash from collection view");
       toggleEllipsisMenuFor(/Collection A/);
       H.popover().findByText("Move to trash").click();
-      H.expectGoodSnowplowEvent(event =>
+      H.expectGoodSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",
@@ -147,7 +147,7 @@ describe("scenarios > collections > trash", () => {
 
       toggleEllipsisMenuFor("Dashboard A");
       H.popover().findByText("Move to trash").click();
-      H.expectGoodSnowplowEvent(event =>
+      H.expectGoodSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",
@@ -163,7 +163,7 @@ describe("scenarios > collections > trash", () => {
 
       toggleEllipsisMenuFor("Question A");
       H.popover().findByText("Move to trash").click();
-      H.expectGoodSnowplowEvent(event =>
+      H.expectGoodSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",
@@ -207,7 +207,7 @@ describe("scenarios > collections > trash", () => {
         cy.findByText("Move this collection to trash?");
         cy.findByText("Move to trash").click();
       });
-      H.expectGoodSnowplowEvent(event =>
+      H.expectGoodSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",
@@ -233,7 +233,7 @@ describe("scenarios > collections > trash", () => {
         cy.findByText("Move this dashboard to trash?");
         cy.findByText("Move to trash").click();
       });
-      H.expectGoodSnowplowEvent(event =>
+      H.expectGoodSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",
@@ -263,7 +263,7 @@ describe("scenarios > collections > trash", () => {
         cy.findByText("Move this question to trash?");
         cy.findByText("Move to trash").click();
       });
-      H.expectGoodSnowplowEvent(event =>
+      H.expectGoodSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",
@@ -289,9 +289,9 @@ describe("scenarios > collections > trash", () => {
     cy.log("create test resources");
     createCollection({ name: "Collection A" })
       .as("collectionA")
-      .then(a => createCollection({ name: "Collection B", parent_id: a.id }));
+      .then((a) => createCollection({ name: "Collection B", parent_id: a.id }));
 
-    cy.get("@collectionA").then(collectionA => {
+    cy.get("@collectionA").then((collectionA) => {
       H.archiveCollection(collectionA.id);
     });
 
@@ -593,7 +593,7 @@ describe("scenarios > collections > trash", () => {
       true,
     ).as("question");
 
-    cy.get("@question").then(question => {
+    cy.get("@question").then((question) => {
       H.visitQuestion(question.id);
       // should not have disabled actions in top navbar
       cy.findAllByTestId("qb-header-action-panel").within(() => {
@@ -611,7 +611,7 @@ describe("scenarios > collections > trash", () => {
       });
     });
 
-    cy.get("@dashboard").then(dashboard => {
+    cy.get("@dashboard").then((dashboard) => {
       H.visitDashboard(dashboard.id);
 
       cy.findAllByTestId("dashboard-header").within(() => {
@@ -627,7 +627,7 @@ describe("scenarios > collections > trash", () => {
   it("user should not be shown restore/move/delete options in archive banner if they have view only permissions", () => {
     createCollection({ name: "Collection A" }).as("collection");
 
-    cy.get("@collection").then(collection => {
+    cy.get("@collection").then((collection) => {
       createNativeQuestion(
         {
           name: "Question A",
@@ -670,7 +670,7 @@ describe("scenarios > collections > trash", () => {
 
     cy.signInAsNormalUser();
 
-    cy.get("@collection").then(collection => {
+    cy.get("@collection").then((collection) => {
       H.visitCollection(collection.id);
       archiveBanner().findByText("Restore").should("not.exist");
       archiveBanner().findByText("Move").should("not.exist");
@@ -736,7 +736,7 @@ describe("scenarios > collections > trash", () => {
     assertTrashSelectedInNavigationSidebar();
 
     cy.log("Make sure trash is selected for a trashed collection");
-    cy.get("@collection").then(collection => {
+    cy.get("@collection").then((collection) => {
       cy.intercept("GET", `/api/collection/${collection.id}`).as(
         "getCollection",
       );
@@ -746,7 +746,7 @@ describe("scenarios > collections > trash", () => {
     });
 
     cy.log("Make sure trash is selected for a trashed dashboard");
-    cy.get("@dashboard").then(dashboard => {
+    cy.get("@dashboard").then((dashboard) => {
       cy.intercept("GET", `/api/dashboard/${dashboard.id}*`).as("getDashboard");
       H.visitDashboard(dashboard.id);
       cy.wait("@getDashboard");
@@ -755,7 +755,7 @@ describe("scenarios > collections > trash", () => {
     });
 
     cy.log("Make sure trash is selected for a trashed question");
-    cy.get("@question").then(question => {
+    cy.get("@question").then((question) => {
       cy.log(question.id);
       cy.intercept("POST", `/api/card/${question.id}/query`).as(
         "getQuestionResult",

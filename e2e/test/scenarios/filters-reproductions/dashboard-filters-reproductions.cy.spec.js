@@ -127,7 +127,7 @@ describe("issue 8030 + 32444", () => {
     ).as("getCardQuery2");
   };
 
-  const addFilterValue = value => {
+  const addFilterValue = (value) => {
     H.filterWidget().click();
     cy.findByText(value).click();
     cy.button("Add filter").click();
@@ -1133,7 +1133,7 @@ describe("issue 21528", () => {
   });
 
   it("should show dashboard ID filter values when mapped to a native question with a foreign key field filter", () => {
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       cy.visit(`/question/${questionId}`);
     });
 
@@ -1576,14 +1576,16 @@ describe("issue 25322", () => {
     );
   };
 
-  const throttleFieldValuesRequest = dashboard_id => {
+  const throttleFieldValuesRequest = (dashboard_id) => {
     const matcher = {
       method: "GET",
       url: `/api/dashboard/${dashboard_id}/params/${parameterDetails.id}/values`,
       middleware: true,
     };
 
-    cy.intercept(matcher, req => req.on("response", res => res.setDelay(100)));
+    cy.intercept(matcher, (req) =>
+      req.on("response", (res) => res.setDelay(100)),
+    );
   };
 
   beforeEach(() => {
@@ -2206,11 +2208,11 @@ describe("issues 29347, 29346", () => {
     },
   };
 
-  const getRemappedValue = fieldValue => {
+  const getRemappedValue = (fieldValue) => {
     return `N${fieldValue}`;
   };
 
-  const addFieldRemapping = fieldId => {
+  const addFieldRemapping = (fieldId) => {
     cy.request("PUT", `/api/field/${fieldId}`, {
       semantic_type: "type/Category",
     });
@@ -2259,7 +2261,7 @@ describe("issues 29347, 29346", () => {
     );
   };
 
-  const filterOnRemappedValues = fieldValue => {
+  const filterOnRemappedValues = (fieldValue) => {
     H.filterWidget().within(() => {
       cy.findByText(filterDetails.name).click();
     });
@@ -2270,18 +2272,18 @@ describe("issues 29347, 29346", () => {
     });
   };
 
-  const verifyRemappedValues = fieldValue => {
+  const verifyRemappedValues = (fieldValue) => {
     verifyRemappedFilterValues(filterValue);
     verifyRemappedCardValues(fieldValue);
   };
 
-  const verifyRemappedFilterValues = fieldValue => {
+  const verifyRemappedFilterValues = (fieldValue) => {
     H.filterWidget().within(() => {
       cy.findByText(getRemappedValue(fieldValue)).should("be.visible");
     });
   };
 
-  const verifyRemappedCardValues = fieldValue => {
+  const verifyRemappedCardValues = (fieldValue) => {
     H.getDashboardCard().within(() => {
       cy.findAllByText(getRemappedValue(fieldValue)).should("have.length", 2);
     });
@@ -2332,7 +2334,7 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
       createDashboard();
-      cy.get("@dashboardId").then(dashboardId =>
+      cy.get("@dashboardId").then((dashboardId) =>
         H.visitEmbeddedPage({
           resource: { dashboard: dashboardId },
           params: {},
@@ -2349,7 +2351,7 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values in the token (metabase#29347, metabase#29346)", () => {
       createDashboard({ dashboardDetails: lockedDashboardDetails });
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         H.visitEmbeddedPage({
           resource: { dashboard: dashboardId },
           params: {
@@ -2365,7 +2367,7 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
       createDashboard();
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         H.visitEmbeddedPage(
           {
             resource: { dashboard: dashboardId },
@@ -2391,7 +2393,7 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
       createDashboard();
-      cy.get("@dashboardId").then(dashboardId =>
+      cy.get("@dashboardId").then((dashboardId) =>
         H.visitPublicDashboard(dashboardId),
       );
       cy.wait("@dashboard");
@@ -2405,7 +2407,7 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
       createDashboard();
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         H.visitPublicDashboard(dashboardId, {
           params: { [filterDetails.slug]: filterValue },
         });
@@ -2496,7 +2498,7 @@ describe("issue 38245", () => {
       tabs: [TAB_1, TAB_2],
       parameters: [DASHBOARD_TEXT_FILTER],
       dashcards: [],
-    }).then(dashboard => H.visitDashboard(dashboard.id));
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
 
     H.editDashboard();
     H.openQuestionsSidebar();
@@ -2552,7 +2554,7 @@ describe("issue 43154", () => {
     },
   };
 
-  const questionDetails = modelId => ({
+  const questionDetails = (modelId) => ({
     name: "Question",
     type: "question",
     query: {
@@ -2560,7 +2562,7 @@ describe("issue 43154", () => {
     },
   });
 
-  const questionWithAggregationDetails = modelId => ({
+  const questionWithAggregationDetails = (modelId) => ({
     name: "Question",
     type: "question",
     query: {
@@ -2620,7 +2622,7 @@ describe("issue 42829", () => {
     semantic_type: "type/State",
   };
 
-  const getQuestionDetails = modelId => ({
+  const getQuestionDetails = (modelId) => ({
     name: "SQL model-based question",
     type: "question",
     query: {
@@ -2648,7 +2650,7 @@ describe("issue 42829", () => {
     },
   };
 
-  const getParameterMapping = questionId => ({
+  const getParameterMapping = (questionId) => ({
     parameter_id: parameterDetails.id,
     card_id: questionId,
     target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],
@@ -2677,7 +2679,7 @@ describe("issue 42829", () => {
     H.createNativeQuestion(modelDetails).then(({ body: model }) => {
       // populate result_metadata
       cy.request("POST", `/api/card/${model.id}/query`);
-      H.setModelMetadata(model.id, field => {
+      H.setModelMetadata(model.id, (field) => {
         if (field.display_name === "STATE") {
           return { ...field, ...stateFieldDetails };
         }
@@ -2708,14 +2710,14 @@ describe("issue 42829", () => {
   });
 
   it("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
-    cy.get("@dashboardId").then(dashboardId =>
+    cy.get("@dashboardId").then((dashboardId) =>
       H.visitPublicDashboard(dashboardId),
     );
     filterAndVerifyResults();
   });
 
   it("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
-    cy.get("@dashboardId").then(dashboardId =>
+    cy.get("@dashboardId").then((dashboardId) =>
       H.visitEmbeddedPage({
         resource: { dashboard: dashboardId },
         params: {},
@@ -2949,13 +2951,13 @@ describe("issue 44288", () => {
 
     cy.log("public dashboards");
     cy.signInAsAdmin();
-    cy.get("@dashboardId").then(dashboardId =>
+    cy.get("@dashboardId").then((dashboardId) =>
       H.visitPublicDashboard(dashboardId),
     );
     verifyFilter();
 
     cy.log("embedded dashboards");
-    cy.get("@dashboardId").then(dashboardId =>
+    cy.get("@dashboardId").then((dashboardId) =>
       H.visitEmbeddedPage({
         resource: { dashboard: dashboardId },
         params: {},
@@ -3010,7 +3012,7 @@ describe("issue 32804", () => {
     parameters: [parameterDetails],
   };
 
-  const getQuestion2Details = card => ({
+  const getQuestion2Details = (card) => ({
     name: "Q2",
     query: {
       "source-table": `card__${card.id}`,
@@ -3022,7 +3024,7 @@ describe("issue 32804", () => {
     },
   });
 
-  const getParameterMapping = card => ({
+  const getParameterMapping = (card) => ({
     card_id: card.id,
     parameter_id: parameterDetails.id,
     target: [
@@ -3619,7 +3621,7 @@ describe("issue 34955", () => {
   });
 
   it("should connect specific date filter (`Between`) to the temporal custom column (metabase#34955-1)", () => {
-    cy.get("@dashboardId").then(dashboard_id => {
+    cy.get("@dashboardId").then((dashboard_id) => {
       // Apply filter through URL to prevent the typing flakes
       cy.visit(`/dashboard/${dashboard_id}?on=&between=2024-01-01~2024-03-01`);
       // eslint-disable-next-line no-unsafe-element-filtering
@@ -3635,7 +3637,7 @@ describe("issue 34955", () => {
 
   // TODO: Once the issue is fixed, merge into a single repro to avoid unnecessary overhead!
   it.skip("should connect specific date filter (`On`) to the temporal custom column (metabase#34955-2)", () => {
-    cy.get("@dashboardId").then(dashboard_id => {
+    cy.get("@dashboardId").then((dashboard_id) => {
       // Apply filter through URL to prevent the typing flakes
       cy.visit(`/dashboard/${dashboard_id}?on=2024-01-01&between=`);
       cy.findAllByTestId("field-set-content")
@@ -3676,7 +3678,7 @@ describe("issue 35852", () => {
 
   it("should show filter values for a model based on sql query (metabase#35852)", () => {
     H.createNativeQuestion(model).then(({ body: { id: modelId } }) => {
-      H.setModelMetadata(modelId, field => {
+      H.setModelMetadata(modelId, (field) => {
         if (field.display_name === "CATEGORY") {
           return {
             ...field,
@@ -3880,12 +3882,12 @@ describe("issue 45670", { tags: ["@external"] }, () => {
 
   function getField() {
     return cy.request("GET", "/api/table").then(({ body: tables }) => {
-      const table = tables.find(table => table.name === tableName);
+      const table = tables.find((table) => table.name === tableName);
       return cy
         .request("GET", `/api/table/${table.id}/query_metadata`)
         .then(({ body: metadata }) => {
           const { fields } = metadata;
-          return fields.find(field => field.name === "boolean");
+          return fields.find((field) => field.name === "boolean");
         });
     });
   }
@@ -3926,7 +3928,7 @@ describe("issue 45670", { tags: ["@external"] }, () => {
   });
 
   it("should be able to pass query string parameters for boolean parameters in dashboards (metabase#45670)", () => {
-    getField().then(field => {
+    getField().then((field) => {
       H.createNativeQuestion(getQuestionDetails(field.id)).then(
         ({ body: card }) => {
           H.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
@@ -3987,7 +3989,7 @@ describe("issue 48351", () => {
           size_y: 8,
         }),
       ],
-    }).then(dashboard1 => {
+    }).then((dashboard1) => {
       H.createDashboardWithTabs({
         name: "Dashboard 2",
         tabs: [
@@ -4024,7 +4026,7 @@ describe("issue 48351", () => {
             size_y: 8,
           }),
         ],
-      }).then(dashboard2 => H.visitDashboard(dashboard2.id));
+      }).then((dashboard2) => H.visitDashboard(dashboard2.id));
     });
     H.goToTab("Tab 4");
     H.getDashboardCard().within(() =>
@@ -4117,10 +4119,10 @@ describe("issue 40396", { tags: "@external " }, () => {
   it("should be possible to use dashboard filters with native enum fields (metabase#40396)", () => {
     cy.log("create a dashboard with a question with a type/Enum field");
     cy.request("GET", "/api/table").then(({ body: tables }) => {
-      const table = tables.find(table => table.name === tableName);
+      const table = tables.find((table) => table.name === tableName);
       cy.request("GET", `/api/table/${table.id}/query_metadata`).then(
         ({ body: metadata }) => {
-          const field = metadata.fields.find(field => field.name === "enum");
+          const field = metadata.fields.find((field) => field.name === "enum");
           cy.request("PUT", `/api/field/${field.id}`, {
             semantic_type: "type/Enum",
           });
@@ -4300,7 +4302,7 @@ describe("issue 17061", () => {
     },
   };
 
-  const getParameterMapping = cardId => ({
+  const getParameterMapping = (cardId) => ({
     parameter_id: parameterDetails.id,
     card_id: cardId,
     target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],

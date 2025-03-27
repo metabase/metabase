@@ -52,7 +52,7 @@ export const ParameterDropdownWidget = ({
 }: ParameterDropdownWidgetProps) => {
   const normalizedValue = Array.isArray(value)
     ? value
-    : [value].filter(v => v != null);
+    : [value].filter((v) => v != null);
 
   // TODO this is due to some widgets not supporting focusChanged callback.
   const setValueOrDefault = (value: any) => {
@@ -80,7 +80,7 @@ export const ParameterDropdownWidget = ({
           value={value}
           availableOperators={["=", ">", "<", "between", "!="]}
           submitButtonLabel={value ? t`Update filter` : t`Add filter`}
-          onChange={value => {
+          onChange={(value) => {
             setValue?.(value);
             onPopoverClose?.();
           }}

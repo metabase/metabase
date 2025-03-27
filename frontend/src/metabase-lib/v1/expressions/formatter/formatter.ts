@@ -208,7 +208,7 @@ function formatMetric(path: AstPath<MetricAgg>, options: FormatOptions): Doc {
     throw new Error("`query` is a required parameter to format expressions");
   }
 
-  const metric = Lib.availableMetrics(query, stageIndex).find(metric => {
+  const metric = Lib.availableMetrics(query, stageIndex).find((metric) => {
     const [_type, availableMetricId] = Lib.legacyRef(query, stageIndex, metric);
     return availableMetricId === metricId;
   });
@@ -229,7 +229,7 @@ function formatSegment(path: AstPath<SegmentFilter>, options: FormatOptions) {
   }
 
   const [, segmentId] = path.node;
-  const segment = Lib.availableSegments(query, stageIndex).find(segment => {
+  const segment = Lib.availableSegments(query, stageIndex).find((segment) => {
     const [_type, availableSegmentId] = Lib.legacyRef(
       query,
       stageIndex,

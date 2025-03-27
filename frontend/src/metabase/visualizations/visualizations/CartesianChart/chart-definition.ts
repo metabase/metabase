@@ -43,7 +43,7 @@ export const getCartesianChartDefinition = (
       );
     },
 
-    isLiveResizable: series => {
+    isLiveResizable: (series) => {
       const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
       return totalRows < 10;
     },
@@ -66,7 +66,7 @@ export const getCartesianChartDefinition = (
           name: "x",
         },
         data: {
-          rows: _.range(0, 11).map(i => [i, i]),
+          rows: _.range(0, 11).map((i) => [i, i]),
           cols: [
             { name: "x", base_type: "type/Integer" },
             { name: "y", base_type: "type/Integer" },
@@ -77,7 +77,7 @@ export const getCartesianChartDefinition = (
 
     transformSeries,
 
-    onDisplayUpdate: settings => {
+    onDisplayUpdate: (settings) => {
       if (settings[SERIES_SETTING_KEY] == null) {
         return settings;
       }

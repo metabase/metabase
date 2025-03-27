@@ -28,7 +28,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
       if (isMountedRef.current) {
         setLoaded(true);
         setError(null);
-        setLogs(logs => maybeMergeLogs(logs, newLogs));
+        setLogs((logs) => maybeMergeLogs(logs, newLogs));
         isFetchingRef.current = false;
       }
     } catch (err: any) {

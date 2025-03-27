@@ -27,7 +27,7 @@ export default class DatabaseList extends Component {
   constructor(props) {
     super(props);
 
-    props.databases.map(database => {
+    props.databases.map((database) => {
       this["deleteDatabaseModal_" + database.id] = createRef();
     });
 
@@ -91,7 +91,7 @@ export default class DatabaseList extends Component {
               <tbody>
                 {databases ? (
                   [
-                    databases.map(database => {
+                    databases.map((database) => {
                       const isDeleting =
                         this.props.deletes.indexOf(database.id) !== -1;
                       return (

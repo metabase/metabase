@@ -37,14 +37,14 @@ export const AlertRoot = styled.div<AlertRootProps>`
   padding: 1.25rem 1rem;
   line-height: 1.4rem;
   color: var(--mb-color-text-dark);
-  ${props =>
+  ${(props) =>
     props.hasBorder
       ? css`
           border: 1px solid ${colorsByVariant.border[props.variant]};
         `
       : null};
   border-radius: 0.5rem;
-  background-color: ${props => colorsByVariant.background[props.variant]};
+  background-color: ${(props) => colorsByVariant.background[props.variant]};
 `;
 
 interface AlertIconProps {
@@ -55,5 +55,5 @@ export const AlertIcon = styled(Icon)<AlertIconProps>`
   box-sizing: content-box;
   flex-shrink: 0;
   padding: 0.5rem 1rem 0.5rem 0.5rem;
-  color: ${props => colorsByVariant.icon[props.variant]};
+  color: ${(props) => colorsByVariant.icon[props.variant]};
 `;

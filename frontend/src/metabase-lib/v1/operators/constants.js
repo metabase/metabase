@@ -81,8 +81,8 @@ function equivalentArgument(field, table) {
 
 function longitudeFieldSelectArgument(field, table) {
   const values = table.fields
-    .filter(field => isLongitude(field))
-    .map(field => ({
+    .filter((field) => isLongitude(field))
+    .map((field) => ({
       key: field.id,
       name: field.display_name,
     }));

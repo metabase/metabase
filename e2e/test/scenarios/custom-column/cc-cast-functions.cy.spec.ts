@@ -169,7 +169,7 @@ function testFilterWithExpressions(
   H.assertQueryBuilderRowCount(200);
   H.openNotebook();
 
-  testCases.forEach(testCase => {
+  testCases.forEach((testCase) => {
     cy.log(testCase.name);
     addCustomColumn(testCase);
     H.getNotebookStep("expression").button("Filter").click();

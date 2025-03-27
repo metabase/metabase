@@ -21,7 +21,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     cy.request("/api/notification").then(({ body }) => {
       const questionAlerts = body.filter(
-        notification => notification.payload_type === "notification/card",
+        (notification) => notification.payload_type === "notification/card",
       );
       expect(questionAlerts).to.have.length(0);
     });

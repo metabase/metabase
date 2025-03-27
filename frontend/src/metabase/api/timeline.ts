@@ -19,9 +19,9 @@ import {
 } from "./tags";
 
 export const timelineApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listTimelines: builder.query<Timeline[], ListTimelinesRequest>({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/timeline",
         params,
@@ -45,10 +45,11 @@ export const timelineApi = Api.injectEndpoints({
         url: `/api/timeline/${id}`,
         params,
       }),
-      providesTags: timeline => (timeline ? provideTimelineTags(timeline) : []),
+      providesTags: (timeline) =>
+        timeline ? provideTimelineTags(timeline) : [],
     }),
     createTimeline: builder.mutation<Timeline, CreateTimelineRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/timeline",
         body,
@@ -70,7 +71,7 @@ export const timelineApi = Api.injectEndpoints({
         ]),
     }),
     deleteTimeline: builder.mutation<Timeline, TimelineId>({
-      query: id => ({
+      query: (id) => ({
         method: "DELETE",
         url: `/api/timeline/${id}`,
       }),

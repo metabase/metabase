@@ -4,7 +4,7 @@ import _ from "underscore";
 import { has24HourModeSetting } from "metabase/lib/time";
 import type { ScheduleDayType, ScheduleFrameType } from "metabase-types/api";
 
-export const minutes = _.times(60, n => ({
+export const minutes = _.times(60, (n) => ({
   label: n.toString(),
   value: n.toString(),
 }));
@@ -42,7 +42,7 @@ export const getHours = () => {
   const hourCount = isClock24Hour ? 24 : 12;
   const firstHourIndex = isClock24Hour ? 0 : 12;
   const firstHourValue = isClock24Hour ? 0 : 12;
-  return _.times(hourCount, n => ({
+  return _.times(hourCount, (n) => ({
     label: localizedHours[n === 0 ? firstHourIndex : n],
     value: `${n === 0 ? firstHourValue : n}`,
   }));

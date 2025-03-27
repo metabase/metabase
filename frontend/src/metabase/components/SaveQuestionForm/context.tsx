@@ -99,7 +99,7 @@ export const SaveQuestionProvider = ({
 
   const lastSelectedEntityModel = useMemo(() => {
     return recentItems?.find(
-      item => item.model === "collection" || item.model === "dashboard",
+      (item) => item.model === "collection" || item.model === "dashboard",
     );
   }, [recentItems]);
 

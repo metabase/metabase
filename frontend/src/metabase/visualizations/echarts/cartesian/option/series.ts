@@ -73,7 +73,7 @@ export const getBarLabelLayout =
     settings: ComputedVisualizationSettings,
     seriesDataKey: DataKey,
   ): BarSeriesOption["labelLayout"] =>
-  params => {
+  (params) => {
     const { dataIndex, rect } = params;
     if (dataIndex == null) {
       return {};
@@ -102,7 +102,7 @@ export const getBarInsideLabelLayout =
     seriesDataKey: DataKey,
     ticksRotation?: TicksRotation,
   ): BarSeriesOption["labelLayout"] =>
-  params => {
+  (params) => {
     const { dataIndex, rect, labelRect } = params;
     if (dataIndex == null) {
       return {};
@@ -247,7 +247,7 @@ function getSelectionFrequency(
 
   const seriesIndex = _.findIndex(
     seriesDataKeysWithLabels,
-    seriesDataKey => seriesDataKey === dataKey,
+    (seriesDataKey) => seriesDataKey === dataKey,
   );
   const selectionOffset = seriesIndex * stepOffset;
 
@@ -517,7 +517,7 @@ const buildEChartsBarSeries = (
   }
 
   const labelOptions: BarSeriesOption[] = ["+" as const, "-" as const].map(
-    sign => {
+    (sign) => {
       const labelDataKey = getBarSeriesDataLabelKey(seriesModel.dataKey, sign);
       return {
         ...getDataLabelSeriesOption(
@@ -531,7 +531,7 @@ const buildEChartsBarSeries = (
             chartWidth,
             settings,
             chartDataDensity,
-            datum => {
+            (datum) => {
               const value = datum[seriesModel.dataKey];
               const isZero = value === null && datum[labelDataKey] != null;
               return isZero ? 0 : value;
@@ -759,7 +759,7 @@ function getStackedSelectionFrequency(
 
   const stackedIndex = _.findIndex(
     stackedDisplayWithLabels,
-    stackDisplay => stackDisplay === stackName,
+    (stackDisplay) => stackDisplay === stackName,
   );
   const selectionOffset =
     (stackedIndex + seriesDataKeysWithLabels.length) * stepOffset;
@@ -776,13 +776,13 @@ export const getStackTotalsSeries = (
   renderingContext: RenderingContext,
 ) => {
   const seriesByStackName = _.groupBy(
-    seriesOptions.filter(s => s.stack != null),
+    seriesOptions.filter((s) => s.stack != null),
     "stack",
   );
 
-  return getObjectValues(seriesByStackName).flatMap(seriesOptions => {
+  return getObjectValues(seriesByStackName).flatMap((seriesOptions) => {
     const stackDataKeys = seriesOptions // we set string dataKeys as series IDs
-      .map(s => s.id)
+      .map((s) => s.id)
       .filter(isNotNull) as string[];
     const firstSeriesInStack = seriesOptions[0];
 
@@ -862,20 +862,20 @@ export const buildEChartsSeries = (
   );
 
   const barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
-    seriesSettings => seriesSettings.display === "bar",
+    (seriesSettings) => seriesSettings.display === "bar",
   ).length;
 
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
 
   const series = chartModel.seriesModels
-    .filter(seriesModel => seriesModel.visible)
-    .map(seriesModel => {
+    .filter((seriesModel) => seriesModel.visible)
+    .map((seriesModel) => {
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
       const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
       const stackName =
         chartModel.stackModels == null
           ? undefined
-          : chartModel.stackModels.find(stackModel =>
+          : chartModel.stackModels.find((stackModel) =>
               stackModel.seriesKeys.includes(seriesModel.dataKey),
             )?.display;
 

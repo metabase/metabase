@@ -189,7 +189,7 @@ const isLoading = (series: Series | null) => {
     series.length > 0 &&
     _.every(
       series,
-      s => !!s.data || _.isObject(s.card.visualization_settings.virtual_card),
+      (s) => !!s.data || _.isObject(s.card.visualization_settings.virtual_card),
     )
   );
 };
@@ -318,9 +318,9 @@ class Visualization extends PureComponent<
     if (state.series && state.series[0].card.display !== "table") {
       warnings = warnings.concat(
         rawSeries
-          .filter(s => s.data && s.data.rows_truncated != null)
+          .filter((s) => s.data && s.data.rows_truncated != null)
           .map(
-            s =>
+            (s) =>
               t`Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`,
           ),
       );
@@ -401,7 +401,7 @@ class Visualization extends PureComponent<
     } = this.props;
 
     const card =
-      rawSeries.find(series => series.card.id === clicked.cardId)?.card ??
+      rawSeries.find((series) => series.card.id === clicked.cardId)?.card ??
       rawSeries[0].card;
 
     const question = this._getQuestionForCardCached(metadata, card);
@@ -485,7 +485,7 @@ class Visualization extends PureComponent<
     const { rawSeries = [] } = this.props;
 
     const previousCard =
-      rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
+      rawSeries.find((series) => series.card.id === nextCard?.id)?.card ??
       rawSeries[0].card;
 
     this.props.onChangeCardAndRun({
@@ -642,7 +642,7 @@ class Visualization extends PureComponent<
     if (!error && !genericError && series) {
       noResults = _.every(
         series,
-        s => s && s.data && datasetContainsNoResults(s.data),
+        (s) => s && s.data && datasetContainsNoResults(s.data),
       );
     }
 
@@ -855,7 +855,7 @@ export default _.compose(
   connect(mapStateToProps),
   ExplicitSize<VisualizationProps>({
     selector: ".CardVisualization",
-    refreshMode: props => (props.isVisible ? "throttle" : "debounceLeading"),
+    refreshMode: (props) => (props.isVisible ? "throttle" : "debounceLeading"),
   }),
 )(
   forwardRef<HTMLDivElement, VisualizationProps>(

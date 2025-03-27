@@ -60,7 +60,7 @@ function getClickBehaviorDescription({
 
   if (clickBehavior.type === "crossfilter") {
     const parameters = Object.keys(clickBehavior.parameterMapping || {});
-    return (n =>
+    return ((n) =>
       ngettext(
         msgid`${column.display_name} updates ${n} filter`,
         `${column.display_name} updates ${n} filters`,

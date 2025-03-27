@@ -180,7 +180,7 @@ describe("AggregationPicker", () => {
         "Standard deviation of ...",
         "Minimum of ...",
         "Maximum of ...",
-      ].forEach(name => {
+      ].forEach((name) => {
         expect(screen.getByRole("option", { name })).toBeInTheDocument();
       });
     });
@@ -192,7 +192,7 @@ describe("AggregationPicker", () => {
 
       await userEvent.type(screen.getByPlaceholderText("Find..."), "Count");
 
-      ["Count of rows", "Cumulative count of rows"].forEach(name => {
+      ["Count of rows", "Cumulative count of rows"].forEach((name) => {
         expect(screen.getByRole("option", { name })).toBeInTheDocument();
       });
 
@@ -204,7 +204,7 @@ describe("AggregationPicker", () => {
         "Standard deviation of ...",
         "Minimum of ...",
         "Maximum of ...",
-      ].forEach(name => {
+      ].forEach((name) => {
         expect(screen.queryByRole("option", { name })).not.toBeInTheDocument();
       });
     });

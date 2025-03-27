@@ -27,7 +27,7 @@ describe("issue 43075", () => {
     H.popover().findByText("Break out by…").click();
     H.popover().findByText("Category").click();
 
-    cy.window().then(win => {
+    cy.window().then((win) => {
       expect(win.document.documentElement.scrollHeight).to.be.lte(
         win.document.documentElement.offsetHeight,
       );

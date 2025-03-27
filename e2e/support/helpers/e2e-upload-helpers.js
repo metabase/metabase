@@ -60,7 +60,7 @@ export function uploadFile(
   cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
   cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
 
-  cy.fixture(`${FIXTURE_PATH}/${testFile.fileName}`).then(file => {
+  cy.fixture(`${FIXTURE_PATH}/${testFile.fileName}`).then((file) => {
     cy.get(inputId).selectFile(
       {
         contents: Cypress.Buffer.from(file),
@@ -97,8 +97,8 @@ export function uploadFile(
 
 export function headlessUpload(collectionId, file) {
   cy.fixture(`${FIXTURE_PATH}/${file.fileName}`)
-    .then(file => Cypress.Blob.binaryStringToBlob(file))
-    .then(blob => {
+    .then((file) => Cypress.Blob.binaryStringToBlob(file))
+    .then((blob) => {
       const formData = new FormData();
       formData.append("file", blob, file.fileName);
       formData.append("collection_id", collectionId);

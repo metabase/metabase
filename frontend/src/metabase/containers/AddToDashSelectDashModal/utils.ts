@@ -45,11 +45,11 @@ export const shouldDisableItem = (item: DashboardPickerItem) => {
 export const filterWritableDashboards = (
   dashes: SearchResult[],
 ): SearchResult[] => {
-  return dashes.filter(dash => dash.can_write);
+  return dashes.filter((dash) => dash.can_write);
 };
 
 export const filterWritableRecents = (dashes: RecentItem[]) => {
-  return dashes.filter(dash => dash.model !== "table" && dash.can_write);
+  return dashes.filter((dash) => dash.model !== "table" && dash.can_write);
 };
 
 export const filterPersonalRecents = (
@@ -57,7 +57,7 @@ export const filterPersonalRecents = (
   personalCollectionId: CollectionId,
 ) => {
   return dashes.filter(
-    dash =>
+    (dash) =>
       dash.model !== "table" &&
       dash.parent_collection.id === personalCollectionId,
   );

@@ -38,7 +38,7 @@ export const getInbox = () => {
 const getInboxWithRetry = (timeout = INBOX_TIMEOUT) => {
   return cy
     .request("GET", `http://localhost:${WEB_PORT}/email`)
-    .then(response => {
+    .then((response) => {
       if (response.body.length) {
         return cy.wrap(response);
       } else if (timeout > 0) {
@@ -54,22 +54,22 @@ export const clearInbox = () => {
   return cy.request("DELETE", `http://localhost:${WEB_PORT}/email/all`);
 };
 
-export const viewEmailPage = emailSubject => {
+export const viewEmailPage = (emailSubject) => {
   const webmailInterface = `http://localhost:${WEB_PORT}`;
 
-  cy.window().then(win => (win.location.href = webmailInterface));
+  cy.window().then((win) => (win.location.href = webmailInterface));
   cy.findByText(emailSubject).click();
 };
 
-export const openEmailPage = emailSubject => {
+export const openEmailPage = (emailSubject) => {
   const webmailInterface = `http://localhost:${WEB_PORT}`;
 
-  cy.window().then(win => (win.location.href = webmailInterface));
+  cy.window().then((win) => (win.location.href = webmailInterface));
   cy.findAllByText(emailSubject).first().click();
 
-  return cy.hash().then(path => {
+  return cy.hash().then((path) => {
     const htmlPath = `${webmailInterface}${path.slice(1)}/html`;
-    cy.window().then(win => (win.location.href = htmlPath));
+    cy.window().then((win) => (win.location.href = htmlPath));
     cy.findByText(emailSubject);
   });
 };
@@ -81,7 +81,7 @@ export const clickSend = () => {
   cy.wait("@emailSent");
 };
 
-export const openAndAddEmailsToSubscriptions = recipients => {
+export const openAndAddEmailsToSubscriptions = (recipients) => {
   openSharingMenu("Subscriptions");
 
   sidebar().findByText("Set up a dashboard subscription").should("be.visible");
@@ -91,13 +91,13 @@ export const openAndAddEmailsToSubscriptions = recipients => {
   const input = cy
     .findByPlaceholderText("Enter user names or email addresses")
     .click();
-  recipients.forEach(recipient => {
+  recipients.forEach((recipient) => {
     input.type(`${recipient}{enter}`);
   });
   input.blur();
 };
 
-export const setupSubscriptionWithRecipients = recipients => {
+export const setupSubscriptionWithRecipients = (recipients) => {
   openAndAddEmailsToSubscriptions(recipients);
   sidebar().findByText("Done").click();
 };

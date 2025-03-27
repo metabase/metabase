@@ -12,7 +12,7 @@ const SCHEMA_TEST_CASES = [
 ];
 
 describe("generateSchemaId", () => {
-  SCHEMA_TEST_CASES.forEach(testCase => {
+  SCHEMA_TEST_CASES.forEach((testCase) => {
     const { dbId, schemaName, schema } = testCase;
 
     it(`returns "${schema}" for "${dbId}" DB and ${schemaName} schema`, () => {
@@ -31,7 +31,7 @@ describe("generateSchemaId", () => {
 });
 
 describe("parseSchemaId", () => {
-  SCHEMA_TEST_CASES.forEach(testCase => {
+  SCHEMA_TEST_CASES.forEach((testCase) => {
     const { schema, dbId, schemaName } = testCase;
 
     const expectedDatabaseId = dbId;
@@ -79,7 +79,7 @@ describe("parseSchemaId", () => {
 });
 
 describe("getSchemaName", () => {
-  SCHEMA_TEST_CASES.forEach(testCase => {
+  SCHEMA_TEST_CASES.forEach((testCase) => {
     const { schema, schemaName } = testCase;
     const expectedSchemaName = schemaName ? String(schemaName) : "";
 

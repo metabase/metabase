@@ -35,7 +35,7 @@ export const BreakoutDropdownInner = ({
     .with(0, () => t`Group`)
     .with(1, () => t`1 grouping`)
     .otherwise(
-      value =>
+      (value) =>
         c(
           "{0} refers to a number greater than 1 (i.e. 2 groupings, 10 groupings)",
         ).t`${value} groupings`,

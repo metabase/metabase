@@ -79,7 +79,7 @@ describe("scenarios > embedding-sdk > plugins", () => {
     });
 
     it("should open a click actions popover with a custom item", () => {
-      cy.get<string>("@dashboardId").then(dashboardId => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
         mountSdkContent(
           <InteractiveDashboard
             dashboardId={dashboardId}

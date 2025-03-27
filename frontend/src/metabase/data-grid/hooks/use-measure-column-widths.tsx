@@ -55,7 +55,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
         const elementsMeasures = Array.from(
           div.querySelectorAll("[data-measure-id]"),
         )
-          .map(element => {
+          .map((element) => {
             const columnId = element.getAttribute("data-measure-id");
             const type = element.getAttribute("data-measure-type");
 
@@ -110,8 +110,8 @@ export const useMeasureColumnWidths = <TData, TValue>(
         <div style={{ display: "flex" }} ref={onMeasureHeaderRender}>
           {table
             .getHeaderGroups()
-            .flatMap(headerGroup => headerGroup.headers)
-            .map(header => {
+            .flatMap((headerGroup) => headerGroup.headers)
+            .map((header) => {
               const headerCell = flexRender(
                 header.column.columnDef.header,
                 header.getContext(),
@@ -127,7 +127,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
               );
             })}
 
-          {columnsOptions.map(columnOptions => {
+          {columnsOptions.map((columnOptions) => {
             return (
               <div
                 key={columnOptions.id}
@@ -135,11 +135,11 @@ export const useMeasureColumnWidths = <TData, TValue>(
                 data-measure-type="body"
               >
                 {pickRowsToMeasure(data, columnOptions.accessorFn).map(
-                  rowIndex => {
+                  (rowIndex) => {
                     const cell = table
                       .getRowModel()
                       .rows[rowIndex].getVisibleCells()
-                      .find(cell => cell.column.id === columnOptions.id);
+                      .find((cell) => cell.column.id === columnOptions.id);
 
                     if (!cell) {
                       return null;

@@ -100,7 +100,7 @@ export function createBaseQuestions() {
     query: {
       "source-table": ORDERS_ID,
     },
-  }).then(response => cy.wrap(response.body).as("ordersQuestion"));
+  }).then((response) => cy.wrap(response.body).as("ordersQuestion"));
 
   cy.then(function () {
     H.createQuestion({
@@ -109,7 +109,7 @@ export function createBaseQuestions() {
       query: {
         "source-table": `card__${this.ordersQuestion.id}`,
       },
-    }).then(response => cy.wrap(response.body).as("baseQuestion"));
+    }).then((response) => cy.wrap(response.body).as("baseQuestion"));
 
     H.createQuestion({
       type: "model",
@@ -117,7 +117,7 @@ export function createBaseQuestions() {
       query: {
         "source-table": `card__${this.ordersQuestion.id}`,
       },
-    }).then(response => cy.wrap(response.body).as("baseModel"));
+    }).then((response) => cy.wrap(response.body).as("baseModel"));
   });
 }
 
@@ -332,25 +332,25 @@ export function createAndVisitDashboardWithCardMatrix(
       type: "question",
       query: createQuery(this.baseQuestion),
       name: "Question-based Question",
-    }).then(response => cy.wrap(response.body).as("qbq"));
+    }).then((response) => cy.wrap(response.body).as("qbq"));
 
     H.createQuestion({
       type: "question",
       query: createQuery(this.baseModel),
       name: "Model-based Question",
-    }).then(response => cy.wrap(response.body).as("mbq"));
+    }).then((response) => cy.wrap(response.body).as("mbq"));
 
     H.createQuestion({
       type: "model",
       name: "Question-based Model",
       query: createQuery(this.baseQuestion),
-    }).then(response => cy.wrap(response.body).as("qbm"));
+    }).then((response) => cy.wrap(response.body).as("qbm"));
 
     H.createQuestion({
       type: "model",
       name: "Model-based Model",
       query: createQuery(this.baseModel),
-    }).then(response => cy.wrap(response.body).as("mbm"));
+    }).then((response) => cy.wrap(response.body).as("mbm"));
   });
 
   cy.then(function () {
@@ -382,7 +382,7 @@ export function createAndVisitDashboard(cards: Card[]) {
         card_id: card.id,
       })),
     ],
-  }).then(dashboard => {
+  }).then((dashboard) => {
     H.visitDashboard(dashboard.id);
     cy.wrap(dashboard.id).as("dashboardId");
     cy.wait("@getDashboard");
@@ -736,7 +736,7 @@ export function goBackToDashboard() {
 export function getDashboardId(): Cypress.Chainable<number> {
   return cy
     .get("@dashboardId")
-    .then(dashboardId => dashboardId as unknown as number);
+    .then((dashboardId) => dashboardId as unknown as number);
 }
 
 export function waitForPublicDashboardData() {
@@ -793,7 +793,7 @@ export function verifyPopoverMappingOptions(sections: MappingSection[]) {
   );
 
   H.popover().within(() => {
-    getPopoverItems().then($items => {
+    getPopoverItems().then(($items) => {
       let index = 0;
 
       for (const [sectionName, columnNames] of sections) {

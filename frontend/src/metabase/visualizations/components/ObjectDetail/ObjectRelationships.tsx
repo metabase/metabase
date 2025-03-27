@@ -51,7 +51,7 @@ export function Relationships({
       </div>
 
       <ul>
-        {sortedForeignTables.map(fk => (
+        {sortedForeignTables.map((fk) => (
           <Relationship
             key={`${fk.origin_id}-${fk.destination_id}`}
             fk={fk}

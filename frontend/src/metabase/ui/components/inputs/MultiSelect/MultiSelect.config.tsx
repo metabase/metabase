@@ -12,7 +12,7 @@ export const multiSelectOverrides = {
       variant: "default",
       maxDropdownHeight: 512,
       hidePickedOptions: true,
-      renderOption: props => (
+      renderOption: (props) => (
         <DefaultSelectItem {...props.option} selected={props.checked} />
       ),
       withScrollArea: false,

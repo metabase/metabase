@@ -201,7 +201,7 @@ describe("DatabaseConnectionModal", () => {
       // need to add an id to the mocked db result so redirect can go the the correct location
       fetchMock.post(
         "path:/api/database",
-        async url => {
+        async (url) => {
           const lastCall = fetchMock.lastCall(url);
           return { ...(await lastCall?.request?.json()), id: 1 };
         },

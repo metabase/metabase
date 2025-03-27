@@ -316,7 +316,7 @@ class TagEditorParamInner extends Component<Props> {
         {(hasWidgetOptions || !isDimension) && (
           <FilterWidgetLabelInput
             tag={tag}
-            onChange={value =>
+            onChange={(value) =>
               this.setParameterAttribute("display-name", value)
             }
           />
@@ -338,7 +338,7 @@ class TagEditorParamInner extends Component<Props> {
             tag={tag}
             parameter={parameter}
             isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
-            onChangeDefaultValue={value => {
+            onChangeDefaultValue={(value) => {
               this.setParameterAttribute("default", value);
               this.props.setParameterValue(tag.id, value);
             }}

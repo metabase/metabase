@@ -2,7 +2,7 @@ export function getHighlightedRanges(
   source: string,
   highlightedTexts: string[] = [],
 ) {
-  return highlightedTexts.flatMap(highlightedText =>
+  return highlightedTexts.flatMap((highlightedText) =>
     getHighlightedRangesForText(source, highlightedText),
   );
 }

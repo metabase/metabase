@@ -13,7 +13,7 @@ export const ItemCard = styled(Card)``;
 export const ItemLink = styled(RawMaybeLink)<{ to?: string }>`
   display: block;
   height: min-content;
-  ${props =>
+  ${(props) =>
     props.to
       ? ""
       : css`

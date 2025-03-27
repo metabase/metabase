@@ -2,7 +2,7 @@ import { pickRowsToMeasure } from "./measure";
 
 describe("pickRowsToMeasure", () => {
   const createData = (values: (string | null | undefined)[]) =>
-    values.map(value => ({ value }));
+    values.map((value) => ({ value }));
 
   const accessorFn = (row: { value: string | null | undefined }) => row.value;
 

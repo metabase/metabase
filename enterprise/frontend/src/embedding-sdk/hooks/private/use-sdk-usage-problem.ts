@@ -24,7 +24,7 @@ export function useSdkUsageProblem({
   // their customer would see an alarming error message on production.
   const isEnabled = useSetting("enable-embedding-sdk") ?? true;
 
-  const hasTokenFeature = useSdkSelector(state => {
+  const hasTokenFeature = useSdkSelector((state) => {
     // We also assume that the feature is enabled if the token-features are missing.
     // Same reason as above.
     if (!state.settings.values?.["token-features"]) {

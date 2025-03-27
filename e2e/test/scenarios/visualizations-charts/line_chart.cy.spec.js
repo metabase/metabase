@@ -32,7 +32,7 @@ describe("scenarios > visualizations > line chart", () => {
 
     H.echartsContainer()
       .findByText("Count")
-      .then(label => {
+      .then((label) => {
         const { x, y } = H.getXYTransform(label);
         cy.wrap({ x, y }).as("leftAxisLabelPosition");
       });
@@ -41,7 +41,7 @@ describe("scenarios > visualizations > line chart", () => {
     cy.findByText("Right").click();
     H.echartsContainer()
       .findByText("Count")
-      .then(label => {
+      .then((label) => {
         const { x: xRight, y: yRight } = H.getXYTransform(label);
         cy.get("@leftAxisLabelPosition").then(({ x: xLeft, y: yLeft }) => {
           expect(yRight).to.be.eq(yLeft);
@@ -541,7 +541,7 @@ describe("scenarios > visualizations > line chart", () => {
 
       // making sure the grabber icon is there
       cy.findAllByTestId("chart-setting-select")
-        .then($elements => {
+        .then(($elements) => {
           for (const element of $elements) {
             if (element.value === "Sum of Total") {
               return cy.wrap(element);
@@ -552,10 +552,10 @@ describe("scenarios > visualizations > line chart", () => {
         .icon("grabber");
 
       cy.log("Drag and drop the first y-axis field to the last position");
-      cy.findAllByTestId("chart-setting-select").then(initial => {
+      cy.findAllByTestId("chart-setting-select").then((initial) => {
         H.dragField(0, 1);
 
-        cy.findAllByTestId("chart-setting-select").should(content => {
+        cy.findAllByTestId("chart-setting-select").should((content) => {
           expect(content[0].value).to.eq(initial[0].value); // Created At: Month
           expect(content[1].value).to.eq(initial[2].value); // Sum of Total
           expect(content[2].value).to.eq(initial[1].value); // Count
@@ -751,7 +751,7 @@ describe("scenarios > visualizations > line chart", () => {
       cy.icon("pencil").click();
       cy.findByTestId("dashcard").realHover();
       cy.icon("palette").click();
-      series.forEach(serie => {
+      series.forEach((serie) => {
         const [old_name, new_name] = serie;
 
         cy.findByDisplayValue(old_name).clear().type(new_name).blur();

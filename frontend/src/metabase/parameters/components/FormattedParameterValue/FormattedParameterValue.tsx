@@ -34,7 +34,7 @@ function FormattedParameterValue({
   const first = getValue(value);
   const values = parameter?.values_source_config?.values;
   const displayValue = values?.find(
-    value => getValue(value)?.toString() === first?.toString(),
+    (value) => getValue(value)?.toString() === first?.toString(),
   );
 
   const label = getLabel(displayValue);

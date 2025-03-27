@@ -732,7 +732,7 @@ describe("formatting", () => {
       },
     );
 
-    it.each([1, 2, 52, 53])("should format week numbers correctly", value => {
+    it.each([1, 2, 52, 53])("should format week numbers correctly", (value) => {
       const text = formatDateTimeWithUnit(value, "week-of-year");
       expect(text).toMatch(new RegExp(`${value}[a-z]+`));
     });

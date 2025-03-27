@@ -15,7 +15,7 @@ export default {
   component: FormSelect,
 };
 
-const Template: StoryFn<typeof FormSelect> = args => {
+const Template: StoryFn<typeof FormSelect> = (args) => {
   const initialValues = { value: undefined };
   const handleSubmit = () => undefined;
 

@@ -98,7 +98,7 @@ interface TableProps extends VisualizationProps {
 }
 
 const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
-  const dataColumns = cols.map(col => col.name);
+  const dataColumns = cols.map((col) => col.name);
   if (!hasIndexColumn) {
     return dataColumns;
   }
@@ -166,7 +166,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
     return (columnIndex: number) => {
       const col = cols[columnIndex];
-      const sortingState = sorting.find(sort => sort.id === col.name);
+      const sortingState = sorting.find((sort) => sort.id === col.name);
       if (!sortingState) {
         return undefined;
       }
@@ -218,9 +218,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   );
 
   const columnFormatters = useMemo(() => {
-    return cols.map(col => {
+    return cols.map((col) => {
       const columnSettings = settings.column?.(col);
-      const columnIndex = cols.findIndex(c => c.name === col.name);
+      const columnIndex = cols.findIndex((c) => c.name === col.name);
 
       return memoize((value, rowIndex) => {
         const clicked = getCellClickedObject(columnIndex, rowIndex);
@@ -250,7 +250,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
       const columnIndex = isPivoted
         ? getColumnIndexFromPivotedColumnId(columnId)
-        : data.cols.findIndex(col => col.name === columnId);
+        : data.cols.findIndex((col) => col.name === columnId);
 
       const formatter = columnFormatters[columnIndex];
       const formattedValue = formatter(
@@ -290,14 +290,14 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
       if (isClientSideSortingEnabled) {
         const currentSorting = sorting.find(
-          columnSorting => columnSorting.id === columnId,
+          (columnSorting) => columnSorting.id === columnId,
         );
 
         if (currentSorting == null) {
           setSorting([{ id: columnId, desc: true }]);
         } else if (currentSorting.desc) {
-          setSorting(prev =>
-            prev.map(sorting => {
+          setSorting((prev) =>
+            prev.map((sorting) => {
               if (sorting.id === columnId) {
                 return { ...sorting, desc: false };
               }
@@ -305,14 +305,16 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             }),
           );
         } else {
-          setSorting(prev => prev.filter(sorting => sorting.id !== columnId));
+          setSorting((prev) =>
+            prev.filter((sorting) => sorting.id !== columnId),
+          );
         }
         return;
       }
 
       const columnIndex = isPivoted
         ? getColumnIndexFromPivotedColumnId(columnId)
-        : data.cols.findIndex(col => col.name === columnId);
+        : data.cols.findIndex((col) => col.name === columnId);
 
       if (columnIndex === -1) {
         return;
@@ -335,11 +337,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
       const enabledIndices = newColumns
         .map((col, index) => (col.enabled ? index : -1))
-        .filter(index => index !== -1);
+        .filter((index) => index !== -1);
 
       columnsOrder.forEach((columnName, orderIndex) => {
         const sourceIndex = newColumns.findIndex(
-          col => col.name === columnName,
+          (col) => col.name === columnName,
         );
         if (sourceIndex !== -1) {
           const targetIndex = enabledIndices[orderIndex];
@@ -355,12 +357,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         }
       });
 
-      const newEnabledColumns = newColumns.filter(col => col.enabled);
+      const newEnabledColumns = newColumns.filter((col) => col.enabled);
       const savedWidths = settings["table.column_widths"];
       const newWidths =
         Array.isArray(savedWidths) &&
         savedWidths.length === newEnabledColumns.length
-          ? newEnabledColumns.map(c => columnSizingMap[c.name])
+          ? newEnabledColumns.map((c) => columnSizingMap[c.name])
           : undefined;
 
       const settingsUpdate = {
@@ -441,7 +443,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         name: columnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         cellVariant,
-        getCellClassName: value =>
+        getCellClassName: (value) =>
           cx("test-TableInteractive-cellWrapper", {
             [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
             "test-Table-ID": value != null && isID(col),
@@ -526,7 +528,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
   const handleColumnResize = useCallback(
     (columnSizing: ColumnSizingState) => {
-      const newWidths = cols.map(col => columnSizing[col.name] ?? 0);
+      const newWidths = cols.map((col) => columnSizing[col.name] ?? 0);
       onUpdateVisualizationSettings({
         "table.column_widths": newWidths,
       });
@@ -539,7 +541,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       settings["table._cell_background_getter"]?.(null, rowIndex),
     );
 
-    const hasAggregation = cols.some(column => column.source === "aggregation");
+    const hasAggregation = cols.some(
+      (column) => column.source === "aggregation",
+    );
     const isNotebookPreview = queryBuilderMode === "notebook";
     const isModelEditor = queryBuilderMode === "dataset";
     const hasObjectDetail =

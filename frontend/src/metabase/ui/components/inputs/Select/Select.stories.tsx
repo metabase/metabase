@@ -52,7 +52,7 @@ const dataWithGroups: ComboboxItemGroup<ComboboxItemWithIcon>[] =
   }));
 
 const dataWithNoGroups: ComboboxItem[] = dataWithGroups
-  .map(({ items }) => items.map(item => item))
+  .map(({ items }) => items.map((item) => item))
   .flat();
 
 const args: Partial<SelectProps<string>> = {

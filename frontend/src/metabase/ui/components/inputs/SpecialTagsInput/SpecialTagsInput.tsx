@@ -155,7 +155,7 @@ export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
 
   const handleValueSelect = (val: string) => {
     const isDuplicate = _value.some(
-      tag => tag.toLowerCase() === val.toLowerCase(),
+      (tag) => tag.toLowerCase() === val.toLowerCase(),
     );
 
     if (isDuplicate) {
@@ -297,7 +297,7 @@ export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
         size={size}
         readOnly={readOnly}
         __staticSelector="TagsInput"
-        onOptionSubmit={val => {
+        onOptionSubmit={(val) => {
           onOptionSubmit?.(val);
           // Moved this to be before setSearchValue, and passing back the proper value
           // rather than the label
@@ -363,18 +363,20 @@ export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
                   {...getStyles("inputField")}
                   unstyled={unstyled}
                   onKeyDown={handleInputKeydown}
-                  onFocus={event => {
+                  onFocus={(event) => {
                     onFocus?.(event);
                     combobox.openDropdown();
                   }}
-                  onBlur={event => {
+                  onBlur={(event) => {
                     onBlur?.(event);
                     acceptValueOnBlur && handleValueSelect(_searchValue);
                     combobox.closeDropdown();
                   }}
                   onPaste={handlePaste}
                   value={_searchValue}
-                  onChange={event => setSearchValue(event.currentTarget.value)}
+                  onChange={(event) =>
+                    setSearchValue(event.currentTarget.value)
+                  }
                   required={required && _value.length === 0}
                   disabled={disabled}
                   readOnly={readOnly}

@@ -60,7 +60,7 @@ export const SummarizeBadgeList = ({
 
   return (
     <BadgeList
-      items={aggregationItems.map(item => ({ item, name: item.displayName }))}
+      items={aggregationItems.map((item) => ({ item, name: item.displayName }))}
       addButtonLabel="Add grouping"
       onSelectItem={onSelectItem}
       onAddItem={onAddItem}

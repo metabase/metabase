@@ -110,16 +110,16 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
   it("should not trigger url click behaviors in the sdk (metabase#51099)", () => {
     // Spies to intercept opening external links.
     // See "clickLink" in frontend/src/metabase/lib/dom.js to see what we are intercepting.
-    cy.window().then(win => {
+    cy.window().then((win) => {
       cy.spy(win.HTMLAnchorElement.prototype, "click").as("anchorClick");
     });
 
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
 
     cy.wait("@dashcardQuery").then(() => {
-      cy.location().then(location => {
+      cy.location().then((location) => {
         cy.wrap(location.pathname).as("initialPath");
       });
 
@@ -155,7 +155,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
       });
 
       // We should never open a window in new tab in this test.
-      cy.get<sinon.SinonSpy>("@anchorClick").then(clickSpy => {
+      cy.get<sinon.SinonSpy>("@anchorClick").then((clickSpy) => {
         const blankClicks = clickSpy
           .getCalls()
           .filter(
@@ -166,7 +166,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
       });
 
       // We should never be navigated away from the current page in this test.
-      cy.location().then(location => {
+      cy.location().then((location) => {
         cy.get("@initialPath").should("eq", location.pathname);
       });
     });
@@ -176,7 +176,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
     cy.intercept("GET", "/api/card/*").as("getCard");
     cy.intercept("POST", "/api/dataset/query_metadata").as("datasetMetadata");
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
     });
 

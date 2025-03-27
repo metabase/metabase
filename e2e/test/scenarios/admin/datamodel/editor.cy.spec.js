@@ -634,7 +634,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 });
 
 const setDataModelPermissions = ({ tableIds = [] }) => {
-  const permissions = Object.fromEntries(tableIds.map(id => [id, "all"]));
+  const permissions = Object.fromEntries(tableIds.map((id) => [id, "all"]));
 
   cy.updatePermissionsGraph({
     [ALL_USERS_GROUP]: {
@@ -676,7 +676,7 @@ const setValueAndBlurInput = (oldValue, newValue) => {
   cy.findByDisplayValue(oldValue).clear().type(newValue).blur();
 };
 
-const clearAndBlurInput = oldValue => {
+const clearAndBlurInput = (oldValue) => {
   cy.findByDisplayValue(oldValue).clear().blur();
 };
 
@@ -684,17 +684,17 @@ const searchAndSelectValue = (newValue, searchText = newValue) => {
   H.popover().findByText(newValue).click();
 };
 
-const getFieldSection = fieldName => {
+const getFieldSection = (fieldName) => {
   return cy.findByLabelText(fieldName);
 };
 
-const setTableOrder = order => {
+const setTableOrder = (order) => {
   cy.findByLabelText("Sort").click();
   H.popover().findByText(order).click();
   cy.wait("@updateTable");
 };
 
-const assertTableHeader = columns => {
+const assertTableHeader = (columns) => {
   cy.findAllByTestId("header-cell").should("have.length", columns.length);
 
   columns.forEach((column, index) => {

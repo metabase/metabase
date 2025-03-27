@@ -73,7 +73,7 @@ describe("scenarios > embedding > native questions", () => {
         assert.deepEqual(actual, expected);
       });
 
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         const payload = {
           resource: { question: questionId },
           params: { total: [] },
@@ -202,7 +202,7 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("should hide filters via url", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
           embedding_params: {
@@ -236,7 +236,7 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("should set multiple filter values via url", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
           embedding_params: {
@@ -281,7 +281,7 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("should lock all parameters", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
           embedding_params: {
@@ -326,7 +326,7 @@ describe("scenarios > embedding > native questions", () => {
         wrapId: true,
       });
 
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
           embedding_params: {
@@ -338,7 +338,7 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("locked parameters require a value to be specified in the JWT", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         const payload = {
           resource: { question: questionId },
           params: { source: null },
@@ -393,7 +393,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
   });
 
   it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       const payload = {
         resource: { question: questionId },
         params: { source: [] },

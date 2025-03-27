@@ -32,7 +32,7 @@ const getSankeyClickData = (
   columnValues: Record<ColumnKey, RowValue>,
   predicate: (col: DatasetColumn, index: number) => boolean = () => true,
 ) => {
-  return cols.filter(predicate).map(col => {
+  return cols.filter(predicate).map((col) => {
     return {
       col,
       value: columnValues[getColumnKey(col)],

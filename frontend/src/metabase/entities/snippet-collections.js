@@ -30,7 +30,7 @@ const SnippetCollections = createEntity({
 
   api: _.mapObject(
     NormalCollections.api,
-    request =>
+    (request) =>
       (opts, ...rest) =>
         request({ ...opts, namespace: "snippets" }, ...rest),
   ),
@@ -55,8 +55,8 @@ const SnippetCollections = createEntity({
 
   selectors: {
     getExpandedCollectionsById: createSelector(
-      state => SnippetCollections.selectors.getList(state) || [],
-      collections => getExpandedCollectionsById(collections, null),
+      (state) => SnippetCollections.selectors.getList(state) || [],
+      (collections) => getExpandedCollectionsById(collections, null),
     ),
   },
 

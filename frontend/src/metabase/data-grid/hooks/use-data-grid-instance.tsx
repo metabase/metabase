@@ -55,7 +55,7 @@ export const useDataGridInstance = <TData, TValue>({
 
   const [columnOrder, setColumnOrder] = useState<string[]>(
     getColumnOrder(
-      controlledColumnOrder ?? columnsOptions.map(column => column.id),
+      controlledColumnOrder ?? columnsOptions.map((column) => column.id),
       hasRowIdColumn,
     ),
   );
@@ -91,7 +91,7 @@ export const useDataGridInstance = <TData, TValue>({
 
   const handleUpdateColumnExpanded = useCallback(
     (columnName: string, isExpanded = true) => {
-      setExpandedColumnsMap(prev => {
+      setExpandedColumnsMap((prev) => {
         return { ...prev, [columnName]: isExpanded };
       });
     },
@@ -129,7 +129,7 @@ export const useDataGridInstance = <TData, TValue>({
     const rowIdColumnDefinition =
       rowId != null ? getRowIdColumn<TData, TValue>(rowId) : null;
 
-    const dataColumns = columnsOptions.map(options =>
+    const dataColumns = columnsOptions.map((options) =>
       getDataColumn<TData, TValue>(
         options,
         columnSizingMap,
@@ -152,7 +152,7 @@ export const useDataGridInstance = <TData, TValue>({
   ]);
 
   const wrappedColumnsOptions = useMemo(() => {
-    return columnsOptions.filter(column => column.wrap);
+    return columnsOptions.filter((column) => column.wrap);
   }, [columnsOptions]);
 
   const table = useReactTable({
@@ -178,7 +178,7 @@ export const useDataGridInstance = <TData, TValue>({
       }
 
       const height = Math.max(
-        ...wrappedColumnsOptions.map(column => {
+        ...wrappedColumnsOptions.map((column) => {
           const value = column.accessorFn(data[rowIndex]);
           const formattedValue = column.formatter
             ? column.formatter(value, rowIndex, column.id)
@@ -240,7 +240,7 @@ export const useDataGridInstance = <TData, TValue>({
     const didColumnWrappingChange =
       prevWrappedColumns.current != null &&
       !_.isEqual(
-        wrappedColumnsOptions.map(column => column.id),
+        wrappedColumnsOptions.map((column) => column.id),
         prevWrappedColumns.current,
       );
 
@@ -249,7 +249,9 @@ export const useDataGridInstance = <TData, TValue>({
     }
 
     prevColumnSizing.current = columnSizingMap;
-    prevWrappedColumns.current = wrappedColumnsOptions.map(column => column.id);
+    prevWrappedColumns.current = wrappedColumnsOptions.map(
+      (column) => column.id,
+    );
   }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
 
   const handleColumnResize = useCallback(

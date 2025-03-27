@@ -22,7 +22,7 @@ export function BccToggleWidget({ onChange, setting }: BccToggleWidgetProps) {
     <Radio.Group
       mt="0.25rem"
       value={stringValue(setting.value ?? setting.defaultValue)}
-      onChange={value => onChange(value === "true")}
+      onChange={(value) => onChange(value === "true")}
     >
       {setting.options.map(({ value, name }) => (
         <Radio key={name} mb="0.5rem" value={stringValue(value)} label={name} />

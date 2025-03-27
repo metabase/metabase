@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 
-export const settingToFormField = setting => ({
+export const settingToFormField = (setting) => ({
   name: setting.key,
   label: setting.display_name,
   description: setting.description,
@@ -13,9 +13,9 @@ export const settingToFormField = setting => ({
   autoFocus: setting.autoFocus,
 });
 
-export const settingToFormFieldId = setting => `setting-${setting.key}`;
+export const settingToFormFieldId = (setting) => `setting-${setting.key}`;
 
-export const useGetEnvVarDocsUrl = envName => {
+export const useGetEnvVarDocsUrl = (envName) => {
   return useDocsUrl("configuring-metabase/environment-variables", {
     anchor: envName?.toLowerCase(),
   });

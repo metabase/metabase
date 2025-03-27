@@ -16,7 +16,7 @@ export const LegacyPermissionsModal = ({
   //Used to animate the modal
   const { open: showModal } = useModalOpen();
 
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     getDocsUrl(state, { page: "permissions/no-self-service-deprecation" }),
   );
   return (

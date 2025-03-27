@@ -53,7 +53,7 @@ export const getRouterHash = (state: State, props: RouterProps) => {
   return props?.location?.hash ?? window.location.hash;
 };
 
-export const getIsAdminApp = createSelector([getRouterPath], path => {
+export const getIsAdminApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/admin/");
 });
 
@@ -72,7 +72,7 @@ export const getIsCollectionPathVisible = createSelector(
 
     return (
       ((question != null && question.isSaved()) || dashboard != null) &&
-      PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path))
+      PATHS_WITH_COLLECTION_BREADCRUMBS.some((pattern) => pattern.test(path))
     );
   },
 );
@@ -81,7 +81,7 @@ export const getIsQuestionLineageVisible = createSelector(
   [getIsSavedQuestionChanged, getRouterPath],
   (isSavedQuestionChanged, path) =>
     isSavedQuestionChanged &&
-    PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
+    PATHS_WITH_QUESTION_LINEAGE.some((pattern) => pattern.test(path)),
 );
 
 export const getIsNavBarEnabled = createSelector(
@@ -100,7 +100,7 @@ export const getIsNavBarEnabled = createSelector(
       return false;
     }
 
-    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
+    return !PATHS_WITHOUT_NAVBAR.some((pattern) => pattern.test(path));
   },
 );
 
@@ -158,7 +158,7 @@ export const getIsAppBarVisible = createSelector(
     ) {
       return false;
     }
-    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
+    return !PATHS_WITHOUT_NAVBAR.some((pattern) => pattern.test(path));
   },
 );
 
@@ -185,7 +185,7 @@ export const getIsNewButtonVisible = createSelector(
 
 export const getIsProfileLinkVisible = createSelector(
   [getIsEmbeddingIframe],
-  isEmbeddingIframe => !isEmbeddingIframe,
+  (isEmbeddingIframe) => !isEmbeddingIframe,
 );
 
 export const getErrorPage = (state: State) => {
@@ -231,7 +231,7 @@ export const getIsDndAvailable = (state: State) => {
 
 export const getCustomHomePageDashboardId = createSelector(
   [getUser],
-  user => user?.custom_homepage?.dashboard_id || null,
+  (user) => user?.custom_homepage?.dashboard_id || null,
 );
 
 export const getHasDismissedCustomHomePageToast = (state: State) => {

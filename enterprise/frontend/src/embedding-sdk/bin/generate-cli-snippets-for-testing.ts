@@ -39,17 +39,17 @@ const generateComponentSnippets = ({
     isNextJs: false,
   });
   const nextJsAnalyticsPageSnippetContent = getNextJsAnalyticsPageSnippet({
-    resolveImport: path => `./${path}`,
+    resolveImport: (path) => `./${path}`,
   });
   const nextJsPagesWrapperSnippetContent =
     getNextJsPagesWrapperOrAppWrapperSnippet({
       router: "pages",
-      resolveImport: path => `./${path}`,
+      resolveImport: (path) => `./${path}`,
     });
   const nextJsAppWrapperSnippetContent =
     getNextJsPagesWrapperOrAppWrapperSnippet({
       router: "app",
-      resolveImport: path => `./${path}`,
+      resolveImport: (path) => `./${path}`,
     });
 
   for (const { fileName, content } of snippets) {
@@ -80,17 +80,17 @@ const generateComponentSnippets = ({
 
 const generateNextJsSnippets = ({ folderName }: { folderName: string }) => {
   const nextJsAnalyticsPageSnippetContent = getNextJsAnalyticsPageSnippet({
-    resolveImport: path => `./${path}`,
+    resolveImport: (path) => `./${path}`,
   });
   const nextJsPagesWrapperSnippetContent =
     getNextJsPagesWrapperOrAppWrapperSnippet({
       router: "pages",
-      resolveImport: path => `./${path}`,
+      resolveImport: (path) => `./${path}`,
     });
   const nextJsAppWrapperSnippetContent =
     getNextJsPagesWrapperOrAppWrapperSnippet({
       router: "app",
-      resolveImport: path => `./${path}`,
+      resolveImport: (path) => `./${path}`,
     });
 
   generateComponentSnippets({

@@ -38,8 +38,8 @@ const ICON_CASES_LABELS = [
   },
 ];
 
-const ICON_CASES = ICON_CASES_CARDS.flatMap(card =>
-  ICON_CASES_LABELS.map(labels => ({ ...labels, card })),
+const ICON_CASES = ICON_CASES_CARDS.flatMap((card) =>
+  ICON_CASES_LABELS.map((labels) => ({ ...labels, card })),
 );
 
 interface SetupOpts {

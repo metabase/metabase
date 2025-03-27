@@ -40,12 +40,12 @@ export const getDayOfWeekOptions = (): DayOfWeekOption[] => {
   ];
 };
 
-export const HOUR_OPTIONS = _.times(12, n => ({
+export const HOUR_OPTIONS = _.times(12, (n) => ({
   name: (n === 0 ? 12 : n) + ":00",
   value: n,
 }));
 
-export const MINUTE_OPTIONS = _.times(60, n => ({
+export const MINUTE_OPTIONS = _.times(60, (n) => ({
   name: n.toString(),
   value: n,
 }));

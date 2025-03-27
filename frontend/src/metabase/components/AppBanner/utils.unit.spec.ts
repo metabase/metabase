@@ -15,7 +15,7 @@ describe("app banner utils", () => {
 
     it.each([3, 2, 1, 0])(
       "should return true if daysRemaining is %s but the banner was never dismissed",
-      daysRemaining => {
+      (daysRemaining) => {
         expect(
           shouldShowTrialBanner({
             tokenExpiryTimestamp: "2021-11-27",
@@ -27,7 +27,7 @@ describe("app banner utils", () => {
 
     it.each([3, 2, 1, 0])(
       "should return true if daysRemaining is %s but the banner was dismissed before that",
-      daysRemaining => {
+      (daysRemaining) => {
         const tokenExpiryTimestamp = "2021-11-27";
 
         expect(
@@ -45,7 +45,7 @@ describe("app banner utils", () => {
 
     it.each([3, 2, 1, 0])(
       "should return false if daysRemaining is %s and the banner was dismissed on that day",
-      daysRemaining => {
+      (daysRemaining) => {
         const tokenExpiryTimestamp = "2021-11-27";
 
         expect(
@@ -62,7 +62,7 @@ describe("app banner utils", () => {
 
     it.each([42, 180, 14])(
       "should return false if daysRemaining is %s and the banner was dismissed at any point in the past",
-      daysRemaining => {
+      (daysRemaining) => {
         expect(
           shouldShowTrialBanner({
             tokenExpiryTimestamp: "2021-11-27",
@@ -75,7 +75,7 @@ describe("app banner utils", () => {
 
     it.each([42, 180, 14])(
       "should return true if daysRemaining is %s but the banner was never dismissed",
-      daysRemaining => {
+      (daysRemaining) => {
         expect(
           shouldShowTrialBanner({
             tokenExpiryTimestamp: "2021-11-27",
@@ -88,7 +88,7 @@ describe("app banner utils", () => {
 
     it.each([42, 180, 14])(
       "should return true if daysRemaining is %s but the banner dismissal information is not available",
-      daysRemaining => {
+      (daysRemaining) => {
         expect(
           shouldShowTrialBanner({
             tokenExpiryTimestamp: "2021-11-27",

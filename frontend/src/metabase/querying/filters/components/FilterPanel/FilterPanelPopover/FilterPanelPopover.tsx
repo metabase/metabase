@@ -47,7 +47,7 @@ export function FilterPanelPopover({
     >
       <Popover.Target>
         <FilterPill
-          onClick={() => setIsOpened(isOpened => !isOpened)}
+          onClick={() => setIsOpened((isOpened) => !isOpened)}
           onRemoveClick={handleRemove}
         >
           {filterInfo.longDisplayName}

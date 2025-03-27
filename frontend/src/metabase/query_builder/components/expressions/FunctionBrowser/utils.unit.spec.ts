@@ -31,14 +31,14 @@ describe("getFilteredClauses", () => {
     const results = setup();
 
     // The array should be sorted
-    expect(results.map(group => group.category)).toEqual(
+    expect(results.map((group) => group.category)).toEqual(
       ["conversion", "date", "logical", "math", "string"].sort(),
     );
 
     const dateFunctions = results[1];
 
     // The array should be sorted
-    expect(dateFunctions.clauses.map(clause => clause.structure)).toEqual(
+    expect(dateFunctions.clauses.map((clause) => clause.structure)).toEqual(
       [
         "convertTimezone",
         "datetimeAdd",
@@ -71,17 +71,17 @@ describe("getFilteredClauses", () => {
     });
 
     // The array should be sorted
-    expect(results.map(group => group.category)).toEqual(
+    expect(results.map((group) => group.category)).toEqual(
       ["date", "logical", "string"].sort(),
     );
 
     // The array should be sorted
-    expect(results[0].clauses.map(clause => clause.name)).toEqual(["now"]);
-    expect(results[1].clauses.map(clause => clause.name)).toEqual([
+    expect(results[0].clauses.map((clause) => clause.name)).toEqual(["now"]);
+    expect(results[1].clauses.map((clause) => clause.name)).toEqual([
       "not-in",
       "not-null",
     ]);
-    expect(results[2].clauses.map(clause => clause.name)).toEqual([
+    expect(results[2].clauses.map((clause) => clause.name)).toEqual([
       "does-not-contain",
       "not-empty",
     ]);
@@ -92,8 +92,8 @@ describe("getFilteredClauses", () => {
       filter: "regexex",
     });
 
-    expect(results.map(group => group.category)).toEqual(["string"].sort());
-    expect(results[0].clauses.map(clause => clause.name)).toEqual([
+    expect(results.map((group) => group.category)).toEqual(["string"].sort());
+    expect(results[0].clauses.map((clause) => clause.name)).toEqual([
       "regex-match-first",
     ]);
   });
@@ -112,7 +112,7 @@ describe("getFilteredClauses", () => {
     });
 
     // The array should be sorted
-    expect(results.map(group => group.category)).toEqual(["logical"].sort());
+    expect(results.map((group) => group.category)).toEqual(["logical"].sort());
 
     // The array should be sorted
     expect(results[0].clauses[0]).toEqual({

@@ -20,7 +20,7 @@ export const hasDeprecatedDatabase = (state: State, props: Props): boolean => {
   const engines = getEngines(state);
   return (
     props.databases?.some(
-      d => !d.is_sample && d.engine && isDeprecatedEngine(engines, d.engine),
+      (d) => !d.is_sample && d.engine && isDeprecatedEngine(engines, d.engine),
     ) ?? false
   );
 };

@@ -103,7 +103,7 @@ export const Help = () => {
 
   useMount(async () => {
     const newDetails = await UtilApi.bug_report_details();
-    setDetails(oldDetails => ({ ...oldDetails, ...newDetails }));
+    setDetails((oldDetails) => ({ ...oldDetails, ...newDetails }));
   });
 
   const detailString = JSON.stringify(details, null, 2);

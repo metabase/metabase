@@ -52,7 +52,7 @@ function buildStructuredQuerySectionOptions(
 ): StructuredQuerySectionOption[] {
   const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-  return columns.map(column => {
+  return columns.map((column) => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
     return {
@@ -73,7 +73,7 @@ function buildNativeQuerySectionOptions(
     .flatMap(({ dimension }) =>
       dimension instanceof TemplateTagDimension ? [dimension] : [],
     )
-    .map(dimension => ({
+    .map((dimension) => ({
       name: dimension.displayName(),
       icon: dimension.icon() ?? "",
       isForeign: false,
@@ -149,7 +149,7 @@ export function getParameterMappingOptions(
   }
 
   if (dashcard && isActionDashCard(dashcard)) {
-    const actionParams = dashcard?.action?.parameters?.map(param => ({
+    const actionParams = dashcard?.action?.parameters?.map((param) => ({
       icon: "variable",
       isForeign: false,
       ...param,
@@ -179,7 +179,7 @@ export function getParameterMappingOptions(
         const groups = Lib.groupColumns(columns.map(({ column }) => column));
         const stageIndex = parseInt(stageIndexString, 10);
 
-        return groups.flatMap(group =>
+        return groups.flatMap((group) =>
           buildStructuredQuerySectionOptions(
             query,
             stageIndex,
@@ -212,7 +212,9 @@ export function getParameterMappingOptions(
         parameter ? dimensionFilterForParameter(parameter) : undefined,
       )
       .sections()
-      .flatMap(section => buildNativeQuerySectionOptions(section, stageIndex)),
+      .flatMap((section) =>
+        buildNativeQuerySectionOptions(section, stageIndex),
+      ),
   );
 
   return options;
@@ -228,7 +230,7 @@ export function getMappingOptionByTarget(
     return;
   }
 
-  const matchedMappingOptions = mappingOptions.filter(mappingOption =>
+  const matchedMappingOptions = mappingOptions.filter((mappingOption) =>
     _.isEqual(mappingOption.target, target),
   );
   // Native queries - targets CAN be tested for equality
@@ -250,7 +252,7 @@ export function getMappingOptionByTarget(
 
   for (const stageIndex of stageIndexes) {
     const stageColumns = columns
-      .filter(column => column.stageIndex === stageIndex)
+      .filter((column) => column.stageIndex === stageIndex)
       .map(({ column }) => column);
 
     const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(

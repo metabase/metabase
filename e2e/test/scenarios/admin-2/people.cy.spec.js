@@ -151,7 +151,9 @@ describe("scenarios > admin > people", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(FULL_NAME);
-      cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
+      cy.location().should((loc) =>
+        expect(loc.pathname).to.eq("/admin/people"),
+      );
     });
 
     it("should allow admin to create new users without first name or last name (metabase#22754)", () => {
@@ -219,7 +221,7 @@ describe("scenarios > admin > people", () => {
         cy.findByText("Deactivate user").click();
         clickButton("Deactivate");
         cy.findByText(FULL_NAME).should("not.exist");
-        cy.location().should(loc =>
+        cy.location().should((loc) =>
           expect(loc.pathname).to.eq("/admin/people"),
         );
 
@@ -229,7 +231,7 @@ describe("scenarios > admin > people", () => {
         cy.icon("refresh").click();
         cy.findByText(`Reactivate ${FULL_NAME}?`);
         clickButton("Reactivate");
-        cy.location().should(loc =>
+        cy.location().should((loc) =>
           expect(loc.pathname).to.eq("/admin/people"),
         );
       });
@@ -256,7 +258,9 @@ describe("scenarios > admin > people", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(NEW_FULL_NAME);
-      cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
+      cy.location().should((loc) =>
+        expect(loc.pathname).to.eq("/admin/people"),
+      );
     });
 
     it("should reset user password without SMTP set up", () => {
@@ -272,7 +276,9 @@ describe("scenarios > admin > people", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^temporary password$/i);
       clickButton("Done");
-      cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
+      cy.location().should((loc) =>
+        expect(loc.pathname).to.eq("/admin/people"),
+      );
     });
 
     it("should not offer to reset passwords when password login is disabled", () => {
@@ -589,7 +595,7 @@ describe("scenarios > admin > people", () => {
     cy.contains(
       `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
     );
-    cy.url().then(url => {
+    cy.url().then((url) => {
       const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
       const { userId } = URL_REGEX.exec(url).groups;
       assertLinkMatchesUrl(
@@ -878,7 +884,7 @@ function assertTableRowsCount(length) {
 }
 
 function generateUsers(count, groupIds) {
-  const users = _.range(count).map(index => ({
+  const users = _.range(count).map((index) => ({
     first_name: `FirstName ${index}`,
     last_name: `LastName ${index}`,
     email: `user_${index}@metabase.com`,
@@ -886,13 +892,13 @@ function generateUsers(count, groupIds) {
     groupIds,
   }));
 
-  users.forEach(u => cy.createUserFromRawData(u));
+  users.forEach((u) => cy.createUserFromRawData(u));
 
   return users;
 }
 
 function generateGroups(count) {
-  _.range(count).map(index => {
+  _.range(count).map((index) => {
     cy.request("POST", "api/permissions/group", { name: "Group" + index });
   });
 }

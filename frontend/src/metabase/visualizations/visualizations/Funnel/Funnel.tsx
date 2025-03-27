@@ -35,7 +35,7 @@ import FunnelNormal from "../../components/FunnelNormal";
 import type { FunnelRow } from "./types";
 
 const getUniqueFunnelRows = (rows: FunnelRow[]) => {
-  return [...new Map(rows.map(row => [row.key, row])).values()];
+  return [...new Map(rows.map((row) => [row.key, row])).values()];
 };
 
 Object.assign(Funnel, {
@@ -133,16 +133,16 @@ Object.assign(Funnel, {
         settings: ComputedVisualizationSettings,
       ) => {
         const dimensionIndex = cols.findIndex(
-          col => col.name === settings["funnel.dimension"],
+          (col) => col.name === settings["funnel.dimension"],
         );
         const orderDimension = settings["funnel.order_dimension"];
         const dimension = settings["funnel.dimension"];
 
         const rowsOrder = settings["funnel.rows"];
-        const rowsKeys = rows.map(row => formatNullable(row[dimensionIndex]));
+        const rowsKeys = rows.map((row) => formatNullable(row[dimensionIndex]));
 
         const getDefault = (keys: RowValue[]) =>
-          keys.map(key => ({
+          keys.map((key) => ({
             key,
             name: key,
             enabled: true,
@@ -150,7 +150,7 @@ Object.assign(Funnel, {
         if (
           !rowsOrder ||
           !_.isArray(rowsOrder) ||
-          !rowsOrder.every(setting => setting.key !== undefined) ||
+          !rowsOrder.every((setting) => setting.key !== undefined) ||
           orderDimension !== dimension
         ) {
           return getUniqueFunnelRows(getDefault(rowsKeys));
@@ -159,7 +159,7 @@ Object.assign(Funnel, {
         const removeMissingOrder = (keys: RowValue[], order: any) =>
           order.filter((o: any) => keys.includes(o.key));
         const newKeys = (keys: RowValue[], order: any) =>
-          keys.filter(key => !order.find((o: any) => o.key === key));
+          keys.filter((key) => !order.find((o: any) => o.key === key));
 
         const funnelRows = [
           ...removeMissingOrder(rowsKeys, rowsOrder),

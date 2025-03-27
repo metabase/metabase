@@ -31,4 +31,4 @@ export const commandPaletteSearch = (query, viewAll = true) => {
   }
 };
 
-export const commandPaletteAction = name => cy.findByRole("option", { name });
+export const commandPaletteAction = (name) => cy.findByRole("option", { name });

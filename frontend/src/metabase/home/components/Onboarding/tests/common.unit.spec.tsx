@@ -31,7 +31,7 @@ describe("Onboarding", () => {
       "Start visualizing your data",
       "Get email updates and alerts",
       "Get the most out of Metabase",
-    ].forEach(section => {
+    ].forEach((section) => {
       expect(
         screen.getByRole("heading", { name: section }),
       ).toBeInTheDocument();
@@ -45,7 +45,7 @@ describe("Onboarding", () => {
       "Start visualizing your data",
       "Get email updates and alerts",
       "Get the most out of Metabase",
-    ].forEach(section => {
+    ].forEach((section) => {
       expect(
         screen.getByRole("heading", { name: section }),
       ).toBeInTheDocument();
@@ -139,7 +139,7 @@ describe("Onboarding", () => {
     "dashboard",
     "subscription",
     "alert",
-  ])("%s CTA should not be visible to non-admins", item => {
+  ])("%s CTA should not be visible to non-admins", (item) => {
     setup({ isAdmin: false, openItem: item });
 
     expect(screen.getByTestId(`${item}-item`)).toHaveAttribute(
@@ -363,7 +363,7 @@ describe("Onboarding", () => {
 
     it.each<ChecklistItemValue>(["subscription", "alert"])(
       "should not render %s email and slack setup links for hosted instances",
-      item => {
+      (item) => {
         setup({ openItem: item, isHosted: true });
         expect(
           screen.queryByTestId(`${item}-communication-setup`),
@@ -424,7 +424,7 @@ describe("Onboarding", () => {
 
     it.each<ChecklistItemValue>(["subscription", "alert"])(
       "should not render %s email and Slack setup links for hosted instances",
-      i => {
+      (i) => {
         setup({ openItem: i, isHosted: true });
         expect(
           screen.queryByTestId(`${i}-communication-setup`),

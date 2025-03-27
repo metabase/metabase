@@ -119,7 +119,7 @@ describe("AppBanner", () => {
 
     it.each(["past-due", "unpaid", "invalid"])(
       "should not render for hosted instances for %s token status (metabase#50335)",
-      status => {
+      (status) => {
         setup({
           isAdmin: true,
           isHosted: true,

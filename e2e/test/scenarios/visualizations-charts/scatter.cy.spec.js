@@ -167,8 +167,8 @@ select 10 as size, 2 as x, 5 as y`,
       cy.wrap(width).as("radius" + index);
     });
 
-    cy.get("@radius0").then(r0 => {
-      cy.get("@radius1").then(r1 => {
+    cy.get("@radius0").then((r0) => {
+      cy.get("@radius1").then((r1) => {
         assert.notEqual(r0, r1);
       });
     });
@@ -209,12 +209,12 @@ select 10 as size, 2 as x, 5 as y`,
     // Resizing animation due to the sidebar
     cy.wait(200);
 
-    const columnsToRemove = allTooltipRows.slice(2).map(row => row.name);
+    const columnsToRemove = allTooltipRows.slice(2).map((row) => row.name);
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
 
-      columnsToRemove.map(columnName => {
+      columnsToRemove.map((columnName) => {
         cy.findByRole("textbox", { name: "Enter column names" })
           .parent()
           .findByText(columnName)

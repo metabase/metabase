@@ -89,18 +89,18 @@ const flattenCollectionTree = (
   node: MockCollection[],
 ): Omit<MockCollection, "collections">[] => {
   return [
-    ...node.map(n => ({
+    ...node.map((n) => ({
       name: n.name,
       id: n.id,
       is_personal: !!n.is_personal,
       location: n.location,
       effective_location: n.effective_location,
     })),
-  ].concat(...node.map(n => flattenCollectionTree(n.collections)));
+  ].concat(...node.map((n) => flattenCollectionTree(n.collections)));
 };
 
 const setupCollectionTreeMocks = (node: MockCollection[]) => {
-  node.forEach(n => {
+  node.forEach((n) => {
     const collectionItems = n.collections.map((c: MockCollection) =>
       createMockCollectionItem({
         id: c.id as number,
@@ -138,12 +138,12 @@ const setup = ({
   mockGetBoundingClientRect();
   mockScrollBy();
 
-  const allCollections = flattenCollectionTree(collectionTree).map(c =>
+  const allCollections = flattenCollectionTree(collectionTree).map((c) =>
     createMockCollection(c as Collection),
   );
 
   //Setup individual collection mocks
-  allCollections.forEach(collection => {
+  allCollections.forEach((collection) => {
     fetchMock.get(`path:/api/collection/${collection.id}`, collection);
   });
 

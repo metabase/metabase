@@ -35,9 +35,9 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
     beforeEach(cy.signInAsAdmin);
 
     it("should let you see all created alerts", () => {
-      cy.request("/api/notification").then(response => {
+      cy.request("/api/notification").then((response) => {
         const questionAlerts = response.body.filter(
-          notification => notification.payload_type === "notification/card",
+          (notification) => notification.payload_type === "notification/card",
         );
         expect(questionAlerts).to.have.length(3);
       });

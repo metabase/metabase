@@ -56,7 +56,7 @@ export default class AuditParameters extends Component {
     const isEmpty =
       hasResults === false &&
       inputValues &&
-      Object.values(inputValues).every(v => v === "");
+      Object.values(inputValues).every((v) => v === "");
 
     return (
       <div>
@@ -68,7 +68,7 @@ export default class AuditParameters extends Component {
               value={inputValues[key] || ""}
               placeholder={placeholder}
               disabled={isEmpty || disabled}
-              onChange={e => {
+              onChange={(e) => {
                 this.changeValue(key, e.target.value);
               }}
               icon={icon}

@@ -5,7 +5,7 @@ import { HoverCard } from "metabase/ui";
 
 export const WidthBound = styled.div<{ width?: number }>`
   font-size: 14px;
-  max-width: ${props => props.width ?? 300}px;
+  max-width: ${(props) => props.width ?? 300}px;
 `;
 
 export const Dropdown = styled(HoverCard.Dropdown)`

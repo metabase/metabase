@@ -29,7 +29,7 @@ export const partitions: Partition[] = [
   },
   {
     name: "values",
-    columnFilter: col => !isDimension(col),
+    columnFilter: (col) => !isDimension(col),
     title: (
       <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Measures`}</PivotTableSettingLabel>
     ),

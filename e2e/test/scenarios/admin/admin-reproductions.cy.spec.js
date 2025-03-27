@@ -66,7 +66,7 @@ describe("issue 21532", () => {
     cy.findByTestId("admin-layout-content");
 
     cy.go("back");
-    cy.location().should(location => {
+    cy.location().should((location) => {
       expect(location.pathname).to.eq("/");
     });
   });

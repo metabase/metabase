@@ -48,7 +48,7 @@ const QuestionSettingsContent = ({
         transformedSeries,
         handleChangeSettings,
         false,
-      ).filter(w => !!w.widget);
+      ).filter((w) => !!w.widget);
     } catch (e) {
       return [];
     }

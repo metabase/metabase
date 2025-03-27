@@ -3,7 +3,7 @@ export const findCollectionById = (collections, collectionId) => {
     return null;
   }
 
-  const collection = collections.find(c => c.id === collectionId);
+  const collection = collections.find((c) => c.id === collectionId);
 
   if (collection) {
     return collection;
@@ -11,7 +11,7 @@ export const findCollectionById = (collections, collectionId) => {
 
   return findCollectionById(
     collections
-      .map(c => c.children)
+      .map((c) => c.children)
       .filter(Boolean)
       .flat(),
     collectionId,

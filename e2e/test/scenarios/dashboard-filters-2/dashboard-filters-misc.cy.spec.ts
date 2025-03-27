@@ -151,7 +151,7 @@ describe("pivot tables", () => {
         query: createPivotableQuery(this.baseQuestion),
         name: "Question - pivot viz",
         display: "pivot",
-      }).then(response => {
+      }).then((response) => {
         const card = response.body;
         QSHelpers.createAndVisitDashboard([card]);
       });

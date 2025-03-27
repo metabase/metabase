@@ -70,7 +70,7 @@ const MetadataTableColumnList = ({
   });
 
   const sortedFields = useMemo(
-    () => _.sortBy(fields, field => field.position),
+    () => _.sortBy(fields, (field) => field.position),
     [fields],
   );
 

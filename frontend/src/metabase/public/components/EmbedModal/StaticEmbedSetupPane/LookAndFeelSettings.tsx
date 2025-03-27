@@ -52,14 +52,14 @@ export const LookAndFeelSettings = ({
       utm_content: "static-embed-settings-look-and-feel",
     },
   });
-  const upgradePageUrl = useSelector(state =>
+  const upgradePageUrl = useSelector((state) =>
     getUpgradeUrl(state, {
       utm_campaign: "embedding-static-font",
       utm_content: "static-embed-settings-look-and-feel",
     }),
   );
   const canWhitelabel = useSelector(getCanWhitelabel);
-  const availableFonts = useSelector(state =>
+  const availableFonts = useSelector((state) =>
     getSetting(state, "available-fonts"),
   );
 
@@ -89,12 +89,12 @@ export const LookAndFeelSettings = ({
                   label: t`Use instance font`,
                   value: "",
                 },
-                ...availableFonts?.map(font => ({
+                ...availableFonts?.map((font) => ({
                   label: font,
                   value: font,
                 })),
               ]}
-              onChange={value => {
+              onChange={(value) => {
                 onChangeDisplayOptions({
                   ...displayOptions,
                   font: value,
@@ -138,7 +138,7 @@ export const LookAndFeelSettings = ({
               size="sm"
               variant="stretch"
               checked={displayOptions.background}
-              onChange={e =>
+              onChange={(e) =>
                 onChangeDisplayOptions({
                   ...displayOptions,
                   background: e.target.checked,
@@ -153,7 +153,7 @@ export const LookAndFeelSettings = ({
             size="sm"
             variant="stretch"
             checked={displayOptions.bordered}
-            onChange={e =>
+            onChange={(e) =>
               onChangeDisplayOptions({
                 ...displayOptions,
                 bordered: e.target.checked,
@@ -167,7 +167,7 @@ export const LookAndFeelSettings = ({
             size="sm"
             variant="stretch"
             checked={displayOptions.titled}
-            onChange={e =>
+            onChange={(e) =>
               onChangeDisplayOptions({
                 ...displayOptions,
                 titled: e.target.checked,
@@ -182,7 +182,7 @@ export const LookAndFeelSettings = ({
               size="sm"
               variant="stretch"
               checked={displayOptions.downloads ?? true}
-              onChange={e =>
+              onChange={(e) =>
                 onChangeDisplayOptions({
                   ...displayOptions,
                   downloads: e.target.checked,

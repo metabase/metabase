@@ -39,11 +39,11 @@ export function SettingsSection({
   const dispatch = useDispatch();
 
   if (tabs) {
-    const activeTab = tabs.find(tab => tab.isActive);
+    const activeTab = tabs.find((tab) => tab.isActive);
     return (
       <Tabs value={activeTab?.key}>
         <Tabs.List mx="1rem" mb="1rem">
-          {tabs.map(tab => {
+          {tabs.map((tab) => {
             return (
               <Tabs.Tab
                 key={tab.key}
@@ -57,7 +57,7 @@ export function SettingsSection({
         </Tabs.List>
         {tabs.map((tab, index) => {
           const isFirstTab = index === 0;
-          const tabSettingElements = settingElements.filter(settingElement =>
+          const tabSettingElements = settingElements.filter((settingElement) =>
             settingElement.tab ? settingElement.tab === tab.key : isFirstTab,
           );
 

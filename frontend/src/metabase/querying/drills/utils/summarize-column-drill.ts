@@ -35,7 +35,7 @@ export const summarizeColumnDrill: Drill<Lib.SummarizeColumnDrillThruInfo> = ({
 }) => {
   const { aggregations } = drillInfo;
 
-  return aggregations.map(operator => ({
+  return aggregations.map((operator) => ({
     ...ACTIONS[operator],
     question: () => applyDrill(drill, operator).setDefaultDisplay(),
     action: () => (dispatch: Dispatch) =>

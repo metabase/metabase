@@ -55,7 +55,7 @@ export const SettingTextInput = ({
       error={!!errorMessage}
       id={id}
       type={type}
-      onChange={event => setValueState(event.target.value)}
+      onChange={(event) => setValueState(event.target.value)}
       value={valueState}
       placeholder={setting.placeholder}
       onBlur={changeHandler}

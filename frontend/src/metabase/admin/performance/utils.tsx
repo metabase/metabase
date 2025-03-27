@@ -33,7 +33,7 @@ export const cronUnitToNumber = (unit: string) =>
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
   const { weekdays } = getScheduleStrings();
-  const index = weekdays.findIndex(o => o.value === day);
+  const index = weekdays.findIndex((o) => o.value === day);
   if (index === -1) {
     throw new Error(`Invalid day: ${day}`);
   }
@@ -215,7 +215,7 @@ export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
   typeof (error as { data: { message: any } }).data.message === "string";
 
 const delay = (milliseconds: number) =>
-  new Promise(resolve => setTimeout(resolve, milliseconds));
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 /** To prevent UI jumpiness, ensure a minimum delay before continuing.
  * An example of jumpiness: clicking a save button results in
@@ -258,12 +258,12 @@ export const getShortStrategyLabel = (
   const mainLabel = getLabelString(type.shortLabel ?? type.label, model);
   /** Part of the label shown after the colon */
   const subLabel = match(strategy)
-    .with({ type: "schedule" }, strategy =>
+    .with({ type: "schedule" }, (strategy) =>
       getFrequencyFromCron(strategy.schedule),
     )
     .with(
       { type: "duration" },
-      strategy =>
+      (strategy) =>
         c(
           "{0} is a number. Indicates a number of hours (the length of a cache)",
         ).t`${strategy.duration}h`,

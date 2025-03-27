@@ -47,7 +47,7 @@ export function lexify(expression: string) {
 
   const { tokens, errors } = tokenize(expression);
   if (errors && errors.length > 0) {
-    errors.forEach(error => {
+    errors.forEach((error) => {
       const { pos } = error;
 
       if (typeof pos === "number") {

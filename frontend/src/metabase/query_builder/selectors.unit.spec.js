@@ -239,7 +239,7 @@ describe("getIsResultDirty", () => {
 
     it("should not be dirty if fields were just made explicit", () => {
       const orderTableFieldIds = Object.values(ORDERS);
-      const orderTableFieldRefs = orderTableFieldIds.map(id => [
+      const orderTableFieldRefs = orderTableFieldIds.map((id) => [
         "field",
         id,
         null,

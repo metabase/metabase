@@ -49,7 +49,7 @@ export const FeedbackModal = ({
           label={t`Feedback`}
           name="comment"
           placeholder={t`Tell us what happened`}
-          onChange={e => setComment(e.currentTarget.value)}
+          onChange={(e) => setComment(e.currentTarget.value)}
           minRows={3}
         />
 
@@ -58,7 +58,7 @@ export const FeedbackModal = ({
           type="email"
           name="email"
           placeholder={t`Leave your email if you want us to follow up with you`}
-          onChange={e => setEmail(e.currentTarget.value)}
+          onChange={(e) => setEmail(e.currentTarget.value)}
         />
 
         <Group justify="flex-end">

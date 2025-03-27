@@ -185,7 +185,7 @@ function setup({
     const strategy = Lib.displayInfo(query, 0, Lib.joinStrategy(join));
     const fields = Lib.joinFields(join);
 
-    const conditions = Lib.joinConditions(join).map(condition => {
+    const conditions = Lib.joinConditions(join).map((condition) => {
       const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(
         query,
         step.stageIndex,
@@ -691,13 +691,13 @@ describe("Notebook Editor > Join Step", () => {
       const { query, fields } = getRecentJoin();
       const columns = fields as Lib.ColumnMetadata[];
       const reviewer = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "REVIEWER",
+        (column) => Lib.displayInfo(query, 0, column).name === "REVIEWER",
       );
       const category = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "PRODUCT_ID",
+        (column) => Lib.displayInfo(query, 0, column).name === "PRODUCT_ID",
       );
       const price = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "CREATED_AT",
+        (column) => Lib.displayInfo(query, 0, column).name === "CREATED_AT",
       );
       expect(columns).not.toHaveLength(0);
       expect(reviewer).not.toBeUndefined();
@@ -774,13 +774,13 @@ describe("Notebook Editor > Join Step", () => {
       const { query, fields } = getRecentJoin();
       const columns = fields as Lib.ColumnMetadata[];
       const vendor = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "VENDOR",
+        (column) => Lib.displayInfo(query, 0, column).name === "VENDOR",
       );
       const category = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "CATEGORY",
+        (column) => Lib.displayInfo(query, 0, column).name === "CATEGORY",
       );
       const price = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "PRICE",
+        (column) => Lib.displayInfo(query, 0, column).name === "PRICE",
       );
       expect(columns).not.toHaveLength(0);
       expect(vendor).not.toBeUndefined();

@@ -9,11 +9,11 @@ export function getCompatibleSemanticTypes(
 ) {
   const fieldType = field.effective_type ?? field.base_type;
   const isFieldText = isa(fieldType, TYPE.Text);
-  const fieldLevelOneTypes = getLevelOneDataTypes().filter(levelOneType => {
+  const fieldLevelOneTypes = getLevelOneDataTypes().filter((levelOneType) => {
     return isa(fieldType, levelOneType);
   });
 
-  return FIELD_SEMANTIC_TYPES.filter(option => {
+  return FIELD_SEMANTIC_TYPES.filter((option) => {
     const isCurrentValue = option.id === currentValue;
 
     if (
@@ -41,7 +41,7 @@ export function getCompatibleSemanticTypes(
       return isFieldText;
     }
 
-    const isDerivedFromAnyLevelOneType = fieldLevelOneTypes.some(type => {
+    const isDerivedFromAnyLevelOneType = fieldLevelOneTypes.some((type) => {
       return isa(option.id, type);
     });
 

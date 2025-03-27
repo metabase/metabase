@@ -42,7 +42,7 @@ function getWidgets({
     storedSettings,
     computedSettings,
     column,
-    changedSettings => {
+    (changedSettings) => {
       if (onChange) {
         onChange({ ...storedSettings, ...changedSettings });
       }
@@ -54,7 +54,7 @@ function getWidgets({
   );
 
   return widgets.filter(
-    widget =>
+    (widget) =>
       (!allowlist || allowlist.has(widget.id)) &&
       (!denylist || !denylist.has(widget.id)),
   );
@@ -72,7 +72,7 @@ const ColumnSettings = ({ value, variant = "default", ...props }) => {
   return (
     <div style={{ maxWidth: 300 }} data-testid="column-settings">
       {widgets.length > 0 ? (
-        widgets.map(widget => (
+        widgets.map((widget) => (
           <ChartSettingsWidget
             key={widget.id}
             {...widget}

@@ -79,7 +79,7 @@ export const CardRoot = styled.div<CardProps>`
   padding: 1rem;
   border-radius: 0.25rem;
   cursor: pointer;
-  ${props => props.isSelected && selectedStyles}
+  ${(props) => props.isSelected && selectedStyles}
 
   &:hover {
     ${selectedStyles}

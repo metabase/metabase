@@ -25,12 +25,12 @@ const ObjectDetailProperties = {
     ...columnSettings({ hidden: true }),
     ...tableColumnSettings,
   },
-  columnSettings: column => {
+  columnSettings: (column) => {
     const settings = {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: column => displayNameForColumn(column),
+        getDefault: (column) => displayNameForColumn(column),
       },
       click_behavior: {},
 

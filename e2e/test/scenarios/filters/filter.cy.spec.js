@@ -32,7 +32,7 @@ describe("scenarios > question > filter", () => {
       .findByText("Products → Category is not Gizmo")
       .should("be.visible");
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -553,7 +553,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('contains([Reviewer], "MULLER", "case-insensitive")');
     cy.button("Update").click();
-    cy.wait("@dataset").then(xhr => {
+    cy.wait("@dataset").then((xhr) => {
       expect(xhr.response.body.data.rows).to.have.lengthOf(1);
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -904,7 +904,7 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  ["True", "False"].forEach(condition => {
+  ["True", "False"].forEach((condition) => {
     const regexCondition = new RegExp(`${condition}`, "i");
     // We must use and return strings instead of boolean and numbers
     const integerAssociatedWithCondition = condition === "True" ? "0" : "1";

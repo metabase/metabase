@@ -80,7 +80,7 @@ describe("scenarios > admin > performance > schedule strategy", () => {
 
   ];
 
-  (["root", "database"] as CacheableModel[]).forEach(model => {
+  (["root", "database"] as CacheableModel[]).forEach((model) => {
     schedules.forEach(([schedule, cronExpression]) => {
       it(`can set on ${model}: ${
         Object.values(schedule).join(" ") || "default values"
@@ -105,7 +105,7 @@ describe("scenarios > admin > performance > schedule strategy", () => {
             });
           }
         });
-        saveCacheStrategyForm().then(xhr => {
+        saveCacheStrategyForm().then((xhr) => {
           const { body } = xhr.request;
           expect(body.model).to.eq(model);
           expect(body.strategy.schedule).to.eq(cronExpression);
@@ -147,10 +147,10 @@ describe("scenarios > admin > performance > schedule strategy", () => {
         cacheStrategyForm()
           .findByLabelText("Describe how often the cache should be invalidated")
           .find("[aria-label]")
-          .then($labels => {
+          .then(($labels) => {
             const labels = $labels
               .get()
-              .map($el => $el.getAttribute("aria-label"));
+              .map(($el) => $el.getAttribute("aria-label"));
             expect(labels).to.deep.equal(expectedFieldLabels);
           });
       });

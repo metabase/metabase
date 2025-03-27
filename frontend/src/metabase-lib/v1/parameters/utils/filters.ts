@@ -16,17 +16,17 @@ export function fieldFilterForParameter(
   const type = getParameterType(parameter);
   switch (type) {
     case "date":
-      return field => field.isDate();
+      return (field) => field.isDate();
     case "id":
-      return field => field.isID();
+      return (field) => field.isID();
     case "category":
-      return field => field.isCategory();
+      return (field) => field.isCategory();
     case "location":
-      return field => field.isLocation();
+      return (field) => field.isLocation();
     case "number":
-      return field => field.isNumber() && !field.isCoordinate();
+      return (field) => field.isNumber() && !field.isCoordinate();
     case "string":
-      return field => field.isString() && !field.isLocation();
+      return (field) => field.isString() && !field.isLocation();
   }
 
   return () => false;
@@ -41,25 +41,25 @@ export function columnFilterForParameter(
 
   switch (type) {
     case "date":
-      return column => Lib.isTemporal(column);
+      return (column) => Lib.isTemporal(column);
     case "id":
-      return column => Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
+      return (column) => Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
     case "category":
-      return column => Lib.isCategory(column) || Lib.isBoolean(column);
+      return (column) => Lib.isCategory(column) || Lib.isBoolean(column);
     case "location":
-      return column => Lib.isLocation(column);
+      return (column) => Lib.isLocation(column);
     case "number":
-      return column =>
+      return (column) =>
         Lib.isNumeric(column) &&
         !Lib.isPrimaryKey(column) &&
         !Lib.isForeignKey(column) &&
         !Lib.isLocation(column);
     case "string":
-      return column =>
+      return (column) =>
         (Lib.isStringOrStringLike(column) || Lib.isCategory(column)) &&
         !Lib.isLocation(column);
     case "temporal-unit":
-      return column => Lib.isTemporalBucketable(query, stageIndex, column);
+      return (column) => Lib.isTemporalBucketable(query, stageIndex, column);
   }
 
   return () => false;
@@ -96,17 +96,17 @@ function tagFilterForParameter(
 
   switch (type) {
     case "date":
-      return tag => subtype === "single" && tag.type === "date";
+      return (tag) => subtype === "single" && tag.type === "date";
     case "location":
-      return tag => tag.type === "number" || tag.type === "text";
+      return (tag) => tag.type === "number" || tag.type === "text";
     case "id":
-      return tag => tag.type === "number" || tag.type === "text";
+      return (tag) => tag.type === "number" || tag.type === "text";
     case "category":
-      return tag => tag.type === "number" || tag.type === "text";
+      return (tag) => tag.type === "number" || tag.type === "text";
     case "number":
-      return tag => tag.type === "number";
+      return (tag) => tag.type === "number";
     case "string":
-      return tag => tag.type === "text";
+      return (tag) => tag.type === "text";
   }
   return () => false;
 }

@@ -101,7 +101,7 @@ const RowChartView = <TDatum,>({
         />
 
         {seriesData.map((series, seriesIndex) => {
-          return series.bars.map(bar => {
+          return series.bars.map((bar) => {
             const { xStartValue, xEndValue, isNegative, yValue, datumIndex } =
               bar;
             let y = yScale(yValue);
@@ -157,9 +157,9 @@ const RowChartView = <TDatum,>({
                   height={height}
                   fill={series.color}
                   opacity={opacity}
-                  onClick={event => onClick?.(event, bar)}
-                  onMouseEnter={event => onHover?.(event, bar)}
-                  onMouseLeave={event => onHover?.(event, null)}
+                  onClick={(event) => onClick?.(event, bar)}
+                  onMouseEnter={(event) => onHover?.(event, bar)}
+                  onMouseLeave={(event) => onHover?.(event, null)}
                 />
                 {label != null && (
                   <Text

@@ -46,7 +46,7 @@ const EXCLUDE_VALUES: ExcludeDatePickerValue[] = [
 describe("getAvailableOptions", () => {
   it("should return options that don't require an operator", () => {
     const options = getAvailableOptions([]);
-    expect(options.map(option => option.label)).toEqual([
+    expect(options.map((option) => option.label)).toEqual([
       "All time",
       "Previous",
       "Next",
@@ -87,7 +87,7 @@ describe("setOptionType", () => {
   describe("=", () => {
     it.each([...RELATIVE_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
-      value => {
+      (value) => {
         expect(setOptionType(value, "=")).toEqual({
           type: "specific",
           operator: "=",
@@ -99,7 +99,7 @@ describe("setOptionType", () => {
 
     it.each<SpecificDatePickerOperator>([">", "<"])(
       'should preserve value for "%s" operator',
-      operator => {
+      (operator) => {
         const value: DatePickerValue = {
           type: "specific",
           operator,
@@ -134,7 +134,7 @@ describe("setOptionType", () => {
   describe(">", () => {
     it.each([...RELATIVE_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
-      value => {
+      (value) => {
         expect(setOptionType(value, ">")).toEqual({
           type: "specific",
           operator: ">",
@@ -146,7 +146,7 @@ describe("setOptionType", () => {
 
     it.each<SpecificDatePickerOperator>(["=", "<"])(
       'should preserve value for "%s" operator',
-      operator => {
+      (operator) => {
         const value: DatePickerValue = {
           type: "specific",
           operator,
@@ -181,7 +181,7 @@ describe("setOptionType", () => {
   describe("<", () => {
     it.each([...RELATIVE_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
-      value => {
+      (value) => {
         expect(setOptionType(value, "<")).toEqual({
           type: "specific",
           operator: "<",
@@ -193,7 +193,7 @@ describe("setOptionType", () => {
 
     it.each<SpecificDatePickerOperator>(["=", ">"])(
       'should preserve value for "%s" operator',
-      operator => {
+      (operator) => {
         const value: DatePickerValue = {
           type: "specific",
           operator,
@@ -228,7 +228,7 @@ describe("setOptionType", () => {
   describe("between", () => {
     it.each([...RELATIVE_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
-      value => {
+      (value) => {
         expect(setOptionType(value, "between")).toEqual({
           type: "specific",
           operator: "between",
@@ -240,7 +240,7 @@ describe("setOptionType", () => {
 
     it.each<SpecificDatePickerOperator>(["=", "<"])(
       'should preserve end date for "%s" operator',
-      operator => {
+      (operator) => {
         const value: DatePickerValue = {
           type: "specific",
           operator,
@@ -275,7 +275,7 @@ describe("setOptionType", () => {
   describe("last", () => {
     it.each([...SPECIFIC_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
-      value => {
+      (value) => {
         expect(setOptionType(value, "last")).toEqual({
           type: "relative",
           value: -30,
@@ -294,7 +294,7 @@ describe("setOptionType", () => {
       "year",
     ])(
       'should preserve "%s" unit and use default value for "0" value',
-      unit => {
+      (unit) => {
         const value: DatePickerValue = {
           type: "relative",
           value: 0,
@@ -316,7 +316,7 @@ describe("setOptionType", () => {
       "month",
       "quarter",
       "year",
-    ])('should preserve "%s" unit and value for "next" value', unit => {
+    ])('should preserve "%s" unit and value for "next" value', (unit) => {
       const value: DatePickerValue = {
         type: "relative",
         value: 10,
@@ -333,7 +333,7 @@ describe("setOptionType", () => {
   describe("next", () => {
     it.each([...SPECIFIC_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
-      value => {
+      (value) => {
         expect(setOptionType(value, "next")).toEqual({
           type: "relative",
           value: 30,
@@ -352,7 +352,7 @@ describe("setOptionType", () => {
       "year",
     ])(
       'should preserve "%s" unit and use default value for "0" value',
-      unit => {
+      (unit) => {
         const value: DatePickerValue = {
           type: "relative",
           value: 0,
@@ -374,7 +374,7 @@ describe("setOptionType", () => {
       "month",
       "quarter",
       "year",
-    ])('should preserve "%s" unit and value for "next" value', unit => {
+    ])('should preserve "%s" unit and value for "next" value', (unit) => {
       const value: DatePickerValue = {
         type: "relative",
         value: -10,
@@ -391,7 +391,7 @@ describe("setOptionType", () => {
   describe("current", () => {
     it.each([...SPECIFIC_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
-      value => {
+      (value) => {
         expect(setOptionType(value, "current")).toEqual({
           type: "relative",
           value: 0,
@@ -402,8 +402,8 @@ describe("setOptionType", () => {
 
     describe.each<DatePickerTruncationUnit>(["minute", "hour"])(
       'should use default unit for "%s" unit',
-      unit => {
-        it.each([-10, 10])('"%d" interval', interval => {
+      (unit) => {
+        it.each([-10, 10])('"%d" interval', (interval) => {
           const value: DatePickerValue = {
             type: "relative",
             value: interval,
@@ -424,8 +424,8 @@ describe("setOptionType", () => {
       "month",
       "quarter",
       "year",
-    ])('should preserve unit for "%s" unit', unit => {
-      it.each([-10, 10])('"%d" interval', interval => {
+    ])('should preserve unit for "%s" unit', (unit) => {
+      it.each([-10, 10])('"%d" interval', (interval) => {
         const value: DatePickerValue = {
           type: "relative",
           value: interval,
@@ -443,7 +443,7 @@ describe("setOptionType", () => {
   describe("!=", () => {
     it.each([...SPECIFIC_VALUES, ...RELATIVE_VALUES, ...EXCLUDE_VALUES])(
       'should ignore "$operator" operator',
-      value => {
+      (value) => {
         expect(setOptionType(value, "!=")).toBeUndefined();
       },
     );
@@ -452,7 +452,7 @@ describe("setOptionType", () => {
   describe("is-null", () => {
     it.each([...SPECIFIC_VALUES, ...RELATIVE_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
-      value => {
+      (value) => {
         expect(setOptionType(value, "is-null")).toEqual({
           type: "exclude",
           operator: "is-null",
@@ -465,7 +465,7 @@ describe("setOptionType", () => {
   describe("not-null", () => {
     it.each([...SPECIFIC_VALUES, ...RELATIVE_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
-      value => {
+      (value) => {
         expect(setOptionType(value, "not-null")).toEqual({
           type: "exclude",
           operator: "not-null",

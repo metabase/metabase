@@ -63,7 +63,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
   it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
     "should display first available channel by default - Slack %p",
-    async setupConfig => {
+    async (setupConfig) => {
       setup({
         isEmailSetup: false,
         isSlackSetup: true,
@@ -81,7 +81,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
   it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
     "should display first available channel by default - Webhook %p",
-    async setupConfig => {
+    async (setupConfig) => {
       const mockWebhook = createMockChannel();
       setup({
         isEmailSetup: false,

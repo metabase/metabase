@@ -67,7 +67,7 @@ export const DatabaseConnectionInfoSection = ({
       )
       .with(
         { currentData: { status: "error" } },
-        q => ({ message: q.currentData.message, color: "danger" }) as const,
+        (q) => ({ message: q.currentData.message, color: "danger" }) as const,
       )
       .with(
         { isError: true },

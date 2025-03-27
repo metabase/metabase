@@ -7,7 +7,7 @@ import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmb
 import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbeddedDashboard";
 import { getApplicationName } from "./selectors/whitelabel";
 
-export const getRoutes = store => {
+export const getRoutes = (store) => {
   const applicationName = getApplicationName(store.getState());
   return (
     <Route title={applicationName}>

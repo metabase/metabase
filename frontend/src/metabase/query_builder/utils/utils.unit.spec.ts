@@ -199,7 +199,7 @@ describe("isNavigationAllowed", () => {
 
     it.each(questions)(
       "allows navigating away from creating new `$_card.name`",
-      question => {
+      (question) => {
         const isNewQuestion = true;
 
         expect(
@@ -210,7 +210,7 @@ describe("isNavigationAllowed", () => {
 
     it.each(questions)(
       "allows navigating away from editing `$_card.name`",
-      question => {
+      (question) => {
         const isNewQuestion = false;
 
         expect(
@@ -241,7 +241,7 @@ describe("isNavigationAllowed", () => {
       ...getRunQuestionLocations(structuredQuestion),
       ...getRunQuestionLocations(nativeQuestion),
       runQuestionEditNotebookLocation,
-    ])("allows navigating away to `$pathname`", destination => {
+    ])("allows navigating away to `$pathname`", (destination) => {
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion: true }),
       ).toBe(true);
@@ -274,7 +274,7 @@ describe("isNavigationAllowed", () => {
         ...getRunQuestionLocations(structuredQuestion),
         ...getRunQuestionLocations(nativeQuestion),
         runQuestionEditNotebookLocation,
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
@@ -290,7 +290,7 @@ describe("isNavigationAllowed", () => {
       it.each([
         runQuestionLocation,
         ...getRunQuestionLocations(nativeQuestion),
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
@@ -314,7 +314,7 @@ describe("isNavigationAllowed", () => {
         runMetricLocation,
         runNewMetricLocation,
         runQuestionEditNotebookLocation,
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(false);
@@ -330,7 +330,7 @@ describe("isNavigationAllowed", () => {
       it.each([
         runQuestionLocation,
         ...getRunQuestionLocations(structuredQuestion),
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
@@ -348,7 +348,7 @@ describe("isNavigationAllowed", () => {
     describe("allows to open the question and the notebook editor", () => {
       it.each(getStructuredQuestionLocations(question))(
         "to `$pathname`",
-        destination => {
+        (destination) => {
           expect(
             isNavigationAllowed({ destination, question, isNewQuestion }),
           ).toBe(true);
@@ -367,7 +367,7 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         newMetricQueryTabLocation,
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(false);
@@ -383,7 +383,7 @@ describe("isNavigationAllowed", () => {
       it.each([
         runQuestionLocation,
         ...getRunQuestionLocations(nativeQuestion),
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
@@ -407,7 +407,7 @@ describe("isNavigationAllowed", () => {
         runMetricLocation,
         runNewMetricLocation,
         runQuestionEditNotebookLocation,
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(false);
@@ -422,7 +422,7 @@ describe("isNavigationAllowed", () => {
     describe("allows navigating between model query & metadata tabs", () => {
       it.each([newModelQueryTabLocation, newModelMetadataTabLocation])(
         "to `$pathname`",
-        destination => {
+        (destination) => {
           expect(
             isNavigationAllowed({ destination, question, isNewQuestion }),
           ).toBe(true);
@@ -450,7 +450,7 @@ describe("isNavigationAllowed", () => {
         ...getRunQuestionLocations(structuredQuestion),
         ...getRunQuestionLocations(nativeQuestion),
         runQuestionEditNotebookLocation,
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(false);
@@ -465,7 +465,7 @@ describe("isNavigationAllowed", () => {
     describe("allows navigating between model query & metadata tabs", () => {
       it.each(getEditModelLocations(question))(
         "to `$pathname`",
-        destination => {
+        (destination) => {
           expect(
             isNavigationAllowed({ destination, question, isNewQuestion }),
           ).toBe(true);
@@ -503,7 +503,7 @@ describe("isNavigationAllowed", () => {
         runMetricLocation,
         runNewMetricLocation,
         runQuestionEditNotebookLocation,
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(false);
@@ -518,7 +518,7 @@ describe("isNavigationAllowed", () => {
     describe("allows navigating between model query & metadata tabs", () => {
       it.each(getEditModelLocations(question))(
         "to `$pathname`",
-        destination => {
+        (destination) => {
           expect(
             isNavigationAllowed({ destination, question, isNewQuestion }),
           ).toBe(true);
@@ -556,7 +556,7 @@ describe("isNavigationAllowed", () => {
         runMetricLocation,
         runNewMetricLocation,
         runQuestionEditNotebookLocation,
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(false);
@@ -597,7 +597,7 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         runQuestionLocation,
         runQuestionEditNotebookLocation,
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(false);
@@ -612,7 +612,7 @@ describe("isNavigationAllowed", () => {
     describe("allows navigating between metric query & metadata tabs", () => {
       it.each(getEditMetricLocations(question))(
         "to `$pathname`",
-        destination => {
+        (destination) => {
           expect(
             isNavigationAllowed({ destination, question, isNewQuestion }),
           ).toBe(true);
@@ -648,7 +648,7 @@ describe("isNavigationAllowed", () => {
         newModelMetadataTabLocation,
         newMetricQueryTabLocation,
         runQuestionEditNotebookLocation,
-      ])("to `$pathname`", destination => {
+      ])("to `$pathname`", (destination) => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(false);

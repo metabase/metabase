@@ -49,7 +49,7 @@ export function Tooltip({
 
   useEffect(() => {
     setHasMovedCursor(
-      hasMovedCursor => hasMovedCursor || state.selection.main.head !== 0,
+      (hasMovedCursor) => hasMovedCursor || state.selection.main.head !== 0,
     );
   }, [state.selection.main.head]);
 
@@ -64,7 +64,7 @@ export function Tooltip({
       setPreferHelpText(!preferHelpText);
       return;
     }
-    setIsHelpTextOpen(open => !open);
+    setIsHelpTextOpen((open) => !open);
   }, [completions, preferHelpText]);
 
   useEffect(() => {

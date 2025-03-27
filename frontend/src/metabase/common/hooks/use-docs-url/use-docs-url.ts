@@ -17,7 +17,7 @@ export const useDocsUrl = (
   } = {},
 ) => {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const url = useSelector(state =>
+  const url = useSelector((state) =>
     getDocsUrl(state, {
       page,
       anchor,

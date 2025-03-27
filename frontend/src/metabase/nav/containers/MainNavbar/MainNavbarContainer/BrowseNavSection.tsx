@@ -29,7 +29,9 @@ export const BrowseNavSection = ({
     "expand-browse-in-nav",
   );
 
-  const entityTypes = useSelector(state => getEmbedOptions(state).entity_types);
+  const entityTypes = useSelector(
+    (state) => getEmbedOptions(state).entity_types,
+  );
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
   return (

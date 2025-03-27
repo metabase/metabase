@@ -185,13 +185,13 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.signInAsAdmin();
       H.resyncDatabase({ tableName: TEST_TABLE, tableAlias: "testTable" });
 
-      cy.get("@testTable").then(testTable => {
+      cy.get("@testTable").then((testTable) => {
         const testTableId = testTable.id;
         const uuidFieldId = testTable.fields.find(
-          field => field.name === "uuid",
+          (field) => field.name === "uuid",
         ).id;
         const idFieldId = testTable.fields.find(
-          field => field.name === "id",
+          (field) => field.name === "id",
         ).id;
 
         cy.wrap(testTableId).as("testTableId");

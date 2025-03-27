@@ -16,7 +16,7 @@ const Trigger = styled.a``;
  *
  * @deprecated HOCs are deprecated - use Modal + useState
  */
-const Triggerable = ComposedComponent =>
+const Triggerable = (ComposedComponent) =>
   class extends Component {
     static displayName =
       "Triggerable[" +
@@ -148,7 +148,7 @@ const Triggerable = ComposedComponent =>
             as={as}
             id={triggerId}
             ref={this.trigger}
-            onClick={event => {
+            onClick={(event) => {
               event.preventDefault();
               !this.props.disabled && this.toggle();
             }}

@@ -211,7 +211,7 @@ const DefaultViewSaveModal = ({
       closeOnSuccess
       onClose={close}
       onCreate={onCreate}
-      onSave={async question => {
+      onSave={async (question) => {
         await onSave(question);
         close();
       }}

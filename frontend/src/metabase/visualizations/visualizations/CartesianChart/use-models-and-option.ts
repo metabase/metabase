@@ -116,7 +116,7 @@ export function useModelsAndOption(
       ids.push(...selectedTimelineEventIds);
     }
     if (hovered?.timelineEvents != null) {
-      ids.push(...hovered.timelineEvents.map(e => e.id));
+      ids.push(...hovered.timelineEvents.map((e) => e.id));
     }
 
     return ids;

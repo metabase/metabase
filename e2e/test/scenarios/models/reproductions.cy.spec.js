@@ -621,7 +621,7 @@ describe("filtering based on the remapped column name should result in a correct
 describe("issue 23024", () => {
   function addModelToDashboardAndVisit() {
     H.createDashboard().then(({ body: { id } }) => {
-      cy.get("@modelId").then(cardId => {
+      cy.get("@modelId").then((cardId) => {
         H.addOrUpdateDashboardCard({
           dashboard_id: id,
           card_id: cardId,
@@ -650,8 +650,8 @@ describe("issue 23024", () => {
       { wrapId: true, idAlias: "modelId" },
     );
 
-    cy.get("@modelId").then(modelId => {
-      H.setModelMetadata(modelId, field => {
+    cy.get("@modelId").then((modelId) => {
+      H.setModelMetadata(modelId, (field) => {
         if (field.display_name === "CATEGORY") {
           return {
             ...field,
@@ -805,7 +805,7 @@ describe("issue 25537", () => {
     query: { "source-table": ORDERS_ID },
     type: "model",
   };
-  const setLocale = locale => {
+  const setLocale = (locale) => {
     cy.request("GET", "/api/user/current").then(({ body: { id: user_id } }) => {
       cy.request("PUT", `/api/user/${user_id}`, { locale });
     });
@@ -943,7 +943,7 @@ describe("issue 28971", () => {
       cy.findByText("Orders").click();
     });
     cy.button("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@createCard");
@@ -984,7 +984,7 @@ describe("issue 28971", () => {
       cy.findByText("Orders").click();
     });
     cy.button("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@createCard");
@@ -1447,7 +1447,7 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
     },
     type: "model",
   };
-  const removeExpression = name => {
+  const removeExpression = (name) => {
     H.getNotebookStep("expression")
       .findByText(name)
       .findByLabelText("close icon")
@@ -1675,7 +1675,7 @@ describe("issue 32483", () => {
 
     H.createQuestion(questionDetails, { wrapId: true });
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       const modelDetails = {
         type: "model",
         name: "Orders + People Question Model",
@@ -1975,8 +1975,8 @@ describe("issue 40252", () => {
     H.createNativeQuestion(modelA, { wrapId: true, idAlias: "modelA" });
     H.createNativeQuestion(modelB, { wrapId: true, idAlias: "modelB" });
 
-    cy.get("@modelA").then(modelAId => {
-      cy.get("@modelB").then(modelBId => {
+    cy.get("@modelA").then((modelAId) => {
+      cy.get("@modelB").then((modelBId) => {
         const questionDetails = {
           name: "40252",
           type: "model",

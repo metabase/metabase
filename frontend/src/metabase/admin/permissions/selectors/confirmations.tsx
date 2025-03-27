@@ -290,7 +290,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     ) !== DataPermissionValue.NO
   ) {
     // allTableEntityIds contains tables from all schemas
-    const allTableEntityIds = database.getTables().map(table => ({
+    const allTableEntityIds = database.getTables().map((table) => ({
       databaseId: table.db_id,
       schemaName: table.schema_name || "",
       tableId: table.id as ConcreteTableId,
@@ -299,7 +299,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     // Show the warning only if user tries to revoke access to the very last table of all schemas
     const afterChangesNoAccessToAnyTable = _.every(
       allTableEntityIds,
-      id =>
+      (id) =>
         getFieldsPermission(
           permissions,
           groupId,

@@ -66,7 +66,7 @@ export function entityPickerModalTab(name) {
 
 // displays at least these tabs:
 export function shouldDisplayTabs(tabs) {
-  tabs.forEach(tab => {
+  tabs.forEach((tab) => {
     entityPickerModalTab(tab).should("exist");
   });
 }
@@ -74,7 +74,7 @@ export function shouldDisplayTabs(tabs) {
 export function tabsShouldBe(selected, tabs) {
   cy.log(tabs);
   cy.findAllByRole("tab").should("have.length", tabs.length);
-  tabs.forEach(tab => {
+  tabs.forEach((tab) => {
     if (tab === selected) {
       entityPickerModalTab(tab).and("have.attr", "aria-selected", "true");
     } else {
@@ -203,12 +203,12 @@ export function toggleFilterWidgetValues(
   filterWidget().eq(0).click();
 
   popover().within(() => {
-    values.forEach(value => cy.findByText(value).click());
+    values.forEach((value) => cy.findByText(value).click());
     cy.button(buttonLabel).click();
   });
 }
 
-export const openQuestionActions = action => {
+export const openQuestionActions = (action) => {
   cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
 
   if (action) {

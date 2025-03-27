@@ -32,7 +32,7 @@ describe("scenarios > visualizations > funnel chart", () => {
     H.getDraggableElements()
       .first()
       .invoke("text")
-      .then(name => {
+      .then((name) => {
         cy.log(`mode row ${name} down 2`);
         cy.findAllByTestId("funnel-chart-header")
           .first()
