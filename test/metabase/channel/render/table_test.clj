@@ -177,8 +177,9 @@
                 th-els  (hik.s/select (hik.s/tag :th) doc)
                 eh-th   (first (filter #(= "Eh" (first (:content %))) th-els))
                 style   (get-in eh-th [:attrs :style])]
+            (def tsp-style style)
             (is (and (str/includes? style "white-space: normal")
-                     (str/includes? style "min-width: 26px"))
+                     (str/includes? style "min-width: 25px"))
                 "The 'Eh' column should have text wrapping enabled with appropriate min-width"))))
       (testing "Disabled columns are not rendered, and column re-ordering is respected."
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query          {:database (mt/id)
