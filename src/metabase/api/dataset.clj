@@ -66,7 +66,7 @@
     ;; add sensible constraints for results limits on our query
     (let [source-card-id (query->source-card-id query)
           source-card    (when source-card-id
-                           (t2/select-one [:model/Card :result_metadata :type] :id source-card-id))
+                           (t2/select-one [:model/Card :result_metadata :type :card_schema] :id source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}

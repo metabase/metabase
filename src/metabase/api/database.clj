@@ -153,7 +153,7 @@
      (completing conj #(t2/hydrate % :collection :metrics))
      []
      (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
-                                     :result_metadata :type :source_card_id
+                                     :result_metadata :type :source_card_id :card_schema
                                      [{:select   [:status]
                                        :from     [:moderation_review]
                                        :where    [:and
@@ -535,7 +535,8 @@
                         second
                         (str/replace #"-" " ")
                         u/lower-case-en)]
-    (t2/select [:model/Card :id :type :database_id :name :collection_id [:collection.name :collection_name]]
+    (t2/select [:model/Card :id :type :database_id :name :collection_id
+                [:collection.name :collection_name] :card_schema]
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]

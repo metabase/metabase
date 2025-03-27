@@ -50,7 +50,7 @@
         :id          (:id card)
         :name        (format "Card #%d" (:id card))
         :database-id (:database_id card)})
-     [:model/Card :id :database_id]
+     [:model/Card :id :database_id :card_schema]
      :id [:in (set ids)])))
 
 (deftype ^:private BootstrapMetadataProvider []

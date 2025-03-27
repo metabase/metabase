@@ -38,8 +38,8 @@
                          :type     :query
                          :query    {:source-query {:source-table 6}}}}}]
       (testing message
-        (is (= expected
-               (into {} (query/query->database-and-table-ids query))))))))
+        (is (=? expected
+                (into {} (query/query->database-and-table-ids query))))))))
 
 (deftest ^:parallel query->database-and-table-ids-pMBQL-test
   (testing "Should work for pMBQL queries"

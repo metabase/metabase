@@ -60,7 +60,7 @@
   (cond
     (map? x)
     (into {} (for [[k v] x]
-               (when-not (or (= :id k)
+               (when-not (or (#{:id :card_schema} k)
                              (str/ends-with? k "_id"))
                  (if (#{:created_at :updated_at} k)
                    [k (boolean v)]

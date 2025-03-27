@@ -754,7 +754,7 @@
   "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
   [table]
   ;; NOTE: It is important that this logic is kept in sync with `model-hydrate-based-on-upload`
-  (when-let [model-ids (->> (t2/select [:model/Card :id :dataset_query]
+  (when-let [model-ids (->> (t2/select [:model/Card :id :dataset_query :card_schema]
                                        :table_id (:id table)
                                        :type     :model
                                        :archived false)
@@ -765,7 +765,7 @@
     (model-persistence/invalidate! {:card_id [:in model-ids]})
     ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
     (doseq [id model-ids]
-      (let [card     (t2/select-one [:model/Card :dataset_query :result_metadata] id)
+      (let [card     (t2/select-one [:model/Card :dataset_query :result_metadata :card_schema] id)
             ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
             ;; the initial upload.
             fix-name #(update % :display_name humanization/name->human-readable-name)

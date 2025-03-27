@@ -267,7 +267,7 @@
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [card       (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
                                                    :type :result_metadata :visualization_settings :display
-                                                   :cache_invalidated_at :entity_id :created_at]
+                                                   :cache_invalidated_at :entity_id :created_at :card_schema]
                                                   :id card-id))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)
