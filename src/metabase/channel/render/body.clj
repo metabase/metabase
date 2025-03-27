@@ -108,45 +108,27 @@
 
 (defn- query-results->header-row
   "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
-  [remapping-lookup card cols include-bar?]
-  {:row       (for [maybe-remapped-col cols
-                    :when              (show-in-table? maybe-remapped-col)
-                    :let               [col (if (:remapped_to maybe-remapped-col)
-                                              (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                              maybe-remapped-col)
-                                        col-name (column-name card col)]
-                    ;; If this column is remapped from another, it's already
-                    ;; in the output and should be skipped
-                    :when              (not (:remapped_from maybe-remapped-col))]
-                (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
-                  (formatter/map->NumericWrapper {:num-str col-name :num-value col-name})
-                  col-name))
-   :bar-width (when include-bar? 99)})
-
-(defn- normalize-bar-value
-  "Normalizes bar-value into a value between 0 and 100, where 0 corresponds to `min-value` and 100 to `max-value`"
-  [bar-value min-value max-value]
-  (float
-   (/
-    (* (- (double bar-value) min-value)
-       100)
-    (- max-value min-value))))
+  [remapping-lookup card cols]
+  {:row
+   (for [maybe-remapped-col cols
+         :when              (show-in-table? maybe-remapped-col)
+         :let               [col (if (:remapped_to maybe-remapped-col)
+                                   (nth cols (get remapping-lookup (:name maybe-remapped-col)))
+                                   maybe-remapped-col)
+                             col-name (column-name card col)]
+         ;; If this column is remapped from another, it's already
+         ;; in the output and should be skipped
+         :when              (not (:remapped_from maybe-remapped-col))]
+     (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
+       (formatter/map->NumericWrapper {:num-str col-name :num-value col-name})
+       col-name))})
 
 (mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id :- [:maybe :string]
-   remapping-lookup
-   cols
-   rows
-   viz-settings
-   {:keys [bar-column min-value max-value]}]
-  (let [formatters (into []
-                         (map #(formatter/create-formatter timezone-id % viz-settings))
-                         cols)]
+  [timezone-id :- [:maybe :string] remapping-lookup cols rows viz-settings]
+  (let [formatters (into [] (map #(formatter/create-formatter timezone-id % viz-settings)) cols)]
     (for [row rows]
-      {:bar-width (some-> (and bar-column (bar-column row))
-                          (normalize-bar-value min-value max-value))
-       :row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
+      {:row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
                   :when (and (not (:remapped_from maybe-remapped-col))
                              (show-in-table? maybe-remapped-col))
                   :let [[_formatter row-cell] (if (:remapped_to maybe-remapped-col)
@@ -161,24 +143,12 @@
   HTML"
   ([timezone-id :- [:maybe :string]
     card
-    data]
-   (prep-for-html-rendering timezone-id card data {}))
-
-  ([timezone-id :- [:maybe :string]
-    card
-    {:keys [cols rows viz-settings], :as _data}
-    {:keys [bar-column] :as data-attributes}]
-
-   (let [remapping-lookup (create-remapping-lookup cols)]
+    {:keys [cols rows viz-settings], :as _data}]
+   (let [remapping-lookup (create-remapping-lookup cols)
+         row-limit        (min (public-settings/attachment-table-row-limit) 100)]
      (cons
-      (query-results->header-row remapping-lookup card cols bar-column)
-      (query-results->row-seq
-       timezone-id
-       remapping-lookup
-       cols
-       (take (min (public-settings/attachment-table-row-limit) 100) rows)
-       viz-settings
-       data-attributes)))))
+      (query-results->header-row remapping-lookup card cols)
+      (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-number number))])
@@ -231,6 +201,15 @@
       [ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
+(defn- minibar-columns
+  "Return a list of column definitions for which minibar charts are enabled"
+  [cols viz-settings]
+  (filter
+   (fn [col] (get-in viz-settings [::mb.viz/column-settings
+                                   {::mb.viz/column-name (:name col)}
+                                   ::mb.viz/show-mini-bar]))
+   cols))
+
 (mu/defmethod render :table :- ::RenderedPartCard
   [_chart-type
    _render-type
@@ -243,18 +222,18 @@
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
         filtered-cols               (filter show-in-table? ordered-cols)
+        minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table
                                       (js.color/make-color-selector unordered-data viz-settings)
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
                                        :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
-                                      (prep-for-html-rendering timezone-id card data))
+                                      (prep-for-html-rendering timezone-id card data)
+                                      filtered-cols
+                                      minibar-cols)
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
-    {:attachments
-     nil
-
-     :content
-     table-body}))
+    {:content     table-body
+     :attachments nil}))
 
 (def ^:private default-date-styles
   {:year "YYYY"

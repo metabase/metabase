@@ -62,7 +62,8 @@
 ;; we should find some similar basic values that can rely on. The goal isn't to test out the javascript choosing in
 ;; the color (that should be done in javascript) but to verify that the pieces are all connecting correctly
 (deftest background-color-selection-smoke-test
-  (let [query-results {:cols [{:name "a"} {:name "b"} {:name "c"}]
+  (let [columns       [{:name "a"} {:name "b"} {:name "c"}]
+        query-results {:cols columns
                        :rows [[1 2 3]
                               [4 5 6]
                               [7 8 9]
@@ -82,8 +83,8 @@
             "1.001,5" "rgba(0, 0, 255, 0.75)"
             "1,001.5" "rgba(0, 0, 255, 0.75)"}
            (-> (js.color/make-color-selector query-results (:visualization_settings render.tu/test-card))
-               (#'table/render-table 0 {:col-names             ["a" "b" "c"]
-                                        :cols-for-color-lookup ["a" "b" "c"]} (query-results->header+rows query-results))
+               (#'table/render-table {:col-names             ["a" "b" "c"]
+                                      :cols-for-color-lookup ["a" "b" "c"]} (query-results->header+rows query-results) columns [])
                find-table-body
                cell-value->background-color)))))
 
@@ -170,6 +171,27 @@
             (is (= [["B" "A"]
                     ["9,000" "0.1"]]
                    (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els)))))))))
+
+(deftest table-minibar-test
+  (mt/dataset test-data
+    (let [q                 (str "SELECT 5 AS A, 5 AS B"
+                                 " UNION ALL"
+                                 " SELECT 10 AS A, 10 AS B")
+          formatting-viz    {:column_settings
+                             {"[\"name\",\"A\"]" {:show_mini_bar true}}}]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query q}}
+                                                :visualization_settings formatting-viz}]
+        (testing "Minibar table structure is correctly rendered"
+          (let [doc     (render.tu/render-card-as-hickory! card-id)
+                ;; Find all td cells in column A (first column)
+                a-column-cells (hik.s/select (hik.s/descendant (hik.s/tag :td) (hik.s/class "pulse-body")) doc)
+                first-cell     (first a-column-cells)]
+            ;; Verify that the first cell has a nested table
+            (is (some? (hik.s/select (hik.s/tag :table) first-cell)))
+            ;; Verify the width styling in the first minibar
+            (is (some? (hik.s/select (hik.s/attr :style #(when % (re-find #"width: 50%" %))) first-cell)))))))))
 
 (defn- render-table [dashcard results]
   (channel.render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
