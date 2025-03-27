@@ -1,0 +1,27 @@
+# -*- mode: yaml -*-
+# copy that file as 'config.yml' and edit it to auto-initialize your fresh instance
+version: 1
+config:
+  settings:
+    premium-embedding-token: "your-token-here"
+  users:
+    - first_name: Waldo
+      last_name: Peckering
+      password: noguesses
+      email: waldo@pecker.ing
+  api-keys:
+    - name: main
+      key: "generate it in admin settings first"
+      group: admin
+      creator: waldo@pecker.ing
+  databases:
+    - name: yourdb
+      engine: postgres
+      details:
+        host: localhost
+        port: 5432
+        dbname: mydb
+        user: thisisme
+      settings:
+        database-enable-table-editing: true
+        database-enable-actions: true
