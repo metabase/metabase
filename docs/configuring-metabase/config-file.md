@@ -162,11 +162,38 @@ config:
       key: mb_secondtestapikey
 {% endraw %}
 ```
-Some things to know about creating API keys with the config file:
 
-- API keys that you create (the value of the `key`) must have the format `mb_` followed by a [Base64](https://en.wikipedia.org/wiki/Base64) string (if you're wearing formal attire, you'd say a _tetrasexagesimal_ string). So, `mb_` followed by letters and numbers. Concretely, the API key you create must satisfy the following regular expression: `mb_[A-Za-z0-9+/=]+`.
-- Only admins can create API keys. This means either a) the Metabase must already have at least one admin account, or b) you need to add an admin account in the `users` section of the config file.
-- The keys themselves can be assigned to non-admin groups. Meaning: the permissions for the key are defined by the `group`, not the `creator`.
+You can also use an environment variable to supply an API key, like so:
+
+```
+{% raw %}
+api-keys:
+  - name: "ENV API Key"
+    key: "{{env API_KEY_FROM_ENV}}"
+    creator: "admin@example.com"
+    group: "admin"
+{% endraw %}
+```
+
+API keys that you create (the value of the `key`) must have the format `mb_` followed by a [Base64](https://en.wikipedia.org/wiki/Base64) string (if you're wearing formal attire, you'd say a _tetrasexagesimal_ string). So, `mb_` followed by letters and numbers, minimum: 12 characters, maximum: 254 characters. Concretely, the API key you create must satisfy the following regular expression: `mb_[A-Za-z0-9+/=]+`.
+
+You can generate a handsome API key using the `openssl rand` command:
+
+```sh
+echo "mb_$(openssl rand -base64 32)"
+```
+
+Which would generate something like:
+
+```
+mb_aDqk1Tc4ZotWb2TyjHY71glALKlB+g75dLgmSufWGLc=
+```
+
+Some other things to note about API keys in the config file:
+
+- The `creator` of an API key must be an admin. This means either a) your Metabase must already have at least one admin account, or b) you need to add an admin account in the `users` section of the config file.
+- The keys themselves can be assigned to one of two groups: `admin` or `all-users`. The config file restricts `group` assignment to these groups because they're the only ones that Metabase _always_ initializes.
+- The permissions for the key correspond to the permissions granted to its `group` (not its `creator`).
 - If Metabase finds an existing API key with the same _name_ as a key in the config file, it will preserve the existing key (i.e., it won't overwrite the existing key with the key in the config file). For example, if you initially set up an API key, then later regenerate the key in the Metabase user interface, loading Metabase with the config file won't overwrite that regenerated key (which means the `key` in the config file will no longer work).
 - If you _do_ want to overwrite the existing key from the config file, you'll need to first [delete the existing key](../people-and-groups/api-keys.md#deleting-api-keys). If you want to keep both keys, you'll need to rename the key in the config file.
 
