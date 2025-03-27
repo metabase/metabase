@@ -23,7 +23,7 @@ export const IconContainer = styled.div`
   flex-shrink: 0;
   height: 42px;
   width: 42px;
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.color ? color(props.color) : "var(--mb-color-bg-dark)"};
   margin-right: ${space(1)};
   border-radius: 6px;

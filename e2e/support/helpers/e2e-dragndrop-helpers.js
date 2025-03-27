@@ -7,11 +7,11 @@ export function dragField(startIndex, dropIndex) {
   const SLOPPY_CLICK_THRESHOLD = 10;
   cy.get("@dragHandle")
     .eq(dropIndex)
-    .then($target => {
+    .then(($target) => {
       const coordsDrop = $target[0].getBoundingClientRect();
       cy.get("@dragHandle")
         .eq(startIndex)
-        .then(subject => {
+        .then((subject) => {
           const coordsDrag = subject[0].getBoundingClientRect();
           cy.wrap(subject)
             .trigger("mousedown", {

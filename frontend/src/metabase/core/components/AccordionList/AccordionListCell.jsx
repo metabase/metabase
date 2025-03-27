@@ -231,7 +231,7 @@ export const AccordionListCell = ({
       <ListSearchField
         fullWidth
         autoFocus
-        onChange={e => onChangeSearchText(e.target.value)}
+        onChange={(e) => onChangeSearchText(e.target.value)}
         onResetClick={() => onChangeSearchText("")}
         value={searchText}
         placeholder={searchPlaceholder}

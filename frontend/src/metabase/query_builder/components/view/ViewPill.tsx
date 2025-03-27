@@ -64,7 +64,7 @@ function ViewPill({
           className={CS.ml1}
           role="button"
           aria-label={removeButtonLabel}
-          onClick={e => {
+          onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}

@@ -40,7 +40,7 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   const type = getParameterType(parameter);
   if (type === "temporal-unit") {
     const availableUnits = Lib.availableTemporalUnits();
-    return availableUnits.some(unit => unit === value) ? value : null;
+    return availableUnits.some((unit) => unit === value) ? value : null;
   }
 
   const coercedValue =
@@ -64,14 +64,14 @@ function parseParameterValueForNumber(value: ParameterValueOrArray) {
   // https://github.com/metabase/metabase/issues/25374#issuecomment-1272520560
   if (typeof value === "string") {
     // something like "1,2,3",  "1, 2,  3", ",,,1,2, 3"
-    const splitValues = value.split(",").filter(item => item.trim() !== "");
+    const splitValues = value.split(",").filter((item) => item.trim() !== "");
     if (splitValues.length === 0) {
       return null;
     }
 
     if (splitValues.length > 1) {
-      const numbers = splitValues.map(number => parseFloat(number));
-      if (numbers.every(number => !isNaN(number))) {
+      const numbers = splitValues.map((number) => parseFloat(number));
+      if (numbers.every((number) => !isNaN(number))) {
         return numbers.join(",");
       }
 
@@ -87,20 +87,20 @@ function parseParameterValueForFields(
   fields: Field[],
 ): ParameterValueOrArray {
   if (Array.isArray(value)) {
-    return value.map(v => parseParameterValueForFields(v, fields));
+    return value.map((v) => parseParameterValueForFields(v, fields));
   }
 
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
-  if (fields.every(f => f.isNumeric() && !f.isDate())) {
+  if (fields.every((f) => f.isNumeric() && !f.isDate())) {
     const number = parseFloat(String(value));
     return isNaN(number) ? [] : number;
   }
 
-  if (fields.every(f => f.isBoolean())) {
+  if (fields.every((f) => f.isBoolean())) {
     return value === "true" ? true : value === "false" ? false : [];
   }
 
-  if (fields.every(f => f.isString() || f.isStringLike())) {
+  if (fields.every((f) => f.isString() || f.isStringLike())) {
     return String(value);
   }
 
@@ -130,7 +130,7 @@ export function getParameterValuesByIdFromQueryParams(
   lastUsedParametersValues?: Record<ParameterId, unknown>,
 ) {
   return Object.fromEntries(
-    parameters.map(parameter => [
+    parameters.map((parameter) => [
       parameter.id,
       getParameterValueFromQueryParams(
         parameter,

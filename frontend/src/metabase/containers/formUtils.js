@@ -41,23 +41,23 @@ export function getValue(fnOrValue, ...args) {
 export function makeFormObject(formDef) {
   const form = {
     ...formDef,
-    fields: values => getValue(formDef.fields, values),
-    fieldNames: values => [
+    fields: (values) => getValue(formDef.fields, values),
+    fieldNames: (values) => [
       "id",
-      ...form.fields(values).map(field => field.name),
+      ...form.fields(values).map((field) => field.name),
     ],
   };
 
   // for validating the object, or individual values
   makeFormMethod(form, "validate", {}, (a, b) =>
-    [a, b].filter(a => a).join(", "),
+    [a, b].filter((a) => a).join(", "),
   );
 
   // for getting the initial values object, or getting individual values
   makeFormMethod(form, "initial");
 
   // for normalizing the object before submitting, or normalizeing individual values
-  makeFormMethod(form, "normalize", object => object);
+  makeFormMethod(form, "normalize", (object) => object);
   makeFormMethod(form, "hidden");
 
   return form;
@@ -84,7 +84,7 @@ function setValueAtPath(object, path, value, mergeFn = (a, b) => b) {
 
 export function cleanObject(object) {
   const result = {};
-  Object.keys(object).forEach(key => {
+  Object.keys(object).forEach((key) => {
     const isNestedObject = typeof object[key] === "object";
     if (isNestedObject) {
       const cleanNestedObject = cleanObject(object[key]);

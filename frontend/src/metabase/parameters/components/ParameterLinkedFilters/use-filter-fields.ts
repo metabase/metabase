@@ -19,8 +19,8 @@ const useFilterFields = (
   const [state, setState] = useState<UseFilterFieldsState>({ loading: false });
 
   const handleLoad = useCallback(async () => {
-    const filtered = getFields(parameter).map(field => field.id);
-    const filtering = getFields(otherParameter).map(field => field.id);
+    const filtered = getFields(parameter).map((field) => field.id);
+    const filtering = getFields(otherParameter).map((field) => field.id);
 
     if (!filtered.length || !filtered.length) {
       const errorParameter = !filtered.length ? parameter : otherParameter;
@@ -47,7 +47,7 @@ const getParameterError = ({ name }: Parameter) => {
 
 const getParameterMapping = (data: Record<FieldId, FieldId[]>) => {
   return Object.entries(data).flatMap(([filteredId, filteringIds]) =>
-    filteringIds.map(filteringId => [filteringId, parseInt(filteredId, 10)]),
+    filteringIds.map((filteringId) => [filteringId, parseInt(filteredId, 10)]),
   );
 };
 

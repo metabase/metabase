@@ -3,7 +3,7 @@ import type { MantineThemeOverride } from "@mantine/core";
 export const getAccordionOverrides =
   (): MantineThemeOverride["components"] => ({
     Accordion: {
-      styles: theme => {
+      styles: (theme) => {
         return {
           control: {
             paddingLeft: 14,

@@ -74,7 +74,7 @@ export const PublicLinkCopyPanel = ({
         <Group spacing="sm" position="right">
           {extensions &&
             extensions.length > 0 &&
-            extensions.map(extension => (
+            extensions.map((extension) => (
               <Anchor
                 data-testid="extension-option"
                 key={extension}

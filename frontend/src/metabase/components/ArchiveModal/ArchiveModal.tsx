@@ -32,7 +32,7 @@ export const ArchiveModal = ({
       modelId,
       triggeredFrom: "detail_page",
     })
-      .catch(error => setError(error))
+      .catch((error) => setError(error))
       .finally(() => {
         onClose?.();
       });

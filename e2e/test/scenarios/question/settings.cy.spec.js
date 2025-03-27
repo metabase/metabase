@@ -424,13 +424,13 @@ describe("scenarios > question > settings", () => {
       ];
 
       cy.findByTestId("TableInteractive-root").within(() => {
-        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
+        columnNames.forEach((text) => cy.findByText(text).should("be.visible"));
       });
 
       H.openVizSettingsSidebar();
 
       cy.findByTestId("chartsettings-sidebar").within(() => {
-        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
+        columnNames.forEach((text) => cy.findByText(text).should("be.visible"));
         cy.findByText("More Columns").should("not.exist");
 
         cy.icon("eye_outline").first().click();

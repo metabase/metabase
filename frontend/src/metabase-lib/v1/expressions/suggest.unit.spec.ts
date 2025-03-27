@@ -696,7 +696,7 @@ describe("metabase/lib/expression/suggest", () => {
 
 function cleanSuggestions(suggestions: Suggestion[] | undefined) {
   return _.chain(suggestions)
-    .map(s => _.pick(s, "type", "text"))
+    .map((s) => _.pick(s, "type", "text"))
     .sortBy("text")
     .value();
 }

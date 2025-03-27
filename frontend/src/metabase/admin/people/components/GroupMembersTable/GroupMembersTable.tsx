@@ -62,7 +62,7 @@ function GroupMembersTable({
 }: GroupMembersTableProps) {
   const { isLoading, data: apiKeys } = useListApiKeysQuery();
   const groupApiKeys = useMemo(() => {
-    return apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? [];
+    return apiKeys?.filter((apiKey) => apiKey.group.id === group.id) ?? [];
   }, [apiKeys, group.id]);
 
   // you can't remove people from Default and you can't remove the last user from Admin
@@ -72,11 +72,12 @@ function GroupMembersTable({
 
   const hasMembers = group.members.length > 0;
 
-  const handleAddUser: GroupMembersTableProps["onAddUserDone"] =
-    async userIds => {
-      await onAddUserDone(userIds);
-      reload();
-    };
+  const handleAddUser: GroupMembersTableProps["onAddUserDone"] = async (
+    userIds,
+  ) => {
+    await onAddUserDone(userIds);
+    reload();
+  };
 
   const handleRemoveUser = async (membershipId: number) => {
     await onMembershipRemove(membershipId);
@@ -90,7 +91,7 @@ function GroupMembersTable({
   ].filter(isNotNull);
 
   const alreadyMembersIds = useMemo(
-    () => new Set(groupMemberships.map(membership => membership.user_id)),
+    () => new Set(groupMemberships.map((membership) => membership.user_id)),
     [groupMemberships],
   );
 
@@ -177,7 +178,7 @@ const UserRow = ({
   memberships = [],
 }: UserRowProps) => {
   const groupMembership = memberships.find(
-    membership => membership.group_id === group.id,
+    (membership) => membership.group_id === group.id,
   );
 
   if (!groupMembership) {

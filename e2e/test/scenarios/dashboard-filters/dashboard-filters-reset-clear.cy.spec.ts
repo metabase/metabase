@@ -675,7 +675,7 @@ function createDashboardWithParameters(
       dashboard_id,
       cards: [
         {
-          parameter_mappings: parameters?.map(parameter => ({
+          parameter_mappings: parameters?.map((parameter) => ({
             parameter_id: parameter.id,
             card_id: checkNotNull(card_id),
             target: ["dimension", targetField],
@@ -945,7 +945,7 @@ function createDashboardWithParameterInEachTab({
         ],
       },
     ],
-  }).then(dashboard => H.visitDashboard(dashboard.id));
+  }).then((dashboard) => H.visitDashboard(dashboard.id));
 }
 
 function checkResetAllFiltersWorksAcrossTabs({

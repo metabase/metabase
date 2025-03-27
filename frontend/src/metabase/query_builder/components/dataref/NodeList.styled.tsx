@@ -45,7 +45,7 @@ export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
     background-color: var(--mb-color-bg-medium);
   }
 
-  ${props =>
+  ${(props) =>
     props.disabled &&
     css`
       pointer-events: none;

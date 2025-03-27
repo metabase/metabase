@@ -23,7 +23,9 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: StoryFn<ComponentProps<typeof CreateDashboardModal>> = args => (
+const Template: StoryFn<ComponentProps<typeof CreateDashboardModal>> = (
+  args,
+) => (
   <CreateDashboardModal
     onClose={action("onClose")}
     onCreate={action("onCreate")}

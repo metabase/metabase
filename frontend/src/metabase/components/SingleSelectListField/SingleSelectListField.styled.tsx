@@ -14,13 +14,13 @@ interface FilterInputProps {
 }
 
 export const FilterInputContainer = styled.div<FilterInputProps>`
-  margin-bottom: ${props => (props.isDashboardFilter ? "0" : "0.5rem")};
+  margin-bottom: ${(props) => (props.isDashboardFilter ? "0" : "0.5rem")};
 `;
 
 export const OptionsList = styled.ul<OptionListProps>`
   overflow: auto;
   list-style: none;
-  max-height: ${props => (props.isDashboardFilter ? "300px" : "none")};
+  max-height: ${(props) => (props.isDashboardFilter ? "300px" : "none")};
   padding: 0.5rem 0 0;
 `;
 
@@ -40,7 +40,7 @@ export const OptionItem = styled.div<OptionItemProps>`
   margin: 0;
   padding: 0.5rem 0.6rem;
   width: 100%;
-  ${props =>
+  ${(props) =>
     props.selected
       ? css`
           color: var(--mb-color-text-selected);
@@ -52,7 +52,7 @@ export const OptionItem = styled.div<OptionItemProps>`
         `}
 
   &:hover {
-    ${props =>
+    ${(props) =>
       !props.selected &&
       css`
         color: var(--mb-color-text-hover);

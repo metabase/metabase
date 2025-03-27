@@ -69,7 +69,7 @@ export function FormModelPicker({
           models={["dataset"]}
           title={t`Select a model`}
           value={model?.id ? getQuestionPickerValue(model) : undefined}
-          onChange={newModel => {
+          onChange={(newModel) => {
             setValue(newModel.id);
             setIsPickerOpen(false);
           }}

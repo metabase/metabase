@@ -58,7 +58,7 @@ export const TableBrowser = ({
         />
       </BrowseHeaderContent>
       <TableGrid>
-        {tables.map(table => (
+        {tables.map((table) => (
           <TableGridItem key={table.id}>
             <TableCard hoverable={!isSyncInProgress(table)}>
               <TableLink
@@ -150,7 +150,7 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
 
 TableBrowserItemButtons.propTypes = itemButtonsPropTypes;
 
-const getDatabaseCrumbs = dbId => {
+const getDatabaseCrumbs = (dbId) => {
   if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID) {
     return {
       title: t`Saved Questions`,

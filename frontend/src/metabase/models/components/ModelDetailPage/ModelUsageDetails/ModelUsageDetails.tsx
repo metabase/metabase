@@ -59,7 +59,7 @@ export function ModelUsageDetails({
 
   return (
     <ul>
-      {cards.map(card => (
+      {cards.map((card) => (
         <li key={card.id}>
           <CardListItem to={Urls.question(card)} aria-label={card.name}>
             <Icon name={getIcon(card).name as IconName} />

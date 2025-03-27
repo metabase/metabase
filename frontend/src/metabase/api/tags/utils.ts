@@ -77,7 +77,7 @@ export function provideActivityItemListTags(
   items: RecentItem[] | PopularItem[],
 ): TagDescription<TagType>[] {
   return [
-    ...ACTIVITY_MODELS.map(model => listTag(TAG_TYPE_MAPPING[model])),
+    ...ACTIVITY_MODELS.map((model) => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideActivityItemTags),
   ];
 }
@@ -137,7 +137,7 @@ export function provideBookmarkTags(
 }
 
 export function provideCardListTags(cards: Card[]): TagDescription<TagType>[] {
-  return [listTag("card"), ...cards.flatMap(card => provideCardTags(card))];
+  return [listTag("card"), ...cards.flatMap((card) => provideCardTags(card))];
 }
 
 export function provideCardTags(card: Card): TagDescription<TagType>[] {
@@ -171,7 +171,7 @@ export function provideCollectionItemListTags(
   models: CollectionItemModel[] = Array.from(COLLECTION_ITEM_MODELS),
 ): TagDescription<TagType>[] {
   return [
-    ...models.map(model => listTag(TAG_TYPE_MAPPING[model])),
+    ...models.map((model) => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideCollectionItemTags),
   ];
 }
@@ -187,7 +187,7 @@ export function provideCollectionListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("collection"),
-    ...collections.flatMap(collection => provideCollectionTags(collection)),
+    ...collections.flatMap((collection) => provideCollectionTags(collection)),
   ];
 }
 
@@ -208,7 +208,7 @@ export function provideModelIndexListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("model-index"),
-    ...modelIndexes.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
+    ...modelIndexes.flatMap((modelIndex) => provideModelIndexTags(modelIndex)),
   ];
 }
 
@@ -230,7 +230,7 @@ export function provideChannelListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("channel"),
-    ...channels.flatMap(channel => provideChannelTags(channel)),
+    ...channels.flatMap((channel) => provideChannelTags(channel)),
   ];
 }
 
@@ -269,7 +269,7 @@ export function provideDashboardListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("dashboard"),
-    ...dashboards.map(dashboard => idTag("dashboard", dashboard.id)),
+    ...dashboards.map((dashboard) => idTag("dashboard", dashboard.id)),
   ];
 }
 
@@ -277,8 +277,8 @@ export function provideDashboardTags(
   dashboard: Dashboard,
 ): TagDescription<TagType>[] {
   const cards = dashboard.dashcards
-    .flatMap(dashcard => (isVirtualDashCard(dashcard) ? [] : [dashcard]))
-    .map(dashcard => dashcard.card);
+    .flatMap((dashcard) => (isVirtualDashCard(dashcard) ? [] : [dashcard]))
+    .map((dashcard) => dashcard.card);
 
   return [
     idTag("dashboard", dashboard.id),
@@ -413,7 +413,7 @@ export function provideSearchItemListTags(
   models: SearchModel[] = Array.from(SEARCH_MODELS),
 ): TagDescription<TagType>[] {
   return [
-    ...models.map(model => listTag(TAG_TYPE_MAPPING[model])),
+    ...models.map((model) => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideSearchItemTags),
   ];
 }
@@ -534,7 +534,7 @@ export function provideTimelineTags(
 export function provideUserListTags(
   users: UserInfo[],
 ): TagDescription<TagType>[] {
-  return [listTag("user"), ...users.flatMap(user => provideUserTags(user))];
+  return [listTag("user"), ...users.flatMap((user) => provideUserTags(user))];
 }
 
 export function provideUserTags(user: UserInfo): TagDescription<TagType>[] {

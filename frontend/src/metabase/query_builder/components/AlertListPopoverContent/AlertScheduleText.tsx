@@ -37,11 +37,11 @@ export const AlertScheduleText = ({
 
       const hour = _.find(
         HOUR_OPTIONS,
-        opt => opt.value === hourOfDay % 12,
+        (opt) => opt.value === hourOfDay % 12,
       )?.name;
       const amPm = _.find(
         AM_PM_OPTIONS,
-        opt => opt.value === (hourOfDay >= 12 ? 1 : 0),
+        (opt) => opt.value === (hourOfDay >= 12 ? 1 : 0),
       )?.name;
 
       return `${verbose ? "daily at " : "Daily, "} ${hour} ${amPm}`;
@@ -55,15 +55,15 @@ export const AlertScheduleText = ({
 
       const day = _.find(
         dayOfWeekOptions,
-        o => o.value === schedule.schedule_day,
+        (o) => o.value === schedule.schedule_day,
       )?.name;
       const hour = _.find(
         HOUR_OPTIONS,
-        opt => opt.value === hourOfDay % 12,
+        (opt) => opt.value === hourOfDay % 12,
       )?.name;
       const amPm = _.find(
         AM_PM_OPTIONS,
-        opt => opt.value === (hourOfDay >= 12 ? 1 : 0),
+        (opt) => opt.value === (hourOfDay >= 12 ? 1 : 0),
       )?.name;
 
       if (verbose) {

@@ -9,7 +9,7 @@ export default {
   component: DateInput,
 };
 
-const Template: StoryFn<typeof DateInput> = args => {
+const Template: StoryFn<typeof DateInput> = (args) => {
   const [value, setValue] = useState<Moment>();
   return <DateInput {...args} value={value} onChange={setValue} />;
 };

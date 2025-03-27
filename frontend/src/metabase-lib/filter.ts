@@ -274,8 +274,8 @@ export function specificDateFilterClause(
   { operator, column, values, hasTime }: SpecificDateFilterParts,
 ): ExpressionClause {
   const serializedValues = hasTime
-    ? values.map(value => serializeDateTime(value))
-    : values.map(value => serializeDate(value));
+    ? values.map((value) => serializeDateTime(value))
+    : values.map((value) => serializeDate(value));
 
   const minuteBucket = hasTime
     ? findTemporalBucket(query, stageIndex, column, "minute")
@@ -385,7 +385,7 @@ export function excludeDateFilterClause(
 
   const bucket = findTemporalBucket(query, stageIndex, column, bucketName);
   const columnWithBucket = withTemporalBucket(column, bucket ?? null);
-  const serializedValues = values.map(value =>
+  const serializedValues = values.map((value) =>
     serializeExcludeDatePart(value, bucketName),
   );
 
@@ -424,7 +424,7 @@ export function excludeDateFilterParts(
     return null;
   }
 
-  const values = serializedValues.map(value =>
+  const values = serializedValues.map((value) =>
     deserializeExcludeDatePart(value, bucketInfo.shortName),
   );
   if (!isDefinedArray(values)) {
@@ -444,7 +444,7 @@ export function timeFilterClause({
   column,
   values,
 }: TimeFilterParts): ExpressionClause {
-  const serializedValues = values.map(value => serializeTime(value));
+  const serializedValues = values.map((value) => serializeTime(value));
   return expressionClause(operator, [column, ...serializedValues]);
 }
 
@@ -467,7 +467,7 @@ export function timeFilterParts(
     return null;
   }
 
-  const values = serializedValues.map(value => deserializeTime(value));
+  const values = serializedValues.map((value) => deserializeTime(value));
   if (!isDefinedArray(values)) {
     return null;
   }
@@ -556,7 +556,7 @@ function findTemporalBucket(
   column: ColumnMetadata,
   temporalUnit: TemporalUnit,
 ): Bucket | undefined {
-  return availableTemporalBuckets(query, stageIndex, column).find(bucket => {
+  return availableTemporalBuckets(query, stageIndex, column).find((bucket) => {
     const bucketInfo = displayInfo(query, stageIndex, bucket);
     return bucketInfo.shortName === temporalUnit;
   });

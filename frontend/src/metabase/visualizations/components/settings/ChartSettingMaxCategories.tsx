@@ -48,7 +48,7 @@ export const ChartSettingMaxCategories = ({
       <Checkbox
         checked={isEnabled}
         label={t`Enforce maximum number of series`}
-        onChange={e => handleToggleMaxNumberOfSeries(e.target.checked)}
+        onChange={(e) => handleToggleMaxNumberOfSeries(e.target.checked)}
       />
       <ChartSettingInputNumeric
         {...props}

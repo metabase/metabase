@@ -90,7 +90,7 @@ export function calculateSegmentLabelTextAnchor(angle: number): TextAnchor {
 }
 
 export function calculateChartScale(gaugeLabels: GaugeLabelData[]) {
-  const gaugeLabelDimensions = gaugeLabels.map(gaugeLabel => {
+  const gaugeLabelDimensions = gaugeLabels.map((gaugeLabel) => {
     const labelWidth = measureTextWidth(
       gaugeLabel.value,
       SEGMENT_LABEL_FONT_SIZE,

@@ -60,11 +60,11 @@ describe("scenarios > home > homepage", () => {
       cy.signInAsAdmin();
       cy.addSQLiteDatabase();
 
-      cy.intercept("/api/database", req => {
-        req.continue(res => {
+      cy.intercept("/api/database", (req) => {
+        req.continue((res) => {
           res.body.data[1].initial_sync_status = "incomplete";
 
-          return new Promise(resolve => {
+          return new Promise((resolve) => {
             setTimeout(() => {
               resolve();
               // Setting this to be arbitrarly long so that the repeat assertion
@@ -225,8 +225,8 @@ describe("scenarios > home > homepage", () => {
         {
           url: "/",
         },
-        req => {
-          req.continue(res => {
+        (req) => {
+          req.continue((res) => {
             res.body = res.body.replace(
               'src="app/dist/app-main',
               'src="bad-link.js',
@@ -236,7 +236,7 @@ describe("scenarios > home > homepage", () => {
         },
       );
 
-      cy.on("window:before:load", win => {
+      cy.on("window:before:load", (win) => {
         cy.spy(win.console, "error").as("errorConsole");
       });
 
@@ -410,8 +410,8 @@ describe("scenarios > home > custom homepage", () => {
           method: "GET",
           middleware: true,
         },
-        req => {
-          req.continue(res => {
+        (req) => {
+          req.continue((res) => {
             res.delay = 1000;
             res.send();
           });
@@ -604,7 +604,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
   });
 });
 
-const pinItem = name => {
+const pinItem = (name) => {
   cy.findByText(name).closest("tr").icon("ellipsis").click();
 
   H.popover().icon("pin").click();

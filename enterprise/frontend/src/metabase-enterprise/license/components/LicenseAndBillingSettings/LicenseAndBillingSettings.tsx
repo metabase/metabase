@@ -76,7 +76,7 @@ const LicenseAndBillingSettings = ({
     is_env_setting,
     env_name,
   } = settingValues?.find(
-    setting => setting.key === "premium-embedding-token",
+    (setting) => setting.key === "premium-embedding-token",
   ) ?? {};
 
   const {

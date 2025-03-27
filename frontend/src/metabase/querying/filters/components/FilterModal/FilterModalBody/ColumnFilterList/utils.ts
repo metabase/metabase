@@ -49,8 +49,10 @@ const PRIORITIES = [
 
 export function sortColumns(columnItems: ColumnItem[]): ColumnItem[] {
   return columnItems
-    .map(columnItem => ({
-      priority: PRIORITIES.findIndex(predicate => predicate(columnItem.column)),
+    .map((columnItem) => ({
+      priority: PRIORITIES.findIndex((predicate) =>
+        predicate(columnItem.column),
+      ),
       columnItem,
     }))
     .sort((a, b) => a.priority - b.priority)

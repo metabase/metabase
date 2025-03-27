@@ -12,7 +12,7 @@ export const TabHintToastContainer = styled.div<{ isVisible: boolean }>`
   left: 24px;
   transform: translateY(200%);
   transition: all 0.4s;
-  ${props =>
+  ${(props) =>
     props.isVisible &&
     css`
       transform: translateY(0);
@@ -41,7 +41,7 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   border-radius: 8px;
   transition: all 0.25s;
 
-  ${props =>
+  ${(props) =>
     props.isSelected &&
     css`
       color: var(--mb-color-text-white);
@@ -65,9 +65,10 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
 `;
 
 export const FieldTypeIcon = styled(Icon)<{ isSelected: boolean }>`
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.isSelected ? color("bg-white") : color("brand")};
-  color: ${props => (props.isSelected ? color("brand") : color("text-white"))};
+  color: ${(props) =>
+    props.isSelected ? color("brand") : color("text-white")};
   border-radius: 0.3em;
   padding: 0.2em;
 `;
@@ -98,7 +99,7 @@ export const QueryEditorContainer = styled.div<{ isResizable: boolean }>`
   z-index: 2;
   width: 100%;
 
-  ${props =>
+  ${(props) =>
     props.isResizable &&
     css`
       margin-bottom: 1rem;
@@ -120,5 +121,5 @@ export const TableContainer = styled.div<{ isSidebarOpen: boolean }>`
   flex-direction: column;
   flex-basis: 0;
 
-  ${props => props.isSidebarOpen && tableVisibilityStyle}
+  ${(props) => props.isSidebarOpen && tableVisibilityStyle}
 `;

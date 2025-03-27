@@ -49,7 +49,7 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
   });
 
   it("should be able to display custom question layout when clicking on dashboard cards", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(
         <InteractiveDashboard
           dashboardId={dashboardId}
@@ -104,7 +104,7 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
 
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
-        cy.get(dashboardIdAlias).then(dashboardId => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
           mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
         });
 

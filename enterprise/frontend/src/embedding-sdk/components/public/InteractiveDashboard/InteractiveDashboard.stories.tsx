@@ -27,7 +27,7 @@ export default {
   },
 };
 
-const Template: StoryFn<InteractiveDashboardProps> = args => {
+const Template: StoryFn<InteractiveDashboardProps> = (args) => {
   return <InteractiveDashboard {...args} />;
 };
 

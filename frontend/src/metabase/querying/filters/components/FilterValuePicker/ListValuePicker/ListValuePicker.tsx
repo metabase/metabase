@@ -58,7 +58,7 @@ function CheckboxListPicker({
   );
   const filteredOptions = searchOptions(availableOptions, searchValue);
   const selectedValuesSet = new Set(selectedValues);
-  const selectedFilteredOptions = filteredOptions.filter(option =>
+  const selectedFilteredOptions = filteredOptions.filter((option) =>
     selectedValuesSet.has(option.value),
   );
   const isAll = selectedFilteredOptions.length === filteredOptions.length;
@@ -70,7 +70,7 @@ function CheckboxListPicker({
 
   const handleToggleAll = () => {
     const newSelectedValuesSet = new Set(selectedValues);
-    filteredOptions.forEach(option => {
+    filteredOptions.forEach((option) => {
       if (isAll) {
         newSelectedValuesSet.delete(option.value);
       } else {
@@ -100,7 +100,7 @@ function CheckboxListPicker({
           />
           <Checkbox.Group value={selectedValues} onChange={onChange}>
             <Stack>
-              {filteredOptions.map(option => (
+              {filteredOptions.map((option) => (
                 <Checkbox
                   key={option.value}
                   value={option.value}
@@ -143,7 +143,7 @@ function CheckboxGridPicker({
   return (
     <Checkbox.Group value={selectedValues} onChange={onChange}>
       <ColumnGrid rows={rows}>
-        {options.map(option => (
+        {options.map((option) => (
           <Checkbox
             key={option.value}
             value={option.value}

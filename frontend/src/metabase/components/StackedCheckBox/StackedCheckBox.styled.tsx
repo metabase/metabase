@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 export const StackedCheckBoxRoot = styled.div<{ disabled: boolean }>`
   position: relative;
   transform: scale(1);
-  opacity: ${props => (props.disabled ? 0.4 : 1)};
+  opacity: ${(props) => (props.disabled ? 0.4 : 1)};
 `;
 
 export const OpaqueCheckBox = styled(CheckBox)`
@@ -19,18 +19,18 @@ export const StackedBackground = styled.div<{
   checkedColor: string;
   uncheckedColor: string;
 }>`
-  width: ${props => `${props.size}px`};
-  height: ${props => `${props.size}px`};
+  width: ${(props) => `${props.size}px`};
+  height: ${(props) => `${props.size}px`};
   border-radius: 4px;
   position: absolute;
   display: inline-block;
   z-index: -1;
   top: -3px;
   left: 3px;
-  background: ${props =>
+  background: ${(props) =>
     props.checked ? color(props.checkedColor) : "var(--mb-color-bg-white)"};
   border: 2px solid
-    ${props =>
+    ${(props) =>
       props.checked ? color(props.checkedColor) : color(props.uncheckedColor)};
 `;
 

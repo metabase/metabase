@@ -25,7 +25,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
 
   Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
     context(`${permission} access`, () => {
-      userGroup.forEach(user => {
+      userGroup.forEach((user) => {
         onlyOn(permission === "curate", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
@@ -73,7 +73,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             });
 
             it("should shallow duplicate a dashboard but not its cards", () => {
-              cy.get("@originalDashboardId").then(id => {
+              cy.get("@originalDashboardId").then((id) => {
                 cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
                   "copyDashboard",
                 );
@@ -120,7 +120,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             });
 
             it("should deep duplicate a dashboard and its cards", () => {
-              cy.get("@originalDashboardId").then(id => {
+              cy.get("@originalDashboardId").then((id) => {
                 cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
                   "copyDashboard",
                 );
@@ -161,7 +161,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             });
 
             it("should deep duplicate a dashboard and its cards to a collection created on the go", () => {
-              cy.get("@originalDashboardId").then(id => {
+              cy.get("@originalDashboardId").then((id) => {
                 cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
                   "copyDashboard",
                 );
@@ -225,7 +225,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             });
 
             it("should be able to move/undo move a dashboard (metabase#13059, metabase#25705)", () => {
-              cy.get("@originalDashboardId").then(id => {
+              cy.get("@originalDashboardId").then((id) => {
                 H.appBar().contains("Our analytics");
 
                 H.popover().findByText("Move").click();
@@ -257,7 +257,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             });
 
             it("should be able to archive/unarchive a dashboard", () => {
-              cy.get("@originalDashboardId").then(id => {
+              cy.get("@originalDashboardId").then((id) => {
                 H.popover()
                   .findByText("Move to trash")
                   .should("be.visible")
@@ -330,7 +330,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
 });
 
 function assertOnRequest(xhr_alias) {
-  cy.wait("@" + xhr_alias).then(xhr => {
+  cy.wait("@" + xhr_alias).then((xhr) => {
     expect(xhr.status).not.to.eq(403);
   });
   cy.findByText("Sorry, you don’t have permission to see that.").should(

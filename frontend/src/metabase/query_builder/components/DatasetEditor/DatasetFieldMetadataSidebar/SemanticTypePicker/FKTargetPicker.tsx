@@ -76,7 +76,7 @@ function FKTargetPicker({
   }, [databaseId, fetchDatabaseIDFields]);
 
   const options = useMemo(
-    () => _.sortBy(IDFields, field => getFieldName(field)),
+    () => _.sortBy(IDFields, (field) => getFieldName(field)),
     [IDFields],
   );
 

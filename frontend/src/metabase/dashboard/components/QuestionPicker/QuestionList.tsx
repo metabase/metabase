@@ -108,7 +108,7 @@ export function QuestionList({
         return (
           <>
             <SelectList>
-              {list.map(item => (
+              {list.map((item) => (
                 <QuestionListItem
                   key={item.id}
                   id={item.id}

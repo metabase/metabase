@@ -20,16 +20,16 @@ export const getScheduleText = ({
   const dayOfWeekOptions = getDayOfWeekOptions();
   const hourOfDay = schedule.schedule_hour;
   const hour = hourOfDay
-    ? _.find(HOUR_OPTIONS, opt => opt.value === hourOfDay % 12)?.name
+    ? _.find(HOUR_OPTIONS, (opt) => opt.value === hourOfDay % 12)?.name
     : null;
   const amPm = hourOfDay
-    ? _.find(AM_PM_OPTIONS, opt => opt.value === (hourOfDay >= 12 ? 1 : 0))
+    ? _.find(AM_PM_OPTIONS, (opt) => opt.value === (hourOfDay >= 12 ? 1 : 0))
         ?.name
     : null;
 
   const day = _.find(
     dayOfWeekOptions,
-    o => o.value === schedule.schedule_day,
+    (o) => o.value === schedule.schedule_day,
   )?.name;
 
   return match([schedule.schedule_type, verbose, hourOfDay])

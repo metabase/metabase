@@ -80,7 +80,7 @@ export const CollectionBrowserInner = ({
   className,
   style,
 }: CollectionBrowserProps) => {
-  const baseCollectionId = useSdkSelector(state =>
+  const baseCollectionId = useSdkSelector((state) =>
     getCollectionIdSlugFromReference(state, collectionId),
   );
 
@@ -106,7 +106,7 @@ export const CollectionBrowserInner = ({
   };
 
   const collectionTypes = visibleEntityTypes
-    .map(entityType => ENTITY_NAME_MAP[entityType])
+    .map((entityType) => ENTITY_NAME_MAP[entityType])
     .filter(isNotNull);
 
   return (

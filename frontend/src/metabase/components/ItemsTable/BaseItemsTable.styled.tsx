@@ -29,7 +29,7 @@ export const Table = styled(
     <table {...props} className={cx(props.className, AdminS.ContentTable)} />
   ),
   {
-    shouldForwardProp: prop => prop !== "isInDragLayer",
+    shouldForwardProp: (prop) => prop !== "isInDragLayer",
   },
 )`
   background-color: var(--mb-color-bg-white);
@@ -54,7 +54,7 @@ export const Table = styled(
     }
   }
 
-  ${props => (props.isInDragLayer ? `width: 50vw;` : "")}
+  ${(props) => (props.isInDragLayer ? `width: 50vw;` : "")}
 `;
 
 export const hideResponsively = ({
@@ -159,7 +159,7 @@ export const SortingControlContainer = styled.div<{
     isSortable ? `cursor: pointer; user-select: none;` : ""}
 
   .Icon {
-    visibility: ${props => (props.isActive ? "visible" : "hidden")};
+    visibility: ${(props) => (props.isActive ? "visible" : "hidden")};
   }
 
   &:hover {

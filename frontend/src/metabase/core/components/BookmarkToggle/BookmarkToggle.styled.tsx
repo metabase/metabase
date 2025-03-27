@@ -25,10 +25,11 @@ export interface BookmarkIconProps {
 }
 
 export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
-  color: ${props => (props.isBookmarked ? color("brand") : "")};
-  animation-name: ${props =>
+  color: ${(props) => (props.isBookmarked ? color("brand") : "")};
+  animation-name: ${(props) =>
     props.isBookmarked ? expandKeyframes : shrinkKeyframes};
-  animation-play-state: ${props => (props.isAnimating ? "running" : "paused")};
+  animation-play-state: ${(props) =>
+    props.isAnimating ? "running" : "paused"};
   animation-duration: 0.3s;
   animation-timing-function: linear;
 `;

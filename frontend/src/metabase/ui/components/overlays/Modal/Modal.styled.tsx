@@ -10,7 +10,7 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       padding: DEFAULT_MODAL_SPACING,
     },
-    styles: theme => ({
+    styles: (theme) => ({
       root: {
         color: "var(--mb-color-text-dark)",
       },

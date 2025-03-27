@@ -184,7 +184,7 @@ export const InteractiveQuestionDefaultView = ({
           closeOnSuccess
           onClose={closeSaveModal}
           onCreate={onCreate}
-          onSave={async question => {
+          onSave={async (question) => {
             await onSave(question);
             closeSaveModal();
           }}

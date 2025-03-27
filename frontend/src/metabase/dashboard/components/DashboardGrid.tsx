@@ -251,7 +251,7 @@ class DashboardGridInner extends Component<
           dashcardData,
           state.visibleCardIds,
         )
-      : new Set(dashboard.dashcards.map(card => card.id));
+      : new Set(dashboard.dashcards.map((card) => card.id));
 
     const visibleCards = getVisibleCards(
       dashboard.dashcards,
@@ -309,9 +309,9 @@ class DashboardGridInner extends Component<
 
     const changes: SetDashCardAttributesOpts[] = [];
 
-    layout.forEach(layoutItem => {
+    layout.forEach((layoutItem) => {
       const dashboardCard = this.getVisibleCards().find(
-        card => String(card.id) === layoutItem.i,
+        (card) => String(card.id) === layoutItem.i,
       );
       if (dashboardCard) {
         const keys = ["h", "w", "x", "y"];

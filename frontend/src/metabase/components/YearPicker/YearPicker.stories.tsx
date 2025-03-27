@@ -8,7 +8,7 @@ export default {
   component: YearPicker,
 };
 
-const Template: StoryFn<typeof YearPicker> = args => {
+const Template: StoryFn<typeof YearPicker> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (year: number) => {

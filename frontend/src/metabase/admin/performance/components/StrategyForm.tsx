@@ -132,7 +132,7 @@ export const StrategyForm = ({
 const isFormDirty = (values: CacheStrategy, initialValues: CacheStrategy) => {
   const fieldNames = [...Object.keys(values), ...Object.keys(initialValues)];
   const defaultValues = _.object(
-    _.map(fieldNames, fieldName => [
+    _.map(fieldNames, (fieldName) => [
       fieldName,
       getDefaultValueForField(values.type, fieldName),
     ]),
@@ -367,7 +367,7 @@ const ScheduleStrategyFormFields = () => {
   const [schedule, setSchedule] = useState<ScheduleSettings>(
     initialSchedule || {},
   );
-  const timezone = useSelector(state =>
+  const timezone = useSelector((state) =>
     getSetting(state, "report-timezone-short"),
   );
   const onScheduleChange = useCallback(

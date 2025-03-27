@@ -5,11 +5,11 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const FieldTypeIcon = styled(Icon)`
-  color: ${props =>
+  color: ${(props) =>
     props.name === "ellipsis" ? color("text-white") : color("brand")};
   margin-right: 6px;
 
-  ${props =>
+  ${(props) =>
     props.name === "ellipsis" &&
     css`
       border-radius: 0.3em;

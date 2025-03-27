@@ -12,9 +12,9 @@ export const NotebookCell = styled.div<{ color: string; padding?: string }>`
   align-items: center;
   flex-wrap: wrap;
   border-radius: 8px;
-  background-color: ${props => alpha(props.color, 0.1)};
-  padding: ${props => props.padding || "14px"};
-  color: ${props => props.color};
+  background-color: ${(props) => alpha(props.color, 0.1)};
+  padding: ${(props) => props.padding || "14px"};
+  color: ${(props) => props.color};
 `;
 
 export const NotebookCellItemContainer = styled.div<{
@@ -25,20 +25,20 @@ export const NotebookCellItemContainer = styled.div<{
 }>`
   display: flex;
   font-weight: bold;
-  color: ${props => (props.inactive ? props.color : color("text-white"))};
+  color: ${(props) => (props.inactive ? props.color : color("text-white"))};
   border-radius: 6px;
   border: 2px solid transparent;
-  border-color: ${props =>
+  border-color: ${(props) =>
     props.inactive ? alpha(props.color, 0.25) : "transparent"};
-  cursor: ${props =>
+  cursor: ${(props) =>
     (!props.inactive || props.onClick) && !props.readOnly && !props.disabled
       ? "pointer"
       : "default"};
-  pointer-events: ${props => (props.disabled ? "none" : "auto")};
+  pointer-events: ${(props) => (props.disabled ? "none" : "auto")};
   align-items: stretch;
 
   &:hover {
-    border-color: ${props => props.inactive && alpha(props.color, 0.8)};
+    border-color: ${(props) => props.inactive && alpha(props.color, 0.8)};
   }
 
   transition: border 300ms linear;
@@ -59,17 +59,18 @@ export const NotebookCellItemContentContainer = styled.div<{
   display: flex;
   align-items: center;
   padding: ${CONTAINER_PADDING};
-  background-color: ${props => (props.inactive ? "transparent" : props.color)};
+  background-color: ${(props) =>
+    props.inactive ? "transparent" : props.color};
 
   &:hover {
-    background-color: ${props =>
+    background-color: ${(props) =>
       !props.inactive &&
       !props.readOnly &&
       !props.disabled &&
       alpha(props.color, 0.8)};
   }
 
-  ${props =>
+  ${(props) =>
     !!props.border &&
     css`
     border-${props.border}: 1px solid ${alpha(
@@ -78,14 +79,14 @@ export const NotebookCellItemContentContainer = styled.div<{
     )};
   `}
 
-  ${props =>
+  ${(props) =>
     props.roundedCorners.includes("left") &&
     css`
       border-top-left-radius: 6px;
       border-bottom-left-radius: 6px;
     `}
 
-  ${props =>
+  ${(props) =>
     props.roundedCorners.includes("right") &&
     css`
       border-top-right-radius: 6px;

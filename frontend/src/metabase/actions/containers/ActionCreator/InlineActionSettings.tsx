@@ -94,7 +94,7 @@ const InlineActionSettings = ({
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
   const hasSharingPermission = isAdmin && isPublicSharingEnabled;
 
-  const handleTogglePublic: ChangeEventHandler<HTMLInputElement> = event => {
+  const handleTogglePublic: ChangeEventHandler<HTMLInputElement> = (event) => {
     const isPublic = event.target.checked;
 
     if (isPublic) {

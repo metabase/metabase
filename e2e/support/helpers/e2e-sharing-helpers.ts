@@ -8,6 +8,6 @@ export const openSharingMenu = (menuItemText?: string) => {
   }
 };
 
-export const toggleAlertChannel = channel => {
+export const toggleAlertChannel = (channel) => {
   cy.findByText(channel).parent().find("input").click({ force: true });
 };

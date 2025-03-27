@@ -9,7 +9,7 @@ import type { SankeyChartModel, SankeyData } from "../model/types";
 import type { SankeyChartLayout } from "./types";
 
 const getLastLevelIndex = (sankeyData: SankeyData) =>
-  Math.max(...sankeyData.nodes.map(node => node.level));
+  Math.max(...sankeyData.nodes.map((node) => node.level));
 
 const getMostRightNodes = (
   sankeyData: SankeyData,
@@ -47,7 +47,7 @@ const getLabelValueFormatting = (
   }
 
   const maxEdgeLabelWidth = Math.max(
-    ...chartModel.data.links.map(edge => {
+    ...chartModel.data.links.map((edge) => {
       const formattedValue = chartModel.formatters.value(edge.value);
       return renderingContext.measureText(formattedValue, {
         ...SANKEY_CHART_STYLE.edgeLabels,
@@ -98,7 +98,7 @@ export const getSankeyLayout = (
   const maxRightLabelWidth = Math.max(
     ...mostRightNodes
       .map(({ node }) => chartModel.formatters.node(node))
-      .map(formattedNode =>
+      .map((formattedNode) =>
         renderingContext.measureText(formattedNode, {
           ...SANKEY_CHART_STYLE.nodeLabels,
           family: renderingContext.fontFamily,

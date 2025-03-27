@@ -67,7 +67,7 @@ describe("binning related reproductions", () => {
       isSelected: true,
     });
 
-    cy.wait("@dataset").then(xhr => {
+    cy.wait("@dataset").then((xhr) => {
       expect(xhr.response.body.error).not.to.exist;
     });
 
@@ -355,7 +355,7 @@ describe("binning related reproductions", () => {
         cy.findByText("LONGITUDE").click();
       });
 
-      cy.wait("@dataset").then(xhr => {
+      cy.wait("@dataset").then((xhr) => {
         expect(xhr.response.body.error).not.to.exist;
       });
 

@@ -191,7 +191,7 @@ describe("scenarios > question > native subquery", () => {
         // check the original name is in the query
         cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
-        cy.get("@questionId").then(questionId => {
+        cy.get("@questionId").then((questionId) => {
           cy.get(".ace_content:visible").contains(
             `{{#${questionId}-a-people-question-1}}`,
           );
@@ -206,7 +206,7 @@ describe("scenarios > question > native subquery", () => {
         // check the name has changed
         cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
-        cy.get("@questionId").then(questionId => {
+        cy.get("@questionId").then((questionId) => {
           cy.get(".ace_content:visible").contains(
             `{{#${questionId}-a-people-question-1-changed}}`,
           );
@@ -223,7 +223,7 @@ describe("scenarios > question > native subquery", () => {
         query: "select * from PEOPLE where STATE = 'WA'",
       },
     })
-      .then(response => {
+      .then((response) => {
         cy.wrap(response.body.id).as("nestedQuestionId");
         const tagID = `#${response.body.id}`;
 
@@ -243,7 +243,7 @@ describe("scenarios > question > native subquery", () => {
           },
         });
       })
-      .then(response => {
+      .then((response) => {
         cy.wrap(response.body.id).as("toplevelQuestionId");
 
         cy.visit(`/question/${response.body.id}`);

@@ -70,20 +70,22 @@ export function FilterColumnPicker({
     const columns = Lib.filterableColumns(query, stageIndex);
     const columnGroups = Lib.groupColumns(columns);
 
-    const sections = columnGroups.map(group => {
+    const sections = columnGroups.map((group) => {
       const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-      const columnItems = Lib.getColumnsFromColumnGroup(group).map(column => ({
-        ...Lib.displayInfo(query, stageIndex, column),
-        column,
-        query,
-        stageIndex,
-      }));
+      const columnItems = Lib.getColumnsFromColumnGroup(group).map(
+        (column) => ({
+          ...Lib.displayInfo(query, stageIndex, column),
+          column,
+          query,
+          stageIndex,
+        }),
+      );
 
       const includeSegments = groupInfo.isSourceTable;
 
       const segmentItems = includeSegments
-        ? Lib.availableSegments(query, stageIndex).map(segment => ({
+        ? Lib.availableSegments(query, stageIndex).map((segment) => ({
             ...Lib.displayInfo(query, stageIndex, segment),
             segment,
           }))

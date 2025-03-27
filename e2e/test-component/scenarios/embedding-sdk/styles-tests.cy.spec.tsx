@@ -50,7 +50,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
         expect(response?.statusCode).to.equal(200);
       });
 
-      cy.get("@defaultBrowserFontFamily").then(defaultBrowserFontFamily => {
+      cy.get("@defaultBrowserFontFamily").then((defaultBrowserFontFamily) => {
         cy.findByText("This is outside of the provider").should(
           "have.css",
           "font-family",
@@ -92,7 +92,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 
       cy.wait("@getUser");
 
-      cy.get("@defaultBrowserFontFamily").then(defaultBrowserFontFamily => {
+      cy.get("@defaultBrowserFontFamily").then((defaultBrowserFontFamily) => {
         cy.findByText("This is outside of the provider").should(
           "have.css",
           "font-family",
@@ -282,7 +282,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       { tag: "textarea", jsx: <textarea>textarea tag text</textarea> },
     ];
 
-    it(`no css rule should match ${elements.map(e => e.tag).join(", ")} outside of the provider`, () => {
+    it(`no css rule should match ${elements.map((e) => e.tag).join(", ")} outside of the provider`, () => {
       cy.mount(
         <div>
           {elements.map(({ jsx }) => jsx)}
@@ -303,7 +303,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 });
 
 const expectElementToHaveNoAppliedCssRules = (selector: string) => {
-  cy.get(selector).then($el => {
+  cy.get(selector).then(($el) => {
     const rules = getCssRulesThatApplyToElement($el);
     if (rules.length > 0) {
       console.warn("rules matching", selector, rules);
@@ -316,12 +316,12 @@ const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
   const element = $element[0];
   const rulesThatMatch: CSSStyleRule[] = Array.from(
     document.styleSheets,
-  ).flatMap(sheet => {
+  ).flatMap((sheet) => {
     const cssRules = Array.from(sheet.cssRules).filter(
-      rule => rule instanceof CSSStyleRule,
+      (rule) => rule instanceof CSSStyleRule,
     ) as CSSStyleRule[];
 
-    return cssRules.filter(rule => element.matches(rule.selectorText));
+    return cssRules.filter((rule) => element.matches(rule.selectorText));
   });
 
   return rulesThatMatch;
@@ -330,7 +330,7 @@ const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
 function wrapBrowserDefaultFont() {
   cy.mount(<p>paragraph with default browser font</p>);
 
-  cy.findByText("paragraph with default browser font").then($element => {
+  cy.findByText("paragraph with default browser font").then(($element) => {
     const fontFamily = $element.css("font-family");
     cy.wrap(fontFamily).as("defaultBrowserFontFamily");
   });

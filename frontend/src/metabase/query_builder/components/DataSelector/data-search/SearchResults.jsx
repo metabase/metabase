@@ -61,7 +61,7 @@ export function SearchResults({
 
           return (
             <ul>
-              {list.map(item => (
+              {list.map((item) => (
                 <li key={`${item.id}_${item.model}`}>
                   <SearchResult
                     result={item}

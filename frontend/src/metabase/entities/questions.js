@@ -75,7 +75,7 @@ const Questions = createEntity({
       }),
     )(
       ({ id } = {}) =>
-        dispatch =>
+        (dispatch) =>
           entityCompatibleQuery(
             id,
             dispatch,
@@ -91,7 +91,7 @@ const Questions = createEntity({
         fields: [FieldSchema],
       }),
     )(
-      query => dispatch =>
+      (query) => (dispatch) =>
         entityCompatibleQuery(
           query,
           dispatch,
@@ -110,7 +110,7 @@ const Questions = createEntity({
       ),
 
     setCollection: (card, collection, opts) => {
-      return async dispatch => {
+      return async (dispatch) => {
         const result = await dispatch(
           Questions.actions.update(
             { id: card.id },
@@ -163,27 +163,29 @@ const Questions = createEntity({
     getListUnfiltered: (state, { entityQuery }) => {
       const entityIds =
         Questions.selectors.getEntityIds(state, { entityQuery }) ?? [];
-      return entityIds.map(entityId =>
+      return entityIds.map((entityId) =>
         Questions.selectors.getObjectUnfiltered(state, { entityId }),
       );
     },
   },
 
   objectSelectors: {
-    getName: card => card && card.name,
+    getName: (card) => card && card.name,
     getUrl: (card, opts) => card && Urls.question(card, opts),
     getColor: () => color("text-medium"),
-    getCollection: card => card && normalizedCollection(card.collection),
+    getCollection: (card) => card && normalizedCollection(card.collection),
     getIcon,
   },
 
   reducer: (state = {}, { type, payload, error }) => {
     if (type === SOFT_RELOAD_CARD) {
       const { id } = payload;
-      const latestReview = payload.moderation_reviews?.find(x => x.most_recent);
+      const latestReview = payload.moderation_reviews?.find(
+        (x) => x.most_recent,
+      );
 
       if (latestReview) {
-        return updateIn(state, [id], question => ({
+        return updateIn(state, [id], (question) => ({
           ...question,
           moderated_status: latestReview.status,
         }));

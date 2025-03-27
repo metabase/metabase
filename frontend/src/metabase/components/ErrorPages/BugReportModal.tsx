@@ -59,7 +59,7 @@ export const BugReportModal = ({
         }}
         onSubmit={onSubmit}
       >
-        {formik => (
+        {(formik) => (
           <Form>
             <Text py="md">
               {t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}

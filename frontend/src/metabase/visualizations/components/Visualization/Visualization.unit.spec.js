@@ -9,14 +9,14 @@ import { createMockCard } from "metabase-types/api/mocks";
 registerVisualizations();
 
 describe("Visualization", () => {
-  const renderViz = async series => {
+  const renderViz = async (series) => {
     renderWithProviders(<Visualization rawSeries={series} />);
     // The chart isn't rendered until the next tick. This is due to ExplicitSize
     // not setting the dimensions until after mounting.
     await delay(0);
   };
 
-  const chartPathsWithColor = color => {
+  const chartPathsWithColor = (color) => {
     const container = screen.getByTestId("chart-container");
     return container.querySelectorAll(`path[fill="${color}"]`);
   };

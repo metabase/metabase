@@ -53,7 +53,7 @@ export function ModelUploadModal({
   });
 
   const uploadableModels = useMemo(
-    () => models.data?.filter(model => !!model.based_on_upload) ?? [],
+    () => models.data?.filter((model) => !!model.based_on_upload) ?? [],
     [models.data],
   );
 
@@ -72,7 +72,7 @@ export function ModelUploadModal({
   const handleUpload = () => {
     if (uploadMode !== UploadMode.create && tableId) {
       const modelForTableId = uploadableModels.find(
-        model => model.based_on_upload === Number(tableId),
+        (model) => model.based_on_upload === Number(tableId),
       );
       return onUpload({
         tableId: Number(tableId),
@@ -143,7 +143,7 @@ export function ModelUploadModal({
             placeholder="Select a model"
             value={tableId ? String(tableId) : ""}
             data={
-              uploadableModels.map(model => ({
+              uploadableModels.map((model) => ({
                 value: String(model.based_on_upload),
                 label: model.name,
               })) ?? []

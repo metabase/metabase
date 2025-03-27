@@ -32,7 +32,7 @@ export const useBreakoutData = ({
   const breakouts = query ? Lib.breakouts(query, stageIndex) : [];
 
   const items: BreakoutListItem[] = query
-    ? breakouts.map(breakout =>
+    ? breakouts.map((breakout) =>
         getBreakoutListItem(query, stageIndex, breakout),
       )
     : [];

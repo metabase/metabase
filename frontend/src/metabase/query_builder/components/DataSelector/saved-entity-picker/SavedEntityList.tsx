@@ -54,7 +54,7 @@ const SavedEntityList = ({
               {({ list }: { list: CollectionItem[] }) => {
                 return (
                   <Fragment>
-                    {list.map(collectionItem => {
+                    {list.map((collectionItem) => {
                       const { id, name, moderated_status } = collectionItem;
                       const virtualTableId = getQuestionVirtualTableId(id);
 
