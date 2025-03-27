@@ -1,4 +1,8 @@
-import type { Alert, Notification } from "metabase-types/api";
+import type {
+  Alert,
+  AlertNotification,
+  TableNotification,
+} from "metabase-types/api";
 
 export type DashboardAlertListItem = {
   item: Alert;
@@ -6,10 +10,16 @@ export type DashboardAlertListItem = {
 };
 
 export type QuestionNotificationListItem = {
-  item: Notification;
+  item: AlertNotification;
   type: "question-notification";
+};
+
+export type TableNotificationListItem = {
+  item: TableNotification;
+  type: "table-notification";
 };
 
 export type NotificationListItem =
   | DashboardAlertListItem
-  | QuestionNotificationListItem;
+  | QuestionNotificationListItem
+  | TableNotificationListItem;

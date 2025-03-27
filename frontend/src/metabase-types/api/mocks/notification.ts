@@ -1,15 +1,19 @@
 import type {
-  Notification,
+  AlertNotification,
   NotificationCronSubscription,
   NotificationHandlerEmail,
   NotificationHandlerSlack,
   NotificationRecipientUser,
+  NotificationSystemEventSubscription,
+  TableNotification,
 } from "metabase-types/api";
 import { createMockUserInfo } from "metabase-types/api/mocks/user";
 
-export const createMockNotification = (
-  opts?: Partial<Notification>,
-): Notification => ({
+import { createMockTable } from "./table";
+
+export const createMockAlertNotification = (
+  opts?: Partial<AlertNotification>,
+): AlertNotification => ({
   payload_id: 7,
   payload: {
     id: 7,
@@ -102,5 +106,39 @@ export const createMockNotificationCronSubscription = (
   created_at: "2025-01-07T18:40:47.245205+03:00",
   cron_schedule: "0 0 9 * * ?",
   ui_display_type: "cron/builder",
+  ...opts,
+});
+
+export const createMockNotificationSystemEventSubscription = (
+  opts?: Partial<NotificationSystemEventSubscription>,
+): NotificationSystemEventSubscription => ({
+  id: 11,
+  notification_id: 10,
+  type: "notification-subscription/system-event",
+  event_name: "event/data-editing-row-create",
+  table_id: 42,
+  table: createMockTable(),
+  created_at: "2025-01-07T18:40:47.245205+03:00",
+  updated_at: "2025-01-07T18:40:47.245205+03:00",
+  ui_display_type: null,
+  cron_schedule: null,
+  ...opts,
+});
+
+export const createMockTableNotification = (
+  opts?: Partial<TableNotification>,
+): TableNotification => ({
+  id: 1,
+  payload_id: null,
+  payload_type: "notification/system-event",
+  payload: null,
+  creator: createMockUserInfo(),
+  creator_id: 3,
+  handlers: [createMockNotificationHandlerEmail()],
+  subscriptions: [createMockNotificationSystemEventSubscription()],
+  created_at: "2025-01-07T18:40:47.245205+03:00",
+  updated_at: "2025-01-07T18:40:47.245205+03:00",
+  active: true,
+  condition: ["=", ["value"], true],
   ...opts,
 });

@@ -9,7 +9,7 @@ import { SlackChannelFieldNew } from "metabase/notifications/channels/SlackChann
 import {
   type ChannelToAddOption,
   NotificationChannelsAddMenu,
-} from "metabase/notifications/modals/components/NotificationChannelsAddMenu";
+} from "metabase/notifications/modals/shared/components/NotificationChannelsAddMenu";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 import type {

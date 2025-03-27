@@ -8,17 +8,17 @@ import {
   getUser,
 } from "metabase/selectors/user";
 import { Button, Modal, Stack, rem } from "metabase/ui";
-import type { Notification } from "metabase-types/api";
+import type { AlertNotification } from "metabase-types/api";
 
 import { AlertListItem } from "./AlertListItem";
 
 type AlertListModalProps = {
-  questionAlerts?: Notification[];
+  questionAlerts?: AlertNotification[];
   opened: boolean;
   onCreate: () => void;
-  onEdit: (notification: Notification) => void;
-  onDelete: (notification: Notification) => void;
-  onUnsubscribe: (notification: Notification) => void;
+  onEdit: (notification: AlertNotification) => void;
+  onDelete: (notification: AlertNotification) => void;
+  onUnsubscribe: (notification: AlertNotification) => void;
   onClose: () => void;
 };
 
@@ -42,7 +42,7 @@ export const AlertListModal = ({
     return null;
   }
 
-  const isCreatedByCurrentUser = (alert: Notification) => {
+  const isCreatedByCurrentUser = (alert: AlertNotification) => {
     return user ? alert.creator.id === user.id : false;
   };
 

@@ -2,7 +2,11 @@ import type { JSX, ReactNode } from "react";
 import { useMemo } from "react";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
-import { skipToken, useListNotificationsQuery } from "metabase/api";
+import {
+  isTableNotification,
+  skipToken,
+  useListNotificationsQuery,
+} from "metabase/api";
 import Pulses from "metabase/entities/pulses";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
@@ -33,7 +37,7 @@ const NotificationsAppInner = ({
 
   const dispatch = useDispatch();
 
-  const { data: questionNotifications = [] } = useListNotificationsQuery(
+  const { data: configuredNotifications = [] } = useListNotificationsQuery(
     user
       ? {
           creator_or_recipient_id: user.id,
@@ -44,10 +48,18 @@ const NotificationsAppInner = ({
 
   const items = useMemo(() => {
     const combinedItems: NotificationListItem[] = [
-      ...questionNotifications.map(alert => ({
-        item: alert,
-        type: "question-notification" as const,
-      })),
+      ...configuredNotifications.map(alert => {
+        if (isTableNotification(alert)) {
+          return {
+            item: alert,
+            type: "table-notification" as const,
+          };
+        }
+        return {
+          item: alert,
+          type: "question-notification" as const,
+        };
+      }),
       ...pulses.map(pulse => ({
         item: pulse,
         type: "pulse" as const,
@@ -59,7 +71,7 @@ const NotificationsAppInner = ({
         parseTimestamp(b.item.created_at).unix() -
         parseTimestamp(a.item.created_at).unix(),
     );
-  }, [pulses, questionNotifications]);
+  }, [pulses, configuredNotifications]);
 
   const onHelp = () => dispatch(navigateToHelp());
   const onUnsubscribe = ({ item, type }: NotificationListItem) =>
