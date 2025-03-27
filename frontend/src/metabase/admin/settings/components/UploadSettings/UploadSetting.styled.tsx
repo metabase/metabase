@@ -12,7 +12,7 @@ export const SectionTitle = styled.h3`
 
 export const ColorText = styled.div<{ color: string }>`
   margin-top: 1rem;
-  color: ${props => color(props.color)};
+  color: ${(props) => color(props.color)};
 `;
 
 export const PaddedForm = styled.form`

@@ -102,7 +102,7 @@ export const PublicOrEmbeddedQuestion = ({
   });
 
   const setParameterValue = async (parameterId: ParameterId, value: any) => {
-    setParameterValues(prevParameterValues => ({
+    setParameterValues((prevParameterValues) => ({
       ...prevParameterValues,
       [parameterId]: value,
     }));

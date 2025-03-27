@@ -6,7 +6,7 @@ import { printHelperText } from "embedding-sdk/cli/utils/print";
 /**
  * Asks the user first if they have a database to connect to.
  */
-export const askIfHasDatabase: CliStepMethod = async state => {
+export const askIfHasDatabase: CliStepMethod = async (state) => {
   const hasDatabase = await toggle({
     message:
       "Do you have a database to connect to? This will be used to embed your data.",

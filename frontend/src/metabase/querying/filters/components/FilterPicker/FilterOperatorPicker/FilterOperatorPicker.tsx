@@ -20,7 +20,7 @@ export function FilterOperatorPicker<T extends string>({
   options,
   onChange,
 }: FilterOperatorPickerProps<T>) {
-  const selectedOption = options.find(option => option.operator === value);
+  const selectedOption = options.find((option) => option.operator === value);
 
   return (
     <Menu>

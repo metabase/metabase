@@ -16,7 +16,7 @@ const LOGIN_SCHEMA = Yup.object().shape({
     .required(Errors.required)
     .when("$isLdapEnabled", {
       is: false,
-      then: schema => schema.email(Errors.email),
+      then: (schema) => schema.email(Errors.email),
     }),
   password: Yup.string().required(Errors.required),
   remember: Yup.boolean(),

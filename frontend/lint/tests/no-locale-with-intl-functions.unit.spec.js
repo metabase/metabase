@@ -79,7 +79,7 @@ const INVALID_CASES = [
 
 ruleTester.run("no-locale-with-intl-functions", noLocaleWithIntlFunctions, {
   valid: VALID_CASES,
-  invalid: INVALID_CASES.map(invalidCase => {
+  invalid: INVALID_CASES.map((invalidCase) => {
     return {
       code: invalidCase.code,
       errors: [

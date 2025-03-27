@@ -60,7 +60,7 @@ const argTypes = {
 };
 
 const DefaultTemplate = (args: MultiAutocompleteProps) => (
-  <MultiAutocomplete {...args} shouldCreate={query => query.length > 0} />
+  <MultiAutocomplete {...args} shouldCreate={(query) => query.length > 0} />
 );
 
 const VariantTemplate = (args: MultiAutocompleteProps) => (

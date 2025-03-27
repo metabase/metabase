@@ -44,7 +44,7 @@ export const Formula = ({
       <span className={S.formulaTitle}>{t`View the ${type} formula`}</span>
     </div>
     <Transition mounted={isExpanded} duration={300} transition={TRANSITION}>
-      {styles => (
+      {(styles) => (
         <div className={S.formulaDefinition} style={styles}>
           <QueryDefinition
             className={S.formulaDefinitionInner}

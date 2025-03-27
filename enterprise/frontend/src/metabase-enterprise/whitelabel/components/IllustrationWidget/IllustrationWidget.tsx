@@ -106,7 +106,7 @@ export function IllustrationWidget({
       }
 
       const reader = new FileReader();
-      reader.onload = async readerEvent => {
+      reader.onload = async (readerEvent) => {
         const dataUri = readerEvent.target?.result as string;
         if (!(await isFileIntact(dataUri))) {
           setErrorMessage(
@@ -211,7 +211,7 @@ export function IllustrationWidget({
 }
 
 async function isFileIntact(dataUri: string) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const image = document.createElement("img");
     image.src = dataUri;
     image.onerror = () => resolve(false);

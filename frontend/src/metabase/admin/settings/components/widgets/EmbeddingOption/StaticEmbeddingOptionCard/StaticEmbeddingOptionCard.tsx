@@ -18,7 +18,7 @@ export const StaticEmbeddingOptionCard = ({
   onToggle,
 }: EmbeddingOptionCardProps) => {
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
-  const upgradeUrl = useSelector(state =>
+  const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, { utm_content: "embed-settings" }),
   );
   const shouldPromptToUpgrade = !PLUGIN_EMBEDDING.isEnabled();

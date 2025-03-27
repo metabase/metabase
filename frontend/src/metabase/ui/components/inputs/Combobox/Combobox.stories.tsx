@@ -19,7 +19,7 @@ export default {
   argTypes,
 };
 
-const Template: StoryFn<ComboboxProps> = args => {
+const Template: StoryFn<ComboboxProps> = (args) => {
   return <Combobox {...args} />;
 };
 

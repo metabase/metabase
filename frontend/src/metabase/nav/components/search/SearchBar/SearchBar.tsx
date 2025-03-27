@@ -48,7 +48,7 @@ type OwnProps = {
 type Props = RouterProps & OwnProps;
 
 function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
-  const isTypeaheadEnabled = useSelector(state =>
+  const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),
   );
 

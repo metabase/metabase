@@ -81,7 +81,7 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
 }: Props<Entity, EntityWrapper>) {
   const dispatch = useDispatch();
 
-  const entityType = useSelector(state =>
+  const entityType = useSelector((state) =>
     typeof entityTypeProp === "function"
       ? entityTypeProp(state, props)
       : entityTypeProp,
@@ -95,13 +95,13 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
       return entitiesDefinitions[entityType];
     }, [entityType]);
 
-  const entityId = useSelector(state =>
+  const entityId = useSelector((state) =>
     typeof entityIdProp === "function"
       ? entityIdProp(state, props)
       : entityIdProp,
   );
 
-  const entityQuery = useSelector(state =>
+  const entityQuery = useSelector((state) =>
     typeof entityQueryProp === "function"
       ? entityQueryProp(state, props)
       : entityQueryProp,
@@ -195,7 +195,7 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
     [entityId, requestType],
   );
 
-  const object = useSelector(state => {
+  const object = useSelector((state) => {
     return match(selectorName)
       .with("getObject", () => {
         return entityDefinition.selectors.getObject(state, entityOptions);
@@ -209,17 +209,17 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
       .exhaustive();
   });
 
-  const fetched = useSelector(state => {
+  const fetched = useSelector((state) => {
     const value = entityDefinition.selectors.getFetched(state, entityOptions);
     return Boolean(value);
   });
 
-  const loading = useSelector(state => {
+  const loading = useSelector((state) => {
     const value = entityDefinition.selectors.getLoading(state, entityOptions);
     return Boolean(value);
   });
 
-  const error = useSelector(state => {
+  const error = useSelector((state) => {
     return entityDefinition.selectors.getError(state, entityOptions);
   });
 

@@ -70,7 +70,7 @@ describe("generateMobileLayout", () => {
         "table",
         "area",
       ];
-      types.forEach(type => {
+      types.forEach((type) => {
         const result = generateMobileLayout([
           createMockDashcardLayout(10, type),
         ]);
@@ -98,7 +98,7 @@ describe("generateMobileLayout", () => {
         createMockDashcardLayout(10, "scalar"),
       ]);
 
-      result.forEach(layout => {
+      result.forEach((layout) => {
         expect(layout.w).toBe(1);
         expect(layout.x).toBe(0);
 
