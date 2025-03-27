@@ -131,6 +131,13 @@
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"})))))
 
+(deftest can-delete-router-databases
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Database {dest-db-id :id} {:router_database_id db-id}]
+    (mt/user-http-request :crowberto :delete 204 (str "database/" db-id))
+    (is (not (t2/exists? :model/Database dest-db-id)))
+    (is (not (t2/exists? :model/Database db-id)))))
+
 (deftest mirror-databases-are-hidden-from-regular-database-api
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
