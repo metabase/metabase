@@ -317,7 +317,8 @@
                                                         :event_name nil
                                                         :cron_schedule "0 0 0 * * ?"
                                                         :ui_display_type nil
-                                                        :table_id nil}]
+                                                        :table_id nil
+                                                        :table nil}]
                                        :active false}}}
                  (mt/latest-audit-log-entry))))))))
 
