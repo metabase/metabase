@@ -114,7 +114,7 @@
       ;; optional during creation
       [:payload_id {:optional true} int?]
       [:creator_id {:optional true} int?]]]
-    [:notification/testing :any]]])
+    [:notification/testing :map]]])
 
 (defn- validate-notification
   [notification]
@@ -547,11 +547,13 @@
           notification-id (:id instance)]
       (when (seq subscriptions)
         (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id notification-id) subscriptions)))
-      (doseq [handler handlers+recipients]
-        (let [recipients (:recipients handler)
+      (doseq [{:keys [recipients template] :as handler} handlers+recipients]
+        (let [template-id (when template
+                            (t2/insert-returning-pk! :model/ChannelTemplate template))
               handler    (-> handler
-                             (dissoc :recipients)
-                             (assoc :notification_id notification-id))
+                             (dissoc :recipients :template)
+                             (assoc :notification_id notification-id
+                                    :template_id template-id))
               handler-id (t2/insert-returning-pk! :model/NotificationHandler handler)]
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
@@ -575,7 +577,9 @@
                                   :nested-specs {:recipients {:model        :model/NotificationRecipient
                                                               :fk-column    :notification_handler_id
                                                               :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
-                                                              :multi-row?   true}}}}})
+                                                              :multi-row?   true}
+                                                 :template   {:model        :model/ChannelTemplate
+                                                              :compare-cols [:channel_type :name :details]}}}}})
 
 (defn update-notification!
   "Update an existing notification with `new-notification`."
