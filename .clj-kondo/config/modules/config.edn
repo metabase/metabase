@@ -674,7 +674,7 @@
 
   enterprise/core
   {:api  #{metabase-enterprise.core.init}
-   :uses #{enterprise/enhancements}}
+   :uses #{enterprise/enhancements enterprise/data-editing}}
 
   enterprise/dashboard-subscription-filters
   {:api  #{}
@@ -757,7 +757,7 @@
 
   enterprise/data-editing
   {:api #{}
-   :uses #{api actions driver query-processor upload util}}
+   :uses #{api actions driver events lib query-processor upload util}}
 
   enterprise/task
   {:api  #{metabase-enterprise.task.truncate-audit-tables}
