@@ -48,3 +48,5 @@ export { defineMetabaseTheme };
  * @internal
  */
 export { SdkDebugInfo } from "./debug/SdkDebugInfo";
+
+import "./InteractiveQuestion/web";
