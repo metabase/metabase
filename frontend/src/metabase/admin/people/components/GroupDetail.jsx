@@ -93,17 +93,17 @@ const GroupDetail = ({
     loadMemberships();
   }, [loadMemberships]);
 
-  const alert = alertMessage => setAlertMessage(alertMessage);
+  const alert = (alertMessage) => setAlertMessage(alertMessage);
 
   const onAddUsersClicked = () => setAddUserVisible(true);
 
   const onAddUserCanceled = () => setAddUserVisible(false);
 
-  const onAddUserDone = async userIds => {
+  const onAddUserDone = async (userIds) => {
     setAddUserVisible(false);
     try {
       await Promise.all(
-        userIds.map(async userId => {
+        userIds.map(async (userId) => {
           await createMembership({
             groupId: group.id,
             userId,
@@ -115,7 +115,7 @@ const GroupDetail = ({
     }
   };
 
-  const handleChange = async membership => {
+  const handleChange = async (membership) => {
     const confirmation = PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation(
       currentUser,
       membership,
@@ -135,7 +135,7 @@ const GroupDetail = ({
     });
   };
 
-  const handleRemove = async membershipId => {
+  const handleRemove = async (membershipId) => {
     const confirmation = PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
       currentUser,
       membershipsByUser[currentUser.id],

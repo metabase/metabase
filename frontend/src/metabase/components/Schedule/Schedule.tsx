@@ -195,7 +195,7 @@ export const Schedule = ({
         onChange={(value: string) => {
           setInternalCronString(value);
         }}
-        onBlurChange={value =>
+        onBlurChange={(value) =>
           onScheduleChange(value, {
             schedule_type: "cron",
           })

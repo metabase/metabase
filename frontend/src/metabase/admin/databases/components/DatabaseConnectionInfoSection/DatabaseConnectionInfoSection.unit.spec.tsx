@@ -74,7 +74,7 @@ describe("DatabaseConnectionInfoSection", () => {
 
     it("should show error message if healthcheck returns errors", async () => {
       setup({
-        mockEndpointsCb: database => {
+        mockEndpointsCb: (database) => {
           fetchMock.get(
             `path:/api/database/${database.id}/healthcheck`,
             { body: { status: "error", message: "Test failure" } },
@@ -87,7 +87,7 @@ describe("DatabaseConnectionInfoSection", () => {
 
     it("should show error message if healthcheck HTTP request fails", async () => {
       setup({
-        mockEndpointsCb: database => {
+        mockEndpointsCb: (database) => {
           fetchMock.get(
             `path:/api/database/${database.id}/healthcheck`,
             { status: 500 },
@@ -136,7 +136,7 @@ describe("DatabaseConnectionInfoSection", () => {
         ).not.toBeInTheDocument();
       });
 
-      NOT_SYNCED_DB_STATUSES.forEach(initial_sync_status => {
+      NOT_SYNCED_DB_STATUSES.forEach((initial_sync_status) => {
         it(`is shown for a database with "${initial_sync_status}" sync status`, () => {
           setup({ database: createMockDatabase({ initial_sync_status }) });
 

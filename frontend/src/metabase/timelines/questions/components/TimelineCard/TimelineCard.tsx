@@ -44,21 +44,21 @@ const TimelineCard = ({
   onHideTimelineEvents,
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
-  const isEventSelected = events.some(e => selectedEventIds.includes(e.id));
+  const isEventSelected = events.some((e) => selectedEventIds.includes(e.id));
   const [isExpanded, setIsExpanded] = useState(isDefault || isEventSelected);
 
   const anyEventVisible = useMemo(
-    () => events.some(event => visibleEventIds.includes(event.id)),
+    () => events.some((event) => visibleEventIds.includes(event.id)),
     [events, visibleEventIds],
   );
 
   const allEventsVisible = useMemo(
-    () => events.every(event => visibleEventIds.includes(event.id)),
+    () => events.every((event) => visibleEventIds.includes(event.id)),
     [events, visibleEventIds],
   );
 
   const handleHeaderClick = useCallback(() => {
-    setIsExpanded(isExpanded => !isExpanded);
+    setIsExpanded((isExpanded) => !isExpanded);
   }, []);
 
   const handleCheckboxClick = useCallback((event: MouseEvent) => {
@@ -103,7 +103,7 @@ const TimelineCard = ({
       </CardHeader>
       {isExpanded && (
         <CardContent>
-          {events.map(event => (
+          {events.map((event) => (
             <EventCard
               key={event.id}
               event={event}
@@ -126,7 +126,7 @@ const TimelineCard = ({
 
 const getEvents = (events: TimelineEvent[] = []) => {
   return _.chain(events)
-    .sortBy(e => e.timestamp)
+    .sortBy((e) => e.timestamp)
     .reverse()
     .value();
 };

@@ -71,12 +71,12 @@ const eventsSandboxedByDefault: EventName[] = [
 ];
 
 /** All supported events that start with 'onMouse' */
-const allOnMouseEvents = eventsSandboxedByDefault.filter(name =>
+const allOnMouseEvents = eventsSandboxedByDefault.filter((name) =>
   name.startsWith("onMouse"),
 );
 
 /** All supported events that start with 'onKey' */
-const allOnKeyEvents = eventsSandboxedByDefault.filter(name =>
+const allOnKeyEvents = eventsSandboxedByDefault.filter((name) =>
   name.startsWith("onKey"),
 );
 
@@ -110,10 +110,9 @@ function EventSandbox({
       allUnsandboxedEvents,
     );
 
-    const entries = sandboxedEventNames.map<[EventName, typeof stop]>(name => [
-      name,
-      stop,
-    ]);
+    const entries = sandboxedEventNames.map<[EventName, typeof stop]>(
+      (name) => [name, stop],
+    );
     return Object.fromEntries(entries);
   }, [
     stop,

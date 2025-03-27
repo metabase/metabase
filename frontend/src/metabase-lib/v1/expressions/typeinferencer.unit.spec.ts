@@ -165,7 +165,7 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
       "minute",
       "second",
     ];
-    ops.forEach(op => {
+    ops.forEach((op) => {
       expect(type(`${op}([Created At])`)).toEqual("number");
     });
   });

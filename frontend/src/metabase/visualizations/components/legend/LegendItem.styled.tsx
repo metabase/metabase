@@ -36,7 +36,7 @@ export const LegendItemTitle = styled.div<{ isInsidePopover?: boolean }>`
   margin-left: ${LEGEND_ITEM_TITLE_MARGIN}px;
   overflow: hidden;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
-  max-width: ${props =>
+  max-width: ${(props) =>
     props.isInsidePopover
       ? `calc(100% - ${LEGEND_ITEM_DOT_SIZE}px - ${LEGEND_ITEM_TITLE_MARGIN}px)`
       : "unset"};

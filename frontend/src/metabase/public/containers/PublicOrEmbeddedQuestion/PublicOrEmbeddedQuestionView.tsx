@@ -104,11 +104,11 @@ export function PublicOrEmbeddedQuestionView({
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,
             ) => {
-              setCard(prevCard =>
+              setCard((prevCard) =>
                 updateIn(
                   prevCard,
                   ["visualization_settings"],
-                  previousSettings => ({ ...previousSettings, ...settings }),
+                  (previousSettings) => ({ ...previousSettings, ...settings }),
                 ),
               );
             }}

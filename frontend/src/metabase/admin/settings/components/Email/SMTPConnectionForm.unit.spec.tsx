@@ -375,7 +375,7 @@ describe("SMTP connection form", () => {
   });
 
   it("should enable test email button when all fields are set by environment variables (metabase#45445)", async () => {
-    const elements = defaultElements.map(el => ({
+    const elements = defaultElements.map((el) => ({
       ...el,
       is_env_setting: true,
     }));

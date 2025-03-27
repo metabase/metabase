@@ -24,7 +24,7 @@ export const useAdminSetting = <SettingName extends keyof Settings>(
   const [updateSetting, updateSettingResult] = useUpdateSettingMutation();
 
   const settingDetails = useMemo(
-    () => settingsDetails?.find(setting => setting.key === settingName),
+    () => settingsDetails?.find((setting) => setting.key === settingName),
     [settingsDetails, settingName],
   );
 

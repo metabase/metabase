@@ -134,7 +134,7 @@ export class ClickActionsPopover extends Component<
         anchorEl={popoverAnchor}
         opened={!!popoverAnchor}
         // TODO - come back to this
-        onChange={open => {
+        onChange={(open) => {
           if (!open) {
             this.close();
           }
