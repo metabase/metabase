@@ -621,20 +621,17 @@ export function setup2ndStageAggregationFilter() {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Count", 1).click();
   });
-  dismissToast();
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Count", 1).click();
   });
-  dismissToast();
 
   H.getDashboardCard(2).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverItem("Count").click();
   });
-  dismissToast();
 
   H.getDashboardCard(3).findByText("Select…").click();
   H.popover().within(() => {
@@ -663,20 +660,17 @@ export function setup2ndStageBreakoutFilter() {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Category", 2).click();
   });
-  dismissToast();
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Category", 2).click();
   });
-  dismissToast();
 
   H.getDashboardCard(2).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverItem("Products Via Product ID Category").click();
   });
-  dismissToast();
 
   H.getDashboardCard(3).findByText("Select…").click();
   H.popover().within(() => {
@@ -716,12 +710,6 @@ export function getPopoverItem(name: string, index = 0) {
    */
   // eslint-disable-next-line no-unsafe-element-filtering
   return cy.findAllByText(name).eq(index).scrollIntoView();
-}
-
-export function dismissToast() {
-  cy.findByTestId("toast-undo")
-    .findByRole("img", { name: /close icon/ })
-    .click();
 }
 
 export function clickAway() {
