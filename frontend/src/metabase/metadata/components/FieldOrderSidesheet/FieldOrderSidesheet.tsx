@@ -34,7 +34,7 @@ const FieldOrderSidesheetBase = ({
   };
 
   return (
-    <Sidesheet title={t`Edit column order`} onClose={onClose} isOpen={isOpen}>
+    <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
       <Flex>
         <FieldOrderPicker
           value={table.field_order}
