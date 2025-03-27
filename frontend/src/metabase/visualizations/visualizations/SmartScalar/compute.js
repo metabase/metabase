@@ -10,6 +10,7 @@ import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartSc
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 export function computeTrend(series, insights, settings, { getColor }) {
   try {
@@ -86,10 +87,10 @@ function buildComparisonObject({
 
   const changeColor = !isEmpty(changeArrowIconName)
     ? getArrowColor(
-        changeArrowIconName,
-        settings["scalar.switch_positive_negative"],
-        { getColor },
-      )
+      changeArrowIconName,
+      settings["scalar.switch_positive_negative"],
+      { getColor },
+    )
     : undefined;
 
   return {
@@ -153,7 +154,9 @@ function getCurrentMetricData({ series, insights, settings }) {
   ] = series;
 
   // column locations for date and metric
-  const dimensionColIndex = cols.findIndex((col) => isDate(col));
+  const dimensionColIndex = cols.findIndex((col) => {
+    return isDate(col) || isAbsoluteDateTimeUnit(col.unit);
+  });
   const metricColIndex = cols.findIndex(
     (col) => col.name === settings["scalar.field"],
   );
@@ -399,10 +402,10 @@ function computeComparisonPeriodsAgo({
     dateUnitsAgo === 1
       ? t`vs. previous ${dateUnitDisplay}`
       : computeComparisonStrPreviousValue({
-          dateUnitSettings,
-          nextDate,
-          prevDate,
-        });
+        dateUnitSettings,
+        nextDate,
+        prevDate,
+      });
 
   // if no row exists with date "X periods ago"
   if (isEmpty(rowPeriodsAgo)) {
@@ -591,13 +594,13 @@ function getArrowColor(
 ) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
     ? {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("success"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("error"),
-      }
+      [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("success"),
+      [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("error"),
+    }
     : {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("error"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("success"),
-      };
+      [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("error"),
+      [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("success"),
+    };
 
   return arrowIconColorNames[changeArrowIconName];
 }
