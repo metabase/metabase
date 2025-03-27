@@ -74,8 +74,6 @@
          (when bar-width
            [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}]))])
 
-(def ^:private minibar-width 100)
-
 (defn- render-minibar
   "Return hiccup html structure for a numeric column cell with mini bar charts enabled. We use nested tables
   as opposed to absolute and relative positioning for email client compatibility."
@@ -85,37 +83,37 @@
           has-neg?       (< min 0)
           normalized-max (clojure.core/max (abs min) (abs max))
           pct-full       (int (* (/ (abs num) normalized-max) 100))
-          pct-left       (- minibar-width pct-full)
+          pct-left       (- style/mb-width pct-full)
           neg-pct-full   (int (Math/floor (* pct-full 0.49)))
           neg-pct-left   (- 49 neg-pct-full)]
       [:table {:style (style/style {:width "100px" :border "0" :border-collapse "collapse"})}
        [:tr
         [:td {:style (style/style {:width "30%" :vertical-align "middle" :padding-right "10px"})} (h val)]
         [:td {:style (style/style {:width "70%" :vertical-align "middle" :padding "0"})}
-         [:table {:style (style/style {:width "100%" :border-collapse "collapse" :height "10px"})}
+         [:table {:style (style/style {:width "100%" :border-collapse "collapse"})}
           [:tr
-         ;; Minibars for series that contain negative values have a dividing center line representing 0
-         ;; with negative minibars extending to the left
+           ;; Minibars for series that contain negative values have a dividing center line representing 0
+           ;; with negative minibars extending to the left
            (if has-neg?
              [:tr
-              [:td {:style (style/style {:background-color (if is-neg? "#FCE1E1" "#E0ECF9") :border-radius "3px" :padding "0"})}
-               [:table {:style (style/style {:width "100%" :border-collapse "collapse" :height "10px"})}
+              [:td {:style (style/style {:background-color (if is-neg? style/mb-secondary-color-alpha style/mb-primary-color-alpha) :border-radius "3px" :padding "0"})}
+               [:table {:style (style/style {:width "100%" :border-collapse "collapse" :height (format "%spx" style/mb-height)})}
                 (if is-neg?
                   [:tr
                    [:td {:style (style/style {:width (format "%s%%" neg-pct-left) :padding "0"})}]
-                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full)) :padding "0" :background-color "#E3595E" :border-radius "3px 0 0 3px"})}]
+                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full)) :padding "0" :background-color style/mb-secondary-color :border-radius "3px 0 0 3px"})}]
                    [:td {:style (style/style {:width "2%" :padding "0" :background-color "white"})}]
                    [:td {:style (style/style {:width "49%" :padding "0"})}]]
                   [:tr
                    [:td {:style (style/style {:width "49%" :padding "0"})}]
                    [:td {:style (style/style {:width "2%" :padding "0" :background-color "white"})}]
-                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full)) :padding "0" :background-color "#509EE3" :border-radius "0 3px 3px 0"})}]
+                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full)) :padding "0" :background-color style/mb-primary-color :border-radius "0 3px 3px 0"})}]
                    [:td {:style (style/style {:width (format "%s%%" neg-pct-left) :padding "0"})}]])]]]
              [:tr
-              [:td {:style (style/style {:background-color "#E0ECF9" :border-radius "3px" :padding "0"})}
-               [:table {:style (style/style {:width "100%" :border-collapse "collapse" :height "10px"})}
+              [:td {:style (style/style {:background-color style/mb-primary-color-alpha :border-radius "3px" :padding "0"})}
+               [:table {:style (style/style {:width "100%" :border-collapse "collapse" :height (format "%spx" style/mb-height)})}
                 [:tr
-                 [:td {:style (style/style {:width (format "%s%%" pct-full) :padding "0" :background-color "#509EE3" :border-radius "3px"})}]
+                 [:td {:style (style/style {:width (format "%s%%" pct-full) :padding "0" :background-color style/mb-primary-color :border-radius "3px"})}]
                  [:td {:style (style/style {:width (format "%s%%" pct-left) :padding "0"})}]]]]])]]]]])
     (h val)))
 

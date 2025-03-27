@@ -234,11 +234,11 @@
 (defn- minibar-columns
   "Return a list of column definitions for which minibar charts are enabled"
   [cols viz-settings]
-  (let [column-settings (::mb.viz/column-settings viz-settings)]
-    (filter (fn [col]
-              (when-let [settings (get column-settings {::mb.viz/column-name (:name col)})]
-                (::mb.viz/show-mini-bar settings)))
-            cols)))
+  (filter
+   (fn [col] (get-in viz-settings [::mb.viz/column-settings
+                                   {::mb.viz/column-name (:name col)}
+                                   ::mb.viz/show-mini-bar]))
+   cols))
 
 (mu/defmethod render :table :- ::RenderedPartCard
   [_chart-type
