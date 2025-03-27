@@ -679,7 +679,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       return;
     }
 
-    onVisualizationClick(undefined);
+    onVisualizationClick(null);
   }, [clicked, onVisualizationClick]);
 
   const emptyState = useMemo(
