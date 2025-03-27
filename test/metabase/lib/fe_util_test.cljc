@@ -198,7 +198,22 @@
               round-tripped-parts       (lib.fe-util/expression-parts query round-tripped-expression)]
 
           (is (=? (:operator parts) (:operator round-tripped-parts)))
-          (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))))
+          (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))
+
+    (testing "nested case/if should round-trip through expression-parts and expression-clause"
+      (let [expression (lib/upper (lib/case [[boolean-field int-field] [boolean-field string-field]] (lib/case [[boolean-field int-field]] dt-field)))
+            expected-parts  {:operator :upper
+                             :options {}
+                             :args [{:operator :case
+                                     :options {}
+                                     :args [boolean-field
+                                            int-field
+                                            boolean-field
+                                            string-field
+                                            {:operator :case
+                                             :options {}
+                                             :args [boolean-field int-field dt-field]}]}]}]
+        (is (=? expected-parts (lib.fe-util/expression-parts query expression)))))))
 
 (deftest ^:parallel string-filter-parts-test
   (let [query  (lib.tu/venues-query)
