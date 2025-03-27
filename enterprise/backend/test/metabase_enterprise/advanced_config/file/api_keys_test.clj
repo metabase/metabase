@@ -14,9 +14,6 @@
                         (mt/with-premium-features #{:config-text-file}
                           (thunk)))))
 
-(defn- write-config! [config]
-  (spit "config.yml" (yaml/generate-string config)))
-
 (defn- cleanup-config! []
   (u/ignore-exceptions
     (doseq [api-key (t2/select :model/ApiKey)]
@@ -37,16 +34,6 @@
                                   :first_name "Admin"
                                   :is_superuser true}]
       (try
-        (write-config!
-         {:version 1
-          :config {:api-keys [{:name "Test API Key"
-                               :key "mb_testapikey123"
-                               :creator "admin@test.com"
-                               :group "admin"}
-                              {:name "All Users API Key"
-                               :key "mb_differentapikey456"
-                               :creator "admin@test.com"
-                               :group "all-users"}]}})
         (binding [config.file/*config* {:version 1
                                         :config {:api-keys [{:name "Test API Key"
                                                              :key "mb_testapikey123"
@@ -72,12 +59,6 @@
                                   :first_name "Admin"
                                   :is_superuser true}]
       (try
-        (write-config!
-         {:version 1
-          :config {:api-keys [{:name "First API Key"
-                               :key "mb_sameprefix_123"
-                               :creator "admin@test.com"
-                               :group "admin"}]}})
         (binding [config.file/*config* {:version 1
                                         :config {:api-keys [{:name "First API Key"
                                                              :key "mb_sameprefix123"
