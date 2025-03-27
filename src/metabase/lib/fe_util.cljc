@@ -32,13 +32,6 @@
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
-(def ^:private ExpressionParts
-  [:map
-   [:lib/type [:= :mbql/expression-parts]]
-   [:operator [:or :keyword :string]]
-   [:options ::lib.schema.common/options]
-   [:args [:sequential :any]]])
-
 (def ^:private ExpressionArg
   [:or
    :string
@@ -48,6 +41,16 @@
    ::lib.schema.metadata/column
    ::lib.schema.metadata/segment
    ::lib.schema.metadata/metric])
+
+(def ^:private ExpressionParts
+  [:schema
+   {:registry {::expression-parts
+               [:map
+                [:lib/type [:= :mbql/expression-parts]]
+                [:operator [:or :keyword :string]]
+                [:options ::lib.schema.common/options]
+                [:args [:sequential [:or ExpressionArg [:ref ::expression-parts]]]]]}}
+   ::expression-parts])
 
 (def ^:private expandable-time-units #{:hour})
 
@@ -227,7 +230,7 @@
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
   [operator :- :keyword
-   args     :- [:sequential :any]
+   args     :- [:sequential [:or ExpressionArg ExpressionParts]]
    options  :- [:maybe :map]]
   (fix-expression-clause
    (lib.options/ensure-uuid
