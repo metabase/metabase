@@ -87,10 +87,10 @@ function buildComparisonObject({
 
   const changeColor = !isEmpty(changeArrowIconName)
     ? getArrowColor(
-      changeArrowIconName,
-      settings["scalar.switch_positive_negative"],
-      { getColor },
-    )
+        changeArrowIconName,
+        settings["scalar.switch_positive_negative"],
+        { getColor },
+      )
     : undefined;
 
   return {
@@ -402,10 +402,10 @@ function computeComparisonPeriodsAgo({
     dateUnitsAgo === 1
       ? t`vs. previous ${dateUnitDisplay}`
       : computeComparisonStrPreviousValue({
-        dateUnitSettings,
-        nextDate,
-        prevDate,
-      });
+          dateUnitSettings,
+          nextDate,
+          prevDate,
+        });
 
   // if no row exists with date "X periods ago"
   if (isEmpty(rowPeriodsAgo)) {
@@ -594,13 +594,13 @@ function getArrowColor(
 ) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
     ? {
-      [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("success"),
-      [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("error"),
-    }
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("success"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("error"),
+      }
     : {
-      [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("error"),
-      [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("success"),
-    };
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("error"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("success"),
+      };
 
   return arrowIconColorNames[changeArrowIconName];
 }
