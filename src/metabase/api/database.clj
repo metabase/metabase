@@ -370,12 +370,13 @@
         [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
         [:include-mirror-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
-         database (api/check-404 (if (and include-mirror-databases? api/*is-superuser?*)
+         database (api/check-404 (if include-mirror-databases?
                                    (t2/select-one :model/Database :id id)
                                    (t2/select-one :model/Database :id id :router_database_id nil)))]
      (cond-> database
        filter-by-data-access? api/read-check
-       exclude-uneditable-details? api/write-check))))
+       (or exclude-uneditable-details?
+           (:router_database_id database)) api/write-check))))
 
 (mu/defn- check-database-exists
   ([id] (check-database-exists id {}))
