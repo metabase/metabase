@@ -4394,3 +4394,81 @@ describe.skip("issue 48824", () => {
       .should("be.visible");
   });
 });
+
+describe("issue 55678", () => {
+  const parameterDetails = {
+    name: "date",
+    slug: "date",
+    id: "f8ec7c71",
+    type: "date/all-options",
+    sectionId: "date",
+    default: "2020-01-01~2024-12-31",
+  };
+
+  const questionDetails = {
+    name: "Orders",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+    display: "line",
+  };
+
+  const dashboardDetails = {
+    name: "Dashboard",
+    parameters: [parameterDetails],
+  };
+
+  function setupDashboard() {
+    return H.createQuestion(questionDetails).then(
+      ({ body: { id: card_id } }) => {
+        H.createDashboard(dashboardDetails).then(
+          ({ body: { id: dashboard_id } }) => {
+            H.addOrUpdateDashboardCard({
+              dashboard_id,
+              card_id,
+              card: {
+                parameter_mappings: [
+                  {
+                    card_id,
+                    parameter_id: parameterDetails.id,
+                    target: [
+                      "dimension",
+                      ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+                      { "stage-number": 1 },
+                    ],
+                  },
+                ],
+              },
+            });
+            H.visitDashboard(dashboard_id);
+          },
+        );
+      },
+    );
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should ignore parameters mapped to post-aggregation stages when doing query drills (metabase#55678)", () => {
+    setupDashboard();
+    H.getDashboardCard().within(() => {
+      H.cartesianChartCircle().first().click();
+    });
+    H.popover().findByText("See this Order").click();
+    H.queryBuilderFiltersPanel()
+      .findByText("Created At is Apr 1–30, 2022")
+      .should("be.visible");
+    H.assertQueryBuilderRowCount(1);
+  });
+});
