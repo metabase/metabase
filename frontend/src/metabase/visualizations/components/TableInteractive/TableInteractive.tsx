@@ -238,8 +238,14 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const handleBodyCellClick = useCallback(
     (
       event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-      rowIndex: number,
-      columnId: string,
+      {
+        rowIndex,
+        columnId,
+      }: {
+        rowIndex: number;
+        columnId: string;
+        cellId: string;
+      },
     ) => {
       if (columnId === ROW_ID_COLUMN_ID) {
         if (!isDashboard) {

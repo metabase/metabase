@@ -14,6 +14,7 @@ export const getRowIdColumnSize = (variant: RowIdVariant) =>
 export const getRowIdColumn = <TRow, TValue>({
   variant,
   getBackgroundColor,
+  onRowExpandClick,
 }: RowIdColumnOptions): ColumnDef<TRow, TValue> => {
   const shouldShowIndex = ["index", "indexExpand"].includes(variant);
   const canExpand = variant !== "index";
@@ -37,6 +38,7 @@ export const getRowIdColumn = <TRow, TValue>({
           canExpand={canExpand}
           value={value}
           backgroundColor={getBackgroundColor?.(row.index)}
+          onRowExpandClick={() => onRowExpandClick?.(row.index)}
         />
       );
     },

@@ -224,14 +224,13 @@
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [driver action database {database-id :database :keys [update-row] :as query}]
-  (let [raw-hsql     (mbql-query->raw-hsql driver query)
-        target-table (first (:from raw-hsql))
-        update-hsql  (-> raw-hsql
-                         (select-keys [:where])
-                         (assoc :update target-table
-                                :set (cast-values driver update-row database-id (get-in query [:query :source-table])))
-                         (prepare-query driver action))
-        sql-args     (sql.qp/format-honeysql driver update-hsql)]
+  (let [source-table         (get-in query [:query :source-table])
+        {:keys [from where]} (mbql-query->raw-hsql driver query)
+        update-hsql          (-> {:update (first from)
+                                  :set    (cast-values driver update-row database-id source-table)
+                                  :where  where}
+                                 (prepare-query driver action))
+        sql-args             (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn database-id]
       ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
       (let [rows-updated (with-auto-parse-sql-exception driver database action
@@ -240,7 +239,7 @@
           (throw (ex-info (if (zero? rows-updated)
                             (tru "Sorry, the row you''re trying to update doesn''t exist")
                             (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
-                          {:staus-code 400})))
+                          {:status-code 400})))
         {:rows-updated [1]}))))
 
 (defmulti select-created-row

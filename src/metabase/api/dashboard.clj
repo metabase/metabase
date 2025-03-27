@@ -4,6 +4,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
@@ -846,6 +847,66 @@
 
 ;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
 
+(defn create-editable-table-card!
+  "The implementation details of an editable table dashcard.
+  A quick solution, and a very extensible one, but perhaps overloading a core primitive too much, and could be leaky."
+  [dashboard-id dashcard table-id]
+  (let [tab-id  (:dashboard_tab_id dashcard)
+        table   (t2/select-one [:model/Table :db_id :name] table-id)
+        card    (some->> dashcard :card_id (t2/select-one [:model/Card :id :dataset_query :display]))
+        ;; If the currently attached card is not editing the expected the table, then create a new one.
+        keep?    (and (= :table-editable (:display card))
+                      (= table-id (get-in card [:dataset_query :query :source-table])))
+        _        (when (and card (not keep?))
+                   (log/warnf "Detaching card %s from dashcard %s as it not editing the expected table (%s)"
+                              (:id card)
+                              (:id dashcard)
+                              table-id))
+        ;; To keep things simple for now, we don't make any attempt to further deduplicate these cards.
+        ;; This especially keeps things simple if we decide to promote them to a first class "editable", by saving them
+        ;; into a collection.
+        ;;
+        ;; We use dashboard cards, which helps keep them hidden and have their lifecycle handled implicitly.
+        ;; We need to watch out for other ways they could "leak", for example, in search.
+        ;; We've handled search for now by filtering on :display, but that's quite opinionated and coupled.
+        ;;
+        ;; Adding and removing tables can create a lot of garbage, but it shouldn't be a big problem in our PoC.
+        ;; We could also change from archiving to deleting them when they are orphaned.
+        card-map {:dashboard_id           dashboard-id
+                  :dashboard_tab_id       tab-id
+                  :collection_position    nil
+                  :dataset_query          {:database (:db_id table)
+                                           :query    {:source-table table-id}
+                                           :type     :query}
+                  :description            nil
+                  :display                "table-editable"
+                  :name                   (:name table)
+                  :result_metadata        nil
+                  :type                   "question"
+                  ;; Redundant with :display, but just in case it's useful. Revisit once FE is built.
+                  :visualization_settings {:editable? true}}
+        card-id (if keep?
+                  (:id card)
+                  (:id (card/create-card! card-map @api/*current-user* true false)))]
+    (-> dashcard
+        ;; This is a downside to creating a new card. If we find more pockets like this, we should pivot to reusing
+        ;; the existing card.
+        (u/update-if-exists :parameter_mappings #(walk/postwalk (fn [x] (if (:card_id x) (assoc x :card_id card-id) x)) %))
+        (assoc :dashboard_id dashboard-id
+               :card_id card-id))))
+
+(defn- init-editable-table-cards!
+  "This method insulated the FE from knowing anything about the implementation details of editable-table dashcards.
+  Given some 'template' we return the fully realized dashcards, with their internal dependencies already in the db.
+  The template data is preserved, allowing the frontend end to further manipulate it in future."
+  [dashboard-id new-dashcards]
+  (for [dashcard new-dashcards]
+    ;; I was expecting dashcards to have some type, but it seems they're duck typed?
+    ;; We probably want to look into this more and have them more clearly differentiated.
+    (if-let [table-id (get-in dashcard [:visualization_settings :table_id])]
+      (create-editable-table-card! dashboard-id dashcard table-id)
+      dashcard)))
+
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
@@ -927,6 +988,7 @@
                                                                       (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
                                                                         (assoc card :dashboard_tab_id real-tab-id)
                                                                         card))))
+                   new-dashcards                             (init-editable-table-cards! id new-dashcards)
                    dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
                (reset! changes-stats
                        (merge

@@ -41,6 +41,8 @@
                         :base-type         :type/Integer
                         :semantic-type     :type/PK
                         :database-is-auto-increment true
+                        :database-is-generated false
+                        :database-is-nullable false
                         :json-unfolding    false
                         :database-position 0}
                        {:name              "title"
@@ -48,12 +50,16 @@
                         :base-type         :type/Text
                         :semantic-type     :type/Title
                         :database-is-auto-increment false
+                        :database-is-generated false
+                        :database-is-nullable true
                         :json-unfolding    false
                         :database-position 1}
                        {:name              "studio"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
                         :database-is-auto-increment false
+                        :database-is-generated false
+                        :database-is-nullable true
                         :json-unfolding    false
                         :database-position 2}}
              :description nil}
@@ -64,12 +70,16 @@
                         :base-type         :type/Text
                         :semantic-type     :type/PK
                         :database-is-auto-increment false
+                        :database-is-generated false
+                        :database-is-nullable true
                         :json-unfolding    false
                         :database-position 0}
                        {:name              "name"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
                         :database-is-auto-increment false
+                        :database-is-generated false
+                        :database-is-nullable true
                         :json-unfolding    false
                         :database-position 1}}
              :description ""}})
@@ -134,6 +144,8 @@
     :fingerprint_version false
     :fk_target_field_id  false
     :database_is_auto_increment false
+    :database_is_generated false
+    :database_is_nullable true
     :id                  true
     :entity_id           false
     :last_analyzed       false
@@ -160,6 +172,7 @@
     :semantic_type     :type/PK
     :database_position 0
     :database_is_auto_increment true
+    :database_is_nullable false
     :position          0}))
 
 (defn- field:movie-studio []

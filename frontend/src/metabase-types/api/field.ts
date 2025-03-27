@@ -115,6 +115,13 @@ export interface Field {
   coercion_strategy: string | null;
   fingerprint: FieldFingerprint | null;
 
+  database_default?: string;
+  database_indexed?: boolean;
+  database_is_auto_increment?: boolean;
+  database_is_generated?: boolean;
+  database_is_nullable?: boolean;
+  database_required?: boolean;
+
   last_analyzed: string;
   created_at: string;
   updated_at: string;

@@ -36,6 +36,9 @@
 (def ^:private user-hydrate
   [:model/User :first_name :last_name :email])
 
+(def ^:private table-hydrate
+  [:model/Table :name])
+
 ;; collection events
 
 (mr/def :event/collection-read
@@ -202,3 +205,24 @@
   [:map {:closed true}
    [:user-id [:maybe pos-int?]]
    [:model [:or :keyword :string]]])
+
+(mr/def ::data-editing-events
+  [:map #_{:closed true}
+   (-> [:table_id pos-int?] (with-hydrate :table table-hydrate))
+   (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))])
+
+(mr/def :event/data-editing-row-create [:merge
+                                        ::data-editing-events
+                                        [:map
+                                         [:created_row :map]]])
+(mr/def :event/data-editing-row-update [:merge
+                                        ::data-editing-events
+                                        [:map
+                                         ;; there could be no changes when update
+                                         [:update [:maybe :map]]
+                                         [:after  [:maybe :map]]
+                                         [:before :map]]])
+(mr/def :event/data-editing-row-delete [:merge
+                                        ::data-editing-events
+                                        [:map
+                                         [:deleted_row :map]]])

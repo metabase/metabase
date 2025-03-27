@@ -11,13 +11,12 @@
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
-   [metabase.channel.template.handlebars :as handlebars]
+   [metabase.channel.template.core :as channel.template]
    [metabase.models.params.shared :as shared.params]
    [metabase.notification.models :as models.notification]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
@@ -80,22 +79,9 @@
     :tab-title
     {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
 
-(defn- render-body
-  [{:keys [details] :as _template} payload]
-  (case (keyword (:type details))
-    :email/handlebars-resource
-    (handlebars/render (:path details) payload)
-
-    :email/handlebars-text
-    (handlebars/render-string (:body details) payload)
-
-    (do
-      (log/warnf "Unknown email template type: %s" (:type details))
-      nil)))
-
 (defn- render-message-body
   [template message-context attachments]
-  (vec (concat [{:type "text/html; charset=utf-8" :content (render-body template message-context)}] attachments)))
+  (vec (concat [{:type "text/html; charset=utf-8" :content (channel.template/render-template template message-context)}] attachments)))
 
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline
@@ -320,15 +306,33 @@
                      :when (seq emails)]
                  emails)))
 
+(def ^:private event-name->template
+  {:event/data-editing-row-create {:channel_type :channel/email
+                                   :details      {:type    :email/handlebars-resource
+                                                  :subject "Table {{payload.event_info.table.name}} has a new row"
+                                                  :path    "metabase/channel/email/data_editing_row_create.hbs"}}
+   :event/data-editing-row-update {:channel_type :channel/email
+                                   :details      {:type    :email/handlebars-resource
+                                                  :subject "Table {{payload.event_info.table.name}} has been updated"
+                                                  :path    "metabase/channel/email/data_editing_row_update.hbs"}}
+   :event/data-editing-row-delete {:channel_type :channel/email
+                                   :details      {:type    :email/handlebars-resource
+                                                  :subject "Table {{payload.event_info.table.name}} has a row deleted"
+                                                  :path    "metabase/channel/email/data_editing_row_delete.hbs"}}})
+
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
   [_channel-type
    notification-payload #_:- #_notification/NotificationPayload
    template             :- ::models.channel/ChannelTemplate
    recipients           :- [:sequential ::models.notification/NotificationRecipient]]
-  (assert (some? template) "Template is required for system event notifications")
-  [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
-                    (notification-recipients->emails recipients notification-payload)
-                    [{:type    "text/html; charset=utf-8"
-                      :content (render-body template notification-payload)}]
-                    (-> template :details :recipient-type keyword))])
+  (let [event-topic (get-in notification-payload [:payload :event_topic])
+        template    (or
+                     template
+                     (get event-name->template event-topic))]
+    (assert template (str "No template found for event " event-topic))
+    [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
+                      (notification-recipients->emails recipients notification-payload)
+                      [{:type    "text/html; charset=utf-8"
+                        :content (channel.template/render-template template notification-payload)}]
+                      (-> template :details :recipient-type keyword))]))

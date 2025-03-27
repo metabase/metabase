@@ -16,6 +16,7 @@ import type {
   DashboardCard,
   DashboardId,
   DashboardTabId,
+  TableId,
   VirtualCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -189,6 +190,25 @@ export const addMarkdownDashCardToDashboard =
     };
     dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
   };
+
+export type AddEditableTableDashCardToDashboardOpts = NewDashCardOpts & {
+  tableId: TableId;
+};
+
+export const addEditableTableDashCardToDashboard =
+  ({ dashId, tabId, tableId }: AddEditableTableDashCardToDashboardOpts) =>
+  (dispatch: Dispatch) => {
+    // trackCardCreated("table-editable", dashId); // TODO [WRK]: add tracking
+    const card = createVirtualCard("text"); // it doesn't matter which type we use here, it will be changed on the BE
+    const dashcardOverrides = {
+      card,
+      visualization_settings: {
+        table_id: tableId,
+      },
+    };
+    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
+  };
+
 export const addIFrameDashCardToDashboard =
   ({ dashId, tabId }: NewDashCardOpts) =>
   (dispatch: Dispatch) => {

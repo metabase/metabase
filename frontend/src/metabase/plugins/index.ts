@@ -53,9 +53,11 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  ConcreteTableId,
   Dashboard,
   Database as DatabaseType,
   Dataset,
+  DatasetData,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -609,4 +611,30 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
     hide_download_button?: boolean | null;
     downloads?: boolean | null;
   }) => true,
+};
+
+export const PLUGIN_DATA_EDITING = {
+  isEnabled: () => false,
+  isDatabaseTableEditingEnabled: (
+    _database: Database | DatabaseType,
+  ): boolean => false,
+  VIEW_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+  }>,
+  EDIT_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+  }>,
+  // TODO [WRK]: add placeholder component
+  CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
+    data: DatasetData;
+    tableId: ConcreteTableId;
+    className?: string;
+    refetchTableDataQuery: () => void;
+  }>,
 };
