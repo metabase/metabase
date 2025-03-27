@@ -11,6 +11,8 @@
    (clojure.lang IDeref)
    (java.io Closeable)))
 
+(set! *warn-on-reflection* true)
+
 (defn- create-test-table! [driver db table-name]
   (let [_     (driver/create-table! driver
                                     (mt/id)
@@ -59,4 +61,3 @@
   `(actions.tu/with-actions-test-data
      (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing true}})
      ~@body))
-
