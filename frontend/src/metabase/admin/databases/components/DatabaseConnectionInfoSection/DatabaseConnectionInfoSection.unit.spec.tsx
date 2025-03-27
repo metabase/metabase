@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupDatabaseDismissSpinnerEndpoint,
   setupDatabaseEndpoints,
   setupDatabaseUsageInfoEndpoint,
 } from "__support__/server-mocks/database";
@@ -30,6 +31,7 @@ function setup({
     }),
   });
   setupDatabaseEndpoints(database);
+  setupDatabaseDismissSpinnerEndpoint(database);
   setupDatabaseUsageInfoEndpoint(database, {
     question: 0,
     dataset: 0,
@@ -39,10 +41,6 @@ function setup({
 
   mockEndpointsCb?.(database);
 
-  // Using mockResolvedValue since the `ActionButton` component
-  // this section is using expects these callbacks to be Promises
-  const dismissSyncSpinner = jest.fn().mockResolvedValue({});
-
   const utils = renderWithProviders(
     <DatabaseConnectionInfoSection database={database} />,
     { storeInitialState: state },
@@ -51,7 +49,6 @@ function setup({
   return {
     ...utils,
     database,
-    dismissSyncSpinner,
   };
 }
 
@@ -142,13 +139,16 @@ describe("DatabaseConnectionInfoSection", () => {
 
         it(`can be dismissed for a database with "${initial_sync_status}" sync status (#20863)`, async () => {
           const database = createMockDatabase({ initial_sync_status });
-          const { dismissSyncSpinner } = setup({ database });
+          setup({ database });
 
           await userEvent.click(
             screen.getByText(/Dismiss sync spinner manually/i),
           );
 
-          expect(dismissSyncSpinner).toHaveBeenCalledWith(database.id);
+          expect(
+            fetchMock.calls(`path:/api/database/${database.id}/dismiss_spinner`)
+              .length,
+          ).toBe(1);
         });
       });
     });
