@@ -1,4 +1,4 @@
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useState } from "react";
 import { Link } from "react-router";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
@@ -7,6 +7,7 @@ import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { FieldOrderSidesheet } from "metabase/metadata/components/FieldOrderSidesheet";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Button, Flex, Icon, Text } from "metabase/ui";
@@ -52,6 +53,9 @@ const MetadataHeader = ({
   selectedTableId,
   onSelectDatabase,
 }: MetadataHeaderProps) => {
+  const [isFieldOrderSidesheetOpen, setIsFieldOrderSidesheetOpen] =
+    useState(false);
+
   useLayoutEffect(() => {
     if (databases.length > 0 && selectedDatabaseId == null) {
       onSelectDatabase(databases[0].id, { useReplace: true });
@@ -85,6 +89,7 @@ const MetadataHeader = ({
         >
           <Button
             leftSection={<Icon name="sort_arrows" />}
+            onClick={() => setIsFieldOrderSidesheetOpen((isOpen) => !isOpen)}
           >{t`Edit column order`}</Button>
 
           <Button
@@ -98,6 +103,11 @@ const MetadataHeader = ({
           >{t`Table settings`}</Button>
         </Flex>
       )}
+
+      <FieldOrderSidesheet
+        isOpen={isFieldOrderSidesheetOpen}
+        onClose={() => setIsFieldOrderSidesheetOpen(false)}
+      />
     </Flex>
   );
 };
