@@ -21,8 +21,15 @@
 
   This map works around this: given a model (e.g. `Card`) that triggered a dependency loop, it provides a set of keys
   to remove from the model so that we'll be able to successfully load it."
-  {"Dashboard" #{:dashcards}
-   "Card" #{:dashboard_id}})
+  {"Dashboard" #{[:dashcards :* :visualization_settings]}
+   "Card" #{[:dashboard_id]}})
+
+(defn- remove-by-path
+  [entity [first-key & rest]]
+  (cond
+    (empty? rest) (dissoc entity first-key)
+    (= :* first-key) (mapv #(remove-by-path % rest) entity)
+    :else (update entity first-key remove-by-path rest)))
 
 (defn- without-references
   "Remove references to other entities from a given one. Used to break circular dependencies when loading."
@@ -32,7 +39,7 @@
                                            {:entity entity
                                             :model model
                                             :error ::no-known-references})))]
-    (apply dissoc entity keys-to-remove)))
+    (reduce remove-by-path entity keys-to-remove)))
 
 (defn- load-deps!
   "Given a list of `deps` (hierarchies), [[load-one]] them all.
