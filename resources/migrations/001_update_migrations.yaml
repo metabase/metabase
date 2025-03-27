@@ -10990,10 +10990,12 @@ databaseChangeLog:
       author: qnkhuat
       comment: Index notification_subscription.table_id
       preConditions:
-      rollback:
-        - dropIndex:
-            tableName: notification_subscription
-            indexName: idx_notification_subscription_table_id
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification_subscription
+                indexName: idx_notification_subscription_table_id
+      rollback: #cannot rollback an index on a fk in mysql
       changes:
         - createIndex:
             tableName: notification_subscription
