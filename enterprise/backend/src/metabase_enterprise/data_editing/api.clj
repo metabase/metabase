@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-editing.api
   (:require
-   [clojure.data :refer [diff]]
    [medley.core :as m]
    [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
    [metabase.actions.core :as actions]
@@ -21,19 +20,27 @@
 
 (defn- perform-bulk-action! [action-kw table-id rows]
   (api/check-superuser)
-  (actions/perform-action! action-kw
-                           {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
-                            :table-id table-id
-                            :arg      rows}
-                           :policy   :data-editing))
+  (actions/perform-with-system-events!
+   action-kw
+   {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
+    :table-id table-id
+    :arg      rows}
+   {:policy :data-editing}))
 
-(doseq [topic [:event/data-editing-row-create
-               :event/data-editing-row-update
-               :event/data-editing-row-delete]]
-  (defmethod events.notification/notification-filter-for-topic topic
+(def ^:private filter-keys
+  {:row/create [:table_id]
+   :row/update [:table_id]
+   :row/delete [:table_id]})
+
+(doseq [action]
+  (defmethod events.notification/notification-filter-for-topic :event/action.success
     [_topic event-info]
-    (assert (:table_id event-info) "Event info must contain :table_id")
-    [:= :table_id (:table_id event-info)]))
+    (when-let [filter-ks (filter-keys (:action event-info))]
+      (into [:and]
+            (for [k filter-ks]
+              (let [v (get event-info k)]
+                (assert (some? v) (str "Event info must contain " k))
+                [:= k v]))))))
 
 (defn- qp-result->row-map
   [{:keys [rows cols]}]
@@ -124,16 +131,16 @@
         (let [;; well, this is a trick, but I haven't figured out how to do single row update
               result        (:rows-updated (perform-bulk-action! :bulk/update table-id [row]))
               after-row     (-> (query-db-rows table-id pk-field [row]) vals first)
-              row-before    (get id->db-row (get-row-pk pk-field row))
-              [_ changes _] (diff row-before row)]
+              row-before    (get id->db-row (get-row-pk pk-field row))]
           (vswap! updated-rows conj after-row)
           (when (pos-int? result)
-            (events/publish-event! :event/data-editing-row-update
-                                   {:table_id table-id
-                                    :after    after-row
-                                    :before   row-before
-                                    :update   changes
-                                    :actor_id api/*current-user-id*}))))
+            (events/publish-event! :event/action.success
+                                   {:action   :row/updated
+                                    :actor_id api/*current-user-id*
+                                    :result   {:table_id   table-id
+                                               :after      after-row
+                                               :before     row-before
+                                               :raw-update changes}}))))
       {:updated @updated-rows})))
 
 (api.macros/defendpoint :post "/table/:table-id/delete"
