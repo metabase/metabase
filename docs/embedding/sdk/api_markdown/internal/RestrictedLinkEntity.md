@@ -4,9 +4,9 @@ type RestrictedLinkEntity = {
 };
 ```
 
-## Properties
+#### Properties
 
-### restricted
+##### restricted
 
 ```ts
 restricted: true;

@@ -2,7 +2,7 @@
 type DetailsPermissions = {};
 ```
 
-## Index Signature
+#### Index Signature
 
 ```ts
 [key: number]: DetailsPermission

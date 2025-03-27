@@ -5,9 +5,9 @@ type DashboardBackButtonProps = {
 } & ActionIconProps & HTMLAttributes<HTMLButtonElement>;
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `noLink?` | `boolean` |
+| Name       | Type         |
+| ---------- | ------------ |
+| `noLink?`  | `boolean`    |
 | `onClick?` | () => `void` |

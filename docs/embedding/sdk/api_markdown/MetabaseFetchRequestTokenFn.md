@@ -4,14 +4,14 @@ type MetabaseFetchRequestTokenFn = (url: string) => Promise<
 | null>;
 ```
 
-## Parameters
+#### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `url` | `string` |
+| Parameter | Type     |
+| --------- | -------- |
+| `url`     | `string` |
 
-## Returns
+#### Returns
 
-`Promise`\<
-  \| [`MetabaseEmbeddingSessionToken`](MetabaseEmbeddingSessionToken.md)
-  \| `null`\>
+`Promise`<
+\| [`MetabaseEmbeddingSessionToken`](./api_html/MetabaseEmbeddingSessionToken.md)
+\| `null`>

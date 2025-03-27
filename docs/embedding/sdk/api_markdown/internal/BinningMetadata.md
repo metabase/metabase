@@ -6,9 +6,9 @@ type BinningMetadata = {
 };
 ```
 
-## Properties
+#### Properties
 
-### bin\_width?
+##### bin\_width?
 
 ```ts
 optional bin_width: number;
@@ -16,7 +16,7 @@ optional bin_width: number;
 
 ***
 
-### binning\_strategy?
+##### binning\_strategy?
 
 ```ts
 optional binning_strategy: "default" | "bin-width" | "num-bins";
@@ -24,7 +24,7 @@ optional binning_strategy: "default" | "bin-width" | "num-bins";
 
 ***
 
-### num\_bins?
+##### num\_bins?
 
 ```ts
 optional num_bins: number;

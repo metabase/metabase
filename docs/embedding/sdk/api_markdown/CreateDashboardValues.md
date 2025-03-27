@@ -1,11 +1,11 @@
-## Extends
+#### Extends
 
-- `Omit`\<[`CreateDashboardProperties`](internal/CreateDashboardProperties.md), `"collection_id"`\>
+* `Omit`<[`CreateDashboardProperties`](./api_html/internal/CreateDashboardProperties.md), `"collection_id"`>
 
-## Properties
+#### Properties
 
-| Property | Type | Inherited from |
-| ------ | ------ | ------ |
-| <a id="collectionid"></a> `collectionId` | [`SdkCollectionId`](internal/SdkCollectionId.md) | - |
-| <a id="description"></a> `description` | `null` \| `string` | `Omit.description` |
-| <a id="name"></a> `name` | `string` | `Omit.name` |
+| Property                                 | Type                                                        | Inherited from     |
+| ---------------------------------------- | ----------------------------------------------------------- | ------------------ |
+| <a id="collectionid"></a> `collectionId` | [`SdkCollectionId`](./api_html/internal/SdkCollectionId.md) | -                  |
+| <a id="description"></a> `description`   | `null` \| `string`                                          | `Omit.description` |
+| <a id="name"></a> `name`                 | `string`                                                    | `Omit.name`        |

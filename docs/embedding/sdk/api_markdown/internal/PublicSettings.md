@@ -1,67 +1,67 @@
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="airgap-enabled"></a> `airgap-enabled` | `boolean` |
-| <a id="allowed-iframe-hosts"></a> `allowed-iframe-hosts` | `string` |
-| <a id="anon-tracking-enabled"></a> `anon-tracking-enabled` | `boolean` |
-| <a id="application-favicon-url"></a> `application-favicon-url` | `string` |
-| <a id="application-font"></a> `application-font` | `string` |
-| <a id="application-font-files"></a> `application-font-files` | `null` \| [`FontFile`](FontFile.md)[] |
-| <a id="application-name"></a> `application-name` | `string` |
-| <a id="available-fonts"></a> `available-fonts` | `string`[] |
-| <a id="available-locales"></a> `available-locales` | `null` \| [`LocaleData`](LocaleData.md)[] |
-| <a id="bug-reporting-enabled"></a> `bug-reporting-enabled` | `boolean` |
-| <a id="check-for-updates"></a> `check-for-updates` | `boolean` |
-| <a id="cloud-gateway-ips"></a> `cloud-gateway-ips` | `null` \| `string`[] |
-| <a id="custom-formatting"></a> `custom-formatting` | [`FormattingSettings`](FormattingSettings.md) |
-| <a id="custom-homepage"></a> `custom-homepage` | `boolean` |
-| <a id="custom-homepage-dashboard"></a> `custom-homepage-dashboard` | `null` \| `number` |
-| <a id="ee-ai-features-enabled"></a> `ee-ai-features-enabled?` | `boolean` |
-| <a id="email-configured"></a> `email-configured?` | `boolean` |
-| <a id="embedding-app-origin"></a> `embedding-app-origin` | `null` \| `string` |
-| <a id="embedding-app-origins-interactive"></a> `embedding-app-origins-interactive` | `null` \| `string` |
-| <a id="embedding-app-origins-sdk"></a> `embedding-app-origins-sdk` | `null` \| `string` |
-| <a id="enable-enhancements"></a> `enable-enhancements?` | `boolean` |
-| <a id="enable-password-login"></a> `enable-password-login` | `boolean` |
-| <a id="enable-pivoted-exports"></a> `enable-pivoted-exports` | `boolean` |
-| <a id="engines"></a> `engines` | `Record`\<`string`, [`Engine`](Engine.md)\> |
-| <a id="google-auth-client-id"></a> `google-auth-client-id` | `null` \| `string` |
-| <a id="google-auth-enabled"></a> `google-auth-enabled` | `boolean` |
-| <a id="gsheets"></a> `gsheets` | \{ `error`: `string`; `folder_url`: `null` \| `string`; `status`: `"error"` \| `"loading"` \| `"complete"` \| `"not-connected"`; \} |
-| `gsheets.error?` | `string` |
-| `gsheets.folder_url` | `null` \| `string` |
-| `gsheets.status` | `"error"` \| `"loading"` \| `"complete"` \| `"not-connected"` |
-| <a id="has-user-setup"></a> `has-user-setup` | `boolean` |
-| <a id="help-link"></a> `help-link` | [`HelpLinkSetting`](HelpLinkSetting.md) |
-| <a id="help-link-custom-destination"></a> `help-link-custom-destination` | `string` |
-| <a id="hide-embed-branding"></a> `hide-embed-branding?` | `boolean` |
-| <a id="humanization-strategy"></a> `humanization-strategy` | `"none"` \| `"simple"` |
-| <a id="is-hosted"></a> `is-hosted?` | `boolean` |
-| <a id="ldap-configured"></a> `ldap-configured?` | `boolean` |
-| <a id="ldap-enabled"></a> `ldap-enabled` | `boolean` |
-| <a id="ldap-group-membership-filter"></a> `ldap-group-membership-filter` | `string` |
-| <a id="ldap-port"></a> `ldap-port` | `number` |
-| <a id="loading-message"></a> `loading-message` | [`LoadingMessage`](LoadingMessage.md) |
-| <a id="map-tile-server-url"></a> `map-tile-server-url` | `string` |
-| <a id="native-query-autocomplete-match-style"></a> `native-query-autocomplete-match-style` | [`AutocompleteMatchStyle`](AutocompleteMatchStyle.md) |
-| <a id="other-sso-enabled"></a> `other-sso-enabled?` | `null` \| `boolean` |
-| <a id="password-complexity"></a> `password-complexity` | [`PasswordComplexity`](PasswordComplexity.md) |
-| <a id="persisted-model-refresh-cron-schedule"></a> `persisted-model-refresh-cron-schedule` | `string` |
-| <a id="persisted-models-enabled"></a> `persisted-models-enabled` | `boolean` |
-| <a id="report-timezone-long"></a> `report-timezone-long` | `string` |
-| <a id="report-timezone-short"></a> `report-timezone-short` | `string` |
-| <a id="session-cookies"></a> `session-cookies` | `null` \| `boolean` |
-| <a id="setup-token"></a> `setup-token` | `null` \| `string` |
-| <a id="show-google-sheets-integration"></a> `show-google-sheets-integration` | `boolean` |
-| <a id="show-metabase-links"></a> `show-metabase-links` | `boolean` |
-| <a id="show-metabot"></a> `show-metabot` | `boolean` |
-| <a id="site-locale"></a> `site-locale` | `string` |
-| <a id="site-url"></a> `site-url` | `string` |
-| <a id="snowplow-enabled"></a> `snowplow-enabled` | `boolean` |
-| <a id="snowplow-url"></a> `snowplow-url` | `string` |
-| <a id="start-of-week"></a> `start-of-week` | [`DayOfWeekId`](DayOfWeekId.md) |
-| <a id="token-features"></a> `token-features` | [`TokenFeatures`](TokenFeatures.md) |
-| <a id="update-channel"></a> `update-channel` | [`UpdateChannel`](UpdateChannel.md) |
-| <a id="version"></a> `version` | [`Version`](Version.md) |
-| <a id="version-info-last-checked"></a> `version-info-last-checked` | `null` \| `string` |
+| Property                                                                                   | Type                                                                                                                              |
+| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| <a id="airgap-enabled"></a> `airgap-enabled`                                               | `boolean`                                                                                                                         |
+| <a id="allowed-iframe-hosts"></a> `allowed-iframe-hosts`                                   | `string`                                                                                                                          |
+| <a id="anon-tracking-enabled"></a> `anon-tracking-enabled`                                 | `boolean`                                                                                                                         |
+| <a id="application-favicon-url"></a> `application-favicon-url`                             | `string`                                                                                                                          |
+| <a id="application-font"></a> `application-font`                                           | `string`                                                                                                                          |
+| <a id="application-font-files"></a> `application-font-files`                               | `null` \| [`FontFile`](./api_html/FontFile.md)\[]                                                                                 |
+| <a id="application-name"></a> `application-name`                                           | `string`                                                                                                                          |
+| <a id="available-fonts"></a> `available-fonts`                                             | `string`\[]                                                                                                                       |
+| <a id="available-locales"></a> `available-locales`                                         | `null` \| [`LocaleData`](./api_html/LocaleData.md)\[]                                                                             |
+| <a id="bug-reporting-enabled"></a> `bug-reporting-enabled`                                 | `boolean`                                                                                                                         |
+| <a id="check-for-updates"></a> `check-for-updates`                                         | `boolean`                                                                                                                         |
+| <a id="cloud-gateway-ips"></a> `cloud-gateway-ips`                                         | `null` \| `string`\[]                                                                                                             |
+| <a id="custom-formatting"></a> `custom-formatting`                                         | [`FormattingSettings`](./api_html/FormattingSettings.md)                                                                          |
+| <a id="custom-homepage"></a> `custom-homepage`                                             | `boolean`                                                                                                                         |
+| <a id="custom-homepage-dashboard"></a> `custom-homepage-dashboard`                         | `null` \| `number`                                                                                                                |
+| <a id="ee-ai-features-enabled"></a> `ee-ai-features-enabled?`                              | `boolean`                                                                                                                         |
+| <a id="email-configured"></a> `email-configured?`                                          | `boolean`                                                                                                                         |
+| <a id="embedding-app-origin"></a> `embedding-app-origin`                                   | `null` \| `string`                                                                                                                |
+| <a id="embedding-app-origins-interactive"></a> `embedding-app-origins-interactive`         | `null` \| `string`                                                                                                                |
+| <a id="embedding-app-origins-sdk"></a> `embedding-app-origins-sdk`                         | `null` \| `string`                                                                                                                |
+| <a id="enable-enhancements"></a> `enable-enhancements?`                                    | `boolean`                                                                                                                         |
+| <a id="enable-password-login"></a> `enable-password-login`                                 | `boolean`                                                                                                                         |
+| <a id="enable-pivoted-exports"></a> `enable-pivoted-exports`                               | `boolean`                                                                                                                         |
+| <a id="engines"></a> `engines`                                                             | `Record`<`string`, [`Engine`](./api_html/Engine.md)>                                                                              |
+| <a id="google-auth-client-id"></a> `google-auth-client-id`                                 | `null` \| `string`                                                                                                                |
+| <a id="google-auth-enabled"></a> `google-auth-enabled`                                     | `boolean`                                                                                                                         |
+| <a id="gsheets"></a> `gsheets`                                                             | { `error`: `string`; `folder_url`: `null` \| `string`; `status`: `"error"` \| `"loading"` \| `"complete"` \| `"not-connected"`; } |
+| `gsheets.error?`                                                                           | `string`                                                                                                                          |
+| `gsheets.folder_url`                                                                       | `null` \| `string`                                                                                                                |
+| `gsheets.status`                                                                           | `"error"` \| `"loading"` \| `"complete"` \| `"not-connected"`                                                                     |
+| <a id="has-user-setup"></a> `has-user-setup`                                               | `boolean`                                                                                                                         |
+| <a id="help-link"></a> `help-link`                                                         | [`HelpLinkSetting`](./api_html/HelpLinkSetting.md)                                                                                |
+| <a id="help-link-custom-destination"></a> `help-link-custom-destination`                   | `string`                                                                                                                          |
+| <a id="hide-embed-branding"></a> `hide-embed-branding?`                                    | `boolean`                                                                                                                         |
+| <a id="humanization-strategy"></a> `humanization-strategy`                                 | `"none"` \| `"simple"`                                                                                                            |
+| <a id="is-hosted"></a> `is-hosted?`                                                        | `boolean`                                                                                                                         |
+| <a id="ldap-configured"></a> `ldap-configured?`                                            | `boolean`                                                                                                                         |
+| <a id="ldap-enabled"></a> `ldap-enabled`                                                   | `boolean`                                                                                                                         |
+| <a id="ldap-group-membership-filter"></a> `ldap-group-membership-filter`                   | `string`                                                                                                                          |
+| <a id="ldap-port"></a> `ldap-port`                                                         | `number`                                                                                                                          |
+| <a id="loading-message"></a> `loading-message`                                             | [`LoadingMessage`](./api_html/LoadingMessage.md)                                                                                  |
+| <a id="map-tile-server-url"></a> `map-tile-server-url`                                     | `string`                                                                                                                          |
+| <a id="native-query-autocomplete-match-style"></a> `native-query-autocomplete-match-style` | [`AutocompleteMatchStyle`](./api_html/AutocompleteMatchStyle.md)                                                                  |
+| <a id="other-sso-enabled"></a> `other-sso-enabled?`                                        | `null` \| `boolean`                                                                                                               |
+| <a id="password-complexity"></a> `password-complexity`                                     | [`PasswordComplexity`](./api_html/PasswordComplexity.md)                                                                          |
+| <a id="persisted-model-refresh-cron-schedule"></a> `persisted-model-refresh-cron-schedule` | `string`                                                                                                                          |
+| <a id="persisted-models-enabled"></a> `persisted-models-enabled`                           | `boolean`                                                                                                                         |
+| <a id="report-timezone-long"></a> `report-timezone-long`                                   | `string`                                                                                                                          |
+| <a id="report-timezone-short"></a> `report-timezone-short`                                 | `string`                                                                                                                          |
+| <a id="session-cookies"></a> `session-cookies`                                             | `null` \| `boolean`                                                                                                               |
+| <a id="setup-token"></a> `setup-token`                                                     | `null` \| `string`                                                                                                                |
+| <a id="show-google-sheets-integration"></a> `show-google-sheets-integration`               | `boolean`                                                                                                                         |
+| <a id="show-metabase-links"></a> `show-metabase-links`                                     | `boolean`                                                                                                                         |
+| <a id="show-metabot"></a> `show-metabot`                                                   | `boolean`                                                                                                                         |
+| <a id="site-locale"></a> `site-locale`                                                     | `string`                                                                                                                          |
+| <a id="site-url"></a> `site-url`                                                           | `string`                                                                                                                          |
+| <a id="snowplow-enabled"></a> `snowplow-enabled`                                           | `boolean`                                                                                                                         |
+| <a id="snowplow-url"></a> `snowplow-url`                                                   | `string`                                                                                                                          |
+| <a id="start-of-week"></a> `start-of-week`                                                 | [`DayOfWeekId`](./api_html/DayOfWeekId.md)                                                                                        |
+| <a id="token-features"></a> `token-features`                                               | [`TokenFeatures`](./api_html/TokenFeatures.md)                                                                                    |
+| <a id="update-channel"></a> `update-channel`                                               | [`UpdateChannel`](./api_html/UpdateChannel.md)                                                                                    |
+| <a id="version"></a> `version`                                                             | [`Version`](./api_html/Version.md)                                                                                                |
+| <a id="version-info-last-checked"></a> `version-info-last-checked`                         | `null` \| `string`                                                                                                                |

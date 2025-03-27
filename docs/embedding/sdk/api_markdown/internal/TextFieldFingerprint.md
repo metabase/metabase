@@ -8,9 +8,9 @@ type TextFieldFingerprint = {
 };
 ```
 
-## Properties
+#### Properties
 
-### average-length
+##### average-length
 
 ```ts
 average-length: number;
@@ -18,7 +18,7 @@ average-length: number;
 
 ***
 
-### percent-email
+##### percent-email
 
 ```ts
 percent-email: number;
@@ -26,7 +26,7 @@ percent-email: number;
 
 ***
 
-### percent-json
+##### percent-json
 
 ```ts
 percent-json: number;
@@ -34,7 +34,7 @@ percent-json: number;
 
 ***
 
-### percent-state
+##### percent-state
 
 ```ts
 percent-state: number;
@@ -42,7 +42,7 @@ percent-state: number;
 
 ***
 
-### percent-url
+##### percent-url
 
 ```ts
 percent-url: number;

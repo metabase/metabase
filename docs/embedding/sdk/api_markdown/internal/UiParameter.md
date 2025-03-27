@@ -6,8 +6,8 @@ type UiParameter =
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
+| Name      | Type      |
+| --------- | --------- |
 | `hidden?` | `boolean` |

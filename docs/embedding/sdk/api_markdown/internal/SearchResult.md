@@ -1,46 +1,46 @@
-## Type Parameters
+#### Type Parameters
 
-| Type Parameter | Default type |
-| ------ | ------ |
-| `Id` *extends* [`SearchResultId`](SearchResultId.md) | [`SearchResultId`](SearchResultId.md) |
-| `Model` *extends* [`SearchModel`](SearchModel.md) | [`SearchModel`](SearchModel.md) |
+| Type Parameter                                                  | Default type                                     |
+| --------------------------------------------------------------- | ------------------------------------------------ |
+| `Id` *extends* [`SearchResultId`](./api_html/SearchResultId.md) | [`SearchResultId`](./api_html/SearchResultId.md) |
+| `Model` *extends* [`SearchModel`](./api_html/SearchModel.md)    | [`SearchModel`](./api_html/SearchModel.md)       |
 
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="archived"></a> `archived` | `null` \| `boolean` |
-| <a id="based_on_upload"></a> `based_on_upload?` | `null` \| [`TableId`](TableId.md) |
-| <a id="bookmark"></a> `bookmark` | `null` \| `boolean` |
-| <a id="can_write"></a> `can_write` | `null` \| `boolean` |
-| <a id="collection"></a> `collection` | [`CollectionEssentials`](CollectionEssentials.md) |
-| <a id="collection_authority_level"></a> `collection_authority_level` | `null` \| `"official"` |
-| <a id="collection_position"></a> `collection_position` | `null` \| `number` |
-| <a id="context"></a> `context` | `any` |
-| <a id="created_at"></a> `created_at` | `null` \| `string` |
-| <a id="creator_common_name"></a> `creator_common_name` | `null` \| `string` |
-| <a id="creator_id"></a> `creator_id` | `null` \| `number` |
-| <a id="dashboard"></a> `dashboard` | \| `null` \| `Pick`\<[`MetabaseDashboard`](../MetabaseDashboard.md), `"name"` \| `"id"`\> & \{ `moderation_status`: [`ModerationReviewStatus`](ModerationReviewStatus.md); \} |
-| <a id="dashboard_count"></a> `dashboard_count` | `null` \| `number` |
-| <a id="database_id"></a> `database_id` | `number` |
-| <a id="database_name"></a> `database_name` | `null` \| `string` |
-| <a id="description"></a> `description` | `null` \| `string` |
-| <a id="display"></a> `display` | \| `null` \| `"object"` \| `"table"` \| `"row"` \| `"bar"` \| `"line"` \| `"pie"` \| `"scalar"` \| `"area"` \| `"combo"` \| `"pivot"` \| `"smartscalar"` \| `"gauge"` \| `"progress"` \| `"funnel"` \| `"map"` \| `"scatter"` \| `"waterfall"` \| `"sankey"` |
-| <a id="id-1"></a> `id` | `Id` |
-| <a id="initial_sync_status"></a> `initial_sync_status` | `null` \| [`LongTaskStatus`](LongTaskStatus.md) |
-| <a id="last_edited_at"></a> `last_edited_at` | `null` \| `string` |
-| <a id="last_editor_common_name"></a> `last_editor_common_name` | `null` \| `string` |
-| <a id="last_editor_id"></a> `last_editor_id` | `null` \| `number` |
-| <a id="last-edit-info"></a> `last-edit-info?` | [`LastEditInfo`](LastEditInfo.md) |
-| <a id="model-1"></a> `model` | `Model` |
-| <a id="model_id"></a> `model_id` | `null` \| `number` |
-| <a id="model_index_id"></a> `model_index_id` | `null` \| `number` |
-| <a id="model_name"></a> `model_name` | `null` \| `string` |
-| <a id="moderated_status"></a> `moderated_status` | `null` \| `string` |
-| <a id="name"></a> `name` | `string` |
-| <a id="pk_ref"></a> `pk_ref` | `null` \| [`FieldReference`](FieldReference.md) |
-| <a id="table_description"></a> `table_description` | `null` \| `string` |
-| <a id="table_id"></a> `table_id` | [`TableId`](TableId.md) |
-| <a id="table_name"></a> `table_name` | `null` \| `string` |
-| <a id="table_schema"></a> `table_schema` | `null` \| `string` |
-| <a id="updated_at"></a> `updated_at` | `string` |
+| Property                                                             | Type                                                                                                                                                                                                                                                         |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| <a id="archived"></a> `archived`                                     | `null` \| `boolean`                                                                                                                                                                                                                                          |
+| <a id="based_on_upload"></a> `based_on_upload?`                      | `null` \| [`TableId`](./api_html/TableId.md)                                                                                                                                                                                                                 |
+| <a id="bookmark"></a> `bookmark`                                     | `null` \| `boolean`                                                                                                                                                                                                                                          |
+| <a id="can_write"></a> `can_write`                                   | `null` \| `boolean`                                                                                                                                                                                                                                          |
+| <a id="collection"></a> `collection`                                 | [`CollectionEssentials`](./api_html/CollectionEssentials.md)                                                                                                                                                                                                 |
+| <a id="collection_authority_level"></a> `collection_authority_level` | `null` \| `"official"`                                                                                                                                                                                                                                       |
+| <a id="collection_position"></a> `collection_position`               | `null` \| `number`                                                                                                                                                                                                                                           |
+| <a id="context"></a> `context`                                       | `any`                                                                                                                                                                                                                                                        |
+| <a id="created_at"></a> `created_at`                                 | `null` \| `string`                                                                                                                                                                                                                                           |
+| <a id="creator_common_name"></a> `creator_common_name`               | `null` \| `string`                                                                                                                                                                                                                                           |
+| <a id="creator_id"></a> `creator_id`                                 | `null` \| `number`                                                                                                                                                                                                                                           |
+| <a id="dashboard"></a> `dashboard`                                   | \| `null` \| `Pick`<[`MetabaseDashboard`](./api_html/../MetabaseDashboard.md), `"name"` \| `"id"`> & { `moderation_status`: [`ModerationReviewStatus`](./api_html/ModerationReviewStatus.md); }                                                              |
+| <a id="dashboard_count"></a> `dashboard_count`                       | `null` \| `number`                                                                                                                                                                                                                                           |
+| <a id="database_id"></a> `database_id`                               | `number`                                                                                                                                                                                                                                                     |
+| <a id="database_name"></a> `database_name`                           | `null` \| `string`                                                                                                                                                                                                                                           |
+| <a id="description"></a> `description`                               | `null` \| `string`                                                                                                                                                                                                                                           |
+| <a id="display"></a> `display`                                       | \| `null` \| `"object"` \| `"table"` \| `"row"` \| `"bar"` \| `"line"` \| `"pie"` \| `"scalar"` \| `"area"` \| `"combo"` \| `"pivot"` \| `"smartscalar"` \| `"gauge"` \| `"progress"` \| `"funnel"` \| `"map"` \| `"scatter"` \| `"waterfall"` \| `"sankey"` |
+| <a id="id-1"></a> `id`                                               | `Id`                                                                                                                                                                                                                                                         |
+| <a id="initial_sync_status"></a> `initial_sync_status`               | `null` \| [`LongTaskStatus`](./api_html/LongTaskStatus.md)                                                                                                                                                                                                   |
+| <a id="last_edited_at"></a> `last_edited_at`                         | `null` \| `string`                                                                                                                                                                                                                                           |
+| <a id="last_editor_common_name"></a> `last_editor_common_name`       | `null` \| `string`                                                                                                                                                                                                                                           |
+| <a id="last_editor_id"></a> `last_editor_id`                         | `null` \| `number`                                                                                                                                                                                                                                           |
+| <a id="last-edit-info"></a> `last-edit-info?`                        | [`LastEditInfo`](./api_html/LastEditInfo.md)                                                                                                                                                                                                                 |
+| <a id="model-1"></a> `model`                                         | `Model`                                                                                                                                                                                                                                                      |
+| <a id="model_id"></a> `model_id`                                     | `null` \| `number`                                                                                                                                                                                                                                           |
+| <a id="model_index_id"></a> `model_index_id`                         | `null` \| `number`                                                                                                                                                                                                                                           |
+| <a id="model_name"></a> `model_name`                                 | `null` \| `string`                                                                                                                                                                                                                                           |
+| <a id="moderated_status"></a> `moderated_status`                     | `null` \| `string`                                                                                                                                                                                                                                           |
+| <a id="name"></a> `name`                                             | `string`                                                                                                                                                                                                                                                     |
+| <a id="pk_ref"></a> `pk_ref`                                         | `null` \| [`FieldReference`](./api_html/FieldReference.md)                                                                                                                                                                                                   |
+| <a id="table_description"></a> `table_description`                   | `null` \| `string`                                                                                                                                                                                                                                           |
+| <a id="table_id"></a> `table_id`                                     | [`TableId`](./api_html/TableId.md)                                                                                                                                                                                                                           |
+| <a id="table_name"></a> `table_name`                                 | `null` \| `string`                                                                                                                                                                                                                                           |
+| <a id="table_schema"></a> `table_schema`                             | `null` \| `string`                                                                                                                                                                                                                                           |
+| <a id="updated_at"></a> `updated_at`                                 | `string`                                                                                                                                                                                                                                                     |

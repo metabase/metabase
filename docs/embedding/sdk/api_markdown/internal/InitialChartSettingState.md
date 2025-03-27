@@ -5,9 +5,9 @@ type InitialChartSettingState = {
 };
 ```
 
-## Properties
+#### Properties
 
-### section?
+##### section?
 
 ```ts
 optional section: string | null;
@@ -15,7 +15,7 @@ optional section: string | null;
 
 ***
 
-### widget?
+##### widget?
 
 ```ts
 optional widget: Widget | null;

@@ -6,9 +6,9 @@ type FieldDimensionOption = {
 };
 ```
 
-## Properties
+#### Properties
 
-### mbql
+##### mbql
 
 ```ts
 mbql: unknown[] | null;
@@ -16,7 +16,7 @@ mbql: unknown[] | null;
 
 ***
 
-### name
+##### name
 
 ```ts
 name: string;
@@ -24,7 +24,7 @@ name: string;
 
 ***
 
-### type
+##### type
 
 ```ts
 type: string;

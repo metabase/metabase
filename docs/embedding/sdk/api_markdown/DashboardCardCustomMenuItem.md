@@ -8,9 +8,9 @@ type DashboardCardCustomMenuItem = {
 };
 ```
 
-## Properties
+#### Properties
 
-### customItems?
+##### customItems?
 
 ```ts
 optional customItems: (
@@ -20,7 +20,7 @@ optional customItems: (
 
 ***
 
-### withDownloads?
+##### withDownloads?
 
 ```ts
 optional withDownloads: boolean;
@@ -28,7 +28,7 @@ optional withDownloads: boolean;
 
 ***
 
-### withEditLink?
+##### withEditLink?
 
 ```ts
 optional withEditLink: boolean;

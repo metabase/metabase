@@ -1,13 +1,13 @@
-## Extended by
+#### Extended by
 
-- [`DoNotCacheStrategy`](DoNotCacheStrategy.md)
-- [`AdaptiveStrategy`](AdaptiveStrategy.md)
-- [`DurationStrategy`](DurationStrategy.md)
-- [`InheritStrategy`](InheritStrategy.md)
-- [`ScheduleStrategy`](ScheduleStrategy.md)
+* [`DoNotCacheStrategy`](./api_html/DoNotCacheStrategy.md)
+* [`AdaptiveStrategy`](./api_html/AdaptiveStrategy.md)
+* [`DurationStrategy`](./api_html/DurationStrategy.md)
+* [`InheritStrategy`](./api_html/InheritStrategy.md)
+* [`ScheduleStrategy`](./api_html/ScheduleStrategy.md)
 
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="type"></a> `type` | [`CacheStrategyType`](CacheStrategyType.md) |
+| Property                 | Type                                                   |
+| ------------------------ | ------------------------------------------------------ |
+| <a id="type"></a> `type` | [`CacheStrategyType`](./api_html/CacheStrategyType.md) |

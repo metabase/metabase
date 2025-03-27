@@ -5,9 +5,9 @@ type MetabaseAuthConfigWithProvider = BaseMetabaseAuthConfig & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `apiKey?` | `never` |
+| Name              | Type     |
+| ----------------- | -------- |
+| `apiKey?`         | `never`  |
 | `authProviderUri` | `string` |

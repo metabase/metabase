@@ -25,9 +25,9 @@ type Table = {
 };
 ```
 
-## Properties
+#### Properties
 
-### active
+##### active
 
 ```ts
 active: boolean;
@@ -35,7 +35,7 @@ active: boolean;
 
 ***
 
-### caveats?
+##### caveats?
 
 ```ts
 optional caveats: string;
@@ -43,7 +43,7 @@ optional caveats: string;
 
 ***
 
-### created\_at
+##### created\_at
 
 ```ts
 created_at: string;
@@ -51,7 +51,7 @@ created_at: string;
 
 ***
 
-### db?
+##### db?
 
 ```ts
 optional db: Database;
@@ -59,7 +59,7 @@ optional db: Database;
 
 ***
 
-### db\_id
+##### db\_id
 
 ```ts
 db_id: DatabaseId;
@@ -67,7 +67,7 @@ db_id: DatabaseId;
 
 ***
 
-### description
+##### description
 
 ```ts
 description: string | null;
@@ -75,7 +75,7 @@ description: string | null;
 
 ***
 
-### dimension\_options?
+##### dimension\_options?
 
 ```ts
 optional dimension_options: Record<string, FieldDimensionOption>;
@@ -83,7 +83,7 @@ optional dimension_options: Record<string, FieldDimensionOption>;
 
 ***
 
-### display\_name
+##### display\_name
 
 ```ts
 display_name: string;
@@ -91,7 +91,7 @@ display_name: string;
 
 ***
 
-### field\_order
+##### field\_order
 
 ```ts
 field_order: TableFieldOrder;
@@ -99,7 +99,7 @@ field_order: TableFieldOrder;
 
 ***
 
-### fields?
+##### fields?
 
 ```ts
 optional fields: Field_2[];
@@ -107,7 +107,7 @@ optional fields: Field_2[];
 
 ***
 
-### fks?
+##### fks?
 
 ```ts
 optional fks: ForeignKey[];
@@ -115,7 +115,7 @@ optional fks: ForeignKey[];
 
 ***
 
-### id
+##### id
 
 ```ts
 id: TableId;
@@ -123,7 +123,7 @@ id: TableId;
 
 ***
 
-### initial\_sync\_status
+##### initial\_sync\_status
 
 ```ts
 initial_sync_status: InitialSyncStatus;
@@ -131,7 +131,7 @@ initial_sync_status: InitialSyncStatus;
 
 ***
 
-### is\_upload
+##### is\_upload
 
 ```ts
 is_upload: boolean;
@@ -139,7 +139,7 @@ is_upload: boolean;
 
 ***
 
-### metrics?
+##### metrics?
 
 ```ts
 optional metrics: Card[];
@@ -147,7 +147,7 @@ optional metrics: Card[];
 
 ***
 
-### name
+##### name
 
 ```ts
 name: string;
@@ -155,7 +155,7 @@ name: string;
 
 ***
 
-### points\_of\_interest?
+##### points\_of\_interest?
 
 ```ts
 optional points_of_interest: string;
@@ -163,7 +163,7 @@ optional points_of_interest: string;
 
 ***
 
-### schema
+##### schema
 
 ```ts
 schema: SchemaName;
@@ -171,7 +171,7 @@ schema: SchemaName;
 
 ***
 
-### segments?
+##### segments?
 
 ```ts
 optional segments: Segment[];
@@ -179,7 +179,7 @@ optional segments: Segment[];
 
 ***
 
-### type?
+##### type?
 
 ```ts
 optional type: CardType;
@@ -187,7 +187,7 @@ optional type: CardType;
 
 ***
 
-### updated\_at
+##### updated\_at
 
 ```ts
 updated_at: string;
@@ -195,7 +195,7 @@ updated_at: string;
 
 ***
 
-### visibility\_type
+##### visibility\_type
 
 ```ts
 visibility_type: TableVisibilityType;

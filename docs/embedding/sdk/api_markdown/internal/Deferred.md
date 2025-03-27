@@ -1,11 +1,11 @@
-## Type Parameters
+#### Type Parameters
 
 | Type Parameter | Default type |
-| ------ | ------ |
-| `T` | `unknown` |
+| -------------- | ------------ |
+| `T`            | `unknown`    |
 
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="promise"></a> `promise` | `Promise`\<`T`\> |
+| Property                       | Type           |
+| ------------------------------ | -------------- |
+| <a id="promise"></a> `promise` | `Promise`<`T`> |

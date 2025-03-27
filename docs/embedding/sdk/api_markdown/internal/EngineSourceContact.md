@@ -1,6 +1,6 @@
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
+| Property                        | Type     |
+| ------------------------------- | -------- |
 | <a id="address"></a> `address?` | `string` |
-| <a id="name"></a> `name?` | `string` |
+| <a id="name"></a> `name?`       | `string` |

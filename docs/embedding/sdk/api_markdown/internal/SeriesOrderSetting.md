@@ -7,9 +7,9 @@ type SeriesOrderSetting = {
 };
 ```
 
-## Properties
+#### Properties
 
-### color?
+##### color?
 
 ```ts
 optional color: string;
@@ -17,7 +17,7 @@ optional color: string;
 
 ***
 
-### enabled
+##### enabled
 
 ```ts
 enabled: boolean;
@@ -25,7 +25,7 @@ enabled: boolean;
 
 ***
 
-### key
+##### key
 
 ```ts
 key: string;
@@ -33,7 +33,7 @@ key: string;
 
 ***
 
-### name
+##### name
 
 ```ts
 name: string;

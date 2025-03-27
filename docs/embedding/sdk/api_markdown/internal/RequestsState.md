@@ -5,9 +5,9 @@ type RequestsState = {
 };
 ```
 
-## Properties
+#### Properties
 
-### entities
+##### entities
 
 ```ts
 entities: RequestsGroupState;
@@ -15,7 +15,7 @@ entities: RequestsGroupState;
 
 ***
 
-### plugins
+##### plugins
 
 ```ts
 plugins: RequestsGroupState;

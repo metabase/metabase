@@ -8,9 +8,9 @@ type ModerationReview = {
 };
 ```
 
-## Properties
+#### Properties
 
-### created\_at
+##### created\_at
 
 ```ts
 created_at: string;
@@ -18,7 +18,7 @@ created_at: string;
 
 ***
 
-### moderator\_id
+##### moderator\_id
 
 ```ts
 moderator_id: number;
@@ -26,7 +26,7 @@ moderator_id: number;
 
 ***
 
-### most\_recent?
+##### most\_recent?
 
 ```ts
 optional most_recent: boolean;
@@ -34,7 +34,7 @@ optional most_recent: boolean;
 
 ***
 
-### status
+##### status
 
 ```ts
 status: ModerationReviewStatus;
@@ -42,7 +42,7 @@ status: ModerationReviewStatus;
 
 ***
 
-### user
+##### user
 
 ```ts
 user: BaseUser;

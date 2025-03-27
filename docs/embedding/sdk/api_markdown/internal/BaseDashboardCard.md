@@ -14,18 +14,18 @@ type BaseDashboardCard = DashboardCardLayoutAttrs & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `card` | [`Card`](Card.md) \| [`VirtualCard`](VirtualCard.md) |
-| `card_id` | [`CardId`](CardId.md) \| `null` |
-| `collection_authority_level?` | [`CollectionAuthorityLevel`](CollectionAuthorityLevel.md) |
-| `created_at` | `string` |
-| `dashboard_id` | [`DashboardId`](DashboardId.md) |
-| `dashboard_tab_id` | [`DashboardTabId`](DashboardTabId.md) \| `null` |
-| `entity_id` | [`BaseEntityId`](BaseEntityId.md) |
-| `id` | [`DashCardId`](DashCardId.md) |
-| `justAdded?` | `boolean` |
-| `updated_at` | `string` |
-| `visualization_settings?` | [`DashCardVisualizationSettings`](DashCardVisualizationSettings.md) |
+| Name                          | Type                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------ |
+| `card`                        | [`Card`](./api_html/Card.md) \| [`VirtualCard`](./api_html/VirtualCard.md)     |
+| `card_id`                     | [`CardId`](./api_html/CardId.md) \| `null`                                     |
+| `collection_authority_level?` | [`CollectionAuthorityLevel`](./api_html/CollectionAuthorityLevel.md)           |
+| `created_at`                  | `string`                                                                       |
+| `dashboard_id`                | [`DashboardId`](./api_html/DashboardId.md)                                     |
+| `dashboard_tab_id`            | [`DashboardTabId`](./api_html/DashboardTabId.md) \| `null`                     |
+| `entity_id`                   | [`BaseEntityId`](./api_html/BaseEntityId.md)                                   |
+| `id`                          | [`DashCardId`](./api_html/DashCardId.md)                                       |
+| `justAdded?`                  | `boolean`                                                                      |
+| `updated_at`                  | `string`                                                                       |
+| `visualization_settings?`     | [`DashCardVisualizationSettings`](./api_html/DashCardVisualizationSettings.md) |

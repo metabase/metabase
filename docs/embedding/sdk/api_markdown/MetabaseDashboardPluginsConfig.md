@@ -5,9 +5,9 @@ type MetabaseDashboardPluginsConfig = {
 };
 ```
 
-## Properties
+#### Properties
 
-### dashboardCardMenu?
+##### dashboardCardMenu?
 
 ```ts
 optional dashboardCardMenu: 

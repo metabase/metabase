@@ -1,5 +1,5 @@
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="columns"></a> `columns` | [`DatasetColumn`](DatasetColumn.md)[] |
+| Property                       | Type                                              |
+| ------------------------------ | ------------------------------------------------- |
+| <a id="columns"></a> `columns` | [`DatasetColumn`](./api_html/DatasetColumn.md)\[] |

@@ -4,9 +4,9 @@ type StringFilterOptions = {
 };
 ```
 
-## Properties
+#### Properties
 
-### case-sensitive?
+##### case-sensitive?
 
 ```ts
 optional case-sensitive: false;

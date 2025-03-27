@@ -5,9 +5,9 @@ type OnChangeCardAndRunOpts = {
 };
 ```
 
-## Properties
+#### Properties
 
-### nextCard
+##### nextCard
 
 ```ts
 nextCard: Card;
@@ -15,7 +15,7 @@ nextCard: Card;
 
 ***
 
-### previousCard?
+##### previousCard?
 
 ```ts
 optional previousCard: Card;

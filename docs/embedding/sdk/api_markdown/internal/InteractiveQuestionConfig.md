@@ -16,9 +16,9 @@ type InteractiveQuestionConfig = {
 };
 ```
 
-## Properties
+#### Properties
 
-### componentPlugins?
+##### componentPlugins?
 
 ```ts
 optional componentPlugins: MetabasePluginsConfig;
@@ -26,7 +26,7 @@ optional componentPlugins: MetabasePluginsConfig;
 
 ***
 
-### entityTypeFilter?
+##### entityTypeFilter?
 
 ```ts
 optional entityTypeFilter: EntityTypeFilterKeys[];
@@ -34,7 +34,7 @@ optional entityTypeFilter: EntityTypeFilterKeys[];
 
 ***
 
-### initialSqlParameters?
+##### initialSqlParameters?
 
 ```ts
 optional initialSqlParameters: ParameterValues_2;
@@ -44,7 +44,7 @@ Initial values for the SQL parameters
 
 ***
 
-### isSaveEnabled?
+##### isSaveEnabled?
 
 ```ts
 optional isSaveEnabled: boolean;
@@ -54,7 +54,7 @@ Is the save question button visible?
 
 ***
 
-### onBeforeSave()?
+##### onBeforeSave()?
 
 ```ts
 optional onBeforeSave: (question: MetabaseQuestion | undefined, context: {
@@ -62,33 +62,33 @@ optional onBeforeSave: (question: MetabaseQuestion | undefined, context: {
 }) => Promise<void>;
 ```
 
-#### Parameters
+###### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `question` | [`MetabaseQuestion`](../MetabaseQuestion.md) \| `undefined` |
-| `context` | \{ `isNewQuestion`: `boolean`; \} |
-| `context.isNewQuestion` | `boolean` |
+| Parameter               | Type                                                                   |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `question`              | [`MetabaseQuestion`](./api_html/../MetabaseQuestion.md) \| `undefined` |
+| `context`               | { `isNewQuestion`: `boolean`; }                                        |
+| `context.isNewQuestion` | `boolean`                                                              |
 
-#### Returns
+###### Returns
 
-`Promise`\<`void`\>
+`Promise`<`void`>
 
 ***
 
-### onNavigateBack()?
+##### onNavigateBack()?
 
 ```ts
 optional onNavigateBack: () => void;
 ```
 
-#### Returns
+###### Returns
 
 `void`
 
 ***
 
-### onSave()?
+##### onSave()?
 
 ```ts
 optional onSave: (question: MetabaseQuestion | undefined, context: {
@@ -96,21 +96,21 @@ optional onSave: (question: MetabaseQuestion | undefined, context: {
  }) => void;
 ```
 
-#### Parameters
+###### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `question` | [`MetabaseQuestion`](../MetabaseQuestion.md) \| `undefined` |
-| `context` | \{ `isNewQuestion`: `boolean`; \} |
-| `context.isNewQuestion` | `boolean` |
+| Parameter               | Type                                                                   |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `question`              | [`MetabaseQuestion`](./api_html/../MetabaseQuestion.md) \| `undefined` |
+| `context`               | { `isNewQuestion`: `boolean`; }                                        |
+| `context.isNewQuestion` | `boolean`                                                              |
 
-#### Returns
+###### Returns
 
 `void`
 
 ***
 
-### targetCollection?
+##### targetCollection?
 
 ```ts
 optional targetCollection: SdkCollectionId;
@@ -118,7 +118,7 @@ optional targetCollection: SdkCollectionId;
 
 ***
 
-### withDownloads?
+##### withDownloads?
 
 ```ts
 optional withDownloads: boolean;

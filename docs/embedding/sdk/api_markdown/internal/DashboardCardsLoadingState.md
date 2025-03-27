@@ -7,9 +7,9 @@ type DashboardCardsLoadingState = {
 };
 ```
 
-## Properties
+#### Properties
 
-### endTime
+##### endTime
 
 ```ts
 endTime: number | null;
@@ -17,7 +17,7 @@ endTime: number | null;
 
 ***
 
-### loadingIds
+##### loadingIds
 
 ```ts
 loadingIds: DashCardId[];
@@ -25,7 +25,7 @@ loadingIds: DashCardId[];
 
 ***
 
-### loadingStatus
+##### loadingStatus
 
 ```ts
 loadingStatus: DashboardLoadingStatus;
@@ -33,7 +33,7 @@ loadingStatus: DashboardLoadingStatus;
 
 ***
 
-### startTime
+##### startTime
 
 ```ts
 startTime: number | null;

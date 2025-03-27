@@ -1,5 +1,5 @@
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
+| Property                                     | Type      |
+| -------------------------------------------- | --------- |
 | <a id="case-sensitive"></a> `case-sensitive` | `boolean` |

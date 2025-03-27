@@ -2,16 +2,16 @@
 const CreateQuestion: (props?: CreateQuestionProps) => JSX_2.Element;
 ```
 
-## Parameters
+#### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `props`? | [`CreateQuestionProps`](CreateQuestionProps.md) |
+| Parameter | Type                                                       |
+| --------- | ---------------------------------------------------------- |
+| `props`?  | [`CreateQuestionProps`](./api_html/CreateQuestionProps.md) |
 
-## Returns
+#### Returns
 
 `JSX_2.Element`
 
-## Deprecated
+#### Deprecated
 
 Use `<InteractiveQuestion questionId="new" />` instead.

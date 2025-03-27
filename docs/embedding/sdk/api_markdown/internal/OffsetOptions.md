@@ -6,9 +6,9 @@ type OffsetOptions = {
 };
 ```
 
-## Properties
+#### Properties
 
-### display-name
+##### display-name
 
 ```ts
 display-name: string;
@@ -16,7 +16,7 @@ display-name: string;
 
 ***
 
-### lib/uuid
+##### lib/uuid
 
 ```ts
 lib/uuid: string;
@@ -24,7 +24,7 @@ lib/uuid: string;
 
 ***
 
-### name
+##### name
 
 ```ts
 name: string;

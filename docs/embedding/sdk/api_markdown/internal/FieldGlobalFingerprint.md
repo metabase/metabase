@@ -1,6 +1,6 @@
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
+| Property                                      | Type     |
+| --------------------------------------------- | -------- |
 | <a id="distinct-count"></a> `distinct-count?` | `number` |
-| <a id="nil"></a> `nil%?` | `number` |
+| <a id="nil"></a> `nil%?`                      | `number` |

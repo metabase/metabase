@@ -2,12 +2,12 @@
 type SdkDashboardLoadEvent = (dashboard: MetabaseDashboard | null) => void;
 ```
 
-## Parameters
+#### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `dashboard` | [`MetabaseDashboard`](MetabaseDashboard.md) \| `null` |
+| Parameter   | Type                                                             |
+| ----------- | ---------------------------------------------------------------- |
+| `dashboard` | [`MetabaseDashboard`](./api_html/MetabaseDashboard.md) \| `null` |
 
-## Returns
+#### Returns
 
 `void`

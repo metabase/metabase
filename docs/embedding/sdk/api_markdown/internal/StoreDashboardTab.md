@@ -4,8 +4,8 @@ type StoreDashboardTab = DashboardTab & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
+| Name         | Type      |
+| ------------ | --------- |
 | `isRemoved?` | `boolean` |

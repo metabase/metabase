@@ -13,9 +13,9 @@ type StructuredQuery = {
 };
 ```
 
-## Properties
+#### Properties
 
-### aggregation?
+##### aggregation?
 
 ```ts
 optional aggregation: AggregationClause;
@@ -23,7 +23,7 @@ optional aggregation: AggregationClause;
 
 ***
 
-### breakout?
+##### breakout?
 
 ```ts
 optional breakout: BreakoutClause;
@@ -31,7 +31,7 @@ optional breakout: BreakoutClause;
 
 ***
 
-### expressions?
+##### expressions?
 
 ```ts
 optional expressions: ExpressionClause;
@@ -39,7 +39,7 @@ optional expressions: ExpressionClause;
 
 ***
 
-### fields?
+##### fields?
 
 ```ts
 optional fields: FieldsClause;
@@ -47,7 +47,7 @@ optional fields: FieldsClause;
 
 ***
 
-### filter?
+##### filter?
 
 ```ts
 optional filter: FilterClause;
@@ -55,7 +55,7 @@ optional filter: FilterClause;
 
 ***
 
-### joins?
+##### joins?
 
 ```ts
 optional joins: JoinClause;
@@ -63,7 +63,7 @@ optional joins: JoinClause;
 
 ***
 
-### limit?
+##### limit?
 
 ```ts
 optional limit: LimitClause;
@@ -71,7 +71,7 @@ optional limit: LimitClause;
 
 ***
 
-### order-by?
+##### order-by?
 
 ```ts
 optional order-by: OrderByClause;
@@ -79,7 +79,7 @@ optional order-by: OrderByClause;
 
 ***
 
-### source-query?
+##### source-query?
 
 ```ts
 optional source-query: StructuredQuery;
@@ -87,7 +87,7 @@ optional source-query: StructuredQuery;
 
 ***
 
-### source-table?
+##### source-table?
 
 ```ts
 optional source-table: SourceTableId;

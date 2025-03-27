@@ -6,9 +6,9 @@ type ExtraButtonProps = {
 };
 ```
 
-## Properties
+#### Properties
 
-### animate?
+##### animate?
 
 ```ts
 optional animate: boolean;
@@ -16,7 +16,7 @@ optional animate: boolean;
 
 ***
 
-### highlightOnHover?
+##### highlightOnHover?
 
 ```ts
 optional highlightOnHover: boolean;
@@ -24,7 +24,7 @@ optional highlightOnHover: boolean;
 
 ***
 
-### type?
+##### type?
 
 ```ts
 optional type: "button" | "submit";

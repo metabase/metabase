@@ -5,9 +5,9 @@ type PublicOrEmbeddedDashboardEventHandlersProps = {
 };
 ```
 
-## Properties
+#### Properties
 
-### onLoad()?
+##### onLoad()?
 
 ```ts
 optional onLoad: (dashboard: MetabaseDashboard | null) => void;
@@ -15,19 +15,19 @@ optional onLoad: (dashboard: MetabaseDashboard | null) => void;
 
 Callback that is called when the dashboard is loaded.
 
-#### Parameters
+###### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `dashboard` | [`MetabaseDashboard`](../MetabaseDashboard.md) \| `null` |
+| Parameter   | Type                                                                |
+| ----------- | ------------------------------------------------------------------- |
+| `dashboard` | [`MetabaseDashboard`](./api_html/../MetabaseDashboard.md) \| `null` |
 
-#### Returns
+###### Returns
 
 `void`
 
 ***
 
-### onLoadWithoutCards()?
+##### onLoadWithoutCards()?
 
 ```ts
 optional onLoadWithoutCards: (dashboard: MetabaseDashboard | null) => void;
@@ -35,12 +35,12 @@ optional onLoadWithoutCards: (dashboard: MetabaseDashboard | null) => void;
 
 Callback that is called when the dashboard is loaded without cards.
 
-#### Parameters
+###### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `dashboard` | [`MetabaseDashboard`](../MetabaseDashboard.md) \| `null` |
+| Parameter   | Type                                                                |
+| ----------- | ------------------------------------------------------------------- |
+| `dashboard` | [`MetabaseDashboard`](./api_html/../MetabaseDashboard.md) \| `null` |
 
-#### Returns
+###### Returns
 
 `void`

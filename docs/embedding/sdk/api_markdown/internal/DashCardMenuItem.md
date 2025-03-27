@@ -7,11 +7,11 @@ type DashCardMenuItem = {
  } & MenuItemProps;
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `disabled?` | `boolean` |
-| `iconName` | [`IconName`](IconName.md) |
-| `label` | `string` |
-| `onClick` | () => `void` |
+| Name        | Type                                 |
+| ----------- | ------------------------------------ |
+| `disabled?` | `boolean`                            |
+| `iconName`  | [`IconName`](./api_html/IconName.md) |
+| `label`     | `string`                             |
+| `onClick`   | () => `void`                         |

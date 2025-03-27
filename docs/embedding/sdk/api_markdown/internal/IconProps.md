@@ -8,12 +8,12 @@ type IconProps = SVGAttributes<SVGSVGElement> & BoxProps & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `className?` | `string` |
-| `name` | [`IconName`](IconName.md) |
-| `onClick?` | (`event`: `MouseEvent_2`\<`HTMLImageElement` \| `SVGElement`\>) => `void` |
-| `size?` | `string` \| `number` |
-| `tooltip?` | `ReactNode` |
+| Name         | Type                                                                    |
+| ------------ | ----------------------------------------------------------------------- |
+| `className?` | `string`                                                                |
+| `name`       | [`IconName`](./api_html/IconName.md)                                    |
+| `onClick?`   | (`event`: `MouseEvent_2`<`HTMLImageElement` \| `SVGElement`>) => `void` |
+| `size?`      | `string` \| `number`                                                    |
+| `tooltip?`   | `ReactNode`                                                             |

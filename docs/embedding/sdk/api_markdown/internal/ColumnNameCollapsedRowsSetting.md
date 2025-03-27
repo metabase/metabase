@@ -5,9 +5,9 @@ type ColumnNameCollapsedRowsSetting = {
 };
 ```
 
-## Properties
+#### Properties
 
-### rows
+##### rows
 
 ```ts
 rows: string[];
@@ -15,7 +15,7 @@ rows: string[];
 
 ***
 
-### value
+##### value
 
 ```ts
 value: string[];

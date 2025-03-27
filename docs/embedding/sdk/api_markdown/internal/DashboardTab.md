@@ -10,9 +10,9 @@ type DashboardTab = {
 };
 ```
 
-## Properties
+#### Properties
 
-### created\_at?
+##### created\_at?
 
 ```ts
 optional created_at: string;
@@ -20,7 +20,7 @@ optional created_at: string;
 
 ***
 
-### dashboard\_id
+##### dashboard\_id
 
 ```ts
 dashboard_id: DashboardId;
@@ -28,7 +28,7 @@ dashboard_id: DashboardId;
 
 ***
 
-### entity\_id?
+##### entity\_id?
 
 ```ts
 optional entity_id: BaseEntityId;
@@ -36,7 +36,7 @@ optional entity_id: BaseEntityId;
 
 ***
 
-### id
+##### id
 
 ```ts
 id: DashboardTabId;
@@ -44,7 +44,7 @@ id: DashboardTabId;
 
 ***
 
-### name
+##### name
 
 ```ts
 name: string;
@@ -52,7 +52,7 @@ name: string;
 
 ***
 
-### position?
+##### position?
 
 ```ts
 optional position: number;
@@ -60,7 +60,7 @@ optional position: number;
 
 ***
 
-### updated\_at?
+##### updated\_at?
 
 ```ts
 optional updated_at: string;

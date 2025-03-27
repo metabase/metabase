@@ -4,9 +4,9 @@ type LoginStatusUninitialized = {
 };
 ```
 
-## Properties
+#### Properties
 
-### status
+##### status
 
 ```ts
 status: "uninitialized";

@@ -9,9 +9,9 @@ type NumberFieldFingerprint = {
 };
 ```
 
-## Properties
+#### Properties
 
-### avg
+##### avg
 
 ```ts
 avg: number;
@@ -19,7 +19,7 @@ avg: number;
 
 ***
 
-### max
+##### max
 
 ```ts
 max: number;
@@ -27,7 +27,7 @@ max: number;
 
 ***
 
-### min
+##### min
 
 ```ts
 min: number;
@@ -35,7 +35,7 @@ min: number;
 
 ***
 
-### q1
+##### q1
 
 ```ts
 q1: number;
@@ -43,7 +43,7 @@ q1: number;
 
 ***
 
-### q3
+##### q3
 
 ```ts
 q3: number;
@@ -51,7 +51,7 @@ q3: number;
 
 ***
 
-### sd
+##### sd
 
 ```ts
 sd: number;

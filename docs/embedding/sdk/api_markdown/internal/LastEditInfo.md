@@ -8,9 +8,9 @@ type LastEditInfo = {
 };
 ```
 
-## Properties
+#### Properties
 
-### email
+##### email
 
 ```ts
 email: string;
@@ -18,7 +18,7 @@ email: string;
 
 ***
 
-### first\_name
+##### first\_name
 
 ```ts
 first_name: string;
@@ -26,7 +26,7 @@ first_name: string;
 
 ***
 
-### id
+##### id
 
 ```ts
 id: UserId;
@@ -34,7 +34,7 @@ id: UserId;
 
 ***
 
-### last\_name
+##### last\_name
 
 ```ts
 last_name: string;
@@ -42,7 +42,7 @@ last_name: string;
 
 ***
 
-### timestamp
+##### timestamp
 
 ```ts
 timestamp: string;

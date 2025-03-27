@@ -7,11 +7,11 @@ type VirtualCard = Partial<Omit<Card, "name" | "dataset_query" | "visualization_
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `dataset_query` | `Record`\<`string`, `never`\> |
-| `display` | [`VirtualCardDisplay`](VirtualCardDisplay.md) |
-| `name` | `null` |
-| `visualization_settings` | [`VisualizationSettings`](VisualizationSettings.md) |
+| Name                     | Type                                                           |
+| ------------------------ | -------------------------------------------------------------- |
+| `dataset_query`          | `Record`<`string`, `never`>                                    |
+| `display`                | [`VirtualCardDisplay`](./api_html/VirtualCardDisplay.md)       |
+| `name`                   | `null`                                                         |
+| `visualization_settings` | [`VisualizationSettings`](./api_html/VisualizationSettings.md) |

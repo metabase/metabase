@@ -4,15 +4,15 @@ type Brand<T, B> = T & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `[___brand]` | `B` |
+| Name         | Type |
+| ------------ | ---- |
+| `[___brand]` | `B`  |
 
-## Type Parameters
+#### Type Parameters
 
 | Type Parameter |
-| ------ |
-| `T` |
-| `B` |
+| -------------- |
+| `T`            |
+| `B`            |

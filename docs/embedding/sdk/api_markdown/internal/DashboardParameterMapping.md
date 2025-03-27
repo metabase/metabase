@@ -6,9 +6,9 @@ type DashboardParameterMapping = {
 };
 ```
 
-## Properties
+#### Properties
 
-### card\_id
+##### card\_id
 
 ```ts
 card_id: CardId;
@@ -16,7 +16,7 @@ card_id: CardId;
 
 ***
 
-### parameter\_id
+##### parameter\_id
 
 ```ts
 parameter_id: ParameterId;
@@ -24,7 +24,7 @@ parameter_id: ParameterId;
 
 ***
 
-### target
+##### target
 
 ```ts
 target: ParameterTarget;

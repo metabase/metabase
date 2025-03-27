@@ -5,9 +5,9 @@ type DateTimeFieldFingerprint = {
 };
 ```
 
-## Properties
+#### Properties
 
-### earliest
+##### earliest
 
 ```ts
 earliest: string;
@@ -15,7 +15,7 @@ earliest: string;
 
 ***
 
-### latest
+##### latest
 
 ```ts
 latest: string;

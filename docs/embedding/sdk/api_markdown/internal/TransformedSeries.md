@@ -4,8 +4,8 @@ type TransformedSeries = RawSeries & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `_raw` | [`Series`](Series.md) |
+| Name   | Type                             |
+| ------ | -------------------------------- |
+| `_raw` | [`Series`](./api_html/Series.md) |

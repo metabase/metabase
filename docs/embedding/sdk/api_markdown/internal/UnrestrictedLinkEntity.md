@@ -11,9 +11,9 @@ type UnrestrictedLinkEntity = {
 };
 ```
 
-## Properties
+#### Properties
 
-### database\_id?
+##### database\_id?
 
 ```ts
 optional database_id: number;
@@ -21,7 +21,7 @@ optional database_id: number;
 
 ***
 
-### db\_id?
+##### db\_id?
 
 ```ts
 optional db_id: number;
@@ -29,7 +29,7 @@ optional db_id: number;
 
 ***
 
-### description?
+##### description?
 
 ```ts
 optional description: string | null;
@@ -37,7 +37,7 @@ optional description: string | null;
 
 ***
 
-### display?
+##### display?
 
 ```ts
 optional display: CardDisplayType;
@@ -45,7 +45,7 @@ optional display: CardDisplayType;
 
 ***
 
-### display\_name?
+##### display\_name?
 
 ```ts
 optional display_name: string;
@@ -53,7 +53,7 @@ optional display_name: string;
 
 ***
 
-### id
+##### id
 
 ```ts
 id: number;
@@ -61,7 +61,7 @@ id: number;
 
 ***
 
-### model
+##### model
 
 ```ts
 model: SearchModel;
@@ -69,7 +69,7 @@ model: SearchModel;
 
 ***
 
-### name
+##### name
 
 ```ts
 name: string;

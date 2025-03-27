@@ -4,8 +4,8 @@ type SegmentMetadata = unknown & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
+| Name      | Type                             |
+| --------- | -------------------------------- |
 | `_opaque` | *typeof* `SegmentMetadataSymbol` |

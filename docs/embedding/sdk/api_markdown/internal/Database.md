@@ -1,38 +1,38 @@
-## Extends
+#### Extends
 
-- [`DatabaseData`](DatabaseData.md)
+* [`DatabaseData`](./api_html/DatabaseData.md)
 
-## Properties
+#### Properties
 
-| Property | Type | Overrides | Inherited from |
-| ------ | ------ | ------ | ------ |
-| <a id="auto_run_queries"></a> `auto_run_queries` | `null` \| `boolean` | - | [`DatabaseData`](DatabaseData.md).[`auto_run_queries`](DatabaseData.md#auto_run_queries) |
-| <a id="cache_ttl"></a> `cache_ttl` | `null` \| `number` | - | [`DatabaseData`](DatabaseData.md).[`cache_ttl`](DatabaseData.md#cache_ttl) |
-| <a id="can_upload"></a> `can_upload` | `boolean` | - | - |
-| <a id="can-manage"></a> `can-manage?` | `boolean` | - | - |
-| <a id="caveats"></a> `caveats?` | `string` | - | - |
-| <a id="created_at"></a> `created_at` | `string` | - | - |
-| <a id="creator_id"></a> `creator_id?` | `number` | - | - |
-| <a id="details"></a> `details?` | `Record`\<`string`, `unknown`\> | - | [`DatabaseData`](DatabaseData.md).[`details`](DatabaseData.md#details) |
-| <a id="engine"></a> `engine` | `undefined` \| `string` | - | [`DatabaseData`](DatabaseData.md).[`engine`](DatabaseData.md#engine) |
-| <a id="features"></a> `features?` | [`DatabaseFeature`](DatabaseFeature.md)[] | - | - |
-| <a id="id"></a> `id` | `number` | [`DatabaseData`](DatabaseData.md).[`id`](DatabaseData.md#id) | - |
-| <a id="initial_sync_status"></a> `initial_sync_status` | [`LongTaskStatus`](LongTaskStatus.md) | - | - |
-| <a id="is_attached_dwh"></a> `is_attached_dwh?` | `boolean` | - | - |
-| <a id="is_audit"></a> `is_audit?` | `boolean` | - | - |
-| <a id="is_full_sync"></a> `is_full_sync` | `boolean` | - | [`DatabaseData`](DatabaseData.md).[`is_full_sync`](DatabaseData.md#is_full_sync) |
-| <a id="is_on_demand"></a> `is_on_demand` | `boolean` | - | [`DatabaseData`](DatabaseData.md).[`is_on_demand`](DatabaseData.md#is_on_demand) |
-| <a id="is_sample"></a> `is_sample` | `boolean` | - | [`DatabaseData`](DatabaseData.md).[`is_sample`](DatabaseData.md#is_sample) |
-| <a id="is_saved_questions"></a> `is_saved_questions` | `boolean` | - | - |
-| <a id="name"></a> `name` | `string` | - | [`DatabaseData`](DatabaseData.md).[`name`](DatabaseData.md#name) |
-| <a id="native_permissions"></a> `native_permissions` | `"none"` \| `"write"` | - | - |
-| <a id="points_of_interest"></a> `points_of_interest?` | `string` | - | - |
-| <a id="refingerprint"></a> `refingerprint` | `null` \| `boolean` | - | [`DatabaseData`](DatabaseData.md).[`refingerprint`](DatabaseData.md#refingerprint) |
-| <a id="schedules"></a> `schedules` | [`DatabaseSchedules`](DatabaseSchedules.md) | - | [`DatabaseData`](DatabaseData.md).[`schedules`](DatabaseData.md#schedules) |
-| <a id="settings"></a> `settings?` | `null` \| [`DatabaseSettings`](DatabaseSettings.md) | - | [`DatabaseData`](DatabaseData.md).[`settings`](DatabaseData.md#settings) |
-| <a id="tables"></a> `tables?` | [`Table`](Table.md)[] | - | - |
-| <a id="timezone"></a> `timezone?` | `string` | - | - |
-| <a id="updated_at"></a> `updated_at` | `string` | - | - |
-| <a id="uploads_enabled"></a> `uploads_enabled` | `boolean` | - | - |
-| <a id="uploads_schema_name"></a> `uploads_schema_name` | `null` \| `string` | - | - |
-| <a id="uploads_table_prefix"></a> `uploads_table_prefix` | `null` \| `string` | - | - |
+| Property                                                 | Type                                                           | Overrides                                                                          | Inherited from                                                                                                 |
+| -------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| <a id="auto_run_queries"></a> `auto_run_queries`         | `null` \| `boolean`                                            | -                                                                                  | [`DatabaseData`](./api_html/DatabaseData.md).[`auto_run_queries`](./api_html/DatabaseData.md#auto_run_queries) |
+| <a id="cache_ttl"></a> `cache_ttl`                       | `null` \| `number`                                             | -                                                                                  | [`DatabaseData`](./api_html/DatabaseData.md).[`cache_ttl`](./api_html/DatabaseData.md#cache_ttl)               |
+| <a id="can_upload"></a> `can_upload`                     | `boolean`                                                      | -                                                                                  | -                                                                                                              |
+| <a id="can-manage"></a> `can-manage?`                    | `boolean`                                                      | -                                                                                  | -                                                                                                              |
+| <a id="caveats"></a> `caveats?`                          | `string`                                                       | -                                                                                  | -                                                                                                              |
+| <a id="created_at"></a> `created_at`                     | `string`                                                       | -                                                                                  | -                                                                                                              |
+| <a id="creator_id"></a> `creator_id?`                    | `number`                                                       | -                                                                                  | -                                                                                                              |
+| <a id="details"></a> `details?`                          | `Record`<`string`, `unknown`>                                  | -                                                                                  | [`DatabaseData`](./api_html/DatabaseData.md).[`details`](./api_html/DatabaseData.md#details)                   |
+| <a id="engine"></a> `engine`                             | `undefined` \| `string`                                        | -                                                                                  | [`DatabaseData`](./api_html/DatabaseData.md).[`engine`](./api_html/DatabaseData.md#engine)                     |
+| <a id="features"></a> `features?`                        | [`DatabaseFeature`](./api_html/DatabaseFeature.md)\[]          | -                                                                                  | -                                                                                                              |
+| <a id="id"></a> `id`                                     | `number`                                                       | [`DatabaseData`](./api_html/DatabaseData.md).[`id`](./api_html/DatabaseData.md#id) | -                                                                                                              |
+| <a id="initial_sync_status"></a> `initial_sync_status`   | [`LongTaskStatus`](./api_html/LongTaskStatus.md)               | -                                                                                  | -                                                                                                              |
+| <a id="is_attached_dwh"></a> `is_attached_dwh?`          | `boolean`                                                      | -                                                                                  | -                                                                                                              |
+| <a id="is_audit"></a> `is_audit?`                        | `boolean`                                                      | -                                                                                  | -                                                                                                              |
+| <a id="is_full_sync"></a> `is_full_sync`                 | `boolean`                                                      | -                                                                                  | [`DatabaseData`](./api_html/DatabaseData.md).[`is_full_sync`](./api_html/DatabaseData.md#is_full_sync)         |
+| <a id="is_on_demand"></a> `is_on_demand`                 | `boolean`                                                      | -                                                                                  | [`DatabaseData`](./api_html/DatabaseData.md).[`is_on_demand`](./api_html/DatabaseData.md#is_on_demand)         |
+| <a id="is_sample"></a> `is_sample`                       | `boolean`                                                      | -                                                                                  | [`DatabaseData`](./api_html/DatabaseData.md).[`is_sample`](./api_html/DatabaseData.md#is_sample)               |
+| <a id="is_saved_questions"></a> `is_saved_questions`     | `boolean`                                                      | -                                                                                  | -                                                                                                              |
+| <a id="name"></a> `name`                                 | `string`                                                       | -                                                                                  | [`DatabaseData`](./api_html/DatabaseData.md).[`name`](./api_html/DatabaseData.md#name)                         |
+| <a id="native_permissions"></a> `native_permissions`     | `"none"` \| `"write"`                                          | -                                                                                  | -                                                                                                              |
+| <a id="points_of_interest"></a> `points_of_interest?`    | `string`                                                       | -                                                                                  | -                                                                                                              |
+| <a id="refingerprint"></a> `refingerprint`               | `null` \| `boolean`                                            | -                                                                                  | [`DatabaseData`](./api_html/DatabaseData.md).[`refingerprint`](./api_html/DatabaseData.md#refingerprint)       |
+| <a id="schedules"></a> `schedules`                       | [`DatabaseSchedules`](./api_html/DatabaseSchedules.md)         | -                                                                                  | [`DatabaseData`](./api_html/DatabaseData.md).[`schedules`](./api_html/DatabaseData.md#schedules)               |
+| <a id="settings"></a> `settings?`                        | `null` \| [`DatabaseSettings`](./api_html/DatabaseSettings.md) | -                                                                                  | [`DatabaseData`](./api_html/DatabaseData.md).[`settings`](./api_html/DatabaseData.md#settings)                 |
+| <a id="tables"></a> `tables?`                            | [`Table`](./api_html/Table.md)\[]                              | -                                                                                  | -                                                                                                              |
+| <a id="timezone"></a> `timezone?`                        | `string`                                                       | -                                                                                  | -                                                                                                              |
+| <a id="updated_at"></a> `updated_at`                     | `string`                                                       | -                                                                                  | -                                                                                                              |
+| <a id="uploads_enabled"></a> `uploads_enabled`           | `boolean`                                                      | -                                                                                  | -                                                                                                              |
+| <a id="uploads_schema_name"></a> `uploads_schema_name`   | `null` \| `string`                                             | -                                                                                  | -                                                                                                              |
+| <a id="uploads_table_prefix"></a> `uploads_table_prefix` | `null` \| `string`                                             | -                                                                                  | -                                                                                                              |
