@@ -145,8 +145,8 @@
     (testing "GET /database/:id"
       (testing "Superusers can get mirror DBs"
         (mt/user-http-request :crowberto :get 200 (str "database/" mirror-db-id)))
-      (testing "Regulard users can not."
-        (mt/user-http-request :rasta :get 404 (str "database/" mirror-db-id))))
+      (testing "Regular users can not."
+        (mt/user-http-request :rasta :get 403 (str "database/" mirror-db-id))))
     (testing "GET /database/"
       (is (not-any? #(= (:id %) mirror-db-id)
                     (:data (mt/user-http-request :crowberto :get 200 "database/"))))
