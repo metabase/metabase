@@ -1,10 +1,9 @@
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import { getVisualizerPrimaryColumn } from "metabase/visualizer/selectors";
 import { parseDataSourceId } from "metabase/visualizer/utils";
 import { isNumber, isString } from "metabase-lib/v1/types/utils/isa";
@@ -92,11 +91,7 @@ const Result = (props: ResultProps) => {
         [S.resultItemSelected]: selected,
         [S.resultItemIncompatible]: !isCompatible,
       })}
-      align="center"
       component="li"
-      px="sm"
-      py="sm"
-      mb="xs"
       onClick={() => onSelect?.(item)}
     >
       <Icon
@@ -109,33 +104,6 @@ const Result = (props: ResultProps) => {
       <Text size="md" truncate c="inherit">
         {item.name}
       </Text>
-      {!isCompatible && (
-        <Tooltip
-          label={
-            <div>
-              <div>{t`This data source is not compatible with the current visualization.`}</div>
-              <div>
-                The current primary column is of type [
-                {primaryColumn?.base_type}]
-              </div>
-              <div>The fields for this dataset are:</div>
-              {metadata?.map((field, i) => (
-                <div key={i}>
-                  {field.display_name} [{field.base_type ?? "?"}]
-                </div>
-              ))}
-            </div>
-          }
-        >
-          <Icon
-            name="warning"
-            ml="auto"
-            style={{
-              flexShrink: 0,
-            }}
-          />
-        </Tooltip>
-      )}
     </Flex>
   );
 };

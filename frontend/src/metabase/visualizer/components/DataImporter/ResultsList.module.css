@@ -1,6 +1,11 @@
 .resultItem {
   cursor: pointer;
   border-radius: 4px;
+  align-items: center;
+  height: 40px;
+  margin-bottom: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-sm);
+  transition: all 0.2s;
 }
 
 .resultItem:hover {
@@ -15,5 +20,7 @@
 }
 
 .resultItemIncompatible {
-  color: var(--mb-color-text-light);
+  height: 0;
+  padding: 0;
+  opacity: 0;
 }
