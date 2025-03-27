@@ -254,7 +254,7 @@ export interface DataGridInstance<TData> {
     columnId: string,
   ) => void;
   onAddColumnClick?: React.MouseEventHandler<HTMLButtonElement>;
-  onScroll?: React.UIEventHandler<HTMLDivElement>;
+  onWheel?: React.UIEventHandler<HTMLDivElement>;
 }
 
 export type VirtualRow<TData> = {

@@ -72,7 +72,7 @@ export const DataGrid = function DataGrid<TData>({
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
-  onScroll,
+  onWheel,
 }: DataGridProps<TData>) {
   const {
     virtualColumns,
@@ -165,7 +165,7 @@ export const DataGrid = function DataGrid<TData>({
                   : 0,
               ...styles?.tableGrid,
             }}
-            onScroll={onScroll}
+            onWheel={onWheel}
           >
             <div
               data-testid="table-header"

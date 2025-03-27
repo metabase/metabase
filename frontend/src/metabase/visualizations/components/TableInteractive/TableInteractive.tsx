@@ -674,7 +674,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     virtualGrid,
   ]);
 
-  const handleScroll = useCallback(() => {
+  const handleWheel = useCallback(() => {
     if (clicked === null) {
       return;
     }
@@ -720,7 +720,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onBodyCellClick={handleBodyCellClick}
         onAddColumnClick={handleAddColumnButtonClick}
         onHeaderCellClick={handleHeaderCellClick}
-        onScroll={handleScroll}
+        onWheel={handleWheel}
       />
     </div>
   );
