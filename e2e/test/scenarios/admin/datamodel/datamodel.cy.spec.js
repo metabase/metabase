@@ -14,7 +14,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   const ordersColumns = ["PRODUCT_ID", "QUANTITY"];
 
   function waitAndAssertOnResponse(alias) {
-    cy.wait("@" + alias).then(xhr => {
+    cy.wait("@" + alias).then((xhr) => {
       expect(xhr.response.body.errors).to.not.exist;
     });
   }
@@ -51,7 +51,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    ordersColumns.forEach(column => {
+    ordersColumns.forEach((column) => {
       cy.wrap(
         `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[column]}/general`,
       ).as(`ORDERS_${column}_URL`);
@@ -106,7 +106,7 @@ describe("scenarios > admin > datamodel > field", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
+    ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach((name) => {
       cy.wrap(
         `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[name]}/general`,
       ).as(`ORDERS_${name}_URL`);
@@ -473,7 +473,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
     cy.log("Numeric ratings should be remapped to custom strings");
     H.openReviewsTable();
-    Object.values(customMap).forEach(rating => {
+    Object.values(customMap).forEach((rating) => {
       cy.findAllByText(rating);
     });
   });
@@ -755,7 +755,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     });
 
     it("should not crash when editing field in segment field detail page (metabase#55322)", () => {
-      cy.get("@segmentId").then(segmentId => {
+      cy.get("@segmentId").then((segmentId) => {
         cy.visit(`/reference/segments/${segmentId}/fields/${ORDERS.TAX}`);
       });
 

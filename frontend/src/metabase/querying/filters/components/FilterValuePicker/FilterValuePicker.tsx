@@ -150,10 +150,10 @@ export function NumberFilterValuePicker({
     <FilterValuePicker
       {...props}
       column={column}
-      values={values.map(value => String(value))}
+      values={values.map((value) => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
       shouldCreate={shouldCreate}
-      onChange={newValue =>
+      onChange={(newValue) =>
         onChange(newValue.map(parseNumber).filter(isNotNull))
       }
     />

@@ -44,7 +44,6 @@ Current partner drivers:
 
 - [DuckDB](https://github.com/MotherDuck-Open-Source/metabase_duckdb_driver) (for now, only available for self-hosted Metabases)
 - [Materialize](https://github.com/MaterializeInc/metabase-materialize-driver)
-- [Starburst (compatible with Trino)](https://github.com/starburstdata/metabase-driver)
 
 Partner drivers are available to Cloud customers out-of-the-box.
 

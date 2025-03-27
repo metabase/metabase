@@ -7,7 +7,7 @@ import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
  * A modified version of TestPopover for Jest/Enzyme tests.
  * Simply renders the popover body inline instead of mutating DOM root.
  */
-const TestPopover = props =>
+const TestPopover = (props) =>
   props.isOpen === undefined || props.isOpen ? (
     <OnClickOutsideWrapper
       handleDismissal={(...args) => {
@@ -22,7 +22,7 @@ const TestPopover = props =>
         style={props.style}
         // because popover is normally directly attached to body element, other elements should not need
         // to care about clicks that happen inside the popover
-        onClick={e => {
+        onClick={(e) => {
           e.stopPropagation();
         }}
       >

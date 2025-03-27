@@ -40,17 +40,17 @@ const DefaultTemplate = (args: PaperProps) => (
 const GridTemplate = (args: PaperProps) => (
   <Grid columns={argTypes.radius.options.length + 1} align="center" gutter="xl">
     <Grid.Col span={1} />
-    {argTypes.radius.options.map(radius => (
+    {argTypes.radius.options.map((radius) => (
       <Grid.Col key={radius} span={1}>
         <Text fw="bold">Radius {radius}</Text>
       </Grid.Col>
     ))}
-    {argTypes.p.options.flatMap(padding => (
+    {argTypes.p.options.flatMap((padding) => (
       <Fragment key={padding}>
         <Grid.Col span={1}>
           <Text fw="bold">Padding {padding}</Text>
         </Grid.Col>
-        {argTypes.radius.options.map(radius => (
+        {argTypes.radius.options.map((radius) => (
           <Grid.Col key={radius} span={1}>
             <Paper {...args} p={padding} radius={radius}>
               <Text>{sampleArgs.text}</Text>

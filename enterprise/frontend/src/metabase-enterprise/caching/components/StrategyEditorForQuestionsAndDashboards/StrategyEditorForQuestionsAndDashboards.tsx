@@ -75,16 +75,16 @@ const _StrategyEditorForQuestionsAndDashboards = ({
   const dashboardIds = useMemo(
     () =>
       configs
-        .filter(config => config.model === "dashboard")
-        .map(c => c.model_id),
+        .filter((config) => config.model === "dashboard")
+        .map((c) => c.model_id),
     [configs],
   );
 
   const questionIds = useMemo(
     () =>
       configs
-        .filter(config => config.model === "question")
-        .map(c => c.model_id),
+        .filter((config) => config.model === "question")
+        .map((c) => c.model_id),
     [configs],
   );
 
@@ -137,7 +137,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
     }
     // Filter out items that have no match in the dashboard and question list
     const hydratedCacheableItems: CacheableItem[] = [...items.values()].filter(
-      item => item.name !== undefined,
+      (item) => item.name !== undefined,
     );
 
     return hydratedCacheableItems;
@@ -148,7 +148,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
      * disappears from the table, it should no longer be the target */
     function removeTargetIfNoLongerInTable() {
       const isTargetIdInTable = cacheableItems.some(
-        item => item.id === targetId,
+        (item) => item.id === targetId,
       );
       if (targetId !== null && !isTargetIdInTable) {
         setTargetId(null);
@@ -254,7 +254,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       w="100%"
       direction="row"
       justify="space-between"
-      onKeyDown={e => {
+      onKeyDown={(e) => {
         if (e.key === "Escape" && !e.ctrlKey && !e.metaKey) {
           closeForm();
         }

@@ -240,7 +240,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
     cy.signInAsAdmin();
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
       ({ body }) => {
-        const tableId = body.find(table => table.name === "orders").id;
+        const tableId = body.find((table) => table.name === "orders").id;
         H.openTable({
           database: WRITABLE_DB_ID,
           table: tableId,
@@ -297,7 +297,7 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
       ({ body }) => {
-        const tableId = body.find(table => table.name === "orders").id;
+        const tableId = body.find((table) => table.name === "orders").id;
         H.openTable({
           database: WRITABLE_DB_ID,
           table: tableId,
@@ -574,7 +574,7 @@ describe("issue 17514", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
-      cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByTestId("save-question-modal").within((modal) => {
         cy.findByText("Save").click();
       });
 
@@ -661,7 +661,7 @@ describe("issue 17910", () => {
     cy.intercept("POST", "/api/card").as("card");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@card");
@@ -690,7 +690,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
     cy.signInAsAdmin();
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
-      const tableId = body.find(table => table.name === "orders").id;
+      const tableId = body.find((table) => table.name === "orders").id;
       H.openTable({
         database: WRITABLE_DB_ID,
         table: tableId,
@@ -967,10 +967,10 @@ describe("issue 19341", () => {
       );
       cy.findByTestId("loading-indicator").should("not.exist");
 
-      cy.findAllByTestId("result-item").then($result => {
+      cy.findAllByTestId("result-item").then(($result) => {
         const searchResults = $result.toArray();
         const modelTypes = new Set(
-          searchResults.map(k => k.getAttribute("data-model-type")),
+          searchResults.map((k) => k.getAttribute("data-model-type")),
         );
 
         expect(modelTypes).not.to.include("card");
@@ -1144,7 +1144,7 @@ const createQ1PlusQ2Question = (questionId1, questionId2) => {
 
 const assertQ1PlusQ2Joins = () => {
   H.getNotebookStep("join").within(() => {
-    cy.findAllByTestId("notebook-cell-item").then(items => {
+    cy.findAllByTestId("notebook-cell-item").then((items) => {
       cy.wrap(items[0]).should("contain", QUESTION_1.name);
       cy.wrap(items[1]).should("contain", QUESTION_2.name);
     });
@@ -1279,7 +1279,7 @@ describe("issue 20809", () => {
 
     cy.button("Done").click();
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 

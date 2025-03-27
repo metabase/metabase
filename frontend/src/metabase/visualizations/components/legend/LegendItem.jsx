@@ -39,15 +39,15 @@ const LegendItem = ({
   onToggleSeriesVisibility,
   onRemoveSeries,
 }) => {
-  const handleDotClick = event => {
+  const handleDotClick = (event) => {
     onToggleSeriesVisibility?.(event, index);
   };
 
-  const handleItemClick = event => {
+  const handleItemClick = (event) => {
     onSelectSeries && onSelectSeries(event, index, isReversed);
   };
 
-  const handleItemMouseEnter = event => {
+  const handleItemMouseEnter = (event) => {
     onHoverChange && onHoverChange({ index, element: event.currentTarget });
   };
 
@@ -55,7 +55,7 @@ const LegendItem = ({
     onHoverChange && onHoverChange();
   };
 
-  const handleRemoveClick = event => {
+  const handleRemoveClick = (event) => {
     onRemoveSeries && onRemoveSeries(event, index);
   };
 

@@ -67,7 +67,7 @@ async function setup({
     return (
       <SummarizeSidebar
         query={query}
-        onQueryChange={nextQuery => {
+        onQueryChange={(nextQuery) => {
           setQuery(nextQuery);
           onQueryChange(nextQuery);
         }}
@@ -97,14 +97,14 @@ async function setup({
 
   function getNextAggregations() {
     const query = getNextQuery();
-    return Lib.aggregations(query, -1).map(aggregation =>
+    return Lib.aggregations(query, -1).map((aggregation) =>
       Lib.displayInfo(query, -1, aggregation),
     );
   }
 
   function getNextBreakouts() {
     const query = getNextQuery();
-    return Lib.breakouts(query, -1).map(breakout =>
+    return Lib.breakouts(query, -1).map((breakout) =>
       Lib.displayInfo(query, -1, breakout),
     );
   }

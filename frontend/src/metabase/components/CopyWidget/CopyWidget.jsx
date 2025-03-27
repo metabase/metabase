@@ -21,7 +21,7 @@ export default class CopyWidget extends Component {
           }}
           onClick={
             !onChange
-              ? e => e.target.setSelectionRange(0, e.target.value.length)
+              ? (e) => e.target.setSelectionRange(0, e.target.value.length)
               : null
           }
           value={value}

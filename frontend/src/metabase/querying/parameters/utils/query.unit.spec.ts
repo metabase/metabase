@@ -358,7 +358,7 @@ describe("applyParameter", () => {
       ],
     });
     const stageIndex = 0;
-    const columns = Lib.breakouts(query, stageIndex).map(breakout =>
+    const columns = Lib.breakouts(query, stageIndex).map((breakout) =>
       Lib.breakoutColumn(query, stageIndex, breakout),
     );
     const findColumn = columnFinder(query, columns);
