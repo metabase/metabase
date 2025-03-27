@@ -1,7 +1,7 @@
 import { HARDCODED_USERS } from "../constants/hardcoded-users";
 
 export const getUserSwitcherSnippet = () => {
-  const users = HARDCODED_USERS.map(user => ({
+  const users = HARDCODED_USERS.map((user) => ({
     email: user.email,
     firstName: user.firstName,
   }));

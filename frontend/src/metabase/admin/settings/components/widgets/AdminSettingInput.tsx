@@ -75,7 +75,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
     if (newValue === initialValue) {
       return;
     }
-    updateSetting({ key: name, value: newValue }).then(response => {
+    updateSetting({ key: name, value: newValue }).then((response) => {
       if (response?.error) {
         const message =
           (response.error as GenericErrorResponse)?.message ||
@@ -151,7 +151,7 @@ export function BasicAdminSettingInput({
         <Switch
           id={name}
           checked={localValue}
-          onChange={e => handleChange(e.target.checked)}
+          onChange={(e) => handleChange(e.target.checked)}
           label={localValue ? t`Enabled` : t`Disabled`}
         />
       );
@@ -168,7 +168,7 @@ export function BasicAdminSettingInput({
         <Textarea
           id={name}
           value={localValue}
-          onChange={e => setLocalValue(e.target.value)}
+          onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}
         />
       );
@@ -181,7 +181,7 @@ export function BasicAdminSettingInput({
           id={name}
           value={localValue}
           placeholder={placeholder}
-          onChange={e => setLocalValue(e.target.value)}
+          onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}
           type={inputType ?? "text"}
         />

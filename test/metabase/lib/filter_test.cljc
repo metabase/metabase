@@ -14,7 +14,8 @@
    [metabase.lib.test-util.matrix :as matrix]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.number :as u.number]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -753,18 +754,20 @@
 
 (deftest ^:parallel bigint-frontend-filter-display-names-test
   (let [id        (meta/field-metadata :orders :id)
-        pos-value "9223372036854775808"
-        neg-value "-9223372036854775809"]
+        pos-value  (u.number/bigint "9223372036854775808")
+        neg-value  (u.number/bigint "-9223372036854775809")
+        pos-clause (lib.expression/value pos-value)
+        neg-clause (lib.expression/value neg-value)]
     (check-display-names
-     [{:clause [:= id pos-value], :name (str "ID is " pos-value)}
-      {:clause [:!= id pos-value], :name (str "ID is not " pos-value)}
-      {:clause [:> id pos-value], :name (str "ID is greater than " pos-value)}
-      {:clause [:>= id pos-value], :name (str "ID is greater than or equal to " pos-value)}
-      {:clause [:< id pos-value], :name (str "ID is less than " pos-value)}
-      {:clause [:<= id pos-value], :name (str "ID is less than or equal to " pos-value)}
-      {:clause [:between id 0 pos-value], :name (str "ID is between 0 and " pos-value)}
-      {:clause [:between id neg-value 0], :name (str "ID is between " neg-value " and 0")}
-      {:clause [:between id neg-value pos-value], :name (str "ID is " neg-value " – " pos-value)}])))
+     [{:clause [:= id pos-clause], :name (str "ID is " pos-value)}
+      {:clause [:!= id pos-clause], :name (str "ID is not " pos-value)}
+      {:clause [:> id pos-clause], :name (str "ID is greater than " pos-value)}
+      {:clause [:>= id pos-clause], :name (str "ID is greater than or equal to " pos-value)}
+      {:clause [:< id pos-clause], :name (str "ID is less than " pos-value)}
+      {:clause [:<= id pos-clause], :name (str "ID is less than or equal to " pos-value)}
+      {:clause [:between id 0 pos-clause], :name (str "ID is between 0 and " pos-value)}
+      {:clause [:between id neg-clause 0], :name (str "ID is between " neg-value " and 0")}
+      {:clause [:between id neg-clause pos-clause], :name (str "ID is between " neg-value " and " pos-value)}])))
 
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]

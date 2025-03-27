@@ -697,6 +697,10 @@
           metabase-enterprise.impersonation.api}
    :uses #{api audit driver enterprise/sandbox lib models permissions premium-features query-processor util}}
 
+  enterprise/internal-stats
+  {:api #{metabase-enterprise.internal-stats}
+   :uses #{models premium-features}}
+
   enterprise/llm
   {:api  #{metabase-enterprise.llm.api}
    :uses #{analytics analyze api models query-processor util}}

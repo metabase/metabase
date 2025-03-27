@@ -24,7 +24,7 @@ export const ChartTypeList = ({
     justify="flex-start"
     grow={false}
   >
-    {visualizationList.map(type => (
+    {visualizationList.map((type) => (
       <Grid.Col span={3} key={type} data-testid="chart-type-list-col">
         <ChartTypeOption
           key={type}

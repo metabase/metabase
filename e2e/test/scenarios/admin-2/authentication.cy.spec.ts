@@ -122,7 +122,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
         // save to compare with masked token
         scimTokenInput()
           .invoke("val")
-          .then(val => (initialUnmaskedToken = String(val)));
+          .then((val) => (initialUnmaskedToken = String(val)));
         cy.findAllByRole("button", { name: /Done/ }).click();
       });
 
@@ -138,7 +138,9 @@ describe("scenarios > admin > settings > user provisioning", () => {
         .invoke("val")
         .should("contain", "mb_")
         .should("contain", "****************************************")
-        .then(val => expect(val).to.contain(initialUnmaskedToken.slice(0, 7)));
+        .then((val) =>
+          expect(val).to.contain(initialUnmaskedToken.slice(0, 7)),
+        );
 
       cy.log("should be able to regenerate a token");
       cy.findByRole("button", { name: /Regenerate/ }).click();
@@ -155,7 +157,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
           .invoke("val")
           .should("not.contain", "Loading")
           .should("not.contain", "****************************************")
-          .then(val => (regeneratedToken = String(val)));
+          .then((val) => (regeneratedToken = String(val)));
         cy.findByRole("button", { name: /Done/ }).click();
       });
 
@@ -163,7 +165,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
         .invoke("val")
         .should("contain", "mb_")
         .should("contain", "****************************************")
-        .then(val => expect(val).to.contain(regeneratedToken.slice(0, 7)));
+        .then((val) => expect(val).to.contain(regeneratedToken.slice(0, 7)));
 
       cy.log("should be able to cancel regenerating a token");
       cy.findByRole("button", { name: /Regenerate/ }).click();
@@ -178,7 +180,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
         .invoke("val")
         .should("contain", "mb_")
         .should("contain", "****************************************")
-        .then(val => expect(val).to.contain(regeneratedToken.slice(0, 7)));
+        .then((val) => expect(val).to.contain(regeneratedToken.slice(0, 7)));
 
       cy.log("should be able to disable scim and info stay");
       scimToggle().click();
@@ -237,7 +239,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
         "should show error when scim token fails to generate when scim is enabled",
       );
       // enable scim and stop mocking get scim api key request
-      cy.intercept("GET", "/api/ee/scim/api_key", req => {
+      cy.intercept("GET", "/api/ee/scim/api_key", (req) => {
         req.continue();
       });
       cy.request("PUT", "api/setting/scim-enabled", { value: true });

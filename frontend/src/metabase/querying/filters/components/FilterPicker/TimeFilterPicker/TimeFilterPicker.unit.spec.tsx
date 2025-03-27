@@ -110,7 +110,7 @@ describe("TimeFilterPicker", () => {
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach(operatorName =>
+      EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });
@@ -413,7 +413,7 @@ describe("TimeFilterPicker", () => {
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach(operatorName =>
+      EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });

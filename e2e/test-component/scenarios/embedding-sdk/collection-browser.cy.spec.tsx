@@ -17,7 +17,7 @@ describe("scenarios > embedding-sdk > collection browser", () => {
       cy.intercept("GET", "/api/collection/*").as("getCollection");
     });
 
-    ["personal", undefined].forEach(collectionId => {
+    ["personal", undefined].forEach((collectionId) => {
       it(`should show the personal collection when collectionId is ${collectionId ? collectionId : "not passed"}`, () => {
         cy.intercept("GET", "/api/user/current").as("getCurrentUser");
 
@@ -28,7 +28,7 @@ describe("scenarios > embedding-sdk > collection browser", () => {
         cy.wait("@getCurrentUser").then(({ response }) => {
           const personalCollectionId = response?.body.personal_collection_id;
 
-          cy.wait("@getCollection").then(collectionInterception => {
+          cy.wait("@getCollection").then((collectionInterception) => {
             expect(collectionInterception.request.url).to.include(
               `/api/collection/${personalCollectionId}`,
             );
@@ -44,7 +44,7 @@ describe("scenarios > embedding-sdk > collection browser", () => {
     it("should use the root collection if collectionId is 'root'", () => {
       mountSdkContent(<CollectionBrowser collectionId="root" />);
 
-      cy.wait("@getCollection").then(interception => {
+      cy.wait("@getCollection").then((interception) => {
         expect(interception.request.url).to.include("/api/collection/root");
       });
     });

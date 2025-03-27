@@ -46,7 +46,7 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
       )}
       {!selection && (
         <Box mt="3.5rem">
-          {providers.map(provider => (
+          {providers.map((provider) => (
             <Box key={provider.name} mt="2rem" ta="center">
               <provider.Button isCard={true} redirectUrl={redirectUrl} />
             </Box>
@@ -63,7 +63,7 @@ const getSelectedProvider = (
 ): AuthProvider | undefined => {
   const provider =
     providers.length > 1
-      ? providers.find(p => p.name === providerName)
+      ? providers.find((p) => p.name === providerName)
       : providers[0];
 
   return provider?.Panel ? provider : undefined;

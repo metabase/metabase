@@ -177,7 +177,7 @@ describe("resolve", () => {
 
       it.each(["in", "not-in"])(
         "should reject multi-arg function calls without options when there is not enough arguments",
-        tag => {
+        (tag) => {
           expect(() => expr([tag])).toThrow();
           expect(() => expr([tag, A])).toThrow();
           expect(() => expr([tag, A, B])).not.toThrow();
@@ -187,7 +187,7 @@ describe("resolve", () => {
 
       it.each(["contains", "does-not-contain", "starts-with", "ends-with"])(
         "should reject multi-arg function calls with options when there is not enough arguments",
-        tag => {
+        (tag) => {
           const options: CallOptions = { "case-sensitive": true };
           expect(() => expr([tag])).toThrow();
           expect(() => expr([tag, A])).toThrow();

@@ -58,6 +58,7 @@
                               :describe-fields                        true
                               :expression-literals                    true
                               :identifiers-with-spaces                true
+                              :cast                                   true
                               :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
@@ -447,6 +448,11 @@
 (defmethod sql.qp/->honeysql [:snowflake :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
+(defmethod sql.qp/->honeysql [:snowflake :integer]
+  [driver [_ arg]]
+  ;; BIGINT is an alias for NUMBER
+  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver arg)))
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but

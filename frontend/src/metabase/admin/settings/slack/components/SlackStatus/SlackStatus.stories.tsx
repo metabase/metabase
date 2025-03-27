@@ -12,7 +12,7 @@ export default {
 };
 
 export const Default: StoryObj<SlackStatusProps> = {
-  render: args => {
+  render: (args) => {
     return <SlackStatus {...args} />;
   },
 
