@@ -3,7 +3,7 @@ import { push } from "react-router-redux";
 
 import Databases from "metabase/entities/databases";
 import { combineReducers } from "metabase/lib/redux";
-import type { Database, DatabaseId } from "metabase-types/api";
+import type { DatabaseData, DatabaseId } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
@@ -19,7 +19,7 @@ const DELETE_DATABASE_FAILED = createAction<{
   error: unknown;
 }>("metabase/admin/databases/DELETE_DATABASE_FAILED");
 
-export const createDatabase = function (inputDatabase: Database) {
+export const createDatabase = function (inputDatabase: DatabaseData) {
   const database = editParamsForUserControlledScheduling(inputDatabase);
 
   return async function (dispatch: Dispatch) {
@@ -35,14 +35,14 @@ export const createDatabase = function (inputDatabase: Database) {
   };
 };
 
-export const updateDatabase = function (database: Database) {
+export const updateDatabase = function (database: DatabaseData) {
   return async function (dispatch: Dispatch) {
     const action = await dispatch(Databases.actions.update(database));
     return Databases.HACK_getObjectFromAction(action);
   };
 };
 
-export const saveDatabase = function (database: Database) {
+export const saveDatabase = function (database: DatabaseData) {
   return async function (dispatch: Dispatch) {
     const isUnsavedDatabase = !database.id;
     if (isUnsavedDatabase) {

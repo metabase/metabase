@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import type { Database } from "metabase-types/api";
+import type { DatabaseData } from "metabase-types/api";
 
 export const editParamsForUserControlledScheduling = _.compose(
   editScheduleParamsForUserControlledScheduling,
@@ -8,8 +8,8 @@ export const editParamsForUserControlledScheduling = _.compose(
 );
 
 function editSyncParamsForUserControlledScheduling(
-  database: Database,
-): Database {
+  database: DatabaseData,
+): DatabaseData {
   if (database.details?.["let-user-control-scheduling"]) {
     return { ...database, is_full_sync: false };
   } else {
@@ -18,8 +18,8 @@ function editSyncParamsForUserControlledScheduling(
 }
 
 function editScheduleParamsForUserControlledScheduling(
-  database: Database,
-): Database {
+  database: DatabaseData,
+): DatabaseData {
   const { details, schedules } = database;
 
   if (details?.["let-user-control-scheduling"] && !schedules?.metadata_sync) {
