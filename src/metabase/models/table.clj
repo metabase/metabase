@@ -131,6 +131,10 @@
   [_table]
   [:schema :name (serdes/hydrated-hash :db :db_id)])
 
+(defmethod serdes/hash-required-fields :model/Table
+  [_table]
+  [:schema :name :db_id])
+
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
 (def field-order-rule

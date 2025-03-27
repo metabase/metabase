@@ -99,17 +99,20 @@
 (def ^:private backfill-database-trigger-key "metabase.lib-be.task.backfill-entity-ids.trigger.database")
 (def ^:private backfill-table-trigger-key "metabase.lib-be.task.backfill-entity-ids.trigger.table")
 (def ^:private backfill-field-trigger-key "metabase.lib-be.task.backfill-entity-ids.trigger.field")
+(def ^:private backfill-card-trigger-key "metabase.lib-be.task.backfill-entity-ids.trigger.card")
 (def ^:private drain-job-key "metabase.lib-be.task.drain-entity-ids.job")
 (def ^:private drain-trigger-key "metabase.lib-be.task.drain-entity-ids.trigger")
 
 (def ^:private model-key
   {:model/Database backfill-database-trigger-key
    :model/Table backfill-table-trigger-key
-   :model/Field backfill-field-trigger-key})
+   :model/Field backfill-field-trigger-key
+   :model/Card backfill-card-trigger-key})
 
 (def ^:private next-model
   {:model/Database :model/Table
-   :model/Table :model/Field})
+   :model/Table :model/Field
+   :model/Field :model/Card})
 
 (def ^:private initial-model :model/Database)
 
@@ -124,7 +127,7 @@
   []
   (task/job-exists? backfill-job-key))
 
-(declare start-job!)
+(declare start-backfill-job!)
 
 (defn- backfill-entity-ids!
   "Implementation for the backfill entity ids job"
@@ -135,7 +138,7 @@
       (log/info "Backfill: Finished backfilling entity-ids for" model)
       (task/delete-trigger! (triggers/key (model-key model)))
       (when-let [new-model (next-model model)]
-        (start-job! new-model)))))
+        (start-backfill-job! new-model)))))
 
 (jobs/defjob  ^{:doc "Selects batches of dbs/tables/fields to add them to the cache and backfill queue."}
   BackfillEntityIds [ctx]
