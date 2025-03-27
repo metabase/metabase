@@ -287,23 +287,11 @@
   [type-info]
   (:database-type type-info))
 
-(defn type-info->effective-type
-  "For a given type-info, returns the `effective-type`."
-  {:added "0.54.0"}
-  [type-info]
-  (:effective-type type-info))
-
 (defn database-type
   "Returns the `database-type` from the type-info of `honeysql-form` if present.
    Otherwise, returns `nil`."
   [honeysql-form]
   (some-> honeysql-form type-info type-info->db-type))
-
-(defn effective-type
-  "Returns the `effective-type` from the type-info of `honeysql-form` if present.
-   Otherwise, returns `nil`."
-  [honeysql-form]
-  (some-> honeysql-form type-info type-info->effective-type))
 
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `db-type`?
@@ -328,18 +316,6 @@
   [honeysql-form db-type :- [:maybe ms/KeywordOrString]]
   (if (some? db-type)
     (with-type-info honeysql-form {:database-type db-type})
-    (unwrap-typed-honeysql-form honeysql-form)))
-
-(mu/defn with-effective-type-info
-  "Convenience for adding only effective type information to a `honeysql-form`. Wraps `honeysql-form` and returns a
-  `TypedHoneySQLForm`. Passing `nil` as `effective-type` will remove any existing type info.
-
-    (with-effective-type-info :field \"text\")
-    ;; -> [::typed :field \"text\"]"
-  {:style/indent [:form]}
-  [honeysql-form effective-type :- [:maybe ms/KeywordOrString]]
-  (if (some? effective-type)
-    (with-type-info honeysql-form {:effective-type effective-type})
     (unwrap-typed-honeysql-form honeysql-form)))
 
 (def ^:private TypedExpression

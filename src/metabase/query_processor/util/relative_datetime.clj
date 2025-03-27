@@ -39,7 +39,6 @@
   [driver unit amount
    & {:keys [base-type database-type effective-type]
       :or {base-type     :type/DateTimeWithTZ
-           effective-type :type/DateTimeWithTZ
            database-type "timestamp"}}]
   (if (use-server-side-relative-datetime? unit)
     (h2x/cast database-type (relative-datetime-sql-str unit amount (or effective-type base-type)))
