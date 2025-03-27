@@ -51,34 +51,6 @@ export const DatabaseConnectionInfoSection = ({
     dispatch(push(`/admin/databases/${database.id}/edit`));
   }, [database.id, dispatch]);
 
-  const healthQuery = useGetDatabaseHealthQuery(database.id);
-  const health = useMemo(() => {
-    return match(healthQuery)
-      .with(
-        { currentData: { status: "ok" } },
-        () => ({ message: t`Connected`, color: "success" }) as const,
-      )
-      .with(
-        { isUninitialized: true },
-        { isFetching: true },
-        { isLoading: true },
-        () => ({ message: t`Loading...`, color: "text-light" }) as const,
-      )
-      .with(
-        { currentData: { status: "error" } },
-        (q) => ({ message: q.currentData.message, color: "danger" }) as const,
-      )
-      .with(
-        { isError: true },
-        () =>
-          ({
-            message: t`Failed to retrieve database health status.`,
-            color: "text-light",
-          }) as const,
-      )
-      .exhaustive();
-  }, [healthQuery]);
-
   return (
     <DatabaseInfoSection
       condensed
