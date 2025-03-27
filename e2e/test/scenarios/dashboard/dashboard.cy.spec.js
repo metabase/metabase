@@ -1254,6 +1254,7 @@ describe("scenarios > dashboard", () => {
         // assert tab order is now correct and ui has caught up to result of dragging the tab
         cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
         cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
+
         assertPreventLeave();
         H.saveDashboard();
 
@@ -1266,6 +1267,9 @@ describe("scenarios > dashboard", () => {
         // remove tab
         H.editDashboard();
         H.deleteTab("Copy of Tab 1");
+        // url is changed after removing the tab
+        // can be a side effect
+        cy.url().should("include", "tab-1");
         assertPreventLeave();
         H.saveDashboard();
 
@@ -1287,6 +1291,8 @@ describe("scenarios > dashboard", () => {
     function dragOnXAxis(el, distance) {
       el.trigger("mousedown", { clientX: 0 })
         .trigger("mousemove", { clientX: distance })
+        // to avoid flakiness
+        .wait(100)
         .trigger("mouseup");
     }
 

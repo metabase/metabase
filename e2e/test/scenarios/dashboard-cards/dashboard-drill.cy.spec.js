@@ -997,7 +997,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     function postDrillAssertion(filterName) {
       cy.findByTestId("qb-filters-panel").findByText(filterName).click();
-      H.popover("filter-picker-dropdown").within(() => {
+      H.popover({ testId: "filter-picker-dropdown" }).within(() => {
         // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByRole("combobox")
           .last()
