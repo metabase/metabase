@@ -1589,15 +1589,15 @@ describe("issue 31663", () => {
 
     H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
-    cy.findByLabelText("Foreign key target").click();
+    cy.findByPlaceholderText("Select a target").click();
     H.popover().within(() => {
       cy.findByText("Orders Model → ID").should("not.exist");
       cy.findByText("Products Model → ID").should("not.exist");
 
-      cy.findByText("Orders → ID").should("exist");
-      cy.findByText("People → ID").should("exist");
-      cy.findByText("Products → ID").should("exist");
-      cy.findByText("Reviews → ID").should("exist");
+      cy.findByText("Orders → ID").should("be.visible");
+      cy.findByText("People → ID").should("be.visible");
+      cy.findByText("Products → ID").should("be.visible");
+      cy.findByText("Reviews → ID").should("be.visible");
     });
   });
 });

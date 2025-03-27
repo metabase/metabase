@@ -1,5 +1,3 @@
-/* eslint-disable jest/expect-expect */
-/* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectButtonInHeader"] }] */
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
@@ -50,6 +48,10 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   [DASHBOARD_ACTION.ADD_FILTER_PARAMETER]: {
     icon: "filter",
     tooltip: "Add a filter or parameter",
+  },
+  [DASHBOARD_ACTION.ADD_EDITABLE_TABLE]: {
+    icon: "table",
+    tooltip: "Add editable table",
   },
   [DASHBOARD_ACTION.ADD_ACTION_ELEMENT]: {
     icon: "click",
