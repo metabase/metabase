@@ -84,7 +84,8 @@
   public. Throws a 404 if the Card doesn't exist."
   [& conditions]
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (apply t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters :visualization_settings]
+    (-> (api/check-404 (apply t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters
+                                             :visualization_settings :card_schema]
                               :archived false, conditions))
         remove-card-non-public-columns
         combine-parameters-and-template-tags
@@ -440,7 +441,7 @@
   "Check to make sure the query for Card with `card-id` references Field with `field-id`. Otherwise, or if the Card
   cannot be found, throw an Exception."
   [field-id card-id]
-  (let [card                 (api/check-404 (t2/select-one [:model/Card :dataset_query] :id card-id))
+  (let [card                 (api/check-404 (t2/select-one [:model/Card :dataset_query :card_schema] :id card-id))
         referenced-field-ids (card->referenced-field-ids card)]
     (api/check-404 (contains? referenced-field-ids field-id))))
 
