@@ -8,7 +8,7 @@ import { AuditApi } from "metabase-enterprise/services";
 
 import UnsubscribeUserForm from "../../components/UnsubscribeUserForm";
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = (dispatch) => ({
   onUnsubscribe: async ({ id }) => {
     await AuditApi.unsubscribe_user({ id });
     dispatch(addUndo({ message: t`Unsubscribe successful` }));

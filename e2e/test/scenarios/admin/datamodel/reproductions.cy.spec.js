@@ -234,7 +234,7 @@ describe("issue 53595", () => {
       .type("cu");
 
     H.popover().findByText("Currency").should("be.visible");
-    H.popover().then($popover => {
+    H.popover().then(($popover) => {
       expect(H.isScrollableVertically($popover[0])).to.be.false;
     });
   });

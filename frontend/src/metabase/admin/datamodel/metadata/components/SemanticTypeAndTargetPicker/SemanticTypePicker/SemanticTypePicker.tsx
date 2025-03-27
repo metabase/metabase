@@ -60,7 +60,7 @@ function getData(value: string | null) {
       icon: "empty" as const,
     },
   ]
-    .filter(option => {
+    .filter((option) => {
       if (option.id === null) {
         return true;
       }
@@ -68,7 +68,7 @@ function getData(value: string | null) {
       const isCurrentValue = option.id === value;
       return !isDeprecated || isCurrentValue;
     })
-    .map(option => ({
+    .map((option) => ({
       label: option.name,
       value: stringifyValue(option.id),
       section: option.section,

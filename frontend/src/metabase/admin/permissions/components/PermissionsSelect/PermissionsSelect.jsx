@@ -50,10 +50,10 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   isHighlighted,
 }) {
   const [toggleState, setToggleState] = useState(false);
-  const selectedOption = options.find(option => option.value === value);
+  const selectedOption = options.find((option) => option.value === value);
   const selectableOptions = hasChildren
     ? options
-    : options.filter(option => option !== selectedOption);
+    : options.filter((option) => option !== selectedOption);
 
   const selectedOptionValue = (
     <PermissionsSelectRoot
@@ -101,7 +101,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
       {({ onClose }) => (
         <Fragment>
           <OptionsList role="listbox">
-            {selectableOptions.map(option => (
+            {selectableOptions.map((option) => (
               <OptionsListItem
                 role="option"
                 key={option.value}

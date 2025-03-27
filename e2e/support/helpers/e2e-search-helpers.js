@@ -22,7 +22,7 @@ export function expectSearchResultContent({
 
   const searchResultItems = cy.get(searchResultItemSelector);
 
-  searchResultItems.then($results => {
+  searchResultItems.then(($results) => {
     if (strict) {
       // Check if the length of the search results is the same as the expected length
       expect($results).to.have.length(expectedSearchResults.length);

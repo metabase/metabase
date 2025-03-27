@@ -67,7 +67,7 @@ class ChartWithLegend extends Component {
       LegendComponent = LegendVertical;
 
       if (width < HIDE_SECONDARY_INFO_THRESHOLD) {
-        legendTitles = legendTitles.map(title =>
+        legendTitles = legendTitles.map((title) =>
           Array.isArray(title) ? title.slice(0, 1) : title,
         );
       }
@@ -81,7 +81,7 @@ class ChartWithLegend extends Component {
     } else if (!isHorizontal && gridSize.height > 3 && gridSize.width > 2) {
       type = "vertical";
       LegendComponent = LegendHorizontal;
-      legendTitles = legendTitles.map(title =>
+      legendTitles = legendTitles.map((title) =>
         Array.isArray(title) ? title.join(" ") : title,
       );
       const desiredHeight = width * (1 / aspectRatio);

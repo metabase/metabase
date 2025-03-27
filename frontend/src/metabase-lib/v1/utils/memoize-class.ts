@@ -34,7 +34,7 @@ export function memoizeClass<T>(
   return (Class: Constructor<T>): Constructor<T> => {
     const descriptors = Object.getOwnPropertyDescriptors(Class.prototype);
 
-    keys.forEach(key => {
+    keys.forEach((key) => {
       // Is targeted method present in Class?
       if (!(key in descriptors)) {
         throw new TypeError(`${key} is not a member of class`);

@@ -35,12 +35,12 @@ const FieldTypeDetail = ({
                 id: null,
                 name: t`No field type`,
                 section: t`Other`,
-              }).filter(type =>
+              }).filter((type) =>
                 !isNumericBaseType(field)
                   ? !(type.id && type.id.startsWith("timestamp_"))
                   : true,
               )}
-              optionValueFn={o => o.id}
+              optionValueFn={(o) => o.id}
               onChange={({ target: { value } }) =>
                 fieldTypeFormField.onChange(value)
               }
@@ -64,7 +64,7 @@ const FieldTypeDetail = ({
                   onChange={({ target: { value } }) =>
                     foreignKeyFormField.onChange(value)
                   }
-                  optionValueFn={o => o.id}
+                  optionValueFn={(o) => o.id}
                 />
               )
             : isTypeFK(field.semantic_type) && (

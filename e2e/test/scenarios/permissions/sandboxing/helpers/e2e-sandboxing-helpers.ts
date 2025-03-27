@@ -119,7 +119,7 @@ export const createSandboxingDashboardAndQuestions = () => {
     H.createDashboardWithQuestions({
       dashboardName: "Sandboxing Dashboard",
       dashboardDetails: { collection_id: collectionId },
-      questions: questionData.map(questionDetails => ({
+      questions: questionData.map((questionDetails) => ({
         ...questionDetails,
         collection_id: collectionId,
       })) as StructuredQuestionDetails[],
@@ -197,20 +197,20 @@ export const assignAttributeToUser = ({
   attributeValue: string;
 }) => {
   cy.request("GET", "/api/user")
-    .then(response => {
+    .then((response) => {
       const userData = response.body.data.find(
         (user: { email: string }) => user.email === sandboxingUser.email,
       );
       return userData.id;
     })
-    .then(userId => {
+    .then((userId) => {
       return cy.request("GET", `/api/user/${userId}`);
     })
-    .then(response => {
+    .then((response) => {
       const user = response.body;
       return user;
     })
-    .then(user => {
+    .then((user) => {
       cy.request("PUT", `/api/user/${user.id}`, {
         ...user,
         login_attributes: {
@@ -275,7 +275,7 @@ export const configureSandboxPolicy = (policy: SandboxPolicy) => {
   cy.log("Ensure the summary contains the correct text");
   cy.findByLabelText(/Summary/)
     .invoke("text")
-    .should(summary => {
+    .should((summary) => {
       expect(summary).to.contain("Users in data can view");
       if (filterColumn) {
         expect(summary).to.contain(`${filterColumn} field equals`);
@@ -291,33 +291,33 @@ export const configureSandboxPolicy = (policy: SandboxPolicy) => {
 export function rowsShouldContainGizmosAndWidgets(
   responses: DatasetResponse[],
 ) {
-  responses.forEach(response => {
+  responses.forEach((response) => {
     expect(response.body.data.is_sandboxed).to.be.false;
   });
 
-  const rows = responses.flatMap(response => response.body.data.rows);
+  const rows = responses.flatMap((response) => response.body.data.rows);
   expect(
-    rows.some(row => row.includes("Gizmo")),
+    rows.some((row) => row.includes("Gizmo")),
     "at least one row should have a gizmo",
   ).to.be.true;
   expect(
-    rows.some(row => row.includes("Widget")),
+    rows.some((row) => row.includes("Widget")),
     "at least one row should have a widget",
   ).to.be.true;
 }
 
 export function rowsShouldContainOnlyGizmos(responses: DatasetResponse[]) {
-  responses.forEach(response => {
+  responses.forEach((response) => {
     expect(response?.body.data.is_sandboxed).to.be.true;
   });
 
-  const rows = responses.flatMap(response => response.body.data.rows);
+  const rows = responses.flatMap((response) => response.body.data.rows);
   expect(
-    rows.every(row => row.includes("Gizmo")),
+    rows.every((row) => row.includes("Gizmo")),
     "every row should have a gizmo",
   ).to.be.true;
   expect(
-    !rows.some(row => row.includes("Widget")),
+    !rows.some((row) => row.includes("Widget")),
     "no rows should have widgets",
   ).to.be.true;
 }
@@ -325,7 +325,7 @@ export function rowsShouldContainOnlyGizmos(responses: DatasetResponse[]) {
 export const valuesShouldContainGizmosAndWidgets = (
   valuesArray: (FieldValue | ParameterValue)[],
 ) => {
-  const values = valuesArray.map(val => val[0]);
+  const values = valuesArray.map((val) => val[0]);
   expect(values).to.contain("Gizmo");
   expect(values).to.contain("Widget");
 };
@@ -333,7 +333,7 @@ export const valuesShouldContainGizmosAndWidgets = (
 export const valuesShouldContainOnlyGizmos = (
   valuesArray: (FieldValue | ParameterValue)[],
 ) => {
-  const values = valuesArray.map(val => val[0]);
+  const values = valuesArray.map((val) => val[0]);
   expect(values).to.deep.equal(["Gizmo"]);
 };
 
@@ -345,9 +345,9 @@ export const getDashcardResponses = (items: SandboxableItems) => {
   expect(items.questions.length).to.be.greaterThan(0);
   return cy
     .wait(new Array(items.questions.length).fill("@dashcardQuery"))
-    .then(interceptions => {
+    .then((interceptions) => {
       const responses: DashcardQueryResponse[] = interceptions.map(
-        i => i.response,
+        (i) => i.response,
       );
       return responses;
     });
@@ -356,7 +356,7 @@ export const getDashcardResponses = (items: SandboxableItems) => {
 export const getCardResponses = (items: SandboxableItems) => {
   expect(items.questions.length).to.be.greaterThan(0);
   return H.cypressWaitAll(
-    items.questions.map(question =>
+    items.questions.map((question) =>
       cy.request<DatasetResponse>("POST", `/api/card/${question.id}/query`),
     ),
   ) as Cypress.Chainable<DatasetResponse[]>;

@@ -28,7 +28,7 @@ export function getFilterPopover({
         stageIndex={stageIndex}
         column={column}
         filter={initialFilter}
-        onChange={filter => {
+        onChange={(filter) => {
           const nextQuery = Lib.filter(query, stageIndex, filter);
           const nextQuestion = question.setQuery(nextQuery);
           const nextCard = nextQuestion.card();

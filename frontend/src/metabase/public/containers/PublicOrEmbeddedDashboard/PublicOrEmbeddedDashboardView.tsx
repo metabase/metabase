@@ -127,7 +127,7 @@ export function PublicOrEmbeddedDashboardView({
   ) : null;
 
   const visibleDashcards = (dashboard?.dashcards ?? []).filter(
-    dashcard => !isActionDashCard(dashcard),
+    (dashcard) => !isActionDashCard(dashcard),
   );
 
   const dashboardHasCards = dashboard && visibleDashcards.length > 0;
@@ -256,13 +256,14 @@ function getTabHiddenParameterSlugs({
 }) {
   const currentTabParameterIds =
     getCurrentTabDashcards({ dashboard, selectedTabId })?.flatMap(
-      dashcard =>
-        dashcard.parameter_mappings?.map(mapping => mapping.parameter_id) ?? [],
+      (dashcard) =>
+        dashcard.parameter_mappings?.map((mapping) => mapping.parameter_id) ??
+        [],
     ) ?? [];
   const hiddenParameters = parameters.filter(
-    parameter => !currentTabParameterIds.includes(parameter.id),
+    (parameter) => !currentTabParameterIds.includes(parameter.id),
   );
-  return hiddenParameters.map(parameter => parameter.slug).join(",");
+  return hiddenParameters.map((parameter) => parameter.slug).join(",");
 }
 
 function getCurrentTabDashcards({
@@ -279,7 +280,7 @@ function getCurrentTabDashcards({
     return dashboard?.dashcards;
   }
   return dashboard?.dashcards.filter(
-    dashcard => dashcard.dashboard_tab_id === selectedTabId,
+    (dashcard) => dashcard.dashboard_tab_id === selectedTabId,
   );
 }
 

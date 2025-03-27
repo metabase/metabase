@@ -19,7 +19,7 @@ describe(
   "admin > database > external databases > enable actions",
   { tags: ["@external", "@actions"] },
   () => {
-    ["mysql", "postgres"].forEach(dialect => {
+    ["mysql", "postgres"].forEach((dialect) => {
       it(`should show ${dialect} writable_db with actions enabled`, () => {
         H.restore(`${dialect}-writable`);
         cy.signInAsAdmin();
@@ -61,7 +61,7 @@ describe("admin > database > add", () => {
   function mockUploadServiceAccountJSON(fileContents) {
     // create blob to act as selected file
     cy.get("input[type=file]")
-      .then(async input => {
+      .then(async (input) => {
         const blob = await Cypress.Blob.binaryStringToBlob(fileContents);
         const file = new File([blob], "service-account.json");
         const dataTransfer = new DataTransfer();
@@ -75,7 +75,7 @@ describe("admin > database > add", () => {
   }
 
   function mockSuccessfulDatabaseSave() {
-    cy.intercept("POST", "/api/database", req => {
+    cy.intercept("POST", "/api/database", (req) => {
       req.reply({ statusCode: 200, body: { id: 42 }, delay: 100 });
     }).as("createDatabase");
 
@@ -90,7 +90,7 @@ describe("admin > database > add", () => {
     }
     cy.wait("@getDatabases").then(({ response }) => {
       if (
-        response.body.data.some(db => db.initial_sync_status !== "complete")
+        response.body.data.some((db) => db.initial_sync_status !== "complete")
       ) {
         waitForDbSync(maxRetries - 1);
       }
@@ -172,8 +172,8 @@ describe("admin > database > add", () => {
         });
 
         const confirmSSLFields = (visible, hidden) => {
-          visible.forEach(field => cy.findByText(field));
-          hidden.forEach(field => cy.findByText(field).should("not.exist"));
+          visible.forEach((field) => cy.findByText(field));
+          hidden.forEach((field) => cy.findByText(field).should("not.exist"));
         };
 
         const ssl = "Use a secure connection (SSL)",
@@ -465,8 +465,8 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should handle malformed (null) database details (metabase#25715)", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
-      req.reply(res => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, (req) => {
+      req.reply((res) => {
         res.body.details = null;
       });
     }).as("loadDatabase");
@@ -486,8 +486,8 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should handle is_attached_dwh databases", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
-      req.reply(res => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, (req) => {
+      req.reply((res) => {
         res.body.details = null;
         res.body.is_attached_dwh = true;
       });
@@ -512,7 +512,7 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should show error upon a bad request", () => {
-    cy.intercept("POST", "/api/database", req => {
+    cy.intercept("POST", "/api/database", (req) => {
       req.reply({
         statusCode: 400,
         body: "DATABASE CONNECTION ERROR",
@@ -558,7 +558,7 @@ describe("scenarios > admin > databases > exceptions", () => {
             }
           : null,
       },
-      req => {
+      (req) => {
         req.reply({
           statusCode: 500,
           body: { message: errorMessage },

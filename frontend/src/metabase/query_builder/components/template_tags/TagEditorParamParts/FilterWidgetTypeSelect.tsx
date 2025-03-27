@@ -28,7 +28,7 @@ export function FilterWidgetTypeSelect({
   const optionsOrDefault = useMemo(
     () =>
       (hasOptions ? options : [{ name: t`None`, type: "none" }]).map(
-        option => ({
+        (option) => ({
           label: option.menuName ?? option.name ?? option.type,
           value: option.type,
         }),

@@ -83,7 +83,7 @@ function printGrid(cards, width) {
       }
     }
   }
-  console.log("\n" + grid.map(row => row.join(".")).join("\n") + "\n");
+  console.log("\n" + grid.map((row) => row.join(".")).join("\n") + "\n");
 }
 
 /*eslint-enable */
