@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -63,52 +64,50 @@ describe("issue 39487", () => {
     },
   );
 
-  it(
-    "calendar has constant size when using date range picker filter (metabase#39487)",
-    { tags: "@flaky" },
-    () => {
-      createTimeSeriesQuestionWithFilter([
-        "between",
-        CREATED_AT_FIELD,
-        "2024-05-01", // 5 day rows
-        "2024-06-01", // 6 day rows
-      ]);
+  // broken after migration away from filter modal
+  // see https://github.com/metabase/metabase/issues/55688
+  it.skip("calendar has constant size when using date range picker filter (metabase#39487)", () => {
+    createTimeSeriesQuestionWithFilter([
+      "between",
+      CREATED_AT_FIELD,
+      "2024-05-01", // 5 day rows
+      "2024-06-01", // 6 day rows
+    ]);
 
-      cy.log("timeseries filter button");
-      cy.findByTestId("timeseries-filter-button").click();
-      checkDateRangeFilter();
+    cy.log("timeseries filter button");
+    cy.findByTestId("timeseries-filter-button").click();
+    checkDateRangeFilter();
 
-      cy.log("filter pills");
-      cy.findByTestId("filters-visibility-control").click();
-      cy.findByTestId("filter-pill").click();
-      checkDateRangeFilter();
+    cy.log("filter pills");
+    cy.findByTestId("filters-visibility-control").click();
+    cy.findByTestId("filter-pill").click();
+    checkDateRangeFilter();
 
-      cy.log("filter modal");
-      cy.button(/Filter/).click();
-      H.modal().findByText("May 1 – Jun 1, 2024").click();
-      checkDateRangeFilter();
-      H.modal().button("Close").click();
+    cy.log("filter modal");
+    cy.button(/Filter/).click();
+    H.modal().findByText("May 1 – Jun 1, 2024").click();
+    checkDateRangeFilter();
+    H.modal().button("Close").click();
 
-      cy.log("filter drill");
-      cy.findByLabelText("Switch to data").click();
-      H.tableHeaderClick("Created At: Year");
-      H.popover().findByText("Filter by this column").click();
-      H.popover().findByText("Specific dates…").click();
-      H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
-      // eslint-disable-next-line no-unsafe-element-filtering
-      H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
-      previousButton().click();
-      checkDateRangeFilter();
+    cy.log("filter drill");
+    cy.findByLabelText("Switch to data").click();
+    H.tableHeaderClick("Created At: Year");
+    H.popover().findByText("Filter by this column").click();
+    H.popover().findByText("Specific dates…").click();
+    H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
+    previousButton().click();
+    checkDateRangeFilter();
 
-      cy.log("notebook editor");
-      H.openNotebook();
-      H.getNotebookStep("filter")
-        .findAllByTestId("notebook-cell-item")
-        .first()
-        .click();
-      checkDateRangeFilter();
-    },
-  );
+    cy.log("notebook editor");
+    H.openNotebook();
+    H.getNotebookStep("filter")
+      .findAllByTestId("notebook-cell-item")
+      .first()
+      .click();
+    checkDateRangeFilter();
+  });
 
   it("date picker is scrollable when overflows (metabase#39487)", () => {
     cy.viewport(1280, 800);
@@ -166,13 +165,13 @@ describe("issue 39487", () => {
   }
 
   function measureInitialValues() {
-    measureDatetimeFilterPickerHeight().then(initialPickerHeight => {
+    measureDatetimeFilterPickerHeight().then((initialPickerHeight) => {
       cy.wrap(initialPickerHeight).as("initialPickerHeight");
     });
-    measureNextButtonRect().then(nextButtonRect => {
+    measureNextButtonRect().then((nextButtonRect) => {
       cy.wrap(nextButtonRect).as("nextButtonRect");
     });
-    measurePreviousButtonRect().then(previousButtonRect => {
+    measurePreviousButtonRect().then((previousButtonRect) => {
       cy.wrap(previousButtonRect).as("previousButtonRect");
     });
   }
@@ -184,24 +183,24 @@ describe("issue 39487", () => {
   }
 
   function assertDatetimeFilterPickerHeightDidNotChange() {
-    cy.get("@initialPickerHeight").then(initialPickerHeight => {
-      measureDatetimeFilterPickerHeight().then(height => {
+    cy.get("@initialPickerHeight").then((initialPickerHeight) => {
+      measureDatetimeFilterPickerHeight().then((height) => {
         expect(height).to.eq(initialPickerHeight);
       });
     });
   }
 
   function assertPreviousButtonRectDidNotChange() {
-    cy.get("@previousButtonRect").then(previousButtonRect => {
-      measurePreviousButtonRect().then(rect => {
+    cy.get("@previousButtonRect").then((previousButtonRect) => {
+      measurePreviousButtonRect().then((rect) => {
         expect(rect).to.deep.eq(previousButtonRect);
       });
     });
   }
 
   function assertNextButtonRectDidNotChange() {
-    cy.get("@nextButtonRect").then(nextButtonRect => {
-      measureNextButtonRect().then(rect => {
+    cy.get("@nextButtonRect").then((nextButtonRect) => {
+      measureNextButtonRect().then((rect) => {
         expect(rect).to.deep.eq(nextButtonRect);
       });
     });
@@ -238,7 +237,7 @@ describe("issue 39487", () => {
 const MONGO_DB_ID = 2;
 
 describe("issue 47793", () => {
-  const questionDetails: H.NativeQuestionDetails = {
+  const questionDetails: NativeQuestionDetails = {
     database: MONGO_DB_ID,
     native: {
       query: `[
@@ -307,7 +306,7 @@ describe("issue 49270", () => {
     H.openOrdersTable();
     cy.icon("sum").click();
 
-    cy.intercept("POST", "/api/dataset", request => {
+    cy.intercept("POST", "/api/dataset", (request) => {
       request.reply({ statusCode: 500, delay: 1000 });
     });
 
@@ -358,7 +357,7 @@ describe("issue 53170", () => {
       cy.findByLabelText("Add column").click();
       H.popover().within(() => {
         cy.findByText("Combine columns").click();
-        cy.button("Done").then($button => {
+        cy.button("Done").then(($button) => {
           const buttonRight = $button[0].getBoundingClientRect().right;
           cy.window().its("innerWidth").should("be.gt", buttonRight);
         });

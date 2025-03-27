@@ -11,7 +11,7 @@ export default {
   title: "Deprecated/Components/TabContent",
   component: TabContent,
 };
-const Template: StoryFn<typeof TabContent> = args => {
+const Template: StoryFn<typeof TabContent> = (args) => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
 

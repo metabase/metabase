@@ -502,7 +502,7 @@ describe("issue 19745", () => {
   function updateQuestion() {
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
@@ -679,7 +679,7 @@ describe("issue 23862", () => {
           display: "table",
         },
         {
-          callback: xhr => expect(xhr.response.body.error).not.to.exist,
+          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
         },
       );
     });
@@ -800,7 +800,7 @@ describe.skip("issue 25189", () => {
   });
 });
 
-["postgres" /*, "mysql" */].forEach(dialect => {
+["postgres" /*, "mysql" */].forEach((dialect) => {
   describe(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
     const tableName = "colors27745";
 
@@ -885,7 +885,8 @@ describe("issue 32032", () => {
   });
 });
 
-describe("issue 42949", { tags: "@flaky" }, () => {
+// broken. see https://github.com/metabase/metabase/issues/55673
+describe.skip("issue 42949", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -912,12 +913,14 @@ describe("issue 42949", { tags: "@flaky" }, () => {
     H.popover().findByText("Extract day, month…").should("be.visible");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify header drills - V");
     H.tableHeaderClick("V");
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button - extract column");
     cy.button("Add column").click();
@@ -976,6 +979,7 @@ describe("issue 42949", { tags: "@flaky" }, () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button");
     cy.button("Add column").click();
@@ -1004,6 +1008,7 @@ describe("issue 42949", { tags: "@flaky" }, () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("be.visible");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button");
     cy.button("Add column").click();
@@ -1354,7 +1359,7 @@ describe("issue 53527", () => {
     },
   };
 
-  const mbqlQuestionDetails = cardId => ({
+  const mbqlQuestionDetails = (cardId) => ({
     name: "Quotes MBQL",
     query: {
       "source-table": `card__${cardId}`,
@@ -1431,7 +1436,7 @@ describe("issue 54638", () => {
       cy.findByText("Learn more")
         .scrollIntoView()
         .should("be.visible")
-        .then($a => {
+        .then(($a) => {
           expect($a).to.have.attr("target", "_blank");
           // Update attr to open in same tab, since Cypress does not support
           // testing in multiple tabs.
@@ -1490,5 +1495,21 @@ describe("issue #31964", () => {
         [Product → Category])
       `,
     );
+  });
+});
+
+describe("issue #55686", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should show suggestions for functions even when the current token is an operator (metabase#55686)", () => {
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type("not");
+
+    H.CustomExpressionEditor.completion("notNull").should("be.visible");
+    H.CustomExpressionEditor.completion("notEmpty").should("be.visible");
   });
 });

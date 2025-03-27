@@ -93,7 +93,7 @@ describe("DatabaseDangerZoneSection", () => {
       ).toBe(false);
     });
 
-    NOT_SYNCED_DB_STATUSES.forEach(initial_sync_status => {
+    NOT_SYNCED_DB_STATUSES.forEach((initial_sync_status) => {
       it(`is hidden for databases with "${initial_sync_status}" sync status`, () => {
         setup({
           database: createMockDatabase({ initial_sync_status }),

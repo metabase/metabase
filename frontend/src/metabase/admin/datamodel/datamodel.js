@@ -11,7 +11,7 @@ export const UPDATE_PREVIEW_SUMMARY =
 
 export const updatePreviewSummary = createAction(
   UPDATE_PREVIEW_SUMMARY,
-  async query => {
+  async (query) => {
     const result = await MetabaseApi.dataset(query);
     return result.data.rows[0][0];
   },
@@ -23,7 +23,7 @@ export const FETCH_REVISIONS = "metabase/admin/datamodel/FETCH_REVISIONS";
 
 export const fetchSegmentRevisions = createThunkAction(
   FETCH_REVISIONS,
-  id => async () => RevisionsApi.get({ entity: "segment", id }),
+  (id) => async () => RevisionsApi.get({ entity: "segment", id }),
 );
 
 // reducers

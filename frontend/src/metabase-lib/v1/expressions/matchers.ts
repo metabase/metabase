@@ -62,7 +62,7 @@ export function isOperator(expr: unknown): expr is CallExpression {
   return (
     Array.isArray(expr) &&
     OPERATORS.has(expr[0]) &&
-    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
+    expr.slice(1).every((arg) => isExpression(arg) || isOptionsObject(arg))
   );
 }
 
@@ -74,7 +74,7 @@ export function isFunction(expr: unknown): expr is CallExpression {
   return (
     Array.isArray(expr) &&
     FUNCTIONS.has(expr[0]) &&
-    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
+    expr.slice(1).every((arg) => isExpression(arg) || isOptionsObject(arg))
   );
 }
 

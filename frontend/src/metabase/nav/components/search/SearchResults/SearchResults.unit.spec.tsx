@@ -113,7 +113,7 @@ describe("SearchResults", () => {
 
       const resultItems = await screen.findAllByTestId("search-result-item");
 
-      const filteredElement = resultItems.find(element =>
+      const filteredElement = resultItems.find((element) =>
         element.textContent?.includes(name),
       );
       expect(filteredElement).toHaveAttribute("data-is-selected", "true");

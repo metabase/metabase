@@ -615,7 +615,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
           value
             .split(",")
             .filter(Boolean)
-            .forEach(value => {
+            .forEach((value) => {
               cy.findAllByRole("listitem").contains(value).click();
             });
         });
@@ -631,7 +631,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
           value
             .split(",")
             .filter(Boolean)
-            .forEach(value => {
+            .forEach((value) => {
               cy.findAllByRole("listitem").contains(value).click();
             });
         });
@@ -784,7 +784,7 @@ function createDashboardWithParameters(
       cards: [
         {
           card_id: questionId,
-          parameter_mappings: parameters?.map(parameter => ({
+          parameter_mappings: parameters?.map((parameter) => ({
             parameter_id: parameter.id,
             card_id: questionId,
             target: ["dimension", targetField],
@@ -1059,7 +1059,7 @@ function createDashboardWithParameterInEachTab({
         ],
       },
     ],
-  }).then(dashboard => H.visitDashboard(dashboard.id));
+  }).then((dashboard) => H.visitDashboard(dashboard.id));
 }
 
 function checkResetAllFiltersWorksAcrossTabs({

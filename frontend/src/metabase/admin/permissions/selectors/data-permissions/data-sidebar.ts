@@ -53,8 +53,8 @@ const getTableId = (id: string | number) => `table:${id}`;
 const getDatabasesSidebar = (metadata: Metadata): DataSidebarProps => {
   const entities = metadata
     .databasesList({ savedQuestions: false })
-    .filter(db => !PLUGIN_AUDIT.isAuditDb(db as DatabaseType))
-    .map(database => ({
+    .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as DatabaseType))
+    .map((database) => ({
       id: database.id,
       name: database.name,
       entityId: getDatabaseEntityId(database),
@@ -84,7 +84,7 @@ const getTablesSidebar = (
   let entities = database
     .getSchemas()
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map<DataTreeNodeItem>(schema => {
+    .map<DataTreeNodeItem>((schema) => {
       return {
         id: getSchemaId(schema.name),
         name: schema.name,
@@ -93,7 +93,7 @@ const getTablesSidebar = (
         children: schema
           .getTables()
           .sort((a, b) => a.displayName().localeCompare(b.displayName()))
-          .map(table => ({
+          .map((table) => ({
             id: getTableId(table.id),
             entityId: getTableEntityId(table),
             name: table.displayName(),

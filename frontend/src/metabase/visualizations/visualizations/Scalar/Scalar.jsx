@@ -85,7 +85,7 @@ export class Scalar extends Component {
         ],
         settings,
       ) => [
-        _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
+        _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0],
       ],
       readDependencies: ["scalar.field"],
     }),
@@ -125,7 +125,7 @@ export class Scalar extends Component {
   _getColumnIndex(cols, settings) {
     const columnIndex = _.findIndex(
       cols,
-      col => col.name === settings["scalar.field"],
+      (col) => col.name === settings["scalar.field"],
     );
     return columnIndex < 0 ? 0 : columnIndex;
   }
@@ -230,7 +230,7 @@ export class Scalar extends Component {
           alwaysShowTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}
         >
-          <span onClick={handleClick} ref={scalar => (this._scalar = scalar)}>
+          <span onClick={handleClick} ref={(scalar) => (this._scalar = scalar)}>
             <ScalarValue
               fontFamily={fontFamily}
               gridSize={gridSize}

@@ -27,6 +27,6 @@ export const VisualizationActionButtonsContainer = styled.span`
 export const VisualizationSlowSpinner = styled(
   LoadingSpinner,
 )<VisualizationSlowSpinnerProps>`
-  color: ${props =>
+  color: ${(props) =>
     props.isUsuallySlow ? color("accent4") : color("text-medium")};
 `;

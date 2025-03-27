@@ -60,7 +60,7 @@ const TestComponent = ({ testId }: { testId?: string }) => {
   return (
     <div data-testid={testId}>
       <button onClick={handleInvalidate}>Invalidate databases</button>
-      {data.map(database => (
+      {data.map((database) => (
         <div key={database.id}>{database.name}</div>
       ))}
       <TestInnerComponent />
@@ -97,7 +97,7 @@ const TestInnerComponent = () => {
   return (
     <div>
       <button onClick={handleInvalidate}>Invalidate tables</button>
-      {data.map(table => (
+      {data.map((table) => (
         <div key={table.id}>{table.name}</div>
       ))}
     </div>

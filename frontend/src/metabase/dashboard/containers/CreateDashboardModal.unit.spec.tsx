@@ -85,8 +85,8 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   });
 
   collections
-    .filter(c => c.id !== "root")
-    .forEach(c => fetchMock.get(`path:/api/collection/${c.id}`, c));
+    .filter((c) => c.id !== "root")
+    .forEach((c) => fetchMock.get(`path:/api/collection/${c.id}`, c));
 
   renderWithProviders(<CreateDashboardModal opened onClose={onClose} />, {
     storeInitialState: {

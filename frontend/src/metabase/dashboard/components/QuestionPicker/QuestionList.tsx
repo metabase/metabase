@@ -98,7 +98,7 @@ export function QuestionList({
   const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();
   const list = useMemo(() => {
-    return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
+    return data?.data?.map((item) => Search.wrapEntity(item, dispatch)) ?? [];
   }, [data, dispatch]);
 
   if (collectionId === "personal" && !searchText) {
@@ -123,7 +123,7 @@ export function QuestionList({
   return (
     <>
       <SelectList>
-        {list.map(item => (
+        {list.map((item) => (
           <SelectList.Item
             className={S.QuestionListItem}
             key={item.id}

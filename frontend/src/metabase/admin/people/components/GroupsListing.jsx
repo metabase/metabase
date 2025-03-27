@@ -41,8 +41,8 @@ function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
           value={text}
           isValid={textIsValid}
           placeholder={t`Something like "Marketing"`}
-          onChange={e => onTextChange(e.target.value)}
-          onKeyDown={e => {
+          onChange={(e) => onTextChange(e.target.value)}
+          onKeyDown={(e) => {
             if (e.keyCode === KEYCODE_ENTER) {
               onCreateClicked();
             }
@@ -159,7 +159,7 @@ function EditingGroupRow({
           type="text"
           autoFocus={true}
           value={group.name}
-          onChange={e => onTextChange(e.target.value)}
+          onChange={(e) => onTextChange(e.target.value)}
         />
       </td>
       <td />
@@ -301,7 +301,7 @@ function GroupsTable({
             apiKeys={
               isDefaultGroup(group)
                 ? (apiKeys ?? [])
-                : (apiKeys?.filter(apiKey => apiKey.group.id === group.id) ??
+                : (apiKeys?.filter((apiKey) => apiKey.group.id === group.id) ??
                   [])
             }
             groupBeingEdited={groupBeingEdited}

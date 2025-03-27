@@ -3,10 +3,10 @@
 // @authors: LucaColonnello and all contributors from https://github.com/iamkun/dayjs/issues/651#issuecomment-763033265
 const REGEX_TIMEZONE_OFFSET_FORMAT = /^(.*)([+-])(\d{2}):(\d{2})|(Z)$/;
 
-const parseOffset = dateString =>
+const parseOffset = (dateString) =>
   dateString.match(REGEX_TIMEZONE_OFFSET_FORMAT);
 
-const formatOffset = parsedOffset => {
+const formatOffset = (parsedOffset) => {
   const [, , sign, tzHour, tzMinute] = parsedOffset;
   const uOffset = parseInt(tzHour, 10) * 60 + parseInt(tzMinute, 10);
   return sign === "+" ? uOffset : -uOffset;

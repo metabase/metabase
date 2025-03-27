@@ -225,7 +225,7 @@ const HistoryTab = ({
       <Timeline
         events={events}
         data-testid="dashboard-history-list"
-        revert={revision => dispatch(revertToRevision(revision))}
+        revert={(revision) => dispatch(revertToRevision(revision))}
         canWrite={canWrite}
       />
     </SidesheetCard>
