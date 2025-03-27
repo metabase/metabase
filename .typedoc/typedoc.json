@@ -1,40 +1,40 @@
 {
   "tsconfig": "./tsconfig.sdk-docs.json",
-  "entryPoints": [
-    "resources/embedding-sdk/dist/index.d.ts"
-  ],
-  "entryPointStrategy": "expand",
   "plugin": [
     "typedoc-plugin-missing-exports",
-    "typedoc-plugin-markdown"
+    "typedoc-plugin-markdown",
+    "typedoc-plugin-frontmatter"
+  ],
+  "entryPoints": [
+    "../resources/embedding-sdk/dist/index.d.ts"
   ],
   "router": "structure",
+  "customJs": "page-custom-logic.js",
   "internalModule": "internal",
+  "collapseInternalModule": true,
   "outputs": [
     {
       "name": "html",
-      "path": "docs/embedding/sdk/api_html",
-      "hideGenerator": true,
-      "navigation": {
-        "includeCategories": false,
-        "includeGroups": false,
-        "includeFolders": false,
-        "compactFolders": true,
-        "excludeReferences": true
-      },
-      "visibilityFilters": {
-        "protected": false,
-        "private": false,
-        "inherited": false,
-        "external": false,
-        "@alpha": false,
-        "@beta": false
-      },
-      "includeHierarchySummary": false
+      "path": "../docs/embedding/sdk/api_html",
+      "options": {
+        "hideGenerator": true,
+        "navigation": {
+          "includeCategories": false,
+          "includeGroups": false,
+          "includeFolders": false,
+          "compactFolders": true,
+          "excludeReferences": true
+        },
+        "visibilityFilters": {},
+        "includeHierarchySummary": false,
+        "frontmatterGlobals": {
+          "layout": "docs-api"
+        }
+      }
     },
     {
       "name": "markdown",
-      "path": "docs/embedding/sdk/api_markdown",
+      "path": "../docs/embedding/sdk/api_markdown",
       "options": {
         "flattenOutputFiles": false,
         "hideBreadcrumbs": true,
@@ -62,6 +62,31 @@
         }
       }
     }
+  ],
+  "kindSortOrder": [
+    "Reference",
+    "Project",
+    "Namespace",
+    "Enum",
+    "EnumMember",
+    "Class",
+    "Interface",
+    "TypeAlias",
+    "Constructor",
+    "Property",
+    "Variable",
+    "Function",
+    "Accessor",
+    "Method",
+    "Parameter",
+    "TypeParameter",
+    "TypeLiteral",
+    "CallSignature",
+    "ConstructorSignature",
+    "IndexSignature",
+    "GetSignature",
+    "SetSignature",
+    "Module"
   ],
   "readme": "none",
   "excludePrivate": true,
