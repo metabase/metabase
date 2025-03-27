@@ -32,7 +32,7 @@ export const EmbeddingSdkLegaleseModal = ({
 
   return (
     <Modal
-      title={<Title order={2}>{t`First, some legalese`}</Title>}
+      title={<Title order={3}>{t`First, some legalese`}</Title>}
       onClose={onClose}
       opened={opened}
       size={670}

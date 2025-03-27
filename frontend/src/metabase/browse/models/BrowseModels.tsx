@@ -95,7 +95,7 @@ export const BrowseModels = () => {
                 )}
                 <Stack gap="xs" maw="28rem">
                   <Title
-                    order={2}
+                    order={3}
                     ta="center"
                   >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
                   <Text ta="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
