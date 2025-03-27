@@ -73,6 +73,10 @@ export function registerVisualization(visualization: Visualization) {
 
 type SeriesLike = Array<{ card: { display: VisualizationDisplay } }>;
 
+export function getVisualization(display: VisualizationDisplay | null) {
+  return display ? visualizations.get(display) : defaultVisualization;
+}
+
 export function getVisualizationRaw(series: SeriesLike) {
   return visualizations.get(series[0].card.display);
 }
@@ -141,6 +145,26 @@ export function canSavePng(display: VisualizationDisplay) {
 export function getDefaultSize(display: VisualizationDisplay) {
   const visualization = visualizations.get(display);
   return visualization?.defaultSize;
+}
+
+export function isCartesianChart(display: VisualizationDisplay) {
+  const visualization = visualizations.get(display);
+  const settingNames = Object.keys(visualization?.settings ?? {});
+  return (
+    settingNames.includes("graph.dimensions") &&
+    settingNames.includes("graph.metrics")
+  );
+}
+
+export function getColumnVizSettings(display: VisualizationDisplay) {
+  const visualization = visualizations.get(display);
+  const settings = visualization?.settings ?? {};
+
+  // TODO Come up with a better condition
+  return Object.keys(settings).filter(key => {
+    const { widget } = settings[key] ?? {};
+    return widget === "field" || widget === "fields";
+  });
 }
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column

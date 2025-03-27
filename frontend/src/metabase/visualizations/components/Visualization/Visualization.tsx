@@ -53,6 +53,10 @@ import {
   type Visualization as VisualizationType,
   isRegularClickAction,
 } from "metabase/visualizations/types";
+import {
+  formatVisualizerClickObject,
+  isVisualizerDashboardCard,
+} from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -60,6 +64,7 @@ import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset"
 import { memoizeClass } from "metabase-lib/v1/utils";
 import type {
   Card,
+  CardId,
   Dashboard,
   DashboardCard,
   RawSeries,
@@ -132,6 +137,7 @@ type VisualizationOwnProps = {
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   query?: NativeQuery;
   rawSeries?: RawSeries;
+  visualizerRawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;
@@ -388,21 +394,28 @@ class Visualization extends PureComponent<
     }
   }
 
-  getClickActions(clicked: ClickObject | null) {
-    if (!clicked) {
+  getClickActions(clickedObject: ClickObject | null) {
+    if (!clickedObject) {
       return [];
     }
 
     const {
+      dashcard,
       metadata,
+      visualizerRawSeries = [],
       isRawTable,
       getExtraDataForClick = () => ({}),
-      rawSeries = [],
     } = this.props;
 
-    const card =
-      rawSeries.find(series => series.card.id === clicked.cardId)?.card ??
-      rawSeries[0].card;
+    const clicked = isVisualizerDashboardCard(dashcard)
+      ? formatVisualizerClickObject(
+          clickedObject,
+          visualizerRawSeries,
+          dashcard.visualization_settings.visualization.columnValuesMapping,
+        )
+      : clickedObject;
+
+    const card = this.findCardById(clicked.cardId);
 
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
@@ -420,6 +433,16 @@ class Visualization extends PureComponent<
         )
       : [];
   }
+
+  findCardById = (cardId?: CardId | null) => {
+    const { dashcard, rawSeries = [], visualizerRawSeries = [] } = this.props;
+    const isVisualizerViz = isVisualizerDashboardCard(dashcard);
+    const lookupSeries = isVisualizerViz ? visualizerRawSeries : rawSeries;
+    return (
+      lookupSeries.find(series => series.card.id === cardId)?.card ??
+      lookupSeries[0].card
+    );
+  };
 
   getNormalizedSizes = () => {
     const { width, height } = this.props;
@@ -478,19 +501,9 @@ class Visualization extends PureComponent<
     nextCard,
     objectId,
   }: Pick<OnChangeCardAndRunOpts, "nextCard" | "objectId">) => {
-    if (!this.props.onChangeCardAndRun) {
-      return;
-    }
-
-    const { rawSeries = [] } = this.props;
-
-    const previousCard =
-      rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
-      rawSeries[0].card;
-
-    this.props.onChangeCardAndRun({
+    this.props.onChangeCardAndRun?.({
+      previousCard: this.findCardById(nextCard?.id),
       nextCard,
-      previousCard,
       objectId,
     });
   };
@@ -498,7 +511,8 @@ class Visualization extends PureComponent<
   onRender = ({ warnings = [] }: { warnings?: string[] } = {}) => {
     const currentWarnings = this.state.warnings;
     if (!_.isEqual(currentWarnings, warnings)) {
-      this.setState({ warnings });
+      // using requestAnimationFrame to avoid setting state in render
+      requestAnimationFrame(() => this.setState({ warnings }));
     }
   };
 
@@ -553,6 +567,7 @@ class Visualization extends PureComponent<
       query,
       queryBuilderMode,
       rawSeries = [],
+      visualizerRawSeries,
       renderEmptyMessage,
       renderTableHeader,
       replacementContent,
@@ -633,7 +648,7 @@ class Visualization extends PureComponent<
               />
             );
           } else if (e instanceof MinRowsError) {
-            noResults = true;
+            // noResults = true;
           }
         }
       }
@@ -686,6 +701,8 @@ class Visualization extends PureComponent<
 
     const CardVisualization = visualization as VisualizationType;
 
+    const isVisualizerViz = isVisualizerDashboardCard(dashcard);
+
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
@@ -695,6 +712,11 @@ class Visualization extends PureComponent<
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard?.size_y !== 1 || isMobile) && !isAction);
+
+    // We can't navigate a user to a particular card from a visualizer viz,
+    // so title selection is disabled in this case
+    const canSelectTitle =
+      this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
 
     return (
       <ErrorBoundary
@@ -718,9 +740,7 @@ class Visualization extends PureComponent<
                 width={width}
                 getHref={getHref}
                 onChangeCardAndRun={
-                  this.props.onChangeCardAndRun && !replacementContent
-                    ? this.handleOnChangeCardAndRun
-                    : null
+                  canSelectTitle ? this.handleOnChangeCardAndRun : null
                 }
               />
             </VisualizationHeader>
@@ -778,6 +798,7 @@ class Visualization extends PureComponent<
                   isEmbeddingSdk={isEmbeddingSdk}
                   isFullscreen={!!isFullscreen}
                   isMobile={!!isMobile}
+                  isVisualizerViz={isVisualizerViz}
                   isNightMode={!!isNightMode}
                   isObjectDetail={isObjectDetail}
                   isPlaceholder={isPlaceholder}
@@ -791,6 +812,7 @@ class Visualization extends PureComponent<
                   mode={mode}
                   queryBuilderMode={queryBuilderMode}
                   rawSeries={rawSeries}
+                  visualizerRawSeries={visualizerRawSeries}
                   renderEmptyMessage={renderEmptyMessage}
                   renderTableHeader={renderTableHeader}
                   scrollToColumn={scrollToColumn}

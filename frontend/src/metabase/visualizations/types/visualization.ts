@@ -111,6 +111,7 @@ export interface VisualizationProps {
   data: DatasetData;
   metadata?: Metadata;
   rawSeries: RawSeries;
+  visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
@@ -123,6 +124,7 @@ export interface VisualizationProps {
   isEmbeddingSdk: boolean;
   showTitle: boolean;
   isDashboard: boolean;
+  isVisualizerViz: boolean;
   isEditing: boolean;
   isMobile: boolean;
   isNightMode: boolean;
@@ -312,6 +314,7 @@ export type VisualizationDefinition = {
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
   supportsSeries?: boolean;
+  supportsVisualizer?: boolean;
 
   minSize: VisualizationGridSize;
   defaultSize: VisualizationGridSize;
