@@ -4,8 +4,8 @@ type SingleSeries = {
 } & Pick<Dataset, "data" | "error">;
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `card` | [`Card`](Card.md) |
+| Name   | Type                         |
+| ------ | ---------------------------- |
+| `card` | [`Card`](./api_html/Card.md) |

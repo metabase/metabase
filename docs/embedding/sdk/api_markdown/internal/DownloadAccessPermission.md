@@ -5,9 +5,9 @@ type DownloadAccessPermission = {
 };
 ```
 
-## Properties
+#### Properties
 
-### native?
+##### native?
 
 ```ts
 optional native: DownloadSchemasPermission;
@@ -15,7 +15,7 @@ optional native: DownloadSchemasPermission;
 
 ***
 
-### schemas
+##### schemas
 
 ```ts
 schemas: DownloadSchemasPermission;

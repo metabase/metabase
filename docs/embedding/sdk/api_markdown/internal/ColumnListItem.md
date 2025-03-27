@@ -8,9 +8,9 @@ type ColumnListItem = {
 };
 ```
 
-## Properties
+#### Properties
 
-### column
+##### column
 
 ```ts
 column: ColumnMetadata;
@@ -18,7 +18,7 @@ column: ColumnMetadata;
 
 ***
 
-### displayName
+##### displayName
 
 ```ts
 displayName: string;
@@ -26,7 +26,7 @@ displayName: string;
 
 ***
 
-### filterPositions?
+##### filterPositions?
 
 ```ts
 optional filterPositions: number[];
@@ -34,7 +34,7 @@ optional filterPositions: number[];
 
 ***
 
-### name
+##### name
 
 ```ts
 name: string;
@@ -42,7 +42,7 @@ name: string;
 
 ***
 
-### stageIndex
+##### stageIndex
 
 ```ts
 stageIndex: number;

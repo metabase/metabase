@@ -4,14 +4,14 @@ type EditorProps = {
 };
 ```
 
-## Properties
+#### Properties
 
-### onApply()?
+##### onApply()?
 
 ```ts
 optional onApply: () => void;
 ```
 
-#### Returns
+###### Returns
 
 `void`

@@ -4,14 +4,14 @@ type SdkSaveQuestionFormProps = {
 };
 ```
 
-## Properties
+#### Properties
 
-### onCancel()?
+##### onCancel()?
 
 ```ts
 optional onCancel: () => void;
 ```
 
-#### Returns
+###### Returns
 
 `void`

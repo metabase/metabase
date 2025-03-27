@@ -6,9 +6,9 @@ type CustomClickActionBase = {
 };
 ```
 
-## Properties
+#### Properties
 
-### name
+##### name
 
 ```ts
 name: ClickActionBase["name"];
@@ -16,7 +16,7 @@ name: ClickActionBase["name"];
 
 ***
 
-### section
+##### section
 
 ```ts
 section: ClickActionBase["section"];
@@ -24,7 +24,7 @@ section: ClickActionBase["section"];
 
 ***
 
-### type
+##### type
 
 ```ts
 type: "custom";

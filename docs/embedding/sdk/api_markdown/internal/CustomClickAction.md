@@ -4,8 +4,8 @@ type CustomClickAction = ClickActionBase & CustomClickActionBase & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `onClick?` | (`parameters`: [`CustomClickActionContext`](CustomClickActionContext.md)) => `void` |
+| Name       | Type                                                                                           |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| `onClick?` | (`parameters`: [`CustomClickActionContext`](./api_html/CustomClickActionContext.md)) => `void` |

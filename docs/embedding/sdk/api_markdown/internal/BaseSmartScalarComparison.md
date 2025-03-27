@@ -1,14 +1,14 @@
-## Extended by
+#### Extended by
 
-- [`SmartScalarComparisonAnotherColumn`](SmartScalarComparisonAnotherColumn.md)
-- [`SmartScalarComparisonPreviousValue`](SmartScalarComparisonPreviousValue.md)
-- [`SmartScalarComparisonPreviousPeriod`](SmartScalarComparisonPreviousPeriod.md)
-- [`SmartScalarComparisonPeriodsAgo`](SmartScalarComparisonPeriodsAgo.md)
-- [`SmartScalarComparisonStaticNumber`](SmartScalarComparisonStaticNumber.md)
+* [`SmartScalarComparisonAnotherColumn`](./api_html/SmartScalarComparisonAnotherColumn.md)
+* [`SmartScalarComparisonPreviousValue`](./api_html/SmartScalarComparisonPreviousValue.md)
+* [`SmartScalarComparisonPreviousPeriod`](./api_html/SmartScalarComparisonPreviousPeriod.md)
+* [`SmartScalarComparisonPeriodsAgo`](./api_html/SmartScalarComparisonPeriodsAgo.md)
+* [`SmartScalarComparisonStaticNumber`](./api_html/SmartScalarComparisonStaticNumber.md)
 
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="id"></a> `id` | `string` |
-| <a id="type"></a> `type` | [`SmartScalarComparisonType`](SmartScalarComparisonType.md) |
+| Property                 | Type                                                                   |
+| ------------------------ | ---------------------------------------------------------------------- |
+| <a id="id"></a> `id`     | `string`                                                               |
+| <a id="type"></a> `type` | [`SmartScalarComparisonType`](./api_html/SmartScalarComparisonType.md) |

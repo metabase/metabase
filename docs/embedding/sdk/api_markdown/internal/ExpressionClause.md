@@ -2,7 +2,7 @@
 type ExpressionClause = {};
 ```
 
-## Index Signature
+#### Index Signature
 
 ```ts
 [key: string]: Expression

@@ -8,18 +8,18 @@ type ChartColor =
 };
 ```
 
-## Type declaration
+#### Type declaration
 
 `string`
 
-\{
-  `base`: `string`;
-  `shade`: `string`;
-  `tint`: `string`;
- \}
+{
+`base`: `string`;
+`shade`: `string`;
+`tint`: `string`;
+}
 
-| Name | Type | Description |
-| ------ | ------ | ------ |
-| `base` | `string` | - |
-| `shade?` | `string` | Darker variation of the base color |
-| `tint?` | `string` | Lighter variation of the base color |
+| Name     | Type     | Description                         |
+| -------- | -------- | ----------------------------------- |
+| `base`   | `string` | -                                   |
+| `shade?` | `string` | Darker variation of the base color  |
+| `tint?`  | `string` | Lighter variation of the base color |

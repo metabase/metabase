@@ -1,29 +1,29 @@
-## Extends
+#### Extends
 
-- [`BaseUser`](BaseUser.md)
+* [`BaseUser`](./api_html/BaseUser.md)
 
-## Properties
+#### Properties
 
-| Property | Type | Overrides | Inherited from |
-| ------ | ------ | ------ | ------ |
-| <a id="common_name"></a> `common_name` | `string` | - | [`BaseUser`](BaseUser.md).[`common_name`](BaseUser.md#common_name) |
-| <a id="custom_homepage"></a> `custom_homepage` | \| `null` \| \{ `dashboard_id`: [`DashboardId`](DashboardId.md); \} | - | - |
-| <a id="date_joined"></a> `date_joined` | `string` | - | [`BaseUser`](BaseUser.md).[`date_joined`](BaseUser.md#date_joined) |
-| <a id="email"></a> `email` | `string` | - | [`BaseUser`](BaseUser.md).[`email`](BaseUser.md#email) |
-| <a id="first_login"></a> `first_login` | `string` | - | [`BaseUser`](BaseUser.md).[`first_login`](BaseUser.md#first_login) |
-| <a id="first_name"></a> `first_name` | `null` \| `string` | - | [`BaseUser`](BaseUser.md).[`first_name`](BaseUser.md#first_name) |
-| <a id="google_auth"></a> `google_auth` | `boolean` | [`BaseUser`](BaseUser.md).[`google_auth`](BaseUser.md#google_auth) | - |
-| <a id="has_invited_second_user"></a> `has_invited_second_user` | `boolean` | - | - |
-| <a id="has_question_and_dashboard"></a> `has_question_and_dashboard` | `boolean` | - | - |
-| <a id="id"></a> `id` | `number` | - | [`BaseUser`](BaseUser.md).[`id`](BaseUser.md#id) |
-| <a id="is_active"></a> `is_active` | `boolean` | - | [`BaseUser`](BaseUser.md).[`is_active`](BaseUser.md#is_active) |
-| <a id="is_installer"></a> `is_installer` | `boolean` | - | - |
-| <a id="is_qbnewb"></a> `is_qbnewb` | `boolean` | - | [`BaseUser`](BaseUser.md).[`is_qbnewb`](BaseUser.md#is_qbnewb) |
-| <a id="is_superuser"></a> `is_superuser` | `boolean` | - | [`BaseUser`](BaseUser.md).[`is_superuser`](BaseUser.md#is_superuser) |
-| <a id="last_login"></a> `last_login` | `string` | - | [`BaseUser`](BaseUser.md).[`last_login`](BaseUser.md#last_login) |
-| <a id="last_name"></a> `last_name` | `null` \| `string` | - | [`BaseUser`](BaseUser.md).[`last_name`](BaseUser.md#last_name) |
-| <a id="locale"></a> `locale` | `null` \| `string` | - | [`BaseUser`](BaseUser.md).[`locale`](BaseUser.md#locale) |
-| <a id="login_attributes"></a> `login_attributes` | `null` \| `Record`\<`string`, `string`\> | - | - |
-| <a id="personal_collection_id"></a> `personal_collection_id` | [`CollectionId`](CollectionId.md) | - | - |
-| <a id="sso_source"></a> `sso_source` | `null` \| `"saml"` | - | - |
-| <a id="user_group_memberships"></a> `user_group_memberships?` | \{ `id`: `number`; `is_group_manager`: `boolean`; \}[] | - | - |
+| Property                                                             | Type                                                                         | Overrides                                                                                | Inherited from                                                                             |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| <a id="common_name"></a> `common_name`                               | `string`                                                                     | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`common_name`](./api_html/BaseUser.md#common_name)   |
+| <a id="custom_homepage"></a> `custom_homepage`                       | \| `null` \| { `dashboard_id`: [`DashboardId`](./api_html/DashboardId.md); } | -                                                                                        | -                                                                                          |
+| <a id="date_joined"></a> `date_joined`                               | `string`                                                                     | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`date_joined`](./api_html/BaseUser.md#date_joined)   |
+| <a id="email"></a> `email`                                           | `string`                                                                     | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`email`](./api_html/BaseUser.md#email)               |
+| <a id="first_login"></a> `first_login`                               | `string`                                                                     | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`first_login`](./api_html/BaseUser.md#first_login)   |
+| <a id="first_name"></a> `first_name`                                 | `null` \| `string`                                                           | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`first_name`](./api_html/BaseUser.md#first_name)     |
+| <a id="google_auth"></a> `google_auth`                               | `boolean`                                                                    | [`BaseUser`](./api_html/BaseUser.md).[`google_auth`](./api_html/BaseUser.md#google_auth) | -                                                                                          |
+| <a id="has_invited_second_user"></a> `has_invited_second_user`       | `boolean`                                                                    | -                                                                                        | -                                                                                          |
+| <a id="has_question_and_dashboard"></a> `has_question_and_dashboard` | `boolean`                                                                    | -                                                                                        | -                                                                                          |
+| <a id="id"></a> `id`                                                 | `number`                                                                     | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`id`](./api_html/BaseUser.md#id)                     |
+| <a id="is_active"></a> `is_active`                                   | `boolean`                                                                    | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`is_active`](./api_html/BaseUser.md#is_active)       |
+| <a id="is_installer"></a> `is_installer`                             | `boolean`                                                                    | -                                                                                        | -                                                                                          |
+| <a id="is_qbnewb"></a> `is_qbnewb`                                   | `boolean`                                                                    | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`is_qbnewb`](./api_html/BaseUser.md#is_qbnewb)       |
+| <a id="is_superuser"></a> `is_superuser`                             | `boolean`                                                                    | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`is_superuser`](./api_html/BaseUser.md#is_superuser) |
+| <a id="last_login"></a> `last_login`                                 | `string`                                                                     | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`last_login`](./api_html/BaseUser.md#last_login)     |
+| <a id="last_name"></a> `last_name`                                   | `null` \| `string`                                                           | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`last_name`](./api_html/BaseUser.md#last_name)       |
+| <a id="locale"></a> `locale`                                         | `null` \| `string`                                                           | -                                                                                        | [`BaseUser`](./api_html/BaseUser.md).[`locale`](./api_html/BaseUser.md#locale)             |
+| <a id="login_attributes"></a> `login_attributes`                     | `null` \| `Record`<`string`, `string`>                                       | -                                                                                        | -                                                                                          |
+| <a id="personal_collection_id"></a> `personal_collection_id`         | [`CollectionId`](./api_html/CollectionId.md)                                 | -                                                                                        | -                                                                                          |
+| <a id="sso_source"></a> `sso_source`                                 | `null` \| `"saml"`                                                           | -                                                                                        | -                                                                                          |
+| <a id="user_group_memberships"></a> `user_group_memberships?`        | { `id`: `number`; `is_group_manager`: `boolean`; }\[]                        | -                                                                                        | -                                                                                          |

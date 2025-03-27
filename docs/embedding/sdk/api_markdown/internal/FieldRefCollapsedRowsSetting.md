@@ -5,9 +5,9 @@ type FieldRefCollapsedRowsSetting = {
 };
 ```
 
-## Properties
+#### Properties
 
-### rows
+##### rows
 
 ```ts
 rows: (FieldReference | null)[];
@@ -15,7 +15,7 @@ rows: (FieldReference | null)[];
 
 ***
 
-### value
+##### value
 
 ```ts
 value: string[];

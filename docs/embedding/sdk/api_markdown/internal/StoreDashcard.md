@@ -6,10 +6,10 @@ type StoreDashcard = DashboardCard & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `isAdded?` | `boolean` |
-| `isDirty?` | `boolean` |
+| Name         | Type      |
+| ------------ | --------- |
+| `isAdded?`   | `boolean` |
+| `isDirty?`   | `boolean` |
 | `isRemoved?` | `boolean` |

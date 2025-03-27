@@ -6,9 +6,9 @@ type BlankQueryOptions = {
 };
 ```
 
-## Properties
+#### Properties
 
-### db?
+##### db?
 
 ```ts
 optional db: string;
@@ -16,7 +16,7 @@ optional db: string;
 
 ***
 
-### segment?
+##### segment?
 
 ```ts
 optional segment: string;
@@ -24,7 +24,7 @@ optional segment: string;
 
 ***
 
-### table?
+##### table?
 
 ```ts
 optional table: string;

@@ -9,9 +9,9 @@ type SegmentDisplayInfo = {
 };
 ```
 
-## Properties
+#### Properties
 
-### description
+##### description
 
 ```ts
 description: string;
@@ -19,7 +19,7 @@ description: string;
 
 ***
 
-### displayName
+##### displayName
 
 ```ts
 displayName: string;
@@ -27,7 +27,7 @@ displayName: string;
 
 ***
 
-### effectiveType?
+##### effectiveType?
 
 ```ts
 optional effectiveType: string;
@@ -35,7 +35,7 @@ optional effectiveType: string;
 
 ***
 
-### filterPositions?
+##### filterPositions?
 
 ```ts
 optional filterPositions: number[];
@@ -43,7 +43,7 @@ optional filterPositions: number[];
 
 ***
 
-### longDisplayName
+##### longDisplayName
 
 ```ts
 longDisplayName: string;
@@ -51,7 +51,7 @@ longDisplayName: string;
 
 ***
 
-### name
+##### name
 
 ```ts
 name: string;

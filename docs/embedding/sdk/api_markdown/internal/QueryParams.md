@@ -5,9 +5,9 @@ type QueryParams = BlankQueryOptions & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
+| Name        | Type     |
+| ----------- | -------- |
 | `objectId?` | `string` |
-| `slug?` | `string` |
+| `slug?`     | `string` |

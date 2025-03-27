@@ -5,9 +5,9 @@ type VirtualDashCardParameterMapping = {
 };
 ```
 
-## Properties
+#### Properties
 
-### parameter\_id
+##### parameter\_id
 
 ```ts
 parameter_id: ParameterId;
@@ -15,7 +15,7 @@ parameter_id: ParameterId;
 
 ***
 
-### target
+##### target
 
 ```ts
 target: ParameterTarget;

@@ -7,9 +7,9 @@ type FieldDimension = {
 };
 ```
 
-## Properties
+#### Properties
 
-### human\_readable\_field?
+##### human\_readable\_field?
 
 ```ts
 optional human_readable_field: Field_2;
@@ -17,7 +17,7 @@ optional human_readable_field: Field_2;
 
 ***
 
-### human\_readable\_field\_id?
+##### human\_readable\_field\_id?
 
 ```ts
 optional human_readable_field_id: FieldId;
@@ -25,7 +25,7 @@ optional human_readable_field_id: FieldId;
 
 ***
 
-### name
+##### name
 
 ```ts
 name: string;
@@ -33,7 +33,7 @@ name: string;
 
 ***
 
-### type
+##### type
 
 ```ts
 type: FieldDimensionType;

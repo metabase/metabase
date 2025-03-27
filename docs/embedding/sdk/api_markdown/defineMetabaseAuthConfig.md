@@ -4,12 +4,12 @@ const defineMetabaseAuthConfig: (config: MetabaseAuthConfig) => MetabaseAuthConf
 
 Defines a Metabase auth config.
 
-## Parameters
+#### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `config` | [`MetabaseAuthConfig`](MetabaseAuthConfig.md) |
+| Parameter | Type                                                     |
+| --------- | -------------------------------------------------------- |
+| `config`  | [`MetabaseAuthConfig`](./api_html/MetabaseAuthConfig.md) |
 
-## Returns
+#### Returns
 
-[`MetabaseAuthConfig`](MetabaseAuthConfig.md)
+[`MetabaseAuthConfig`](./api_html/MetabaseAuthConfig.md)

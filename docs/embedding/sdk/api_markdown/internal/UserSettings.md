@@ -17,9 +17,9 @@ type UserSettings = {
 };
 ```
 
-## Properties
+#### Properties
 
-### browse-filter-only-verified-metrics?
+##### browse-filter-only-verified-metrics?
 
 ```ts
 optional browse-filter-only-verified-metrics: boolean;
@@ -27,7 +27,7 @@ optional browse-filter-only-verified-metrics: boolean;
 
 ***
 
-### browse-filter-only-verified-models?
+##### browse-filter-only-verified-models?
 
 ```ts
 optional browse-filter-only-verified-models: boolean;
@@ -35,7 +35,7 @@ optional browse-filter-only-verified-models: boolean;
 
 ***
 
-### dismissed-browse-models-banner?
+##### dismissed-browse-models-banner?
 
 ```ts
 optional dismissed-browse-models-banner: boolean;
@@ -43,7 +43,7 @@ optional dismissed-browse-models-banner: boolean;
 
 ***
 
-### dismissed-collection-cleanup-banner?
+##### dismissed-collection-cleanup-banner?
 
 ```ts
 optional dismissed-collection-cleanup-banner: boolean;
@@ -51,7 +51,7 @@ optional dismissed-collection-cleanup-banner: boolean;
 
 ***
 
-### dismissed-custom-dashboard-toast?
+##### dismissed-custom-dashboard-toast?
 
 ```ts
 optional dismissed-custom-dashboard-toast: boolean;
@@ -59,7 +59,7 @@ optional dismissed-custom-dashboard-toast: boolean;
 
 ***
 
-### dismissed-onboarding-sidebar-link?
+##### dismissed-onboarding-sidebar-link?
 
 ```ts
 optional dismissed-onboarding-sidebar-link: boolean;
@@ -67,7 +67,7 @@ optional dismissed-onboarding-sidebar-link: boolean;
 
 ***
 
-### expand-bookmarks-in-nav?
+##### expand-bookmarks-in-nav?
 
 ```ts
 optional expand-bookmarks-in-nav: boolean;
@@ -75,7 +75,7 @@ optional expand-bookmarks-in-nav: boolean;
 
 ***
 
-### expand-browse-in-nav?
+##### expand-browse-in-nav?
 
 ```ts
 optional expand-browse-in-nav: boolean;
@@ -83,7 +83,7 @@ optional expand-browse-in-nav: boolean;
 
 ***
 
-### last-used-native-database-id?
+##### last-used-native-database-id?
 
 ```ts
 optional last-used-native-database-id: number | null;
@@ -91,7 +91,7 @@ optional last-used-native-database-id: number | null;
 
 ***
 
-### notebook-native-preview-shown?
+##### notebook-native-preview-shown?
 
 ```ts
 optional notebook-native-preview-shown: boolean;
@@ -99,7 +99,7 @@ optional notebook-native-preview-shown: boolean;
 
 ***
 
-### notebook-native-preview-sidebar-width?
+##### notebook-native-preview-sidebar-width?
 
 ```ts
 optional notebook-native-preview-sidebar-width: number | null;
@@ -107,7 +107,7 @@ optional notebook-native-preview-sidebar-width: number | null;
 
 ***
 
-### show-updated-permission-banner
+##### show-updated-permission-banner
 
 ```ts
 show-updated-permission-banner: boolean;
@@ -115,7 +115,7 @@ show-updated-permission-banner: boolean;
 
 ***
 
-### show-updated-permission-modal
+##### show-updated-permission-modal
 
 ```ts
 show-updated-permission-modal: boolean;
@@ -123,7 +123,7 @@ show-updated-permission-modal: boolean;
 
 ***
 
-### trial-banner-dismissal-timestamp?
+##### trial-banner-dismissal-timestamp?
 
 ```ts
 optional trial-banner-dismissal-timestamp: string | null;

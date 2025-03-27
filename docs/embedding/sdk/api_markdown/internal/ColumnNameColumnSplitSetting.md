@@ -6,9 +6,9 @@ type ColumnNameColumnSplitSetting = {
 };
 ```
 
-## Properties
+#### Properties
 
-### columns
+##### columns
 
 ```ts
 columns: string[];
@@ -16,7 +16,7 @@ columns: string[];
 
 ***
 
-### rows
+##### rows
 
 ```ts
 rows: string[];
@@ -24,7 +24,7 @@ rows: string[];
 
 ***
 
-### values
+##### values
 
 ```ts
 values: string[];

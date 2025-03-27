@@ -1,11 +1,11 @@
-## Extended by
+#### Extended by
 
-- [`Parameter`](Parameter.md)
+* [`Parameter`](./api_html/Parameter.md)
 
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="values_query_type"></a> `values_query_type?` | [`ValuesQueryType`](ValuesQueryType.md) |
-| <a id="values_source_config"></a> `values_source_config?` | [`ValuesSourceConfig`](ValuesSourceConfig.md) |
-| <a id="values_source_type"></a> `values_source_type?` | [`ValuesSourceType`](ValuesSourceType.md) |
+| Property                                                  | Type                                                     |
+| --------------------------------------------------------- | -------------------------------------------------------- |
+| <a id="values_query_type"></a> `values_query_type?`       | [`ValuesQueryType`](./api_html/ValuesQueryType.md)       |
+| <a id="values_source_config"></a> `values_source_config?` | [`ValuesSourceConfig`](./api_html/ValuesSourceConfig.md) |
+| <a id="values_source_type"></a> `values_source_type?`     | [`ValuesSourceType`](./api_html/ValuesSourceType.md)     |

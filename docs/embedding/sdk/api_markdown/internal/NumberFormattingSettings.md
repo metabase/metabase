@@ -1,5 +1,5 @@
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
+| Property                                            | Type     |
+| --------------------------------------------------- | -------- |
 | <a id="number_separators"></a> `number_separators?` | `string` |

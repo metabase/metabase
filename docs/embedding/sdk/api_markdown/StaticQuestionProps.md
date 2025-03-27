@@ -4,8 +4,8 @@ type StaticQuestionProps = {
  } & Pick<InteractiveQuestionProviderProps, "questionId" | "initialSqlParameters"> & FlexibleSizeProps;
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
+| Name                     | Type      |
+| ------------------------ | --------- |
 | `withChartTypeSelector?` | `boolean` |

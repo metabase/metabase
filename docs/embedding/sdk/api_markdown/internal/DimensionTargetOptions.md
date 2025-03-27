@@ -4,9 +4,9 @@ type DimensionTargetOptions = {
 };
 ```
 
-## Properties
+#### Properties
 
-### stage-number?
+##### stage-number?
 
 ```ts
 optional stage-number: number;

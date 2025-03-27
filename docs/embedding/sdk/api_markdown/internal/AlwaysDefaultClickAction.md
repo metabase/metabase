@@ -5,9 +5,9 @@ type AlwaysDefaultClickAction = {
  } & AlwaysDefaultClickActionSubAction;
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `defaultAlways` | `true` |
-| `name` | `string` |
+| Name            | Type     |
+| --------------- | -------- |
+| `defaultAlways` | `true`   |
+| `name`          | `string` |

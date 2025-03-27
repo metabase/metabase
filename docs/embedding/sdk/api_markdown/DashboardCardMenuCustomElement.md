@@ -4,13 +4,13 @@ type DashboardCardMenuCustomElement = ({ question, }: {
  }) => ReactNode;
 ```
 
-## Parameters
+#### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `{ question, }` | \{ `question`: [`MetabaseQuestion`](MetabaseQuestion.md); \} |
-| `{ question, }.question` | [`MetabaseQuestion`](MetabaseQuestion.md) |
+| Parameter                | Type                                                                  |
+| ------------------------ | --------------------------------------------------------------------- |
+| `{ question, }`          | { `question`: [`MetabaseQuestion`](./api_html/MetabaseQuestion.md); } |
+| `{ question, }.question` | [`MetabaseQuestion`](./api_html/MetabaseQuestion.md)                  |
 
-## Returns
+#### Returns
 
 `ReactNode`

@@ -12,9 +12,9 @@ type SdkDashboardDisplayProps = {
 };
 ```
 
-## Properties
+#### Properties
 
-### className?
+##### className?
 
 ```ts
 optional className: string;
@@ -24,19 +24,17 @@ A custom class name to be added to the root element.
 
 ***
 
-### dashboardId
+##### dashboardId
 
 ```ts
 dashboardId: SdkDashboardId;
 ```
 
-The ID of the dashboard. This is either:
- <br>- the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
- <br>- the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data
+The ID of the dashboard. This is either: <br>- the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1` <br>- the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data
 
 ***
 
-### hiddenParameters?
+##### hiddenParameters?
 
 ```ts
 optional hiddenParameters: string[];
@@ -46,7 +44,7 @@ A list of parameters to hide ../../embedding/public-links.md#appearance-paramete
 
 ***
 
-### initialParameters?
+##### initialParameters?
 
 ```ts
 optional initialParameters: Query;
@@ -56,7 +54,7 @@ Query parameters for the dashboard. For a single option, use a `string` value, a
 
 ***
 
-### style?
+##### style?
 
 ```ts
 optional style: CSSProperties;
@@ -66,7 +64,7 @@ A custom style object to be added to the root element.
 
 ***
 
-### withCardTitle?
+##### withCardTitle?
 
 ```ts
 optional withCardTitle: boolean;
@@ -76,7 +74,7 @@ Whether the dashboard cards should display a title.
 
 ***
 
-### withDownloads?
+##### withDownloads?
 
 ```ts
 optional withDownloads: boolean;
@@ -86,7 +84,7 @@ Whether to hide the download button.
 
 ***
 
-### withFooter?
+##### withFooter?
 
 ```ts
 optional withFooter: boolean;
@@ -96,7 +94,7 @@ Whether to display the footer.
 
 ***
 
-### withTitle?
+##### withTitle?
 
 ```ts
 optional withTitle: boolean;

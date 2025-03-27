@@ -4,14 +4,14 @@ type ReduxClickActionBase = {
 };
 ```
 
-## Properties
+#### Properties
 
-### action()
+##### action()
 
 ```ts
 action: () => Dispatcher;
 ```
 
-#### Returns
+###### Returns
 
-[`Dispatcher`](Dispatcher.md)
+[`Dispatcher`](./api_html/Dispatcher.md)

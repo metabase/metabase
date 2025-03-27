@@ -7,11 +7,11 @@ type SegmentListItem = SegmentDisplayInfo & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `displayName` | `string` |
-| `name` | `string` |
-| `segment` | [`SegmentMetadata`](SegmentMetadata.md) |
-| `stageIndex` | `number` |
+| Name          | Type                                               |
+| ------------- | -------------------------------------------------- |
+| `displayName` | `string`                                           |
+| `name`        | `string`                                           |
+| `segment`     | [`SegmentMetadata`](./api_html/SegmentMetadata.md) |
+| `stageIndex`  | `number`                                           |

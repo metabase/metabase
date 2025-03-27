@@ -1,9 +1,9 @@
-## Extends
+#### Extends
 
-- [`CacheStrategyBase`](CacheStrategyBase.md)
+* [`CacheStrategyBase`](./api_html/CacheStrategyBase.md)
 
-## Properties
+#### Properties
 
-| Property | Type | Overrides |
-| ------ | ------ | ------ |
-| <a id="type"></a> `type` | `"nocache"` | [`CacheStrategyBase`](CacheStrategyBase.md).[`type`](CacheStrategyBase.md#type) |
+| Property                 | Type        | Overrides                                                                                             |
+| ------------------------ | ----------- | ----------------------------------------------------------------------------------------------------- |
+| <a id="type"></a> `type` | `"nocache"` | [`CacheStrategyBase`](./api_html/CacheStrategyBase.md).[`type`](./api_html/CacheStrategyBase.md#type) |

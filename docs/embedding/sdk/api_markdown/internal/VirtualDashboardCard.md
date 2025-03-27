@@ -11,11 +11,11 @@ type VirtualDashboardCard = BaseDashboardCard & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `card` | [`VirtualCard`](VirtualCard.md) |
-| `card_id` | `null` |
-| `parameter_mappings?` | \| [`VirtualDashCardParameterMapping`](VirtualDashCardParameterMapping.md)[] \| `null` |
-| `visualization_settings` | [`BaseDashboardCard`](BaseDashboardCard.md)\[`"visualization_settings"`\] & \{ `link`: [`LinkCardSettings`](LinkCardSettings.md); `virtual_card`: [`VirtualCard`](VirtualCard.md); \} |
+| Name                     | Type                                                                                                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `card`                   | [`VirtualCard`](./api_html/VirtualCard.md)                                                                                                                                                                          |
+| `card_id`                | `null`                                                                                                                                                                                                              |
+| `parameter_mappings?`    | \| [`VirtualDashCardParameterMapping`](./api_html/VirtualDashCardParameterMapping.md)\[] \| `null`                                                                                                                  |
+| `visualization_settings` | [`BaseDashboardCard`](./api_html/BaseDashboardCard.md)\[`"visualization_settings"`] & { `link`: [`LinkCardSettings`](./api_html/LinkCardSettings.md); `virtual_card`: [`VirtualCard`](./api_html/VirtualCard.md); } |

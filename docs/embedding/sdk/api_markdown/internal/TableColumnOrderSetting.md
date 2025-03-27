@@ -5,9 +5,9 @@ type TableColumnOrderSetting = {
 };
 ```
 
-## Properties
+#### Properties
 
-### enabled
+##### enabled
 
 ```ts
 enabled: boolean;
@@ -15,7 +15,7 @@ enabled: boolean;
 
 ***
 
-### name
+##### name
 
 ```ts
 name: string;

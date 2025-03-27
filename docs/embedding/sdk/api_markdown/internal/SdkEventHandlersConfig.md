@@ -5,9 +5,9 @@ type SdkEventHandlersConfig = {
 };
 ```
 
-## Properties
+#### Properties
 
-### onDashboardLoad?
+##### onDashboardLoad?
 
 ```ts
 optional onDashboardLoad: SdkDashboardLoadEvent;
@@ -15,7 +15,7 @@ optional onDashboardLoad: SdkDashboardLoadEvent;
 
 ***
 
-### onDashboardLoadWithoutCards?
+##### onDashboardLoadWithoutCards?
 
 ```ts
 optional onDashboardLoadWithoutCards: SdkDashboardLoadEvent;

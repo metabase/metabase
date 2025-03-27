@@ -2,12 +2,12 @@
 type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 ```
 
-## Parameters
+#### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `opts` | [`OnChangeCardAndRunOpts`](OnChangeCardAndRunOpts.md) |
+| Parameter | Type                                                             |
+| --------- | ---------------------------------------------------------------- |
+| `opts`    | [`OnChangeCardAndRunOpts`](./api_html/OnChangeCardAndRunOpts.md) |
 
-## Returns
+#### Returns
 
 `void`

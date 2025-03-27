@@ -5,9 +5,9 @@ type PopoverClickAction = ClickActionBase & {
 };
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
-| `popover` | (`props`: [`ClickActionPopoverProps`](ClickActionPopoverProps.md)) => `JSX.Element` |
-| `popoverProps?` | `Record`\<`string`, `unknown`\> |
+| Name            | Type                                                                                           |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| `popover`       | (`props`: [`ClickActionPopoverProps`](./api_html/ClickActionPopoverProps.md)) => `JSX.Element` |
+| `popoverProps?` | `Record`<`string`, `unknown`>                                                                  |

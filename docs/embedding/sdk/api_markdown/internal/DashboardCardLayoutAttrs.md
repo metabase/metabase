@@ -7,9 +7,9 @@ type DashboardCardLayoutAttrs = {
 };
 ```
 
-## Properties
+#### Properties
 
-### col
+##### col
 
 ```ts
 col: number;
@@ -17,7 +17,7 @@ col: number;
 
 ***
 
-### row
+##### row
 
 ```ts
 row: number;
@@ -25,7 +25,7 @@ row: number;
 
 ***
 
-### size\_x
+##### size\_x
 
 ```ts
 size_x: number;
@@ -33,7 +33,7 @@ size_x: number;
 
 ***
 
-### size\_y
+##### size\_y
 
 ```ts
 size_y: number;

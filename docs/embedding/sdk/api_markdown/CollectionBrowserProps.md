@@ -11,9 +11,9 @@ type CollectionBrowserProps = {
 };
 ```
 
-## Properties
+#### Properties
 
-### className?
+##### className?
 
 ```ts
 optional className: string;
@@ -21,7 +21,7 @@ optional className: string;
 
 ***
 
-### collectionId?
+##### collectionId?
 
 ```ts
 optional collectionId: SdkCollectionId;
@@ -29,7 +29,7 @@ optional collectionId: SdkCollectionId;
 
 ***
 
-### EmptyContentComponent?
+##### EmptyContentComponent?
 
 ```ts
 optional EmptyContentComponent: ComponentType | null;
@@ -37,25 +37,25 @@ optional EmptyContentComponent: ComponentType | null;
 
 ***
 
-### onClick()?
+##### onClick()?
 
 ```ts
 optional onClick: (item: CollectionItem) => void;
 ```
 
-#### Parameters
+###### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `item` | [`CollectionItem`](internal/CollectionItem.md) |
+| Parameter | Type                                                      |
+| --------- | --------------------------------------------------------- |
+| `item`    | [`CollectionItem`](./api_html/internal/CollectionItem.md) |
 
-#### Returns
+###### Returns
 
 `void`
 
 ***
 
-### pageSize?
+##### pageSize?
 
 ```ts
 optional pageSize: number;
@@ -63,7 +63,7 @@ optional pageSize: number;
 
 ***
 
-### style?
+##### style?
 
 ```ts
 optional style: CSSProperties;
@@ -71,7 +71,7 @@ optional style: CSSProperties;
 
 ***
 
-### visibleColumns?
+##### visibleColumns?
 
 ```ts
 optional visibleColumns: CollectionBrowserListColumns[];
@@ -79,7 +79,7 @@ optional visibleColumns: CollectionBrowserListColumns[];
 
 ***
 
-### visibleEntityTypes?
+##### visibleEntityTypes?
 
 ```ts
 optional visibleEntityTypes: UserFacingEntityName[];

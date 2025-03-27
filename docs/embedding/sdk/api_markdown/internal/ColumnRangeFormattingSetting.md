@@ -10,9 +10,9 @@ type ColumnRangeFormattingSetting = {
 };
 ```
 
-## Properties
+#### Properties
 
-### colors
+##### colors
 
 ```ts
 colors: string[];
@@ -20,7 +20,7 @@ colors: string[];
 
 ***
 
-### columns
+##### columns
 
 ```ts
 columns: string[];
@@ -28,7 +28,7 @@ columns: string[];
 
 ***
 
-### max\_type
+##### max\_type
 
 ```ts
 max_type: "custom" | "all" | null;
@@ -36,7 +36,7 @@ max_type: "custom" | "all" | null;
 
 ***
 
-### max\_value?
+##### max\_value?
 
 ```ts
 optional max_value: number;
@@ -44,7 +44,7 @@ optional max_value: number;
 
 ***
 
-### min\_type
+##### min\_type
 
 ```ts
 min_type: "custom" | "all" | null;
@@ -52,7 +52,7 @@ min_type: "custom" | "all" | null;
 
 ***
 
-### min\_value?
+##### min\_value?
 
 ```ts
 optional min_value: number;
@@ -60,7 +60,7 @@ optional min_value: number;
 
 ***
 
-### type
+##### type
 
 ```ts
 type: "range";

@@ -9,9 +9,9 @@ type ColumnSingleFormattingSetting = {
 };
 ```
 
-## Properties
+#### Properties
 
-### color
+##### color
 
 ```ts
 color: string;
@@ -19,7 +19,7 @@ color: string;
 
 ***
 
-### columns
+##### columns
 
 ```ts
 columns: string[];
@@ -27,7 +27,7 @@ columns: string[];
 
 ***
 
-### highlight\_row
+##### highlight\_row
 
 ```ts
 highlight_row: boolean;
@@ -35,7 +35,7 @@ highlight_row: boolean;
 
 ***
 
-### operator
+##### operator
 
 ```ts
 operator: ColumnFormattingOperator;
@@ -43,7 +43,7 @@ operator: ColumnFormattingOperator;
 
 ***
 
-### type
+##### type
 
 ```ts
 type: "single";
@@ -51,7 +51,7 @@ type: "single";
 
 ***
 
-### value
+##### value
 
 ```ts
 value: string | number;

@@ -1,3 +1,3 @@
-## Extends
+#### Extends
 
-- `StackProps`
+* `StackProps`

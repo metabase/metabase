@@ -1,12 +1,12 @@
-## Extended by
+#### Extended by
 
-- [`InsertActionClickBehavior`](InsertActionClickBehavior.md)
-- [`UpdateActionClickBehavior`](UpdateActionClickBehavior.md)
-- [`DeleteActionClickBehavior`](DeleteActionClickBehavior.md)
+* [`InsertActionClickBehavior`](./api_html/InsertActionClickBehavior.md)
+* [`UpdateActionClickBehavior`](./api_html/UpdateActionClickBehavior.md)
+* [`DeleteActionClickBehavior`](./api_html/DeleteActionClickBehavior.md)
 
-## Properties
+#### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="actiontype"></a> `actionType` | `string` |
-| <a id="type"></a> `type` | `"action"` |
+| Property                             | Type       |
+| ------------------------------------ | ---------- |
+| <a id="actiontype"></a> `actionType` | `string`   |
+| <a id="type"></a> `type`             | `"action"` |

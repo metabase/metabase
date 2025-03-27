@@ -5,9 +5,9 @@ type ForeignKeyReference = {
 };
 ```
 
-## Properties
+#### Properties
 
-### status
+##### status
 
 ```ts
 status: number;
@@ -15,7 +15,7 @@ status: number;
 
 ***
 
-### value
+##### value
 
 ```ts
 value: number;

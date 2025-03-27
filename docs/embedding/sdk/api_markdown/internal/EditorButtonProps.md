@@ -4,8 +4,8 @@ type EditorButtonProps = {
 } & ActionIconProps & HTMLAttributes<HTMLButtonElement>;
 ```
 
-## Type declaration
+#### Type declaration
 
-| Name | Type |
-| ------ | ------ |
+| Name      | Type      |
+| --------- | --------- |
 | `isOpen?` | `boolean` |
