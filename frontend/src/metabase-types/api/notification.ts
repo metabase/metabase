@@ -1,6 +1,7 @@
 import type { Card, CardId } from "metabase-types/api/card";
 import type { Channel } from "metabase-types/api/notification-channels";
 import type { PaginationRequest } from "metabase-types/api/pagination";
+import type { Table, TableId } from "metabase-types/api/table";
 import type { UserId, UserInfo } from "metabase-types/api/user";
 
 export type NotificationId = number;
@@ -9,6 +10,15 @@ export type NotificationCardSendCondition =
   | "goal_above"
   | "goal_below"
   | "has_result";
+
+export type SystemEvent =
+  | "event/data-editing-row-create"
+  | "event/data-editing-row-update"
+  | "event/data-editing-row-delete";
+
+type NotificationPayloadType =
+  | "notification/card"
+  | "notification/system-event";
 
 //#region Payload union type
 type NotificationCardPayload = {
@@ -26,7 +36,11 @@ type NotificationCardPayload = {
   payload_id?: number;
 };
 
-type NotificationPayload = NotificationCardPayload; // will be populated with more variants later on
+type NotificationSystemEventPayload = {
+  payload_type: "notification/system-event";
+  payload: null;
+  payload_id: null;
+};
 
 //#endregion
 
@@ -116,6 +130,31 @@ export type NotificationCronSubscription = {
   updated_at?: string;
 };
 
+export type NotificationSystemEventSubscriptionRequest = {
+  type: "notification-subscription/system-event";
+  event_name: SystemEvent;
+  table_id: TableId;
+};
+
+export type NotificationSystemEventSubscription = {
+  type: "notification-subscription/system-event";
+
+  event_name: SystemEvent;
+
+  id?: number;
+  notification_id?: number;
+  table_id: TableId;
+  table?: Table;
+  created_at?: string;
+  updated_at?: string;
+  ui_display_type?: null;
+  cron_schedule?: null;
+};
+
+export type NotificationSubscription =
+  | NotificationCronSubscription
+  | NotificationSystemEventSubscription;
+
 //#endregion
 
 export interface ListNotificationsRequest extends PaginationRequest {
@@ -125,6 +164,8 @@ export interface ListNotificationsRequest extends PaginationRequest {
   creator_or_recipient_id?: UserId;
   card_id?: CardId;
   permission_group_id?: number;
+  table_id?: TableId;
+  payload_type?: NotificationPayloadType;
 }
 
 export type CreateAlertNotificationRequest = NotificationCardPayload & {
@@ -132,7 +173,15 @@ export type CreateAlertNotificationRequest = NotificationCardPayload & {
   subscriptions: NotificationCronSubscription[];
 };
 
-export type CreateNotificationRequest = CreateAlertNotificationRequest; // will be populated with more variants later on
+export type CreateTableNotificationRequest = NotificationSystemEventPayload & {
+  handlers: NotificationHandler[];
+  subscriptions: NotificationSystemEventSubscriptionRequest[];
+  condition: Condition;
+};
+
+export type CreateNotificationRequest =
+  | CreateAlertNotificationRequest
+  | CreateTableNotificationRequest;
 
 export type UpdateAlertNotificationRequest = NotificationCardPayload & {
   id: NotificationId;
@@ -141,18 +190,46 @@ export type UpdateAlertNotificationRequest = NotificationCardPayload & {
   subscriptions: NotificationCronSubscription[];
 };
 
-export type UpdateNotificationRequest = UpdateAlertNotificationRequest; // will be populated with more variants later on
-
-export type Notification = NotificationPayload & {
+export type UpdateTableNotificationRequest = NotificationSystemEventPayload & {
   id: NotificationId;
   active: boolean;
-
   handlers: NotificationHandler[];
-  subscriptions: NotificationCronSubscription[];
+  subscriptions: NotificationSystemEventSubscription[];
+  condition: Condition;
+};
 
+export type UpdateNotificationRequest =
+  | UpdateAlertNotificationRequest
+  | UpdateTableNotificationRequest;
+
+type BaseNotification = {
+  id: NotificationId;
+  active: boolean;
   creator_id: UserId;
   creator: UserInfo;
+  handlers: NotificationHandler[];
 
   updated_at?: string;
   created_at?: string;
 };
+
+export type AlertNotification = BaseNotification &
+  NotificationCardPayload & { subscriptions: NotificationCronSubscription[] };
+
+export type TableNotification = BaseNotification &
+  NotificationSystemEventPayload & {
+    subscriptions: NotificationSystemEventSubscription[];
+    condition: Condition;
+  };
+
+export type Notification = AlertNotification | TableNotification;
+
+// Initial schema for conditional expression.
+// Will be updated later.
+type Operator = "=" | ">" | "<" | ">=" | "<=" | "!=" | "and" | "or";
+type Path = Array<string>;
+type Value = string | number | boolean;
+
+type Expression = [Operator, Path | Expression, Value | Expression];
+
+type Condition = Expression;

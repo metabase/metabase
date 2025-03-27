@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
 import { TextButton } from "metabase/components/Button.styled";
+import * as Urls from "metabase/lib/urls";
 import type { User } from "metabase-types/api";
 
 import {
@@ -49,27 +50,53 @@ export const NotificationList = ({
           {t`Not seeing one here?`}
         </TextButton>
       </NotificationHeader>
-      {listItems.map(listItem =>
-        listItem.type === "pulse" ? (
-          <DashboardNotificationCard
-            key={`${listItem.type}-${listItem.item.id}`}
-            listItem={listItem}
-            user={user}
-            isEditable={canManageSubscriptions}
-            onUnsubscribe={onUnsubscribe}
-            onArchive={onArchive}
-          />
-        ) : (
-          <NotificationCard
-            key={`${listItem.type}-${listItem.item.id}`}
-            listItem={listItem}
-            user={user}
-            isEditable={canManageSubscriptions}
-            onUnsubscribe={onUnsubscribe}
-            onArchive={onArchive}
-          />
-        ),
-      )}
+      {listItems.map(listItem => {
+        switch (listItem.type) {
+          case "pulse":
+            return (
+              <DashboardNotificationCard
+                key={`${listItem.type}-${listItem.item.id}`}
+                listItem={listItem}
+                user={user}
+                isEditable={canManageSubscriptions}
+                onUnsubscribe={onUnsubscribe}
+                onArchive={onArchive}
+              />
+            );
+          case "table-notification": {
+            const subscription = listItem.item.subscriptions[0];
+            return (
+              <NotificationCard
+                key={`${listItem.type}-${listItem.item.id}`}
+                listItem={listItem}
+                user={user}
+                isEditable={canManageSubscriptions}
+                onUnsubscribe={onUnsubscribe}
+                onArchive={onArchive}
+                entityLink={Urls.tableView(
+                  subscription.table!.db_id,
+                  subscription.table_id,
+                )}
+              />
+            );
+          }
+          case "question-notification":
+            return (
+              <NotificationCard
+                key={`${listItem.type}-${listItem.item.id}`}
+                listItem={listItem}
+                user={user}
+                isEditable={canManageSubscriptions}
+                onUnsubscribe={onUnsubscribe}
+                onArchive={onArchive}
+                entityLink={Urls.question({
+                  id: listItem.item.payload.card_id,
+                  card_id: listItem.item.payload.card_id,
+                })}
+              />
+            );
+        }
+      })}
       {children}
     </div>
   );

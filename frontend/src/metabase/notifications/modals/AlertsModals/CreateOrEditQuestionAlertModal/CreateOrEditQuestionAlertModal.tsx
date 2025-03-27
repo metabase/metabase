@@ -20,6 +20,10 @@ import {
   getHasConfiguredEmailChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { ChannelSetupModal } from "metabase/notifications/modals/shared/ChannelSetupModal";
+import { AlertModalSettingsBlock } from "metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { AlertTriggerIcon } from "metabase/notifications/modals/shared/components/AlertTriggerIcon";
+import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannelsPicker/NotificationChannelsPicker";
 import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
 import { updateUrl } from "metabase/query_builder/actions";
 import {
@@ -40,8 +44,8 @@ import {
   rem,
 } from "metabase/ui";
 import type {
+  AlertNotification,
   CreateAlertNotificationRequest,
-  Notification,
   NotificationCardSendCondition,
   NotificationCronSubscription,
   NotificationHandler,
@@ -49,11 +53,6 @@ import type {
   UpdateAlertNotificationRequest,
 } from "metabase-types/api";
 
-import { ChannelSetupModal } from "../ChannelSetupModal";
-import { NotificationChannelsPicker } from "../components/NotificationChannelsPicker";
-
-import { AlertTriggerIcon } from "./AlertTriggerIcon";
-import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/AlertModalSettingsBlock";
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
 import type { NotificationTriggerOption } from "./types";
 
@@ -88,12 +87,12 @@ type CreateOrEditQuestionAlertModalProps = {
   onClose: () => void;
 } & (
   | {
-      editingNotification?: undefined;
+      editingNotification?: null;
       onAlertCreated: () => void;
       onAlertUpdated?: () => void;
     }
   | {
-      editingNotification: Notification;
+      editingNotification: AlertNotification;
       onAlertUpdated: () => void;
       onAlertCreated?: () => void;
     }
@@ -259,7 +258,7 @@ export const CreateOrEditQuestionAlertModal = ({
     return null;
   }
 
-  const isValid = alertIsValid(notification, channelSpec);
+  const isValid = alertIsValid(notification.handlers, channelSpec);
   const hasChanges = !isEqual(editingNotification, notification);
 
   return (

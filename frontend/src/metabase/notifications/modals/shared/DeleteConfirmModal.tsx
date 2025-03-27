@@ -2,20 +2,20 @@ import { t } from "ttag";
 
 import { Button, Flex, Modal, Text } from "metabase/ui";
 
-type DeleteAlertConfirmModalProps = {
+type DeleteConfirmModalProps = {
   title?: string;
   onConfirm: () => void;
   onClose: () => void;
 };
 
-export const DeleteAlertConfirmModal = ({
+export const DeleteConfirmModal = ({
   title,
   onConfirm,
   onClose,
-}: DeleteAlertConfirmModalProps) => (
+}: DeleteConfirmModalProps) => (
   <Modal
     opened
-    data-testid="alert-delete"
+    data-testid="delete-confirm"
     title={title || t`Delete this alert?`}
     size="lg"
     onClose={onClose}
