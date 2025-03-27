@@ -268,6 +268,9 @@
 
   Can be used with [[format-rows-by]] to normalize DB-specific bools in results."
   [x]
+  ;; The compiler warns about performance here since (= (hash 0) (hash 0M)), so the `case` will fallback to linear
+  ;; probing for those values. It shouldn't matter for this function, but if it becomes an issue or we want to silence
+  ;; the warning, it could be rewritten to avoid the `case`.
   (case x
     (0 0M false) false
     (1 1M true)  true
