@@ -1,5 +1,6 @@
 (ns metabase.channel.render.table-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [hickory.select :as hik.s]
    [metabase.channel.render.core :as channel.render]
@@ -84,15 +85,15 @@
             "1,001.5" "rgba(0, 0, 255, 0.75)"}
            (-> (js.color/make-color-selector query-results (:visualization_settings render.tu/test-card))
                (#'table/render-table {:col-names             ["a" "b" "c"]
-                                      :cols-for-color-lookup ["a" "b" "c"]} (query-results->header+rows query-results) columns [])
+                                      :cols-for-color-lookup ["a" "b" "c"]} (query-results->header+rows query-results) columns nil nil)
                find-table-body
                cell-value->background-color)))))
 
 (deftest header-truncation-test []
   (let [[normal-heading long-heading :as row] ["Count" (apply str (repeat 120 "A"))]
-        [normal-rendered long-rendered]       (->> (#'table/render-table-head row {:row row})
+        [normal-rendered long-rendered]       (->> (#'table/render-table-head row {:row row} nil {} false)
                                                    (tree-seq vector? rest)
-                                                   (filter #(= :th (first %)))
+                                                   (#(nth % 3))
                                                    (map last))]
     (testing "Table Headers are truncated if they are really long."
       (is (= normal-heading normal-rendered))
@@ -107,11 +108,14 @@
                                  "'2022-10-12'::date AS C, "
                                  "0.123 AS D, "
                                  "0.6666667 AS E;")
-          formatting-viz    {:column_settings
+          formatting-viz    {:table.column_widths [50 50 50 50 50]
+                             :column_settings
                              {"[\"name\",\"A\"]" {:column_title "Eh"
-                                                  :number_style "percent"}
+                                                  :number_style "percent"
+                                                  :text_wrapping true}
                               "[\"name\",\"B\"]" {:column_title "Bee"
-                                                  :number_style "scientific"}
+                                                  :number_style "scientific"
+                                                  :text_align   "middle"}
                               "[\"name\",\"C\"]" {:column_title "Sea"
                                                   :date_style   "D/M/YYYY"}
                               "[\"name\",\"D\"]" {:column_title "D"
@@ -160,7 +164,23 @@
                 hiccup-render (:content (channel.render/render-pulse-card :attachment "UTC" card nil data-map))
                 header-els    (render.tu/nodes-with-tag hiccup-render :th)]
             (is (= ["A"]
-                   (map last header-els))))))
+                   (map last header-els)))))
+        (testing "Text alignment settings are respected in columns."
+          (let [doc     (render.tu/render-card-as-hickory! card-id)
+                th-els  (hik.s/select (hik.s/tag :th) doc)
+                bee-th  (first (filter #(= "Bee" (first (:content %))) th-els))
+                style   (get-in bee-th [:attrs :style])]
+            (is (str/includes? style "text-align: center")
+                "The 'Bee' column should have center text alignment")))
+        (testing "Text wrapping settings are respected in columns."
+          (let [doc     (render.tu/render-card-as-hickory! card-id)
+                th-els  (hik.s/select (hik.s/tag :th) doc)
+                eh-th   (first (filter #(= "Eh" (first (:content %))) th-els))
+                style   (get-in eh-th [:attrs :style])]
+            (def tsp-style style)
+            (is (and (str/includes? style "white-space: normal")
+                     (str/includes? style "min-width: 25px"))
+                "The 'Eh' column should have text wrapping enabled with appropriate min-width"))))
       (testing "Disabled columns are not rendered, and column re-ordering is respected."
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query          {:database (mt/id)
                                                                            :type     :native
@@ -171,6 +191,29 @@
             (is (= [["B" "A"]
                     ["9,000" "0.1"]]
                    (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els)))))))))
+
+(deftest table-row-index-column-test
+  (mt/dataset test-data
+    (let [q                 (str "SELECT "
+                                 " 1 AS A, "
+                                 " 2 AS B;")
+          row-index-viz     {:table.row_index true}]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query q}}
+                                                :visualization_settings row-index-viz}]
+        (testing "Row index column is included when table.row_index is true"
+          (let [doc     (render.tu/render-card-as-hickory! card-id)
+                th-els  (hik.s/select (hik.s/tag :th) doc)
+                td-els  (hik.s/select (hik.s/tag :td) doc)]
+            ;; Check header
+            (is (= ["#" "A" "B"]
+                   (map #(first (:content %)) th-els))
+                "Header should include '#' as first column")
+            ;; Check body
+            (is (= ["1" "1" "2"]
+                   (map #(first (:content %)) td-els))
+                "Body should include row indices as first column")))))))
 
 (deftest table-minibar-test
   (mt/dataset test-data
