@@ -438,9 +438,9 @@
 
 #?(:cljs
    (def ^:export LEVEL_ONE_TYPES
-     "Return js array of level one types formatted as velues of [[TYPE]] js object.
+     "Return js array of level one types formatted as values of [[TYPE]] js object.
 
-     Level one types are children (ie. direct descendats) of :type/*."
+     Level one types are children (i.e. direct descendants) of :type/*."
      (to-array (distinct (map u/qualified-name
                               (filter #((parents %) :type/*) (descendants :type/*)))))))
 
