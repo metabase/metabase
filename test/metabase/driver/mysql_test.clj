@@ -851,7 +851,7 @@
               (is (= :type/BigInteger (-> cols first :base_type)))
               (doseq [[casted-value equals? uncasted-value] rows]
                 (is (int? casted-value))
-                (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
+                (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value))))))))))
 
 (deftest ^:parallel integer-cast-custom-expressions
   (mt/test-driver :mysql
@@ -875,7 +875,7 @@
               (is (= :type/BigInteger (-> cols first :base_type)))
               (doseq [[casted-value equals? uncasted-value] rows]
                 (is (int? casted-value))
-                (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
+                (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value))))))))))
 
 (deftest ^:parallel integer-cast-nested-native-query
   (mt/test-driver :mysql
@@ -901,7 +901,7 @@
                   (is (= :type/BigInteger (-> cols first :base_type)))
                   (doseq [[casted-value equals? uncasted-value] rows]
                     (is (int? casted-value))
-                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
+                    (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query
   (mt/test-driver :mysql
@@ -928,7 +928,7 @@
                   (is (= :type/BigInteger (-> cols first :base_type)))
                   (doseq [[casted-value equals? uncasted-value] rows]
                     (is (int? casted-value))
-                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
+                    (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query-custom-expressions
   (mt/test-driver :mysql
@@ -960,7 +960,7 @@
                   (is (= :type/BigInteger (-> cols first :base_type)))
                   (doseq [[casted-value equals? uncasted-value] rows]
                     (is (int? casted-value))
-                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
+                    (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value))))))))))))
 
 (deftest ^:parallel integer-cast-nested-custom-expressions
   (mt/test-driver :mysql
@@ -983,8 +983,7 @@
                 rows (mt/rows result)]
             (is (= :type/BigInteger (-> cols first :base_type)))
             (doseq [[casted-value equals? uncasted-value] rows]
-
-              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
+              (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value)))))))))
 
 (deftest ^:parallel integer-cast-aggregations
   (mt/test-driver :mysql
