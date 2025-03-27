@@ -6,7 +6,7 @@ import { setup } from "metabase/components/Schedule/test-utils";
 
 const getInputValues = () => {
   const inputs = screen.getAllByRole("textbox");
-  const values = inputs.map(input => input.getAttribute("value"));
+  const values = inputs.map((input) => input.getAttribute("value"));
   return values;
 };
 
@@ -78,7 +78,7 @@ describe("Schedule", () => {
     expect(listbox).toBeInTheDocument();
 
     const options = within(listbox).getAllByRole("option");
-    const optionValues = options.map(option => option.getAttribute("value"));
+    const optionValues = options.map((option) => option.getAttribute("value"));
 
     expect(optionValues).not.toContain("0");
     expect(Math.min(...optionValues.map(Number))).toBe(1);

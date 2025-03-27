@@ -37,7 +37,7 @@ export function withDefaultBinning(
 ): ColumnMetadata {
   const buckets = availableBinningStrategies(query, stageIndex, column);
   const defaultBucket = buckets.find(
-    bucket => displayInfo(query, stageIndex, bucket).default,
+    (bucket) => displayInfo(query, stageIndex, bucket).default,
   );
   return defaultBucket ? withBinning(column, defaultBucket) : column;
 }

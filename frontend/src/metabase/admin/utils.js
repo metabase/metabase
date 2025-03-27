@@ -9,8 +9,8 @@ export const createAdminRouteGuard = (routeKey, Component) => {
     wrapperDisplayName: `CanAccess(${routeKey})`,
     redirectPath: "/unauthorized",
     allowRedirectBack: false,
-    authenticatedSelector: state =>
-      getAdminPaths(state)?.find(path => path.key === routeKey) != null,
+    authenticatedSelector: (state) =>
+      getAdminPaths(state)?.find((path) => path.key === routeKey) != null,
     redirectAction: routerActions.replace,
     context: MetabaseReduxContext,
   });

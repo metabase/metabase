@@ -29,7 +29,7 @@ const FontWidget = ({
 
   const options = useMemo(
     () => [
-      ...availableFonts.map(font => ({ label: font, value: font })),
+      ...availableFonts.map((font) => ({ label: font, value: font })),
       { label: t`Custom…`, value: CUSTOM },
     ],
     [availableFonts],

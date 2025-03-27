@@ -154,8 +154,8 @@ export const QuestionPickerModal = ({
     },
   ];
 
-  const filteredTabs = tabs.filter(tab =>
-    tab.models.every(m => models.includes(m as QuestionPickerModel)),
+  const filteredTabs = tabs.filter((tab) =>
+    tab.models.every((m) => models.includes(m as QuestionPickerModel)),
   );
 
   return (
@@ -176,7 +176,7 @@ export const QuestionPickerModal = ({
             ? { filter_items_in_personal_collection: "exclude" }
             : undefined
       }
-      searchResultFilter={results => results}
+      searchResultFilter={(results) => results}
       actionButtons={[]}
       recentFilter={recentFilter}
     />

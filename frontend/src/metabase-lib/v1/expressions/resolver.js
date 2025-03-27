@@ -89,8 +89,7 @@ export function resolve({
     const [op, ...operands] = expression;
 
     if (op === "value") {
-      const [value] = operands;
-      return [op, resolve({ expression: value, type, fn, database })];
+      return expression;
     } else if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;
@@ -157,7 +156,7 @@ export function resolve({
     if (operandType) {
       return [
         op,
-        ...operands.map(operand =>
+        ...operands.map((operand) =>
           resolve({ expression: operand, type: operandType, fn, database }),
         ),
       ];
@@ -190,7 +189,7 @@ export function resolve({
       }
     }
     if (multiple) {
-      const argCount = operands.filter(arg => !isOptionsObject(arg)).length;
+      const argCount = operands.filter((arg) => !isOptionsObject(arg)).length;
       const minArgCount = args.length;
 
       if (argCount < minArgCount) {

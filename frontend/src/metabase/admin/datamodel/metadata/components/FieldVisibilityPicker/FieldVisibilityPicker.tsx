@@ -42,9 +42,9 @@ export const FieldVisibilityPicker = ({
       data={DATA}
       fw="bold"
       placeholder={t`Select a field visibility`}
-      renderOption={item => {
+      renderOption={(item) => {
         const selected = item.option.value === value;
-        const option = DATA.find(option => option.value === value);
+        const option = DATA.find((option) => option.value === value);
 
         return (
           <SelectItem selected={selected}>
@@ -71,7 +71,7 @@ export const FieldVisibilityPicker = ({
 };
 
 function getData() {
-  return FIELD_VISIBILITY_TYPES.map(type => ({
+  return FIELD_VISIBILITY_TYPES.map((type) => ({
     description: type.description,
     label: type.name,
     value: type.id,

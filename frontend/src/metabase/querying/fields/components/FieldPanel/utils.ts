@@ -15,7 +15,7 @@ function getColumnItems(
   stageIndex: number,
   group: Lib.ColumnGroup,
 ): ColumnItem[] {
-  return Lib.getColumnsFromColumnGroup(group).map(column => {
+  return Lib.getColumnsFromColumnGroup(group).map((column) => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
     return {
       column,
@@ -35,7 +35,7 @@ function getGroupsWithColumns(
   columns: Lib.ColumnMetadata[],
 ): ColumnGroupItem[] {
   const groups = Lib.groupColumns(columns);
-  return groups.map(group => {
+  return groups.map((group) => {
     const groupInfo = Lib.displayInfo(query, stageIndex, group);
     const columnItems = getColumnItems(query, stageIndex, group);
 
@@ -52,7 +52,7 @@ function getGroupsWithColumns(
 function disableOnlySelectedQueryColumn(
   groupItems: ColumnGroupItem[],
 ): ColumnGroupItem[] {
-  return groupItems.map(groupItem => {
+  return groupItems.map((groupItem) => {
     if (!groupItem.isMainGroup) {
       return groupItem;
     }
@@ -64,7 +64,7 @@ function disableOnlySelectedQueryColumn(
 
     return {
       ...groupItem,
-      columnItems: groupItem.columnItems.map(columnItem => ({
+      columnItems: groupItem.columnItems.map((columnItem) => ({
         ...columnItem,
         isDisabled:
           columnItem.isDisabled ||
@@ -81,7 +81,7 @@ function deduplicateGroupNames(
 ): ColumnGroupItem[] {
   const groupNames = new Map<string, number>();
 
-  return groupItems.map(groupItem => {
+  return groupItems.map((groupItem) => {
     const usageCount = groupNames.get(groupItem.displayName) ?? 0;
     const newUsageCount = usageCount + 1;
     groupNames.set(groupItem.displayName, newUsageCount);
@@ -114,13 +114,13 @@ export function searchColumnGroupItems(
   }
 
   return groupItems
-    .map(groupItem => ({
+    .map((groupItem) => ({
       ...groupItem,
-      columnItems: groupItem.columnItems.filter(columnItem =>
+      columnItems: groupItem.columnItems.filter((columnItem) =>
         columnItem.displayName.toLowerCase().includes(searchString),
       ),
     }))
-    .filter(groupItem => groupItem.columnItems.length > 0);
+    .filter((groupItem) => groupItem.columnItems.length > 0);
 }
 
 export function toggleColumnInQuery(
@@ -141,7 +141,7 @@ export function toggleColumnGroupInQuery(
   if (groupItem.isSelected) {
     // always leave 1 column in the main group selected to prevent creating queries without columns
     return groupItem.columnItems
-      .filter(columnItem => columnItem.isSelected && !columnItem.isDisabled)
+      .filter((columnItem) => columnItem.isSelected && !columnItem.isDisabled)
       .filter((_, columnIndex) => !groupItem.isMainGroup || columnIndex !== 0)
       .reduce(
         (query, { column }) => Lib.removeField(query, stageIndex, column),
@@ -149,7 +149,7 @@ export function toggleColumnGroupInQuery(
       );
   } else {
     return groupItem.columnItems
-      .filter(columnItem => !columnItem.isSelected && !columnItem.isDisabled)
+      .filter((columnItem) => !columnItem.isSelected && !columnItem.isDisabled)
       .reduce(
         (query, { column }) => Lib.addField(query, stageIndex, column),
         query,

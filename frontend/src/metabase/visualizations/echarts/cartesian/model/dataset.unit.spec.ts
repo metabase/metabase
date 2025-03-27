@@ -60,7 +60,7 @@ describe("dataset transform functions", () => {
     axisType: "category",
     isHistogram: false,
     valuesCount: 3,
-    formatter: value => String(value),
+    formatter: (value) => String(value),
   };
 
   describe("getDatasetKey", () => {
@@ -335,7 +335,7 @@ describe("dataset transform functions", () => {
         originalDataset,
         [
           {
-            seriesKeys: seriesModels.map(seriesModel => seriesModel.dataKey),
+            seriesKeys: seriesModels.map((seriesModel) => seriesModel.dataKey),
             display: "bar",
             axis: "left",
           },
@@ -426,9 +426,9 @@ describe("dataset transform functions", () => {
         },
         timezone: "UTC",
         range: [dayjs(), dayjs()],
-        formatter: value => String(value),
+        formatter: (value) => String(value),
         fromEChartsAxisValue: () => dayjs(),
-        toEChartsAxisValue: val => String(val),
+        toEChartsAxisValue: (val) => String(val),
       };
 
       it("should replace missing values with zeros based on the x-axis interval", () => {
@@ -501,9 +501,9 @@ describe("dataset transform functions", () => {
         interval: { unit: "year", count: 100 },
         timezone: "UTC",
         range: [dayjs(), dayjs()],
-        formatter: value => String(value),
+        formatter: (value) => String(value),
         fromEChartsAxisValue: () => dayjs(),
-        toEChartsAxisValue: val => String(val),
+        toEChartsAxisValue: (val) => String(val),
       };
 
       const seriesModels = [createMockSeriesModel({ dataKey: "count" })];
@@ -617,7 +617,7 @@ describe("dataset transform functions", () => {
       expect(result[2][X_AXIS_DATA_KEY]).toBe("2022-03-01");
     });
 
-    it.each(numericScale)("should sort numeric datasets", xAxisScale => {
+    it.each(numericScale)("should sort numeric datasets", (xAxisScale) => {
       const dataset = [
         { [X_AXIS_DATA_KEY]: 1000, [seriesKey]: 10 },
         { [X_AXIS_DATA_KEY]: 1, [seriesKey]: 5 },

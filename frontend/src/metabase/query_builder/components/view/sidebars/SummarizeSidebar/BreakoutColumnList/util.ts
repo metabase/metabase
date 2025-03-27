@@ -24,7 +24,7 @@ function getColumnListItems(
     return [{ ...columnInfo, column }];
   }
 
-  return breakoutPositions.map(index => {
+  return breakoutPositions.map((index) => {
     const breakout = breakouts[index];
     return {
       ...columnInfo,
@@ -45,16 +45,16 @@ export function getColumnSections(
 
   const filteredColumns =
     formattedSearchQuery.length > 0
-      ? columns.filter(column => {
+      ? columns.filter((column) => {
           const { displayName } = Lib.displayInfo(query, stageIndex, column);
           return displayName.toLowerCase().includes(formattedSearchQuery);
         })
       : columns;
 
-  return Lib.groupColumns(filteredColumns).map(group => {
+  return Lib.groupColumns(filteredColumns).map((group) => {
     const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-    const items = Lib.getColumnsFromColumnGroup(group).flatMap(column =>
+    const items = Lib.getColumnsFromColumnGroup(group).flatMap((column) =>
       getColumnListItems(query, stageIndex, breakouts, column),
     );
 
@@ -74,6 +74,6 @@ export function isPinnedColumn(
   const { breakoutPositions = [] } = Lib.displayInfo(query, stageIndex, column);
   return (
     breakoutPositions.length > 0 &&
-    breakoutPositions.every(breakoutIndex => breakoutIndex < pinnedItemCount)
+    breakoutPositions.every((breakoutIndex) => breakoutIndex < pinnedItemCount)
   );
 }

@@ -76,7 +76,7 @@ function createScalarDashCardPlaceholder(
   });
 }
 
-const getKpiGridLayout: LayoutFn = position => {
+const getKpiGridLayout: LayoutFn = (position) => {
   const heading = createHeadingDashCard({
     ...position,
     size_x: GRID_WIDTH,
@@ -120,7 +120,7 @@ const getKpiGridLayout: LayoutFn = position => {
   return [heading, ...row1, ...row2];
 };
 
-const getLargeChartKpiColLayout: LayoutFn = position => {
+const getLargeChartKpiColLayout: LayoutFn = (position) => {
   const heading = createHeadingDashCard({
     ...position,
     size_x: GRID_WIDTH,
@@ -155,7 +155,7 @@ const getLargeChartKpiColLayout: LayoutFn = position => {
   return [heading, largeCard, ...scalarCardsColumn];
 };
 
-const getKpiLargeChartBelowLayout: LayoutFn = position => {
+const getKpiLargeChartBelowLayout: LayoutFn = (position) => {
   const heading = createHeadingDashCard({
     ...position,
     size_x: GRID_WIDTH,

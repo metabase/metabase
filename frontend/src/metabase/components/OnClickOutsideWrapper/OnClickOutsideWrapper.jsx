@@ -53,7 +53,7 @@ export default class OnClickOutsideWrapper extends Component {
     }, 0);
   }
 
-  _handleEvent = e => {
+  _handleEvent = (e) => {
     if (shouldClosePopover(e, this.popoverData)) {
       this.popoverData.close();
     }

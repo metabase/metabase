@@ -35,7 +35,7 @@ function setup({
         field={field}
         fieldSettings={fieldSettings}
         isEditable={isEditable}
-        onChange={nextFieldSettings => {
+        onChange={(nextFieldSettings) => {
           onChange(nextFieldSettings);
           setFieldSettings(nextFieldSettings);
         }}

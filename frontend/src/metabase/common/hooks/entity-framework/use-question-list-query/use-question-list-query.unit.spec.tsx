@@ -21,7 +21,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(question => (
+      {data.map((question) => (
         <div key={question.id()}>{question.displayName()}</div>
       ))}
 

@@ -124,3 +124,27 @@
   (let [register!* (delay (register-fonts!))]
     (fn []
       @register!*)))
+
+(def ^:const mb-width
+  "Minibar width in pixels"
+  100)
+
+(def ^:const mb-height
+  "Minibar height in pixels"
+  8)
+
+(def ^:const mb-primary-color
+  "Minibar primary color"
+  (public-settings/application-color))
+
+(def ^:const mb-primary-color-alpha
+  "Minibar primary color with alpha 0.2"
+  (format "%s33" mb-primary-color))
+
+(def ^:const mb-secondary-color
+  "Minibar secondary color; used for negative values"
+  (public-settings/secondary-chart-color))
+
+(def ^:const mb-secondary-color-alpha
+  "Minibar secondary color with alpha 0.2"
+  (format "%s33" mb-secondary-color))

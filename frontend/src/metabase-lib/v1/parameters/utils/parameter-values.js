@@ -45,7 +45,7 @@ export function getValuePopulatedParameters({
     return [];
   }
 
-  return parameters.map(parameter => ({
+  return parameters.map((parameter) => ({
     ...parameter,
     value: getParameterValue({
       parameter,
@@ -59,7 +59,7 @@ export function getDefaultValuePopulatedParameters(
   parameters,
   parameterValues,
 ) {
-  return parameters.map(parameter => {
+  return parameters.map((parameter) => {
     const value = parameterValues?.[parameter.id];
     return {
       ...parameter,
@@ -98,7 +98,7 @@ export function normalizeParameter(parameter) {
 
 export function normalizeParameters(parameters) {
   return parameters
-    .filter(parameter => _.has(parameter, "value"))
+    .filter((parameter) => _.has(parameter, "value"))
     .map(({ id, type, value, target, options }) => ({
       id,
       type,
@@ -148,7 +148,7 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
   parameterValuesById = parameterValuesById ?? {};
 
   return Object.fromEntries(
-    parameters.map(parameter => [
+    parameters.map((parameter) => [
       parameter.slug,
       parameter.value ?? parameterValuesById[parameter.id] ?? null,
     ]),

@@ -16,7 +16,7 @@ export default {
 };
 
 // TODO: mark this story as deprecated
-const Template: StoryFn<typeof FormRadio> = args => {
+const Template: StoryFn<typeof FormRadio> = (args) => {
   const initialValues = { value: undefined };
   const handleSubmit = () => undefined;
 

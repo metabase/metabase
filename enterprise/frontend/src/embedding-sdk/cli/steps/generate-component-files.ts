@@ -16,7 +16,7 @@ import {
 import { printError, printSuccess } from "../utils/print";
 import { getGeneratedComponentsDefaultPath } from "../utils/snippets-helpers";
 
-export const generateReactComponentFiles: CliStepMethod = async state => {
+export const generateReactComponentFiles: CliStepMethod = async (state) => {
   const { instanceUrl, apiKey, dashboards = [], token } = state;
 
   if (!instanceUrl || !apiKey) {
@@ -85,7 +85,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   // Generate index.js file with all the component exports.
   const exportIndexContent = sampleComponents
-    .map(file => `export * from "./${file.fileName}"`)
+    .map((file) => `export * from "./${file.fileName}"`)
     .join("\n")
     .trim();
 

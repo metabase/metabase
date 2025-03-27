@@ -103,13 +103,13 @@ describe("scenarios > visualizations > table", () => {
     });
 
     const assertUnchangedWidths = () => {
-      cy.get("@firstWidth").then(firstWidth => {
+      cy.get("@firstWidth").then((firstWidth) => {
         H.tableHeaderColumn("first_column")
           .invoke("outerWidth")
           .should("eq", firstWidth);
       });
 
-      cy.get("@secondWidth").then(secondWidth => {
+      cy.get("@secondWidth").then((secondWidth) => {
         H.tableHeaderColumn("second_column")
           .invoke("outerWidth")
           .should("eq", secondWidth);
@@ -371,7 +371,7 @@ describe("scenarios > visualizations > table", () => {
       cy.findByPlaceholderText("Search by Password").blur();
     });
 
-    H.popover().then($popover => {
+    H.popover().then(($popover) => {
       expect(H.isScrollableHorizontally($popover[0])).to.be.false;
     });
   });
@@ -379,8 +379,8 @@ describe("scenarios > visualizations > table", () => {
   it("should show the slow loading text when the query is taking too long", () => {
     H.openOrdersTable({ mode: "notebook" });
 
-    cy.intercept("POST", "/api/dataset", req => {
-      req.on("response", res => {
+    cy.intercept("POST", "/api/dataset", (req) => {
+      req.on("response", (res) => {
         res.setDelay(10000);
       });
     });
@@ -413,7 +413,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     cy.findByTestId("public-link-input")
       .invoke("val")
       .should("not.be.empty")
-      .then(publicLink => {
+      .then((publicLink) => {
         cy.signOut();
         cy.visit(publicLink);
       });
@@ -541,7 +541,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     cy.findAllByTestId("header-cell")
       .filter(":contains(ID)")
       .as("headerCell")
-      .then($cell => {
+      .then(($cell) => {
         const originalWidth = $cell[0].getBoundingClientRect().width;
         cy.wrap(originalWidth).as("originalWidth");
       });
@@ -561,8 +561,8 @@ describe("scenarios > visualizations > table > dashboards context", () => {
 
     H.saveDashboard();
 
-    cy.get("@originalWidth").then(originalWidth => {
-      cy.get("@headerCell").should($newCell => {
+    cy.get("@originalWidth").then((originalWidth) => {
+      cy.get("@headerCell").should(($newCell) => {
         const newWidth = $newCell[0].getBoundingClientRect().width;
         expect(newWidth).to.be.gte(originalWidth + resizeByWidth);
       });
@@ -571,8 +571,8 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     // Ensure it persists after page reload
     cy.reload();
 
-    cy.get("@originalWidth").then(originalWidth => {
-      cy.get("@headerCell").should($newCell => {
+    cy.get("@originalWidth").then((originalWidth) => {
+      cy.get("@headerCell").should(($newCell) => {
         const newWidth = $newCell[0].getBoundingClientRect().width;
         expect(newWidth).to.be.gte(originalWidth + resizeByWidth);
       });
@@ -688,9 +688,9 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
 
       H.getTable({ name: "many_data_types" }).then(
         ({ id: tableId, fields }) => {
-          const booleanField = fields.find(field => field.name === "boolean");
-          const stringField = fields.find(field => field.name === "string");
-          const idField = fields.find(field => field.name === "id");
+          const booleanField = fields.find((field) => field.name === "boolean");
+          const stringField = fields.find((field) => field.name === "string");
+          const idField = fields.find((field) => field.name === "id");
 
           H.visitQuestionAdhoc({
             dataset_query: {

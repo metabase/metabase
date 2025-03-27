@@ -104,7 +104,7 @@ export const NotificationChannelsAddMenu = ({
               mt={!hasAddedEmail || !hasAddedSlack ? "1rem" : undefined}
               c="text-medium"
             >{t`Webhooks`}</Menu.Label>
-            {notAddedHookChannels.map(channel => (
+            {notAddedHookChannels.map((channel) => (
               <Menu.Item
                 key={channel.id}
                 onClick={() =>
