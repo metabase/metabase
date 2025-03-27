@@ -1,7 +1,5 @@
 ```ts
-type CustomDashboardCardMenuItem = ({
-  question,
-}: {
+type CustomDashboardCardMenuItem = ({ question, }: {
   question: MetabaseQuestion;
  }) => DashCardMenuItem;
 ```

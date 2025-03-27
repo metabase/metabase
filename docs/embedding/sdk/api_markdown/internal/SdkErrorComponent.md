@@ -1,7 +1,5 @@
 ```ts
-type SdkErrorComponent = ({
-  message,
-}: SdkErrorComponentProps) => JSX_3.Element;
+type SdkErrorComponent = ({ message, }: SdkErrorComponentProps) => JSX_3.Element;
 ```
 
 ## Parameters
