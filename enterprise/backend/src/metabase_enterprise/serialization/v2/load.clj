@@ -19,8 +19,9 @@
   pointing to the dashboard it's in. But when we try to load that dashboard, we'll create all its dashcards, and one
   of those dashcards will point to the card we started with.
 
-  This map works around this: given a model (e.g. `Card`) that triggered a dependency loop, it provides a set of keys
-  to remove from the model so that we'll be able to successfully load it."
+  This map works around this: given a model (e.g. `Card`) that triggered a dependency loop, it provides a set of paths to
+  keys to remove from the model so that we'll be able to successfully load it. You can remove keys in vectors using :* to
+  indicate that all items in that vector should have a key removed."
   {"Dashboard" #{[:dashcards :* :visualization_settings]}
    "Card" #{[:dashboard_id]}})
 
