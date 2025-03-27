@@ -13,7 +13,7 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
     },
   },
   Day: {
-    styles: theme => ({
+    styles: (theme) => ({
       day: {
         width: rem(40),
         height: rem(40),
@@ -61,7 +61,7 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
     }),
   },
   WeekdaysRow: {
-    styles: theme => ({
+    styles: (theme) => ({
       weekday: {
         width: rem(40),
         height: rem(32),
@@ -74,7 +74,7 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
     }),
   },
   PickerControl: {
-    styles: theme => ({
+    styles: (theme) => ({
       pickerControl: {
         color: "var(--mb-color-text-primary)",
         fontSize: theme.fontSizes.md,
@@ -121,7 +121,7 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
       }),
   },
   MonthsList: {
-    styles: theme =>
+    styles: (theme) =>
       getListStyles({
         rowClass: "monthsListRow",
         cellClass: "monthsListCell",
@@ -130,7 +130,7 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
       }),
   },
   YearsList: {
-    styles: theme =>
+    styles: (theme) =>
       getListStyles({
         rowClass: "yearsListRow",
         cellClass: "yearsListCell",
@@ -139,7 +139,7 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
       }),
   },
   CalendarHeader: {
-    styles: theme => ({
+    styles: (theme) => ({
       calendarHeader: {
         marginBottom: 0,
       },

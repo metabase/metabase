@@ -127,7 +127,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       question: ORDERS_QUESTION_ID,
       dashboard: ORDERS_DASHBOARD_ID,
     };
-    ["question", "dashboard"].forEach(object => {
+    ["question", "dashboard"].forEach((object) => {
       it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
         cy.request("PUT", "/api/setting/enable-embedding-static", {
           value: true,
@@ -296,7 +296,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.findByText("Preview").click();
       });
 
-      cy.document().then(doc => {
+      cy.document().then((doc) => {
         const iframe = doc.querySelector("iframe");
 
         cy.signOut();

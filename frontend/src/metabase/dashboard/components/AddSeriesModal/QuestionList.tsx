@@ -40,7 +40,7 @@ export const QuestionList = memo(function QuestionList({
   dashcard,
 }: QuestionListProps) {
   const enabledCardIds = useMemo(
-    () => new Set(enabledCards.map(card => card.id)),
+    () => new Set(enabledCards.map((card) => card.id)),
     [enabledCards],
   );
 
@@ -82,7 +82,7 @@ export const QuestionList = memo(function QuestionList({
           card.dashboard_id === dashcard.dashboard_id,
       );
 
-      setCards(prev => [...prev, ...cards]);
+      setCards((prev) => [...prev, ...cards]);
       setHasMore(cards.length === PAGE_SIZE);
     },
     [dashcard, debouncedSearchText],
@@ -109,7 +109,7 @@ export const QuestionList = memo(function QuestionList({
           value={searchText}
           leftIcon="search"
           placeholder={t`Search for a question`}
-          onChange={e => setSearchText(e.target.value)}
+          onChange={(e) => setSearchText(e.target.value)}
         />
       </SearchContainer>
       <QuestionListWrapper
@@ -120,12 +120,12 @@ export const QuestionList = memo(function QuestionList({
         <QuestionListContainer>
           {hasQuestionsToShow && (
             <div>
-              {cards.map(card => (
+              {cards.map((card) => (
                 <QuestionListItem
                   key={card.id}
                   card={card}
                   isEnabled={enabledCardIds.has(card.id)}
-                  onChange={value => onSelect(card, value)}
+                  onChange={(value) => onSelect(card, value)}
                 />
               ))}
 

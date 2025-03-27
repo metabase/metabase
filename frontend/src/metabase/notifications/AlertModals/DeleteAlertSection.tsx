@@ -35,7 +35,8 @@ export const DeleteAlertSection = ({
               key={`${channel.channel_type}-${index}`}
             >{jt`This alert will no longer be emailed to ${(
               <strong key="bold">
-                {(n => ngettext(msgid`${n} address`, `${n} addresses`, n || 0))(
+                {((n) =>
+                  ngettext(msgid`${n} address`, `${n} addresses`, n || 0))(
                   channel.recipients?.length,
                 )}
               </strong>
@@ -53,7 +54,7 @@ export const DeleteAlertSection = ({
         }
         case "http": {
           const notification = notificationChannels.find(
-            notificationChannels =>
+            (notificationChannels) =>
               notificationChannels.id === channel.channel_id,
           );
           return (

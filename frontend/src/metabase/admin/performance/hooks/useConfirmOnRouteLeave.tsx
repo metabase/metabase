@@ -23,7 +23,7 @@ export const useConfirmOnRouteLeave = ({
     if (!route || !router) {
       return;
     }
-    const removeLeaveHook = router.setRouteLeaveHook(route, location => {
+    const removeLeaveHook = router.setRouteLeaveHook(route, (location) => {
       if (shouldConfirm && !isConfirmed) {
         confirm(() => {
           setIsConfirmed(true);

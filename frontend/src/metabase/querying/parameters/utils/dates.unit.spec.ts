@@ -309,7 +309,7 @@ describe("serializeDateParameterValue", () => {
     "exclude-quarters-abc",
     "2024-ab",
     "Q5-2020",
-  ])("should ignore invalid input %s", text => {
+  ])("should ignore invalid input %s", (text) => {
     expect(deserializeDateParameterValue(text)).toBeUndefined();
   });
 });

@@ -36,11 +36,11 @@ class EntityMenu extends Component {
     this.setState({ open, menuItemContent: null });
   };
 
-  setFreezeMenu = freezeMenu => {
+  setFreezeMenu = (freezeMenu) => {
     this.setState({ freezeMenu });
   };
 
-  replaceMenuWithItemContent = menuItemContent => {
+  replaceMenuWithItemContent = (menuItemContent) => {
     this.setState({ menuItemContent });
   };
 
@@ -91,7 +91,7 @@ class EntityMenu extends Component {
         <Popover.Dropdown>
           {menuItemContent || (
             <ol className={CS.p1} style={{ minWidth: minWidth ?? 184 }}>
-              {items.map(item => {
+              {items.map((item) => {
                 if (!item) {
                   return null;
                 }
@@ -142,7 +142,7 @@ class EntityMenu extends Component {
                       externalLink={item.externalLink}
                       action={
                         item.action &&
-                        (e => {
+                        ((e) => {
                           item.action(e);
                           this.toggleMenu();
                         })

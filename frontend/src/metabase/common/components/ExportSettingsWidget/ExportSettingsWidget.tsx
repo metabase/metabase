@@ -80,7 +80,7 @@ export const ExportSettingsWidget = ({
     <Stack>
       <Chip.Group value={selectedFormat} onChange={onChangeFormat}>
         <Group spacing="xs" noWrap>
-          {formats.map(format => (
+          {formats.map((format) => (
             <Chip
               key={format}
               value={format}

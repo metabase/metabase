@@ -75,7 +75,7 @@ const Alerts = createEntity({
 
     unsubscribe:
       ({ id }) =>
-      async dispatch => {
+      async (dispatch) => {
         await entityCompatibleQuery(
           id,
           dispatch,
@@ -96,7 +96,7 @@ const Alerts = createEntity({
   },
 });
 
-const useGetQuery = query => {
+const useGetQuery = (query) => {
   return useGetAlertQuery(query === skipToken ? skipToken : query.id);
 };
 

@@ -20,7 +20,7 @@ export default {
   component: StaticVisualization,
 };
 
-const Template: StoryFn<StaticChartProps> = args => {
+const Template: StoryFn<StaticChartProps> = (args) => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
       <StaticVisualization {...args} isStorybook />

@@ -81,7 +81,7 @@ class Table {
   }
 
   dimensions() {
-    return this.getFields().map(field => field.dimension());
+    return this.getFields().map((field) => field.dimension());
   }
 
   displayName({ includeSchema }: { includeSchema?: boolean } = {}) {
@@ -101,7 +101,7 @@ class Table {
   }
 
   dateFields() {
-    return this.getFields().filter(field => field.isDate());
+    return this.getFields().filter((field) => field.isDate());
   }
 
   // AGGREGATIONS
@@ -111,13 +111,15 @@ class Table {
 
   aggregationOperatorsLookup() {
     return Object.fromEntries(
-      this.aggregationOperators().map(op => [op.short, op]),
+      this.aggregationOperators().map((op) => [op.short, op]),
     );
   }
 
   // FIELDS
   fieldsLookup() {
-    return Object.fromEntries(this.getFields().map(field => [field.id, field]));
+    return Object.fromEntries(
+      this.getFields().map((field) => [field.id, field]),
+    );
   }
 
   // @deprecated: use fieldsLookup
@@ -132,8 +134,8 @@ class Table {
   connectedTables(): Table[] {
     const fks = this.fks || [];
     return fks
-      .map(fk => fk.origin?.table)
-      .filter(table => table != null) as Table[];
+      .map((fk) => fk.origin?.table)
+      .filter((table) => table != null) as Table[];
   }
 
   foreignTables(): Table[] {
@@ -142,8 +144,8 @@ class Table {
       return [];
     }
     return fields
-      .filter(field => field.isFK() && field.fk_target_field_id)
-      .map(field => this.metadata?.field(field.fk_target_field_id)?.table)
+      .filter((field) => field.isFK() && field.fk_target_field_id)
+      .map((field) => this.metadata?.field(field.fk_target_field_id)?.table)
       .filter(Boolean) as Table[];
   }
 

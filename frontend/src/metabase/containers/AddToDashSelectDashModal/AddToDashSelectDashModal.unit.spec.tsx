@@ -238,13 +238,13 @@ const setup = async ({
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
   setupSearchEndpoints(searchResults);
 
-  collections.forEach(collection => {
+  collections.forEach((collection) => {
     setupCollectionItemsEndpoint({
       collection,
       collectionItems: [
         ...collections
-          .filter(c => getCollectionParentId(c) === collection.id)
-          .map(c =>
+          .filter((c) => getCollectionParentId(c) === collection.id)
+          .map((c) =>
             createMockCollectionItem({
               ...c,
               id: c.id as number,
@@ -258,11 +258,11 @@ const setup = async ({
           ),
         ...dashboards
           .filter(
-            d =>
+            (d) =>
               (collection.id === "root" && !d.collection_id) ||
               d.collection_id === collection.id,
           )
-          .map(d =>
+          .map((d) =>
             createMockCollectionItem({
               ...d,
               id: d.id as number,
@@ -273,7 +273,7 @@ const setup = async ({
     });
   });
 
-  dashboards.forEach(dashboard => {
+  dashboards.forEach((dashboard) => {
     fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard);
   });
 
@@ -377,7 +377,7 @@ describe("AddToDashSelectDashModal", () => {
 
       const dashboardCollection = checkNotNull(
         COLLECTIONS.find(
-          collection => collection.id === DASHBOARD.collection_id,
+          (collection) => collection.id === DASHBOARD.collection_id,
         ),
       );
 
@@ -633,7 +633,7 @@ async function assertPath(collections: Collection[]) {
   await waitForLoaderToBeRemoved();
 
   return Promise.all(
-    collections.map(async collection => {
+    collections.map(async (collection) => {
       return expect(await findPickerItem(collection.name)).toBeInTheDocument();
     }),
   );

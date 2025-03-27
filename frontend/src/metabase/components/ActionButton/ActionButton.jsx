@@ -66,7 +66,7 @@ export default class ActionButton extends Component {
     );
   };
 
-  onClick = event => {
+  onClick = (event) => {
     event.preventDefault();
 
     // set state to active
@@ -78,7 +78,7 @@ export default class ActionButton extends Component {
     // run the function we want bound to this button
     this.actionPromise = cancelable(this.props.actionFn());
     this.actionPromise.then(
-      success => {
+      (success) => {
         this.setState(
           {
             active: false,
@@ -87,7 +87,7 @@ export default class ActionButton extends Component {
           this.resetStateOnTimeout,
         );
       },
-      error => {
+      (error) => {
         if (!error.isCanceled) {
           console.error(error);
           this.setState(

@@ -37,7 +37,7 @@ function TestComponent({ getRecipients = false }: TestComponentProps) {
 
   return (
     <div>
-      {data.map(user => (
+      {data.map((user) => (
         <div key={user.id}>{user.common_name}</div>
       ))}
 

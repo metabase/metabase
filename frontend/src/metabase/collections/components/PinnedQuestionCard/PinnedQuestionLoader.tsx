@@ -86,7 +86,7 @@ const PinnedQuestionLoader = ({
 };
 
 const getRawSeries = (rawSeries?: any[]) => {
-  return rawSeries?.map(series => ({
+  return rawSeries?.map((series) => ({
     ...series,
     card: {
       ...series.card,

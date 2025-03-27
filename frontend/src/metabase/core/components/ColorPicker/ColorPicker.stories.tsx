@@ -10,7 +10,7 @@ export default {
   component: ColorPicker,
 };
 
-const Template: StoryFn<typeof ColorPicker> = args => {
+const Template: StoryFn<typeof ColorPicker> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (value?: string) => {

@@ -17,7 +17,7 @@ export function removeSegmentFilters(
   const filterGroups = segmentItems.map(({ stageIndex, filterPositions }) => {
     const filters = Lib.filters(query, stageIndex);
     return {
-      filters: filterPositions.map(filterPosition => filters[filterPosition]),
+      filters: filterPositions.map((filterPosition) => filters[filterPosition]),
       stageIndex,
     };
   });

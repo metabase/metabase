@@ -448,7 +448,7 @@ describe("LinkViz", () => {
         visualization_settings: {
           link: { url: linkUrl },
         },
-        parameter_mappings: parameters.map(param => ({
+        parameter_mappings: parameters.map((param) => ({
           parameter_id: param.id,
           target: ["text-tag", param.slug],
         })),

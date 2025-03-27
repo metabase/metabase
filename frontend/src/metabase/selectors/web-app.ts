@@ -5,7 +5,7 @@ import { getSetting } from "./settings";
 
 export const getIsWebApp = createSelector(
   [
-    state => getSetting(state, "site-url"),
+    (state) => getSetting(state, "site-url"),
     getIsEmbeddingIframe,
     getIsEmbeddingSdk,
   ],

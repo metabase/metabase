@@ -12,7 +12,7 @@ export const getHoverCardOverrides =
         middlewares: { shift: true, flip: true, size: true },
       },
       classNames: { root: ZIndex.Overlay },
-      styles: theme => ({
+      styles: (theme) => ({
         dropdown: {
           padding: 0,
           overflow: "auto",

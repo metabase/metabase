@@ -8,7 +8,7 @@ export default {
   component: Toggle,
 };
 
-const Template: StoryFn<typeof Toggle> = args => {
+const Template: StoryFn<typeof Toggle> = (args) => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: boolean) => updateArgs({ value });
 

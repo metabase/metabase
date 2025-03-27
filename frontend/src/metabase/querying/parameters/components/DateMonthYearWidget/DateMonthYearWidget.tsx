@@ -30,6 +30,6 @@ function getPickerValue(
 ): MonthYearPickerValue | undefined {
   return match(normalizeDateParameterValue(value))
     .returnType<MonthYearPickerValue | undefined>()
-    .with({ type: "month" }, value => value)
+    .with({ type: "month" }, (value) => value)
     .otherwise(() => undefined);
 }

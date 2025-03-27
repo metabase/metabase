@@ -9,7 +9,7 @@ export default {
   component: FormFileInput,
 };
 
-const Template: StoryFn<typeof FormFileInput> = args => {
+const Template: StoryFn<typeof FormFileInput> = (args) => {
   const initialValues = { value: undefined };
   const handleSubmit = () => undefined;
 

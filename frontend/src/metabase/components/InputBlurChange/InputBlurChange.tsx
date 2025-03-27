@@ -26,7 +26,7 @@ const InputBlurChange = (props: InputBlurChangeProps) => {
     value,
     onChange,
     onBlurChange,
-    normalize = value => value,
+    normalize = (value) => value,
     ...restProps
   } = props;
   const [internalValue, setInternalValue] = useState<HTMLInputValue>(value);

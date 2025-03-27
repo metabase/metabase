@@ -55,7 +55,7 @@ function RawDataAlertTipInner(props) {
   );
 }
 
-export const RawDataAlertTip = connect(state => ({
+export const RawDataAlertTip = connect((state) => ({
   question: getQuestion(state),
   visualizationSettings: getVisualizationSettings(state),
 }))(RawDataAlertTipInner);

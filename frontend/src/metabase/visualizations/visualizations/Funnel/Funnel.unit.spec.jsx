@@ -77,7 +77,7 @@ describe("funnel", () => {
   });
 
   describe("funnel bar chart", () => {
-    const setupFunnelBarChart = funnelProps =>
+    const setupFunnelBarChart = (funnelProps) =>
       setup(funnelProps, { "funnel.type": "bar" });
 
     it("should not render the title when showTitle=false", async () => {
