@@ -10,7 +10,7 @@ import type Table from "metabase-lib/v1/metadata/Table";
 import type { TableFieldOrder, TableId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { FieldOrderDropdown } from "./FieldOrderDropdown";
+import { FieldOrderPicker } from "./FieldOrderPicker";
 
 interface OwnProps {
   tableId: TableId;
@@ -36,7 +36,7 @@ const FieldOrderSidesheetBase = ({
   return (
     <Sidesheet title={t`Edit column order`} onClose={onClose} isOpen={isOpen}>
       <Flex>
-        <FieldOrderDropdown
+        <FieldOrderPicker
           value={table.field_order}
           onChange={handleFieldOrderChange}
         />

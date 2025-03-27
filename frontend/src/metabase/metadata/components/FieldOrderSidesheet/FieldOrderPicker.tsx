@@ -18,7 +18,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
 
 const DATA = getData();
 
-export const FieldOrderDropdown = ({ value, onChange, ...props }: Props) => {
+export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
   const combobox = useCombobox();
 
   const handleChange = (value: TableFieldOrder) => {
@@ -33,8 +33,8 @@ export const FieldOrderDropdown = ({ value, onChange, ...props }: Props) => {
           flip: true,
         },
         position: "bottom-start",
-        width: 300,
         store: combobox,
+        width: 300,
       }}
       data={DATA}
       fw="bold"
