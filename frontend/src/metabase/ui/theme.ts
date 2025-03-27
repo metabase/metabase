@@ -120,8 +120,12 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
         lineHeight: rem(20),
       },
       h5: {
-        fontSize: rem(17),
-        lineHeight: rem(20),
+        fontSize: rem(14),
+        lineHeight: rem(16),
+      },
+      h6: {
+        fontSize: rem(14),
+        lineHeight: rem(16),
       },
     },
   },
