@@ -43,32 +43,16 @@
 ;;   - BE forwards request to :post "/api/v2/mb/connections" w/ body:
 ;;     `{:type "[gdrive|google_spreadsheet]" :secret {:resources ["the-url"]}}`
 ;;     - on unexceptional status:
-;;       - BE sets `gsheets.status` to `"syncing"`
-;;       - BE returns the gsheets shape: `{:status "syncing" :url "the-url" :created_at <epoch-time> :conn_id <uuid>}}`
-;;     - on exceptional status, BE returns a message like: "Unable to setup drive folder sync. Please check that the
+;;       - BE returns the gsheets shape: `{:status "syncing" :url "the-url" :created_at <epoch-time>}}`
+;;     - on exceptional status, BE returns a message like: "Unable to set up drive folder sync. Please check that the
 ;;       folder is shared with the proper service account email and sharing permissions."
 ;;
 ;; ## Polling
 ;; - FE polls :get "api/ee/gsheets/folder" until `body.status` == `active`
 ;; - BE forwards requests to :get "/api/v2/mb/connection/<gdrive-conn-id>", filtering for the google drive connection
 ;;   - If the connection doesn't exist: `{:error "google drive connection not found."}`
-;;   - If the connection exists and is NOT active, return syncing state in the response
-;;   - If the connection exists and IS active and harbormaster is currently syncing the connection, return syncing state in the response
-;;   - If the connection exists and is active AND the latest sync of the attached datawarehouse is AFTER the sync time
-;;         on Harbormaster's gdrive connection, return `body.status` == "active".
-;; - FE sees status == "active"
-;;
-;; ### What does "active" mean?
-;; When the status is "active", the user can access their google sheets info inside Metabase.
-;; This means that both:
-;; 1. the gdrive connection has been marked active
-;; 2. the attached datawarehouse has completed syncing inside metabase
-;; To check this, we compare the last sync time of the attached datawarehouse with the last sync time of the gdrive.
-;;
-;; ### What if the sync takes too long or never ends?
-;; Upon the successful creation of a gdrive connection, we start a timer that will error out if the sync does not
-;; complete within [[*folder-setup-timeout-seconds*]] seconds. If the sync does not complete within this window, we
-;; reset the gsheets status to `{:status "not-connected"}` and return an error for the FE to show.
+;;   - If the connection exists, return connection state in the response
+;; - FE sees status == "active" or "syncing" and updates the UI accordingly, stopping polling when it sees "active"
 ;;
 ;; ## Steps to disconnect a google drive folder
 ;; - FE sends request to :delete "/folder"
@@ -221,6 +205,7 @@
   [] (.getEpochSecond (t/instant)))
 
 (defn- setting->response
+  "Returns the data in the setting which should be returned in API responses, correctly formatted"
   [setting]
   {:url           (:url setting)
    :created_at    (:created-by-id setting)
@@ -233,18 +218,16 @@
         created-at (seconds-from-epoch-now)
         created-by-id api/*current-user-id*]
     (if (= status :ok)
-      (do
+      (u/prog1 {:status          "syncing"
+                :url             url
+                :created_at      created-at
+                :created_by_id   created-by-id
+                :sync_started_at created-at}
         (gsheets! {:url            url
                    :created-at     created-at
                    :gdrive/conn-id (-> response :body :id)
                    :created-by-id  created-by-id})
-        (analytics/inc! :metabase-gsheets/connection-creation-began)
-        {:status          "syncing"
-         :url             url
-         :sync_started_at created-at
-         :created_at      created-by-id
-         :created_by_id   created-by-id})
-
+        (analytics/inc! :metabase-gsheets/connection-creation-began))
       (do
         (reset-gsheets-status!)
         (error-response-in-body
@@ -260,20 +243,20 @@
                   json/decode+kw))))
 
 (defn- handle-get-folder [attached-dwh]
-  (let [{:keys   []
-         conn-id :gdrive/conn-id
-         :as     saved-setting} (gsheets-safe)
-        [sstatus {hm-raw-status :body}] (if (empty? saved-setting)
-                                          nil
-                                          (try (hm-get-gdrive-conn conn-id)
-                                               (catch Exception _
-                                                 (reset-gsheets-status!)
-                                                 (error-response-in-body
-                                                  (tru "Unable to find google drive connection, please try again.")
-                                                  {:gdrive/conn-id conn-id}))))]
-    (if (= :ok sstatus)
+  (let [saved-setting (gsheets-safe)
+        conn-id (:gdrive/conn-id saved-setting)
+        hm-response (if (empty? saved-setting)
+                      nil
+                      (try (hm-get-gdrive-conn conn-id)
+                           (catch Exception _
+                             (reset-gsheets-status!)
+                             (error-response-in-body
+                              (tru "Unable to find google drive connection, please try again.")
+                              {:gdrive/conn-id conn-id}))))
+        [hm-status {hm-body :body}] hm-response]
+    (if (= :ok hm-status)
       (let [{:keys [status last-sync-at last-sync-started-at]
-             :as   _} (normalize-gdrive-conn hm-raw-status)]
+             :as   _} (normalize-gdrive-conn hm-body)]
         (-> (cond
               (= "error" status)
               (do
@@ -320,10 +303,6 @@
   [conn-id]
   (hm.client/make-request :put (str "/api/v2/mb/connections/" conn-id "/sync")))
 
-(comment
-  (hm-sync-conn! "59a94ba0-e2f9-4afa-a060-e7a12224d4d2")
-  (hm-get-gdrive-conn "59a94ba0-e2f9-4afa-a060-e7a12224d4d2"))
-
 (api.macros/defendpoint :post "/folder/sync"
   "Force a sync of the folder now.
 
@@ -333,7 +312,7 @@
     (if (empty? sheet-config)
       (do
         (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync" :event_detail "fail - no config"})
-        (error-response-in-body (tru "No attached google sheet(s) found.")))
+        (error-response-in-body (tru "No attached google sheet(s) found.") {:status-code 404}))
       (do
         (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync"})
         (analytics/inc! :metabase-gsheets/connection-manually-synced)
