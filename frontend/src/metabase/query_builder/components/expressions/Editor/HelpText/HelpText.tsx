@@ -151,7 +151,7 @@ export function HelpText({
             </Box>
           )}
 
-          {example && (
+          {example != null && (
             <>
               <Box className={S.title}>{t`Example`}</Box>
               <HighlightExampleExpression
