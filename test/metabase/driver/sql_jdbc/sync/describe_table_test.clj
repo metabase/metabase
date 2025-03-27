@@ -802,6 +802,7 @@
                 :sparksql
                 :sqlite
                 :athena
+                :starburst
                 :vertica]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]
