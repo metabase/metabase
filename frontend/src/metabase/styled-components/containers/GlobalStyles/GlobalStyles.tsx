@@ -25,7 +25,7 @@ export const GlobalStyles = (): JSX.Element => {
   const styles = useMemo(() => {
     return css`
       ${cssVariables}
-      :root {
+      :host, :root {
         --mb-default-font-family: "${font}";
       }
 

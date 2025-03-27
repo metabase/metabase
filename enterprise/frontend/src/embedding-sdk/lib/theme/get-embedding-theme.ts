@@ -33,6 +33,7 @@ const stripUndefinedKeys = <T>(x: T): unknown =>
 export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
   font: string | undefined,
+  rootElement: HTMLElement,
 ): MantineThemeOverride {
   const components: MetabaseComponentTheme = merge(
     DEFAULT_EMBEDDED_COMPONENT_THEME,
@@ -51,7 +52,7 @@ export function getEmbeddingThemeOverride(
       fontSize: theme.fontSize ?? SDK_BASE_FONT_SIZE,
     },
 
-    components: getEmbeddingComponentOverrides(),
+    components: getEmbeddingComponentOverrides(rootElement),
   };
 
   if (theme.colors) {

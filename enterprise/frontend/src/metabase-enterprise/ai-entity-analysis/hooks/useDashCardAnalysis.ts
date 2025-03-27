@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import {
   getChartImagePngDataUri,
   getChartSelector,
@@ -27,6 +28,8 @@ export function useDashCardAnalysis({
   isLoadingComplete,
   isEnabled = true,
 }: UseDashCardAnalysisOptions) {
+  const rootElement = useRootElement();
+
   const [analyzeChart, { data: analysisData, isLoading }] =
     useAnalyzeChartMutation();
   const pendingAnalysisRef = useRef(true);
@@ -47,9 +50,10 @@ export function useDashCardAnalysis({
     }
 
     analysisTimeoutRef.current = setTimeout(async () => {
-      const imageBase64 = await getChartImagePngDataUri(
-        getChartSelector({ dashcardId }),
-      );
+      const imageBase64 = await getChartImagePngDataUri({
+        rootElement,
+        selector: getChartSelector({ dashcardId }),
+      });
 
       if (imageBase64) {
         await analyzeChart({
@@ -71,6 +75,7 @@ export function useDashCardAnalysis({
       }
     };
   }, [
+    rootElement,
     analyzeChart,
     dashcardId,
     prevDashcardId,

@@ -13,6 +13,7 @@ import { t } from "ttag";
 
 import CollapseSection from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import CS from "metabase/css/core/index.css";
 import Bookmarks from "metabase/entities/bookmarks";
@@ -117,6 +118,7 @@ const BookmarkList = ({
   onToggle,
   initialState,
 }: CollectionSidebarBookmarksProps) => {
+  const rootElement = useRootElement();
   const [orderedBookmarks, setOrderedBookmarks] = useState(bookmarks);
   const [isSorting, setIsSorting] = useState(false);
 
@@ -129,19 +131,19 @@ const BookmarkList = ({
   });
 
   const handleSortStart = useCallback(() => {
-    document.body.classList.add(GrabberS.grabbing);
+    rootElement.classList.add(GrabberS.grabbing);
     setIsSorting(true);
-  }, []);
+  }, [rootElement]);
 
   const handleSortEnd = useCallback(
     async (input: DragEndEvent) => {
-      document.body.classList.remove(GrabberS.grabbing);
+      rootElement.classList.remove(GrabberS.grabbing);
       setIsSorting(false);
       const newIndex = bookmarks.findIndex((b) => b.id === input.over?.id);
       const oldIndex = bookmarks.findIndex((b) => b.id === input.active.id);
       await reorderBookmarks({ newIndex, oldIndex });
     },
-    [reorderBookmarks, bookmarks],
+    [rootElement, reorderBookmarks, bookmarks],
   );
 
   const bookmarkIds = bookmarks.map((b) => b.id);

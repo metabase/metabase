@@ -5,6 +5,7 @@ import ReactDOM from "react-dom";
 import Tether from "tether";
 
 import OnClickOutsideWrapper from "metabase/common/components/OnClickOutsideWrapper";
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import CS from "metabase/css/core/index.css";
 import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import ZIndex from "metabase/css/core/z-index.module.css";
@@ -17,10 +18,7 @@ const PAGE_PADDING = 10;
 // Popover padding and border
 const POPOVER_BODY_PADDING = 2;
 
-/**
- * @deprecated prefer Popover from "metabase/ui" instead
- */
-export default class Popover extends Component {
+class PopoverInner extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -33,6 +31,7 @@ export default class Popover extends Component {
   }
 
   static propTypes = {
+    rootElement: PropTypes.any,
     id: PropTypes.string,
     isOpen: PropTypes.bool,
     hasArrow: PropTypes.bool,
@@ -98,7 +97,7 @@ export default class Popover extends Component {
     const resizeTimer = isCypressActive ? 3000 : 100;
 
     if (!this._popoverElement && isOpen) {
-      const portalRootElement = getPortalRootElement();
+      const portalRootElement = getPortalRootElement(this.props.rootElement);
 
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = cx(
@@ -338,6 +337,7 @@ export default class Popover extends Component {
       const elementRect = Tether.Utils.getBounds(tetherOptions.element);
 
       // get bounds within *window*
+      // eslint-disable-next-line no-direct-document-references
       const doc = document.documentElement;
       const left =
         (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);
@@ -367,13 +367,14 @@ export default class Popover extends Component {
     let target;
 
     if (this.props.targetEvent) {
+      const rootElement = this.props.rootElement;
       // create a fake element at the event coordinates
-      target = document.getElementById("popover-event-target");
+      target = rootElement.querySelector("#popover-event-target");
 
       if (!target) {
         target = document.createElement("div");
         target.id = "popover-event-target";
-        document.body.appendChild(target);
+        rootElement.appendChild(target);
       }
 
       target.style.left = this.props.targetEvent.clientX - 3 + "px";
@@ -437,3 +438,14 @@ export default class Popover extends Component {
     return <span className={CS.hide} />;
   }
 }
+
+/**
+ * @deprecated prefer Popover from "metabase/ui" instead
+ */
+const Popover = (props) => {
+  const rootElement = useRootElement();
+
+  return <PopoverInner rootElement={rootElement} {...props} />;
+};
+
+export default Popover;

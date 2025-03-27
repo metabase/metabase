@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import type { AccentColorOptions } from "metabase/lib/colors/types";
@@ -71,6 +72,7 @@ export const ChartSettingSeriesOrder = ({
   truncateAfter = Infinity,
   onOtherColorChange,
 }: ChartSettingSeriesOrderProps) => {
+  const rootElement = useRootElement();
   const [isListTruncated, setIsListTruncated] = useState<boolean>(true);
   const [isSeriesPickerVisible, setSeriesPickerVisible] = useState(false);
 
@@ -171,9 +173,12 @@ export const ChartSettingSeriesOrder = ({
 
   const handleOtherSeriesSettingsClick = useCallback(
     (e: React.MouseEvent) => {
-      onShowWidget({ id: otherSettingWidgetId }, getEventTarget(e));
+      onShowWidget(
+        { id: otherSettingWidgetId },
+        getEventTarget({ rootElement, event: e }),
+      );
     },
-    [onShowWidget, otherSettingWidgetId],
+    [rootElement, onShowWidget, otherSettingWidgetId],
   );
 
   const dividers = useMemo(() => {

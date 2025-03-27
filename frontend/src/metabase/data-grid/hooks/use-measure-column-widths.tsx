@@ -6,6 +6,7 @@ import {
 import React, { useCallback } from "react";
 import type { Root } from "react-dom/client";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import type { ColumnOptions, DataGridTheme } from "metabase/data-grid/types";
 import { pickRowsToMeasure } from "metabase/data-grid/utils/column-sizing";
 import { renderRoot } from "metabase/lib/react-compat";
@@ -40,6 +41,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
     children: React.ReactElement,
   ) => React.ReactElement,
 ) => {
+  const rootElement = useRootElement();
   const measureColumnWidths = useCallback(
     (
       onMeasured: (columnSizingState: ColumnSizingState) => void,
@@ -55,7 +57,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
       measureRoot.style.pointerEvents = "none";
       measureRoot.style.zIndex = "-999";
       measureRoot.style.fontSize = DEFAULT_FONT_SIZE;
-      document.body.appendChild(measureRoot);
+      rootElement.appendChild(measureRoot);
 
       const skipColumnIdsSet = new Set(skipColumnIds);
 
@@ -108,7 +110,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
         // Asynchronously unmount the root after the current render has completed to avoid race conditions.
         setTimeout(() => {
           measureRootTree?.unmount();
-          document.body.removeChild(measureRoot);
+          rootElement.removeChild(measureRoot);
         }, 0);
       };
 
@@ -192,7 +194,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
 
       measureRootTree = renderRoot(content, measureRoot);
     },
-    [table, columnsOptions, theme, measurementRenderWrapper],
+    [rootElement, table, columnsOptions, theme, measurementRenderWrapper],
   );
 
   return measureColumnWidths;

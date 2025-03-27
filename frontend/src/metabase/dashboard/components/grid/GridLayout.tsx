@@ -4,6 +4,7 @@ import {
   Responsive as ReactGridLayout,
 } from "react-grid-layout";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { useMantineTheme } from "metabase/ui";
 
 import "react-grid-layout/css/styles.css";
@@ -70,6 +71,8 @@ type OwnProps<T extends { id: number | null }> = {
 export function GridLayout<T extends { id: number | null }>(
   props: OwnProps<T> & OmittedPropsFromGridLayout & RequiredPropsFromGridLayout,
 ) {
+  const rootElement = useRootElement();
+
   const {
     items,
     itemRenderer,
@@ -201,18 +204,18 @@ export function GridLayout<T extends { id: number | null }>(
   // Hide text selection during drag without affecting auto-scroll metabase#53842
   const disableTextSelection = useCallback<ItemCallback>(
     (...params) => {
-      document.body.classList.add("react-grid-layout-dragging");
+      rootElement.classList.add("react-grid-layout-dragging");
       otherProps.onDragStart?.(...params);
     },
-    [otherProps],
+    [rootElement, otherProps],
   );
 
   const enableTextSelection = useCallback<ItemCallback>(
     (...params) => {
-      document.body.classList.remove("react-grid-layout-dragging");
+      rootElement.classList.remove("react-grid-layout-dragging");
       otherProps.onDragStop?.(...params);
     },
-    [otherProps],
+    [rootElement, otherProps],
   );
 
   return (

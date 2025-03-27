@@ -2,6 +2,7 @@ import type { Extension } from "@codemirror/state";
 import { EditorView, tooltips } from "@codemirror/view";
 import { useMemo } from "react";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import { suggestions } from "metabase-lib/v1/expressions/complete";
@@ -20,8 +21,11 @@ type Options = {
   extensions?: Extension[];
 };
 
-function getTooltipParent() {
-  let el = document.getElementById("query-builder-tooltip-parent");
+function getTooltipParent(rootElement: HTMLElement) {
+  let el = rootElement.querySelector<HTMLElement>(
+    "#query-builder-tooltip-parent",
+  );
+
   if (el) {
     return el;
   }
@@ -29,11 +33,12 @@ function getTooltipParent() {
   el = document.createElement("div");
   el.id = "query-builder-tooltip-parent";
   el.className = S.tooltips;
-  document.body.append(el);
+  rootElement.append(el);
   return el;
 }
 
 export function useExtensions(options: Options): Extension[] {
+  const rootElement = useRootElement();
   const {
     expressionMode,
     query,
@@ -64,7 +69,7 @@ export function useExtensions(options: Options): Extension[] {
       }),
       tooltips({
         position: "fixed",
-        parent: getTooltipParent(),
+        parent: getTooltipParent(rootElement),
       }),
       ...extra,
     ]
@@ -72,6 +77,7 @@ export function useExtensions(options: Options): Extension[] {
       .filter(isNotNull);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    rootElement,
     expressionMode,
     query,
     stageIndex,

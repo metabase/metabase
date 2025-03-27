@@ -12,6 +12,7 @@ import { isStorybookActive } from "metabase/env";
 import { utf8_to_b64 } from "metabase/lib/encoding";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { getHtml2CanvasWrapper } from "metabase/visualizations/lib/html2canvas";
 
 import { getCardKey } from "./utils";
 
@@ -60,24 +61,47 @@ export const saveDomImageStyles = css`
   }
 `;
 
-export const getDomToCanvas = async (
-  element: HTMLElement,
-  options: {
-    width?: number;
-    height?: number;
-    useCORS?: boolean;
-    scale?: number;
-    onclone?: (doc: Document, node: HTMLElement) => void;
-  } = {},
-) => {
+export const getDomToCanvas = async ({
+  rootElement,
+  selector,
+  width,
+  height,
+  useCORS = true,
+  scale = 1,
+  onclone,
+}: {
+  rootElement: HTMLElement;
+  selector: string | ((wrapper: HTMLElement) => HTMLElement);
+  width?: number;
+  height?: number;
+  useCORS?: boolean;
+  scale?: number;
+  onclone?: (doc: Document, node: HTMLElement) => void;
+}) => {
   const { default: html2canvas } = await import("html2canvas-pro");
-  return html2canvas(element, {
-    useCORS: options.useCORS ?? true,
-    width: options.width,
-    height: options.height,
-    scale: options.scale,
-    onclone: options.onclone,
+
+  const { wrapper, cleanupWrapper } = getHtml2CanvasWrapper(rootElement);
+  const element =
+    typeof selector === "function"
+      ? selector(wrapper)
+      : wrapper.querySelector(selector);
+
+  if (!element || !(element instanceof HTMLElement)) {
+    console.warn("No chart element found", selector);
+    return undefined;
+  }
+
+  const image = html2canvas(element, {
+    useCORS,
+    width,
+    height,
+    scale,
+    onclone,
   });
+
+  cleanupWrapper();
+
+  return image;
 };
 
 export const canvasToBlob = (
@@ -106,10 +130,14 @@ export interface DashboardRenderSetup {
   backgroundColor: string;
 }
 
-export const setupDashboardForRendering = (
-  selector: string,
-): DashboardRenderSetup | undefined => {
-  const dashboardRoot = document.querySelector(selector);
+export const setupDashboardForRendering = ({
+  rootElement,
+  selector,
+}: {
+  rootElement: HTMLElement;
+  selector: string;
+}): DashboardRenderSetup | undefined => {
+  const dashboardRoot = rootElement.querySelector(selector);
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 
   if (!gridNode || !(gridNode instanceof HTMLElement)) {
@@ -134,7 +162,7 @@ export const setupDashboardForRendering = (
   const contentWidth = gridNode.offsetWidth;
   const contentHeight = gridNode.offsetHeight + parametersHeight;
 
-  const backgroundColor = getComputedStyle(document.documentElement)
+  const backgroundColor = getComputedStyle(rootElement)
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
 
@@ -151,10 +179,18 @@ export const setupDashboardForRendering = (
   };
 };
 
-export const getDashboardImage = async (
-  selector: string,
-): Promise<string | undefined> => {
-  const setup = setupDashboardForRendering(selector);
+export const getDashboardImage = async ({
+  rootElement,
+  selector,
+}: {
+  rootElement: HTMLElement;
+  selector: string;
+}): Promise<string | undefined> => {
+  const setup = setupDashboardForRendering({
+    rootElement,
+    selector,
+  });
+
   if (!setup) {
     return undefined;
   }
@@ -167,7 +203,9 @@ export const getDashboardImage = async (
     backgroundColor,
   } = setup;
 
-  const canvas = await getDomToCanvas(gridNode, {
+  const canvas = await getDomToCanvas({
+    rootElement,
+    selector: () => gridNode,
     height: contentHeight,
     width: contentWidth,
     onclone: (_doc: Document, node: HTMLElement) => {
@@ -180,18 +218,27 @@ export const getDashboardImage = async (
     },
   });
 
+  if (!canvas) {
+    return undefined;
+  }
+
   return canvas.toDataURL("image/png").split(",")[1];
 };
 
-export const getVisualizationSvgDataUri = (
-  selector: string,
-): string | undefined => {
-  const element = document.querySelector(selector)?.cloneNode(true);
+export const getVisualizationSvgDataUri = ({
+  rootElement,
+  selector,
+}: {
+  rootElement: HTMLElement;
+  selector: string;
+}): string | undefined => {
+  const element = rootElement.querySelector(selector)?.cloneNode(true);
+
   if (element && !(element instanceof SVGElement)) {
     throw new Error("Selector did not provide an SVG element");
   }
 
-  const backgroundColor = getComputedStyle(document.documentElement)
+  const backgroundColor = getComputedStyle(rootElement)
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
   if (backgroundColor && element instanceof SVGElement) {
@@ -223,34 +270,40 @@ export const getChartSvgSelector = (
   return `${getChartSelector(input)} svg:not([role="img"])`;
 };
 
-export const getChartImagePngDataUri = async (
-  selector: string,
-): Promise<string | undefined> => {
-  const chartRoot = document.querySelector(selector);
-
-  if (!chartRoot || !(chartRoot instanceof HTMLElement)) {
-    console.warn("No chart element found", selector);
-    return undefined;
-  }
-
-  const canvas = await getDomToCanvas(chartRoot, {
+export const getChartImagePngDataUri = async ({
+  rootElement,
+  selector,
+}: {
+  rootElement: HTMLElement;
+  selector: string;
+}): Promise<string | undefined> => {
+  const canvas = await getDomToCanvas({
+    rootElement,
+    selector,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
     },
   });
 
+  if (!canvas) {
+    return undefined;
+  }
+
   return canvas.toDataURL("image/png");
 };
 
-export const saveChartImage = async (selector: string, fileName: string) => {
-  const node = document.querySelector(selector);
-
-  if (!node || !(node instanceof HTMLElement)) {
-    console.warn("No node found for selector", selector);
-    return;
-  }
-
-  const canvas = await getDomToCanvas(node, {
+export const saveChartImage = async ({
+  rootElement,
+  selector,
+  fileName,
+}: {
+  rootElement: HTMLElement;
+  selector: string;
+  fileName: string;
+}) => {
+  const canvas = await getDomToCanvas({
+    rootElement,
+    selector,
     scale: 2,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
@@ -260,6 +313,10 @@ export const saveChartImage = async (selector: string, fileName: string) => {
       node.style.border = "none";
     },
   });
+
+  if (!canvas) {
+    return;
+  }
 
   const blob = await canvasToBlob(canvas);
 

@@ -61,6 +61,7 @@ function createMockData(opts: {
 
   createMockVisualizationSettings();
   return {
+    rootElement: document.createElement("div"),
     series: [
       createMockSingleSeries(card ?? {}, {
         data: {

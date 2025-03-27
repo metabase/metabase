@@ -5,10 +5,15 @@ import { CardApi, CollectionsApi, DashboardApi } from "metabase/services";
 
 import type { ReportableEntityName } from "./types";
 
-export function downloadObjectAsJson(
-  exportObj: Record<string, any>,
-  exportName: string,
-) {
+export function downloadObjectAsJson({
+  rootElement,
+  exportObj,
+  exportName,
+}: {
+  rootElement: HTMLElement;
+  exportObj: Record<string, any>;
+  exportName: string;
+}) {
   const dataStr =
     "data:text/json;charset=utf-8," +
     encodeURIComponent(JSON.stringify(exportObj, null, 2));
@@ -16,7 +21,7 @@ export function downloadObjectAsJson(
   downloadAnchorNode.setAttribute("href", dataStr);
   downloadAnchorNode.setAttribute("aria-label", "download diagnostic info");
   downloadAnchorNode.setAttribute("download", exportName + ".json");
-  document.body.appendChild(downloadAnchorNode);
+  rootElement.appendChild(downloadAnchorNode);
   downloadAnchorNode.click();
   downloadAnchorNode.remove();
 }

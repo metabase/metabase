@@ -2,6 +2,7 @@ import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { isNotNull } from "metabase/lib/types";
 import { extractRemappings } from "metabase/visualizations";
 import ChartWithLegend from "metabase/visualizations/components/ChartWithLegend";
@@ -32,6 +33,8 @@ export function PieChart(props: VisualizationProps) {
     isDashboard,
     isFullscreen,
   } = props;
+  const rootElement = useRootElement();
+
   const hoveredIndex = props.hovered?.index;
   const hoveredSliceKeyPath = props.hovered?.pieSliceKeyPath;
 
@@ -84,9 +87,15 @@ export function PieChart(props: VisualizationProps) {
         hoveredIndex,
         hoveredSliceKeyPath,
       ),
-      tooltip: getTooltipOption(chartModel, formatters, containerRef),
+      tooltip: getTooltipOption({
+        chartModel,
+        formatters,
+        containerRef,
+        rootElement,
+      }),
     }),
     [
+      rootElement,
       chartModel,
       formatters,
       settings,

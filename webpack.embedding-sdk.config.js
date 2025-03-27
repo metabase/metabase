@@ -88,6 +88,12 @@ module.exports = (env) => {
           use: [
             {
               loader: "style-loader",
+              options: {
+                attributes: { "data-mb-styles": true },
+                insert: require.resolve(
+                  "./frontend/build/embedding-sdk/utils/insert-styles",
+                ),
+              },
             },
             { loader: "css-loader", options: CSS_CONFIG },
             { loader: "postcss-loader" },

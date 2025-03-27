@@ -13,6 +13,7 @@ if (shouldLintCssModules) {
 
 module.exports = {
   rules: {
+    "no-direct-document-references": "error",
     strict: [2, "never"],
     "no-undef": 2,
     "no-var": 1,
@@ -226,6 +227,32 @@ module.exports = {
       ],
       rules: {
         "i18next/no-literal-string": "off",
+      },
+    },
+    // Disable the `no-direct-document-references` rule code that is not related to the Embedding SDK
+    {
+      files: [
+        "frontend/src/metabase/lib/loki-utils.ts",
+        "frontend/src/metabase/app.js",
+        "frontend/src/metabase/admin/**/*",
+        "frontend/src/metabase/setup/**/*",
+        "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/**/*",
+        "frontend/src/metabase/public/components/EmbedFrame/**/*",
+        "frontend/src/metabase/app-embed*",
+        "frontend/src/metabase/lib/embed.js",
+        "*.unit.spec.*",
+        "frontend/lint/**/*",
+        "*.stories.*",
+        "stories-data.*",
+        "e2e/**/*",
+        "**/tests/*",
+        "**/__support__/*",
+        "release/**/*",
+        "webpack.config.js",
+        "rspack.config.js",
+      ],
+      rules: {
+        "no-direct-document-references": "off",
       },
     },
     {

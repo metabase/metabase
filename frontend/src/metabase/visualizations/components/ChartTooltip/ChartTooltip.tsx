@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import Tooltip from "metabase/common/components/Tooltip";
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { getEventTarget } from "metabase/lib/dom";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type {
@@ -41,6 +42,8 @@ const ChartTooltip = ({
   hovered: untranslatedHoveredObject,
   settings,
 }: ChartTooltipProps) => {
+  const rootElement = useRootElement();
+
   const hovered =
     PLUGIN_CONTENT_TRANSLATION.useTranslateFieldValuesInHoveredObject(
       untranslatedHoveredObject,
@@ -63,14 +66,17 @@ const ChartTooltip = ({
 
   const hasTargetEvent = hovered?.event != null;
   const hasTargetElement =
-    hovered?.element != null && document.body.contains(hovered.element);
+    hovered?.element != null && rootElement.contains(hovered.element);
   const isOpen = isNotEmpty && (hasTargetElement || hasTargetEvent);
   const isPadded = hovered?.stackedTooltipModel == null;
 
   const target = hasTargetElement
     ? hovered?.element
     : hasTargetEvent
-      ? getEventTarget(hovered.event)
+      ? getEventTarget({
+          rootElement,
+          event: hovered.event,
+        })
       : null;
 
   return target ? (

@@ -18,6 +18,7 @@ is directly after we receive data from the server and we want to populate our ob
 */
 
 const NANOID_ALPHABET = /^[\-_0-9a-zA-Z]+$/;
+const NUMERIC_ID_ALPHABET = /^[0-9]+$/;
 
 export const NANOID_LENGTH = 21;
 
@@ -32,4 +33,20 @@ export const isBaseEntityID = (id: unknown): id is BaseEntityId => {
     id.length === NANOID_LENGTH &&
     NANOID_ALPHABET.test(id)
   );
+};
+
+export const isNumericID = (id: unknown): id is number => {
+  if (typeof id === "number") {
+    return true;
+  }
+
+  if (typeof id === "string") {
+    return (
+      id.length !== NANOID_LENGTH &&
+      !id.startsWith("0") &&
+      NUMERIC_ID_ALPHABET.test(id)
+    );
+  }
+
+  return false;
 };

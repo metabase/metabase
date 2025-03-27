@@ -11,6 +11,7 @@ import {
   getLoginStatus,
 } from "embedding-sdk/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import api from "metabase/lib/api";
 import registerVisualizations from "metabase/visualizations/register";
 
@@ -34,6 +35,8 @@ export const useInitData = ({
   const loginStatus = useSdkSelector(getLoginStatus);
   const fetchRefreshTokenFnFromStore = useSdkSelector(getFetchRefreshTokenFn);
 
+  const rootElement = useRootElement();
+
   // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
   // This is the case for example for the locale json files
   if (api.basename !== authConfig.metabaseInstanceUrl) {
@@ -51,6 +54,7 @@ export const useInitData = ({
     if (hasBeenInitialized.current) {
       return;
     }
+
     hasBeenInitialized.current = true;
 
     registerVisualizationsOnce();
@@ -74,5 +78,13 @@ export const useInitData = ({
         `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
       );
     }
+
+    const ev = new CustomEvent<{ rootElement: HTMLElement }>("rootElementSet", {
+      detail: { rootElement },
+      bubbles: true,
+      composed: true,
+    });
+
+    rootElement.dispatchEvent(ev);
   });
 };

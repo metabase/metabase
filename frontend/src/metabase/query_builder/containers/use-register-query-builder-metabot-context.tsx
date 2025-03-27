@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 import { match } from "ts-pattern";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { PLUGIN_AI_ENTITY_ANALYSIS, PLUGIN_METABOT } from "metabase/plugins";
 import {
@@ -156,7 +157,7 @@ function processTimelineEvents(timelines: Timeline[]) {
     .slice(0, 20);
 }
 
-function getVisualizationDataUri(question: Question) {
+function getVisualizationDataUri(rootElement: HTMLElement, question: Question) {
   const cardId = question.id();
   const display = question.card().display;
 
@@ -167,18 +168,28 @@ function getVisualizationDataUri(question: Question) {
   return match(format)
     .with("none", () => undefined)
     .with("svg", () =>
-      getVisualizationSvgDataUri(getChartSvgSelector({ cardId })),
+      getVisualizationSvgDataUri({
+        rootElement,
+        selector: getChartSvgSelector({ cardId }),
+      }),
     )
-    .with("png", () => getChartImagePngDataUri(getChartSelector({ cardId })))
+    .with("png", () =>
+      getChartImagePngDataUri({
+        rootElement,
+        selector: getChartSelector({ cardId }),
+      }),
+    )
     .exhaustive();
 }
 
 const getChartConfigs = async ({
+  rootElement,
   question,
   series,
   visualizationSettings,
   timelines,
 }: {
+  rootElement: HTMLElement;
   question: Question;
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
@@ -187,7 +198,7 @@ const getChartConfigs = async ({
   try {
     return [
       {
-        image_base_64: await getVisualizationDataUri(question),
+        image_base_64: await getVisualizationDataUri(rootElement, question),
         title: question.displayName(),
         description: question.description(),
         series: processSeriesData(series, visualizationSettings),
@@ -203,12 +214,14 @@ const getChartConfigs = async ({
 };
 
 export const registerQueryBuilderMetabotContextFn = async ({
+  rootElement,
   question,
   series,
   visualizationSettings,
   timelines,
   queryResult,
 }: {
+  rootElement: HTMLElement;
   question: Question | undefined;
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
@@ -235,6 +248,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
   };
 
   const chart_configs = await getChartConfigs({
+    rootElement,
     question,
     series,
     visualizationSettings,
@@ -253,6 +267,8 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
+  const rootElement = useRootElement();
+
   useRegisterMetabotContextProvider(async (state) => {
     const question = getQuestion(state);
     const series = getTransformedSeries(state);
@@ -261,6 +277,7 @@ export const useRegisterQueryBuilderMetabotContext = () => {
     const queryResult = getFirstQueryResult(state);
 
     return registerQueryBuilderMetabotContextFn({
+      rootElement,
       question,
       series,
       visualizationSettings,

@@ -148,3 +148,12 @@ export const Default = {
     dashboardId: DASHBOARD_ID,
   },
 };
+
+export const WithDownloads = {
+  render: Template,
+
+  args: {
+    dashboardId: DASHBOARD_ID,
+    withDownloads: true,
+  },
+};

@@ -1,5 +1,6 @@
 /* provide flex utilities in lieu of float based layouts */
 
+:host,
 :root {
   --gap-1: 0.5rem;
 }

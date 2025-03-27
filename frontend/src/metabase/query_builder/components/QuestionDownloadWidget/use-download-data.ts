@@ -1,6 +1,7 @@
 import { useAsyncFn } from "react-use";
 import type { AsyncFnReturn } from "react-use/lib/useAsyncFn";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { useDispatch } from "metabase/lib/redux";
 import {
   type DownloadQueryResultsOpts,
@@ -36,6 +37,7 @@ export const useDownloadData = ({
 }: UseDownloadDataParams): AsyncFnReturn<
   (options: HandleDataDownloadParams) => Promise<void>
 > => {
+  const rootElement = useRootElement();
   const dispatch = useDispatch();
 
   return useAsyncFn(
@@ -57,6 +59,7 @@ export const useDownloadData = ({
           token,
           params,
           visualizationSettings,
+          rootElement,
         }),
       );
     },

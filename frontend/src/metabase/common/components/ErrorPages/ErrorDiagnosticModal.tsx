@@ -5,6 +5,7 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSendBugReportMutation } from "metabase/api/bug-report";
 import { useSetting } from "metabase/common/hooks";
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeDiagnostics } from "metabase/redux/app";
@@ -35,6 +36,7 @@ export const ErrorDiagnosticModal = ({
   loading,
   onClose,
 }: ErrorDiagnosticModalProps) => {
+  const rootElement = useRootElement();
   const dispatch = useDispatch();
   const [isSlackSending, setIsSlackSending] = useState(false);
   const [sendBugReport] = useSendBugReportMutation();
@@ -77,10 +79,11 @@ export const ErrorDiagnosticModal = ({
       description,
     };
 
-    downloadObjectAsJson(
-      selectedInfo,
-      `metabase-diagnostic-info-${new Date().toISOString()}`,
-    );
+    downloadObjectAsJson({
+      rootElement,
+      exportObj: selectedInfo,
+      exportName: `metabase-diagnostic-info-${new Date().toISOString()}`,
+    });
     onClose();
   };
 
