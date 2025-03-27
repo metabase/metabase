@@ -535,7 +535,7 @@
                    (lib.util.match/match-one expr :offset))
           {:message  (i18n/tru "OFFSET is not supported in custom filters")
            :friendly true})
-        (when (and (= (first expr) :value)
+        (when (and (lib.schema.common/is-clause? :value expr)
                    (not (lib.metadata/database-supports? query :expression-literals)))
           {:message  (i18n/tru "Standalone constants are not supported.")
            :friendly true}))))
