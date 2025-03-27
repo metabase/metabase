@@ -24,7 +24,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(bookmark => (
+      {data.map((bookmark) => (
         <div key={bookmark.id}>{bookmark.name}</div>
       ))}
       <div data-testid="metadata">

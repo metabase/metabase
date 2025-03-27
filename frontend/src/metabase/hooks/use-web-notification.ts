@@ -26,7 +26,7 @@ export function useWebNotification() {
       notification.close();
     };
 
-    notification.addEventListener("click", e => {
+    notification.addEventListener("click", (e) => {
       e.preventDefault();
       window.focus();
     });
@@ -35,7 +35,7 @@ export function useWebNotification() {
 
     document.addEventListener(
       "visibilitychange",
-      e => {
+      (e) => {
         closeNotification(e);
         window.removeEventListener("beforeunload", closeNotification);
       },

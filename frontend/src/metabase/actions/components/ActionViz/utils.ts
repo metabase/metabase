@@ -32,7 +32,7 @@ function prepareParameter(
     mapping;
 
   const parameterValue = parameterValues[sourceParameterId];
-  const actionParameter = action.parameters.find(parameter =>
+  const actionParameter = action.parameters.find((parameter) =>
     _.isEqual(parameter.target, actionParameterTarget),
   );
 
@@ -59,7 +59,7 @@ export function getDashcardParamValues(
 
   return Object.fromEntries(
     parameter_mappings
-      ?.map(mapping => prepareParameter(mapping, action, parameterValues))
+      ?.map((mapping) => prepareParameter(mapping, action, parameterValues))
       ?.filter(isNotNull),
   );
 }
@@ -76,7 +76,7 @@ export function getNotProvidedActionParameters(
   dashboardParamValues: ParametersForActionExecution,
 ) {
   // return any action parameters that don't have mapped values
-  return (action.parameters ?? []).filter(parameter => {
+  return (action.parameters ?? []).filter((parameter) => {
     if ("default" in parameter) {
       return false;
     }
@@ -89,7 +89,7 @@ export function getMappedActionParameters(
   dashboardParamValues: ParametersForActionExecution,
 ) {
   const parameters = action.parameters ?? [];
-  return parameters.filter(parameter => {
+  return parameters.filter((parameter) => {
     return isMappedParameter(parameter, dashboardParamValues);
   });
 }

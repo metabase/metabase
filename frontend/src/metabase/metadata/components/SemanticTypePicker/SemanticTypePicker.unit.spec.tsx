@@ -91,7 +91,7 @@ const setup = ({
   fieldId,
   initialValue = null,
 }: SetupOpts) => {
-  const field = checkNotNull(fields.find(field => field.id === fieldId));
+  const field = checkNotNull(fields.find((field) => field.id === fieldId));
 
   renderWithProviders(
     <TestComponent field={field} initialValue={initialValue} />,
@@ -151,7 +151,7 @@ describe("SemanticTypePicker", () => {
   describe("Entity Key, Foreign Key, and No semantic type", () => {
     it.each(FIELDS)(
       "shows Entity Key, Foreign Key, and No semantic type when field's effective_type is derived from $display_name",
-      async field => {
+      async (field) => {
         setup({ fieldId: field.id });
 
         await assertSemanticTypesVisibility({
@@ -179,7 +179,7 @@ describe("SemanticTypePicker", () => {
       STRUCTURED_FIELD,
     ])(
       "does not show Entity Name when field's effective_type is derived from $display_name",
-      async field => {
+      async (field) => {
         setup({ fieldId: field.id });
 
         await assertSemanticTypesVisibility({
@@ -192,7 +192,7 @@ describe("SemanticTypePicker", () => {
   describe("Field containing JSON", () => {
     it.each([STRUCTURED_FIELD, COLLECTION_FIELD])(
       "shows Field containing JSON semantic type when field's effective_type is derived from $display_name",
-      async field => {
+      async (field) => {
         setup({ fieldId: field.id });
 
         await assertSemanticTypesVisibility({

@@ -18,7 +18,7 @@ export default {
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(PieChart);
 
-const Template: StoryFn = args => {
+const Template: StoryFn = (args) => {
   const { backgroundColor, ...props } = args;
 
   const theme: MetabaseTheme = {
