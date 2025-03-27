@@ -136,11 +136,10 @@
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
                  :model/Database {mirror-db-id :id} {:router_database_id db-id}]
     (testing "GET /database/:id"
-      (mt/user-http-request :crowberto :get 404 (str "database/" mirror-db-id))
-      (testing "If we pass the `include_mirror_databases` param, it is included"
-        (mt/user-http-request :crowberto :get 200 (str "database/" mirror-db-id "?include_mirror_databases=true")))
-      (testing "If a regular user passees `include_mirror_databases` it is hidden"
-        (mt/user-http-request :rasta :get 404 (str "database/" mirror-db-id "?include_mirror_databases=true"))))
+      (testing "Superusers can get mirror DBs"
+        (mt/user-http-request :crowberto :get 200 (str "database/" mirror-db-id)))
+      (testing "Regulard users can not."
+        (mt/user-http-request :rasta :get 404 (str "database/" mirror-db-id))))
     (testing "GET /database/"
       (is (not-any? #(= (:id %) mirror-db-id)
                     (:data (mt/user-http-request :crowberto :get 200 "database/"))))

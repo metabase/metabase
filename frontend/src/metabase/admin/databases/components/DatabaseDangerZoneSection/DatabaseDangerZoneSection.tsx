@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
-import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
+import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 import { useDiscardDatabaseFieldValuesMutation } from "metabase/api";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -83,6 +83,8 @@ export const DatabaseDangerZoneSection = ({
             ref={deleteDatabaseModal}
           >
             <DeleteDatabaseModal
+              title={t`Delete the ${database.name} database?`}
+              defaultDatabaseRemovalMessage={t`This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone!`}
               database={database}
               onClose={handleDeleteDatabaseModalClose}
               onDelete={handleDeleteDatabase}
