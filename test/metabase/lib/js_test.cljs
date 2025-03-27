@@ -240,6 +240,7 @@
           expr-from-query (first (lib/expressions query-with-expr 0))
           legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)
           named-expr (lib/with-expression-name expr "named")]
+      (is (=? [:value {:effective-type :type/Integer, :lib/uuid string?} 0] expr))
       (is (= (js->clj legacy-expr) (js->clj legacy-expr') (js->clj legacy-expr-from-query)))
       (is (= "named" (lib/display-name query named-expr)))))
   (testing "simple expressions can be converted properly (#37173)"

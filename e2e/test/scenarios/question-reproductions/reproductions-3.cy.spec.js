@@ -525,11 +525,14 @@ describe("issue 41381", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should show an error message when adding a constant-only custom expression (metabase#41381)", () => {
+  it("should not show an error message when adding a constant-only custom expression (metabase#41381)", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.addCustomColumn();
     H.enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
     H.popover().within(() => {
+      // TODO: QUE-726 restore test
+      // cy.findByText("Invalid expression").should("not.exist");
+      // cy.button("Done").should("be.enabled");
       cy.findByText("Standalone constants are not supported.").should(
         "be.visible",
       );

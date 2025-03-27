@@ -65,6 +65,19 @@
     (is (lib.metadata/editable? query))
     (is (not (lib.metadata/editable? restritcted-query)))))
 
+(deftest ^:parallel database-supports?-test
+  (let [query          (lib.tu/query-with-join)
+        metadata       ^SimpleGraphMetadataProvider (:lib/metadata query)
+        metadata-graph (.-metadata-graph metadata)
+        metadata-graph-with-feature (update metadata-graph :features conj ::special-feature)
+        metadata-graph-without-feature (update metadata-graph :features disj ::special-feature)
+        provider-with-feature (meta.graph-provider/->SimpleGraphMetadataProvider metadata-graph-with-feature)
+        provider-without-feature (meta.graph-provider/->SimpleGraphMetadataProvider metadata-graph-without-feature)
+        query-with-feature (assoc query :lib/metadata provider-with-feature)
+        query-without-feature (assoc query :lib/metadata provider-without-feature)]
+    (is (lib.metadata/database-supports? query-with-feature ::special-feature))
+    (is (not (lib.metadata/database-supports? query-without-feature ::special-feature)))))
+
 (deftest ^:parallel idents-test
   (doseq [table-key (meta/tables)
           field-key (meta/fields table-key)]

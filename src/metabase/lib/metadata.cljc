@@ -168,6 +168,15 @@
     (mu/disable-enforcement
       (editable-stages? query stages))))
 
+(mu/defn database-supports? :- :boolean
+  "Does `query`s [[database]] support the given `feature`?"
+  [query   :- ::lib.schema/query
+   feature :- :keyword]
+  (-> query
+      database
+      :features
+      (contains? feature)))
+
 ;;; TODO -- I'm wondering if we need both this AND [[bulk-metadata-or-throw]]... most of the rest of the stuff here
 ;;; throws if we can't fetch the metadata, not sure what situations we wouldn't want to do that in places that use
 ;;; this (like QP middleware). Maybe we should only have a throwing version.

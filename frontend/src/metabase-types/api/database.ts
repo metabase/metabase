@@ -22,6 +22,7 @@ export type DatabaseFeature =
   | "datetime-diff"
   | "dynamic-schema"
   | "expression-aggregations"
+  | "expression-literals"
   | "expressions"
   | "native-parameters"
   | "nested-queries"

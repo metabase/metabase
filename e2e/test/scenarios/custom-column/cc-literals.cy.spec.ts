@@ -1,5 +1,6 @@
 const { H } = cy;
 
+// TODO: QUE-726 restore test
 describe.skip("scenarios > custom column > literals", () => {
   beforeEach(() => {
     H.restore();
@@ -98,6 +99,16 @@ describe.skip("scenarios > custom column > literals", () => {
     testFilterLiteral({
       filterExpression: "[FalseColumn]",
       filterDisplayName: "FalseColumn",
+      expectedRowCount: 0,
+    });
+    testFilterLiteral({
+      filterExpression: "[TrueColumn] OR [FalseColumn]",
+      filterDisplayName: "TrueColumn or FalseColumn",
+      expectedRowCount: 200,
+    });
+    testFilterLiteral({
+      filterExpression: "[TrueColumn] = [FalseColumn]",
+      filterDisplayName: "TrueColumn is FalseColumn",
       expectedRowCount: 0,
     });
   });
