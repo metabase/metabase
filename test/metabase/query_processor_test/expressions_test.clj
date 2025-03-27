@@ -550,8 +550,8 @@
   ;; TODO Fix this test for H2 (QUE-726)
   (testing "order-by all literal expression types"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
-      (is (= [[1 "" "foo" 0 12345 1.234 true false]
-              [2 "" "foo" 0 12345 1.234 true false]]
+      (is (= [(into [1] standard-literal-expression-values)
+              (into [2] standard-literal-expression-values)]
              (mt/formatted-rows
               standard-literal-expression-row-formats-with-id
               (mt/run-mbql-query orders
