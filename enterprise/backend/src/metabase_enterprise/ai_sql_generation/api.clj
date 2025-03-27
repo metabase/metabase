@@ -19,18 +19,18 @@
   ([database-id]
    (database-tables database-id nil))
   ([database-id {:keys [all-tables-limit] :or {all-tables-limit max-database-tables}}]
-   (let [tables (t2/select [:model/Table :id :name :schema]
+   (let [tables (t2/select [:model/Table :id :name :schema :description]
                            :db_id database-id
                            :active true
                            :visibility_type nil
                            {:limit all-tables-limit})
          tables (t2/hydrate tables :fields)]
-     (mapv (fn [{:keys [name fields]}]
-             {:name name
-              :columns (mapv (fn [{:keys [name database_type]}]
-                               {:name name
-                                :data_type database_type})
-                             fields)})
+     (mapv (fn [{:keys [fields] :as table}]
+             (merge (select-keys table [:name :schema :description])
+                    {:columns (mapv (fn [{:keys [database_type] :as field}]
+                                      (merge (select-keys field [:name :description])
+                                             {:data_type database_type}))
+                                    fields)}))
            tables))))
 
 (api.macros/defendpoint :post "/generate"
