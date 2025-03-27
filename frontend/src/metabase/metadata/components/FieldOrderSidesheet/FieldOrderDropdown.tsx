@@ -1,22 +1,12 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
-import Tables from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Button, Icon, Menu } from "metabase/ui";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { TableFieldOrder, TableId } from "metabase-types/api";
-import type { State } from "metabase-types/store/state";
+import type { TableFieldOrder } from "metabase-types/api";
 
-interface OwnProps {
-  tableId: TableId;
-}
-
-interface Props extends OwnProps {
-  table: Table;
-  onUpdateTable: (table: Table, name: string, value: TableFieldOrder) => void;
+interface Props {
+  value: TableFieldOrder;
+  onChange: (value: TableFieldOrder) => void;
 }
 
 /**
@@ -30,11 +20,7 @@ const OPTIONS: Record<TableFieldOrder, TableFieldOrder> = {
   smart: "smart",
 };
 
-const FieldOrderDropdownBase = ({ table, onUpdateTable }: Props) => {
-  const handleItemClick = (value: TableFieldOrder) => {
-    onUpdateTable(table, "field_order", value);
-  };
-
+export const FieldOrderDropdown = ({ value, onChange }: Props) => {
   return (
     // TODO: use Select/Combobox to highlight current value
     <Menu position="bottom-start">
@@ -45,16 +31,13 @@ const FieldOrderDropdownBase = ({ table, onUpdateTable }: Props) => {
           p={0}
           variant="subtle"
         >
-          {getFieldOrderLabel(table.field_order)}
+          {getFieldOrderLabel(value)}
         </Button>
       </Menu.Target>
 
       <Menu.Dropdown>
         {Object.values(OPTIONS).map((fieldOrder) => (
-          <Menu.Item
-            key={fieldOrder}
-            onClick={() => handleItemClick(fieldOrder)}
-          >
+          <Menu.Item key={fieldOrder} onClick={() => onChange(fieldOrder)}>
             {getFieldOrderLabel(fieldOrder)}
           </Menu.Item>
         ))}
@@ -71,21 +54,3 @@ const getFieldOrderLabel = (fieldOrder: TableFieldOrder) => {
     .with("smart", () => t`Smart`)
     .exhaustive();
 };
-
-const mapDispatchToProps = {
-  onUpdateTable: Tables.actions.updateProperty,
-};
-
-export const FieldOrderDropdown = _.compose(
-  Tables.load({
-    id: (_state: State, { tableId }: OwnProps) => tableId,
-    query: {
-      include_sensitive_fields: true,
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    },
-    fetchType: "fetchMetadataDeprecated",
-    requestType: "fetchMetadataDeprecated",
-    selectorName: "getObjectUnfiltered",
-  }),
-  connect(null, mapDispatchToProps),
-)(FieldOrderDropdownBase);
