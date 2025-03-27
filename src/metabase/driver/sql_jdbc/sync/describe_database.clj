@@ -66,7 +66,6 @@
   [driver ^Connection conn [sql & params]]
   {:pre [(string? sql)]}
   (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)]
-    (log/tracef "[%s] %s" (name driver) sql)
     ;; attempting to execute the SQL statement will throw an Exception if we don't have permissions; otherwise it will
     ;; truthy wheter or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
     ;; this point.
@@ -79,14 +78,15 @@
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
   (let [sql-args (simple-select-probe-query driver table-schema table-name)]
-    (log/tracef "Checking for SELECT privileges for %s with query %s"
+    (log/debugf "have-select-privilege? sql-jdbc: Checking for SELECT privileges for %s with query\n%s"
                 (str (when table-schema
                        (str (pr-str table-schema) \.))
                      (pr-str table-name))
                 (pr-str sql-args))
     (try
+      (log/debug "have-select-privilege? sql-jdbc: Attempt to execute probe query")
       (execute-select-probe-query driver conn sql-args)
-      (log/trace "SELECT privileges confirmed")
+      (log/debug "have-select-privilege? sql-jdbc: Probe query executed successfully, SELECT privileges confirmed")
       true
       (catch java.sql.SQLTimeoutException _
         (log/info "Assuming SELECT privileges: caught timeout exception")
@@ -106,17 +106,23 @@
 (defn- jdbc-get-tables
   [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]
   (sql-jdbc.sync.common/reducible-results
-   #(.getTables metadata catalog
-                (some->> schema-pattern (driver/escape-entity-name-for-metadata driver))
-                (some->> tablename-pattern (driver/escape-entity-name-for-metadata driver))
-                (when (seq types) (into-array String types)))
+   #(do (log/debugf "jdbc-get-tables: Calling .getTables for catalog `%s`" catalog)
+        (.getTables metadata catalog
+                    (some->> schema-pattern (driver/escape-entity-name-for-metadata driver))
+                    (some->> tablename-pattern (driver/escape-entity-name-for-metadata driver))
+                    (when (seq types) (into-array String types))))
    (fn [^ResultSet rset]
-     (fn [] {:name        (.getString rset "TABLE_NAME")
-             :schema      (.getString rset "TABLE_SCHEM")
-             :description (when-let [remarks (.getString rset "REMARKS")]
-                            (when-not (str/blank? remarks)
-                              remarks))
-             :type        (.getString rset "TABLE_TYPE")}))))
+     (fn []
+       (let [name (.getString rset "TABLE_NAME")
+             schema (.getString rset "TABLE_SCHEM")
+             ttype (.getString rset "TABLE_TYPE")]
+         (log/debugf "jdbc-get-tables: Fetched object: schema `%s` name `%s` type `%s`" schema name ttype)
+         {:name        name
+          :schema      schema
+          :description (when-let [remarks (.getString rset "REMARKS")]
+                         (when-not (str/blank? remarks)
+                           remarks))
+          :type        ttype})))))
 
 (defn db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
