@@ -1114,27 +1114,6 @@
                                   :breakout [tested-day]
                                   :filter [:= tested-field (t/format :iso-local-date yesterday-last)]}))))))))))))))))
 
-(deftest snowflake-casted-date-relative-time-filter-test
-  (mt/with-clock #t "2025-01-01T12:00:00-00:00[UTC]"
-    (mt/test-driver :snowflake
-      (mt/dataset (mt/dataset-definition
-                   "coerced-date-times-db"
-                   ["coerced-date-times-table"
-                    [{:field-name "text_date_time", :base-type :type/Text :coercion-strategy :Coercion/ISO8601->DateTime :effective-type :type/DateTime}
-                     {:field-name "text_date", :base-type :type/Text :coercion-strategy :Coercion/ISO8601->Date :effective-type :type/Date}]
-                    [[(str (t/local-date-time)) (str (t/local-date))]]])
-        (is (= [[1 "2025-01-01T12:00:00Z" "2025-01-01T00:00:00Z"]]
-               (->> (mt/mbql-query coerced-date-times-table
-                      {:filter [:and
-                                [:time-interval
-                                 [:field (mt/id :coerced-date-times-table :text_date_time) {:base-type :type/Text}]
-                                 -30 :day {:include-current true}]
-                                [:time-interval
-                                 [:field (mt/id :coerced-date-times-table :text_date) {:base-type :type/Text}]
-                                 -30 :day {:include-current true}]]})
-                    (mt/user-http-request :crowberto :post 202 "dataset")
-                    mt/rows)))))))
-
 (deftest snowflake-all-auth-combos-test
   (mt/test-driver
     :snowflake

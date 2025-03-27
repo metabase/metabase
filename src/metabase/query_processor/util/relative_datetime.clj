@@ -14,8 +14,8 @@
   (contains? #{:day :week :month :quarter :year} unit))
 
 (defn- maybe-truncate-dt-value
-  [dt col-base-type]
-  (condp #(isa? %2 %1) col-base-type
+  [dt effective-or-base-type]
+  (condp #(isa? %2 %1) effective-or-base-type
     :type/DateTimeWithTZ dt
     :type/DateTime       (t/local-date-time dt)
     :type/Date           (t/local-date dt)))
