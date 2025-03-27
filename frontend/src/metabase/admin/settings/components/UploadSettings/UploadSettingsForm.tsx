@@ -34,7 +34,7 @@ const FEEDBACK_TIMEOUT = 5000;
 const enableErrorMessage = t`There was a problem enabling uploads. Please try again shortly.`;
 const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
 
-type SaveStatusRef = React.RefObject<{
+export type SaveStatusRef = React.RefObject<{
   setSaving: () => void;
   setSaved: () => void;
   setSaveError: (msg: string) => void;

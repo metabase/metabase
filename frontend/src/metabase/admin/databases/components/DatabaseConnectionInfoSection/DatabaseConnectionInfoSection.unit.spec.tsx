@@ -44,10 +44,7 @@ function setup({
   const dismissSyncSpinner = jest.fn().mockResolvedValue({});
 
   const utils = renderWithProviders(
-    <DatabaseConnectionInfoSection
-      database={database}
-      dismissSyncSpinner={dismissSyncSpinner}
-    />,
+    <DatabaseConnectionInfoSection database={database} />,
     { storeInitialState: state },
   );
 

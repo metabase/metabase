@@ -5,10 +5,26 @@ import { DatabaseList } from "./DatabaseList";
 
 const CREATE_SAMPLE_DATABASE_BUTTON_LABEL = "Bring the sample database back";
 
-async function setup({ isSampleDb, isAdmin } = {}) {
+interface SetupOpts {
+  isSampleDb: boolean;
+  isAdmin: boolean;
+}
+
+async function setup({ isSampleDb, isAdmin }: SetupOpts) {
   const databases = [createMockDatabase({ is_sample: isSampleDb })];
 
-  render(<DatabaseList databases={databases} isAdmin={isAdmin} deletes={[]} />);
+  render(
+    <DatabaseList
+      databases={databases}
+      isAdmin={isAdmin}
+      deletes={[]}
+      engines={{}}
+      addSampleDatabase={() => {}}
+      deletionError={false}
+      isAddingSampleDatabase={false}
+      addSampleDatabaseError={false}
+    />,
+  );
 }
 
 describe("DatabaseListApp", () => {

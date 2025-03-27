@@ -31,7 +31,7 @@ interface DatabaseListProps {
   isAddingSampleDatabase: boolean;
   addSampleDatabase: (query: any) => void;
   addSampleDatabaseError: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export const DatabaseList = ({
