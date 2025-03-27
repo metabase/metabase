@@ -7,7 +7,7 @@ import { connect } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { TableFieldOrder, TableId } from "metabase-types/api";
+import type { FieldId, TableFieldOrder, TableId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { FieldOrderPicker } from "./FieldOrderPicker";
@@ -26,6 +26,7 @@ interface OwnProps {
 
 interface Props extends OwnProps {
   table: Table;
+  onUpdateFieldOrder: (table: Table, fieldOrder: FieldId[]) => void;
   onUpdateTable: (table: Table, name: string, value: TableFieldOrder) => void;
 }
 
@@ -54,6 +55,7 @@ const FieldOrderSidesheetBase = ({
 };
 
 const mapDispatchToProps = {
+  onUpdateFieldOrder: Tables.actions.setFieldOrder,
   onUpdateTable: Tables.actions.updateProperty,
 };
 
