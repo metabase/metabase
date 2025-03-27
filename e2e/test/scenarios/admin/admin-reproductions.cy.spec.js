@@ -22,13 +22,13 @@ describe("issue 26470", { tags: "@external" }, () => {
     cy.findByTestId("database-model-features-section")
       .findByLabelText("Model persistence")
       .should("not.be.checked")
-      .click();
+      .click({ force: true });
     cy.wait("@persist").its("response.statusCode").should("eq", 204);
 
     cy.findByTestId("database-model-features-section")
       .findByLabelText("Model persistence")
       .should("be.checked")
-      .click();
+      .click({ force: true });
     cy.wait("@unpersist").its("response.statusCode").should("eq", 204);
 
     cy.findByTestId("database-model-features-section")
