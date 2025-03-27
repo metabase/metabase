@@ -89,8 +89,7 @@ export function resolve({
     const [op, ...operands] = expression;
 
     if (op === "value") {
-      const [value] = operands;
-      return [op, resolve({ expression: value, type, fn, database })];
+      return expression;
     } else if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;

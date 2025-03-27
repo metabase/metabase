@@ -13,7 +13,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.number :as u.number]))
 
 (comment lib/keep-me)
 
@@ -598,3 +599,10 @@
     #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789+07:00"
     #{:type/DateTime :type/Text} "2024-07-02 12:34:56-03:00"
     #{:type/DateTime :type/Text} "2024-07-02 12:34+02:03"))
+
+(deftest ^:parallel value-test
+  (are [expected value] (=? expected (lib.expression/value value))
+    [:value {:base-type :type/Text} "abc"]       "abc"
+    [:value {:base-type :type/Integer} 123]      123
+    [:value {:base-type :type/Boolean} false]    false
+    [:value {:base-type :type/BigInteger} "123"] (u.number/bigint "123")))

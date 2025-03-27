@@ -118,11 +118,16 @@ export type ReferenceOptionsKeys =
 type ExpressionName = string;
 
 export type StringLiteral = string;
-export type NumericLiteral = number;
+export type NumericLiteral = number | bigint;
 export type BooleanLiteral = boolean;
 export type DatetimeLiteral = string;
 
-type Value = null | boolean | StringLiteral | NumericLiteral | DatetimeLiteral;
+type Value =
+  | null
+  | BooleanLiteral
+  | StringLiteral
+  | NumericLiteral
+  | DatetimeLiteral;
 type OrderableValue = NumericLiteral | DatetimeLiteral;
 
 type RelativeDatetimePeriod = "current" | "last" | "next" | number;
@@ -371,7 +376,8 @@ export type Expression =
   | CaseOrIfExpression
   | CallExpression
   | ConcreteFieldReference
-  | Filter;
+  | Filter
+  | ValueExpression;
 
 export type CallOptions = { [key: string]: unknown };
 export type CallExpression =
@@ -387,6 +393,8 @@ export type CaseOptions = { default?: Expression };
 export type CaseOrIfExpression =
   | [CaseOrIfOperator, [Expression, Expression][]]
   | [CaseOrIfOperator, [Expression, Expression][], CaseOptions];
+
+export type ValueExpression = ["value", Value, CallOptions | null];
 
 export type OffsetExpression = [
   "offset",

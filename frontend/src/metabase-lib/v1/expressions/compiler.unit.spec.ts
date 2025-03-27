@@ -43,10 +43,10 @@ function aggregation(source: string) {
 
 describe("old recursive-parser tests", () => {
   it("should parse numeric literals", () => {
-    expect(expr("0")).toEqual(["value", 0]);
-    expect(expr("42")).toEqual(["value", 42]);
-    expect(expr("1.0")).toEqual(["value", 1]);
-    expect(expr("0.123")).toEqual(["value", 0.123]);
+    expect(expr("0")).toEqual(["value", 0, null]);
+    expect(expr("42")).toEqual(["value", 42, null]);
+    expect(expr("1.0")).toEqual(["value", 1, null]);
+    expect(expr("0.123")).toEqual(["value", 0.123, null]);
   });
 
   it("should parse string literals", () => {
@@ -75,15 +75,15 @@ describe("old recursive-parser tests", () => {
   });
 
   it("should parse unary expressions", () => {
-    expect(expr("+6")).toEqual(["value", 6]);
-    expect(expr("++7")).toEqual(["value", 7]);
-    expect(expr("-+8")).toEqual(["value", -8]);
+    expect(expr("+6")).toEqual(["value", 6, null]);
+    expect(expr("++7")).toEqual(["value", 7, null]);
+    expect(expr("-+8")).toEqual(["value", -8, null]);
   });
 
   it("should flatten unary expressions", () => {
     expect(expr("--5")).toEqual(["-", -5]);
-    expect(expr("- 6")).toEqual(["value", -6]);
-    expect(expr("+-7")).toEqual(["value", -7]);
+    expect(expr("- 6")).toEqual(["value", -6, null]);
+    expect(expr("+-7")).toEqual(["value", -7, null]);
     expect(expr("sqrt(-1)")).toEqual(["sqrt", -1]);
     expect(expr("- [Total]")).toEqual(["-", total]);
     expect(expr("-[Total]")).toEqual(["-", total]);

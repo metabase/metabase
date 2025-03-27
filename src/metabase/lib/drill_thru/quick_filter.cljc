@@ -42,6 +42,7 @@
    [medley.core :as m]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -53,7 +54,14 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.number :as u.number]))
+
+(defn- maybe-bigint->value-clause
+  [value]
+  (if-let [number (when (string? value) (u.number/parse-bigint value))]
+    (lib.expression/value number)
+    value))
 
 (defn- operator [op & args]
   (lib.options/ensure-uuid (into [op {}] args)))
@@ -84,7 +92,8 @@
             :when (or (not (#{:< :>} op))
                       (lib.schema.expression/comparable-expressions? field-ref value))]
         {:name   label
-         :filter (operator op field-ref value)})
+         :filter (operator op field-ref (cond-> value
+                                          (lib.types.isa/numeric? column) maybe-bigint->value-clause))})
 
       (and (lib.types.isa/string? column)
            (or (lib.types.isa/comment? column)
