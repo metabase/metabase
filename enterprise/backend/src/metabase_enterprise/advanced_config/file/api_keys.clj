@@ -17,9 +17,7 @@
   string?)
 
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/key
-  (s/and string?
-         #(<= 11 (count %) 254)
-         #(re-matches #"mb_[A-Za-z0-9+/=]+" %)))
+  string?)
 
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/creator
   string?)
@@ -53,45 +51,53 @@
                       {:email email})))
     user))
 
+(defn- validate-api-key
+  "Validate that the provided key is in the required format for Metabase API keys."
+  [key]
+  (when-not (and (string? key)
+                (<= 11 (count key) 254)
+                (re-matches #"mb_[A-Za-z0-9+/=]+" key))
+    (throw (ex-info (format "API key must start with 'mb_' and contain only alphanumeric characters, +, /, or =")
+                   {:key-length (count key)}))))
+
 (defn- init-from-config-file!
   [api-key-config]
   (let [{:keys [name key group creator]} api-key-config
         group-id (case group
                    "admin" (u/the-id (perms/admin-group))
                    "all-users" (u/the-id (perms/all-users-group)))
-        unhashed-key (u.secret/secret key)
-        prefix (api-key/prefix (u.secret/expose unhashed-key))
         creator (get-admin-user-by-email creator)]
-
-    ;; Check if there's an existing API key with the same prefix
-    (when (t2/exists? :model/ApiKey :key_prefix prefix)
-      (throw (ex-info (format "API key with prefix '%s' already exists. Keys must have unique prefixes." prefix)
-                      {:name name :prefix prefix})))
 
     (if-let [existing-api-key (select-api-key name)]
       (do
         (log/info (u/format-color :blue "API key with name %s already exists, skipping" (pr-str name)))
         existing-api-key)
       (do
-        (log/info (u/format-color :green "Creating new API key %s" (pr-str name)))
-        ;; Create a user for the API key
-        (let [email (format "api-key-user-%s@api-key.invalid" (random-uuid))
-              user (first
-                    (t2/insert-returning-instances! :model/User
-                                                    {:email      email
-                                                     :first_name name
-                                                     :last_name  ""
-                                                     :type       :api-key
-                                                     :password   (str (random-uuid))}))]
-          ;; Set permissions groups for the user
-          (user/set-permissions-groups! user [(perms/all-users-group) {:id group-id}])
-          ;; Create the API key
-          (t2/insert-returning-instance! :model/ApiKey
-                                         {:user_id      (u/the-id user)
-                                          :name         name
-                                          :unhashed_key unhashed-key
-                                          :creator_id   (u/the-id creator)
-                                          :updated_by_id (u/the-id creator)}))))))
+        (validate-api-key key)
+        
+        (let [unhashed-key (u.secret/secret key)
+              prefix (api-key/prefix (u.secret/expose unhashed-key))]
+          
+          (when (t2/exists? :model/ApiKey :key_prefix prefix)
+            (throw (ex-info (format "API key with prefix '%s' already exists. Keys must have unique prefixes." prefix)
+                            {:name name :prefix prefix})))
+          
+          (log/info (u/format-color :green "Creating new API key %s" (pr-str name)))
+          (let [email (format "api-key-user-%s@api-key.invalid" (random-uuid))
+                user (first
+                      (t2/insert-returning-instances! :model/User
+                                                     {:email      email
+                                                      :first_name name
+                                                      :last_name  ""
+                                                      :type       :api-key
+                                                      :password   (str (random-uuid))}))]
+            (user/set-permissions-groups! user [(perms/all-users-group) {:id group-id}])
+            (t2/insert-returning-instance! :model/ApiKey
+                                          {:user_id       (u/the-id user)
+                                           :name          name
+                                           :unhashed_key  unhashed-key
+                                           :creator_id    (u/the-id creator)
+                                           :updated_by_id (u/the-id creator)})))))))
 
 (defmethod advanced-config.file.i/initialize-section! :api-keys
   [_section-name api-keys]
