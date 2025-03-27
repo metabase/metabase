@@ -3,8 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as config.file]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
