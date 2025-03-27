@@ -416,21 +416,19 @@
    database details."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include include_editable_data_model exclude_uneditable_details include_mirror_databases]}
+   {:keys [include include_editable_data_model exclude_uneditable_details]}
    :- [:map
        [:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]
        [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
-       [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]
-       [:include_mirror_databases {:optional true} ms/MaybeBooleanValue]]]
+       [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]]]
   (present-database
    (get-database id {:include include
                      :include-editable-data-model? include_editable_data_model
                      :exclude-uneditable-details? exclude_uneditable_details
-                     :include-mirror-databases? include_mirror_databases})
+                     :include-mirror-databases? true})
    {:include include
     :include-editable-data-model? include_editable_data_model
-    :exclude-uneditable-details? exclude_uneditable_details
-    :include-mirror-databases? include_mirror_databases}))
+    :exclude-uneditable-details? exclude_uneditable_details}))
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
