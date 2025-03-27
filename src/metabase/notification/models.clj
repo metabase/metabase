@@ -494,7 +494,7 @@
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/card [:map
                          [:payload ::NotificationCard]]]
-    [::mc/default       :any]]])
+    [::mc/default       :map]]])
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
@@ -502,7 +502,7 @@
   (t2/hydrate notification-or-notifications
               :creator
               :payload
-              :subscriptions
+              [:subscriptions :table]
               [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
@@ -559,14 +559,14 @@
 (models.u.spec-update/define-spec notification-update-spec
   "Spec for updating a notification."
   {:model        :model/Notification
-   :compare-cols [:active]
+   :compare-cols [:active :condition]
    :extra-cols   [:payload_type :internal_id :payload_id]
    :nested-specs {:payload       {:model        :model/NotificationCard
                                   :compare-cols [:send_condition :send_once]
                                   :extra-cols   [:card_id]}
                   :subscriptions {:model        :model/NotificationSubscription
                                   :fk-column    :notification_id
-                                  :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
+                                  :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type :table_id]
                                   :multi-row?   true}
                   :handlers      {:model        :model/NotificationHandler
                                   :fk-column    :notification_id
