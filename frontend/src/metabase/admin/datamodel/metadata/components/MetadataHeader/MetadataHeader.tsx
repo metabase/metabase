@@ -14,6 +14,8 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
+import S from "./MetadataHeader.module.css";
+
 interface OwnProps {
   selectedDatabaseId?: DatabaseId;
   selectedSchemaId?: SchemaId;
@@ -58,18 +60,20 @@ const MetadataHeader = ({
 
   return (
     <Flex align="center" data-testid="admin-metadata-header" flex="1" py="xl">
-      <Text c="text-medium" display="flex" flex="0 0 auto">
-        <Icon name="database" />
-      </Text>
+      <Flex align="center" gap="sm">
+        <Text c="text-medium" display="flex" flex="0 0 auto">
+          <Icon name="database" />
+        </Text>
 
-      <Text fw="bold" size="xl">
-        <DatabaseDataSelector
-          databases={databases}
-          selectedDatabaseId={selectedDatabaseId}
-          setDatabaseFn={onSelectDatabase}
-          style={{ padding: 0, paddingLeft: 8 }}
-        />
-      </Text>
+        <Text fw="bold" size="xl">
+          <DatabaseDataSelector
+            className={S.databaseDataSelectors}
+            databases={databases}
+            selectedDatabaseId={selectedDatabaseId}
+            setDatabaseFn={onSelectDatabase}
+          />
+        </Text>
+      </Flex>
 
       {selectedDatabaseId && selectedSchemaId && selectedTableId && (
         <Flex
