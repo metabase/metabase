@@ -80,10 +80,12 @@
                                                         :parent_id nil
                                                         :database_indexed true)
           [removing adding]          (data/diff existing-indexed-field-ids indexed-field-ids)]
-      (doseq [field-id removing]
-        (log/infof "Unmarking Field %d as indexed" field-id))
-      (doseq [field-id adding]
-        (log/infof "Marking Field %d as indexed" field-id))
+      (log/infof "Unmarking %d fields from indexed" (count removing))
+      (doseq [field-ids (partition 10 removing)]
+        (log/tracef "Unmarking Field %s as indexed" (pr-str field-ids)))
+      (log/infof "Marking %d fields as indexed" (count adding))
+      (doseq [field-ids (partition 10 adding)]
+        (log/tracef "Marking Field %s as indexed" (pr-str field-ids)))
       (if (or (seq adding) (seq removing))
         (do
           (t2/update! :model/Field
