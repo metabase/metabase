@@ -96,12 +96,16 @@
     ;; call the default impl for SQL JDBC drivers
     (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
 
+(defmethod ddl/insert-rows-dml-statements :clickhouse
+  [driver table-identifier rows]
+  (binding [driver/*compile-with-inline-parameters* true]
+    ((get-method ddl/insert-rows-dml-statements :sql-jdbc/test-extensions) driver table-identifier rows)))
+
 (mu/defmethod load-data/do-insert! :clickhouse
   [driver                    :- :keyword
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
    table-identifier
    rows]
-  ;; (println "###### calling load-data/do-insert!")
   (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
     (doseq [sql-args statements
             :let     [sql-args (if (string? sql-args)
@@ -111,7 +115,6 @@
               (format "Bad sql-args: %s" (pr-str sql-args)))
       (log/tracef "[insert] %s" (pr-str sql-args))
       (try
-        ;; (println "#### do-insert! statement: " statements)
         (jdbc/execute! {:connection conn :transaction? false}
                        sql-args
                        {:set-parameters (fn [stmt params]
