@@ -561,6 +561,19 @@
                                     (map #(conj [:asc] %) standard-literal-expression-refs))
                  :limit       2})))))))
 
+(deftest ^:parallel breakout-by-literal-expression-test
+  ;; TODO Fix this test for H2 (QUE-726)
+  (testing "breakout by all literal expression types"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expression-literals :basic-aggregations)
+      (let [orders-count 18760]
+        (is (= [(conj (vec standard-literal-expression-values) orders-count)]
+               (mt/formatted-rows
+                (conj standard-literal-expression-row-formats int)
+                (mt/run-mbql-query orders
+                  {:expressions standard-literal-expression-defs
+                   :aggregation [:count]
+                   :breakout    standard-literal-expression-refs}))))))))
+
 (deftest ^:parallel filter-literal-expression-with-and-or-test
   (doseq [[op expected] [[:and []]
                          [:or  [[true false]]]]]
