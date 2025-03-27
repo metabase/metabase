@@ -101,6 +101,16 @@ describe.skip("scenarios > custom column > literals", () => {
       filterDisplayName: "FalseColumn",
       expectedRowCount: 0,
     });
+    testFilterLiteral({
+      filterExpression: "[TrueColumn] OR [FalseColumn]",
+      filterDisplayName: "TrueColumn or FalseColumn",
+      expectedRowCount: 200,
+    });
+    testFilterLiteral({
+      filterExpression: "[TrueColumn] = [FalseColumn]",
+      filterDisplayName: "TrueColumn is FalseColumn",
+      expectedRowCount: 0,
+    });
   });
 
   it("should support custom columns with literal values used in other clauses", () => {
