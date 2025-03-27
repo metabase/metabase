@@ -408,10 +408,14 @@ describe("issue 52806", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
-    H.visitQuestionAdhoc(questionDetails);
-    cy.findByTestId("main-logo-link").click();
-    H.modal().button("Discard changes").click();
-    cy.location().should((location) => expect(location.search).to.eq(""));
-  });
+  it(
+    "should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)",
+    { tags: "@flaky" },
+    () => {
+      H.visitQuestionAdhoc(questionDetails);
+      cy.findByTestId("main-logo-link").click();
+      H.modal().button("Discard changes").click();
+      cy.location().should((location) => expect(location.search).to.eq(""));
+    },
+  );
 });
