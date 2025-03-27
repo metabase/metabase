@@ -13,3 +13,7 @@
   color: var(--mb-color-text-white);
   background-color: var(--mb-color-brand);
 }
+
+.resultItemIncompatible {
+  color: var(--mb-color-text-light);
+}

@@ -6,13 +6,13 @@ import type {
   VisualizerDataSourceId,
 } from "metabase-types/store/visualizer";
 
+import S from "./ResultsList.module.css";
+
 export interface ResultsListProps {
   items: VisualizerDataSource[];
   onSelect?: (item: VisualizerDataSource) => void;
   dataSourceIds: Set<VisualizerDataSourceId>;
 }
-
-import S from "./ResultsList.module.css";
 
 export const ResultsList = ({
   items,
@@ -22,30 +22,48 @@ export const ResultsList = ({
   return (
     <Box component="ul">
       {items.map((item, index) => (
-        <Flex
-          className={cx(S.resultItem, {
-            [S.resultItemSelected]: dataSourceIds.has(item.id),
-          })}
-          align="center"
+        <Result
           key={index}
-          component="li"
-          px="sm"
-          py="sm"
-          mb="xs"
-          onClick={() => onSelect?.(item)}
-        >
-          <Icon
-            name="table2"
-            mr="xs"
-            style={{
-              flexShrink: 0,
-            }}
-          />
-          <Text size="md" truncate c="inherit">
-            {item.name}
-          </Text>
-        </Flex>
+          item={item}
+          onSelect={onSelect}
+          selected={dataSourceIds.has(item.id)}
+        />
       ))}
     </Box>
+  );
+};
+
+interface ResultProps {
+  item: VisualizerDataSource;
+  onSelect?: (item: VisualizerDataSource) => void;
+  selected: boolean;
+}
+
+const Result = (props: ResultProps) => {
+  const { selected, item, onSelect } = props;
+
+  return (
+    <Flex
+      className={cx(S.resultItem, {
+        [S.resultItemSelected]: selected,
+      })}
+      align="center"
+      component="li"
+      px="sm"
+      py="sm"
+      mb="xs"
+      onClick={() => onSelect?.(item)}
+    >
+      <Icon
+        name="table2"
+        mr="xs"
+        style={{
+          flexShrink: 0,
+        }}
+      />
+      <Text size="md" truncate c="inherit">
+        {item.name}
+      </Text>
+    </Flex>
   );
 };
