@@ -99,7 +99,7 @@
 (defn calculate-pct-widths
   "Calculate the widths for label and minibar as percentages.
    Returns a vector of [label-width minibar-width] in the format '<value>%'.
-   
+
    The minibar-width is calculated as 70% of cell-width unless that would exceed `max-bar-width`,
    in which case it's the percentage equivalent to 100px of the cell-width.
    The label-width is calculated as the remaining percentage (100% - minibar-width)."
