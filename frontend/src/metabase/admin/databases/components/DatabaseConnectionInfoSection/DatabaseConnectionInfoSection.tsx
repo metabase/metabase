@@ -1,10 +1,8 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { push } from "react-router-redux";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
-  useGetDatabaseHealthQuery,
   useRescanDatabaseFieldValuesMutation,
   useSyncDatabaseSchemaMutation,
 } from "metabase/api";
@@ -12,11 +10,12 @@ import ActionButton from "metabase/components/ActionButton";
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { Badge, Button, Flex, Text, Tooltip } from "metabase/ui";
+import { Button, Flex, Tooltip } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId } from "metabase-types/api";
 
 import { isDbModifiable } from "../../utils";
+import { DatabaseConnectionHealthInfo } from "../DatabaseConnectionHealthInfo";
 import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
@@ -88,10 +87,7 @@ export const DatabaseConnectionInfoSection = ({
       data-testid="database-connection-info-section"
     >
       <Flex align="center" justify="space-between" gap="lg">
-        <Flex align="center" gap="sm">
-          <Badge size="12" circle bg={health.color} style={{ flexShrink: 0 }} />
-          <Text lh="1.4">{health.message}</Text>
-        </Flex>
+        <DatabaseConnectionHealthInfo databaseId={database.id} />
         <Tooltip
           disabled={isDbModifiable(database)}
           label={t`This database is managed by Metabase Cloud and cannot be modified.`}
@@ -104,7 +100,7 @@ export const DatabaseConnectionInfoSection = ({
         </Tooltip>
       </Flex>
 
-      <DatabaseInfoSectionDivider />
+      <DatabaseInfoSectionDivider condensed />
 
       <Flex gap="sm" wrap="wrap">
         {!isSynced && <Button disabled>{t`Syncing database…`}</Button>}
