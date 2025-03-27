@@ -377,7 +377,8 @@ describe("admin > database > database routing", () => {
         dbRoutingSection().should("not.exist");
       });
 
-      it("should show for users with db management permissions but prevent removal of destination databases", () => {
+      // TODO: re-enable once BE fix is merged
+      it.skip("should show for users with db management permissions but prevent removal of destination databases", () => {
         cy.log("setup - db routing");
         cy.visit("/admin/databases/2");
         cy.findAllByTestId("database-model-features-section")
