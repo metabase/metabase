@@ -19,8 +19,8 @@ const DELETE_DATABASE_FAILED = createAction<{
   error: unknown;
 }>("metabase/admin/databases/DELETE_DATABASE_FAILED");
 
-export const createDatabase = function (database: Database) {
-  editParamsForUserControlledScheduling(database);
+export const createDatabase = function (inputDatabase: Database) {
+  const database = editParamsForUserControlledScheduling(inputDatabase);
 
   return async function (dispatch: Dispatch) {
     try {
