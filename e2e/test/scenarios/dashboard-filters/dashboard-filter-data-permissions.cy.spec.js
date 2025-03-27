@@ -66,7 +66,7 @@ describe("support > permissions (metabase#8472)", () => {
       method: "GET",
       url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
       failOnStatusCode: false,
-    }).should(xhr => {
+    }).should((xhr) => {
       expect(xhr.status).to.equal(403);
     });
   });

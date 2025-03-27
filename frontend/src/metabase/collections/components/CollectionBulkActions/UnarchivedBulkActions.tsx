@@ -23,11 +23,11 @@ export const UnarchivedBulkActions = ({
 }: UnarchivedBulkActionsProps) => {
   // archive
   const canArchive = useMemo(() => {
-    return selected.every(item => canArchiveItem(item, collection));
+    return selected.every((item) => canArchiveItem(item, collection));
   }, [selected, collection]);
 
   const handleBulkArchive = async () => {
-    const actions = selected.map(item => {
+    const actions = selected.map((item) => {
       return archiveAndTrack({
         archive: () =>
           item.setArchived
@@ -44,7 +44,7 @@ export const UnarchivedBulkActions = ({
 
   // move
   const canMove = useMemo(() => {
-    return selected.every(item => canMoveItem(item, collection));
+    return selected.every((item) => canMoveItem(item, collection));
   }, [selected, collection]);
 
   const handleBulkMoveStart = () => {

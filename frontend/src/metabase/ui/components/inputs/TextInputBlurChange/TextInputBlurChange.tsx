@@ -25,7 +25,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   value,
   onChange,
   onBlurChange,
-  normalize = value => value,
+  normalize = (value) => value,
   ...restProps
 }: TextInputBlurChangeProps<T>) {
   const [internalValue, setInternalValue] = useState<T["value"]>();

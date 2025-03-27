@@ -99,13 +99,13 @@ const _CleanupCollectionModal = ({
   const itemsData = staleItemsData?.data;
   const total = staleItemsData?.total ?? 0;
   const items: StaleCollectionItem[] = useMemo(() => {
-    return (itemsData ?? []).map(item => Search.wrapEntity(item, dispatch));
+    return (itemsData ?? []).map((item) => Search.wrapEntity(item, dispatch));
   }, [itemsData, dispatch]);
 
   // selection cont.
   const { getIsSelected } = selection;
   const hasUnselected = useMemo(() => {
-    return items.some(item => !getIsSelected(item));
+    return items.some((item) => !getIsSelected(item));
   }, [getIsSelected, items]);
 
   // pagination cont.

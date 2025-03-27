@@ -37,7 +37,7 @@ describe("scenarios > models", () => {
   });
 
   it("allows to turn a GUI question into a model", () => {
-    cy.get("@productsQuestionId").then(id => {
+    cy.get("@productsQuestionId").then((id) => {
       cy.request("PUT", `/api/card/${id}`, {
         name: "Products Model",
       });
@@ -114,7 +114,7 @@ describe("scenarios > models", () => {
       table: "Products",
     });
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       saveQuestionBasedOnModel({ modelId: questionId, name: "Q1" });
     });
 
@@ -156,7 +156,7 @@ describe("scenarios > models", () => {
     H.openQuestionActions();
     assertIsModel();
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       cy.wait("@dataset").then(({ response }) => {
         expect(response.body.json_query.query["source-table"]).to.equal(
           `card__${questionId}`,
@@ -183,7 +183,7 @@ describe("scenarios > models", () => {
       table: "People",
     });
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       saveQuestionBasedOnModel({ modelId: questionId, name: "Q1" });
     });
 
@@ -429,7 +429,7 @@ describe("scenarios > models", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
-      cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByTestId("save-question-modal").within((modal) => {
         cy.findByText("Save").click();
       });
 
@@ -588,7 +588,7 @@ describe("scenarios > models", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click({ force: true });
 
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click({ force: true });
     });
 
@@ -685,7 +685,7 @@ describe("scenarios > models", () => {
 
     it("should allow using models in native queries", () => {
       cy.intercept("POST", "/api/dataset").as("query");
-      cy.get("@modelId").then(id => {
+      cy.get("@modelId").then((id) => {
         H.startNewNativeQuestion();
         H.NativeEditor.type(`select * from {{#${id}}}`, {
           parseSpecialCharSequences: false,

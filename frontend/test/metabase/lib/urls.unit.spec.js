@@ -448,7 +448,7 @@ describe("urls", () => {
       },
     ];
 
-    testCases.forEach(testCase => {
+    testCases.forEach((testCase) => {
       const { caseName, input, expectedString } = testCase;
       const entity = { id: 1, name: input };
 

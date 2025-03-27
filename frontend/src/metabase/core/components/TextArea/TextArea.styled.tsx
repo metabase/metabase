@@ -19,7 +19,7 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
   padding: 0.75rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.readOnly ? "var(--mb-color-bg-light)" : "var(--mb-color-bg-white)"};
   outline: none;
   text-align: inherit;
@@ -37,13 +37,13 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
     opacity: 0.4;
   }
 
-  ${props =>
+  ${(props) =>
     props.hasError &&
     css`
       border-color: var(--mb-color-error);
     `};
 
-  ${props =>
+  ${(props) =>
     props.fullWidth &&
     css`
       width: 100%;
