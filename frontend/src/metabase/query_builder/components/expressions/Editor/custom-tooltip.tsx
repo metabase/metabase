@@ -56,10 +56,10 @@ export function useCustomTooltip({
     const el = evt.relatedTarget as HTMLElement | null;
 
     if (
-      el === null ||
-      tooltipRef.current === el ||
-      tooltipRef.current?.contains(el) ||
-      el?.contains(tooltipRef.current)
+      el !== null &&
+      (tooltipRef.current === el ||
+        tooltipRef.current?.contains(el) ||
+        el?.contains(tooltipRef.current))
     ) {
       return;
     }
@@ -74,7 +74,7 @@ export function useCustomTooltip({
         focus: handleFocus,
         blur: handleBlur,
       }),
-      EditorView.updateListener.of(update => setUpdate(update)),
+      EditorView.updateListener.of((update) => setUpdate(update)),
     ],
     [element, handleBlur, handleFocus, getPosition],
   );
@@ -136,6 +136,6 @@ function tooltip(
     update(_, transaction) {
       return getCursorTooltips(transaction.state);
     },
-    provide: f => showTooltip.computeN([f], state => state.field(f)),
+    provide: (f) => showTooltip.computeN([f], (state) => state.field(f)),
   });
 }

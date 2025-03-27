@@ -12,9 +12,9 @@ import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { publicReducers } from "metabase/reducers-public";
 import { registerVisualization } from "metabase/visualizations";
-import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import Table from "metabase/visualizations/visualizations/Table/Table";
+import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   createMockCard,
@@ -239,7 +239,7 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
+const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
   // @ts-expect-error -- custom prop to support non JSON-serializable value as args
   const parameterType: ParameterType = args.parameterType;
   const dashboard = args.dashboard;

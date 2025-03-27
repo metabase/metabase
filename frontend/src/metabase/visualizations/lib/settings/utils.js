@@ -14,7 +14,7 @@ export function getOptionFromColumn(col) {
 export function metricSetting(id, def = {}) {
   return fieldSetting(id, {
     fieldFilter: isMetric,
-    getDefault: series => getDefaultDimensionAndMetric(series).metric,
+    getDefault: (series) => getDefaultDimensionAndMetric(series).metric,
     ...def,
   });
 }
@@ -22,12 +22,12 @@ export function metricSetting(id, def = {}) {
 export function dimensionSetting(id, def = {}) {
   return fieldSetting(id, {
     fieldFilter: isDimension,
-    getDefault: series => getDefaultDimensionAndMetric(series).dimension,
+    getDefault: (series) => getDefaultDimensionAndMetric(series).dimension,
     ...def,
   });
 }
 
-const DEFAULT_FIELD_FILTER = column => true;
+const DEFAULT_FIELD_FILTER = (column) => true;
 
 export function getDefaultColumn(
   series,

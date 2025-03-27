@@ -25,9 +25,14 @@ type TableProps = TableHTMLAttributes<HTMLTableElement> & {
   isInDragLayer?: boolean;
 };
 
-export const Table = styled((props: TableProps) => (
-  <table {...props} className={cx(props.className, AdminS.ContentTable)} />
-))`
+export const Table = styled(
+  (props: TableProps) => (
+    <table {...props} className={cx(props.className, AdminS.ContentTable)} />
+  ),
+  {
+    shouldForwardProp: (prop) => prop !== "isInDragLayer",
+  },
+)`
   background-color: var(--mb-color-bg-white);
   table-layout: fixed;
   border-collapse: unset;
@@ -50,7 +55,7 @@ export const Table = styled((props: TableProps) => (
     }
   }
 
-  ${props => (props.isInDragLayer ? `width: 50vw;` : "")}
+  ${(props) => (props.isInDragLayer ? `width: 50vw;` : "")}
 `;
 
 export const hideResponsively = ({
@@ -150,7 +155,7 @@ export const SortingControlContainer = styled.div<{
     isSortable ? `cursor: pointer; user-select: none;` : ""}
 
   .Icon {
-    visibility: ${props => (props.isActive ? "visible" : "hidden")};
+    visibility: ${(props) => (props.isActive ? "visible" : "hidden")};
   }
 
   &:hover {

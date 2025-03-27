@@ -145,10 +145,14 @@ import fields_component from "./fields.svg?component";
 import fields_source from "./fields.svg?source";
 import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
+import filter_plus_component from "./filter_plus.svg?component";
+import filter_plus_source from "./filter_plus.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
 import folder_filled_component from "./folder_filled.svg?component";
 import folder_filled_source from "./folder_filled.svg?source";
+import format_code_component from "./format_code.svg?component";
+import format_code_source from "./format_code.svg?source";
 import formula_component from "./formula.svg?component";
 import formula_source from "./formula.svg?source";
 import function_component from "./function.svg?component";
@@ -697,9 +701,17 @@ export const Icons = {
     component: filter_component,
     source: filter_source,
   },
+  filter_plus: {
+    component: filter_plus_component,
+    source: filter_plus_source,
+  },
   bug: {
     component: bug_component,
     source: bug_source,
+  },
+  format_code: {
+    component: format_code_component,
+    source: format_code_source,
   },
   formula: {
     component: formula_component,

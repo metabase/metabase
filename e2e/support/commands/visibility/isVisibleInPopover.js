@@ -5,10 +5,10 @@ Cypress.Commands.add(
   {
     prevSubject: true,
   },
-  subject => {
+  (subject) => {
     cy.wrap(subject)
       .closest(POPOVER_ELEMENT)
-      .then($popover => {
+      .then(($popover) => {
         /**
          * Helper function that:
          *  1. Obtains the value of element's computed property, but it always returns it in px (for example: "12px")

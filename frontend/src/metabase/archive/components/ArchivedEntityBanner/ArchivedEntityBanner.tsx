@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 
 import type { CollectionPickerValueItem } from "metabase/common/components/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
-import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import Styles from "./ArchivedEntityBanner.module.css";
@@ -85,7 +85,7 @@ export const ArchivedEntityBanner = ({
         <CollectionPickerModal
           title={`Move ${name}`}
           value={{ id: "root", model: "collection" }}
-          onChange={collection => onMove?.(collection)}
+          onChange={(collection) => onMove?.(collection)}
           options={{
             showSearch: true,
             hasConfirmButtons: true,
@@ -97,10 +97,14 @@ export const ArchivedEntityBanner = ({
         />
       )}
       {modal === "delete" && (
-        <ConfirmDeleteModal
-          name={name}
+        <ConfirmModal
+          opened
+          confirmButtonText={t`Delete permanently`}
+          data-testid="delete-confirmation"
+          message={t`This can't be undone.`}
+          title={t`Delete ${name} permanently?`}
+          onConfirm={onDeletePermanently}
           onClose={() => setModal(null)}
-          onDelete={onDeletePermanently}
         />
       )}
     </>

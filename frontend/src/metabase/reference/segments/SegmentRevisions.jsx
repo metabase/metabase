@@ -62,7 +62,7 @@ class SegmentRevisions extends Component {
     const userColorAssignments =
       user && Object.keys(revisions).length > 0
         ? assignUserColors(
-            Object.values(revisions).map(revision =>
+            Object.values(revisions).map((revision) =>
               getIn(revision, ["user", "id"]),
             ),
             user.id,
@@ -93,7 +93,7 @@ class SegmentRevisions extends Component {
                 >
                   <div>
                     {Object.values(revisions)
-                      .map(revision =>
+                      .map((revision) =>
                         revision && revision.diff ? (
                           <Revision
                             key={revision.id}

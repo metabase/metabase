@@ -8,11 +8,8 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { has24HourModeSetting } from "metabase/lib/time";
-import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import type { SelectProps } from "metabase/ui";
-import { Box, Group, SegmentedControl, Select, Tooltip } from "metabase/ui";
-import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
+import { Box, Group, SegmentedControl, Tooltip } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -20,19 +17,19 @@ import type {
   ScheduleType,
 } from "metabase-types/api";
 
+import { AutoWidthSelect } from "./AutoWidthSelect";
+import { defaultHour } from "./constants";
 import {
   type Weekday,
-  defaultHour,
   getHours,
   getScheduleComponentLabel,
   getScheduleStrings,
   minutes,
-} from "./constants";
+} from "./strings";
 import type { UpdateSchedule } from "./types";
-import { getLongestSelectLabel, measureTextWidthSafely } from "./utils";
 
 export type SelectFrameProps = {
-  schedule: ScheduleSettings;
+  schedule_frame: ScheduleSettings["schedule_frame"];
   updateSchedule: UpdateSchedule;
   frames?: { label: string; value: ScheduleFrameType }[];
 };
@@ -52,7 +49,7 @@ export const SelectFrequency = ({
 
   const scheduleTypeOptions = useMemo(
     () =>
-      scheduleOptions.map(option => ({
+      scheduleOptions.map((option) => ({
         label: scheduleOptionNames[option] || capitalize(option),
         value: option,
       })),
@@ -75,14 +72,14 @@ export const SelectFrequency = ({
 };
 
 export const SelectFrame = ({
-  schedule,
+  schedule_frame,
   updateSchedule,
   frames = getScheduleStrings().frames,
 }: SelectFrameProps) => {
   const label = useMemo(() => getScheduleComponentLabel("frame"), []);
   return (
     <AutoWidthSelect
-      value={schedule.schedule_frame ?? "first"}
+      value={schedule_frame ?? "first"}
       onChange={(value: ScheduleFrameType) =>
         updateSchedule("schedule_frame", value)
       }
@@ -94,21 +91,21 @@ export const SelectFrame = ({
 };
 
 export const SelectTime = ({
-  schedule,
+  schedule_hour,
   updateSchedule,
   timezone,
 }: {
-  schedule: ScheduleSettings;
+  schedule_hour: ScheduleSettings["schedule_hour"];
   updateSchedule: UpdateSchedule;
   timezone?: string | null;
 }) => {
   const { amAndPM } = getScheduleStrings();
   const isClock12Hour = !has24HourModeSetting();
   const hourIn24HourFormat =
-    schedule.schedule_hour !== undefined &&
-    schedule.schedule_hour !== null &&
-    !isNaN(schedule.schedule_hour)
-      ? schedule.schedule_hour
+    schedule_hour !== undefined &&
+    schedule_hour !== null &&
+    !isNaN(schedule_hour)
+      ? schedule_hour
       : defaultHour;
   const hour = isClock12Hour
     ? hourToTwelveHourFormat(hourIn24HourFormat)
@@ -140,9 +137,10 @@ export const SelectTime = ({
       <Group gap="sm">
         {isClock12Hour && (
           <SegmentedControl
+            lh="1rem"
             radius="sm"
             value={amPm.toString()}
-            onChange={value =>
+            onChange={(value) =>
               updateSchedule(
                 "schedule_hour",
                 hourTo24HourFormat(hour, parseInt(value)),
@@ -156,6 +154,7 @@ export const SelectTime = ({
         {timezone && (
           <Tooltip label={timezoneTooltipText}>
             <Box
+              role="note"
               aria-label={timezoneTooltipText}
               tabIndex={0} // Ensure tooltip can be triggered by the keyboard
             >
@@ -169,19 +168,19 @@ export const SelectTime = ({
 };
 
 export type SelectWeekdayProps = {
-  schedule: ScheduleSettings;
+  schedule_day: ScheduleSettings["schedule_day"];
   updateSchedule: UpdateSchedule;
 };
 
 export const SelectWeekday = ({
-  schedule,
+  schedule_day,
   updateSchedule,
 }: SelectWeekdayProps) => {
   const { weekdays } = getScheduleStrings();
   const label = useMemo(() => getScheduleComponentLabel("weekday"), []);
   return (
     <AutoWidthSelect<ScheduleDayType>
-      value={schedule.schedule_day ?? "sun"}
+      value={schedule_day ?? "sun"}
       onChange={(value: ScheduleDayType) =>
         updateSchedule("schedule_day", value)
       }
@@ -193,7 +192,7 @@ export const SelectWeekday = ({
 };
 
 export type SelectWeekdayOfMonthProps = {
-  schedule: ScheduleSettings;
+  schedule_day: ScheduleSettings["schedule_day"];
   updateSchedule: UpdateSchedule;
   weekdayOfMonthOptions?: (
     | Weekday
@@ -205,14 +204,14 @@ export type SelectWeekdayOfMonthProps = {
   (The SelectFrame component offers a choice between 'first', '15th' and 'last'.
   This component offers a choice of weekday.) */
 export const SelectWeekdayOfMonth = ({
-  schedule,
+  schedule_day,
   updateSchedule,
   weekdayOfMonthOptions = getScheduleStrings().weekdayOfMonthOptions,
 }: SelectWeekdayOfMonthProps) => {
   const label = useMemo(() => getScheduleComponentLabel("weekdayOfMonth"), []);
   return (
     <AutoWidthSelect
-      value={schedule.schedule_day || "calendar-day"}
+      value={schedule_day || "calendar-day"}
       onChange={(value: ScheduleDayType | "calendar-day") =>
         updateSchedule("schedule_day", value === "calendar-day" ? null : value)
       }
@@ -224,63 +223,25 @@ export const SelectWeekdayOfMonth = ({
 };
 
 export const SelectMinute = ({
-  schedule,
+  schedule_minute,
   updateSchedule,
+  range = minutes,
 }: {
-  schedule: ScheduleSettings;
+  schedule_minute: ScheduleSettings["schedule_minute"];
   updateSchedule: UpdateSchedule;
+  range?: typeof minutes;
 }) => {
-  const minuteOfHour = isNaN(schedule.schedule_minute as number)
-    ? 0
-    : schedule.schedule_minute;
+  const minuteOfHour = isNaN(schedule_minute as number) ? 0 : schedule_minute;
   const label = useMemo(() => getScheduleComponentLabel("minute"), []);
   return (
     <AutoWidthSelect
       value={(minuteOfHour || 0).toString()}
-      data={minutes}
+      data={range}
       onChange={(value: string) =>
         updateSchedule("schedule_minute", Number(value))
       }
       aria-label={label}
       data-testid="select-minute"
-    />
-  );
-};
-
-export const AutoWidthSelect = <Value extends string>({
-  style,
-  value,
-  ...props
-}: { style?: Partial<FontStyle>; value: Value } & SelectProps<Value>) => {
-  const fontFamily = useSelector(state =>
-    getSetting(state, "application-font"),
-  );
-  const maxWidth = useMemo(() => {
-    const longestLabel = getLongestSelectLabel(props.data);
-    const maxWidth = `${
-      measureTextWidthSafely(longestLabel, 50, {
-        family: fontFamily,
-        ...style,
-      }) + 60
-    }px`;
-    return maxWidth;
-  }, [props.data, style, fontFamily]);
-  return (
-    <Select
-      miw="5rem"
-      w={maxWidth}
-      styles={{
-        wrapper: {
-          paddingInlineEnd: 0,
-          marginTop: 0,
-        },
-        label: {
-          marginBottom: 0,
-        },
-        input: { paddingInlineEnd: 0, lineHeight: "2.5rem" },
-      }}
-      value={value}
-      {...props}
     />
   );
 };

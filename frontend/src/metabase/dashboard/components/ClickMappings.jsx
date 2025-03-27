@@ -33,12 +33,12 @@ class ClickMappings extends Component {
     };
 
     const unsetTargetsWithSourceOptions = _.chain(unsetTargets)
-      .map(target => ({
+      .map((target) => ({
         target,
         sourceOptions: _.chain(sourceOptions)
           .mapObject((sources, sourceType) =>
             sources
-              .filter(source => {
+              .filter((source) => {
                 const sourceFilter = target.sourceFilters[sourceType];
 
                 return sourceFilter(source, question);
@@ -63,7 +63,7 @@ class ClickMappings extends Component {
     return (
       <div data-testid="click-mappings">
         <div>
-          {setTargets.map(target => {
+          {setTargets.map((target) => {
             return (
               <TargetWithSource
                 key={target.id}
@@ -143,9 +143,9 @@ export const ClickMappingsConnected = _.compose(
       const parametersUsedAsSources = Object.values(
         clickBehavior.parameterMapping || {},
       )
-        .filter(mapping => getIn(mapping, ["source", "type"]) === "parameter")
-        .map(mapping => mapping.source.id);
-      parameters = parameters.filter(p => {
+        .filter((mapping) => getIn(mapping, ["source", "type"]) === "parameter")
+        .map((mapping) => mapping.source.id);
+      parameters = parameters.filter((p) => {
         return parametersUsedAsSources.includes(p.id);
       });
     }
@@ -159,7 +159,7 @@ export const ClickMappingsConnected = _.compose(
     );
 
     const availableColumns =
-      Object.values(dashcardData).flatMap(dataset => dataset.data.cols) ?? [];
+      Object.values(dashcardData).flatMap((dataset) => dataset.data.cols) ?? [];
 
     const sourceOptions = {
       column: availableColumns.filter(isMappableColumn),
@@ -169,11 +169,11 @@ export const ClickMappingsConnected = _.compose(
   }),
 )(ClickMappings);
 
-const getKeyForSource = o => (o.type == null ? null : `${o.type}-${o.id}`);
+const getKeyForSource = (o) => (o.type == null ? null : `${o.type}-${o.id}`);
 const getSourceOption = {
-  column: c => ({ type: "column", id: c.name, name: c.display_name }),
-  parameter: p => ({ type: "parameter", id: p.id, name: p.name }),
-  userAttribute: name => ({ type: "userAttribute", name, id: name }),
+  column: (c) => ({ type: "column", id: c.name, name: c.display_name }),
+  parameter: (p) => ({ type: "parameter", id: p.id, name: p.name }),
+  userAttribute: (name) => ({ type: "userAttribute", name, id: name }),
 };
 
 function TargetWithoutSource({
@@ -209,13 +209,13 @@ function TargetWithoutSource({
         items,
       }))}
       optionValueFn={getKeyForSource}
-      optionNameFn={o => (o.type == null ? t`None` : o.name)}
+      optionNameFn={(o) => (o.type == null ? t`None` : o.name)}
       onChange={({ target: { value } }) => {
         updateSettings(
           assocIn(clickBehavior, ["parameterMapping", id], {
             source: Object.values(sourceOptions)
               .flat()
-              .find(o => getKeyForSource(o) === value),
+              .find((o) => getKeyForSource(o) === value),
             target: target.target,
             id,
             type,
@@ -307,7 +307,7 @@ function TargetWithSource({
  * @deprecated HOCs are deprecated
  */
 function loadQuestionMetadata(getQuestion) {
-  return ComposedComponent => {
+  return (ComposedComponent) => {
     class MetadataLoader extends Component {
       componentDidMount() {
         if (this.props.question) {

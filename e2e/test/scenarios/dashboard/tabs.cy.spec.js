@@ -116,7 +116,7 @@ describe("scenarios > dashboard > tabs", () => {
           ],
         }),
       ],
-    }).then(dashboard => H.visitDashboard(dashboard.id));
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
 
     assertFiltersVisibility({
       visible: [DASHBOARD_DATE_FILTER, DASHBOARD_TEXT_FILTER],
@@ -205,14 +205,14 @@ describe("scenarios > dashboard > tabs", () => {
       cy.log("should stay on the same tab");
       cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
 
-      H.getDashboardCard(0).then(element => {
+      H.getDashboardCard(0).then((element) => {
         cy.wrap({
           width: element.outerWidth(),
           height: element.outerHeight(),
         }).as("card1OriginalSize");
       });
 
-      H.getDashboardCard(1).then(element => {
+      H.getDashboardCard(1).then((element) => {
         cy.wrap(element.offset()).as("card2OriginalPosition");
       });
 
@@ -238,8 +238,8 @@ describe("scenarios > dashboard > tabs", () => {
 
       cy.log("size should stay the same");
 
-      H.getDashboardCard(1).then(element => {
-        cy.get("@card1OriginalSize").then(originalSize => {
+      H.getDashboardCard(1).then((element) => {
+        cy.get("@card1OriginalSize").then((originalSize) => {
           expect({
             width: element.outerWidth(),
             height: element.outerHeight(),
@@ -257,8 +257,8 @@ describe("scenarios > dashboard > tabs", () => {
 
       cy.log("second card should be in the original position");
 
-      H.getDashboardCard().then(element => {
-        cy.get("@card2OriginalPosition").then(originalPosition => {
+      H.getDashboardCard().then((element) => {
+        cy.get("@card2OriginalPosition").then((originalPosition) => {
           const position = element.offset();
           // approximately to avoid possibly flakiness, we just want it to be in the same grid cell
           expect(position.left).to.approximately(originalPosition.left, 10);
@@ -397,7 +397,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.spy().as("firstTabQuerySpy"),
     ).as("firstTabQuery");
 
-    cy.get("@secondTabDashcardId").then(secondTabDashcardId => {
+    cy.get("@secondTabDashcardId").then((secondTabDashcardId) => {
       cy.intercept(
         "POST",
         `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/${secondTabDashcardId}/card/${ORDERS_COUNT_QUESTION_ID}/query`,
@@ -414,10 +414,10 @@ describe("scenarios > dashboard > tabs", () => {
         .its("body");
     };
 
-    firstQuestion().then(r => {
+    firstQuestion().then((r) => {
       cy.wrap(r.view_count).should("equal", 1);
     });
-    secondQuestion().then(r => {
+    secondQuestion().then((r) => {
       cy.wrap(r.view_count).should("equal", 1);
     });
 
@@ -426,11 +426,11 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("not.have.been.called");
-    cy.wait("@firstTabQuery").then(r => {
-      firstQuestion().then(r => {
+    cy.wait("@firstTabQuery").then((r) => {
+      firstQuestion().then((r) => {
         expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (firstTabQuery)
       });
-      secondQuestion().then(r => {
+      secondQuestion().then((r) => {
         expect(r.view_count).to.equal(2); // 1 (previously) + 1 (secondQuestion)
       });
     });
@@ -439,11 +439,11 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 2");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@secondTabQuery").then(r => {
-      firstQuestion().then(r => {
+    cy.wait("@secondTabQuery").then((r) => {
+      firstQuestion().then((r) => {
         expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
       });
-      secondQuestion().then(r => {
+      secondQuestion().then((r) => {
         expect(r.view_count).to.equal(4); // 2 (previously) + 1 (secondQuestion) + 1 (secondTabQuery)
       });
     });
@@ -454,10 +454,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
 
-    firstQuestion().then(r => {
+    firstQuestion().then((r) => {
       expect(r.view_count).to.equal(5); // 4 (previously) + 1 (firstQuestion)
     });
-    secondQuestion().then(r => {
+    secondQuestion().then((r) => {
       expect(r.view_count).to.equal(5); // 4 (previously) + 1 (secondQuestion)
     });
 
@@ -472,7 +472,7 @@ describe("scenarios > dashboard > tabs", () => {
         `/api/public/dashboard/${uuid}/dashcard/${ORDERS_DASHBOARD_DASHCARD_ID}/card/${ORDERS_QUESTION_ID}?parameters=%5B%5D`,
         cy.spy().as("publicFirstTabQuerySpy"),
       ).as("publicFirstTabQuery");
-      cy.get("@secondTabDashcardId").then(secondTabDashcardId => {
+      cy.get("@secondTabDashcardId").then((secondTabDashcardId) => {
         cy.intercept(
           "GET",
           `/api/public/dashboard/${uuid}/dashcard/${secondTabDashcardId}/card/${ORDERS_COUNT_QUESTION_ID}?parameters=%5B%5D`,
@@ -486,11 +486,11 @@ describe("scenarios > dashboard > tabs", () => {
     // Check first tab requests
     cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuerySpy").should("not.have.been.called");
-    cy.wait("@publicFirstTabQuery").then(r => {
-      firstQuestion().then(r => {
+    cy.wait("@publicFirstTabQuery").then((r) => {
+      firstQuestion().then((r) => {
         expect(r.view_count).to.equal(7); // 5 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
       });
-      secondQuestion().then(r => {
+      secondQuestion().then((r) => {
         expect(r.view_count).to.equal(6); // 5 (previously) + 1 (secondQuestion)
       });
     });
@@ -499,11 +499,11 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 2");
     cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
     cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@publicSecondTabQuery").then(r => {
-      firstQuestion().then(r => {
+    cy.wait("@publicSecondTabQuery").then((r) => {
+      firstQuestion().then((r) => {
         expect(r.view_count).to.equal(8); // 7 (previously) + 1 (firstQuestion)
       });
-      secondQuestion().then(r => {
+      secondQuestion().then((r) => {
         expect(r.view_count).to.equal(8); // 6 (previously) + 1 (secondQuestion) + 1 (publicSecondTabQuery)
       });
     });
@@ -512,11 +512,11 @@ describe("scenarios > dashboard > tabs", () => {
     // This is a bug. publicFirstTabQuery should not be called again
     cy.get("@publicFirstTabQuerySpy").should("have.been.calledTwice");
     cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@publicFirstTabQuery").then(r => {
-      firstQuestion().then(r => {
+    cy.wait("@publicFirstTabQuery").then((r) => {
+      firstQuestion().then((r) => {
         expect(r.view_count).to.equal(10); // 8 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
       });
-      secondQuestion().then(r => {
+      secondQuestion().then((r) => {
         expect(r.view_count).to.equal(9); // 8 (previously) + 1 (secondQuestion)
       });
     });
@@ -552,10 +552,10 @@ describe("scenarios > dashboard > tabs", () => {
         .its("body");
     };
 
-    firstQuestion().then(r => {
+    firstQuestion().then((r) => {
       expect(r.view_count).to.equal(1); // 1 (firstQuestion)
     });
-    secondQuestion().then(r => {
+    secondQuestion().then((r) => {
       expect(r.view_count).to.equal(1); // 1 (secondQuestion)
     });
 
@@ -582,11 +582,11 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("not.have.been.called");
 
-    cy.wait("@firstTabQuery").then(r => {
-      firstQuestion().then(r => {
+    cy.wait("@firstTabQuery").then((r) => {
+      firstQuestion().then((r) => {
         expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (first tab query)
       });
-      secondQuestion().then(r => {
+      secondQuestion().then((r) => {
         expect(r.view_count).to.equal(2); // 1 (previously) + 1 (secondQuestion)
       });
     });
@@ -594,11 +594,11 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 2");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@secondTabQuery").then(r => {
-      firstQuestion().then(r => {
+    cy.wait("@secondTabQuery").then((r) => {
+      firstQuestion().then((r) => {
         expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
       });
-      secondQuestion().then(r => {
+      secondQuestion().then((r) => {
         expect(r.view_count).to.equal(4); // 2 (previously) + 1 (secondQuestion) + 1 (second tab query)
       });
     });
@@ -607,11 +607,11 @@ describe("scenarios > dashboard > tabs", () => {
     // This is a bug. firstTabQuery should not be called again
     cy.get("@firstTabQuerySpy").should("have.been.calledTwice");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@firstTabQuery").then(r => {
-      firstQuestion().then(r => {
+    cy.wait("@firstTabQuery").then((r) => {
+      firstQuestion().then((r) => {
         expect(r.view_count).to.equal(6); // 4 (previously) + 1 (firstQuestion) + 1 (first tab query)
       });
-      secondQuestion().then(r => {
+      secondQuestion().then((r) => {
         expect(r.view_count).to.equal(5); // 4 (previously) + 1 (secondQuestion)
       });
     });
@@ -648,7 +648,7 @@ describe("scenarios > dashboard > tabs", () => {
     H.getDashboardCard(0).within(() => {
       cy.findByTestId("loading-indicator").should("exist");
       cy.wait("@saveCard");
-      cy.findAllByTestId("table-row").should("exist");
+      cy.findAllByRole("row").should("exist");
     });
 
     // we do not auto-wire automatically in different tabs anymore, so first tab
@@ -656,7 +656,7 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 1");
     H.getDashboardCard(0).within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findAllByTestId("table-row").should("exist");
+      cy.findAllByRole("row").should("exist");
     });
   });
 
@@ -809,7 +809,7 @@ H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
  */
 function delayResponse(delayMs) {
   return function (req) {
-    req.on("response", res => {
+    req.on("response", (res) => {
       res.setDelay(delayMs);
     });
   };
@@ -858,14 +858,14 @@ const createNumberFilterMapping = ({ card_id }) => {
 
 function assertFiltersVisibility({ visible = [], hidden = [] }) {
   cy.findByTestId("dashboard-parameters-widget-container", () => {
-    visible.forEach(filter => cy.findByText(filter.name).should("exist"));
-    hidden.forEach(filter => cy.findByText(filter.name).should("not.exist"));
+    visible.forEach((filter) => cy.findByText(filter.name).should("exist"));
+    hidden.forEach((filter) => cy.findByText(filter.name).should("not.exist"));
   });
 
   // Ensure all filters are visible in edit mode
   H.editDashboard();
   cy.findByTestId("edit-dashboard-parameters-widget-container", () => {
-    [...visible, ...hidden].forEach(filter =>
+    [...visible, ...hidden].forEach((filter) =>
       cy.findByText(filter.name).should("exist"),
     );
   });

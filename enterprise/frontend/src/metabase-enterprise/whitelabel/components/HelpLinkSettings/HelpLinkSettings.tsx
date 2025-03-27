@@ -43,7 +43,7 @@ export const HelpLinkSettings = ({
   const handleChange = async (value: string) => {
     if (value === "") {
       setError(t`This field can't be left empty.`);
-    } else if (!supportedPrefixes.some(prefix => value.startsWith(prefix))) {
+    } else if (!supportedPrefixes.some((prefix) => value.startsWith(prefix))) {
       setError(t`This needs to be an "http://", "https://" or "mailto:" URL.`);
     } else {
       setError("");
@@ -83,7 +83,7 @@ export const HelpLinkSettings = ({
             onChange={() => setError(null)}
             aria-label={t`Help link custom destination`}
             placeholder={t`Enter a URL it should go to`}
-            onBlurChange={e => handleChange(e.target.value)}
+            onBlurChange={(e) => handleChange(e.target.value)}
           />
         </Stack>
       )}

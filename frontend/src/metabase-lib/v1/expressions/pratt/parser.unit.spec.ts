@@ -180,47 +180,53 @@ describe("pratt/parser", () => {
   });
 
   describe("(in aggregation mode)", () => {
-    it("should accept an aggregration with COUNT", () => {
+    it("should accept an aggregation with COUNT", () => {
       expect(() => parseAggregation("Count()")).not.toThrow();
     });
 
-    it("should accept an aggregration with SUM", () => {
+    it("should accept an aggregation with SUM", () => {
       expect(() => parseAggregation("Sum([Price])")).not.toThrow();
     });
 
-    it("should accept an aggregration with DISTINCT", () => {
+    it("should accept an aggregation with DISTINCT", () => {
       expect(() => parseAggregation("Distinct([Supplier])")).not.toThrow();
     });
 
-    it("should accept an aggregration with STANDARDDEVIATION", () => {
+    it("should accept an aggregation with STANDARDDEVIATION", () => {
       expect(() => parseAggregation("StandardDeviation([Debt])")).not.toThrow();
     });
 
-    it("should accept an aggregration with AVERAGE", () => {
+    it("should accept an aggregation with AVERAGE", () => {
       expect(() => parseAggregation("Average([Height])")).not.toThrow();
     });
 
-    it("should accept an aggregration with MAX", () => {
+    it("should accept an aggregation with MAX", () => {
       expect(() => parseAggregation("Max([Discount])")).not.toThrow();
     });
 
-    it("should accept an aggregration with MIN", () => {
+    it("should accept an aggregation with MIN", () => {
       expect(() => parseAggregation("Min([Rating])")).not.toThrow();
     });
 
-    it("should accept an aggregration with MEDIAN", () => {
+    it("should accept an aggregation with MEDIAN", () => {
       expect(() => parseAggregation("Median([Total])")).not.toThrow();
     });
 
-    it("should accept an aggregration with VAR", () => {
+    it("should accept an aggregation with VAR", () => {
       expect(() => parseAggregation("Variance([Tax])")).not.toThrow();
     });
 
-    it("should accept a conditional aggregration with COUNTIF", () => {
+    it("should accept a conditional aggregation with COUNTIF", () => {
       expect(() => parseAggregation("CountIf([Discount] > 0)")).not.toThrow();
     });
 
-    it("should accept a conditional aggregration with COUNTIF containing an expression", () => {
+    it("should accept a conditional aggregation with DistinctIf", () => {
+      expect(() =>
+        parseAggregation("DistinctIf([Rating], [Discount] > 0)"),
+      ).not.toThrow();
+    });
+
+    it("should accept a conditional aggregation with COUNTIF containing an expression", () => {
       expect(() => parseAggregation("CountIf(([A]+[B]) > 1)")).not.toThrow();
       expect(() =>
         parseAggregation("CountIf( 1.2 * [Price] > 37)"),

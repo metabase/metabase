@@ -36,14 +36,14 @@ export const useVirtualGrid = <TData,>({
   const visibleColumns = table.getVisibleLeafColumns();
 
   const pinnedColumnsIndices = useMemo(
-    () => table.getLeftVisibleLeafColumns().map(c => c.getPinnedIndex()),
+    () => table.getLeftVisibleLeafColumns().map((c) => c.getPinnedIndex()),
     [table],
   );
 
   const columnVirtualizer = useVirtualizer({
     count: visibleColumns.length,
     getScrollElement: () => gridRef.current,
-    estimateSize: index => {
+    estimateSize: (index) => {
       const column = visibleColumns[index];
       const size = visibleColumns[index].getSize();
       const actualSize = table.getState().columnSizing[column.id];
@@ -68,8 +68,8 @@ export const useVirtualGrid = <TData,>({
     getScrollElement: () => gridRef.current,
     estimateSize: () => defaultRowHeight,
     overscan: 3,
-    measureElement: element => {
-      const rowIndexRaw = element?.getAttribute("data-index");
+    measureElement: (element) => {
+      const rowIndexRaw = element?.getAttribute("data-dataset-index");
       const rowIndex = rowIndexRaw != null ? parseInt(rowIndexRaw, 10) : null;
       if (rowIndex == null || !isFinite(rowIndex)) {
         return defaultRowHeight;
@@ -80,7 +80,7 @@ export const useVirtualGrid = <TData,>({
   });
 
   const measureGrid = useCallback(() => {
-    Array.from(rowVirtualizer.elementsCache.values()).forEach(el =>
+    Array.from(rowVirtualizer.elementsCache.values()).forEach((el) =>
       rowVirtualizer.measureElement(el),
     );
     columnVirtualizer.measure();

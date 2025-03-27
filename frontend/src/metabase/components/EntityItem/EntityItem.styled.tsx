@@ -28,14 +28,16 @@ const getItemPadding = (variant?: string) => {
   }
 };
 
-export const EntityIconWrapper = styled(IconButtonWrapper)<{
+export const EntityIconWrapper = styled(IconButtonWrapper, {
+  shouldForwardProp: (prop) => prop !== "isPinned",
+})<{
   isPinned?: boolean;
   disabled?: boolean;
 }>`
   background-color: transparent;
   padding: 12px;
-  cursor: ${props => (props.disabled ? "default" : "pointer")};
-  color: ${props =>
+  cursor: ${(props) => (props.disabled ? "default" : "pointer")};
+  color: ${(props) =>
     props.isPinned
       ? getPinnedForeground(!!props.disabled)
       : getForeground("", !!props.disabled)};
@@ -47,12 +49,13 @@ export const EntityItemWrapper = styled.div<{
 }>`
   display: flex;
   align-items: center;
-  padding: ${props => getItemPadding(props.variant)};
-  color: ${props =>
+  padding: ${(props) => getItemPadding(props.variant)};
+  color: ${(props) =>
     props.disabled ? color("text-medium") : color("text-dark")};
 
   &:hover {
-    color: ${props => (props.disabled ? color("text-medium") : color("brand"))};
+    color: ${(props) =>
+      props.disabled ? color("text-medium") : color("brand")};
   }
 `;
 

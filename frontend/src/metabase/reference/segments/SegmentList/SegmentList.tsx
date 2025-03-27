@@ -31,9 +31,9 @@ export function SegmentList({ style }: SegmentListProps) {
   const entities = useSelector(getSegments);
   const loading = useSelector(getLoading);
   const loadingError = useSelector(getError);
-  const adminLink = useSelector(state =>
+  const adminLink = useSelector((state) =>
     getDocsUrl(state, {
-      page: "data-modeling/segments-and-metrics",
+      page: "data-modeling/segments",
       anchor: "creating-a-segment",
     }),
   );
@@ -50,7 +50,7 @@ export function SegmentList({ style }: SegmentListProps) {
             <div className={cx(CS.wrapper, CS.wrapperTrim)}>
               <List>
                 {Object.values(entities).map(
-                  entity =>
+                  (entity) =>
                     entity &&
                     entity.id &&
                     entity.name && (

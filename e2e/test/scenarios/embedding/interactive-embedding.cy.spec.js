@@ -248,9 +248,9 @@ describe("scenarios > embedding > full app", () => {
         H.popover().findByText("Orders").click();
 
         // Multi-stage data picker
-        cy.intercept("GET", "/api/search*", req => {
+        cy.intercept("GET", "/api/search*", (req) => {
           if (req.query.limit === "0") {
-            req.continue(res => {
+            req.continue((res) => {
               // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
               res.body.total = 100;
             });
@@ -340,8 +340,15 @@ describe("scenarios > embedding > full app", () => {
       },
     };
 
-    function startNewEmbeddingQuestion() {
-      H.visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
+    /**
+     * @param {object} option
+     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.searchParameters]
+     */
+    function startNewEmbeddingQuestion({ searchParameters } = {}) {
+      H.visitFullAppEmbeddingUrl({
+        url: "/",
+        qs: { new_button: true, ...searchParameters },
+      });
       cy.button("New").click();
       H.popover().findByText("Question").click();
     }
@@ -382,6 +389,33 @@ describe("scenarios > embedding > full app", () => {
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/card/*").as("getCard");
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
+    });
+
+    it('should respect "entity_types" search parameter (EMB-272)', () => {
+      cy.log("test default `entity_types`");
+      startNewEmbeddingQuestion();
+      H.popover().within(() => {
+        cy.findByRole("link", { name: "Reviews" }).should("be.visible");
+        cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      });
+
+      cy.log('test `entity_types=["table"]`');
+      startNewEmbeddingQuestion({
+        searchParameters: { entity_types: "table" },
+      });
+      H.popover().within(() => {
+        cy.findByRole("link", { name: "Reviews" }).should("be.visible");
+        cy.findByRole("link", { name: "Orders Model" }).should("not.exist");
+      });
+
+      cy.log('test `entity_types=["model"]`');
+      startNewEmbeddingQuestion({
+        searchParameters: { entity_types: "model" },
+      });
+      H.popover().within(() => {
+        cy.findByRole("link", { name: "Reviews" }).should("not.exist");
+        cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      });
     });
 
     describe("table", () => {
@@ -772,13 +806,20 @@ describe("scenarios > embedding > full app", () => {
       metric: "Metrics",
     };
 
+    /**
+     *
+     * @param {object} option
+     * @param {boolean} [option.isMultiStageDataPicker]
+     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.searchParameters]
+     */
     function startNewEmbeddingQuestion({
       isMultiStageDataPicker = false,
+      searchParameters,
     } = {}) {
       if (isMultiStageDataPicker) {
-        cy.intercept("GET", "/api/search*", req => {
+        cy.intercept("GET", "/api/search*", (req) => {
           if (req.query.limit === "0") {
-            req.continue(res => {
+            req.continue((res) => {
               // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
               res.body.total = 100;
             });
@@ -789,6 +830,7 @@ describe("scenarios > embedding > full app", () => {
         url: "/",
         qs: {
           new_button: true,
+          ...searchParameters,
         },
       });
       cy.button("New").click();
@@ -812,7 +854,7 @@ describe("scenarios > embedding > full app", () => {
     function selectCard({ cardName, cardType, collectionNames }) {
       H.popover().within(() => {
         cy.findByText(cardTypeToLabel[cardType]).click();
-        collectionNames.forEach(collectionName =>
+        collectionNames.forEach((collectionName) =>
           cy.findByText(collectionName).click(),
         );
         cy.findByText(cardName).click();
@@ -865,6 +907,24 @@ describe("scenarios > embedding > full app", () => {
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/card/*").as("getCard");
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
+    });
+
+    it('should respect "entity_types" search parameter (EMB-228)', () => {
+      cy.log('test `entity_types=["table"]`');
+      startNewEmbeddingQuestion({
+        isMultiStageDataPicker: true,
+        searchParameters: { entity_types: "table" },
+      });
+      H.popover().within(() => {
+        /**
+         * When we're in table step, it means we don't show models, otherwise, we would have shown
+         * the bucket step which has "Raw Data" and "Models" options instead.
+         */
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByRole("heading", { name: "Orders" }).should("be.visible");
+      });
+
+      // We don't have to test every permutations here because we already cover those cases in `EmbeddingDataPicker.unit.spec.tsx`
     });
 
     describe("table", () => {
@@ -1238,6 +1298,45 @@ describe("scenarios > embedding > full app", () => {
         });
       });
     });
+
+    describe('"entity_types" query parameter', () => {
+      it('should show only the provided "entity_types"', () => {
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
+          searchParameters: {
+            entity_types: "table",
+          },
+        });
+        H.popover().within(() => {
+          cy.findByText("Models").should("not.exist");
+          cy.findByText("Sample Database").should("be.visible");
+          cy.findByRole("option", { name: "Orders" }).should("be.visible");
+        });
+      });
+
+      it('should show models and tables as a default value when not providing "entity_types"', () => {
+        cy.log("Test providing `entity_types` as an empty string");
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
+          searchParameters: {
+            entity_types: "",
+          },
+        });
+        H.popover().within(() => {
+          cy.findByText("Models").should("be.visible");
+          cy.findByText("Raw Data").should("be.visible");
+        });
+
+        cy.log("Test not providing `entity_types`");
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
+        });
+        H.popover().within(() => {
+          cy.findByText("Models").should("be.visible");
+          cy.findByText("Raw Data").should("be.visible");
+        });
+      });
+    });
   });
 
   describe("dashboards", () => {
@@ -1256,9 +1355,9 @@ describe("scenarios > embedding > full app", () => {
       cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
         "not.exist",
       );
-      H.dashboardGrid()
-        .findByText(/Rows 1-\d of first 2000/)
-        .should("be.visible");
+      H.dashboardGrid().within(() => {
+        H.assertTableRowsCount(2000);
+      });
     });
 
     it("should hide the dashboard with multiple tabs header by a param and allow selecting tabs (metabase#38429, metabase#39002)", () => {
@@ -1277,7 +1376,7 @@ describe("scenarios > embedding > full app", () => {
             size_y: 8,
           }),
         ],
-      }).then(dashboard => {
+      }).then((dashboard) => {
         visitDashboardUrl({
           url: `/dashboard/${dashboard.id}`,
           qs: { header: false },
@@ -1286,9 +1385,9 @@ describe("scenarios > embedding > full app", () => {
       cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
         "not.exist",
       );
-      H.dashboardGrid()
-        .findByText(/Rows 1-\d of first 2000/)
-        .should("be.visible");
+      H.dashboardGrid().within(() => {
+        H.assertTableRowsCount(2000);
+      });
       H.goToTab(SECOND_TAB.name);
       cy.findByTestId("dashboard-empty-state").should("be.visible");
     });
@@ -1319,7 +1418,7 @@ describe("scenarios > embedding > full app", () => {
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
       });
 
-      cy.findAllByRole("cell").first().click();
+      cy.findAllByRole("gridcell").first().click();
       cy.wait("@getCardQuery");
 
       // I don't know why this test starts to fail, but this command
@@ -1402,7 +1501,7 @@ describe("scenarios > embedding > full app", () => {
         .findByText("I am a very long text card")
         .should("not.be.visible");
       cy.findByTestId("dashboard-parameters-widget-container").then(
-        $dashboardParameters => {
+        ($dashboardParameters) => {
           const dashboardParametersRect =
             $dashboardParameters[0].getBoundingClientRect();
           expect(dashboardParametersRect.x).to.equal(0);
@@ -1424,7 +1523,7 @@ describe("scenarios > embedding > full app", () => {
             text: "I am a text card",
           }),
         ],
-      }).then(dashboard => {
+      }).then((dashboard) => {
         H.visitFullAppEmbeddingUrl({
           url: `/dashboard/${dashboard.id}`,
           onBeforeLoad(window) {
@@ -1439,7 +1538,7 @@ describe("scenarios > embedding > full app", () => {
           type: "frame",
           frame: {
             mode: "fit",
-            height: Cypress.sinon.match(value => value > 1000),
+            height: Cypress.sinon.match((value) => value > 1000),
           },
         },
       });
@@ -1451,7 +1550,7 @@ describe("scenarios > embedding > full app", () => {
           type: "frame",
           frame: {
             mode: "fit",
-            height: Cypress.sinon.match(value => value < 1000),
+            height: Cypress.sinon.match((value) => value < 1000),
           },
         },
       });
@@ -1475,8 +1574,8 @@ describe("scenarios > embedding > full app", () => {
 
     it("should allow downloading question results when logged in via Google SSO (metabase#39848)", () => {
       const CSRF_TOKEN = "abcdefgh";
-      cy.intercept("GET", "/api/user/current", req => {
-        req.on("response", res => {
+      cy.intercept("GET", "/api/user/current", (req) => {
+        req.on("response", (res) => {
           res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
         });
       });
@@ -1492,7 +1591,7 @@ describe("scenarios > embedding > full app", () => {
 
       H.exportFromDashcard(".csv");
 
-      cy.wait("@CsvDownload").then(interception => {
+      cy.wait("@CsvDownload").then((interception) => {
         expect(
           interception.request.headers["x-metabase-anti-csrf-token"],
         ).to.equal(CSRF_TOKEN);
@@ -1530,18 +1629,18 @@ describe("scenarios > embedding > full app", () => {
   });
 });
 
-const visitQuestionUrl = urlOptions => {
+const visitQuestionUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getCardQuery");
 };
 
-const visitDashboardUrl = urlOptions => {
+const visitDashboardUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
 };
 
-const visitXrayDashboardUrl = urlOptions => {
+const visitXrayDashboardUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getXrayDashboard");
 };
@@ -1549,7 +1648,7 @@ const visitXrayDashboardUrl = urlOptions => {
 const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
   cy.request("GET", `/api/dashboard/${dashboardId}`).then(({ body }) => {
     cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-      dashcards: body.dashcards.map(card => ({
+      dashcards: body.dashcards.map((card) => ({
         ...card,
         visualization_settings: {
           click_behavior: {
@@ -1567,7 +1666,7 @@ const sideNav = () => {
   return cy.findByTestId("main-navbar-root");
 };
 
-const selectDataSource = dataSource => {
+const selectDataSource = (dataSource) => {
   H.popover().findByRole("link", { name: dataSource }).click();
 };
 
@@ -1575,6 +1674,6 @@ const selectDataSource = dataSource => {
  *
  * @param {string} dataSource  When using with QA database, the first option would be the table from the QA database.
  */
-const selectFirstDataSource = dataSource => {
+const selectFirstDataSource = (dataSource) => {
   H.popover().findAllByRole("link", { name: dataSource }).first().click();
 };

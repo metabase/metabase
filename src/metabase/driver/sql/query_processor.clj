@@ -1060,6 +1060,12 @@
   [driver [_ pred]]
   [:/ (->honeysql driver [:count-where pred]) :%count.*])
 
+(defmethod ->honeysql [:sql :distinct-where]
+  [driver [_ arg pred]]
+  [::h2x/distinct-count
+   [:case
+    (->honeysql driver pred) (->honeysql driver arg)]])
+
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]
   [:trim (->honeysql driver arg)])
@@ -1461,7 +1467,7 @@
 
 (defmethod ->honeysql [:sql :=]
   [driver [_ field value]]
-  (assert field)
+  (assert (some? field))
   (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})

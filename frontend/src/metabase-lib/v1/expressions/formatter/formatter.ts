@@ -29,7 +29,12 @@ import {
   formatMetricName,
   formatSegmentName,
 } from "../identifier";
-import { isFunction, isOperator, isOptionsObject } from "../matchers";
+import {
+  type RawDimension,
+  isFunction,
+  isOperator,
+  isOptionsObject,
+} from "../matchers";
 import { formatStringLiteral } from "../string";
 
 import { pathMatchers as check } from "./utils";
@@ -52,10 +57,28 @@ export async function format(expression: Expression, options: FormatOptions) {
   });
 }
 
+export type FormatExampleOptions = {
+  printWidth?: number;
+  quotes?: typeof EDITOR_QUOTES;
+};
+
+export async function formatExample(
+  expression: Expression,
+  options: FormatExampleOptions = {},
+) {
+  return pformat(JSON.stringify(expression), {
+    parser: PRETTIER_PLUGIN_NAME,
+    plugins: [plugin(options)],
+    printWidth: options.printWidth ?? 80,
+  });
+}
+
 const PRETTIER_PLUGIN_NAME = "custom-expression";
 
 // Set up a prettier plugin that formats expressions
-function plugin(options: FormatOptions): Plugin<ExpressionNode> {
+function plugin(
+  options: FormatOptions | FormatExampleOptions,
+): Plugin<ExpressionNode> {
   return {
     languages: [
       {
@@ -116,6 +139,8 @@ function print(
     return formatBooleanLiteral(path.node);
   } else if (check.isStringLiteral(path)) {
     return formatStringLiteral(path.node, options.extra);
+  } else if (check.isValue(path)) {
+    return formatValue(path, print);
   } else if (check.isOperator(path)) {
     return formatOperator(path, print);
   } else if (check.isOffset(path)) {
@@ -130,6 +155,8 @@ function print(
     return formatSegment(path, options.extra);
   } else if (check.isCaseOrIf(path)) {
     return formatCaseOrIf(path, print);
+  } else if (check.isRawDimension(path)) {
+    return formatDimensionReference(path);
   } else if (check.isOptionsObject(path)) {
     return "";
   }
@@ -181,7 +208,7 @@ function formatMetric(path: AstPath<MetricAgg>, options: FormatOptions): Doc {
     throw new Error("`query` is a required parameter to format expressions");
   }
 
-  const metric = Lib.availableMetrics(query, stageIndex).find(metric => {
+  const metric = Lib.availableMetrics(query, stageIndex).find((metric) => {
     const [_type, availableMetricId] = Lib.legacyRef(query, stageIndex, metric);
     return availableMetricId === metricId;
   });
@@ -202,7 +229,7 @@ function formatSegment(path: AstPath<SegmentFilter>, options: FormatOptions) {
   }
 
   const [, segmentId] = path.node;
-  const segment = Lib.availableSegments(query, stageIndex).find(segment => {
+  const segment = Lib.availableSegments(query, stageIndex).find((segment) => {
     const [_type, availableSegmentId] = Lib.legacyRef(
       query,
       stageIndex,
@@ -291,6 +318,15 @@ function formatFunction(path: AstPath<CallExpression>, print: Print): Doc {
   }
 
   return formatCallExpression(name, args);
+}
+
+function formatValue(path: AstPath<CallExpression>, print: Print): Doc {
+  const { node } = path;
+  if (!Array.isArray(node)) {
+    throw new Error("Expected array");
+  }
+
+  return recurse(path, print, path.node[1]);
 }
 
 function formatOperator(path: AstPath<CallExpression>, print: Print): Doc {
@@ -473,4 +509,8 @@ function formatCallExpression(callee: string, args: Doc[]): Doc {
     softline,
     ")",
   ]);
+}
+
+function formatDimensionReference(path: AstPath<RawDimension>) {
+  return formatIdentifier(path.node[1]);
 }

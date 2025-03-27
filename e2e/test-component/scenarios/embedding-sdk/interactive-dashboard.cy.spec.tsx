@@ -78,7 +78,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   });
 
   it("should be able to display custom question layout when clicking on dashboard cards", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(
         <InteractiveDashboard
           dashboardId={dashboardId}
@@ -128,19 +128,16 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
       },
     ];
 
-    // Those tests are sometimes rendering 6 rows, sometimes 7 rows, we don't want this to be flaky
-    const rowsTextRegex = /Rows 1-[6,7] of first 2000/;
-
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
-        cy.get(dashboardIdAlias).then(dashboardId => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
           mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
         });
 
         getSdkRoot().within(() => {
           cy.findByText("Orders in a dashboard").should("be.visible");
           cy.findByText("Orders").should("be.visible");
-          cy.findByText(rowsTextRegex).should("be.visible");
+          H.assertTableRowsCount(2000);
           cy.findByText("Test text card").should("be.visible");
         });
       });
@@ -156,7 +153,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
 
           cy.findByText("Orders in a dashboard").should("not.exist");
           cy.findByText("Orders").should("not.exist");
-          cy.findByText(rowsTextRegex).should("not.exist");
+          H.tableInteractiveBody().should("not.exist");
           cy.findByText("Test text card").should("not.exist");
         });
       });
@@ -164,7 +161,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   });
 
   it('should drill dashboards with filter values and not showing "Question not found" error (EMB-84)', () => {
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
 
@@ -177,7 +174,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
      * This seems to be the only reliable way to force the error to stay, and we will resolve
      * the promise that will cause the error to go away manually after asserting that it's not there.
      */
-    cy.intercept("get", "/api/card/*", req => {
+    cy.intercept("get", "/api/card/*", (req) => {
       return promise.then(() => {
         req.continue();
       });

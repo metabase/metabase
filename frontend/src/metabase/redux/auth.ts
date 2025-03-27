@@ -7,21 +7,21 @@ const initialState = {
   redirect: true,
 };
 
-export const reducer = createReducer(initialState, builder => {
-  builder.addCase(login.pending, state => {
+export const reducer = createReducer(initialState, (builder) => {
+  builder.addCase(login.pending, (state) => {
     state.loginPending = true;
   });
-  builder.addCase(login.fulfilled, state => {
+  builder.addCase(login.fulfilled, (state) => {
     state.loginPending = false;
   });
 
-  builder.addCase(loginGoogle.pending, state => {
+  builder.addCase(loginGoogle.pending, (state) => {
     state.loginPending = true;
   });
-  builder.addCase(loginGoogle.fulfilled, state => {
+  builder.addCase(loginGoogle.fulfilled, (state) => {
     state.loginPending = false;
   });
-  builder.addCase(pauseRedirect.toString(), state => {
+  builder.addCase(pauseRedirect.toString(), (state) => {
     state.redirect = false;
   });
 });

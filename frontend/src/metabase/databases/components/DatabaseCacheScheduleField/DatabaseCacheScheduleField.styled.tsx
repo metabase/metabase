@@ -14,7 +14,7 @@ interface ScheduleOptionRootProps {
 
 export const ScheduleOptionRoot = styled.div<ScheduleOptionRootProps>`
   display: flex;
-  cursor: ${props => !props.isSelected && "pointer"};
+  cursor: ${(props) => !props.isSelected && "pointer"};
   padding: 1.5rem 1rem;
   border-bottom: 1px solid var(--mb-color-border);
 
@@ -34,7 +34,7 @@ export const ScheduleOptionIndicator = styled.div<ScheduleOptionIndicatorProps>`
   width: 1.125rem;
   height: 1.125rem;
   border: 0.125rem solid
-    ${props => (props.isSelected ? color("brand") : color("text-light"))};
+    ${(props) => (props.isSelected ? color("brand") : color("text-light"))};
   border-radius: 50%;
 `;
 
@@ -46,7 +46,7 @@ export const ScheduleOptionIndicatorBackground = styled.div<ScheduleOptionIndica
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
-  background-color: ${props => props.isSelected && color("brand")};
+  background-color: ${(props) => props.isSelected && color("brand")};
 `;
 
 export const ScheduleOptionBody = styled.div`
@@ -58,7 +58,8 @@ interface ScheduleOptionTitleProps {
 }
 
 export const ScheduleOptionTitle = styled.div<ScheduleOptionTitleProps>`
-  color: ${props => (props.isSelected ? color("brand") : color("text-medium"))};
+  color: ${(props) =>
+    props.isSelected ? color("brand") : color("text-medium")};
   font-size: 1rem;
   font-weight: bold;
   line-height: 1.25rem;

@@ -12,7 +12,7 @@ export const ItemTitle = styled(Text)<TextProps>`
 ` as unknown as typeof Text;
 
 export const ItemIcon = styled(Icon)<{ color?: string | null }>`
-  color: ${props => color(props.color ?? "text-light")};
+  color: ${(props) => color(props.color ?? "text-light")};
   justify-self: end;
 `;
 
@@ -37,7 +37,7 @@ export const BaseItemRoot = styled.li<{
   display: grid;
   align-items: center;
   cursor: pointer;
-  padding: ${props => VERTICAL_PADDING_BY_SIZE[props.size]} 0.5rem;
+  padding: ${(props) => VERTICAL_PADDING_BY_SIZE[props.size]} 0.5rem;
   border-radius: 6px;
   margin-bottom: 2px;
 
@@ -45,7 +45,7 @@ export const BaseItemRoot = styled.li<{
     margin-bottom: 0;
   }
 
-  ${props => props.isSelected && activeItemCss}
+  ${(props) => props.isSelected && activeItemCss}
 
   &:hover {
     ${activeItemCss}
@@ -62,7 +62,7 @@ export const ItemRoot = styled(BaseItemRoot)<{
   hasRightIcon: boolean;
 }>`
   display: grid;
-  grid-template-columns: ${props =>
+  grid-template-columns: ${(props) =>
     getGridTemplateColumns(props.hasLeftIcon, props.hasRightIcon)};
   gap: 0.5rem;
 `;

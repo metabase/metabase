@@ -98,6 +98,7 @@ export interface EntityPickerModalProps<
   isLoadingTabs?: boolean;
   searchExtraButtons?: ReactNode[];
   children?: ReactNode;
+  disableCloseOnEscape?: boolean;
 }
 
 export function EntityPickerModal<
@@ -122,6 +123,7 @@ export function EntityPickerModal<
   onConfirm,
   onItemSelect,
   isLoadingTabs = false,
+  disableCloseOnEscape = false,
   children,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -200,7 +202,7 @@ export function EntityPickerModal<
       return [];
     }
 
-    const relevantModelRecents = recentItems.filter(recentItem => {
+    const relevantModelRecents = recentItems.filter((recentItem) => {
       return searchModels.includes(recentItem.model);
     });
 
@@ -275,10 +277,10 @@ export function EntityPickerModal<
     (item: Item, tabId: EntityPickerTabId) => {
       if (tabId !== SEARCH_TAB_ID && tabId !== RECENTS_TAB_ID) {
         if (isSearchFolder(item, folderModels)) {
-          setTabFolderState(state => ({ ...state, [tabId]: item }));
+          setTabFolderState((state) => ({ ...state, [tabId]: item }));
           setSearchScope("folder");
         } else {
-          setTabFolderState(state => ({ ...state, [tabId]: undefined }));
+          setTabFolderState((state) => ({ ...state, [tabId]: undefined }));
           setSearchScope("everywhere");
         }
       }
@@ -332,13 +334,13 @@ export function EntityPickerModal<
 
   useWindowEvent(
     "keydown",
-    event => {
+    (event) => {
       if (event.key === "Escape") {
         event.stopPropagation();
-        onClose();
+        !disableCloseOnEscape && onClose();
       }
     },
-    { capture: true, once: true },
+    { capture: true },
   );
 
   const titleId = useUniqueId("entity-picker-modal-title-");
@@ -388,7 +390,7 @@ export function EntityPickerModal<
                 miw={400}
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
                 value={searchQuery}
-                onChange={e => handleQueryChange(e.target.value ?? "")}
+                onChange={(e) => handleQueryChange(e.target.value ?? "")}
               />
             </Box>
           )}
@@ -407,7 +409,7 @@ export function EntityPickerModal<
                   data-testid="single-picker-view"
                 >
                   {tabs[0]?.render({
-                    onItemSelect: item => handleSelectItem(item, tabs[0].id),
+                    onItemSelect: (item) => handleSelectItem(item, tabs[0].id),
                   }) ?? null}
                 </div>
               )}

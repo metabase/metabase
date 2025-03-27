@@ -93,13 +93,13 @@ describe("query validator", { tags: "@external" }, () => {
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
         ({ body: tables }) => {
           const scoreboardTable = tables.find(
-            table => table.name === SCOREBOARD_TABLE,
+            (table) => table.name === SCOREBOARD_TABLE,
           );
 
           cy.request(`/api/table/${scoreboardTable.id}/query_metadata`).then(
             ({ body: { fields } }) => {
               const teamNameField = fields.find(
-                field => field.name === "team_name",
+                (field) => field.name === "team_name",
               );
 
               H.createQuestion({
@@ -118,12 +118,14 @@ describe("query validator", { tags: "@external" }, () => {
 
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
         ({ body: tables }) => {
-          const colorsTable = tables.find(table => table.name === COLORS_TABLE);
+          const colorsTable = tables.find(
+            (table) => table.name === COLORS_TABLE,
+          );
 
           cy.request(`/api/table/${colorsTable.id}/query_metadata`).then(
             ({ body: { fields } }) => {
               const colorNameField = fields.find(
-                field => field.name === "name",
+                (field) => field.name === "name",
               );
 
               H.createQuestion({

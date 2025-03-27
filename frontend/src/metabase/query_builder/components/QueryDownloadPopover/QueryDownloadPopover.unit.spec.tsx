@@ -102,7 +102,7 @@ describe("QueryDownloadPopover", () => {
 
   it.each(["csv", "json", "xlsx"])(
     "should trigger unformatted download for %s format",
-    async format => {
+    async (format) => {
       const { onDownload } = setup();
 
       await userEvent.click(screen.getByLabelText(`.${format}`));
@@ -127,7 +127,7 @@ describe("QueryDownloadPopover", () => {
 
   it.each(["csv", "json", "xlsx"])(
     "should trigger formatted download for %s format",
-    async format => {
+    async (format) => {
       const { onDownload } = setup();
 
       await userEvent.click(screen.getByLabelText(`.${format}`));
@@ -170,7 +170,7 @@ describe("QueryDownloadPopover", () => {
 
   it.each(["csv", "xlsx"])(
     "allows configure pivoting for %s format",
-    async format => {
+    async (format) => {
       const { onDownload } = setup({
         card: {
           ...TEST_CARD,

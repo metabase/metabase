@@ -3,10 +3,7 @@ import { c, t } from "ttag";
 import { memoize } from "underscore";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
-import {
-  Cron,
-  getScheduleStrings,
-} from "metabase/components/Schedule/constants";
+import { Cron, getScheduleStrings } from "metabase/components/Schedule/strings";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import type {
@@ -27,9 +24,16 @@ import type { PerformanceTabId, StrategyData, StrategyLabel } from "./types";
 const AM = 0;
 const PM = 1;
 
+const everyToCronSyntax = (every: number | string) =>
+  `${Cron.EveryPrefix}${every}`;
+export const isRepeatingEvery = (every: string) =>
+  every.startsWith(Cron.EveryPrefix);
+export const cronUnitToNumber = (unit: string) =>
+  parseInt(unit.replace(Cron.EveryPrefix, ""));
+
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
   const { weekdays } = getScheduleStrings();
-  const index = weekdays.findIndex(o => o.value === day);
+  const index = weekdays.findIndex((o) => o.value === day);
   if (index === -1) {
     throw new Error(`Invalid day: ${day}`);
   }
@@ -49,7 +53,8 @@ const frameFromCron = (frameInCronFormat: string) =>
 
 export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
   const second = "0";
-  const minute = settings.schedule_minute?.toString() ?? Cron.AllValues;
+  const year = "*";
+  let minute = settings.schedule_minute?.toString() ?? Cron.AllValues;
   const hour = settings.schedule_hour?.toString() ?? Cron.AllValues;
   let weekday = settings.schedule_day
     ? dayToCron(settings.schedule_day).toString()
@@ -58,7 +63,9 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
   let dayOfMonth: string = settings.schedule_day
     ? Cron.NoSpecificValue
     : Cron.AllValues;
-  if (settings.schedule_type === "monthly" && settings.schedule_frame) {
+  if (settings.schedule_type === "every_n_minutes") {
+    minute = everyToCronSyntax(minute);
+  } else if (settings.schedule_type === "monthly" && settings.schedule_frame) {
     // There are two kinds of monthly schedule:
     // - weekday-based (e.g. "on the first Monday of the month")
     // - date-based (e.g. "on the 15th of the month")
@@ -82,6 +89,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
     dayOfMonth,
     month,
     weekday,
+    year,
   ].join(" ");
   return cronExpression;
 };
@@ -89,6 +97,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
 /** Returns null if we can't convert the cron expression to a ScheduleSettings object */
 export const cronToScheduleSettings_unmemoized = (
   cron: string | null | undefined,
+  isCustomSchedule: boolean = false,
 ): ScheduleSettings | null => {
   if (!cron) {
     return defaultSchedule;
@@ -105,13 +114,19 @@ export const cronToScheduleSettings_unmemoized = (
 
   const [_second, minute, hour, dayOfMonth, month, weekday] = cron.split(" ");
 
-  if (month !== Cron.AllValues) {
+  if (month !== Cron.AllValues && !isCustomSchedule) {
     return null;
   }
   let schedule_type: ScheduleType | undefined;
-  if (dayOfMonth === Cron.AllValues) {
+  if (isCustomSchedule) {
+    schedule_type = "cron";
+  } else if (dayOfMonth === Cron.AllValues) {
     if (weekday === Cron.AllValues) {
-      schedule_type = hour === Cron.AllValues ? "hourly" : "daily";
+      if (hour === Cron.AllValues) {
+        schedule_type = isRepeatingEvery(minute) ? "every_n_minutes" : "hourly";
+      } else {
+        schedule_type = "daily";
+      }
     } else {
       // If the weekday part of the cron expression is something like '1#1' (first Monday),
       // or '2L' (last Tuesday), then the frequency is monthly
@@ -156,8 +171,9 @@ export const cronToScheduleSettings_unmemoized = (
     }
   }
 
-  const scheduleMinute = minute === Cron.AllValues ? null : parseInt(minute);
-  const scheduleHour = hour === Cron.AllValues ? null : parseInt(hour);
+  const scheduleMinute =
+    minute === Cron.AllValues ? null : cronUnitToNumber(minute);
+  const scheduleHour = hour === Cron.AllValues ? null : cronUnitToNumber(hour);
   return {
     schedule_type,
     schedule_minute: scheduleMinute,
@@ -168,6 +184,7 @@ export const cronToScheduleSettings_unmemoized = (
 };
 export const cronToScheduleSettings = memoize(
   cronToScheduleSettings_unmemoized,
+  (cron, isCustomSchedule) => `${cron}_${isCustomSchedule}`,
 );
 
 const defaultSchedule: ScheduleSettings = {
@@ -198,7 +215,7 @@ export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
   typeof (error as { data: { message: any } }).data.message === "string";
 
 const delay = (milliseconds: number) =>
-  new Promise(resolve => setTimeout(resolve, milliseconds));
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 /** To prevent UI jumpiness, ensure a minimum delay before continuing.
  * An example of jumpiness: clicking a save button results in
@@ -241,12 +258,12 @@ export const getShortStrategyLabel = (
   const mainLabel = getLabelString(type.shortLabel ?? type.label, model);
   /** Part of the label shown after the colon */
   const subLabel = match(strategy)
-    .with({ type: "schedule" }, strategy =>
+    .with({ type: "schedule" }, (strategy) =>
       getFrequencyFromCron(strategy.schedule),
     )
     .with(
       { type: "duration" },
-      strategy =>
+      (strategy) =>
         c(
           "{0} is a number. Indicates a number of hours (the length of a cache)",
         ).t`${strategy.duration}h`,

@@ -96,12 +96,12 @@ export const NativeQueryEditorSidebar = (
       data-testid="native-query-editor-sidebar"
     >
       {canFormatQuery && (
-        <Tooltip label={t`Format query`}>
+        <Tooltip label={t`Auto-format`}>
           <Button
             className={NativeQueryEditorSidebarS.SidebarButton}
-            aria-label={t`Format query`}
+            aria-label={t`Auto-format`}
             onClick={onFormatQuery}
-            icon="document"
+            icon="format_code"
             iconSize={20}
             onlyIcon
           />
@@ -127,7 +127,6 @@ export const NativeQueryEditorSidebar = (
           isDirty={isResultDirty}
           onRun={runQuery}
           onCancel={cancelQuery}
-          compact
           getTooltip={getTooltip}
         />
       )}

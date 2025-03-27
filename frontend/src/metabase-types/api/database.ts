@@ -17,6 +17,7 @@ export type DatabaseFeature =
   | "basic-aggregations"
   | "binning"
   | "case-sensitivity-string-filter-options"
+  | "cast"
   | "convert-timezone"
   | "datetime-diff"
   | "dynamic-schema"
@@ -40,7 +41,9 @@ export type DatabaseFeature =
   | "connection-impersonation"
   | "connection-impersonation-requires-role"
   | "native-requires-specified-collection"
-  | "window-functions/offset";
+  | "window-functions/offset"
+  | "distinct-where"
+  | "split-part";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
