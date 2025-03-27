@@ -125,6 +125,22 @@
     (fn []
       @register!*)))
 
+(def ^:const max-bar-width
+  "Minibar max width in px"
+  70)
+
+(def ^:const font-size
+  "Font size in px"
+  12.5)
+
+(def ^:const td-x-padding-em
+  "Table cell x padding in em"
+  1)
+
+(def ^:const td-y-padding-em
+  "Table cell y padding in em"
+  0.75)
+
 (def ^:const mb-width
   "Minibar width in pixels"
   100)
