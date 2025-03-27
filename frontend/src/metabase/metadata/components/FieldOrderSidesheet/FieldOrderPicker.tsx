@@ -1,4 +1,4 @@
-import { match } from "ts-pattern";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -16,10 +16,10 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   onChange: (value: TableFieldOrder) => void;
 }
 
-const DATA = getData();
-
 export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
   const combobox = useCombobox();
+  const data = useMemo(() => getData(), []);
+  const label = data.find((option) => option.value === value)?.label;
 
   const handleChange = (value: TableFieldOrder) => {
     onChange(value);
@@ -36,7 +36,7 @@ export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
         store: combobox,
         width: 300,
       }}
-      data={DATA}
+      data={data}
       fw="bold"
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={t`Select a currency type`}
@@ -49,7 +49,7 @@ export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
             variant="subtle"
             onClick={() => combobox.toggleDropdown()}
           >
-            {getFieldOrderLabel(value)}
+            {label}
           </Button>
         </Combobox.Target>
       )}
@@ -61,28 +61,10 @@ export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
 };
 
 function getData() {
-  /**
-   * Using a Record, so that this gives compilation error when TableFieldOrder is extended,
-   * so that whoever changes that type does not forget to update this component.
-   */
-  const options: Record<TableFieldOrder, TableFieldOrder> = {
-    alphabetical: "alphabetical",
-    custom: "custom",
-    database: "database",
-    smart: "smart",
-  };
-
-  return Object.values(options).map((fieldOrder) => ({
-    label: getFieldOrderLabel(fieldOrder),
-    value: fieldOrder,
-  }));
-}
-
-function getFieldOrderLabel(fieldOrder: TableFieldOrder) {
-  return match(fieldOrder)
-    .with("alphabetical", () => t`Alphabetical`)
-    .with("custom", () => t`Custom`)
-    .with("database", () => t`Database`)
-    .with("smart", () => t`Smart`)
-    .exhaustive();
+  return [
+    { label: t`Database`, value: "database" as const },
+    { label: t`Alphabetical`, value: "alphabetical" as const },
+    { label: t`Custom`, value: "custom" as const },
+    { label: t`Smart`, value: "smart" as const },
+  ];
 }
