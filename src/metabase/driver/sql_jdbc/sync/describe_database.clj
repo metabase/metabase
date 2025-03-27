@@ -86,16 +86,25 @@
     (try
       (log/debug "have-select-privilege? sql-jdbc: Attempt to execute probe query")
       (execute-select-probe-query driver conn sql-args)
-      (log/debug "have-select-privilege? sql-jdbc: Probe query executed successfully, SELECT privileges confirmed")
+      (log/infof "%s: SELECT privileges confirmed"
+                 (str (when table-schema
+                        (str (pr-str table-schema) \.))
+                      (pr-str table-name)))
       true
       (catch java.sql.SQLTimeoutException _
-        (log/info "Assuming SELECT privileges: caught timeout exception")
+        (log/infof "%s: Assuming SELECT privileges: caught timeout exception"
+                   (str (when table-schema
+                          (str (pr-str table-schema) \.))
+                        (pr-str table-name)))
         (try (when-not (.getAutoCommit conn)
                (.rollback conn))
              (catch Throwable _))
         true)
       (catch Throwable e
-        (log/trace e "Assuming no SELECT privileges: caught exception")
+        (log/infof e "%s: Assuming no SELECT privileges: caught exception"
+                   (str (when table-schema
+                          (str (pr-str table-schema) \.))
+                        (pr-str table-name)))
         ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
         ;; affecting anything higher
         (try (when-not (.getAutoCommit conn)
