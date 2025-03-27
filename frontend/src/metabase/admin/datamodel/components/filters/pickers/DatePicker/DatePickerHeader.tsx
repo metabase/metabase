@@ -25,8 +25,8 @@ export default function DatePickerHeader({
   onBack,
 }: Props) {
   const [_op, _field] = filter;
-  const operator = _.find(operators, o => o.test(filter));
-  const tabs = operators.filter(o => o.group === operator?.group);
+  const operator = _.find(operators, (o) => o.test(filter));
+  const tabs = operators.filter((o) => o.group === operator?.group);
 
   if (operator?.name === "exclude") {
     return onBack ? (

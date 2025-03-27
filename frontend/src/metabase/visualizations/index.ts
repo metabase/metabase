@@ -71,8 +71,8 @@ export function getVisualizationTransformed(
 ) {
   // don't transform if we don't have the data
   if (
-    _.any(series, s => s.data == null) ||
-    _.any(series, s => s.error != null)
+    _.any(series, (s) => s.data == null) ||
+    _.any(series, (s) => s.error != null)
   ) {
     return {
       series,
@@ -105,7 +105,7 @@ export function getIconForVisualizationType(display: VisualizationDisplay) {
 }
 
 export const extractRemappings = (series: Series) => {
-  const se = series.map(s => ({
+  const se = series.map((s) => ({
     ...s,
     data: s.data && extractRemappedColumns(s.data),
   }));
@@ -134,16 +134,16 @@ export function getDefaultSize(display: VisualizationDisplay) {
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
 export const extractRemappedColumns = (data: DatasetData) => {
-  const cols: RemappingHydratedDatasetColumn[] = data.cols.map(col => ({
+  const cols: RemappingHydratedDatasetColumn[] = data.cols.map((col) => ({
     ...col,
     remapped_from_index:
       col.remapped_from != null
-        ? _.findIndex(data.cols, c => c.name === col.remapped_from)
+        ? _.findIndex(data.cols, (c) => c.name === col.remapped_from)
         : undefined,
     remapping: col.remapped_to != null ? new Map() : undefined,
   }));
 
-  const rows = data.rows.map(row =>
+  const rows = data.rows.map((row) =>
     row.filter((value, colIndex) => {
       const col = cols[colIndex];
       if (col.remapped_from != null) {
@@ -169,7 +169,7 @@ export const extractRemappedColumns = (data: DatasetData) => {
   return {
     ...data,
     rows,
-    cols: cols.filter(col => col.remapped_from == null),
+    cols: cols.filter((col) => col.remapped_from == null),
   };
 };
 

@@ -129,6 +129,6 @@ export const Root = styled.li<{ isSelected: boolean }>`
   min-height: 34px;
   position: relative;
 
-  ${props =>
+  ${(props) =>
     props.isSelected ? getSelectedStyle(props.theme) : unselectedStyle}
 `;

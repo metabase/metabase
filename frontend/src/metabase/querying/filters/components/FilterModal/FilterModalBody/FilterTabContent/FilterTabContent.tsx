@@ -11,7 +11,7 @@ export function FilterTabContent() {
     <Tabs value={tab} onTabChange={onTabChange} orientation="vertical" h="100%">
       <Flex direction="row" w="100%">
         {visibleItems.length > 1 && <FilterTabList groupItems={visibleItems} />}
-        {visibleItems.map(groupItem => (
+        {visibleItems.map((groupItem) => (
           <FilterTabPanel
             key={`${groupItem.key}:${version}`}
             groupItem={groupItem}

@@ -39,7 +39,7 @@ export const getAllUploads = (state: State) => state.upload;
 
 export const hasActiveUploads = (state: State) =>
   Object.values(getAllUploads(state)).some(
-    upload => upload.status === "in-progress",
+    (upload) => upload.status === "in-progress",
   );
 
 export interface UploadFileProps {
@@ -157,7 +157,7 @@ const upload = handleActions<
     },
     [UPLOAD_FILE_END]: {
       next: (state, { payload }) =>
-        updateIn(state, [payload.id], val => ({
+        updateIn(state, [payload.id], (val) => ({
           ...val,
           ...payload,
           status: "complete",
@@ -165,7 +165,7 @@ const upload = handleActions<
     },
     [UPLOAD_FILE_ERROR]: {
       next: (state, { payload }) =>
-        updateIn(state, [payload.id], val => ({
+        updateIn(state, [payload.id], (val) => ({
           ...val,
           ...payload,
           status: "error",

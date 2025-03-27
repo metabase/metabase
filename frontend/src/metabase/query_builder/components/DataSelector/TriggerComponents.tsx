@@ -70,7 +70,7 @@ export function FieldTrigger({
     return <Text>{t`Select...`}</Text>;
   }
   const hasMultipleSchemas =
-    _.uniq(database?.tables ?? [], t => t.schema_name).length > 1;
+    _.uniq(database?.tables ?? [], (t) => t.schema_name).length > 1;
 
   return (
     <div>

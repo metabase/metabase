@@ -185,7 +185,7 @@ export const CollectionItemsTable = ({
         const hasPagination: boolean = total ? total > pageSize : false;
 
         const unselected = getIsSelected
-          ? unpinnedItems.filter(item => !getIsSelected(item))
+          ? unpinnedItems.filter((item) => !getIsSelected(item))
           : unpinnedItems;
         const hasUnselected = unselected.length > 0;
 

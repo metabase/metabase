@@ -29,7 +29,7 @@ export function SimpleDateIntervalPicker({
   };
 
   const handleUnitChange = (inputValue: string | null) => {
-    const option = unitOptions.find(option => option.value === inputValue);
+    const option = unitOptions.find((option) => option.value === inputValue);
     if (option) {
       onChange(setUnit(value, option.value));
     }

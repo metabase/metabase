@@ -38,14 +38,14 @@ export const DatabaseTablesPane = ({
   const tables = useMemo(
     () =>
       searchResults
-        .filter(x => x.model === "table")
+        .filter((x) => x.model === "table")
         .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
   const models = useMemo(
     () =>
       searchResults
-        .filter(x => x.model === "dataset")
+        .filter((x) => x.model === "dataset")
         .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
@@ -71,7 +71,7 @@ export const DatabaseTablesPane = ({
                 </NodeListTitleText>
               </NodeListTitle>
               <ul>
-                {models.map(model => (
+                {models.map((model) => (
                   <li key={model.id}>
                     <NodeListItemLink
                       onClick={() => onItemClick("question", model)}
@@ -97,7 +97,7 @@ export const DatabaseTablesPane = ({
             </NodeListTitleText>
           </NodeListTitle>
           <ul>
-            {tables.map(table => (
+            {tables.map((table) => (
               <li key={table.id}>
                 <NodeListItemLink
                   disabled={table.initial_sync_status !== "complete"}

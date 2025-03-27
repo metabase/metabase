@@ -137,12 +137,12 @@ export const reorderData = (
     return data;
   }
 
-  const keys = data.map(datum => String(datum[0]));
+  const keys = data.map((datum) => String(datum[0]));
 
   return funnelOrder
-    .map(orderedItem => {
+    .map((orderedItem) => {
       if (orderedItem.enabled) {
-        const dataIndex = keys.findIndex(key => key === orderedItem.key);
+        const dataIndex = keys.findIndex((key) => key === orderedItem.key);
         return data[dataIndex];
       }
     })

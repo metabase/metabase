@@ -44,7 +44,7 @@ export const HomePopularSection = (): JSX.Element => {
 };
 
 const getTitle = (popularItems: PopularItem[]) => {
-  const models = _.uniq(popularItems.map(item => item.model));
+  const models = _.uniq(popularItems.map((item) => item.model));
 
   if (models.length !== 1) {
     return t`Here are some popular items`;

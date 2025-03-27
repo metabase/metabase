@@ -14,7 +14,7 @@ describe("scenarios > navigation > navbar", () => {
     });
 
     it("should display error ui when data fetching fails", () => {
-      cy.intercept("GET", "/api/database", req => req.reply(500));
+      cy.intercept("GET", "/api/database", (req) => req.reply(500));
       cy.visit("/");
       H.navigationSidebar().findByText(/An error occurred/);
     });

@@ -100,7 +100,7 @@ export const useInjectSeriesColorsClasses = (hexColors: string[]) => {
     }
 
     return hexColors
-      .map(color => {
+      .map((color) => {
         const cssClassName = getMarkerColorClass(color);
         return `
     .${cssClassName} {
@@ -140,7 +140,7 @@ export const useCartesianChartSeriesColorsClasses = (
 ) => {
   const hexColors = useMemo(() => {
     const seriesColors = chartModel.seriesModels
-      .map(seriesModel => seriesModel.color)
+      .map((seriesModel) => seriesModel.color)
       .filter(isNotNull);
 
     const settingColors = [
@@ -164,8 +164,8 @@ export const useSankeyChartColorsClasses = (chartModel: SankeyChartModel) => {
 };
 
 function getColorsFromSlices(slices: SliceTreeNode[]) {
-  const colors = slices.map(s => s.color);
-  slices.forEach(s =>
+  const colors = slices.map((s) => s.color);
+  slices.forEach((s) =>
     colors.push(...getColorsFromSlices(getArrayFromMapValues(s.children))),
   );
   return colors;

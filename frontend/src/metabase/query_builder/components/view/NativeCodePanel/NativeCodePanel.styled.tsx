@@ -15,10 +15,10 @@ export const CodeContainer = styled.pre<CodeContainerProps>`
   margin: 0;
   padding: 1rem;
   border: 1px solid
-    ${props =>
+    ${(props) =>
       props.isHighlighted ? color("brand") : "var(--mb-color-border)"};
   border-radius: 0.5rem;
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.isHighlighted
       ? "var(--mb-color-brand-light)"
       : "var(--mb-color-bg-light)"};
@@ -46,7 +46,7 @@ export const CodeCopyButton = styled(IconButtonWrapper)<CodeCopyButtonProps>`
   width: 1rem;
   height: 1rem;
   color: var(--mb-color-brand);
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.isHighlighted
       ? "var(--mb-color-brand-light)"
       : "var(--mb-color-bg-light)"};

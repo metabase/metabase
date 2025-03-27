@@ -82,7 +82,7 @@ describe("parameters/utils/mapping-options", () => {
         // add instances to the `metadata` instance
         metadata.questions[dataset.id()] = dataset;
         metadata.tables[virtualCardTable.id] = virtualCardTable;
-        virtualCardTable.fields.forEach(f => {
+        virtualCardTable.fields.forEach((f) => {
           metadata.fields[f.uniqueId] = f;
         });
       });
@@ -126,7 +126,7 @@ describe("parameters/utils/mapping-options", () => {
           tables: [
             createMockTable({
               id: `card__${card.id}`,
-              fields: (table.fields ?? []).map(field => ({
+              fields: (table.fields ?? []).map((field) => ({
                 ...field,
                 table_id: `card__${card.id}`,
               })),

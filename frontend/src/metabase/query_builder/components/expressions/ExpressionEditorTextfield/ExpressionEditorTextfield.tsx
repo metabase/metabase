@@ -385,7 +385,7 @@ class ExpressionEditorTextfieldInner extends React.Component<
     if (this.input.current && suggestion) {
       const { editor } = this.input.current;
       const { tokens } = tokenize(source);
-      const token = tokens.find(t => t.end >= suggestion.index);
+      const token = tokens.find((t) => t.end >= suggestion.index);
 
       const { row } = editor.getCursorPosition();
 

@@ -66,7 +66,7 @@ const Pulses = createEntity({
 
     unsubscribe:
       ({ id }) =>
-      async dispatch => {
+      async (dispatch) => {
         await entityCompatibleQuery(
           id,
           dispatch,
@@ -79,10 +79,10 @@ const Pulses = createEntity({
   },
 
   objectSelectors: {
-    getName: pulse => pulse && pulse.name,
-    getUrl: pulse => pulse && Urls.pulse(pulse.id),
-    getIcon: pulse => ({ name: "pulse" }),
-    getColor: pulse => color("pulse"),
+    getName: (pulse) => pulse && pulse.name,
+    getUrl: (pulse) => pulse && Urls.pulse(pulse.id),
+    getIcon: (pulse) => ({ name: "pulse" }),
+    getColor: (pulse) => color("pulse"),
   },
 
   getAnalyticsMetadata([object], { action }, getState) {

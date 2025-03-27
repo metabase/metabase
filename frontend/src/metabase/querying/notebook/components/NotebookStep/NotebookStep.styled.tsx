@@ -64,11 +64,11 @@ interface PreviewButtonProps {
 
 export const PreviewButton = styled.div<PreviewButtonProps>`
   margin-left: 0.5rem;
-  visibility: ${props => !props.hasPreviewButton && "hidden"};
-  pointer-events: ${props => !props.hasPreviewButton && "none"};
-  opacity: ${props => !props.hasPreviewButton && "0.4"};
+  visibility: ${(props) => !props.hasPreviewButton && "hidden"};
+  pointer-events: ${(props) => !props.hasPreviewButton && "none"};
+  opacity: ${(props) => !props.hasPreviewButton && "0.4"};
 
   &:hover {
-    color: ${props => props.hasPreviewButton && color("brand")};
+    color: ${(props) => props.hasPreviewButton && color("brand")};
   }
 `;

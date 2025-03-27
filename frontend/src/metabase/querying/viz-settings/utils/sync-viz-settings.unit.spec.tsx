@@ -497,7 +497,7 @@ describe("syncVizSettingsWithSeries", () => {
       const newSettings = syncVizSettingsWithSeries(
         oldSettings,
         query,
-        newSeries.map(singleSeries => ({
+        newSeries.map((singleSeries) => ({
           ...singleSeries,
           error: { status: 500 },
         })),
@@ -511,7 +511,7 @@ describe("syncVizSettingsWithSeries", () => {
         oldSettings,
         query,
         newSeries,
-        oldSeries.map(singleSeries => ({
+        oldSeries.map((singleSeries) => ({
           ...singleSeries,
           error: { status: 500 },
         })),

@@ -291,7 +291,7 @@ H.describeEE(
           "People",
           "Products",
           "Reviews",
-        ].map(tableName => [
+        ].map((tableName) => [
           tableName,
           "Impersonated",
           "No",
@@ -371,7 +371,7 @@ H.describeEE(
           "People",
           "Products",
           "Reviews",
-        ].map(tableName => [
+        ].map((tableName) => [
           tableName,
           "Can view",
           "No",

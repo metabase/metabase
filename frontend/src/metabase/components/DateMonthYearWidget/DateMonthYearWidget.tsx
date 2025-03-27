@@ -64,11 +64,11 @@ export class DateMonthYearWidget extends Component<Props, State> {
         <div className={cx(CS.borderBottom, CS.flex, CS.justifyCenter, CS.py1)}>
           <YearPicker
             value={year}
-            onChange={year => this.setState({ year: year })}
+            onChange={(year) => this.setState({ year: year })}
           />
         </div>
         <MonthList>
-          {_.range(0, 12).map(m => (
+          {_.range(0, 12).map((m) => (
             <MonthContainer key={m}>
               <Month
                 month={m}

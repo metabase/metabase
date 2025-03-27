@@ -68,7 +68,7 @@ describe("STACKABLE_SETTINGS", () => {
             { card: { display: "line" }, id: 3 },
           ],
           {
-            series: series => ({
+            series: (series) => ({
               display: series.card.id === 1 ? "line" : "bar",
             }),
             "stackable.stack_type": "stacked",
@@ -87,7 +87,7 @@ describe("STACKABLE_SETTINGS", () => {
             { card: { display: "bar" }, id: 3 },
           ],
           {
-            series: series => ({
+            series: (series) => ({
               display: series.card.id === 1 ? "bar" : "line",
             }),
             "stackable.stack_type": "stacked",
@@ -248,7 +248,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
       const isHidden = getHidden(
         [{ card: { display: "area" } }, { card: { display: "area" } }],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "stackable.stack_type": "normalized",
         },
       );
@@ -264,7 +264,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
           { card: { display: "line" } },
         ],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "stackable.stack_type": "normalized",
         },
       );
@@ -285,7 +285,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
           { card: { display: "bar" } },
         ],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "graph.show_values": false,
         },
       );
@@ -301,7 +301,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
           { card: { display: "bar" } },
         ],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "stackable.stack_type": "normalized",
         },
       );
@@ -317,7 +317,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
           { card: { display: "area" } },
         ],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "stackable.stack_type": "normalized",
         },
       );
@@ -333,7 +333,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
           { card: { display: "bar" } },
         ],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "stackable.stack_type": "normalized",
         },
       );
@@ -349,7 +349,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
           { card: { display: "line" } },
         ],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "stackable.stack_type": "normalized",
           "graph.show_values": true,
         },
@@ -367,7 +367,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
       const isHidden = getHidden(
         [{ card: { display: "bar" } }, { card: { display: "bar" } }],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "stackable.stack_type": null,
           "graph.show_values": true,
         },
@@ -380,7 +380,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
       const isHidden = getHidden(
         [{ card: { display: "area" } }, { card: { display: "area" } }],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "stackable.stack_type": "stacked",
           "graph.show_values": true,
         },
@@ -398,7 +398,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
           { card: { display: "bar" } },
         ],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "stackable.stack_type": "stacked",
           "graph.show_values": true,
         },
@@ -411,7 +411,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
       const isHidden = getHidden(
         [{ card: { display: "bar" } }, { card: { display: "bar" } }],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "stackable.stack_type": "normalized",
           "graph.show_values": true,
         },
@@ -424,7 +424,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
       const isHidden = getHidden(
         [{ card: { display: "bar" } }, { card: { display: "bar" } }],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "stackable.stack_type": "stacked",
           "graph.show_values": false,
         },
@@ -489,7 +489,7 @@ describe("graph.tooltip_columns", () => {
     });
 
     describe("getValue", () => {
-      const getMockSeries = display => [
+      const getMockSeries = (display) => [
         createMockSingleSeries(
           createMockCard({ display }),
           createMockDataset({

@@ -51,7 +51,7 @@ describe.skip("issue 12496", () => {
       .eq(picker)
       .find("input")
       .eq(input);
-  const setup = unit => {
+  const setup = (unit) => {
     cy.createQuestion(
       {
         name: `Orders by Created At: ${unit}`,
@@ -580,7 +580,7 @@ describe("issue 25378", () => {
       cy.button("Add filter").click();
     });
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
   });
@@ -718,7 +718,7 @@ describe("issue 25994", () => {
       cy.button("Add filter").click();
     });
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
   });
@@ -1331,7 +1331,7 @@ describe.skip("issue 44435", () => {
       },
     });
 
-    cy.findByTestId("filter-pill").then($pill => {
+    cy.findByTestId("filter-pill").then(($pill) => {
       const pillWidth = $pill[0].getBoundingClientRect().width;
       cy.window().its("innerWidth").should("be.gt", pillWidth);
     });
@@ -1506,7 +1506,7 @@ describe("issue 49321", () => {
     });
     H.popover().last().findByText("Contains").click();
 
-    H.popover().then($popover => {
+    H.popover().then(($popover) => {
       const { width } = $popover[0].getBoundingClientRect();
       cy.wrap(width).as("initialWidth");
     });
@@ -1515,8 +1515,8 @@ describe("issue 49321", () => {
       .findByPlaceholderText("Enter some text")
       .type("aaaaaaaaaa, bbbbbbbbbbb,");
 
-    cy.get("@initialWidth").then(initialWidth => {
-      H.popover().should($popover => {
+    cy.get("@initialWidth").then((initialWidth) => {
+      H.popover().should(($popover) => {
         const { width } = $popover[0].getBoundingClientRect();
         expect(width).to.eq(initialWidth);
       });

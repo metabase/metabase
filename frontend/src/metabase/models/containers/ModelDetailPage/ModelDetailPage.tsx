@@ -80,7 +80,7 @@ function ModelDetailPage({
   onChangeLocation,
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
-  const hasNestedQueriesEnabled = useSelector(state =>
+  const hasNestedQueriesEnabled = useSelector((state) =>
     getSetting(state, "enable-nested-queries"),
   );
 

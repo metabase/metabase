@@ -51,7 +51,7 @@ function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
   const normalizedItemModel = normalizeItemModel(item);
 
   return bookmarks.some(
-    bookmark =>
+    (bookmark) =>
       bookmark.type === normalizedItemModel && bookmark.item_id === item.id,
   );
 }

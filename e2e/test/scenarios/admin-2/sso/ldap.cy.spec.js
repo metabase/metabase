@@ -228,7 +228,7 @@ const getLdapCard = () => {
   return cy.findByText("LDAP").parent().parent();
 };
 
-const enterLdapPort = value => {
+const enterLdapPort = (value) => {
   H.typeAndBlurUsingLabel("LDAP Port", value);
 };
 

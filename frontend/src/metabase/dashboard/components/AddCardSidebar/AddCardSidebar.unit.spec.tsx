@@ -173,7 +173,7 @@ describe("AddCardSideBar", () => {
 
       assertBreadcrumbs([ROOT_COLLECTION]);
 
-      collectionItems.forEach(collectionItem => {
+      collectionItems.forEach((collectionItem) => {
         expect(
           screen.getByRole("menuitem", {
             name: collectionItem.name,
@@ -245,7 +245,7 @@ describe("AddCardSideBar", () => {
 
       assertBreadcrumbs([ROOT_COLLECTION, COLLECTION, SUBCOLLECTION]);
 
-      collectionItems.forEach(collectionItem => {
+      collectionItems.forEach((collectionItem) => {
         expect(
           screen.getByRole("menuitem", {
             name: collectionItem.name,
@@ -336,7 +336,7 @@ describe("AddCardSideBar", () => {
         PERSONAL_SUBCOLLECTION,
       ]);
 
-      collectionItems.forEach(collectionItem => {
+      collectionItems.forEach((collectionItem) => {
         expect(
           screen.getByRole("menuitem", {
             name: collectionItem.name,
@@ -401,7 +401,7 @@ describe("AddCardSideBar", () => {
 });
 
 function assertBreadcrumbs(collections: Collection[]) {
-  collections.forEach(collection => {
+  collections.forEach((collection) => {
     expect(screen.getByText(collection.name)).toBeInTheDocument();
   });
 }

@@ -67,7 +67,7 @@ const StatusLarge = ({
         )}
       </StatusHeader>
       <StatusBody>
-        {status.items.map(item => (
+        {status.items.map((item) => (
           <StatusCard item={item} isActive={isActive} key={item.id} />
         ))}
       </StatusBody>

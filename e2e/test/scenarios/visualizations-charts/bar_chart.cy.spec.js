@@ -494,7 +494,7 @@ describe("scenarios > visualizations > bar chart", () => {
       questions: [multiMetric],
     }).then(({ dashboard }) => {
       cy.createQuestion(sumTotalByMonth, { wrapId: true }).then(() => {
-        cy.get("@questionId").then(questionId => {
+        cy.get("@questionId").then((questionId) => {
           H.cypressWaitAll([
             cy.createQuestionAndAddToDashboard(avgTotalByMonth, dashboard.id, {
               series: [
@@ -584,9 +584,9 @@ describe("scenarios > visualizations > bar chart", () => {
       "#88BF4D",
       "#98D9D9",
     ]);
-    firstMetric.then($metricOne => {
+    firstMetric.then(($metricOne) => {
       const { height: heightMetricOne } = $metricOne[0].getBoundingClientRect();
-      secondMetric.then($metricTwo => {
+      secondMetric.then(($metricTwo) => {
         const { height: heightMetricTwo } =
           $metricTwo[0].getBoundingClientRect();
 

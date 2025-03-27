@@ -49,10 +49,10 @@ export const Tab = styled.label<{ selected: boolean; disabled?: boolean }>`
     margin-right: 10px;
   }
 
-  ${props => (props.selected ? activeTabCSS : inactiveTabCSS)};
+  ${(props) => (props.selected ? activeTabCSS : inactiveTabCSS)};
 
-  opacity: ${props => (props.disabled ? 0.5 : 1)};
-  cursor: ${props => (props.disabled ? "default" : "pointer")};
+  opacity: ${(props) => (props.disabled ? 0.5 : 1)};
+  cursor: ${(props) => (props.disabled ? "default" : "pointer")};
 `;
 
 export const RadioInput = styled.input`

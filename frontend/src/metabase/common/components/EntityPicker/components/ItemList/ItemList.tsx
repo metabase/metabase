@@ -51,7 +51,9 @@ export const ItemList = <
       return -1;
     }
 
-    return filteredItems.findIndex(item => isSelectedItem(item, selectedItem));
+    return filteredItems.findIndex((item) =>
+      isSelectedItem(item, selectedItem),
+    );
   }, [filteredItems, selectedItem]);
 
   if (error) {

@@ -8,7 +8,7 @@ export default {
   component: DateRelativeWidget,
 };
 
-const Template: StoryFn<typeof DateRelativeWidget> = args => {
+const Template: StoryFn<typeof DateRelativeWidget> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleSetValue = (v?: string) => {

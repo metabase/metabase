@@ -52,7 +52,7 @@ const renderItemDescription = () => null;
 
 const getSections = (query: Lib.Query, stageIndex: number) => {
   const aggregations = Lib.aggregations(query, stageIndex);
-  const items = aggregations.map<AggregationItem>(aggregation => {
+  const items = aggregations.map<AggregationItem>((aggregation) => {
     const info = Lib.displayInfo(query, stageIndex, aggregation);
     return { ...info, aggregation };
   });

@@ -2,7 +2,7 @@ import type { MantineThemeOverride } from "@mantine/core";
 
 export const getAnchorOverrides = (): MantineThemeOverride["components"] => ({
   Anchor: {
-    styles: theme => {
+    styles: (theme) => {
       return {
         root: {
           color: theme.fn.themeColor("brand"),

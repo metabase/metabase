@@ -98,7 +98,7 @@ class TagEditorParamInner extends Component<Props> {
       .find((originalTag: TemplateTag) => originalTag.id === tag.id);
     const originalParameter = originalQuestion
       ?.parameters()
-      .find(originalParameter => originalParameter.id === parameter.id);
+      .find((originalParameter) => originalParameter.id === parameter.id);
 
     if (tag.type !== type) {
       setTemplateTag({
@@ -294,7 +294,7 @@ class TagEditorParamInner extends Component<Props> {
         {(hasWidgetOptions || !isDimension) && (
           <FilterWidgetLabelInput
             tag={tag}
-            onChange={value =>
+            onChange={(value) =>
               this.setParameterAttribute("display-name", value)
             }
           />
@@ -315,7 +315,7 @@ class TagEditorParamInner extends Component<Props> {
           tag={tag}
           parameter={parameter}
           isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
-          onChangeDefaultValue={value => {
+          onChangeDefaultValue={(value) => {
             this.setParameterAttribute("default", value);
             this.props.setParameterValue(tag.id, value);
           }}

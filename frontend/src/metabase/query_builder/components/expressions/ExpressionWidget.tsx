@@ -260,8 +260,8 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
             placeholder={t`Something nice and descriptive`}
             w="100%"
             radius="md"
-            onChange={event => setName(event.target.value)}
-            onKeyDown={e => {
+            onChange={(event) => setName(event.target.value)}
+            onKeyDown={(e) => {
               if (e.key === "Enter") {
                 handleCommit(expression, clause);
               }

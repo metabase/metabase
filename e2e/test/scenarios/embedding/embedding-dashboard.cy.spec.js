@@ -25,7 +25,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       human_readable_field_id: PEOPLE.NAME,
     });
 
-    [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach(id =>
+    [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach((id) =>
       cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
     );
 
@@ -154,7 +154,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
     });
 
     it("should only display filters mapped to cards on the selected tab", () => {
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           embedding_params: {
             id: "enabled",
@@ -281,7 +281,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
   context("API", () => {
     beforeEach(() => {
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           embedding_params: {
             id: "enabled",
@@ -364,7 +364,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       cy.log("should accept url parameters");
 
-      cy.location().then(location =>
+      cy.location().then((location) =>
         cy.visit(`${location.origin}${location.pathname}?id=1&id=3`),
       );
 
@@ -373,7 +373,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
   });
 
   it("should render error message when `params` is not an object (metabase#14474)", () => {
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {
         embedding_params: {
           id: "enabled",
@@ -514,7 +514,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
         downloadMethod: "GET",
       },
-      sheet => {
+      (sheet) => {
         expect(sheet["A1"].v).to.eq("ID");
         expect(sheet["A2"].v).to.eq(9);
         expect(sheet["B1"].v).to.eq("EAN");
@@ -528,7 +528,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
   it("should send 'X-Metabase-Client' header for api requests", () => {
     cy.intercept("GET", "api/embed/dashboard/*").as("getEmbeddedDashboard");
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {
         embedding_params: {},
         enable_embedding: true,
@@ -540,7 +540,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       };
 
       H.visitEmbeddedPage(payload, {
-        onBeforeLoad: window => {
+        onBeforeLoad: (window) => {
           window.Cypress = undefined;
         },
       });
@@ -584,7 +584,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
       });
     });
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       const payload = {
         resource: { dashboard: dashboardId },
         params: { source: [] },
@@ -607,13 +607,13 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
 
   it("locked parameters require a value to be specified in the JWT", () => {
     const nameParameter = dashboardDetails.parameters.find(
-      parameter => parameter.name === "Name",
+      (parameter) => parameter.name === "Name",
     );
     const sourceParameter = dashboardDetails.parameters.find(
-      parameter => parameter.name === "Source",
+      (parameter) => parameter.name === "Source",
     );
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       cy.request("PUT", `api/dashboard/${dashboardId}`, {
         enable_embedding: true,
         embedding_params: {
@@ -641,13 +641,13 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
 
   it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
     const nameParameter = dashboardDetails.parameters.find(
-      parameter => parameter.name === "Name",
+      (parameter) => parameter.name === "Name",
     );
     const sourceParameter = dashboardDetails.parameters.find(
-      parameter => parameter.name === "Source",
+      (parameter) => parameter.name === "Source",
     );
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       cy.request("PUT", `api/dashboard/${dashboardId}`, {
         enable_embedding: true,
         embedding_params: {
@@ -741,7 +741,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       H.getIframeBody()
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
-        .then(embedTheme => {
+        .then((embedTheme) => {
           expect(embedTheme).to.eq("light"); // default value
         });
 
@@ -751,7 +751,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       H.getIframeBody()
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
-        .then(embedTheme => {
+        .then((embedTheme) => {
           expect(embedTheme).to.eq("night");
         });
 
@@ -840,7 +840,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
           ],
         });
       })
-      .then(dashboard => {
+      .then((dashboard) => {
         H.visitDashboard(dashboard.id);
       });
 
@@ -867,7 +867,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       H.getIframeBody()
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
-        .then(embedTheme => {
+        .then((embedTheme) => {
           expect(embedTheme).to.eq("light"); // default value
         });
 
@@ -877,7 +877,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       H.getIframeBody()
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
-        .then(embedTheme => {
+        .then((embedTheme) => {
           expect(embedTheme).to.eq("night");
         });
 
@@ -952,13 +952,13 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
           ],
         });
       })
-      .then(dashboard => {
+      .then((dashboard) => {
         return H.getEmbeddedPageUrl({
           resource: { dashboard: dashboard.id },
           params: {},
         });
       })
-      .then(urlOptions => {
+      .then((urlOptions) => {
         const baseUrl = Cypress.config("baseUrl");
         Cypress.config("baseUrl", null);
         cy.visit(
@@ -986,7 +986,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       // });
     });
 
-    cy.get("#iframe").should($iframe => {
+    cy.get("#iframe").should(($iframe) => {
       const [iframe] = $iframe;
       expect(iframe.clientHeight).to.be.greaterThan(1000);
     });

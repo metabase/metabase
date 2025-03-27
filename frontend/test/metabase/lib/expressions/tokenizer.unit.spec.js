@@ -5,10 +5,10 @@ import {
 } from "metabase-lib/v1/expressions/tokenizer";
 
 describe("metabase-lib/v1/expressions/tokenizer", () => {
-  const types = expr => tokenize(expr).tokens.map(t => t.type);
-  const ops = expr => tokenize(expr).tokens.map(t => t.op);
-  const values = expr => tokenize(expr).tokens.map(t => t.value);
-  const errors = expr => tokenize(expr).errors;
+  const types = (expr) => tokenize(expr).tokens.map((t) => t.type);
+  const ops = (expr) => tokenize(expr).tokens.map((t) => t.op);
+  const values = (expr) => tokenize(expr).tokens.map((t) => t.value);
+  const errors = (expr) => tokenize(expr).errors;
 
   it("should tokenize operators", () => {
     expect(ops("(")).toEqual([OP.OpenParenthesis]);

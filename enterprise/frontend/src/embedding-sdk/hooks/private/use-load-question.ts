@@ -139,7 +139,7 @@ export function useLoadQuestion({
           previousQuestion: question,
           originalQuestion,
           cancelDeferred: deferred(),
-          optimisticUpdateQuestion: question =>
+          optimisticUpdateQuestion: (question) =>
             mergeQuestionState({ question }),
           shouldRunQueryOnQuestionChange: run,
         }),
@@ -157,7 +157,7 @@ export function useLoadQuestion({
           ...params,
           originalQuestion,
           cancelDeferred: deferred(),
-          onQuestionChange: question => mergeQuestionState({ question }),
+          onQuestionChange: (question) => mergeQuestionState({ question }),
           onClearQueryResults: () =>
             mergeQuestionState({ queryResults: [null] }),
         }),

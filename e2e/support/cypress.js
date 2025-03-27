@@ -42,7 +42,7 @@ Cypress.on("test:before:run", () => {
 
 Cypress.on("test:after:run", (test, runnable) => {
   if (test.state === "failed") {
-    const titleToFileName = title => title.replace(/[>]/g, "");
+    const titleToFileName = (title) => title.replace(/[>]/g, "");
     let { parent } = runnable;
     let filename = "";
     // This while is to be able to support more than one level of parent in the screenshot name
@@ -54,7 +54,7 @@ Cypress.on("test:after:run", (test, runnable) => {
 
     if (isCI) {
       // cypress-terminal-report
-      Cypress.Mochawesome.context.forEach(ctx => {
+      Cypress.Mochawesome.context.forEach((ctx) => {
         addContext({ test }, ctx);
       });
     }
@@ -77,7 +77,7 @@ Cypress.on("test:after:run", (test, runnable) => {
 
 // required for cypress-terminal-report to be able to find logs after the test
 // is finished
-Cypress.Commands.add("addTestContext", context => {
+Cypress.Commands.add("addTestContext", (context) => {
   if (!Cypress.Mochawesome) {
     Cypress.Mochawesome = createMochawesomeObject();
   }
@@ -102,7 +102,7 @@ function createMochawesomeObject() {
  *
  * @see https://github.com/cypress-io/cypress/issues/2118
  */
-Cypress.on("window:load", window => {
+Cypress.on("window:load", (window) => {
   const addEventListener = window.addEventListener;
 
   window.addEventListener = function (event) {

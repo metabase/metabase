@@ -14,8 +14,8 @@ export const ResponsiveContainer = styled(
     type?: string;
   }
 >`
-  container-name: ${props => props.name};
-  container-type: ${props => props.type};
+  container-name: ${(props) => props.name};
+  container-type: ${(props) => props.type};
 `;
 ResponsiveContainer.defaultProps = { type: "inline-size" };
 

@@ -60,11 +60,11 @@ export async function searchFieldValues(
 }
 
 export function getNonVirtualFields(fields: Field[]) {
-  return fields.filter(field => !field.isVirtual());
+  return fields.filter((field) => !field.isVirtual());
 }
 
 export function dedupeValues(valuesList: FieldValue[][]): FieldValue[] {
-  const uniqueValueMap = new Map(valuesList.flat().map(o => [o[0], o]));
+  const uniqueValueMap = new Map(valuesList.flat().map((o) => [o[0], o]));
   return Array.from(uniqueValueMap.values());
 }
 

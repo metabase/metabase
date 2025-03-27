@@ -12,11 +12,11 @@ export default class DatePickerSelector extends Component {
       <div className={className} style={{ minWidth: 100 }}>
         <Select
           value={_.findWhere(operators, { name: operator })}
-          onChange={e => onOperatorChange(e.target.value)}
+          onChange={(e) => onOperatorChange(e.target.value)}
           width={150}
           compact
         >
-          {operators.map(operator => (
+          {operators.map((operator) => (
             <Option key={operator.name} value={operator}>
               {operator.displayName}
             </Option>

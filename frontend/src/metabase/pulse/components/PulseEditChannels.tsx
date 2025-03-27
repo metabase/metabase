@@ -98,7 +98,7 @@ export const PulseEditChannels = ({
         type === "email" && channel?.recipients?.length === 0;
 
       const updatedPulse = shouldRemoveChannel
-        ? updateIn(pulse, ["channels"], channels =>
+        ? updateIn(pulse, ["channels"], (channels) =>
             channels.toSpliced(index, 1),
           )
         : updateIn(pulse, ["channels", index], (channel: Channel) =>
@@ -135,7 +135,7 @@ export const PulseEditChannels = ({
           alert={pulse}
         />
       )}
-      {notificationChannels.map(notification => (
+      {notificationChannels.map((notification) => (
         <WebhookChannelEdit
           key={`webhook-${notification.id}`}
           toggleChannel={toggleChannel}

@@ -125,12 +125,12 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
         ? (props.defaultValue as any)
         : props.value;
 
-    const _getValues = createSelector([_getValue], value =>
+    const _getValues = createSelector([_getValue], (value) =>
       Array.isArray(value) ? value : [value],
     );
     const _getValuesSet = createSelector(
       [_getValues],
-      values => new Set(values),
+      (values) => new Set(values),
     );
     this._getValues = () => _getValues(this.props);
     this._getValuesSet = () => _getValuesSet(this.props);
@@ -144,7 +144,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
       const optionToItem = (option: any) => option.props;
       const first = (Array.isArray(children) ? children[0] : children) as any;
       if (first && (first as ReactElement).type === OptionSection) {
-        return Children.map(children, child => ({
+        return Children.map(children, (child) => ({
           ...(child as ReactElement<OptionProps<TValue>>).props,
           items: Children.map((child as any).props.children, optionToItem),
         })) as any;
@@ -181,7 +181,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
     if (multiple) {
       const values = this._getValues();
       value = this.itemIsSelected(option)
-        ? values.filter(value => value !== optionValue)
+        ? values.filter((value) => value !== optionValue)
         : [...values, optionValue];
       value.changedItem = optionValue;
     } else {
@@ -252,7 +252,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
 
     const sections = this._getSections();
     const selectedNames = sections
-      .map(section =>
+      .map((section) =>
         this.props.optionNameFn
           ? section.items
               .filter(this.itemIsSelected)
@@ -260,11 +260,11 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           : [],
       )
       .flat()
-      .filter(n => n);
+      .filter((n) => n);
 
     return (
       <PopoverWithTrigger
-        ref={ref => (this._popover = ref)}
+        ref={(ref) => (this._popover = ref)}
         triggerElement={
           this.props.triggerElement || (
             <SelectButton

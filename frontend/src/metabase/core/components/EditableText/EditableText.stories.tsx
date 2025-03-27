@@ -7,7 +7,7 @@ export default {
   component: EditableText,
 };
 
-const Template: StoryFn<EditableTextProps> = args => {
+const Template: StoryFn<EditableTextProps> = (args) => {
   return <EditableText {...args} />;
 };
 

@@ -20,7 +20,7 @@ export const MigrationStart = ({
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
     useToggle(false);
 
-  const plan = useSelector(state =>
+  const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
   const isProSelfHosted = plan === "pro-self-hosted";

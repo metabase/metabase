@@ -78,7 +78,7 @@ const slice = createSlice({
     value: 0,
   },
   reducers: {
-    increment: state => {
+    increment: (state) => {
       state.value += 1;
     },
   },

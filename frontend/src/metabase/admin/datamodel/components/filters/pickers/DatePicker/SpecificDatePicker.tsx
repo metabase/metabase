@@ -101,7 +101,7 @@ const SpecificDatePicker = ({
           <Calendar
             selected={date}
             initial={date || moment()}
-            onChange={value => handleChange(value, hours, minutes)}
+            onChange={(value) => handleChange(value, hours, minutes)}
             isRangePicker={false}
             selectAll={selectAll}
           />

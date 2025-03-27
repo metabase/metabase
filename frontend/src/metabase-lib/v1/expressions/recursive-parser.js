@@ -38,7 +38,7 @@ function recursiveParse(source) {
   };
 
   // Return true if the next token is one of the specified operators
-  const matchOps = ops =>
+  const matchOps = (ops) =>
     tokens.length > 0 &&
     tokens[0].type === TOKEN.Operator &&
     ops.includes(tokens[0].op);
@@ -72,9 +72,9 @@ function recursiveParse(source) {
   };
 
   // [X-Men] becomes X-Men, "Mutant" becomes Mutant
-  const shrink = str => str.substring(1, str.length - 1);
+  const shrink = (str) => str.substring(1, str.length - 1);
 
-  const field = name => {
+  const field = (name) => {
     const ref = name[0] === "[" ? shrink(name) : name;
     return ["dimension", unescapeString(ref)];
   };
@@ -220,7 +220,7 @@ const modify = (node, transform) => {
   if (Array.isArray(node) && node.length > 0 && typeof node[0] === "string") {
     const [operator, ...operands] = node;
     return withAST(
-      transform([operator, ...operands.map(sub => modify(sub, transform))]),
+      transform([operator, ...operands.map((sub) => modify(sub, transform))]),
       node,
     );
   }
@@ -247,8 +247,8 @@ const NEGATIVE_FILTER_SHORTHANDS = {
 };
 
 // ["NOT", ["is-null", 42]] becomes ["not-null",42]
-export const useShorthands = tree =>
-  modify(tree, node => {
+export const useShorthands = (tree) =>
+  modify(tree, (node) => {
     if (Array.isArray(node) && node.length === 2) {
       const [operator, operand] = node;
       if (operator === OP.Not && Array.isArray(operand)) {
@@ -262,8 +262,8 @@ export const useShorthands = tree =>
     return node;
   });
 
-export const adjustOptions = tree =>
-  modify(tree, node => {
+export const adjustOptions = (tree) =>
+  modify(tree, (node) => {
     if (Array.isArray(node)) {
       const [operator, ...operands] = node;
       if (operands.length > 0) {
@@ -290,8 +290,8 @@ export const adjustOptions = tree =>
   });
 
 // ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
-export const adjustCase = tree =>
-  modify(tree, node => {
+export const adjustCase = (tree) =>
+  modify(tree, (node) => {
     if (Array.isArray(node)) {
       const [operator, ...operands] = node;
       if (operator === "case") {
@@ -312,8 +312,8 @@ export const adjustCase = tree =>
     return node;
   });
 
-export const adjustOffset = tree =>
-  modify(tree, node => {
+export const adjustOffset = (tree) =>
+  modify(tree, (node) => {
     if (Array.isArray(node)) {
       const [tag, expr, n] = node;
       if (tag === "offset") {
@@ -337,8 +337,8 @@ export const adjustOffset = tree =>
  so we need to adjust its position here or insert an empty options object if
  there is none.
 */
-export const adjustMultiArgOptions = tree =>
-  modify(tree, node => {
+export const adjustMultiArgOptions = (tree) =>
+  modify(tree, (node) => {
     if (Array.isArray(node)) {
       const [operator, ...args] = node;
       const clause = MBQL_CLAUSES[operator];
@@ -354,8 +354,8 @@ export const adjustMultiArgOptions = tree =>
     return node;
   });
 
-export const adjustBooleans = tree =>
-  modify(tree, node => {
+export const adjustBooleans = (tree) =>
+  modify(tree, (node) => {
     if (Array.isArray(node)) {
       if (node?.[0] === "case") {
         const [operator, pairs, options] = node;
@@ -400,7 +400,7 @@ export const adjustBooleans = tree =>
 
 const pipe =
   (...fns) =>
-  x =>
+  (x) =>
     fns.reduce((v, f) => f(v), x);
 
 export const parse = pipe(

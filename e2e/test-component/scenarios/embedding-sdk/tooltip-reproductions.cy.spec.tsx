@@ -40,7 +40,7 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
           ],
         }),
       )
-      .then(dashboard => {
+      .then((dashboard) => {
         cy.wrap(dashboard.body.id).as("dashboardId");
       });
 
@@ -62,8 +62,8 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
       { input: undefined, expected: DEFAULT_Z_INDEX },
     ];
 
-    testCases.forEach(zIndexTestCase => {
-      cy.get("@dashboardId").then(dashboardId => {
+    testCases.forEach((zIndexTestCase) => {
+      cy.get("@dashboardId").then((dashboardId) => {
         mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
           sdkProviderProps: {
             theme: {
@@ -80,7 +80,7 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
       cy.findAllByTestId("echarts-tooltip")
         .eq(0)
         .should("exist")
-        .then($tooltip => {
+        .then(($tooltip) => {
           const tooltipElement = $tooltip[0];
 
           // a fixed-position tooltip should be visible

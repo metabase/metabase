@@ -123,7 +123,7 @@ export class ClickActionsPopover extends Component<
       <FlexTippyPopover
         reference={popoverAnchor}
         visible={!!popoverAnchor}
-        onShow={instance => {
+        onShow={(instance) => {
           this.instance = instance;
         }}
         onClose={() => {

@@ -125,7 +125,7 @@ const TEST_DATABASE = createMockDatabase({
 const TEST_DATABASE_WITHOUT_NESTED_QUERIES = createMockDatabase({
   ...TEST_DATABASE,
   features: TEST_DATABASE.features?.filter(
-    feature => feature !== "nested-queries",
+    (feature) => feature !== "nested-queries",
   ),
 });
 
@@ -208,7 +208,7 @@ async function setup({
   });
 
   const model = checkNotNull(metadata.question(card.id));
-  const usedByQuestions = usedBy.map(q =>
+  const usedByQuestions = usedBy.map((q) =>
     checkNotNull(metadata.question(q.id)),
   );
 
@@ -655,7 +655,7 @@ describe("ModelDetailPage", () => {
         await userEvent.click(await screen.findByText("Disable basic actions"));
         await userEvent.click(screen.getByRole("button", { name: "Disable" }));
 
-        actions.forEach(action => {
+        actions.forEach((action) => {
           expect(deleteActionSpy).toHaveBeenCalledWith({ id: action.id });
         });
       });

@@ -93,7 +93,9 @@ export function StringFilterPicker({
           {type === "partial" && (
             <CaseSensitiveOption
               value={options["case-sensitive"] ?? false}
-              onChange={newValue => setOptions({ "case-sensitive": newValue })}
+              onChange={(newValue) =>
+                setOptions({ "case-sensitive": newValue })
+              }
             />
           )}
         </FilterPickerFooter>
@@ -166,7 +168,7 @@ function CaseSensitiveOption({ value, onChange }: CaseSensitiveOptionProps) {
         size="xs"
         label={t`Case sensitive`}
         checked={value}
-        onChange={e => onChange(e.target.checked)}
+        onChange={(e) => onChange(e.target.checked)}
       />
     </Flex>
   );

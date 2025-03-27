@@ -37,7 +37,7 @@ import { DataStep } from "./DataStep";
 const createQueryWithFields = (columnNames: string[]) => {
   const query = createQuery();
   const findColumn = columnFinder(query, Lib.fieldableColumns(query, 0));
-  const columns = columnNames.map(name => findColumn("ORDERS", name));
+  const columns = columnNames.map((name) => findColumn("ORDERS", name));
   return Lib.withFields(query, 0, columns);
 };
 
@@ -395,7 +395,7 @@ describe("DataStep", () => {
 
       it.each([{ metaKey: true }, { ctrlKey: true }])(
         "meta/ctrl click should not open the data source",
-        async clickConfig => {
+        async (clickConfig) => {
           const { mockWindowOpen } = setup({
             isEmbeddingSdk: true,
           });

@@ -21,7 +21,7 @@ export const SaveQuestionModal = ({
   <SaveQuestionProvider
     question={question}
     originalQuestion={originalQuestion}
-    onCreate={async question => {
+    onCreate={async (question) => {
       await onCreate(question);
 
       if (closeOnSuccess) {

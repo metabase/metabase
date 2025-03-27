@@ -5,7 +5,7 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
   const mockResolve = (kind, name) => [kind, name];
   const process = (source, type) =>
     resolve({ expression: parse(source), type, fn: mockResolve });
-  const filter = expr => process(expr, "boolean");
+  const filter = (expr) => process(expr, "boolean");
 
   // handy references
   const X = ["segment", "X"];
@@ -204,7 +204,7 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
       throw new ReferenceError(`Unknown ["${kind}", "${name}"]`);
     };
     const type = "aggregation";
-    const aggregation = expr =>
+    const aggregation = (expr) =>
       resolve({ expression: parse(expr), type, fn: mockResolve });
 
     // sanity check first
@@ -223,7 +223,7 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
 
   it("should handle aggregation with another function", () => {
     const type = "aggregation";
-    const aggregation = expr =>
+    const aggregation = (expr) =>
       resolve({ expression: parse(expr), type, fn: mockResolve });
 
     const A = ["dimension", "A"];
@@ -244,7 +244,7 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
       throw new ReferenceError(`Unknown ["${kind}", "${name}"]`);
     };
     const type = "aggregation";
-    const aggregation = expr =>
+    const aggregation = (expr) =>
       resolve({ expression: parse(expr), type, fn: mockResolve });
 
     // sanity check first

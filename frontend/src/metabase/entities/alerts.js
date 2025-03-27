@@ -63,7 +63,7 @@ const Alerts = createEntity({
 
     unsubscribe:
       ({ id }) =>
-      async dispatch => {
+      async (dispatch) => {
         await entityCompatibleQuery(
           id,
           dispatch,
