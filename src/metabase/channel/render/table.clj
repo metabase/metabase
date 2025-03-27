@@ -123,7 +123,7 @@
   `get-background-color` is a function that returned the background color for the current cell; it is invoked like
 
     (get-background-color cell-value column-name row-index)"
-  [get-background-color _normalized-zero column-names rows columns minibar-cols]
+  [get-background-color column-names rows columns minibar-cols]
   [:tbody
    (for [[row-idx {:keys [row bar-width]}] (m/indexed rows)]
      [:tr {:style (style/style {:color style/color-gray-3})}
@@ -150,10 +150,7 @@
     `:col-names`, which is the is display_names of the visible columns
     `:cols-for-color-lookup`, is the original column names, which the color-selector requires for color lookup.
   If `normalized-zero` is set (defaults to 0), render values less than it as negative"
-  ([color-selector column-names-map contents columns minibar-cols]
-   (render-table color-selector 0 column-names-map contents columns minibar-cols))
-
-  ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows] columns minibar-cols]
+  ([color-selector {:keys [col-names cols-for-color-lookup]} [header & rows] columns minibar-cols]
    (let [pivot-grouping-idx (get (zipmap col-names (range)) "pivot-grouping")
          col-names          (cond->> col-names
                               pivot-grouping-idx (m/remove-nth pivot-grouping-idx))
@@ -166,7 +163,7 @@
                                                              (update row :row #(m/remove-nth pivot-grouping-idx %)))))))
          color-getter       (partial js.color/get-background-color color-selector)
          thead              (render-table-head (vec col-names) header)
-         tbody              (render-table-body color-getter normalized-zero cols-for-color-lookup rows columns minibar-cols)]
+         tbody              (render-table-body color-getter cols-for-color-lookup rows columns minibar-cols)]
      [:table {:style       (style/style {:max-width     "100%"
                                          :white-space   :nowrap
                                          :border        (str "1px solid " style/color-border)
