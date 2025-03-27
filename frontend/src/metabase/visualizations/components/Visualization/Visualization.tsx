@@ -119,7 +119,7 @@ type VisualizationOwnProps = {
     height: number;
   };
   gridUnit?: number;
-  handleVisualizationClick?: (clicked: ClickObject) => void;
+  handleVisualizationClick?: (clicked?: ClickObject) => void;
   headerIcon?: IconProps;
   width?: number | null;
   height?: number | null;
@@ -162,7 +162,7 @@ type VisualizationProps = StateDispatchProps &
   VisualizationOwnProps;
 
 type VisualizationState = {
-  clicked: ClickObject | null;
+  clicked?: ClickObject | null;
   computedSettings: Record<string, string>;
   error: ReactNode;
   genericError: ErrorInfo | null;
@@ -388,7 +388,7 @@ class Visualization extends PureComponent<
     }
   }
 
-  getClickActions(clicked: ClickObject | null) {
+  getClickActions(clicked?: ClickObject | null) {
     if (!clicked) {
       return [];
     }
@@ -444,10 +444,6 @@ class Visualization extends PureComponent<
   };
 
   handleVisualizationClick = (clicked?: ClickObject) => {
-    if (!clicked) {
-      return;
-    }
-
     const { handleVisualizationClick } = this.props;
 
     if (typeof handleVisualizationClick === "function") {

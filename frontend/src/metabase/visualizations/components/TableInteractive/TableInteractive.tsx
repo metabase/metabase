@@ -22,7 +22,12 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid } from "metabase/data-grid";
-import { ROW_ID_COLUMN_ID } from "metabase/data-grid/constants";
+import {
+  FOOTER_HEIGHT,
+  HEADER_HEIGHT,
+  ROW_HEIGHT,
+  ROW_ID_COLUMN_ID,
+} from "metabase/data-grid/constants";
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
   BodyCellVariant,
@@ -35,6 +40,7 @@ import {
   memoize,
   useMemoizedCallback,
 } from "metabase/hooks/use-memoized-callback";
+import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -410,7 +416,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return cols.map((col, columnIndex) => {
       const columnSettings = settings.column?.(col) ?? {};
 
-      const wrap = Boolean(columnSettings["text_wrapping"]);
+      const wrap =
+        !settings["table.pagination"] &&
+        Boolean(columnSettings["text_wrapping"]);
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
       const headerVariant = mode != null || isDashboard ? "light" : "outline";
@@ -604,6 +612,22 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     };
   }, [tableTheme, backgroundColor]);
 
+  const pageSize: number | undefined = useMemo(() => {
+    if (settings["table.pagination"]) {
+      const availableSpaceForRows = Math.max(
+        height - (HEADER_HEIGHT + FOOTER_HEIGHT + getScrollBarSize()),
+        0,
+      );
+
+      const heightBasedPageSize = Math.floor(
+        availableSpaceForRows / ROW_HEIGHT,
+      );
+
+      return heightBasedPageSize > 0 ? heightBasedPageSize : undefined;
+    }
+    return undefined;
+  }, [height, settings]);
+
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
@@ -614,6 +638,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     theme: dataGridTheme,
     onColumnResize: handleColumnResize,
     onColumnReorder: handleColumnReordering,
+    pageSize,
   });
   const { measureColumnWidths, virtualGrid } = tableProps;
 
@@ -690,6 +715,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       <DataGrid
         {...tableProps}
         isSortingDisabled={isDashboard && !isSettings}
+        showRowsCount={isDashboard}
         emptyState={emptyState}
         onBodyCellClick={handleBodyCellClick}
         onAddColumnClick={handleAddColumnButtonClick}
