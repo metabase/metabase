@@ -504,7 +504,7 @@
 (defn- check-integer-query
   ([query db-type uncasted-field]
    (check-integer-query query db-type uncasted-field "\"subquery\".\"INTCAST\""))
-  ([query db-type uncasted-field casted-field]
+  ([query _db-type uncasted-field casted-field]
    (mt/native-query {:query (str "SELECT " casted-field ", "
                                  ;; need to do regex because some strings have 0 in front
                                  casted-field " = REGEXP_SUBSTR(" (name uncasted-field) ", '[+-]?[1-9][0-9]*$')"
