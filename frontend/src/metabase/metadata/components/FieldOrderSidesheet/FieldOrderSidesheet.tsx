@@ -1,16 +1,24 @@
+import { PointerSensor, useSensor } from "@dnd-kit/core";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { Sidesheet } from "metabase/common/components/Sidesheet";
+import {
+  type DragEndEvent,
+  SortableList,
+} from "metabase/core/components/Sortable";
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Flex } from "metabase/ui";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { FieldId, TableFieldOrder, TableId } from "metabase-types/api";
+import type { TableFieldOrder, TableId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { FieldOrderPicker } from "./FieldOrderPicker";
+import { SortableField } from "./SortableField";
 
 /**
  * This is to prevent FieldOrderPicker's focus state outline being cut off.
@@ -31,7 +39,16 @@ interface Props extends OwnProps {
 const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
   const dispatch = useDispatch();
 
-  const handleDragAndDrop = (fieldOrder: FieldId[]) => {
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 15 },
+  });
+
+  const sortedFields = useMemo(
+    () => _.sortBy(table.fields ?? [], (field) => field.position),
+    [table.fields],
+  );
+
+  const handleSortEnd = ({ itemIds: fieldOrder }: DragEndEvent) => {
     dispatch(Tables.actions.setFieldOrder(table, fieldOrder));
   };
 
@@ -49,6 +66,17 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
           onChange={handleFieldOrderChange}
         />
       </Flex>
+
+      <SortableList
+        getId={getId}
+        items={sortedFields}
+        renderItem={({ item, id }) => (
+          <SortableField field={item} id={id} key={id} />
+        )}
+        sensors={[pointerSensor]}
+        useDragOverlay={false}
+        onSortEnd={handleSortEnd}
+      />
     </Sidesheet>
   );
 };
@@ -65,3 +93,7 @@ export const FieldOrderSidesheet = _.compose(
     selectorName: "getObjectUnfiltered",
   }),
 )(FieldOrderSidesheetBase);
+
+function getId(field: Field) {
+  return field.getId();
+}
