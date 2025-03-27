@@ -1,5 +1,4 @@
-import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useState } from "react";
+import { useMemo } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -11,24 +10,16 @@ import {
 import { GenericError } from "metabase/components/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
-import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, Stack, Text } from "metabase/ui";
-import {
-  useDeleteTableRowsMutation,
-  useInsertTableRowsMutation,
-  useUpdateTableRowsMutation,
-} from "metabase-enterprise/api";
+import { extractRemappedColumns } from "metabase/visualizations";
 import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { RowValue } from "metabase-types/api";
-
-import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { useTableCRUD } from "./use-table-crud";
 
 type EditTableDataContainerProps = {
   params: {
@@ -43,15 +34,6 @@ export const EditTableDataContainer = ({
   const dbId = parseInt(dbIdParam, 10);
   const tableId = parseInt(tableIdParam, 10);
 
-  const [
-    isCreateRowModalOpen,
-    { open: openCreateRowModal, close: closeCreateRowModal },
-  ] = useDisclosure(false);
-
-  const [expandedRowIndex, setExpandedRowIndex] = useState<
-    number | undefined
-  >();
-
   const dispatch = useDispatch();
 
   const { data: database } = useGetDatabaseMetadataQuery({ id: dbId }); // TODO: consider using just "dbId" to avoid extra data request
@@ -59,155 +41,39 @@ export const EditTableDataContainer = ({
     id: tableId,
   });
 
-  const {
-    data: datasetData,
-    isLoading,
-    refetch: refetchTableDataQuery,
-  } = useGetTableDataQuery({
+  const { data: datasetData, isLoading } = useGetTableDataQuery({
     tableId,
   });
 
-  const [deleteTableRows] = useDeleteTableRowsMutation();
-  const [updateTableRows] = useUpdateTableRowsMutation();
-  const [insertTableRows, { isLoading: isInserting }] =
-    useInsertTableRowsMutation();
+  const { cols: remappedCols } = useMemo(() => {
+    return datasetData
+      ? extractRemappedColumns(datasetData.data)
+      : { cols: undefined };
+  }, [datasetData]);
+
+  const {
+    isCreateRowModalOpen,
+    expandedRowIndex,
+    isInserting,
+    closeCreateRowModal,
+    tableFieldMetadataMap,
+
+    handleRowCreate,
+    handleCellValueUpdate,
+    handleExpandedRowDelete,
+    handleModalOpenAndExpandedRow,
+  } = useTableCRUD({ tableId, datasetData: datasetData?.data });
 
   useMount(() => {
     dispatch(closeNavbar());
   });
-
-  const displayErrorIfExsits = useCallback(
-    (error: any) => {
-      if (error) {
-        dispatch(
-          addUndo({
-            icon: "warning",
-            toastColor: "error",
-            message: error?.data?.errors?.[0].error ?? t`An error occurred`,
-          }),
-        );
-      }
-    },
-    [dispatch],
-  );
-
-  const handleRowsDelete = () => {};
-
-  const handleCellValueUpdate = useCallback(
-    async ({ data, rowIndex }: UpdatedRowCellsHandlerParams) => {
-      if (!datasetData) {
-        console.warn(
-          "Failed to update table data - no data is loaded for a table",
-        );
-        return;
-      }
-
-      const columns = datasetData.data.cols;
-      const rowData = datasetData.data.rows[rowIndex];
-
-      const pkColumnIndex = columns.findIndex(isPK);
-      const pkColumn = columns[pkColumnIndex];
-      const rowPkValue = rowData[pkColumnIndex];
-
-      const updatedRowWithPk = {
-        ...data,
-        [pkColumn.name]: rowPkValue,
-      };
-
-      const response = await updateTableRows({
-        tableId: tableId,
-        rows: [updatedRowWithPk],
-      });
-
-      displayErrorIfExsits(response.error);
-
-      // TODO: do an optimistic data update here using RTK cache
-
-      refetchTableDataQuery();
-    },
-    [
-      datasetData,
-      refetchTableDataQuery,
-      tableId,
-      updateTableRows,
-      displayErrorIfExsits,
-    ],
-  );
-
-  const handleRowCreate = useCallback(
-    async (data: Record<string, RowValue>) => {
-      const response = await insertTableRows({
-        tableId: tableId,
-        rows: [data],
-      });
-
-      displayErrorIfExsits(response.error);
-      if (!response.error) {
-        closeCreateRowModal();
-      }
-
-      // TODO: do an optimistic data update here using RTK cache
-      refetchTableDataQuery();
-    },
-    [
-      refetchTableDataQuery,
-      closeCreateRowModal,
-      tableId,
-      insertTableRows,
-      displayErrorIfExsits,
-    ],
-  );
-
-  const handleExpandedRowDetele = useCallback(
-    async (rowIndex: number) => {
-      if (!datasetData) {
-        console.warn(
-          "Failed to update table data - no data is loaded for a table",
-        );
-        return;
-      }
-
-      const columns = datasetData.data.cols;
-      const rowData = datasetData.data.rows[rowIndex];
-
-      const pkColumnIndex = columns.findIndex(isPK);
-      const pkColumn = columns[pkColumnIndex];
-      const rowPkValue = rowData[pkColumnIndex];
-
-      closeCreateRowModal();
-
-      const response = await deleteTableRows({
-        rows: [{ [pkColumn.name]: rowPkValue }],
-        tableId: tableId,
-      });
-      displayErrorIfExsits(response.error);
-      // TODO: do an optimistic data update here using RTK cache
-      refetchTableDataQuery();
-    },
-    [
-      tableId,
-      datasetData,
-      closeCreateRowModal,
-      deleteTableRows,
-      refetchTableDataQuery,
-      displayErrorIfExsits,
-    ],
-  );
-
-  const handleModalOpenAndExpandedRow = useCallback(
-    (rowIndex?: number) => {
-      setExpandedRowIndex(rowIndex);
-      openCreateRowModal();
-    },
-    [openCreateRowModal],
-  );
 
   if (!database || isLoading || tableIdLoading) {
     // TODO: show loader
     return null;
   }
 
-  if (!datasetData) {
+  if (!datasetData || !tableFieldMetadataMap || !remappedCols) {
     // TODO: show error
     return null;
   }
@@ -219,14 +85,14 @@ export const EditTableDataContainer = ({
           <EditTableDataHeader
             table={table}
             onCreate={handleModalOpenAndExpandedRow}
-            onDelete={handleRowsDelete}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (
           <>
             <Box pos="relative" className={S.gridWrapper}>
               <EditTableDataGrid
-                data={datasetData}
+                data={datasetData.data}
+                fieldMetadataMap={tableFieldMetadataMap}
                 onCellValueUpdate={handleCellValueUpdate}
                 onRowExpandClick={handleModalOpenAndExpandedRow}
               />
@@ -255,16 +121,17 @@ export const EditTableDataContainer = ({
       <EditingBaseRowModal
         opened={isCreateRowModalOpen}
         onClose={closeCreateRowModal}
-        onValueChange={handleCellValueUpdate}
+        onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
-        onRowDelete={handleExpandedRowDetele}
-        datasetColumns={datasetData.data.cols}
+        onRowDelete={handleExpandedRowDelete}
+        datasetColumns={remappedCols}
         currentRowIndex={expandedRowIndex}
         currentRowData={
           expandedRowIndex !== undefined
             ? datasetData.data.rows[expandedRowIndex]
             : undefined
         }
+        fieldMetadataMap={tableFieldMetadataMap}
         isLoading={isInserting}
       />
     </>

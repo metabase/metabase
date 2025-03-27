@@ -327,20 +327,22 @@ describe("MetadataEditor", () => {
       await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
 
       const section = within(
-        await screen.findByLabelText(ORDERS_ID_FIELD.name),
+        await screen.findByLabelText(ORDERS_DISCOUNT_FIELD.name),
       );
-      await userEvent.click(section.getByDisplayValue("Entity Key"));
+      await userEvent.click(
+        section.getByPlaceholderText("Select a semantic type"),
+      );
       const popover = within(await screen.findByRole("listbox"));
-      expect(await popover.findByText("Entity Name")).toBeInTheDocument();
+      expect(await popover.findByText("Currency")).toBeInTheDocument();
 
       const typeInput = await section.findByPlaceholderText(
         "Select a semantic type",
       );
 
       await userEvent.clear(typeInput);
-      await userEvent.type(typeInput, "Ci");
-      expect(popover.getByText("City")).toBeInTheDocument();
-      expect(popover.queryByText("Category")).not.toBeInTheDocument();
+      await userEvent.type(typeInput, "In");
+      expect(popover.getByText("Income")).toBeInTheDocument();
+      expect(popover.queryByText("Currency")).not.toBeInTheDocument();
     });
 
     it("should show the foreign key target for foreign keys", async () => {

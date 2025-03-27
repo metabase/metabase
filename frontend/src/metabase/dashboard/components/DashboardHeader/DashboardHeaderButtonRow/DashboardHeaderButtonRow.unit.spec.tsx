@@ -51,6 +51,10 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "filter",
     tooltip: "Add a filter or parameter",
   },
+  [DASHBOARD_ACTION.ADD_EDITABLE_TABLE]: {
+    icon: "table",
+    tooltip: "Add editable table",
+  },
   [DASHBOARD_ACTION.ADD_ACTION_ELEMENT]: {
     icon: "click",
     tooltip: "Add action button",

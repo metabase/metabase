@@ -175,6 +175,7 @@ const FieldList = props => {
                         entity.name && (
                           <li key={entity.id}>
                             <Field
+                              databaseId={table.db_id}
                               field={entity}
                               foreignKeys={foreignKeys}
                               url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}
