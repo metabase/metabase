@@ -312,6 +312,7 @@ export type VisualizationDefinition = {
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
   supportsSeries?: boolean;
+  disableReplaceCard?: boolean;
 
   minSize: VisualizationGridSize;
   defaultSize: VisualizationGridSize;
