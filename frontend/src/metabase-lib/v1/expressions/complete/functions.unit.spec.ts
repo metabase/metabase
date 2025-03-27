@@ -271,8 +271,8 @@ describe("suggestFunctions", () => {
     const results = await completer("not|");
     expect(results?.options.map((result) => result.displayLabel)).toEqual([
       "notIn",
-      "notnull",
-      "notempty",
+      "notNull",
+      "notEmpty",
       "doesNotContain",
       "now",
       "interval",

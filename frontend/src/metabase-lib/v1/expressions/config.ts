@@ -165,8 +165,8 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   },
   length: { displayName: `length`, type: "number", args: ["string"] },
   trim: { displayName: `trim`, type: "string", args: ["string"] },
-  rtrim: { displayName: `rtrim`, type: "string", args: ["string"] },
-  ltrim: { displayName: `ltrim`, type: "string", args: ["string"] },
+  rtrim: { displayName: `rTrim`, type: "string", args: ["string"] },
+  ltrim: { displayName: `lTrim`, type: "string", args: ["string"] },
   domain: {
     displayName: `domain`,
     type: "string",
@@ -305,22 +305,22 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["number", "string"],
   },
   "is-null": {
-    displayName: `isnull`,
+    displayName: `isNull`,
     type: "boolean",
     args: ["expression"],
   },
   "not-null": {
-    displayName: `notnull`,
+    displayName: `notNull`,
     type: "boolean",
     args: ["expression"],
   },
   "is-empty": {
-    displayName: `isempty`,
+    displayName: `isEmpty`,
     type: "boolean",
     args: ["expression"],
   },
   "not-empty": {
-    displayName: `notempty`,
+    displayName: `notEmpty`,
     type: "boolean",
     args: ["expression"],
   },
