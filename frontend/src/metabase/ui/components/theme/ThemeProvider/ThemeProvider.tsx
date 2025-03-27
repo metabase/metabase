@@ -76,7 +76,7 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
       classNamesPrefix="mb-mantine"
       // This slows down unit tests like crazy
-      cssVariablesSelector={isEmbeddingSdk ? ".mb-wrapper" : undefined}
+      cssVariablesSelector=":host, :root"
       withCssVariables={!isJest}
       {...props.mantineProviderProps}
     >

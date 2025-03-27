@@ -37,6 +37,8 @@ import {
 } from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 
+import { getSdkStyles } from "./InteractiveQuestion/get-styles-manifest";
+
 import "metabase/css/index.module.css";
 import "metabase/css/vendor.css";
 
@@ -111,7 +113,18 @@ export const MetabaseProviderInternal = ({
   allowConsoleLog,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
+
+  // Container for Emotion styles
+  const emotionStyleContainerRef = useRef<HTMLDivElement>(null);
+  const cssModuleStyleContainerRef = useRef<HTMLStyleElement>(null);
+
   useInitData({ authConfig, allowConsoleLog });
+
+  useEffect(() => {
+    if (cssModuleStyleContainerRef.current) {
+      cssModuleStyleContainerRef.current.textContent = getSdkStyles();
+    }
+  }, []);
 
   useEffect(() => {
     if (fontFamily) {
@@ -143,10 +156,23 @@ export const MetabaseProviderInternal = ({
 
   return (
     <SdkContextProvider>
-      <EmotionCacheProvider>
+      <EmotionCacheProvider
+        container={emotionStyleContainerRef.current as Node}
+      >
         <Global styles={SCOPED_CSS_RESET} />
         <SdkThemeProvider theme={theme}>
+          <Box
+            ref={emotionStyleContainerRef}
+            data-style-container="emotion"
+          ></Box>
+
+          <style
+            ref={cssModuleStyleContainerRef}
+            data-style-container="css-module"
+          />
+
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
+
           <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
             <LocaleProvider locale={locale || instanceLocale}>
               {children}
