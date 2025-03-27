@@ -99,6 +99,7 @@ const PinnedQuestionCard = ({
                 errorIcon={errorIcon}
                 showTitle
                 isDashboard
+                isPinnedQuestion
               />
             )
           }
