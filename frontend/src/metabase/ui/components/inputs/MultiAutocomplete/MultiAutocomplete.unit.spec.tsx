@@ -293,7 +293,7 @@ describe("MultiAutocomplete", () => {
       filter: ({ options }) => {
         // type cast because we are dealing with ungrouped items
         return (options as SelectOption[]).filter(
-          option => option.value === "bar",
+          (option) => option.value === "bar",
         );
       },
     });

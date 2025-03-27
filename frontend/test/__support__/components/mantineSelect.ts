@@ -25,7 +25,7 @@ export const viewMantineSelectOptions = async ({
 
   const listbox = await screen.findByRole("listbox");
   const optionElements = await within(listbox).findAllByRole("option");
-  const optionTextContents = optionElements.map(option => option.textContent);
+  const optionTextContents = optionElements.map((option) => option.textContent);
   return {
     optionElements,
     optionTextContents,

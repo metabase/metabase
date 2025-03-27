@@ -28,8 +28,8 @@ if (hasPremiumFeature("query_reference_validation")) {
     />,
   ];
 
-  PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-    updateIn(sections, ["general", "settings"], settings => [
+  PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) =>
+    updateIn(sections, ["general", "settings"], (settings) => [
       ...settings,
       {
         key: "query-analysis-enabled",

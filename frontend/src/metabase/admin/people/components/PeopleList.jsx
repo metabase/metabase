@@ -27,7 +27,7 @@ import { getMembershipsByUser } from "../selectors";
 
 import PeopleListRow from "./PeopleListRow";
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   currentUser: getUser(state),
   isAdmin: getUserIsAdmin(state),
   groups: Group.selectors.getList(state),
@@ -85,8 +85,8 @@ const PeopleList = ({
     }
 
     const areSameUsers = _.isEqual(
-      prevUsers.map(u => u.id),
-      users.map(u => u.id),
+      prevUsers.map((u) => u.id),
+      users.map((u) => u.id),
     );
 
     if (!areSameUsers) {
@@ -94,8 +94,8 @@ const PeopleList = ({
     }
 
     const isActivityChanged = !_.isEqual(
-      prevUsers.map(u => u.is_active),
-      users.map(u => u.is_active),
+      prevUsers.map((u) => u.is_active),
+      users.map((u) => u.is_active),
     );
 
     if (isActivityChanged) {
@@ -107,13 +107,13 @@ const PeopleList = ({
 
   const { page, pageSize, status } = query;
 
-  const isCurrentUser = u => currentUser?.id === u.id;
+  const isCurrentUser = (u) => currentUser?.id === u.id;
   const showDeactivated = status === USER_STATUS.deactivated;
   const hasUsers = users.length > 0;
 
   const handleChange = async (groupId, membershipData, userId) => {
     const membership = membershipsByUser[userId].find(
-      membership => membership.group_id === groupId,
+      (membership) => membership.group_id === groupId,
     );
     const updatedMembership = {
       ...membership,
@@ -146,7 +146,7 @@ const PeopleList = ({
 
   const handleRemove = async (groupId, userId) => {
     const membershipId = membershipsByUser[userId].find(
-      membership => membership.group_id === groupId,
+      (membership) => membership.group_id === groupId,
     ).membership_id;
 
     const confirmation = PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
@@ -205,7 +205,7 @@ const PeopleList = ({
         </thead>
         <tbody>
           {hasUsers &&
-            users.map(user => (
+            users.map((user) => (
               <PeopleListRow
                 key={user.id}
                 user={user}
@@ -214,8 +214,8 @@ const PeopleList = ({
                 userMemberships={membershipsByUser[user.id]}
                 isCurrentUser={isCurrentUser(user)}
                 isAdmin={isAdmin}
-                onAdd={groupId => handleAdd(groupId, user.id)}
-                onRemove={groupId => handleRemove(groupId, user.id)}
+                onAdd={(groupId) => handleAdd(groupId, user.id)}
+                onRemove={(groupId) => handleRemove(groupId, user.id)}
                 onChange={(groupId, membershipData) =>
                   handleChange(groupId, membershipData, user.id)
                 }

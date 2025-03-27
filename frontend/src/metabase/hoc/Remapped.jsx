@@ -16,7 +16,7 @@ const mapDispatchToProps = {
 /**
  * @deprecated HOCs are deprecated
  */
-export default ComposedComponent =>
+export default (ComposedComponent) =>
   connect(
     mapStateToProps,
     mapDispatchToProps,

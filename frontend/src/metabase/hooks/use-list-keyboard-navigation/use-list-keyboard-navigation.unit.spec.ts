@@ -1,4 +1,3 @@
-/* eslint-disable jest/expect-expect */
 import { renderHook } from "@testing-library/react-hooks";
 
 import { fireEvent } from "__support__/ui";

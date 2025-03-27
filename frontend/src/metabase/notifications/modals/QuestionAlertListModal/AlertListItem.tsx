@@ -179,7 +179,7 @@ const formatEmailHandlerInfo = (
   const usersMap = _.indexBy(users, "id");
 
   const emailRecipients = emailHandler.recipients
-    .map(recipient => {
+    .map((recipient) => {
       if (recipient.type === "notification-recipient/raw-value") {
         return recipient.details.value;
       }

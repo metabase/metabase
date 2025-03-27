@@ -5,8 +5,8 @@ function splitTags(splitChars: string[] | undefined, value: string) {
 
   return value
     .split(new RegExp(`[${splitChars.join("")}]`))
-    .map(tag => tag.trim())
-    .filter(tag => tag !== "");
+    .map((tag) => tag.trim())
+    .filter((tag) => tag !== "");
 }
 
 interface GetSplittedTagsInput {

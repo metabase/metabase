@@ -35,7 +35,7 @@ export function useListSelect<T>(
       const isItemSelected = getIsSelected(itemBeingToggled);
 
       const newSelected = isItemSelected
-        ? selected.filter(item => keyFn(item) !== keyFn(itemBeingToggled))
+        ? selected.filter((item) => keyFn(item) !== keyFn(itemBeingToggled))
         : [...selected, itemBeingToggled];
       const newSelectedKeys = new Set(newSelected.map(keyFn));
 

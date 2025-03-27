@@ -52,7 +52,7 @@ export const useConfirmRouteLeaveModal = ({
   useBeforeUnload(isEnabled);
 
   useEffect(() => {
-    const removeLeaveHook = router.setRouteLeaveHook(route, location => {
+    const removeLeaveHook = router.setRouteLeaveHook(route, (location) => {
       if (isEnabled && !isConfirmed && !isLocationAllowed?.(location)) {
         setOpened(true);
         setNextLocation(location);

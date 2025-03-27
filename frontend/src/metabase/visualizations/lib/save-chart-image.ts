@@ -68,7 +68,7 @@ export const saveChartImage = async (selector: string, fileName: string) => {
     },
   });
 
-  canvas.toBlob(blob => {
+  canvas.toBlob((blob) => {
     if (blob) {
       if (isStorybookActive) {
         // if we're running storybook we open the image in place

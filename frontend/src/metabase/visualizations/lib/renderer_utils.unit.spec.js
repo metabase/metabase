@@ -7,7 +7,7 @@ import {
 
 describe("getXValues", () => {
   function getXValuesForRows(listOfRows, settings = {}) {
-    const series = listOfRows.map(rows => ({ data: { rows, cols: [{}] } }));
+    const series = listOfRows.map((rows) => ({ data: { rows, cols: [{}] } }));
     series._raw = series;
     return getXValues({ settings, series });
   }
@@ -133,7 +133,7 @@ describe("getXValues", () => {
           [["2019-08-11"], ["2019-W33"]],
         ],
         { "graph.x_axis.scale": "timeseries" },
-      ).map(x => x.format()),
+      ).map((x) => x.format()),
     ).toEqual([
       "2019-08-11T00:00:00Z",
       "2019-08-12T00:00:00Z",
@@ -161,7 +161,7 @@ describe("getXValues", () => {
         "graph.x_axis.scale": "timeseries",
       },
     );
-    const formattedXValues = xValues.map(v => v.format("YYYY-MM-DD"));
+    const formattedXValues = xValues.map((v) => v.format("YYYY-MM-DD"));
     expect(formattedXValues).toEqual(["2019-01-02", "2019-01-03"]);
   });
 
@@ -172,7 +172,7 @@ describe("getXValues", () => {
         "graph.x_axis.scale": "timeseries",
       },
     );
-    const formattedXValues = xValues.map(v => v.format("YYYY-MM-DD"));
+    const formattedXValues = xValues.map((v) => v.format("YYYY-MM-DD"));
     expect(formattedXValues).toEqual(["2019-01-02", "2019-01-03"]);
   });
 });

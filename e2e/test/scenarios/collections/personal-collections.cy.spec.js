@@ -62,7 +62,7 @@ describe("personal collections", () => {
       H.popover().findByText("Other users' personal collections").click();
       cy.location("pathname").should("eq", "/collection/users");
       cy.findByTestId("browsercrumbs").findByText(/All personal collections/i);
-      Object.values(USERS).forEach(user => {
+      Object.values(USERS).forEach((user) => {
         const FULL_NAME = `${user.first_name} ${user.last_name}`;
         cy.findByText(FULL_NAME);
       });
@@ -132,7 +132,7 @@ describe("personal collections", () => {
   });
 
   describe("all users", () => {
-    Object.keys(USERS).forEach(user => {
+    Object.keys(USERS).forEach((user) => {
       describe(`${user} user`, () => {
         beforeEach(() => {
           cy.signIn(user);

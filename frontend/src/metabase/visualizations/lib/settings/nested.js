@@ -28,7 +28,7 @@ export function nestedSettings(
       extra,
     );
     // remove undefined settings since they override other settings when merging object
-    return _.pick(computedSettings, value => value !== undefined);
+    return _.pick(computedSettings, (value) => value !== undefined);
   }
 
   function getComputedSettingsForAllObjects(
@@ -72,7 +72,7 @@ export function nestedSettings(
       onChangeSettings,
       extra,
     );
-    return widgets.map(widget => ({ ...widget, noPadding: true }));
+    return widgets.map((widget) => ({ ...widget, noPadding: true }));
   }
 
   // decorate with nested settings HOC
@@ -110,7 +110,7 @@ export function nestedSettings(
     [objectName]: {
       getDefault(series, settings) {
         const cache = new Map();
-        return object => {
+        return (object) => {
           const key = getObjectKey(object);
           if (!cache.has(key)) {
             const inheritedSettings = getInheritedSettingsForObject(object);

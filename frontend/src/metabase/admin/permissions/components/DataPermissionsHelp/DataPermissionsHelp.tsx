@@ -23,10 +23,10 @@ import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
 
 export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled = useSelector(
-    state => getSetting(state, "token-features").advanced_permissions,
+    (state) => getSetting(state, "token-features").advanced_permissions,
   );
 
-  const shouldShowLegacyNoSelfServiceInfo = useSelector(state =>
+  const shouldShowLegacyNoSelfServiceInfo = useSelector((state) =>
     hasPermissionValueInGraph(
       state.admin.permissions.originalDataPermissions,
       DataPermissionValue.LEGACY_NO_SELF_SERVICE,
