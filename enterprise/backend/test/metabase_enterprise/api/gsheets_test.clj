@@ -2,18 +2,11 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
-   [java-time.api :as t]
-   [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.gsheets.settings :refer [gsheets]]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.test :as mt]
    [metabase.util.string :as string]
-   [toucan2.core :as t2])
-  (:import [java.time
-            LocalDate
-            LocalTime
-            ZoneId
-            ZonedDateTime]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -81,10 +74,6 @@
              [:map [:email [:maybe :string]]]
              (mt/user-http-request :crowberto :get 200 "ee/gsheets/service-account")))))))
 
-(defn- ->zdt
-  [^long date ^long time ^String zone]
-  (ZonedDateTime/of (LocalDate/of date 1 1) (-> LocalTime/MIDNIGHT (.plusSeconds time)) (ZoneId/of zone)))
-
 (deftest can-get-service-account-test
   (let [[status response] (mock-make-request happy-responses
                                              :get
@@ -148,7 +137,7 @@
              {:status "loading", :folder_url gsheet-link}
              (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gsheet-link})))))))
 
-(deftest post-folder-syncing-test
+(deftest folder-syncing-test
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
     (testing "Sync starts"
       (with-redefs [hm.client/make-request (partial mock-make-request (+syncing happy-responses))]
@@ -161,7 +150,7 @@
             (is (nil? (:status (gsheets))))))))
     (testing "Error if folder not set up"
       (mt/with-temporary-setting-values [gsheets nil]
-        (let [response (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder/sync")]
+        (let [response (mt/user-http-request :crowberto :post 404 "ee/gsheets/folder/sync")]
           (is (partial= {:errors true, :message "No attached google sheet(s) found."} response)))))))
 
 (deftest get-folder-test
@@ -170,39 +159,42 @@
                        :url           "test-url",
                        :created-at    15}]
       (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-        (testing (str "when no config exists, return not-connected")
+        (testing "when no config exists, return not-connected"
           (mt/with-temporary-setting-values [gsheets nil]
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")]
                 (is (= {:status "not-connected"} response))))))
-        (testing (str "when state==initializing, status==syncing")
+        (testing "when state==initializing, status==syncing"
           (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-initializing-link)]
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")]
-                (is (partial= {:status "syncing", :url "test-url" :db_id 1, :created_by_id 2}
+                (is (partial= {:status "syncing", :url "test-url" :created_by_id 2}
                               response))
                 (is (pos-int? (:sync_started_at response)))
+                (is (pos-int? (:db_id response)))
                 (is (nil? (:last_sync_at response)))
                 (is (nil? (:next_sync_at response)))
                 (testing "current state info doesn't get persisted"
                   (is (nil? (:sync_started_at (gsheets)))))))))
-        (testing (str "when state==syncing, status==syncing")
+        (testing "when state==syncing, status==syncing"
           (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-syncing-link)]
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")]
-                (is (partial= {:status "syncing", :url "test-url" :db_id 1, :created_by_id 2}
+                (is (partial= {:status "syncing", :url "test-url" :created_by_id 2}
                               response))
                 (is (pos-int? (:sync_started_at response)))
+                (is (pos-int? (:db_id response)))
                 (is (nil? (:last_sync_at response)))
                 (is (nil? (:next_sync_at response)))
                 (testing "current state info doesn't get persisted"
                   (is (nil? (:sync_started_at (gsheets)))))))))
-        (testing (str "when state==active, status==active")
+        (testing "when state==active, status==active"
           (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-active-link)]
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")]
-                (is (partial= {:status "active", :url "test-url" :db_id 1, :created_by_id 2}
+                (is (partial= {:status "active", :url "test-url" :created_by_id 2}
                               response))
+                (is (pos-int? (:db_id response)))
                 (is (nil? (:sync_started_at response)))
                 (is (pos-int? (:last_sync_at response)))
                 (is (pos-int? (:next_sync_at response)))
