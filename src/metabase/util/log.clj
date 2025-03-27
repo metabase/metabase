@@ -10,7 +10,9 @@
    [clojure.tools.logging.impl]
    [metabase.config :as config]
    [metabase.util.log.capture]
-   [net.cgrand.macrovich :as macros]))
+   [net.cgrand.macrovich :as macros])
+  (:import
+   (org.apache.logging.log4j ThreadContext)))
 
 ;;; --------------------------------------------- CLJ-side macro helpers ---------------------------------------------
 (defn- glogi-logp
@@ -207,3 +209,34 @@
   [& body]
   `(binding [clojure.tools.logging/*logger-factory* clojure.tools.logging.impl/disabled-logger-factory]
      ~@body))
+
+(defmacro with-context
+  "Executes body with the given context map and message prefix in ThreadContext.
+   The context map's keys and values are added to the ThreadContext individually.
+   Preserves any existing context values and restores them after execution.
+
+   Example usage:
+   (with-context {:notification_id 1}
+     (log/infof \"Hello\"))
+
+   ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
+  [context-map & body]
+  (macros/case
+    :clj `(let [ctx-map# ~context-map
+                ctx-keys# (keys ctx-map#)
+                ;; Store original values before modifying
+                original-values# (into {}
+                                       (keep (fn [k#]
+                                               (when-let [v# (ThreadContext/get (name k#))]
+                                                 [(name k#) v#])))
+                                       ctx-keys#)]
+            (try
+              (doseq [k# ctx-keys#]
+                (ThreadContext/put (name k#) (str (get ctx-map# k#))))
+              ~@body
+              (finally
+                (doseq [k# ctx-keys#]
+                  (if-let [original# (find original-values# (name k#))]
+                    (ThreadContext/put (name k#) (val original#))
+                    (ThreadContext/remove (name k#)))))))
+    :cljs ~@body))

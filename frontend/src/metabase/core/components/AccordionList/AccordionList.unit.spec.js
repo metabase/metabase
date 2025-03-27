@@ -1,4 +1,3 @@
-/* eslint-disable jest/expect-expect */
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, render, screen } from "__support__/ui";
@@ -48,7 +47,7 @@ describe("AccordionList", () => {
 
   it("should show search field is searchable is set", () => {
     render(<AccordionList sections={SECTIONS} searchable />);
-    screen.getByRole("img", { name: /search/i });
+    expect(screen.getByRole("img", { name: /search/i })).toBeInTheDocument();
   });
 
   it("should close the section when header is clicked", () => {
