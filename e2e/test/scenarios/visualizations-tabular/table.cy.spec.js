@@ -421,6 +421,49 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     assertCanViewOrdersTableDashcard();
   });
 
+  it("should allow enabling pagination in dashcard viz settings", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.dashboardCards()
+      .eq(0)
+      .as("tableDashcard")
+      .findByText("Rows 1-7 of first 2000")
+      .should("not.exist");
+
+    cy.get("@tableDashcard").findByText("2000 rows");
+
+    // Enable pagination
+    H.editDashboard();
+    H.showDashcardVisualizationSettings(0);
+    H.modal().within(() => {
+      cy.findByText("Paginate results").click();
+      cy.findByText("Rows 1-11 of first 2000");
+      cy.button("Done").click();
+    });
+
+    H.saveDashboard();
+
+    // Ensure pagination works
+    cy.get("@tableDashcard")
+      .findByText("Rows 1-7 of first 2000")
+      .should("be.visible");
+
+    cy.findByLabelText("Next page").click();
+    cy.get("@tableDashcard").findByText("Rows 8-14 of first 2000");
+
+    cy.findByLabelText("Previous page").click();
+    cy.get("@tableDashcard").findByText("Rows 1-7 of first 2000");
+
+    H.editDashboard();
+
+    // Ensure resizing change page size
+    H.resizeDashboardCard({ card: cy.get("@tableDashcard"), x: 600, y: 600 });
+    H.saveDashboard();
+    cy.get("@tableDashcard")
+      .findByText("Rows 1-17 of first 2000")
+      .scrollIntoView()
+      .should("be.visible");
+  });
+
   it("should support text wrapping setting", () => {
     H.createQuestionAndDashboard({
       questionDetails: {

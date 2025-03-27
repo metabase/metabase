@@ -62,6 +62,7 @@ export const DashboardTable = {
   render: DefaultTemplate,
   args: {
     series: data.ordersWithPeople,
+    isDashboard: true,
   },
 };
 

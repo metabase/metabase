@@ -366,17 +366,29 @@ export const useDataGridInstance = <TData, TValue>({
     return table.getRowModel().rows;
   }, [enableRowVirtualization, table, virtualGrid.virtualRows]);
 
+  const previousPaginationRef = useRef<PaginationState>();
   useEffect(() => {
     // Auto-adjusts column widths during pagination when sizes aren't explicitly specified
-    if (Object.values(controlledColumnSizingMap ?? {}).length === 0) {
+    const previousPagination = previousPaginationRef.current;
+    if (
+      pagination.pageSize === DISABLED_PAGINATION_STATE.pageSize ||
+      !previousPagination
+    ) {
+      return;
+    }
+    const hasExplicitlySizedColumns =
+      Object.values(controlledColumnSizingMap ?? {}).length === 0;
+
+    const shouldMeasureColumnsForPage =
+      !hasExplicitlySizedColumns &&
+      (pagination.pageIndex !== previousPagination.pageIndex ||
+        pagination.pageSize !== previousPagination.pageSize);
+
+    if (shouldMeasureColumnsForPage) {
       measureColumnWidths();
     }
-  }, [
-    columnSizingMap,
-    controlledColumnSizingMap,
-    measureColumnWidths,
-    pagination.pageIndex,
-  ]);
+    previousPaginationRef.current = pagination;
+  }, [controlledColumnSizingMap, measureColumnWidths, pagination]);
 
   return {
     table,

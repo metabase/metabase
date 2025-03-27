@@ -17,19 +17,21 @@ export const Footer = <TData,>({
   showRowsCount,
   enablePagination,
 }: FooterProps<TData>) => {
-  if (!enablePagination && !showRowsCount) {
-    return null;
-  }
+  const wrapperAttributes = {
+    "data-testid": "table-footer",
+    className: S.root,
+    style: { height: `${FOOTER_HEIGHT}px` },
+  };
+  const total = table.getPrePaginationRowModel().rows.length;
 
   if (enablePagination) {
     const pagination = table.getState().pagination;
 
-    const total = table.getPrePaginationRowModel().rows.length;
     const start = pagination.pageIndex * pagination.pageSize;
     const end =
       Math.min((pagination.pageIndex + 1) * pagination.pageSize, total) - 1;
     return (
-      <div className={S.root} style={{ height: `${FOOTER_HEIGHT}px` }}>
+      <div {...wrapperAttributes}>
         <PaginationFooter
           start={start}
           end={end}
@@ -42,10 +44,9 @@ export const Footer = <TData,>({
   }
 
   if (showRowsCount) {
-    const rowsCount = table.getPrePaginationRowModel().rows.length;
     return (
-      <div className={S.root} style={{ height: `${FOOTER_HEIGHT}px` }}>
-        <span className={S.rowsCount}>{t`${rowsCount} rows`}</span>
+      <div {...wrapperAttributes}>
+        <span className={S.rowsCount}>{t`${total} rows`}</span>
       </div>
     );
   }
