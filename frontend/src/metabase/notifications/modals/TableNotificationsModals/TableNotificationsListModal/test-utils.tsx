@@ -5,7 +5,11 @@ import { renderWithProviders } from "__support__/ui";
 import { TableNotificationsListModal } from "metabase/notifications/modals/TableNotificationsModals/TableNotificationsListModal/TableNotificationsListModal";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type { TableNotification, User } from "metabase-types/api";
-import { createMockNotificationSystemEventSubscription, createMockTableNotification, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockNotificationSystemEventSubscription,
+  createMockTableNotification,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 export interface SetupOpts {
   notifications?: TableNotification[];
@@ -82,7 +86,10 @@ export const setup = ({
   };
 };
 
-export const createNotificationForUser = (userId: number, index = 0): TableNotification => {
+export const createNotificationForUser = (
+  userId: number,
+  index = 0,
+): TableNotification => {
   return {
     ...createMockTableNotification(),
     id: userId * 100 + index, // Ensure unique IDs

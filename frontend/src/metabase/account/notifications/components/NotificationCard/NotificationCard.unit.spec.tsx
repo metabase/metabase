@@ -12,6 +12,7 @@ import {
   createMockNotificationHandlerEmail,
   createMockNotificationHandlerSlack,
   createMockNotificationRecipientUser,
+  createMockNotificationSystemEventSubscription,
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -41,19 +42,12 @@ const getTableNotificationItem = (
     payload: null,
     payload_id: null,
     subscriptions: [
-      {
-        type: "notification-subscription/system-event",
+      createMockNotificationSystemEventSubscription({
         event_name: eventName,
-        table_id: 42,
         table: createMockTable({
-          id: 42,
           display_name: tableName,
         }),
-        notification_id: 123,
-        id: 456,
-        created_at: "2025-01-07T12:00:00Z",
-        updated_at: "2025-01-07T12:00:00Z",
-      },
+      }),
     ],
     condition: ["=", ["field", "id"], 1],
   },

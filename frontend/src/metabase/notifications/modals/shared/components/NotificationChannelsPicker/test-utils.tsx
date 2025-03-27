@@ -69,7 +69,7 @@ export const setup = ({
     <NotificationChannelsPicker
       notificationHandlers={notificationHandlers}
       channels={{
-        email: { 
+        email: {
           configured: isEmailSetup,
           type: "email",
           name: "Email",
@@ -78,7 +78,7 @@ export const setup = ({
           allows_recipients: true,
           recipients: ["user", "email"],
         },
-        slack: { 
+        slack: {
           configured: isSlackSetup,
           type: "slack",
           name: "Slack",
@@ -87,7 +87,7 @@ export const setup = ({
           allows_recipients: true,
           fields: [],
         },
-        http: { 
+        http: {
           configured: isHttpSetup,
           type: "http",
           name: "HTTP",

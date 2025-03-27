@@ -9,12 +9,7 @@ import {
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditTableNotificationModal } from "metabase/notifications/modals";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
@@ -37,10 +32,6 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 describe("CreateOrEditTableNotificationModal", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   beforeEach(() => {
     fetchMock.reset();
   });
@@ -243,10 +234,10 @@ describe("CreateOrEditTableNotificationModal", () => {
 
     const requestBody = await calls[0][1]?.body;
     const parsedBody = JSON.parse(requestBody as string);
-      
+
     // Verify it has the default table_id
     expect(parsedBody.subscriptions[0].table_id).toBe(42);
-      
+
     // Verify it has at least one handler
     expect(parsedBody.handlers.length).toBeGreaterThan(0);
 

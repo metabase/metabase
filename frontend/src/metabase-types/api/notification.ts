@@ -11,11 +11,6 @@ export type NotificationCardSendCondition =
   | "goal_below"
   | "has_result";
 
-export type TableNotificationSendCondition =
-  | "row/create"
-  | "row/update"
-  | "row/delete";
-
 export type SystemEvent =
   | "event/data-editing-row-create"
   | "event/data-editing-row-update"

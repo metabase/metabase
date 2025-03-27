@@ -1,25 +1,15 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
-import { mockScrollIntoView, screen, within } from "__support__/ui";
-import { createMockNotificationHandlerEmail, createMockNotificationHandlerSlack } from "metabase-types/api/mocks";
+import { screen, within } from "__support__/ui";
+import {
+  createMockNotificationHandlerEmail,
+  createMockNotificationHandlerSlack,
+} from "metabase-types/api/mocks";
 import { createMockChannel } from "metabase-types/api/mocks/channel";
 
 import { setup } from "./test-utils";
 
 describe("NotificationChannelsPicker", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
-  beforeEach(() => {
-    fetchMock.reset();
-  });
-
-  afterEach(() => {
-    fetchMock.restore();
-  });
-
   describe("Channel display", () => {
     it("should display email channel when it's configured", async () => {
       setup({
@@ -99,9 +89,11 @@ describe("NotificationChannelsPicker", () => {
 
       // Find the channel block that contains the email channel
       const emailBlock = screen.getAllByTestId("channel-block")[0];
-      
+
       // Find the remove button inside the email block
-      const removeButton = within(emailBlock).getByTestId("remove-channel-button");
+      const removeButton = within(emailBlock).getByTestId(
+        "remove-channel-button",
+      );
       await userEvent.click(removeButton);
 
       expect(onChange).toHaveBeenCalledWith([]);
@@ -120,9 +112,11 @@ describe("NotificationChannelsPicker", () => {
 
       // Find the channel block that contains the slack channel
       const slackBlock = screen.getAllByTestId("channel-block")[0];
-      
+
       // Find the remove button inside the slack block
-      const removeButton = within(slackBlock).getByTestId("remove-channel-button");
+      const removeButton = within(slackBlock).getByTestId(
+        "remove-channel-button",
+      );
       await userEvent.click(removeButton);
 
       expect(onChange).toHaveBeenCalledWith([]);
