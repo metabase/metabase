@@ -217,7 +217,7 @@ describe("issue 53194", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    Object.values(REVIEWS).forEach(fieldId => {
+    Object.values(REVIEWS).forEach((fieldId) => {
       cy.request("PUT", `/api/field/${fieldId}`, {
         visibility_type: "sensitive",
       });
@@ -275,18 +275,18 @@ describe("issue 53171", () => {
   it("title and icons in data reference sidebar should not overflow (metabase#53171)", () => {
     H.startNewNativeQuestion();
 
-    cy.get("@longNameQuestionId").then(longNameQuestion => {
+    cy.get("@longNameQuestionId").then((longNameQuestion) => {
       H.NativeEditor.type(`{{#${longNameQuestion}`);
     });
 
-    cy.findByTestId("sidebar-content").within($container => {
+    cy.findByTestId("sidebar-content").within(($container) => {
       const [container] = $container;
 
-      cy.findByTestId("sidebar-header").should($header => {
+      cy.findByTestId("sidebar-header").should(($header) => {
         const [header] = $header;
         const headerDescendants = header.querySelectorAll("*");
 
-        headerDescendants.forEach(descendant => {
+        headerDescendants.forEach((descendant) => {
           H.assertDescendantNotOverflowsContainer(descendant, container);
         });
       });
@@ -300,7 +300,7 @@ describe("issue 53171", () => {
   function verifyIconVisibleAndSized(iconName: IconName, size: number) {
     cy.icon(iconName)
       .should("be.visible")
-      .and(icon => {
+      .and((icon) => {
         expect(icon.outerWidth()).to.equal(size);
         expect(icon.outerHeight()).to.equal(size);
       });
@@ -326,7 +326,7 @@ describe("issue 54124", () => {
   it("should be possible to close the data reference sidebar (metabase#54124)", () => {
     H.startNewNativeQuestion();
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       H.NativeEditor.type(
         `{{#${questionId}-reference-question }}{leftarrow}{leftarrow}{leftarrow}`,
       );
@@ -412,6 +412,6 @@ describe("issue 52806", () => {
     H.visitQuestionAdhoc(questionDetails);
     cy.findByTestId("main-logo-link").click();
     H.modal().button("Discard changes").click();
-    cy.location().should(location => expect(location.search).to.eq(""));
+    cy.location().should((location) => expect(location.search).to.eq(""));
   });
 });

@@ -43,8 +43,8 @@ export function DashboardParameterList({
       isEditing={isEditing}
       setParameterValue={(id, value) => dispatch(setParameterValue(id, value))}
       setParameterIndex={(id, index) => dispatch(setParameterIndex(id, index))}
-      setEditingParameter={id => dispatch(setEditingParameter(id))}
-      setParameterValueToDefault={id =>
+      setEditingParameter={(id) => dispatch(setEditingParameter(id))}
+      setParameterValueToDefault={(id) =>
         dispatch(setParameterValueToDefault(id))
       }
       enableParameterRequiredBehavior

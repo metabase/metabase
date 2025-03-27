@@ -13,7 +13,7 @@ export type Options = {
 };
 
 export function suggestMetrics({ startRule, query, stageIndex }: Options) {
-  const metrics = Lib.availableMetrics(query, stageIndex)?.map(metric => {
+  const metrics = Lib.availableMetrics(query, stageIndex)?.map((metric) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, metric);
     return {
       type: "metric",

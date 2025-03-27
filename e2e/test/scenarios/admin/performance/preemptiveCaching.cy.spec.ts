@@ -89,7 +89,7 @@ describe(
         getTableId({
           databaseId: WRITABLE_DB_ID,
           name: WRITABLE_TEST_TABLE,
-        }).then(tableId => {
+        }).then((tableId) => {
           createQuestion(
             {
               name: "Cached question",

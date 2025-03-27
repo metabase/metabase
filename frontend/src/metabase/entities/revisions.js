@@ -22,8 +22,8 @@ const Revisions = createEntity({
         revisionApi.endpoints.listRevisions,
       )
         // add model_type and model_id to each object since they are required for revert
-        .then(revisions =>
-          revisions.map(revision => ({
+        .then((revisions) =>
+          revisions.map((revision) => ({
             model_type,
             model_id,
             ...revision,
@@ -37,7 +37,7 @@ const Revisions = createEntity({
 
   objectActions: {
     // use thunk since we don't actually want to dispatch an action
-    revert: revision => async dispatch => {
+    revert: (revision) => async (dispatch) => {
       await entityCompatibleQuery(
         {
           entity: revision.model_type,

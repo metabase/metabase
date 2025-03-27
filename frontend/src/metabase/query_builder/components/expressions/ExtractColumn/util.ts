@@ -45,7 +45,7 @@ export function getName(
   info: Lib.ColumnExtractionInfo,
 ) {
   const columnNames = Lib.returnedColumns(query, stageIndex).map(
-    column => Lib.displayInfo(query, stageIndex, column).displayName,
+    (column) => Lib.displayInfo(query, stageIndex, column).displayName,
   );
 
   return getNextName(columnNames, info.displayName, 0);

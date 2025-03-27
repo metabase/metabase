@@ -61,7 +61,7 @@ export function getOffsetUnitOptions(
 
   return truncationUnits
     .filter((_, index) => index >= unitIndex)
-    .map(unit => ({
+    .map((unit) => ({
       value: unit,
       label: getOffsetUnitText(unit, direction, value.offsetValue ?? 0),
     }));

@@ -710,7 +710,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         setParametersAndAssertResults("@publicDashcardQuery");
 
         cy.log("set parameters in an embedded dashboard");
-        cy.get<number>("@dashboardId").then(dashboardId =>
+        cy.get<number>("@dashboardId").then((dashboardId) =>
           H.visitEmbeddedPage({
             resource: { dashboard: dashboardId },
             params: {},

@@ -14,7 +14,7 @@ export const AutoWidthSelect = <Value extends string>({
   value,
   ...props
 }: { style?: Partial<FontStyle>; value: Value } & SelectProps<Value>) => {
-  const fontFamily = useSelector(state =>
+  const fontFamily = useSelector((state) =>
     getSetting(state, "application-font"),
   );
   const width = useMemo(() => {

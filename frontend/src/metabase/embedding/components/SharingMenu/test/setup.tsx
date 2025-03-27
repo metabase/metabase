@@ -29,7 +29,7 @@ import { QuestionSharingMenu } from "../QuestionSharingMenu";
 
 // This is a fake sidebar that we can use to check if the correct redux state is getting updated
 const FakeSidebar = () => {
-  const sidebar = useSelector(state => state.dashboard.sidebar);
+  const sidebar = useSelector((state) => state.dashboard.sidebar);
 
   if (sidebar.name) {
     return <div data-testid="fake-sidebar">Sidebar: {sidebar.name}</div>;

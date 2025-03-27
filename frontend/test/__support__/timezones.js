@@ -7,7 +7,7 @@ export default function testAcrossTimezones(runTests) {
   );
 
   describe(`client timezone ${clientTz}`, () => {
-    reportTzs.map(reportTz => {
+    reportTzs.map((reportTz) => {
       describe(`report timezone ${reportTz}`, () => {
         runTests(reportTz);
       });

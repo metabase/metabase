@@ -27,7 +27,7 @@ export const ChartSettingInput = ({
       data-testid={id}
       placeholder={placeholder}
       value={inputValue}
-      onChange={e => setInputValue(e.target.value)}
+      onChange={(e) => setInputValue(e.target.value)}
       onBlur={() => {
         if (inputValue !== (value || "")) {
           onChange(inputValue);

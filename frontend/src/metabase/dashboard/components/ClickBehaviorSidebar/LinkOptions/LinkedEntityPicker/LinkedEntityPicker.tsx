@@ -228,7 +228,7 @@ export function LinkedEntityPicker({
     ? (clickBehavior.tabId ?? defaultDashboardTabId)
     : undefined;
   const dashboardTabExists = dashboardTabs.some(
-    tab => tab.id === dashboardTabId,
+    (tab) => tab.id === dashboardTabId,
   );
   const dashboardTabIdValue =
     typeof dashboardTabId === "undefined" ? undefined : String(dashboardTabId);
@@ -303,7 +303,7 @@ export function LinkedEntityPicker({
         <PickerComponent
           title={getModalTitle()}
           value={initialPickerValue as any} // typescript isn't smart enough to know which picker we're using
-          onChange={newTarget => {
+          onChange={(newTarget) => {
             handleSelectLinkTargetEntityId(newTarget.id);
             setIsPickerOpen(false);
           }}
@@ -323,7 +323,7 @@ export function LinkedEntityPicker({
               ? undefined
               : t`The selected tab is no longer available`
           }
-          data={dashboardTabs.map(tab => ({
+          data={dashboardTabs.map((tab) => ({
             label: tab.name,
             value: String(tab.id),
           }))}

@@ -7,7 +7,7 @@ export default {
   component: Alert,
 };
 
-const Template: StoryFn<AlertProps> = args => {
+const Template: StoryFn<AlertProps> = (args) => {
   return <Alert {...args} />;
 };
 

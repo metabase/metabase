@@ -1,4 +1,3 @@
-/* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["assertActionButtonsOrder"] }] */
 import type { ComponentProps } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
