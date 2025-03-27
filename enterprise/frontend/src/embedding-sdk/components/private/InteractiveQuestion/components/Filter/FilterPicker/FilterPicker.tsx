@@ -38,7 +38,7 @@ const FilterPickerInner = ({
         stageIndex={stageIndex}
         onClose={onClose}
         onBack={onBack}
-        onSelect={filter =>
+        onSelect={(filter) =>
           filterItem ? filterItem?.onUpdateFilter(filter) : onAddFilter(filter)
         }
         filter={filterItem?.filter}

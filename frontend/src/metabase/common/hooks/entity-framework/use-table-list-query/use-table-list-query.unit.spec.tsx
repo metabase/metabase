@@ -21,7 +21,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(table => (
+      {data.map((table) => (
         <div key={table.id}>{table.name}</div>
       ))}
 

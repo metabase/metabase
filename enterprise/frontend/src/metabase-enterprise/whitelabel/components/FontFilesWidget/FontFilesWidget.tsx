@@ -58,7 +58,7 @@ const FontFilesTable = ({
         </TableHeaderRow>
       </TableHeader>
       <TableBody>
-        {FONT_OPTIONS.map(option => (
+        {FONT_OPTIONS.map((option) => (
           <FontFileRow
             key={option.name}
             url={urls[option.fontWeight]}

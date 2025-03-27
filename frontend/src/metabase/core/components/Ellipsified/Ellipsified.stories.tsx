@@ -8,7 +8,7 @@ const testLabels = [
   "Very____________LongTitleWithNoSpaces",
   "Very Long Title With Spaces",
   "VeryLongTitleWithNoSpaces and more words",
-  [1, 2, 3, 4, 5].map(i => `${i}_VeryLongTitleWithNoSpaces`).join(" "),
+  [1, 2, 3, 4, 5].map((i) => `${i}_VeryLongTitleWithNoSpaces`).join(" "),
 ];
 
 export default {
@@ -16,7 +16,7 @@ export default {
   component: Ellipsified,
 };
 
-const Template: StoryFn<typeof Ellipsified> = args => (
+const Template: StoryFn<typeof Ellipsified> = (args) => (
   <ul style={{ maxWidth: 100 }}>
     {testLabels.map((label: string) => (
       <li style={{ marginTop: 10 }} key={label}>

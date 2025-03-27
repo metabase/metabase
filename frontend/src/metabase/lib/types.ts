@@ -26,7 +26,7 @@ export const isNullOrUndefined = (value: any): value is null | undefined =>
   value === undefined || value === null;
 
 export const removeNullAndUndefinedValues = (obj: any) =>
-  _.pick(obj, val => !isNullOrUndefined(val));
+  _.pick(obj, (val) => !isNullOrUndefined(val));
 
 export const checkNumber = (value: any) => {
   if (typeof value !== "number" || Number.isNaN(value)) {

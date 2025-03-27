@@ -12,7 +12,7 @@ function createFilteredQuery(query: Lib.Query) {
 function createMultiStageFilteredQuery() {
   const stageIndexes = Array.from({ length: STAGE_COUNT }, (_, i) => i);
   return stageIndexes.reduce(
-    query => Lib.appendStage(createFilteredQuery(query)),
+    (query) => Lib.appendStage(createFilteredQuery(query)),
     createQuery(),
   );
 }

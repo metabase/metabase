@@ -95,7 +95,7 @@ export function tokenize(expression: string) {
             // remove quotes
             .slice(node.from + 1, node.to - 1)
             // expand escape sequences
-            .replace(/\\./g, match => {
+            .replace(/\\./g, (match) => {
               const ch = match[1];
               return escapes[ch as keyof typeof escapes] ?? ch;
             }),

@@ -22,14 +22,14 @@ const ChartColorSample = ({
   colorGroups,
 }: ChartColorSampleProps): JSX.Element => {
   const reversedGroups = useMemo(
-    () => colorGroups.map(group => [...group].reverse()),
+    () => colorGroups.map((group) => [...group].reverse()),
     [colorGroups],
   );
 
   return (
     <ChartRoot>
       <ChartGrid>
-        {_.times(TICK_COUNT, index => (
+        {_.times(TICK_COUNT, (index) => (
           <ChartTick key={index} />
         ))}
         <ChartAxis />

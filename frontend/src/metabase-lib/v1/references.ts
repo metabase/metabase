@@ -46,7 +46,7 @@ export const isValidDimensionReference = (
     isExpressionReference,
     isAggregationReference,
     isTemplateTagReference,
-  ].some(predicate => predicate(mbql));
+  ].some((predicate) => predicate(mbql));
 };
 
 export const normalizeReferenceOptions = (
@@ -57,11 +57,11 @@ export const normalizeReferenceOptions = (
   }
 
   // recursively normalize maps inside options.
-  options = _.mapObject(options, val =>
+  options = _.mapObject(options, (val) =>
     typeof val === "object" ? normalizeReferenceOptions(val) : val,
   );
   // remove null/undefined options from map.
-  options = _.omit(options, value => value == null);
+  options = _.omit(options, (value) => value == null);
   return _.isEmpty(options) ? null : options;
 };
 

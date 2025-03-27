@@ -54,7 +54,7 @@ const SessionTimeoutSetting = ({
   const [value, setValue] = useState(setting.value ?? DEFAULT_VALUE);
 
   const handleValueChange = (newValue: Partial<TimeoutValue>) => {
-    setValue(prev => ({ ...prev, ...newValue }));
+    setValue((prev) => ({ ...prev, ...newValue }));
   };
 
   const error = validate(value);
@@ -67,7 +67,7 @@ const SessionTimeoutSetting = ({
     handleCommitSettings(value);
   };
 
-  const handleUnitChange: ChangeEventHandler<HTMLInputElement> = e => {
+  const handleUnitChange: ChangeEventHandler<HTMLInputElement> = (e) => {
     const unit = e.target.value;
     handleValueChange({ unit });
     handleCommitSettings({ ...value, unit });
@@ -92,7 +92,7 @@ const SessionTimeoutSetting = ({
               data-testid="session-timeout-input"
               placeholder=""
               value={value?.amount.toString()}
-              onChange={e =>
+              onChange={(e) =>
                 handleValueChange({ amount: parseInt(e.target.value, 10) })
               }
               onBlur={handleBlurChange}

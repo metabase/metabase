@@ -10,7 +10,7 @@ interface Props {
 export const Root = styled.li<Props>`
   position: relative;
 
-  ${props =>
+  ${(props) =>
     props.disabled &&
     css`
       pointer-events: none;
