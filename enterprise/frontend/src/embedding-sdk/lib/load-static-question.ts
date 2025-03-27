@@ -27,8 +27,8 @@ export async function loadStaticQuestion(options: Options) {
 
   if (sqlParameters && card?.parameters) {
     const parameters: ParameterQueryInput[] = card.parameters
-      .filter(parameter => parameter.target)
-      .map(parameter => ({
+      .filter((parameter) => parameter.target)
+      .map((parameter) => ({
         id: parameter.id,
         type: parameter.type,
         target: parameter.target!,

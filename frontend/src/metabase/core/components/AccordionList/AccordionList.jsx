@@ -110,7 +110,7 @@ export default class AccordionList extends Component {
     style: {},
     width: 300,
     globalSearch: false,
-    searchable: section => section.items && section.items.length > 10,
+    searchable: (section) => section.items && section.items.length > 10,
     searchProp: "name",
     searchCaseInsensitive: true,
     searchFuzzy: true,
@@ -121,19 +121,20 @@ export default class AccordionList extends Component {
     role: "grid",
 
     // section getters/render props
-    renderSectionIcon: section => section.icon && <Icon name={section.icon} />,
+    renderSectionIcon: (section) =>
+      section.icon && <Icon name={section.icon} />,
 
     // item getters/render props
-    itemIsClickable: item => true,
-    itemIsSelected: item => false,
-    renderItemName: item => item.name,
-    renderItemDescription: item => item.description,
-    renderItemExtra: item => null,
-    renderItemIcon: item => item.icon && <Icon name={item.icon} />,
-    getItemClassName: item => item.className,
-    getItemStyles: item => {},
+    itemIsClickable: (item) => true,
+    itemIsSelected: (item) => false,
+    renderItemName: (item) => item.name,
+    renderItemDescription: (item) => item.description,
+    renderItemExtra: (item) => null,
+    renderItemIcon: (item) => item.icon && <Icon name={item.icon} />,
+    getItemClassName: (item) => item.className,
+    getItemStyles: (item) => {},
     hasInitialFocus: true,
-    showSpinner: _item => false,
+    showSpinner: (_item) => false,
   };
 
   componentDidMount() {
@@ -212,7 +213,7 @@ export default class AccordionList extends Component {
     }
   }
 
-  toggleSection = sectionIndex => {
+  toggleSection = (sectionIndex) => {
     const { sections, onChangeSection } = this.props;
     if (onChangeSection) {
       if (onChangeSection(sections[sectionIndex], sectionIndex) === false) {
@@ -248,7 +249,9 @@ export default class AccordionList extends Component {
     const { sections } = this.props;
     let selectedSection = null;
     for (let i = 0; i < sections.length; i++) {
-      if (_.some(sections[i].items, item => this.props.itemIsSelected(item))) {
+      if (
+        _.some(sections[i].items, (item) => this.props.itemIsSelected(item))
+      ) {
         selectedSection = i;
         break;
       }
@@ -256,13 +259,13 @@ export default class AccordionList extends Component {
     return selectedSection === sectionIndex;
   }
 
-  handleChange = item => {
+  handleChange = (item) => {
     if (this.props.onChange) {
       this.props.onChange(item);
     }
   };
 
-  handleChangeSearchText = searchText => {
+  handleChangeSearchText = (searchText) => {
     this.setState({ searchText, cursor: null });
   };
 
@@ -313,7 +316,7 @@ export default class AccordionList extends Component {
     );
   };
 
-  handleKeyDown = event => {
+  handleKeyDown = (event) => {
     if (event.key === "ArrowUp") {
       event.preventDefault();
 
@@ -368,14 +371,14 @@ export default class AccordionList extends Component {
       this.toggleSection(cursor.sectionIndex);
     }
 
-    const searchRow = this.getRows().findIndex(row => row.type === "search");
+    const searchRow = this.getRows().findIndex((row) => row.type === "search");
 
     if (searchRow >= 0 && this.isVirtualized()) {
       this._list.scrollToRow(searchRow);
     }
   };
 
-  searchFilter = item => {
+  searchFilter = (item) => {
     const { searchProp } = this.props;
     const { searchText } = this.state;
 
@@ -386,7 +389,7 @@ export default class AccordionList extends Component {
     if (typeof searchProp === "string") {
       return this.searchPredicate(item, searchProp);
     } else if (Array.isArray(searchProp)) {
-      const searchResults = searchProp.map(member =>
+      const searchResults = searchProp.map((member) =>
         this.searchPredicate(item, member),
       );
       return searchResults.reduce((acc, curr) => acc || curr);
@@ -409,12 +412,12 @@ export default class AccordionList extends Component {
     // if any section is searchable just enable a global search
     let globalSearch = _globalSearch;
 
-    const sectionIsExpanded = sectionIndex =>
+    const sectionIsExpanded = (sectionIndex) =>
       alwaysExpanded ||
       openSection === sectionIndex ||
       (globalSearch && searchText?.length > 0);
 
-    const sectionIsSearchable = sectionIndex =>
+    const sectionIsSearchable = (sectionIndex) =>
       searchable &&
       (typeof searchable !== "function" || searchable(sections[sectionIndex]));
 
@@ -503,7 +506,7 @@ export default class AccordionList extends Component {
 
     if (globalSearch) {
       const isSearching = searchText.length > 0;
-      const isEmpty = rows.filter(row => row.type === "item").length === 0;
+      const isEmpty = rows.filter((row) => row.type === "item").length === 0;
 
       if (isSearching && isEmpty) {
         rows.unshift({
@@ -563,7 +566,7 @@ export default class AccordionList extends Component {
     return alwaysTogglable || sections.length > 1;
   };
 
-  isRowSelected = row => {
+  isRowSelected = (row) => {
     if (!this.state.cursor) {
       return false;
     }
@@ -576,7 +579,7 @@ export default class AccordionList extends Component {
     );
   };
 
-  isSectionExpanded = sectionIndex => {
+  isSectionExpanded = (sectionIndex) => {
     const openSection = this.getOpenSection();
 
     return (
@@ -586,7 +589,7 @@ export default class AccordionList extends Component {
     );
   };
 
-  canSelectSection = sectionIndex => {
+  canSelectSection = (sectionIndex) => {
     const section = this.props.sections[sectionIndex];
     if (!section) {
       return false;
@@ -625,7 +628,7 @@ export default class AccordionList extends Component {
     const scrollToIndex =
       cursor != null ? rows.findIndex(this.isRowSelected) : undefined;
 
-    const searchRowIndex = rows.findIndex(row => row.type === "search");
+    const searchRowIndex = rows.findIndex((row) => row.type === "search");
 
     if (!this.isVirtualized()) {
       return (
@@ -639,7 +642,7 @@ export default class AccordionList extends Component {
             ...style,
           }}
           data-testid={testId}
-          ref={element => {
+          ref={(element) => {
             this.listRootRef.current = element;
           }}
         >
@@ -691,7 +694,7 @@ export default class AccordionList extends Component {
     return (
       <List
         id={id}
-        ref={list => {
+        ref={(list) => {
           this._list = list;
         }}
         className={className}

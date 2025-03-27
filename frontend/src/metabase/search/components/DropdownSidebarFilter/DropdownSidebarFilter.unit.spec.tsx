@@ -30,8 +30,8 @@ const mockFilter: SearchFilterComponent = {
       </div>
     );
   },
-  fromUrl: value => value,
-  toUrl: value => value,
+  fromUrl: (value) => value,
+  toUrl: (value) => value,
 };
 
 const MockSearchSidebarFilter = ({

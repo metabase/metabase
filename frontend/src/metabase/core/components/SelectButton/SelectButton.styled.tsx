@@ -24,7 +24,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   ${inputPadding()}
   cursor: pointer;
   display: flex;
-  width: ${props => (props.fullWidth ? "100%" : "unset")};
+  width: ${(props) => (props.fullWidth ? "100%" : "unset")};
   align-items: center;
   border: 1px solid
     ${({ hasValue, highlighted }) =>

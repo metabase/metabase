@@ -63,7 +63,7 @@ export const CollectionBreadcrumbs = ({
         {separator}
       </>
     ) : (
-      parts.map(collection => (
+      parts.map((collection) => (
         <Fragment key={collection.id}>
           <CollectionBadge
             collectionId={collection.id}

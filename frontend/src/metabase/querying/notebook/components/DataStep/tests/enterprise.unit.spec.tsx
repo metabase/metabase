@@ -41,7 +41,7 @@ describe("DataStep", () => {
 
       it.each([{ metaKey: true }, { ctrlKey: true }])(
         "meta/ctrl click should not open the data source",
-        async clickConfig => {
+        async (clickConfig) => {
           const { mockWindowOpen } = setup({
             isEmbeddingSdk: true,
           });

@@ -39,7 +39,7 @@ const NewEventModal = ({
   onClose,
 }: NewEventModalProps): JSX.Element => {
   const availableTimelines = useMemo(() => {
-    return timelines.filter(t => t.collection?.can_write);
+    return timelines.filter((t) => t.collection?.can_write);
   }, [timelines]);
 
   const initialValues = useMemo(() => {
@@ -48,7 +48,7 @@ const NewEventModal = ({
 
   const handleSubmit = useCallback(
     async (values: TimelineEventData) => {
-      const timeline = timelines.find(t => t.id === values.timeline_id);
+      const timeline = timelines.find((t) => t.id === values.timeline_id);
       await onSubmit(values, collection, timeline);
       onSubmitSuccess?.();
     },

@@ -129,13 +129,13 @@ function getSections(
   withCustomExpression: boolean,
 ) {
   const withMultipleStages = stageIndexes.length > 1;
-  const columnSections = stageIndexes.flatMap(stageIndex => {
+  const columnSections = stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const columnGroups = Lib.groupColumns(columns);
 
-    return columnGroups.map(group => {
+    return columnGroups.map((group) => {
       const groupInfo = Lib.displayInfo(query, stageIndex, group);
-      const columnItems = Lib.getColumnsFromColumnGroup(group).map(column => {
+      const columnItems = Lib.getColumnsFromColumnGroup(group).map((column) => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
         return {
           name: columnInfo.name,
@@ -149,7 +149,7 @@ function getSections(
       const segments = groupInfo.isSourceTable
         ? Lib.availableSegments(query, stageIndex)
         : [];
-      const segmentItems = segments.map(segment => {
+      const segmentItems = segments.map((segment) => {
         const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
         return {
           name: segmentInfo.name,

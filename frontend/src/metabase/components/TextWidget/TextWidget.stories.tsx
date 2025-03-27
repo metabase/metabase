@@ -8,7 +8,7 @@ export default {
   component: TextWidget,
 };
 
-const Template: StoryFn<TextWidgetProps> = args => {
+const Template: StoryFn<TextWidgetProps> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const setValue = (value: string | number | null) => {

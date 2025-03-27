@@ -128,7 +128,7 @@ export const setup = async ({
           dashboards: {
             [dashboard.id]: {
               ...dashboard,
-              dashcards: dashboard.dashcards.map(c => c.id),
+              dashcards: dashboard.dashcards.map((c) => c.id),
             },
           },
           dashcards: {

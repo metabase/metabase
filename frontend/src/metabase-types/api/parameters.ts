@@ -1,6 +1,6 @@
 import type { CardId } from "./card";
 import type { RowValue, TemporalUnit } from "./dataset";
-import type { ConcreteFieldReference, ExpressionReference } from "./query";
+import type { FieldReference } from "./query";
 
 export type StringParameterType =
   | "string/="
@@ -92,12 +92,8 @@ export type NativeParameterDimensionTarget =
   | ["dimension", VariableTarget, DimensionTargetOptions];
 
 export type StructuredParameterDimensionTarget =
-  | ["dimension", ConcreteFieldReference | ExpressionReference]
-  | [
-      "dimension",
-      ConcreteFieldReference | ExpressionReference,
-      DimensionTargetOptions,
-    ];
+  | ["dimension", FieldReference]
+  | ["dimension", FieldReference, DimensionTargetOptions];
 
 export type ParameterValueOrArray =
   | string

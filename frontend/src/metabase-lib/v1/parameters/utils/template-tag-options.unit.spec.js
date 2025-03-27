@@ -18,7 +18,7 @@ describe("parameters/utils/template-tag-options", () => {
       );
 
       expect(expectedOptionTypes.length).toEqual(options.size);
-      expect(expectedOptionTypes.every(option => options.has(option))).toBe(
+      expect(expectedOptionTypes.every((option) => options.has(option))).toBe(
         true,
       );
     });
@@ -61,7 +61,7 @@ describe("parameters/utils/template-tag-options", () => {
       const availableOptions = getParameterOptionsForField(dateField);
       expect(
         availableOptions.length > 0 &&
-          availableOptions.every(option => option.type.startsWith("date")),
+          availableOptions.every((option) => option.type.startsWith("date")),
       ).toBe(true);
     });
 
@@ -73,7 +73,7 @@ describe("parameters/utils/template-tag-options", () => {
       const availableOptions = getParameterOptionsForField(idField);
       expect(
         availableOptions.length > 0 &&
-          availableOptions.every(option => option.type.startsWith("id")),
+          availableOptions.every((option) => option.type.startsWith("id")),
       ).toBe(true);
     });
 
@@ -82,7 +82,7 @@ describe("parameters/utils/template-tag-options", () => {
       const availableOptions = getParameterOptionsForField(locationField);
       expect(
         availableOptions.length > 0 &&
-          availableOptions.every(option => option.type.startsWith("string")),
+          availableOptions.every((option) => option.type.startsWith("string")),
       ).toBe(true);
     });
   });

@@ -34,7 +34,7 @@ const ChartCaption = ({
   const description = settings["card.description"];
   const data = (series as TransformedSeries)._raw || series;
   const card = data[0].card;
-  const cardIds = new Set(data.map(s => s.card.id));
+  const cardIds = new Set(data.map((s) => s.card.id));
   const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
 
   const handleSelectTitle = useCallback(() => {

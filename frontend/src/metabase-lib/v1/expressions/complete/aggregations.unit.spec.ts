@@ -109,7 +109,7 @@ describe("suggestAggregations", () => {
 
     const RESULTS_NO_TEMPLATE = {
       ...RESULTS,
-      options: RESULTS.options.map(option => ({
+      options: RESULTS.options.map((option) => ({
         ...option,
         apply: undefined,
       })),

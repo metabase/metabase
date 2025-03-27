@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import Input from "metabase/core/components/Input";
 import { Icon } from "metabase/ui";
 
-const SearchInput = styled(props => (
+const SearchInput = styled((props) => (
   <Input
     {...props}
     icon={props.icon ?? <Icon name="search" size={16} />}
