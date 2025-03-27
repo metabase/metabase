@@ -69,25 +69,31 @@ Let's say we want email, name, and surname to be passed between the client (Meta
 
 You can edit the attribute values from your Metabase **Admin settings** > **Authentication** > **SAML** > **Attributes**.
 
-## Group mapping in Keycloak
+## Configure group mappings between Keycloak and Metabase
 
-In order to map the group names that the user belongs to in order to use the Metabase group mapping feature, you need to:
+You can configure Metabase to automatically assign people to Metabase groups based on their Keycloak groups. 
 
-1. Click on Client Scopes tab inside the Keycloak client.
-2. Click on the metabase-dedicated client scope that has been created already.
-3. Click on "Add Mapper" -> "By Configuration".
-4. Select "Group list".
-5. Change the name of the attribute to "member_of".
+### Set up group mapping in Keycloak
+
+In your Keycloak client:
+
+1. Click on **Client Scopes** tab 
+2. Click on the **metabase-dedicated** client scope that has been created already.
+3. Click on **Add Mapper > "By Configuration**.
+4. Select **Group list**.
+5. Change the name of the attribute to `member_of`.
 6. Deselect the option to use the "Full group path" (so it's easier to configure in Metabase later).
-7. Click on Save.
+7. Click on **Save**.
 
-### In Metabase:
-1. Go to settings->admin settings -> Authentication -> SAML.
-2. Scroll to the bottom of the page.
-3. Enable "Synchronize Group Memberships" and configure the group mappings as you need.
+### Set up group mapping in Metabase
 
-NOTE: Keycloak groups will get to Metabase with a slash character ("/") prepended to the group name. E.g. if the user belongs to a group named "group_1" on Keycloak, in Metabase it will be seen as "/group_1" so you need to configure that accordingly.
+1. In Admin settings, go to **Authentication > SAML**.
+2. In SAML settings, toggle on **Synchronize Group Memberships**
+3. For each of the Keycloak groups, set up a new mapping to a Metabase group.
 
+   Currently,  Keycloak groups will show up in Metabase with the slash character ("/") prepended to the group name. So, for example, a group named `sales` in Keycloak show up in Metabase as  `/sales`.
+
+4. In **Group attribute name**, enter `member_of` (the name for the attribute with the group list in your Keycloack configuration).
 ## Troubleshooting SAML issues
 
 For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/saml.md).
