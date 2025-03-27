@@ -307,6 +307,7 @@ if (shouldEnableHotRefresh) {
     "http://localhost:8080/" + config.output.publicPath;
 
   config.devServer = {
+    port: 8080, // make the port explicit so it errors if it's already in use
     hot: true,
     client: {
       progress: false,
