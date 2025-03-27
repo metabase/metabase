@@ -274,8 +274,6 @@
                      {:description "Number of concurrent notification sends."})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
-   (prometheus/counter :metabase-gsheets/connection-creation-ok
-                       {:description "How many times the instance has created a Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-creation-error
                        {:description "How many failures there were when creating a Google Sheets connection."
                         :labels [:reason]})
