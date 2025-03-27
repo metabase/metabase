@@ -295,6 +295,6 @@ function getModelFilterList(
   if (hasMetrics) {
     return modelsFilterList;
   } else {
-    return modelsFilterList.filter(model => model !== "metric");
+    return modelsFilterList.filter((model) => model !== "metric");
   }
 }

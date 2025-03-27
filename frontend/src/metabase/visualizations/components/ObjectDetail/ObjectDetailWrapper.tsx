@@ -62,8 +62,8 @@ export function ObjectDetailWrapper({
           start={currentObjectIndex}
           end={currentObjectIndex}
           total={data.rows.length}
-          onNextPage={() => setCurrentObjectIndex(prev => prev + 1)}
-          onPreviousPage={() => setCurrentObjectIndex(prev => prev - 1)}
+          onNextPage={() => setCurrentObjectIndex((prev) => prev + 1)}
+          onPreviousPage={() => setCurrentObjectIndex((prev) => prev - 1)}
           singleItem
         />
       )}

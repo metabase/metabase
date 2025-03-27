@@ -176,7 +176,7 @@ const getDashboardResource = ({ dashboard_id }) => ({
   params: {},
 });
 
-const getTargetDashboard = sourceSettings => ({
+const getTargetDashboard = (sourceSettings) => ({
   parameters: [
     {
       ...targetParameter,
@@ -189,7 +189,7 @@ const getTargetDashboard = sourceSettings => ({
   },
 });
 
-const getListDashboard = values_query_type => {
+const getListDashboard = (values_query_type) => {
   return getTargetDashboard({
     values_source_type: "static-list",
     values_query_type,

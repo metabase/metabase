@@ -75,7 +75,7 @@ function _BaseBucketPickerPopover({
   );
 
   const defaultBucket = useMemo(
-    () => items.find(item => item.default)?.bucket,
+    () => items.find((item) => item.default)?.bucket,
     [items],
   );
 
@@ -118,7 +118,7 @@ function _BaseBucketPickerPopover({
           className={cx(classNames.root, className)}
           aria-label={triggerLabel}
           data-testid="dimension-list-item-binning"
-          onClick={event => {
+          onClick={(event) => {
             event.stopPropagation();
             setIsOpened(!isOpened);
           }}
@@ -146,7 +146,7 @@ function _BaseBucketPickerPopover({
       </Popover.Target>
       <Popover.Dropdown>
         <SelectList p="sm" miw="10rem">
-          {visibleItems.map(item => (
+          {visibleItems.map((item) => (
             <SelectListItem
               id={item.displayName}
               key={item.displayName}
@@ -191,7 +191,7 @@ function isInitiallyExpanded(
   }
 
   return (
-    items.findIndex(item => checkBucketIsSelected(item)) >=
+    items.findIndex((item) => checkBucketIsSelected(item)) >=
     initiallyVisibleItemsCount
   );
 }

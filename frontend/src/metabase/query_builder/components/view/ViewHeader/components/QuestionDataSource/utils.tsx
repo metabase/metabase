@@ -94,8 +94,8 @@ export function getDataSourceParts({
     const allTables = [
       table,
       ...Lib.joins(query, -1)
-        .map(join => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
-        .map(pickerInfo => {
+        .map((join) => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
+        .map((pickerInfo) => {
           if (pickerInfo?.tableId != null) {
             return metadata.table(pickerInfo.tableId);
           }
@@ -127,7 +127,7 @@ export function getDataSourceParts({
   }
 
   return parts.filter(
-    part =>
+    (part) =>
       isValidElement(part) ||
       ("name" in part && part.name) ||
       ("icon" in part && part.icon),
@@ -149,7 +149,7 @@ function QuestionTableBadges({
 }: QuestionTableBadgesProps) {
   const badgeInactiveColor = isLast && !subHead ? "text-dark" : "text-light";
 
-  const parts = tables.map(table => (
+  const parts = tables.map((table) => (
     <HeadBreadcrumbs.Badge
       key={table.id}
       to={hasLink ? getTableURL(table) : ""}

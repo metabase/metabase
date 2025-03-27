@@ -97,7 +97,7 @@ const getSubmitMessage = (type, hasUnsubscribed) => {
   }
 };
 
-const getCancelMessage = hasUnsubscribed => {
+const getCancelMessage = (hasUnsubscribed) => {
   return hasUnsubscribed ? t`Keep it around` : t`I changed my mind`;
 };
 
@@ -122,7 +122,7 @@ const getDateMessage = (item, type) => {
   }
 };
 
-const getRecipientsMessage = item => {
+const getRecipientsMessage = (item) => {
   return t`It’s currently being sent to ${formatChannelRecipients(item)}.`;
 };
 

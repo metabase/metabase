@@ -73,7 +73,7 @@ export function functionsUsedByExtraction(
 
 function walk(parts: ExpressionParts): string[] {
   const res: string[] = [parts.operator];
-  parts.args.forEach(arg => {
+  parts.args.forEach((arg) => {
     if (isExpressionParts(arg)) {
       res.push(...walk(arg));
     }

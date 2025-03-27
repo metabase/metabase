@@ -133,7 +133,7 @@ describe("scenarios > search", () => {
           { wrapId: true, idAlias: "modelId" },
         );
 
-        cy.get("@modelId").then(modelId => {
+        cy.get("@modelId").then((modelId) => {
           createModelIndex({
             modelId,
             pkName: "ID",
@@ -152,7 +152,7 @@ describe("scenarios > search", () => {
           });
 
           const regex = new RegExp(`${type}$`);
-          cy.findAllByTestId("search-result-item").each(result => {
+          cy.findAllByTestId("search-result-item").each((result) => {
             cy.wrap(result)
               .should("have.attr", "aria-label")
               .and("match", regex);
@@ -177,7 +177,7 @@ describe("scenarios > search", () => {
           });
 
           const regex = new RegExp(`${type}$`);
-          cy.findAllByTestId("search-result-item").each(result => {
+          cy.findAllByTestId("search-result-item").each((result) => {
             cy.wrap(result)
               .should("have.attr", "aria-label")
               .and("match", regex);
@@ -199,9 +199,9 @@ describe("scenarios > search", () => {
 
         cy.url().should("not.contain", "type");
 
-        cy.findAllByTestId("search-result-item").then($results => {
+        cy.findAllByTestId("search-result-item").then(($results) => {
           const uniqueResults = new Set(
-            $results.toArray().map(el => {
+            $results.toArray().map((el) => {
               const label = el.getAttribute("aria-label");
               return label.split(" ").slice(-1)[0];
             }),
@@ -387,7 +387,7 @@ describe("scenarios > search", () => {
         });
       });
 
-      ["normal", "sandboxed"].forEach(userType => {
+      ["normal", "sandboxed"].forEach((userType) => {
         it(`should allow ${userType} (non-admin) user to see users and filter by created_by`, () => {
           cy.signIn(userType);
           cy.visit("/");
@@ -440,7 +440,7 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            cy.findByTestId("save-question-modal").within(modal => {
+            cy.findByTestId("save-question-modal").within((modal) => {
               cy.findByText("Save").click();
             });
           },
@@ -456,7 +456,7 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            cy.findByTestId("save-question-modal").within(modal => {
+            cy.findByTestId("save-question-modal").within((modal) => {
               cy.findByText("Save").click();
             });
           },
@@ -634,7 +634,7 @@ describe("scenarios > search", () => {
         });
       });
 
-      ["normal", "sandboxed"].forEach(userType => {
+      ["normal", "sandboxed"].forEach((userType) => {
         it(`should allow ${userType} (non-admin) user to see users and filter by last_edited_by`, () => {
           cy.signIn(userType);
           cy.visit("/");
@@ -772,7 +772,7 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            cy.findByTestId("save-question-modal").within(modal => {
+            cy.findByTestId("save-question-modal").within((modal) => {
               cy.findByText("Save").click();
             });
             cy.signOut();
@@ -876,7 +876,7 @@ describe("scenarios > search", () => {
           cy.findByText('Results for "orders"').should("exist");
         });
 
-        cy.findAllByTestId("search-result-item").each(result => {
+        cy.findAllByTestId("search-result-item").each((result) => {
           cy.wrap(result).within(() => {
             cy.findByLabelText("verified_filled icon").should("exist");
           });
@@ -895,7 +895,7 @@ describe("scenarios > search", () => {
 
         cy.wait("@search");
 
-        cy.findAllByTestId("search-result-item").each(result => {
+        cy.findAllByTestId("search-result-item").each((result) => {
           cy.wrap(result).within(() => {
             cy.findByLabelText("verified_filled icon").should("exist");
           });
@@ -915,7 +915,7 @@ describe("scenarios > search", () => {
         let verifiedElementCount = 0;
         let unverifiedElementCount = 0;
         cy.findAllByTestId("search-result-item")
-          .each($el => {
+          .each(($el) => {
             if (!$el.find('[aria-label="verified_filled icon"]').length) {
               unverifiedElementCount++;
             } else {
@@ -1075,10 +1075,10 @@ function expectSearchResultItemNameContent(
   { itemNames },
   { strict } = { strict: true },
 ) {
-  cy.findAllByTestId("search-result-item-name").then($searchResultLabel => {
+  cy.findAllByTestId("search-result-item-name").then(($searchResultLabel) => {
     const searchResultLabelList = $searchResultLabel
       .toArray()
-      .map(el => el.textContent);
+      .map((el) => el.textContent);
 
     if (strict) {
       expect(searchResultLabelList).to.have.length(itemNames.length);

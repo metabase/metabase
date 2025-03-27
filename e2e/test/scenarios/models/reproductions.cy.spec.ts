@@ -18,11 +18,11 @@ describe("issue 29943", () => {
     // drag & drop the Total column 10 px to the right of the Custom column to swap their positions
     cy.findAllByTestId("header-cell")
       .contains("Custom")
-      .then(customColumn => {
+      .then((customColumn) => {
         const customColumnRect = customColumn[0].getBoundingClientRect();
         cy.findAllByTestId("header-cell")
           .contains("Total")
-          .then(totalColumn => {
+          .then((totalColumn) => {
             const totalColumnRect = totalColumn[0].getBoundingClientRect();
             cy.wrap(totalColumn)
               .trigger("mousedown")
@@ -125,7 +125,7 @@ describe("issue 35711", () => {
     // drag & drop the Total column 100 px to the left to switch it with Tax column
     cy.findAllByTestId("header-cell")
       .contains("Total")
-      .then(totalColumn => {
+      .then((totalColumn) => {
         const rect = totalColumn[0].getBoundingClientRect();
         cy.wrap(totalColumn)
           .trigger("mousedown")
@@ -363,7 +363,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
     H.saveQuestion("Nested Model", { wrapId: true, idAlias: "nestedModelId" });
 
     cy.log("Make sure this works for the deeply nested models as well");
-    cy.get("@nestedModelId").then(nestedModelId => {
+    cy.get("@nestedModelId").then((nestedModelId) => {
       H.createQuestion(
         {
           type: "model",
@@ -903,7 +903,7 @@ describe("issue 39993", () => {
   function dragAndDrop(column: string, distance: number) {
     cy.findAllByTestId("header-cell")
       .contains(column)
-      .then(element => {
+      .then((element) => {
         const rect = element[0].getBoundingClientRect();
         cy.wrap(element)
           .trigger("mousedown")
@@ -1410,7 +1410,7 @@ describe("issue 32037", () => {
 
     H.tableInteractive().should("be.visible");
     cy.button("Save changes").should("not.exist");
-    cy.get("@modelPathname").then(modelPathname => {
+    cy.get("@modelPathname").then((modelPathname) => {
       cy.location("pathname").should("eq", modelPathname);
     });
   }

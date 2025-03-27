@@ -59,15 +59,15 @@ export const updateUserSetting = createAsyncThunk(
 
 export const settings = createReducer(
   { values: window.MetabaseBootstrap || {}, loading: false },
-  builder => {
-    builder.addCase(refreshSiteSettings.pending, state => {
+  (builder) => {
+    builder.addCase(refreshSiteSettings.pending, (state) => {
       state.loading = true;
     });
     builder.addCase(refreshSiteSettings.fulfilled, (state, { payload }) => {
       state.loading = false;
       state.values = payload;
     });
-    builder.addCase(refreshSiteSettings.rejected, state => {
+    builder.addCase(refreshSiteSettings.rejected, (state) => {
       state.loading = false;
     });
     builder.addCase(updateUserSetting.fulfilled, (state, { payload }) => {

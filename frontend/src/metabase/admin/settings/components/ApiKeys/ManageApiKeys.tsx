@@ -80,7 +80,7 @@ function ApiKeysTable({
       data-testid="api-keys-table"
       columns={columns}
       rows={flatApiKeys}
-      rowRenderer={row => (
+      rowRenderer={(row) => (
         <ApiKeyRow
           apiKey={row}
           setActiveApiKey={setActiveApiKey}

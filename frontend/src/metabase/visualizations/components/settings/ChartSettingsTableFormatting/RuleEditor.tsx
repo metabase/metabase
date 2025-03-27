@@ -62,7 +62,7 @@ export const RuleEditor = ({
   canHighlightRow = true,
 }: RuleEditorProps) => {
   const selectedColumns = useMemo(
-    () => rule.columns.map(name => _.findWhere(cols, { name })),
+    () => rule.columns.map((name) => _.findWhere(cols, { name })),
     [rule.columns, cols],
   );
   const { operators, isNumericRule, isKeyRule, isFieldDisabled } = useMemo(
@@ -107,7 +107,7 @@ export const RuleEditor = ({
           placeholder={t`Choose a column`}
           multiple
         >
-          {cols.map(col => (
+          {cols.map((col) => (
             <Option
               key={col.name}
               value={col.name}
@@ -127,7 +127,7 @@ export const RuleEditor = ({
               { name: t`Color range`, value: "range" },
             ]}
             value={rule.type}
-            onChange={type =>
+            onChange={(type) =>
               onChange({
                 ...DEFAULTS_BY_TYPE[type as "single" | "range"],
                 columns: rule.columns,
@@ -174,7 +174,7 @@ export const RuleEditor = ({
               data-testid="conditional-formatting-color-selector"
               value={rule.color}
               colors={COLORS}
-              onChange={color => onChange({ ...rule, color })}
+              onChange={(color) => onChange({ ...rule, color })}
             />
           </Stack>
           {canHighlightRow && (
@@ -183,7 +183,7 @@ export const RuleEditor = ({
 
               <ChartSettingToggle
                 value={rule.highlight_row}
-                onChange={value =>
+                onChange={(value) =>
                   onChange({
                     ...rule,
                     highlight_row: value,
@@ -199,7 +199,7 @@ export const RuleEditor = ({
             <Text fw="bold" fz="lg">{t`Colors`}</Text>
             <ColorRangeSelector
               value={rule.colors}
-              onChange={colors => {
+              onChange={(colors) => {
                 onChange({ ...rule, colors });
               }}
               colors={COLORS}
@@ -210,7 +210,7 @@ export const RuleEditor = ({
             <Text fw="bold" fz="lg">{t`Start the range at`}</Text>
             <ChartSettingRadio
               value={rule.min_type}
-              onChange={min_type =>
+              onChange={(min_type) =>
                 onChange({
                   ...rule,
                   min_type:
@@ -232,7 +232,7 @@ export const RuleEditor = ({
               <ChartSettingInputNumeric
                 className={INPUT_CLASSNAME}
                 value={rule.min_value}
-                onChange={min_value =>
+                onChange={(min_value) =>
                   onChange({ ...rule, min_value: min_value ?? undefined })
                 }
               />
@@ -242,7 +242,7 @@ export const RuleEditor = ({
             <Text fw="bold" fz="lg">{t`End the range at`}</Text>
             <ChartSettingRadio
               value={rule.max_type}
-              onChange={max_type =>
+              onChange={(max_type) =>
                 onChange({
                   ...rule,
                   max_type:
@@ -264,7 +264,7 @@ export const RuleEditor = ({
               <ChartSettingInputNumeric
                 className={INPUT_CLASSNAME}
                 value={rule.max_value}
-                onChange={max_value =>
+                onChange={(max_value) =>
                   onChange({ ...rule, max_value: max_value ?? undefined })
                 }
               />
@@ -309,7 +309,7 @@ const RuleEditorValueInput = ({
       ? {
           type: "number",
           placeholder: "0",
-          onBlurChange: e =>
+          onBlurChange: (e) =>
             onChange({ ...rule, value: e.target.valueAsNumber ?? "" }),
         }
       : {
@@ -322,7 +322,7 @@ const RuleEditorValueInput = ({
       data-testid="conditional-formatting-value-input"
       className={INPUT_CLASSNAME}
       value={rule.value}
-      onBlurChange={e => onChange({ ...rule, value: e.target.value })}
+      onBlurChange={(e) => onChange({ ...rule, value: e.target.value })}
       {...inputProps}
     />
   );

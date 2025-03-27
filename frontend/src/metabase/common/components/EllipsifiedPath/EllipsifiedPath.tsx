@@ -32,7 +32,7 @@ export const EllipsifiedPath = ({ items, tooltip }: EllipsifiedPathProps) => {
           return (
             <React.Fragment key={key}>
               <div
-                ref={el => el && ref.current.set(key, el)}
+                ref={(el) => el && ref.current.set(key, el)}
                 className={S.item}
               >
                 {item}

@@ -61,7 +61,7 @@ const UserCanAccessTools = connectedReduxRedirect({
   wrapperDisplayName: "UserCanAccessTools",
   redirectPath: "/admin",
   allowRedirectBack: false,
-  authenticatedSelector: state => {
+  authenticatedSelector: (state) => {
     if (PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0) {
       return true;
     }
@@ -173,7 +173,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <IndexRedirect to={PerformanceTabId.Databases} />
           {PLUGIN_CACHING.getTabMetadata().map(({ name, key, tabId }) => (
             <Route
-              component={routeProps => (
+              component={(routeProps) => (
                 <PerformanceApp {...routeProps} tabId={tabId} />
               )}
               title={name}
@@ -201,7 +201,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
       {/* PLUGINS */}
       <Fragment>
-        {PLUGIN_ADMIN_ROUTES.map(getRoutes => getRoutes(store))}
+        {PLUGIN_ADMIN_ROUTES.map((getRoutes) => getRoutes(store))}
       </Fragment>
     </Route>
   </Route>

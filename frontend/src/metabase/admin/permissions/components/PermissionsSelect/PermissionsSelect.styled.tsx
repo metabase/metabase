@@ -10,7 +10,7 @@ export const PermissionsSelectRoot = styled.div<{ isDisabled: boolean }>`
   display: flex;
   align-items: center;
   min-width: 180px;
-  cursor: ${props => (props.isDisabled ? "default" : "pointer")};
+  cursor: ${(props) => (props.isDisabled ? "default" : "pointer")};
 `;
 
 export const SelectedOption = styled(PermissionsSelectOption)`
@@ -72,6 +72,6 @@ export const WarningIcon = styled(
 export const DisabledPermissionOption = styled(PermissionsSelectOption)<{
   isHighlighted: boolean;
 }>`
-  color: ${props =>
+  color: ${(props) =>
     props.isHighlighted ? color("text-medium") : color("text-light")};
 `;

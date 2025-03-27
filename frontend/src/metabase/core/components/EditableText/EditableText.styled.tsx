@@ -17,10 +17,10 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
 
   &:hover,
   &:focus-within {
-    border-color: ${props => !props.isDisabled && "var(--mb-color-border)"};
+    border-color: ${(props) => !props.isDisabled && "var(--mb-color-border)"};
   }
 
-  ${props =>
+  ${(props) =>
     props.isEditing &&
     !props.isDisabled &&
     css`
@@ -51,7 +51,7 @@ export const EditableTextArea = styled.textarea`
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
-  cursor: ${props => (props.disabled ? "text" : "pointer")};
+  cursor: ${(props) => (props.disabled ? "text" : "pointer")};
   border: none;
   resize: none;
   outline: none;

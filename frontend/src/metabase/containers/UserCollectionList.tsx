@@ -57,7 +57,7 @@ export const UserCollectionList = () => {
         ) : (
           <Grid>
             {users.map(
-              user =>
+              (user) =>
                 user.personal_collection_id && (
                   <ListGridItem
                     key={user.personal_collection_id}

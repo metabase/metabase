@@ -156,8 +156,8 @@ export const runQuestionQuery = ({
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,
     })
-      .then(queryResults => dispatch(queryCompleted(question, queryResults)))
-      .catch(error => dispatch(queryErrored(startTime, error)));
+      .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
+      .catch((error) => dispatch(queryErrored(startTime, error)));
 
     dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
   };
@@ -242,7 +242,7 @@ export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(
   QUERY_ERRORED,
   (startTime, error) => {
-    return async dispatch => {
+    return async (dispatch) => {
       if (error && error.isCancelled) {
         return null;
       } else {

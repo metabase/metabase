@@ -35,9 +35,9 @@ export const BaseSidebarItemRoot = styled.div<{
 export const SelectableSidebarItemRoot = styled(BaseSidebarItemRoot)<{
   isSelected: boolean;
 }>`
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.isSelected ? color("brand") : "transparent"};
-  color: ${props => (props.isSelected ? color("text-white") : "inherit")};
+  color: ${(props) => (props.isSelected ? color("text-white") : "inherit")};
 `;
 
 export const Content = styled.div`

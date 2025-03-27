@@ -13,7 +13,7 @@ export const ParameterFieldSet = styled(FieldSet)<ParameterFieldSetProps>`
   display: flex;
   align-items: center;
   border: 2px solid
-    ${props =>
+    ${(props) =>
       props.fieldHasValueOrFocus ? color("brand") : "var(--mb-color-border)"};
   margin: 0.5em 0;
   padding: 0.25em 1em;
@@ -42,7 +42,7 @@ export const ParameterContainer = styled.div<ParameterContainerProps>`
   display: flex;
   align-items: center;
   border: 1px solid
-    ${props =>
+    ${(props) =>
       props.isEditingParameter ? color("brand") : "var(--mb-color-border)"};
   border-radius: 0.5rem;
   cursor: pointer;
@@ -50,8 +50,8 @@ export const ParameterContainer = styled.div<ParameterContainerProps>`
   min-width: 170px;
   margin: 0.25rem 0.5rem 0.25rem 0;
   padding: 0.5rem;
-  color: ${props => props.isEditingParameter && color("text-white")};
-  background-color: ${props =>
+  color: ${(props) => props.isEditingParameter && color("text-white")};
+  background-color: ${(props) =>
     props.isEditingParameter ? color("brand") : color("bg-white")};
 `;
 

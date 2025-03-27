@@ -142,33 +142,37 @@ const _Launchers = ({
         </LegacySelect>
       </LauncherGroup>
       <LauncherGroup title="Toasts">
-        <Button onClick={() => setUndoCount(c => c + 1)}>
+        <Button onClick={() => setUndoCount((c) => c + 1)}>
           Undo-style toast
         </Button>
-        <Button onClick={() => setActionToastCount(c => c + 1)}>
+        <Button onClick={() => setActionToastCount((c) => c + 1)}>
           Action-style toast
         </Button>
-        <Button onClick={() => setToastCount(c => c + 1)}>
+        <Button onClick={() => setToastCount((c) => c + 1)}>
           Toaster-style toast
         </Button>
       </LauncherGroup>
       <LauncherGroup title="Modals">
-        <Button onClick={() => setMantineModalCount(c => c + 1)}>
+        <Button onClick={() => setMantineModalCount((c) => c + 1)}>
           Mantine Modal
         </Button>
         <MantineTooltip label="This kind of modal sets its title via a prop">
-          <Button onClick={() => setMantineModalWithTitlePropCount(c => c + 1)}>
+          <Button
+            onClick={() => setMantineModalWithTitlePropCount((c) => c + 1)}
+          >
             Mantine Modal variant
           </Button>
         </MantineTooltip>
-        <Button onClick={() => setLegacyModalCount(c => c + 1)}>
+        <Button onClick={() => setLegacyModalCount((c) => c + 1)}>
           Legacy modal
         </Button>
-        <Button onClick={() => setSidesheetCount(c => c + 1)}>Sidesheet</Button>
-        <Button onClick={() => setEntityPickerCount(c => c + 1)}>
+        <Button onClick={() => setSidesheetCount((c) => c + 1)}>
+          Sidesheet
+        </Button>
+        <Button onClick={() => setEntityPickerCount((c) => c + 1)}>
           Entity Picker
         </Button>
-        <Button onClick={() => setCommandPaletteCount(c => c + 1)}>
+        <Button onClick={() => setCommandPaletteCount((c) => c + 1)}>
           Command Palette
         </Button>
       </LauncherGroup>
@@ -225,7 +229,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           p="lg"
         >
           <CloseButton
-            onClick={() => setActionToastCount(c => c - 1)}
+            onClick={() => setActionToastCount((c) => c - 1)}
             c="#fff"
             bg="transparent"
           />
@@ -240,10 +244,10 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           confirmText="Confirm"
           isShown={true}
           onDismiss={() => {
-            setToastCount(c => c - 1);
+            setToastCount((c) => c - 1);
           }}
           onConfirm={() => {
-            setToastCount(c => c - 1);
+            setToastCount((c) => c - 1);
           }}
           className=""
           fixed
@@ -256,7 +260,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
             isOpen
             key={`legacy-modal-${index}`}
             closeOnClickOutside
-            onClose={() => setLegacyModalCount(c => c - 1)}
+            onClose={() => setLegacyModalCount((c) => c - 1)}
             aria-labelledby={modalTitleId}
           >
             <ModalContent>
@@ -268,7 +272,9 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
                   <Box p="1rem 0">Legacy modal text content</Box>
                   {enableNesting && <Launchers />}
                 </Stack>
-                <CloseButton onClick={() => setLegacyModalCount(c => c - 1)} />
+                <CloseButton
+                  onClick={() => setLegacyModalCount((c) => c - 1)}
+                />
               </Group>
             </ModalContent>
           </LegacyModal>
@@ -278,7 +284,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
         <SimpleModal
           key={`mantine-modal-${index}`}
           title={`Mantine Modal content`}
-          onClose={() => setMantineModalCount(c => c - 1)}
+          onClose={() => setMantineModalCount((c) => c - 1)}
         >
           <Stack spacing="md">
             <Text>Mantine Modal text content</Text>
@@ -292,7 +298,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
             opened
             key={`mantine-modal-with-title-prop-${index}`}
             title="Mantine Modal content"
-            onClose={() => setMantineModalWithTitlePropCount(c => c - 1)}
+            onClose={() => setMantineModalWithTitlePropCount((c) => c - 1)}
           >
             <Text>Mantine Modal text content</Text>
             {enableNesting && <Launchers />}
@@ -303,7 +309,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
         <Sidesheet
           key={`sidesheet-${index}`}
           isOpen
-          onClose={() => setSidesheetCount(c => c - 1)}
+          onClose={() => setSidesheetCount((c) => c - 1)}
           title="Sidesheet content"
         >
           Sidesheet text content
@@ -318,11 +324,11 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           canSelectItem={false}
           tabs={[]}
           onClose={() => {
-            setEntityPickerCount(c => c - 1);
+            setEntityPickerCount((c) => c - 1);
           }}
           onItemSelect={_.noop}
           onConfirm={() => {
-            setEntityPickerCount(c => c - 1);
+            setEntityPickerCount((c) => c - 1);
           }}
         >
           <Box p="lg">Entity Picker text content</Box>
@@ -339,11 +345,11 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           <PaletteCard
             key={`command-palette-${index}`}
             onClick={() => {
-              setCommandPaletteCount(c => c - 1);
+              setCommandPaletteCount((c) => c - 1);
             }}
             aria-labelledby={modalTitleId}
           >
-            <div onClick={e => e.stopPropagation()}>
+            <div onClick={(e) => e.stopPropagation()}>
               <Flex p="lg">
                 <Stack>
                   <Title id={modalTitleId} order={3}>
@@ -409,7 +415,7 @@ const UndoToasts = memo(function UndoToasts({
             message: `Undo-style toast text content`,
           })}
           onUndo={() => {}}
-          onDismiss={() => setUndoCount(c => c - 1)}
+          onDismiss={() => setUndoCount((c) => c - 1)}
           key={`undo-toast-${index}`}
           aria-label="Undo-style toast content"
         />

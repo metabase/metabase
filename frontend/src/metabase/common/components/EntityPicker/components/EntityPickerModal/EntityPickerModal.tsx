@@ -204,7 +204,7 @@ export function EntityPickerModal<
       return [];
     }
 
-    const relevantModelRecents = recentItems.filter(recentItem => {
+    const relevantModelRecents = recentItems.filter((recentItem) => {
       return searchModels.includes(recentItem.model);
     });
 
@@ -279,10 +279,10 @@ export function EntityPickerModal<
     (item: Item, tabId: EntityPickerTabId) => {
       if (tabId !== SEARCH_TAB_ID && tabId !== RECENTS_TAB_ID) {
         if (isSearchFolder(item, folderModels)) {
-          setTabFolderState(state => ({ ...state, [tabId]: item }));
+          setTabFolderState((state) => ({ ...state, [tabId]: item }));
           setSearchScope("folder");
         } else {
-          setTabFolderState(state => ({ ...state, [tabId]: undefined }));
+          setTabFolderState((state) => ({ ...state, [tabId]: undefined }));
           setSearchScope("everywhere");
         }
       }
@@ -336,7 +336,7 @@ export function EntityPickerModal<
 
   useWindowEvent(
     "keydown",
-    event => {
+    (event) => {
       if (event.key === "Escape") {
         event.stopPropagation();
         onClose();
@@ -391,7 +391,7 @@ export function EntityPickerModal<
                 miw={400}
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
                 value={searchQuery}
-                onChange={e => handleQueryChange(e.target.value ?? "")}
+                onChange={(e) => handleQueryChange(e.target.value ?? "")}
               />
             </Box>
           )}
@@ -407,7 +407,7 @@ export function EntityPickerModal<
               ) : (
                 <SinglePickerView data-testid="single-picker-view">
                   {tabs[0]?.render({
-                    onItemSelect: item => handleSelectItem(item, tabs[0].id),
+                    onItemSelect: (item) => handleSelectItem(item, tabs[0].id),
                   }) ?? null}
                 </SinglePickerView>
               )}

@@ -236,11 +236,12 @@ export class UnconnectedDataSelector extends Component {
       selectedTable = null,
       selectedField = null;
 
-    const getDatabase = id =>
+    const getDatabase = (id) =>
       _.findWhere(databases, { id }) || metadata.database(id);
-    const getSchema = id => _.findWhere(schemas, { id }) || metadata.schema(id);
-    const getTable = id => _.findWhere(tables, { id }) || metadata.table(id);
-    const getField = id => _.findWhere(fields, { id }) || metadata.field(id);
+    const getSchema = (id) =>
+      _.findWhere(schemas, { id }) || metadata.schema(id);
+    const getTable = (id) => _.findWhere(tables, { id }) || metadata.table(id);
+    const getField = (id) => _.findWhere(fields, { id }) || metadata.field(id);
 
     function setSelectedDatabase(database) {
       selectedDatabase = database;
@@ -312,7 +313,7 @@ export class UnconnectedDataSelector extends Component {
   // Like setState, but automatically adds computed state so we don't have to recalculate
   // repeatedly. Also returns a promise resolves after state is updated
   setStateWithComputedState(newState, newProps = this.props) {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       const computedState = this._getComputedState(newProps, {
         ...this.state,
         ...newState,
@@ -478,7 +479,7 @@ export class UnconnectedDataSelector extends Component {
   };
 
   hasSavedQuestions = () => {
-    return this.state.databases.some(database => database.is_saved_questions);
+    return this.state.databases.some((database) => database.is_saved_questions);
   };
 
   getDatabases = () => {
@@ -491,7 +492,7 @@ export class UnconnectedDataSelector extends Component {
       !this.props.hasNestedQueriesEnabled || this.hasUsableModelsOrMetrics();
 
     return shouldRemoveSavedQuestionDatabaseFromList
-      ? databases.filter(db => !db.is_saved_questions)
+      ? databases.filter((db) => !db.is_saved_questions)
       : databases;
   };
 
@@ -753,7 +754,7 @@ export class UnconnectedDataSelector extends Component {
       savedEntityType: entityType,
     });
 
-  onChangeDataBucket = async selectedDataBucketId => {
+  onChangeDataBucket = async (selectedDataBucketId) => {
     if (selectedDataBucketId === DATA_BUCKET.RAW_DATA) {
       await this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
       return;
@@ -765,13 +766,13 @@ export class UnconnectedDataSelector extends Component {
       },
       false,
     );
-    const database = this.props.databases.find(db => db.is_saved_questions);
+    const database = this.props.databases.find((db) => db.is_saved_questions);
     if (database) {
       this.onChangeDatabase(database);
     }
   };
 
-  onChangeDatabase = async database => {
+  onChangeDatabase = async (database) => {
     if (database.is_saved_questions) {
       this.showSavedEntityPicker({ entityType: "question" });
       return;
@@ -789,26 +790,26 @@ export class UnconnectedDataSelector extends Component {
     await this.nextStep({ selectedDatabaseId: database && database.id });
   };
 
-  onChangeSchema = async schema => {
+  onChangeSchema = async (schema) => {
     // NOTE: not really any need to have a setSchemaFn since schemas are just a namespace
     await this.nextStep({ selectedSchemaId: schema && schema.id });
   };
 
-  onChangeTable = async table => {
+  onChangeTable = async (table) => {
     if (this.props.setSourceTableFn) {
       this.props.setSourceTableFn(table?.id, table?.db_id);
     }
     await this.nextStep({ selectedTableId: table?.id });
   };
 
-  onChangeField = async field => {
+  onChangeField = async (field) => {
     if (this.props.setFieldFn) {
       this.props.setFieldFn(field?.id);
     }
     await this.nextStep({ selectedFieldId: field?.id });
   };
 
-  getTriggerElement = triggerProps => {
+  getTriggerElement = (triggerProps) => {
     const {
       className,
       style,
@@ -931,7 +932,7 @@ export class UnconnectedDataSelector extends Component {
 
   isSavedEntitySelected = () => isVirtualCardId(this.props.selectedTableId);
 
-  handleSavedEntitySelect = async tableOrCardId => {
+  handleSavedEntitySelect = async (tableOrCardId) => {
     await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
       const table = this.props.metadata.table(tableOrCardId);
@@ -954,12 +955,12 @@ export class UnconnectedDataSelector extends Component {
     return hasTableSearch && hasTableStep && isAllowedToShowOnActiveStep;
   };
 
-  handleSearchTextChange = searchText =>
+  handleSearchTextChange = (searchText) =>
     this.setState({
       searchText,
     });
 
-  handleSearchItemSelect = async item => {
+  handleSearchItemSelect = async (item) => {
     const tableOrCardId = getSearchItemTableOrCardId(item);
     await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
@@ -1052,7 +1053,7 @@ export class UnconnectedDataSelector extends Component {
                 autoFocus
                 value={searchText}
                 placeholder={this.getSearchInputPlaceholder()}
-                onChange={e => this.handleSearchTextChange(e.target.value)}
+                onChange={(e) => this.handleSearchTextChange(e.target.value)}
                 onResetClick={() => this.handleSearchTextChange("")}
               />
             </Box>
@@ -1174,13 +1175,13 @@ const DataSelector = _.compose(
       }),
     }),
     {
-      fetchDatabases: databaseQuery =>
+      fetchDatabases: (databaseQuery) =>
         Databases.actions.fetchList(databaseQuery),
-      fetchSchemas: databaseId =>
+      fetchSchemas: (databaseId) =>
         Schemas.actions.fetchList({ dbId: databaseId }),
-      fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
-      fetchFields: tableId => Tables.actions.fetchMetadata({ id: tableId }),
-      fetchQuestion: id =>
+      fetchSchemaTables: (schemaId) => Schemas.actions.fetch({ id: schemaId }),
+      fetchFields: (tableId) => Tables.actions.fetchMetadata({ id: tableId }),
+      fetchQuestion: (id) =>
         Questions.actions.fetch({
           id: getQuestionIdFromVirtualTableId(id),
         }),

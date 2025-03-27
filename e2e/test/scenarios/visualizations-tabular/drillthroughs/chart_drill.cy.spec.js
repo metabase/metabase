@@ -64,7 +64,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  ["month", "month-of-year"].forEach(granularity => {
+  ["month", "month-of-year"].forEach((granularity) => {
     it(`brush filter should work post-aggregation for ${granularity} granularity (metabase#18011)`, () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -503,7 +503,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.findByText("See these People").click();
 
         // We should see the resulting dataset of that drill-through
-        cy.wait("@dataset").then(xhr => {
+        cy.wait("@dataset").then((xhr) => {
           expect(xhr.response.body.error).not.to.exist;
         });
         cy.findByText("Macy Olson");

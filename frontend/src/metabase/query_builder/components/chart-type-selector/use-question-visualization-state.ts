@@ -80,7 +80,7 @@ export const getSensibleVisualizations = ({
 
   const [sensibleVisualizations, nonSensibleVisualizations] = _.partition(
     orderedVizTypes,
-    vizType => isSensibleVisualization({ result, vizType }),
+    (vizType) => isSensibleVisualization({ result, vizType }),
   );
 
   return { sensibleVisualizations, nonSensibleVisualizations };

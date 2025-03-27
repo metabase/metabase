@@ -80,7 +80,7 @@ export function QueryModals({
   const showAlertsAfterQuestionSaved = useCallback(() => {
     const hasAlertsCreatedByCurrentUser = _.any(
       questionAlerts,
-      alert => alert.creator.id === user.id,
+      (alert) => alert.creator.id === user.id,
     );
 
     if (hasAlertsCreatedByCurrentUser) {
@@ -132,7 +132,7 @@ export function QueryModals({
       )
         .unwrap()
         .catch(() => undefined); // we can fallback to navigation w/o this info
-      const dashcard = dashboard?.dashcards.find(c => c.card_id === cardId);
+      const dashcard = dashboard?.dashcards.find((c) => c.card_id === cardId);
 
       if (!dashboard || !dashcard) {
         console.warn(
@@ -229,7 +229,7 @@ export function QueryModals({
           question={question}
           originalQuestion={originalQuestion}
           initialCollectionId={initialCollectionId}
-          onSave={async question => {
+          onSave={async (question) => {
             await onSave(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
@@ -265,11 +265,11 @@ export function QueryModals({
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion}
-          onSave={async question => {
+          onSave={async (question) => {
             await onSave(question);
             showAlertsAfterQuestionSaved();
           }}
-          onCreate={async question => {
+          onCreate={async (question) => {
             const newQuestion = await onCreate(question);
             showAlertsAfterQuestionSaved();
             return newQuestion;
@@ -320,7 +320,7 @@ export function QueryModals({
                 ? question.collectionId()
                 : initialCollectionId,
             }}
-            copy={async formValues => {
+            copy={async (formValues) => {
               if (!questionWithParameters) {
                 return;
               }

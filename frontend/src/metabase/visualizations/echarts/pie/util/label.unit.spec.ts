@@ -102,7 +102,7 @@ describe("pie chart label utilities", () => {
 
     it.each([50, 100])(
       "returns 0 when donut thickness is less than the double of the label font size",
-      fontSize => {
+      (fontSize) => {
         expect(
           calcAvailableDonutSliceLabelLength(
             50,

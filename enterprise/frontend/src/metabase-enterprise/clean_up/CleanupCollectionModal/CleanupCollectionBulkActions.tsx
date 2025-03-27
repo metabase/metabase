@@ -31,14 +31,14 @@ export const CleanupCollectionBulkActions = ({
 
   const handleUndo = async (items: CollectionItem[]) => {
     return Promise.all(
-      items.map(item => item?.setArchived?.(false, { notify: false })),
+      items.map((item) => item?.setArchived?.(false, { notify: false })),
     )
       .then(() => resetPagination())
       .finally(() => setUndo(undefined));
   };
 
   const handleBulkArchive = async () => {
-    const actions = selected.map(item => {
+    const actions = selected.map((item) => {
       return archiveAndTrack({
         archive: () =>
           item.setArchived
@@ -51,7 +51,7 @@ export const CleanupCollectionBulkActions = ({
     });
 
     Promise.allSettled(actions)
-      .then(results => {
+      .then((results) => {
         resetPagination();
 
         const successfullyArchivedItems = results
@@ -65,7 +65,7 @@ export const CleanupCollectionBulkActions = ({
 
         const id = Date.now();
         const timeoutId = setTimeout(() => {
-          setUndo(undo => (undo?.id === id ? undefined : undo));
+          setUndo((undo) => (undo?.id === id ? undefined : undo));
         }, 5000) as unknown as number;
 
         const message = ngettext(

@@ -23,7 +23,7 @@ export const StyledSidebarLink = styled(SidebarLink)<{ isDragging: boolean }>`
     }
   }
 
-  ${props =>
+  ${(props) =>
     props.isDragging &&
     css`
       pointer-events: none;

@@ -12,7 +12,7 @@ const shimmerAnimation = keyframes`
 export const getSkeletonOverrides = (): MantineThemeOverride["components"] => {
   return {
     Skeleton: {
-      styles: _theme => {
+      styles: (_theme) => {
         return {
           // We replace Mantine's pulsing animation with a shimmer animation
           root: {

@@ -19,7 +19,7 @@ export const getTooltipOverrides = (): MantineThemeOverride["components"] => ({
       },
     },
     classNames: { tooltip: ZIndex.Overlay },
-    styles: theme => ({
+    styles: (theme) => ({
       tooltip: {
         backgroundColor: "var(--mb-color-tooltip-background)",
         color: "var(--mb-color-tooltip-text)",

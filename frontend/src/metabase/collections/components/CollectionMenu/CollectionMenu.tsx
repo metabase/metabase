@@ -22,7 +22,7 @@ export interface CollectionMenuProps {
 }
 
 const mergeArrays = (arr: React.ReactNode[][]): React.ReactNode[] => {
-  const filteredArr = arr.filter(v => v.length > 0);
+  const filteredArr = arr.filter((v) => v.length > 0);
   return filteredArr.length === 0
     ? []
     : filteredArr.reduce((acc, val, index) =>

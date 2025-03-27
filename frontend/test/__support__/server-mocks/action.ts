@@ -15,7 +15,7 @@ export function setupActionEndpoints(action: WritebackAction) {
 function setupActionPostEndpoint() {
   fetchMock.post(
     { url: "path:/api/action", overwriteRoutes: true },
-    async url => {
+    async (url) => {
       const call = fetchMock.lastCall(url);
       const data = await call?.request?.json();
       if (data.type === "implicit") {
@@ -34,7 +34,7 @@ export function setupActionsEndpoints(actions: WritebackAction[]) {
 
   setupActionPostEndpoint();
 
-  actions.forEach(action => setupActionEndpoints(action));
+  actions.forEach((action) => setupActionEndpoints(action));
 }
 
 export function setupModelActionsEndpoints(
@@ -52,5 +52,5 @@ export function setupModelActionsEndpoints(
 
   setupActionPostEndpoint();
 
-  actions.forEach(action => setupActionEndpoints(action));
+  actions.forEach((action) => setupActionEndpoints(action));
 }

@@ -47,13 +47,13 @@ export const PaletteResults = withRouter(
     });
 
     useKeyPressEvent("PageDown", () => {
-      query.setActiveIndex(i =>
+      query.setActiveIndex((i) =>
         navigateActionIndex(processedResults, i, PAGE_SIZE),
       );
     });
 
     useKeyPressEvent("PageUp", () => {
-      query.setActiveIndex(i =>
+      query.setActiveIndex((i) =>
         navigateActionIndex(processedResults, i, -PAGE_SIZE),
       );
     });

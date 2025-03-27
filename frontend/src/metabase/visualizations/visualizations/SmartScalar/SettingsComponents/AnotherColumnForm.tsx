@@ -40,7 +40,7 @@ export function AnotherColumnForm({
 
   const columnOptions = useMemo(
     () =>
-      columns.map(column => ({
+      columns.map((column) => ({
         label: column.display_name,
         value: column.name,
       })),
@@ -49,7 +49,7 @@ export function AnotherColumnForm({
 
   const handleChangeColumnKey = (value: string) => {
     setColumn(value);
-    const option = columnOptions.find(option => option.value === value);
+    const option = columnOptions.find((option) => option.value === value);
     setLabel(option?.label || "");
   };
 
