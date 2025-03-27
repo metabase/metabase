@@ -29,11 +29,11 @@ import { SsoButton } from "./components/SsoButton";
 import JwtAuthCard from "./containers/JwtAuthCard";
 import SamlAuthCard from "./containers/SamlAuthCard";
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-  updateIn(sections, ["authentication", "settings"], settings => {
+PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) =>
+  updateIn(sections, ["authentication", "settings"], (settings) => {
     const [apiKeySettings, otherSettings] = _.partition(
       settings,
-      s => s.key === "api-keys",
+      (s) => s.key === "api-keys",
     );
     return [
       ...otherSettings,
@@ -77,7 +77,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   }),
 );
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
+PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) => ({
   ...sections,
   "authentication/saml": {
     getHidden: () => !hasPremiumFeature("sso_saml"),
@@ -235,7 +235,7 @@ const SSO_PROVIDER = {
   Button: SsoButton,
 };
 
-PLUGIN_AUTH_PROVIDERS.push(providers => {
+PLUGIN_AUTH_PROVIDERS.push((providers) => {
   if (
     (hasPremiumFeature("sso_jwt") || hasPremiumFeature("sso_saml")) &&
     MetabaseSettings.get("other-sso-enabled?")
@@ -247,14 +247,14 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
     !MetabaseSettings.isPasswordLoginEnabled() &&
     !MetabaseSettings.isLdapEnabled()
   ) {
-    providers = providers.filter(p => p.name !== "password");
+    providers = providers.filter((p) => p.name !== "password");
   }
   return providers;
 });
 
 if (hasPremiumFeature("disable_password_login")) {
   PLUGIN_IS_PASSWORD_USER.push(
-    user =>
+    (user) =>
       !user.google_auth &&
       !user.ldap_auth &&
       MetabaseSettings.isPasswordLoginEnabled(),
@@ -284,8 +284,8 @@ if (hasPremiumFeature("sso_ldap")) {
     ),
   });
 
-  PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-    updateIn(sections, ["authentication/ldap", "settings"], settings => [
+  PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) =>
+    updateIn(sections, ["authentication/ldap", "settings"], (settings) => [
       {
         key: "ldap-user-provisioning-enabled?",
         display_name: t`User Provisioning`,

@@ -549,14 +549,14 @@ describe("useReferencedCardCompletion", () => {
 
   function setup({
     results = MOCK_RESULTS,
-    cardIds = results.map(card => card.id).filter(isNotNull),
+    cardIds = results.map((card) => card.id).filter(isNotNull),
   }: {
     results?: Partial<Card>[];
     cardIds?: number[];
   } = {}) {
     for (const id of cardIds) {
       const url = `path:/api/card/${id}`;
-      const card = results.find(card => card.id === id);
+      const card = results.find((card) => card.id === id);
       fetchMock.get(url, {
         status: 200,
         body: card,

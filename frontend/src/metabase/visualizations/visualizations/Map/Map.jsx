@@ -245,7 +245,7 @@ export class Map extends Component {
         options: _.chain(MetabaseSettings.get("custom-geojson", {}))
           .pairs()
           .map(([key, value]) => ({ name: value.name || "", value: key }))
-          .sortBy(x => x.name.toLowerCase())
+          .sortBy((x) => x.name.toLowerCase())
           .value(),
         placeholder: t`Select a region`,
         footer: <CustomMapFooter />,
@@ -267,7 +267,7 @@ export class Map extends Component {
       props: {
         colors: getAccentColors(),
         colorMapping: Object.fromEntries(
-          getAccentColors().map(color => [
+          getAccentColors().map((color) => [
             color,
             getColorplethColorScale(color),
           ]),

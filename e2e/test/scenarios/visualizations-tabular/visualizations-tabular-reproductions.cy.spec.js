@@ -20,7 +20,7 @@ describe("issue 6010", () => {
     });
   };
 
-  const createQuestion = metric_id => {
+  const createQuestion = (metric_id) => {
     return H.createQuestion({
       name: "Question",
       display: "line",
@@ -643,8 +643,8 @@ describe.skip("issue 42049", () => {
   });
 
   it("should not mess up columns order (metabase#42049)", () => {
-    cy.intercept("POST", "/api/card/*/query", req => {
-      req.on("response", res => {
+    cy.intercept("POST", "/api/card/*/query", (req) => {
+      req.on("response", (res) => {
         const createdAt = res.body.data.cols[1];
 
         createdAt.field_ref[1] = "created_at"; // simulate named field ref
@@ -808,7 +808,7 @@ describe("issue 14148", { tags: "@external" }, () => {
           },
         },
         {
-          callback: xhr =>
+          callback: (xhr) =>
             expect(xhr.response.body.cause || "").not.to.contain("ERROR"),
         },
       ),
@@ -886,7 +886,7 @@ describe("issue 7884", () => {
     },
   };
 
-  const getNestedQuestionDetails = sourceQuestionId => ({
+  const getNestedQuestionDetails = (sourceQuestionId) => ({
     query: {
       "source-table": `card__${sourceQuestionId}`,
     },

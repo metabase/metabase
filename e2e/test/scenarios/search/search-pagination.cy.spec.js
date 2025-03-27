@@ -15,7 +15,7 @@ describe("scenarios > search", () => {
   });
 
   it("should not search on an empty string", () => {
-    cy.intercept("/api/search", req => {
+    cy.intercept("/api/search", (req) => {
       expect("Unexpected call to /api/search").to.be.false;
     });
     H.visitFullAppEmbeddingUrl({
@@ -57,8 +57,8 @@ describe("scenarios > search", () => {
   });
 });
 
-const generateQuestions = count => {
-  _.range(count).map(i =>
+const generateQuestions = (count) => {
+  _.range(count).map((i) =>
     H.createQuestion({
       name: `generated_question ${i}`,
       query: {

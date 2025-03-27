@@ -49,7 +49,7 @@ export const NotificationList = ({
           {t`Not seeing one here?`}
         </TextButton>
       </NotificationHeader>
-      {listItems.map(listItem =>
+      {listItems.map((listItem) =>
         listItem.type === "pulse" ? (
           <DashboardNotificationCard
             key={`${listItem.type}-${listItem.item.id}`}

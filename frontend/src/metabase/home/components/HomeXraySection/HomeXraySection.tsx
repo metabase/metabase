@@ -64,9 +64,9 @@ interface HomeXrayViewProps {
 
 const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   const isSample = database.is_sample;
-  const schemas = candidates.map(d => d.schema);
+  const schemas = candidates.map((d) => d.schema);
   const [schema, setSchema] = useState(schemas[0]);
-  const candidate = candidates.find(d => d.schema === schema);
+  const candidate = candidates.find((d) => d.schema === schema);
   const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
   const canSelectSchema = schemas.length > 1;
@@ -157,8 +157,12 @@ const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
 };
 
 const getXrayDatabase = (databases: Database[] | undefined = []) => {
-  const sampleDatabase = databases.find(d => d.is_sample && isSyncCompleted(d));
-  const userDatabase = databases.find(d => !d.is_sample && isSyncCompleted(d));
+  const sampleDatabase = databases.find(
+    (d) => d.is_sample && isSyncCompleted(d),
+  );
+  const userDatabase = databases.find(
+    (d) => !d.is_sample && isSyncCompleted(d),
+  );
   return userDatabase ?? sampleDatabase;
 };
 
@@ -172,7 +176,7 @@ const getMessages = (count: number) => {
 
   return _.chain(count)
     .range()
-    .map(index => options[index % options.length])
+    .map((index) => options[index % options.length])
     .sample(count)
     .value();
 };

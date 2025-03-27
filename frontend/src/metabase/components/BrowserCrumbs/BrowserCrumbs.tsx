@@ -31,7 +31,7 @@ type BrowserCrumbsType = {
 export const BrowserCrumbs = ({ crumbs }: BrowserCrumbsType) => (
   <BrowserCrumbsRoot data-testid="browsercrumbs">
     {crumbs
-      .filter(c => c)
+      .filter((c) => c)
       .map((crumb, index, crumbs) => (
         <BrowserCrumbsItem key={index}>
           {crumb.to ? (

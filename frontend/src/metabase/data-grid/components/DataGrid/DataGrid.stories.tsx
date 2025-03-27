@@ -22,7 +22,7 @@ export default {
     },
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div style={{ height: "calc(100vh - 2rem)", overflow: "hidden" }}>
         <Story />
       </div>
@@ -53,35 +53,35 @@ export const BasicGrid: Story = () => {
       {
         id: "id",
         name: "ID",
-        accessorFn: row => row.id,
+        accessorFn: (row) => row.id,
       },
       {
         id: "name",
         name: "Name",
-        accessorFn: row => row.name,
+        accessorFn: (row) => row.name,
       },
       {
         id: "category",
         name: "Category",
-        accessorFn: row => row.category,
+        accessorFn: (row) => row.category,
       },
       {
         id: "price",
         name: "Price",
-        accessorFn: row => row.price,
-        formatter: value => `$${value}`,
+        accessorFn: (row) => row.price,
+        formatter: (value) => `$${value}`,
         align: "right",
       },
       {
         id: "quantity",
         name: "Quantity",
-        accessorFn: row => row.quantity,
+        accessorFn: (row) => row.quantity,
         align: "right",
       },
       {
         id: "description",
         name: "Description",
-        accessorFn: row => row.description,
+        accessorFn: (row) => row.description,
       },
     ],
     [],
@@ -111,19 +111,19 @@ export const CustomStylesGrid: Story = () => {
       {
         id: "id",
         name: "ID",
-        accessorFn: row => row.id,
+        accessorFn: (row) => row.id,
         header: getHeaderTemplate("ID"),
       },
       {
         id: "name",
         name: "Name",
-        accessorFn: row => row.name,
+        accessorFn: (row) => row.name,
         header: getHeaderTemplate("Name"),
       },
       {
         id: "category",
         name: "Category",
-        accessorFn: row => row.category,
+        accessorFn: (row) => row.category,
         header: getHeaderTemplate("Category"),
       },
     ],
@@ -180,7 +180,7 @@ export const CombinedFeatures: Story = () => {
       {
         id: "id",
         name: "ID",
-        accessorFn: row => row.id,
+        accessorFn: (row) => row.id,
         align: "right",
         cellVariant: "pill",
         sortDirection: "desc",
@@ -189,14 +189,14 @@ export const CombinedFeatures: Story = () => {
         id: "name",
         name: "Name",
         sortDirection: "asc",
-        accessorFn: row => row.name,
+        accessorFn: (row) => row.name,
       },
       {
         id: "category",
         name: "Category",
         align: "middle",
-        accessorFn: row => row.category,
-        getBackgroundColor: value =>
+        accessorFn: (row) => row.category,
+        getBackgroundColor: (value) =>
           value === "Electronics"
             ? "#e6f7ff"
             : value === "Clothing"
@@ -208,19 +208,19 @@ export const CombinedFeatures: Story = () => {
       {
         id: "price",
         name: "Price",
-        accessorFn: row => `$${row.price.toFixed(2)}`,
+        accessorFn: (row) => `$${row.price.toFixed(2)}`,
         align: "right",
       },
       {
         id: "quantity",
         name: "Quantity",
-        accessorFn: row => row.quantity,
+        accessorFn: (row) => row.quantity,
         align: "right",
       },
       {
         id: "description",
         name: "Description",
-        accessorFn: row => row.description,
+        accessorFn: (row) => row.description,
         wrap: true,
       },
     ],

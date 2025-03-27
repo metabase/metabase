@@ -5,8 +5,8 @@ import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 
 import LicenseAndBillingSettings from "./components/LicenseAndBillingSettings";
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-  updateIn(sections, ["license"], license => {
+PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) =>
+  updateIn(sections, ["license"], (license) => {
     return {
       ...license,
       component: LicenseAndBillingSettings,

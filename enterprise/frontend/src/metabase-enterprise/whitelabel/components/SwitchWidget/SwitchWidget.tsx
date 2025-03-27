@@ -19,7 +19,7 @@ export function SwitchWidget({
   return (
     <Switch
       checked={setting.value ?? setting.default}
-      onChange={e => onChange(e.target.checked)}
+      onChange={(e) => onChange(e.target.checked)}
       size="sm"
       {...props}
     />

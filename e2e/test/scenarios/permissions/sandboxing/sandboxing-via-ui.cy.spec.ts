@@ -46,7 +46,7 @@ describe(
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
       preparePermissions();
-      createSandboxingDashboardAndQuestions().then(result => {
+      createSandboxingDashboardAndQuestions().then((result) => {
         const { data } = result.body;
         for (const item of data) {
           if (/Dashboard/i.test(item.name)) {
@@ -188,18 +188,18 @@ describe(
           cy.log("Should not return any data, and return an error");
           cy.wait(
             new Array(sandboxableQuestions.length).fill("@dashcardQuery"),
-          ).then(interceptions => {
+          ).then((interceptions) => {
             interceptions.forEach(({ response }) => {
               expect(response?.body.data.rows).to.have.length(0);
               expect(response?.body.error_type).to.contain("invalid-query");
             });
           });
 
-          getFieldValuesForProductCategories().then(response => {
+          getFieldValuesForProductCategories().then((response) => {
             expect(response.body.values).to.have.length(0);
           });
 
-          getParameterValuesForProductCategories().then(response => {
+          getParameterValuesForProductCategories().then((response) => {
             expect(response.body.values).to.have.length(0);
           });
         });
@@ -275,7 +275,7 @@ describe(
           },
         };
 
-        Object.values(users).forEach(user =>
+        Object.values(users).forEach((user) =>
           // @ts-expect-error - this isn't typed yet
           cy.createUserFromRawData(user),
         );

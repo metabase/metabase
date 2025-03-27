@@ -125,9 +125,9 @@ export const ChartSettingFieldsPartition = ({
 
   const updatedValue = useMemo(
     () =>
-      _.mapObject(value || {}, columnNames =>
+      _.mapObject(value || {}, (columnNames) =>
         columnNames
-          .map(columnName => columns.find(col => col.name === columnName))
+          .map((columnName) => columns.find((col) => col.name === columnName))
           .filter((col): col is RemappingHydratedDatasetColumn => col != null),
       ),
     [columns, value],
@@ -189,7 +189,7 @@ export const ChartSettingFieldsPartition = ({
                         draggableId={`draggable-${col.name}`}
                         index={index}
                       >
-                        {provided => (
+                        {(provided) => (
                           <Box
                             ref={provided.innerRef}
                             {...provided.draggableProps}
@@ -232,7 +232,7 @@ const Column = ({
 }) => (
   <ColumnItem
     title={title}
-    onEdit={target => onEditFormatting?.(column, target)}
+    onEdit={(target) => onEditFormatting?.(column, target)}
     draggable
     className={CS.m0}
   />

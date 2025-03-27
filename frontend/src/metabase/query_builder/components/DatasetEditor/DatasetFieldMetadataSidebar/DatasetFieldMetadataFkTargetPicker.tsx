@@ -19,7 +19,7 @@ export const DatasetFieldMetadataFkTargetPicker = ({
 }: Props) => {
   const dispatch = useDispatch();
   const [formField, _meta, { setValue }] = useField("fk_target_field_id");
-  const idFields = useSelector(state => {
+  const idFields = useSelector((state) => {
     return Databases.selectors.getIdFields(state, { databaseId });
   });
 

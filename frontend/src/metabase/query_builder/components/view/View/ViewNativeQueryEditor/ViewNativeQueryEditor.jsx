@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 
 import NativeQueryEditorS from "./ViewNativeQueryEditor.module.css";
 
-export const ViewNativeQueryEditor = props => {
+export const ViewNativeQueryEditor = (props) => {
   const {
     question,
     height,

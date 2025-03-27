@@ -37,7 +37,7 @@ describe("formatting/link", () => {
       "mailto:example@example.com",
     ])(
       "should not encode safe urls from dataset columns when a link template starts with it",
-      url => {
+      (url) => {
         assertLinkTemplate(
           "{{col}}",
           {

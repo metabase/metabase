@@ -90,7 +90,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
   return (
     <AdminMobileNavbar ref={ref}>
       <Button
-        onClick={() => setMobileNavOpen(prev => !prev)}
+        onClick={() => setMobileNavOpen((prev) => !prev)}
         variant="subtle"
         p="0.25rem"
       >

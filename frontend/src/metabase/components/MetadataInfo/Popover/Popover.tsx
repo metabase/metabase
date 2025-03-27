@@ -81,7 +81,7 @@ export function Popover({
       >
         <WidthBound
           width={width}
-          ref={node => {
+          ref={(node) => {
             setupCloseHandler(node, () => setIsOpen(false));
           }}
         >

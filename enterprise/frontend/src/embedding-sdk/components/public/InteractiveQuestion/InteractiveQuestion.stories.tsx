@@ -38,7 +38,7 @@ export default {
   },
 };
 
-const Template: StoryFn<InteractiveQuestionComponentProps> = args => {
+const Template: StoryFn<InteractiveQuestionComponentProps> = (args) => {
   return (
     <Box bg="var(--mb-color-background)" mih="100vh">
       <InteractiveQuestion {...args} />
