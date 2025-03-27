@@ -88,14 +88,16 @@
         (log/tracef "Marking Field %s as indexed" (pr-str field-ids)))
       (if (or (seq adding) (seq removing))
         (do
-          (t2/update! :model/Field
-                      :table_id [:in {:select [[:t.id]]
-                                      :from [[(t2/table-name :model/Table) :t]]
-                                      :where [:= :t.db_id database-id]}]
-                      :parent_id nil
-                      {:database_indexed (if (seq indexed-field-ids)
-                                           [:case [:in :id indexed-field-ids] true :else false]
-                                           false)})
+          (doseq [indexed-field-ids-part (partition 1000 indexed-field-ids)]
+            (log/info "Executing batch update of at most 1000 fields")
+            (t2/update! :model/Field
+                        :table_id [:in {:select [[:t.id]]
+                                        :from [[(t2/table-name :model/Table) :t]]
+                                        :where [:= :t.db_id database-id]}]
+                        :parent_id nil
+                        {:database_indexed (if (seq indexed-field-ids-part)
+                                             [:case [:in :id indexed-field-ids-part] true :else false]
+                                             false)}))
           {:total-indexes   (count indexed-field-ids)
            :added-indexes   (count adding)
            :removed-indexes (count removing)})
