@@ -83,8 +83,7 @@
                    :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
                    :model/QueryExecution _ (assoc query-execution-defaults :context :public-question)
                    :model/QueryExecution _ (assoc query-execution-defaults :context :public-csv-download)]
-      (is (= {:query_executions_row_count 0,
-              :query_executions_sdk_embed 1,
+      (is (= {:query_executions_sdk_embed 1,
               :query_executions_interactive_embed 1,
               :query_executions_static_embed 2,
               :query_executions_public_link 2,
