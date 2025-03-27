@@ -74,8 +74,8 @@
       (set/rename-keys {:folder_url         :url
                         :folder-upload-time :created-at})
       (dissoc :status)
-      (u/prog1 #(when-not (= (set (keys %)) (set (keys value))
-                             (setting/set-value-of-type! :json :gsheets %))))))
+      (u/prog1 (when-not (= (set (keys <>)) (set (keys value)))
+                 (setting/set-value-of-type! :json :gsheets <>)))))
 
 (defsetting gsheets
   #_"
@@ -99,9 +99,10 @@
   :export? true
   :visibility :admin
   :type :json
-  :getter (mu/fn :- :gsheets/gsheets-setting [] (or
-                  ;; This NEEDS to be up to date between instances on a cluster, so:
-                  ;; we are going around the settings cache:
-                                                 (some-> (t2/select-one :model/Setting :key "gsheets") :value json/decode+kw migrate-gsheet-value)
-                                                 (u/prog1 gsheets.constants/not-connected
-                                                   (setting/set-value-of-type! :json :gsheets <>)))))
+  :getter (mu/fn :- :gsheets/gsheets-setting []
+            (or
+              ;; This NEEDS to be up to date between instances on a cluster, so:
+              ;; we are going around the settings cache:
+             (some-> (t2/select-one :model/Setting :key "gsheets") :value json/decode+kw migrate-gsheet-value)
+             (u/prog1 gsheets.constants/not-connected
+               (setting/set-value-of-type! :json :gsheets <>)))))
