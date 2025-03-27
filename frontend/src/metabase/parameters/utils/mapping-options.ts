@@ -246,37 +246,48 @@ export function getMappingOptionByTarget(
   }
 
   const { query, columns } = getParameterColumns(question, parameter);
-  const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
+  const stageCount = Lib.stageCount(query);
+  const lastStageIndex = stageCount - 1;
+  const stageIndex = getStageIndexFromTarget(target) ?? lastStageIndex;
+  if (stageIndex >= stageCount) {
+    return;
+  }
+
+  const stageColumns = columns
+    .filter((column) => column.stageIndex === stageIndex)
+    .map(({ column }) => column);
+  const stageMappingOptions = mappingOptions.filter(
+    ({ target }) => getStageIndexFromTarget(target) === stageIndex,
+  );
+
   const normalizedTarget = normalize(target);
   const fieldRef = normalizedTarget[1];
+  const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    stageIndex,
+    stageColumns,
+    [fieldRef],
+  );
 
-  for (const stageIndex of stageIndexes) {
-    const stageColumns = columns
-      .filter((column) => column.stageIndex === stageIndex)
-      .map(({ column }) => column);
-
-    const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(
+  if (columnByTargetIndex !== -1) {
+    const mappingColumnIndexes = Lib.findColumnIndexesFromLegacyRefs(
       query,
       stageIndex,
       stageColumns,
-      [fieldRef],
+      stageMappingOptions.map(({ target }) => target[1] as DimensionReference),
     );
 
-    if (columnByTargetIndex !== -1) {
-      const mappingColumnIndexes = Lib.findColumnIndexesFromLegacyRefs(
-        query,
-        stageIndex,
-        stageColumns,
-        mappingOptions.map(({ target }) => target[1] as DimensionReference),
-      );
-
-      const mappingIndex = mappingColumnIndexes.indexOf(columnByTargetIndex);
-
-      if (mappingIndex >= 0) {
-        return mappingOptions[mappingIndex];
-      }
+    const mappingIndex = mappingColumnIndexes.indexOf(columnByTargetIndex);
+    if (mappingIndex >= 0) {
+      return stageMappingOptions[mappingIndex];
     }
   }
 
   return undefined;
+}
+
+function getStageIndexFromTarget(target: ParameterTarget): number | undefined {
+  if (isStructuredDimensionTarget(target)) {
+    return target[2]?.["stage-number"];
+  }
 }
