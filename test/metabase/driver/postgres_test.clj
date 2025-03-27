@@ -1800,9 +1800,7 @@
             (mt/with-temp
               [:model/Card
                {card-id :id}
-               {:dataset_query native-query
-                :result_metadata (-> (qp/process-query native-query) :data :results_metadata :columns)
-                :type :question}]
+               (mt/card-with-source-metadata-for-query native-query)]
               (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                               (as-> q
                                     (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (filter #(= "uncasted" (:name %))) first)))))
@@ -1828,9 +1826,7 @@
             (mt/with-temp
               [:model/Card
                {card-id :id}
-               {:dataset_query nested-query
-                :result_metadata (-> (qp/process-query nested-query) :data :results_metadata :columns)
-                :type :question}]
+               (mt/card-with-source-metadata-for-query nested-query)]
               (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                               (lib/with-fields [])
                               (as-> q
@@ -1863,9 +1859,7 @@
             (mt/with-temp
               [:model/Card
                {card-id :id}
-               {:dataset_query nested-query
-                :result_metadata (-> (qp/process-query nested-query) :data :results_metadata :columns)
-                :type :question}]
+               (mt/card-with-source-metadata-for-query nested-query)]
               (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                               (as-> q
                                     (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
@@ -2067,9 +2061,7 @@
               (mt/with-temp
                 [:model/Card
                  {card-id :id}
-                 {:dataset_query native-query
-                  :result_metadata (-> (qp/process-query native-query) :data :results_metadata :columns)
-                  :type :question}]
+                 (mt/card-with-source-metadata-for-query native-query)]
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (as-> q
                                       (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "uncasted" (:name %))) first)))))
@@ -2092,9 +2084,7 @@
               (mt/with-temp
                 [:model/Card
                  {card-id :id}
-                 {:dataset_query nested-query
-                  :result_metadata (-> (qp/process-query nested-query) :data :results_metadata :columns)
-                  :type :question}]
+                 (mt/card-with-source-metadata-for-query nested-query)]
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (lib/with-fields [])
                                 (as-> q
@@ -2125,9 +2115,7 @@
               (mt/with-temp
                 [:model/Card
                  {card-id :id}
-                 {:dataset_query nested-query
-                  :result_metadata (-> (qp/process-query nested-query) :data :results_metadata :columns)
-                  :type :question}]
+                 (mt/card-with-source-metadata-for-query nested-query)]
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (as-> q
                                       (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
