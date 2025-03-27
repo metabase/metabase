@@ -268,7 +268,6 @@ export const NUMBER_COLUMN_SETTINGS = {
         { name: t`Percent`, value: "percent" },
         { name: t`Scientific`, value: "scientific" },
         { name: t`Currency`, value: "currency" },
-        { name: t`Duration`, value: "duration" },
       ],
     },
     getDefault: getDefaultNumberStyle,
@@ -364,7 +363,6 @@ export const NUMBER_COLUMN_SETTINGS = {
       ],
     },
     getDefault: getDefaultNumberSeparators,
-    getHidden: (column, settings) => settings["number_style"] === "duration",
   },
   decimals: {
     title: t`Number of decimal places`,
@@ -372,7 +370,6 @@ export const NUMBER_COLUMN_SETTINGS = {
     props: {
       placeholder: "1",
     },
-    getHidden: (column, settings) => settings["number_style"] === "duration",
   },
   scale: {
     title: t`Multiply by a number`,
