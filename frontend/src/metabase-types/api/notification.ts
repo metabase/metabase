@@ -135,6 +135,12 @@ export type NotificationCronSubscription = {
   updated_at?: string;
 };
 
+export type NotificationSystemEventSubscriptionRequest = {
+  type: "notification-subscription/system-event";
+  event_name: SystemEvent;
+  table_id: TableId;
+};
+
 export type NotificationSystemEventSubscription = {
   type: "notification-subscription/system-event";
 
@@ -174,7 +180,7 @@ export type CreateAlertNotificationRequest = NotificationCardPayload & {
 
 export type CreateTableNotificationRequest = NotificationSystemEventPayload & {
   handlers: NotificationHandler[];
-  subscriptions: NotificationSystemEventSubscription[];
+  subscriptions: NotificationSystemEventSubscriptionRequest[];
   condition: Condition;
 };
 

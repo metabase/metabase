@@ -20,7 +20,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ChannelSetupModal } from "metabase/notifications/modals/shared/ChannelSetupModal";
 import { AlertModalSettingsBlock } from "metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "metabase/notifications/modals/shared/components/AlertTriggerIcon";
-import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannelsPicker";
+import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannelsPicker/NotificationChannelsPicker";
 import { getDefaultTableNotificationRequest } from "metabase/notifications/utils";
 import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
@@ -29,6 +29,7 @@ import type {
   CreateTableNotificationRequest,
   NotificationHandler,
   SystemEvent,
+  TableId,
   TableNotification,
   UpdateTableNotificationRequest,
 } from "metabase-types/api";
@@ -54,7 +55,7 @@ const NOTIFICATION_TRIGGER_OPTIONS_MAP: Record<
 };
 
 type CreateOrEditTableNotificationModalProps = {
-  tableId: number;
+  tableId: TableId;
   onClose: () => void;
 } & (
   | {
