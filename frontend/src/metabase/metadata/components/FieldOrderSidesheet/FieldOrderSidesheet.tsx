@@ -53,8 +53,10 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
   };
 
   const handleFieldOrderChange = (value: TableFieldOrder) => {
-    dispatch(Tables.actions.setFieldOrder(table, "field_order", value));
+    dispatch(Tables.actions.updateProperty(table, "field_order", value));
   };
+
+  const isDragDisabled = sortedFields.length <= 1;
 
   return (
     <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
@@ -71,7 +73,12 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
         getId={getId}
         items={sortedFields}
         renderItem={({ item, id }) => (
-          <SortableField field={item} id={id} key={id} />
+          <SortableField
+            disabled={isDragDisabled}
+            field={item}
+            id={id}
+            key={id}
+          />
         )}
         sensors={[pointerSensor]}
         useDragOverlay={false}
