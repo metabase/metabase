@@ -10,7 +10,7 @@ import type { Dashboard } from "metabase-types/api";
 import type { CreateDashboardFormOwnProps } from "./CreateDashboardForm";
 import { CreateDashboardForm } from "./CreateDashboardForm";
 
-interface CreateDashboardModalProps
+export interface CreateDashboardModalProps
   extends Omit<CreateDashboardFormOwnProps, "onCancel"> {
   onClose?: () => void;
 }
