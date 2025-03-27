@@ -350,6 +350,9 @@
 (derive :Coercion/UNIXMicroSeconds->DateTime :Coercion/UNIXTime->Temporal)
 (derive :Coercion/UNIXNanoSeconds->DateTime :Coercion/UNIXTime->Temporal)
 
+(derive :Coercion/String->Number :Coercion/*)
+(derive :Coercion/String->Decimal :Coercion/String->Number)
+
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
 (def ^:private SnakeCasedField
@@ -455,6 +458,8 @@
 (coercion-hierarchies/define-types! :Coercion/YYYYMMDDHHMMSSString->Temporal :type/Text                 :type/DateTime)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal :type/* :type/DateTime)
+
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Decimal :type/Text :type/Decimal)
 
 (defn is-coercible-from?
   "Whether `coercion-strategy` is allowed for `base-type`."
