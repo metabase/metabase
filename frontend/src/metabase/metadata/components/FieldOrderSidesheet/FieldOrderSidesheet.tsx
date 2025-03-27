@@ -12,6 +12,12 @@ import type { State } from "metabase-types/store";
 
 import { FieldOrderPicker } from "./FieldOrderPicker";
 
+/**
+ * This is to prevent FieldOrderPicker's focus state outline being cut off.
+ * Mantine Button's outline-width is 2px.
+ */
+const BUTTON_OUTLINE_WIDTH = 2;
+
 interface OwnProps {
   tableId: TableId;
   isOpen: boolean;
@@ -35,8 +41,10 @@ const FieldOrderSidesheetBase = ({
 
   return (
     <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
-      <Flex>
+      <Flex pt={BUTTON_OUTLINE_WIDTH}>
         <FieldOrderPicker
+          m={-BUTTON_OUTLINE_WIDTH}
+          p={BUTTON_OUTLINE_WIDTH}
           value={table.field_order}
           onChange={handleFieldOrderChange}
         />
