@@ -104,10 +104,13 @@ const MetadataHeader = ({
         </Flex>
       )}
 
-      <FieldOrderSidesheet
-        isOpen={isFieldOrderSidesheetOpen}
-        onClose={() => setIsFieldOrderSidesheetOpen(false)}
-      />
+      {selectedTableId && (
+        <FieldOrderSidesheet
+          isOpen={isFieldOrderSidesheetOpen}
+          tableId={selectedTableId}
+          onClose={() => setIsFieldOrderSidesheetOpen(false)}
+        />
+      )}
     </Flex>
   );
 };
