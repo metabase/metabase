@@ -342,6 +342,10 @@
   [_database]
   [:name :engine])
 
+(defmethod serdes/hash-required-fields :model/Database
+  [_database]
+  [:name :engine])
+
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]
   (let [maybe-alias #(h2x/identifier :field table-alias %)]
