@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.events.notification :as events.notification]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.actions :as lib.schema.actions]
@@ -248,6 +249,19 @@
               info (with-meta info (merge (meta info) {:exception e}))]
           (publish-action-failure*! invocation-id user-id action-kw msg info)
           (throw e))))))
+
+(defmulti action-filter-keys {:arglists '([action-kw])} identity)
+
+(defmethod action-filter-keys :default [_])
+
+(defmethod events.notification/notification-filter-for-topic :event/action.success
+  [_topic event-info]
+  (when-let [filter-ks (action-filter-keys (:action event-info))]
+    (into [:and]
+          (for [k filter-ks]
+            (let [v (get event-info k)]
+              (assert (some? v) (str "Event info must contain " k))
+              [:= k v])))))
 
 ;;;; Action definitions.
 

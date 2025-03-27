@@ -27,20 +27,9 @@
     :arg      rows}
    {:policy :data-editing}))
 
-(def ^:private filter-keys
-  {:row/create [:table_id]
-   :row/update [:table_id]
-   :row/delete [:table_id]})
-
-(doseq [action]
-  (defmethod events.notification/notification-filter-for-topic :event/action.success
-    [_topic event-info]
-    (when-let [filter-ks (filter-keys (:action event-info))]
-      (into [:and]
-            (for [k filter-ks]
-              (let [v (get event-info k)]
-                (assert (some? v) (str "Event info must contain " k))
-                [:= k v]))))))
+(defmethod actions/action-filter-keys :row/create [_] [:table_id])
+(defmethod actions/action-filter-keys :row/update [_] [:table_id])
+(defmethod actions/action-filter-keys :row/delete [_] [:table_id])
 
 (defn- qp-result->row-map
   [{:keys [rows cols]}]
