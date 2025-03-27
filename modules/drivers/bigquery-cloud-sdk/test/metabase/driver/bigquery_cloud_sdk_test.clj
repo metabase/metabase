@@ -1266,7 +1266,7 @@
             (let [field-md (lib.metadata/field mp (mt/id table field))
                   query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                             (lib/with-fields [field-md])
-                            (lib/expression "INTCAST" (lib/expression-clause :integer [field-md] nil))
+                            (lib/expression "INTCAST" (lib/integer field-md))
                             (lib/limit 100))
                   result (-> query (check-integer-query db-type field) qp/process-query)
                   cols (mt/cols result)
@@ -1280,9 +1280,9 @@
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
-                                                                                   [(lib.metadata/field mp (mt/id :people :id))
-                                                                                    (lib.metadata/field mp (mt/id :people :zip))] nil)
+        (doseq [[table expressions] [[:people [{:expression (lib/concat
+                                                             (lib.metadata/field mp (mt/id :people :id))
+                                                             (lib.metadata/field mp (mt/id :people :zip)))
                                                 :db-type "STRING"}]]]
                 {:keys [expression db-type]} expressions]
           (testing (str "Casting " db-type " to integer")
@@ -1290,7 +1290,7 @@
                             (lib/with-fields [])
                             (lib/expression "UNCASTED" expression)
                             (as-> q
-                                  (lib/expression q "INTCAST" (lib/expression-clause :integer [(lib/expression-ref q "UNCASTED")] nil)))
+                                  (lib/expression q "INTCAST" (lib/integer (lib/expression-ref q "UNCASTED"))))
                             (lib/limit 10))
                   result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
                   cols (mt/cols result)
@@ -1315,7 +1315,7 @@
                  (mt/card-with-source-metadata-for-query native-query)]
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (as-> q
-                                      (lib/expression q "INTCAST" (lib/expression-clause :integer [(->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)] nil))))
+                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)))))
                       result (-> query (check-integer-query db-type "`uncasted`") qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
@@ -1339,7 +1339,7 @@
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (lib/with-fields [])
                                 (as-> q
-                                      (lib/expression q "INTCAST" (lib/expression-clause :integer [(lib.metadata/field mp (mt/id table field))] nil)))
+                                      (lib/expression q "INTCAST" (lib/integer (lib.metadata/field mp (mt/id table field)))))
                                 (lib/limit 10))
                       result (-> query (check-integer-query db-type field) qp/process-query)
                       cols (mt/cols result)
@@ -1353,9 +1353,9 @@
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
-                                                                                   [(lib.metadata/field mp (mt/id :people :id))
-                                                                                    (lib.metadata/field mp (mt/id :people :zip))] nil)
+        (doseq [[table expressions] [[:people [{:expression (lib/concat
+                                                             (lib.metadata/field mp (mt/id :people :id))
+                                                             (lib.metadata/field mp (mt/id :people :zip)))
                                                 :db-type "STRING"}]]]
                 {:keys [expression db-type]} expressions]
           (let [nested-query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
@@ -1369,7 +1369,7 @@
                  (mt/card-with-source-metadata-for-query nested-query)]
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (as-> q
-                                      (lib/expression q "INTCAST" (lib/expression-clause :integer [(->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)] nil)))
+                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
                                 (lib/limit 10))
                       result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
                       cols (mt/cols result)
@@ -1383,17 +1383,17 @@
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression [(lib/expression-clause :concat
-                                                                                    [(lib.metadata/field mp (mt/id :people :id))
-                                                                                     (lib.metadata/field mp (mt/id :people :zip))] nil)
-                                                             (lib/expression-clause :concat
-                                                                                    [(lib.metadata/field mp (mt/id :people :id))
-                                                                                     (lib.metadata/field mp (mt/id :people :zip))] nil)]
+        (doseq [[table expressions] [[:people [{:expression [(lib/concat
+                                                              (lib.metadata/field mp (mt/id :people :id))
+                                                              (lib.metadata/field mp (mt/id :people :zip)))
+                                                             (lib/concat
+                                                              (lib.metadata/field mp (mt/id :people :id))
+                                                              (lib.metadata/field mp (mt/id :people :zip)))]
                                                 :db-type "STRING"}]]]
                 {db-type :db-type [e1 e2] :expression} expressions]
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                           (lib/expression "UNCASTED" e1)
-                          (lib/expression "INTCAST" (lib/expression-clause :integer [e2] nil))
+                          (lib/expression "INTCAST" (lib/integer e2))
                           (lib/limit 10))
                 result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
                 cols (mt/cols result)
