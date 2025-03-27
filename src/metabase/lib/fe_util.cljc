@@ -88,7 +88,11 @@
   (and (vector? clause)
        (boolean (#{:case :if} (first clause)))))
 
-(defn- expand-case-or-if-expression
+(defn- flatten-case-or-if-expression
+  "case and if expressions expect a vector of pairs of if-then clause as
+   the first argument, but ExpressionParts can only represent a flat list of clauses.
+
+   This helper ungroups the pairs into a flat list of arguments for expression-parts."
   [[op options clause-pairs fallback]]
   (let [clauses (into [] cat clause-pairs)
         clauses-with-fallback (if (nil? fallback)
@@ -122,7 +126,7 @@
   [query stage-number value]
   (let [[op options & args] (cond-> value
                               (expandable-temporal-expression? value) expand-temporal-expression
-                              (case-or-if-expression? value) expand-case-or-if-expression)]
+                              (case-or-if-expression? value) flatten-case-or-if-expression)]
     {:lib/type :mbql/expression-parts
      :operator op
      :options  options
@@ -200,25 +204,34 @@
   [args]
   (mapv #(into [] %) (partition 2 args)))
 
-(defn- wrap-case-or-if-clause
+(defn- group-case-or-if-args
+  "case and if expression expect the first argument to be a
+   list of pairs of if-then clauses.
+
+   Callers of expression-clause might not always be aware of what clause they are
+   passing so they can't pass the correct format for the arguments.
+
+   Additionally, expression-parts flattens the arguments into a flat list.
+
+   This helper groups the arguments into a list of pairs again."
   [[op options & args]]
   (if (even? (count args))
     [op options (case-or-if-pairs args)]
     [op options (case-or-if-pairs (butlast args)) (last args)]))
 
-(defn- fix-clause
+(defn- fix-expression-clause
   [clause]
   (cond-> clause
-    (case-or-if-expression? clause) wrap-case-or-if-clause))
+    (case-or-if-expression? clause) group-case-or-if-args))
 
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
   [operator :- :keyword
    args     :- [:sequential :any]
    options  :- [:maybe :map]]
-  (fix-clause
+  (fix-expression-clause
    (lib.options/ensure-uuid
-    (into [operator options] (map (comp fix-clause lib.common/->op-arg)) args))))
+    (into [operator options] (map (comp fix-expression-clause lib.common/->op-arg)) args))))
 
 (defn- expression-clause-with-in
   "Like [[expression-clause]], but also auto-converts `:=` and `:!=` to `:in` and `:not-in` when there are more than 2
