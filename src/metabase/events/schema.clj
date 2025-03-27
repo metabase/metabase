@@ -1,6 +1,7 @@
 (ns metabase.events.schema
   (:require
    [malli.util :as mut]
+   [metabase.lib.schema.common :as common]
    [metabase.models.view-log-impl :as view-log-impl]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -206,23 +207,34 @@
    [:user-id [:maybe pos-int?]]
    [:model [:or :keyword :string]]])
 
-(mr/def ::data-editing-events
+(mr/def ::nano-id ::common/non-blank-string)
+
+(mr/def ::action-events
   [:map #_{:closed true}
-   (-> [:table_id pos-int?] (with-hydrate :table table-hydrate))
+   :action ::common/non-blank-string
+   ;; TODO ... this shouldn't be snake
+   :invocation_id  ::nano-id
+   ;; TODO well, some can have it :/ not feeling great about defining non-generic fields here
+   (-> [:table_id {:optional true} pos-int?] (with-hydrate :table table-hydrate))
    (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))])
 
-(mr/def :event/data-editing-row-create [:merge
-                                        ::data-editing-events
-                                        [:map
-                                         [:created_row :map]]])
-(mr/def :event/data-editing-row-update [:merge
-                                        ::data-editing-events
-                                        [:map
-                                         ;; there could be no changes when update
-                                         [:update [:maybe :map]]
-                                         [:after  [:maybe :map]]
-                                         [:before :map]]])
-(mr/def :event/data-editing-row-delete [:merge
-                                        ::data-editing-events
-                                        [:map
-                                         [:deleted_row :map]]])
+(mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
+(mr/def :event/action.success [:merge ::action-events [:map [:result :map]]])
+(mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])
+
+;(mr/def :row/create [:merge
+;                     ::data-editing-events
+;                     [:map
+;                      [:created_row :map]]])
+;(mr/def :row/update [:merge
+;                     ::data-editing-events
+;                     [:map
+;                      ;; there could be no changes when update
+;                      [:update [:maybe :map]]
+;                      [:after [:maybe :map]]
+;                      [:before :map]]])
+;(mr/def :row/delete [:merge
+;                     ::data-editing-events
+;                     [:map
+;                      [:deleted_row :map]]])
+

@@ -13,12 +13,11 @@
 
 (derive :metabase/event ::notification)
 
-(def ^:private supported-topics #{:event/user-invited
-                                  :event/notification-create
-                                  :event/slack-token-invalid
-                                  :event/data-editing-row-create
-                                  :event/data-editing-row-update
-                                  :event/data-editing-row-delete})
+(def ^:private supported-topics
+  #{:event/user-invited
+    :event/notification-create
+    :event/slack-token-invalid
+    :event/action.success})
 
 (def ^:private hydrate-transformer
   (mtx/transformer

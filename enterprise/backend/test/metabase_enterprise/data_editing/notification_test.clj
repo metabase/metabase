@@ -21,11 +21,12 @@
     :channel_id   http-channel-id}])
 
 (defn test-row-notification!
-  [event-name request-fn channel-type->assert-fns]
+  [action request-fn channel-type->assert-fns]
   (data-editing.tu/with-temp-test-db!
     (mt/with-temp [:model/Channel chn {:type :channel/http}]
       (notification.tu/with-system-event-notification!
-        [_notification {:subscriptions [{:event_name event-name
+        [_notification {:subscriptions [{:event_name :event/action.success
+                                         :action     action
                                          :table_id   (mt/id :categories)}]
                         :handlers      (all-handlers (:id chn))}]
         (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
@@ -37,7 +38,7 @@
 
 (deftest create-row-notification-test
   (test-row-notification!
-   :event/data-editing-row-create
+   :row/create
    (fn []
      (mt/user-http-request
       :crowberto
@@ -73,7 +74,8 @@
                                                     :created_row {"ID" (mt/malli=? :int) "NAME" "New Category"}
                                                     :table       {:name "CATEGORIES"}
                                                     :table_id    (mt/id :categories)}
-                                       :event_name :event/data-editing-row-create,
+                                       :event_name :event/action.success
+                                       :action     :row/create
                                        :type "system_event"}}
                                req)))}))
 

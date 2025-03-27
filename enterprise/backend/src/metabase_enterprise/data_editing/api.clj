@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-editing.api
   (:require
-   [clojure.data :refer [diff]]
    [medley.core :as m]
    [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
    [metabase.actions.core :as actions]
@@ -9,7 +8,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
    [metabase.events :as events]
-   [metabase.events.notification :as events.notification]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -21,19 +19,17 @@
 
 (defn- perform-bulk-action! [action-kw table-id rows]
   (api/check-superuser)
-  (actions/perform-action! action-kw
-                           {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
-                            :table-id table-id
-                            :arg      rows}
-                           :policy   :data-editing))
+  (actions/perform-with-system-events!
+   action-kw
+   {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
+    :table-id table-id
+    :arg      rows}
+   {:policy :data-editing}))
 
-(doseq [topic [:event/data-editing-row-create
-               :event/data-editing-row-update
-               :event/data-editing-row-delete]]
-  (defmethod events.notification/notification-filter-for-topic topic
-    [_topic event-info]
-    (assert (:table_id event-info) "Event info must contain :table_id")
-    [:= :table_id (:table_id event-info)]))
+(doseq [action [:row/create
+                :row/update
+                :row/delete]]
+  (defmethod actions/action-filter-keys action [_] [:table_id]))
 
 (defn- qp-result->row-map
   [{:keys [rows cols]}]
@@ -98,10 +94,12 @@
   (let [rows (apply-coercions table-id rows)
         res  (perform-bulk-action! :bulk/create table-id rows)]
     (doseq [row (:created-rows res)]
-      (events/publish-event! :event/data-editing-row-create
-                             {:table_id    table-id
-                              :created_row row
-                              :actor_id    api/*current-user-id*}))
+      (events/publish-event! :event/action.success
+                             {:action      :row/create
+                              :actor_id    api/*current-user-id*
+                              :table_id    table-id
+                              :result      {:created_row row
+                                            :table-id    table-id}}))
     (let [pk-field   (table-id->pk table-id)
           ;; actions code does not return coerced values
           ;; right now the FE works off qp outputs, which coerce output row data
@@ -122,18 +120,19 @@
           updated-rows (volatile! [])]
       (doseq [row rows]
         (let [;; well, this is a trick, but I haven't figured out how to do single row update
-              result        (:rows-updated (perform-bulk-action! :bulk/update table-id [row]))
-              after-row     (-> (query-db-rows table-id pk-field [row]) vals first)
-              row-before    (get id->db-row (get-row-pk pk-field row))
-              [_ changes _] (diff row-before row)]
+              result     (:rows-updated (perform-bulk-action! :bulk/update table-id [row]))
+              after-row  (-> (query-db-rows table-id pk-field [row]) vals first)
+              row-before (get id->db-row (get-row-pk pk-field row))]
           (vswap! updated-rows conj after-row)
           (when (pos-int? result)
-            (events/publish-event! :event/data-editing-row-update
-                                   {:table_id table-id
-                                    :after    after-row
-                                    :before   row-before
-                                    :update   changes
-                                    :actor_id api/*current-user-id*}))))
+            (events/publish-event! :event/action.success
+                                   {:action   :row/updated
+                                    :actor_id api/*current-user-id*
+                                    :table_id table-id
+                                    :result   {:table-id   table-id
+                                               :after      after-row
+                                               :before     row-before
+                                               :raw-update row}}))))
       {:updated @updated-rows})))
 
 (api.macros/defendpoint :post "/table/:table-id/delete"
@@ -145,10 +144,13 @@
         id->db-rows (query-db-rows table-id pk-field rows)
         res         (perform-bulk-action! :bulk/delete table-id rows)]
     (doseq [row rows]
-      (events/publish-event! :event/data-editing-row-delete
-                             {:table_id    table-id
-                              :deleted_row (get id->db-rows (get-row-pk pk-field row))
-                              :actor_id    api/*current-user-id*}))
+      (events/publish-event! :event/action.success
+                             {:action   :row/delete
+                              :actor_id api/*current-user-id*
+                              :table_id table-id
+                              :result   {:table-id    table-id
+                                         :deleted_row (get id->db-rows (get-row-pk pk-field row))
+                                         :table_id    table-id}}))
     res))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
@@ -183,7 +185,7 @@
   [{:keys [db-id]} :- [:map [:db-id ms/PositiveInt]]
    _
    {table-name :name
-    :keys [primary_key columns]}
+    :keys      [primary_key columns]}
    :-
    [:map
     [:name Identifier]
@@ -194,7 +196,7 @@
                 [:type ColumnType]]]]]]
   (api/check-superuser)
   (let [{driver :engine :as database} (api/check-404 (t2/select-one :model/Database db-id))
-        _ (actions/check-data-editing-enabled-for-database! database)
+        _          (actions/check-data-editing-enabled-for-database! database)
         column-map (->> (for [{column-name :name
                                column-type :type} columns]
                           [column-name (ensure-database-type driver column-type)])

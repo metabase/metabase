@@ -194,36 +194,36 @@
 ;;                                           System Event                                          ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(def ^:private event-name->template
-  {:event/data-editing-row-create {:channel_type :channel/slack
-                                   :details      {:type :slack/handlebars-text
-                                                  :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has created a row for {{payload.event_info.table.name}}"
-                                                             "\n\n\n"
-                                                             "{{#each payload.event_info.created_row}}\n"
-                                                             "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
-                                                             "{{/each}}")}}
-   :event/data-editing-row-update {:channel_type :channel/slack
-                                   :details      {:type :slack/handlebars-text
-                                                  :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has updated a from {{payload.event_info.table.name}}\n\n"
-                                                             "## Update:"
-                                                             "\n\n"
-                                                             "{{#each payload.event_info.update}}\n"
-                                                             "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
-                                                             "{{/each}}")}}
-   :event/data-editing-row-delete {:channel_type :channel/slack
-                                   :details      {:type :slack/handlebars-text
-                                                  :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has deleted a from {{payload.event_info.table.name}}"
-                                                             "\n\n"
-                                                             "{{#each payload.event_info.deleted_row}}\n"
-                                                             "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
-                                                             "{{/each}}")}}})
+(def ^:private action->template
+  {:row/create {:channel_type :channel/slack
+                :details      {:type :slack/handlebars-text
+                               :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has created a row for {{payload.event_info.table.name}}"
+                                          "\n\n\n"
+                                          "{{#each payload.event_info.created_row}}\n"
+                                          "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
+                                          "{{/each}}")}}
+   :row/update {:channel_type :channel/slack
+                :details      {:type :slack/handlebars-text
+                               :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has updated a from {{payload.event_info.table.name}}\n\n"
+                                          "## Update:"
+                                          "\n\n"
+                                          "{{#each payload.event_info.update}}\n"
+                                          "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
+                                          "{{/each}}")}}
+   :row/delete {:channel_type :channel/slack
+                :details      {:type :slack/handlebars-text
+                               :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has deleted a from {{payload.event_info.table.name}}"
+                                          "\n\n"
+                                          "{{#each payload.event_info.deleted_row}}\n"
+                                          "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
+                                          "{{/each}}")}}})
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
   (let [event-topic (:event_topic payload)
-        template    (or
-                     template
-                     (get event-name->template event-topic))]
+        template    (or template
+                        (when (= :event/action.success event-topic)
+                          (get action->template (:action payload))))]
     (assert template (str "No template found for event " event-topic))
     (for [channel-id (map notification-recipient->channel-id recipients)]
       {:channel-id  channel-id
