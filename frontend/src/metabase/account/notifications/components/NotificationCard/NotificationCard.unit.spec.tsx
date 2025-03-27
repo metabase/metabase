@@ -33,6 +33,7 @@ describe("NotificationCard", () => {
         isEditable
         onArchive={jest.fn()}
         onUnsubscribe={jest.fn()}
+        entityLink={"/"}
       />,
     );
 
@@ -56,6 +57,7 @@ describe("NotificationCard", () => {
         isEditable
         onArchive={jest.fn()}
         onUnsubscribe={jest.fn()}
+        entityLink={"/"}
       />,
     );
 
@@ -80,6 +82,7 @@ describe("NotificationCard", () => {
         isEditable
         onArchive={jest.fn()}
         onUnsubscribe={jest.fn()}
+        entityLink={"/"}
       />,
     );
 
@@ -103,6 +106,7 @@ describe("NotificationCard", () => {
         isEditable
         onArchive={jest.fn()}
         onUnsubscribe={jest.fn()}
+        entityLink={"/"}
       />,
     );
 
@@ -124,6 +128,7 @@ describe("NotificationCard", () => {
         isEditable
         onArchive={jest.fn()}
         onUnsubscribe={jest.fn()}
+        entityLink={"/"}
       />,
     );
 
@@ -158,6 +163,7 @@ describe("NotificationCard", () => {
         isEditable
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
+        entityLink={"/"}
       />,
     );
 
@@ -196,6 +202,7 @@ describe("NotificationCard", () => {
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
         isEditable
+        entityLink={"/"}
       />,
     );
 
@@ -217,6 +224,7 @@ describe("NotificationCard", () => {
         isEditable={false}
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
+        entityLink={"/"}
       />,
     );
 
@@ -236,6 +244,7 @@ describe("NotificationCard", () => {
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
         isEditable
+        entityLink={"/"}
       />,
     );
 
@@ -269,6 +278,7 @@ describe("NotificationCard", () => {
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
         isEditable
+        entityLink={"/"}
       />,
     );
 

@@ -7,7 +7,7 @@ import type {
 } from "metabase-types/api";
 import { createMockUserInfo } from "metabase-types/api/mocks/user";
 
-export const createMockNotification = (
+export const createMockAlertNotification = (
   opts?: Partial<AlertNotification>,
 ): AlertNotification => ({
   payload_id: 7,

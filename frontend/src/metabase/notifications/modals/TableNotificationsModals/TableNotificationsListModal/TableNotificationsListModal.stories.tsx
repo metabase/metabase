@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import { type ComponentProps, useState } from "react";
 
 import {
-  createMockNotification,
+  createMockAlertNotification,
   createMockNotificationHandlerEmail,
   createMockNotificationHandlerSlack,
 } from "metabase-types/api/mocks/notification";
@@ -33,7 +33,7 @@ const Template: StoryFn<
 };
 
 const tableNotifications = [
-  createMockNotification({
+  createMockAlertNotification({
     handlers: [
       createMockNotificationHandlerEmail(),
       createMockNotificationHandlerSlack(),
