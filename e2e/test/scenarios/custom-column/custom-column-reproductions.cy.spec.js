@@ -1497,3 +1497,19 @@ describe("issue #31964", () => {
     );
   });
 });
+
+describe("issue #55686", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should show suggestions for functions even when the current token is an operator (metabase#55686)", () => {
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type("not");
+
+    H.CustomExpressionEditor.completion("notnull").should("be.visible");
+    H.CustomExpressionEditor.completion("notempty").should("be.visible");
+  });
+});
