@@ -12,6 +12,7 @@ const config = {
   customJs: "page-custom-logic.js",
   internalModule: "internal",
   collapseInternalModule: true,
+  favicon: "../resources/frontend_client/favicon.ico",
   outputs: [
     {
       name: "markdown",
