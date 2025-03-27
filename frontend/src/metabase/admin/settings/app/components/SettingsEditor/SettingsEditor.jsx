@@ -19,16 +19,18 @@ import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import {
+  getAdminSettingValues,
+  getAdminSettingsInfo,
+  getSettings,
+} from "metabase/selectors/settings";
 import { Box, Group } from "metabase/ui";
 
 import {
   getActiveSection,
   getActiveSectionName,
-  getDerivedSettingValues,
   getNewVersionAvailable,
   getSections,
-  getSettingValues,
-  getSettings,
 } from "../../../selectors";
 import {
   initializeSettings,
@@ -41,9 +43,9 @@ import { SettingsSection } from "./SettingsSection";
 
 const mapStateToProps = (state, props) => {
   return {
-    settings: getSettings(state, props),
-    settingValues: getSettingValues(state, props),
-    derivedSettingValues: getDerivedSettingValues(state, props),
+    settings: getAdminSettingsInfo(state, props),
+    settingValues: getAdminSettingValues(state, props),
+    derivedSettingValues: getSettings(state, props),
     sections: getSections(state, props),
     activeSection: getActiveSection(state, props),
     activeSectionName: getActiveSectionName(state, props),

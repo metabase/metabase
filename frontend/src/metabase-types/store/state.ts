@@ -1,5 +1,6 @@
 import type { RouterState } from "react-router-redux";
 
+import type { Api } from "metabase/api";
 import type { User } from "metabase-types/api";
 
 import type { AdminState } from "./admin";
@@ -12,11 +13,9 @@ import type { EntitiesState } from "./entities";
 import type { ParametersState } from "./parameters";
 import type { QueryBuilderState } from "./qb";
 import type { RequestsState } from "./requests";
-import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
-
 type ModalName = null | "collection" | "dashboard" | "action";
 
 export interface State {
@@ -31,7 +30,7 @@ export interface State {
   qb: QueryBuilderState;
   requests: RequestsState;
   routing: RouterState;
-  settings: SettingsState;
+  [Api.reducerPath]: typeof Api.reducer; // FIXME how to type Api slice?
   setup: SetupState;
   upload: FileUploadState;
   modal: ModalName;

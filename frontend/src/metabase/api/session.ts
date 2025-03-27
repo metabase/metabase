@@ -1,5 +1,4 @@
 import MetabaseSettings from "metabase/lib/settings";
-import { loadSettings } from "metabase/redux/settings";
 import type { PasswordResetTokenStatus, Settings } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -29,10 +28,9 @@ export const sessionApi = Api.injectEndpoints({
         url: "/api/session/properties",
       }),
       providesTags: ["session-properties"],
-      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+      onQueryStarted: async (_, { queryFulfilled }) => {
         const response = await queryFulfilled;
         if (response.data) {
-          dispatch(loadSettings(response.data));
           // compatibility layer for legacy settings on the window object
           MetabaseSettings.setAll(response.data);
         }

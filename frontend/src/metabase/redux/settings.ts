@@ -1,4 +1,4 @@
-import { createAction, createReducer } from "@reduxjs/toolkit";
+import { createAction } from "@reduxjs/toolkit";
 
 import { sessionApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -57,32 +57,5 @@ export const updateUserSetting = createAsyncThunk(
         await dispatch(refreshSiteSettings());
       }
     }
-  },
-);
-
-export const settings = createReducer(
-  // note: this sets the initial state to the current values in the window object
-  // this is necessary so that we never have empty settings
-  { values: window.MetabaseBootstrap || {}, loading: false },
-  builder => {
-    builder
-      .addCase(refreshSiteSettings.pending, state => {
-        state.loading = true;
-      })
-      .addCase(refreshSiteSettings.fulfilled, state => {
-        state.loading = false;
-      })
-      .addCase(refreshSiteSettings.rejected, state => {
-        state.loading = false;
-      })
-      .addCase(loadSettings, (state, { payload }) => {
-        state.loading = false;
-        state.values = payload;
-      })
-      .addCase(updateUserSetting.fulfilled, (state, { payload }) => {
-        if (payload) {
-          state.values[payload.key] = payload.value;
-        }
-      });
   },
 );
