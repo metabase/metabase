@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import Tables from "metabase/entities/tables";

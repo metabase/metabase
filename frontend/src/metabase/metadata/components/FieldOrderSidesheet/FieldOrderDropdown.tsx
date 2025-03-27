@@ -1,56 +1,88 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Button, Icon, Menu } from "metabase/ui";
+import {
+  Button,
+  Combobox,
+  Icon,
+  Select,
+  type SelectProps,
+  useCombobox,
+} from "metabase/ui";
 import type { TableFieldOrder } from "metabase-types/api";
 
-interface Props {
+interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: TableFieldOrder;
   onChange: (value: TableFieldOrder) => void;
 }
 
-/**
- * Using a Record, so that this gives compilation error when TableFieldOrder is extended,
- * so that whoever changes that type does not forget to update this component.
- */
-const OPTIONS: Record<TableFieldOrder, TableFieldOrder> = {
-  alphabetical: "alphabetical",
-  custom: "custom",
-  database: "database",
-  smart: "smart",
-};
+const DATA = getData();
 
-export const FieldOrderDropdown = ({ value, onChange }: Props) => {
+export const FieldOrderDropdown = ({ value, onChange, ...props }: Props) => {
+  const combobox = useCombobox();
+
+  const handleChange = (value: TableFieldOrder) => {
+    onChange(value);
+    combobox.closeDropdown();
+  };
+
   return (
-    // TODO: use Select/Combobox to highlight current value
-    <Menu position="bottom-start">
-      <Menu.Target>
-        <Button
-          aria-label={t`Sort`}
-          leftSection={<Icon name="sort_arrows" />}
-          p={0}
-          variant="subtle"
-        >
-          {getFieldOrderLabel(value)}
-        </Button>
-      </Menu.Target>
-
-      <Menu.Dropdown>
-        {Object.values(OPTIONS).map((fieldOrder) => (
-          <Menu.Item key={fieldOrder} onClick={() => onChange(fieldOrder)}>
-            {getFieldOrderLabel(fieldOrder)}
-          </Menu.Item>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
+    <Select
+      comboboxProps={{
+        middlewares: {
+          flip: true,
+        },
+        position: "bottom-start",
+        width: 300,
+        store: combobox,
+      }}
+      data={DATA}
+      fw="bold"
+      nothingFoundMessage={t`Didn't find any results`}
+      placeholder={t`Select a currency type`}
+      inputContainer={() => (
+        <Combobox.Target>
+          <Button
+            aria-label={t`Sort`}
+            leftSection={<Icon name="sort_arrows" />}
+            p={0}
+            variant="subtle"
+            onClick={() => combobox.toggleDropdown()}
+          >
+            {getFieldOrderLabel(value)}
+          </Button>
+        </Combobox.Target>
+      )}
+      value={value}
+      onChange={handleChange}
+      {...props}
+    />
   );
 };
 
-const getFieldOrderLabel = (fieldOrder: TableFieldOrder) => {
+function getData() {
+  /**
+   * Using a Record, so that this gives compilation error when TableFieldOrder is extended,
+   * so that whoever changes that type does not forget to update this component.
+   */
+  const options: Record<TableFieldOrder, TableFieldOrder> = {
+    alphabetical: "alphabetical",
+    custom: "custom",
+    database: "database",
+    smart: "smart",
+  };
+
+  return Object.values(options).map((fieldOrder) => ({
+    label: getFieldOrderLabel(fieldOrder),
+    value: fieldOrder,
+  }));
+}
+
+function getFieldOrderLabel(fieldOrder: TableFieldOrder) {
   return match(fieldOrder)
     .with("alphabetical", () => t`Alphabetical`)
     .with("custom", () => t`Custom`)
     .with("database", () => t`Database`)
     .with("smart", () => t`Smart`)
     .exhaustive();
-};
+}
