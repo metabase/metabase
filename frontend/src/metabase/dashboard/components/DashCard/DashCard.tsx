@@ -1,16 +1,13 @@
-import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { getIn } from "icepick";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
-import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { replaceCardWithVisualization } from "metabase/dashboard/actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
@@ -20,16 +17,14 @@ import {
 } from "metabase/dashboard/utils";
 import { isEmbeddingSdk } from "metabase/env";
 import { color } from "metabase/lib/colors";
-import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
+import { useSelector, useStore } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
-import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
-  dashboardCardSupportsVisualizer,
   getInitialStateForCardDataSource,
   isVisualizerDashboardCard,
 } from "metabase/visualizer/utils";
@@ -105,9 +100,12 @@ export interface DashCardProps {
   /** Callback to execute when the dashcard has auto-scrolled to itself */
   reportAutoScrolledToDashcard: () => void;
 
-  editDashboard: () => void;
-
   className?: string;
+
+  onEditVisualization?: (
+    dashcard: StoreDashcard,
+    initialState: Partial<VisualizerHistoryItem>,
+  ) => void;
 }
 
 function DashCardInner({
@@ -139,11 +137,9 @@ function DashCardInner({
   downloadsEnabled,
   autoScroll,
   reportAutoScrolledToDashcard,
-  editDashboard,
   className,
+  onEditVisualization,
 }: DashCardProps) {
-  const dispatch = useDispatch();
-
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
@@ -319,56 +315,21 @@ function DashCardInner({
       [dashcard, navigateToNewCardFromDashboard],
     );
 
-  const [
-    isVisualizerModalOpen,
-    { open: openVisualizerModal, close: closeVisualizerModal },
-  ] = useDisclosure(false);
-
-  const onEditVisualization = useMemo(() => {
-    if (dashcard && dashboardCardSupportsVisualizer(dashcard)) {
-      return () => {
-        openVisualizerModal();
-        editDashboard();
-      };
-    }
-  }, [dashcard, openVisualizerModal, editDashboard]);
-
-  const onVisualizerModalSave = useCallback(
-    (visualization: VisualizerHistoryItem) => {
-      dispatch(
-        replaceCardWithVisualization({
-          dashcardId: dashcard.id,
-          visualization,
-        }),
-      );
-      closeVisualizerModal();
-    },
-    [dashcard.id, dispatch, closeVisualizerModal],
-  );
-
-  const onVisualizerModalClose = useCallback(() => {
-    closeVisualizerModal();
-  }, [closeVisualizerModal]);
-
-  const visualizerModalInitialState = useMemo(() => {
-    if (!isVisualizerModalOpen) {
-      return;
-    }
+  const onEditVisualizationClick = useCallback(() => {
+    let initialState: Partial<VisualizerHistoryItem>;
 
     if (isVisualizerDashboardCard(dashcard)) {
-      return {
-        state: dashcard.visualization_settings
-          ?.visualization as Partial<VisualizerHistoryItem>,
-      };
+      initialState = dashcard.visualization_settings
+        ?.visualization as Partial<VisualizerHistoryItem>;
     } else {
-      return {
-        state: getInitialStateForCardDataSource(
-          series[0].card,
-          series[0].data?.cols ?? [],
-        ),
-      };
+      initialState = getInitialStateForCardDataSource(
+        series[0].card,
+        series[0].data?.cols ?? [],
+      );
     }
-  }, [dashcard, series, isVisualizerModalOpen]);
+
+    onEditVisualization?.(dashcard, initialState);
+  }, [dashcard, series, onEditVisualization]);
 
   return (
     <ErrorBoundary>
@@ -429,7 +390,7 @@ function DashCardInner({
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
             isTrashedOnRemove={isTrashedOnRemove}
-            onEditVisualization={onEditVisualization}
+            onEditVisualization={onEditVisualizationClick}
           />
         )}
         <DashCardVisualization
@@ -466,17 +427,9 @@ function DashCardInner({
           onChangeLocation={onChangeLocation}
           onTogglePreviewing={handlePreviewToggle}
           downloadsEnabled={downloadsEnabled}
-          onEditVisualization={onEditVisualization}
+          onEditVisualization={onEditVisualizationClick}
         />
       </Box>
-      {isVisualizerModalOpen && (
-        <VisualizerModal
-          onSave={onVisualizerModalSave}
-          onClose={onVisualizerModalClose}
-          initialState={visualizerModalInitialState}
-          saveLabel={t`Save`}
-        />
-      )}
     </ErrorBoundary>
   );
 }

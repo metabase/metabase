@@ -253,34 +253,28 @@ const visualizerHistoryItemSlice = createSlice({
         column: originalColumn,
         card,
       } = action.payload;
-
       if (!state.display) {
         return;
       }
-
       const columnRef = createVisualizerColumnReference(
         dataSource,
         originalColumn,
         extractReferencedColumns(state.columnValuesMapping),
       );
-
       const column = copyColumn(
         columnRef.name,
         originalColumn,
         dataSource.name,
         state.columns,
       );
-
       if (state.display === "funnel") {
         addColumnToFunnel(state, column, columnRef, dataSource, dataset, card);
         return;
       }
-
       state.columns.push(column);
       state.columnValuesMapping[column.name] = [columnRef];
-
       if (isCartesianChart(state.display)) {
-        addColumnToCartesianChart(state, column, columnRef, card);
+        addColumnToCartesianChart(state, column, columnRef, dataSource, card);
       } else if (state.display === "pie") {
         addColumnToPieChart(state, column);
       }

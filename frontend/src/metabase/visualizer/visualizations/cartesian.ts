@@ -60,19 +60,48 @@ export const cartesianDropHandler = (
   }
 
   if (over.id === DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL) {
-    let bubbleColumnName = state.settings["scatter.bubble"];
-
-    if (!bubbleColumnName) {
-      bubbleColumnName = columnRef.name;
-      state.columns.push(
-        copyColumn(bubbleColumnName, column, dataSource.name, state.columns),
-      );
-      state.settings["scatter.bubble"] = bubbleColumnName;
-    }
-
-    state.columnValuesMapping[bubbleColumnName] = [columnRef];
+    replaceMetricColumnAsScatterBubbleSize(
+      state,
+      column,
+      columnRef,
+      dataSource,
+    );
   }
 };
+
+export function replaceMetricColumnAsScatterBubbleSize(
+  state: VisualizerHistoryItem,
+  column: DatasetColumn,
+  columnRef: VisualizerColumnReference,
+  dataSource: VisualizerDataSource,
+) {
+  const metrics = state.settings["graph.metrics"] ?? [];
+  const dimensions = state.settings["graph.dimensions"] ?? [];
+  const currentBubbleName = state.settings["scatter.bubble"];
+
+  // Remove the current bubble column if it's not in use elsewhere
+  if (
+    currentBubbleName &&
+    !metrics.includes(currentBubbleName) &&
+    !dimensions.includes(currentBubbleName)
+  ) {
+    state.columns = state.columns.filter(col => col.name !== currentBubbleName);
+    delete state.columnValuesMapping[currentBubbleName];
+  }
+
+  const newColumnName = columnRef.name;
+  const alreadyInUseElsewhere =
+    metrics.includes(newColumnName) || dimensions.includes(newColumnName);
+
+  if (!alreadyInUseElsewhere) {
+    state.columns.push(
+      copyColumn(newColumnName, column, dataSource.name, state.columns),
+    );
+  }
+  state.settings["scatter.bubble"] = newColumnName;
+
+  state.columnValuesMapping[newColumnName] = [columnRef];
+}
 
 export function addMetricColumnToCartesianChart(
   state: VisualizerHistoryItem,
@@ -126,14 +155,45 @@ export function addDimensionColumnToCartesianChart(
   };
 }
 
+/**
+ * This adds a column to a cartesian chart, either as a dimension or a metric.
+ * It tries to be "smart", in the sense that it will add the column where it makes sense.
+ * If the column is already in use, it will not be added again.
+ */
 export function addColumnToCartesianChart(
   state: VisualizerHistoryItem,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
+  dataSource: VisualizerDataSource,
   card?: Card,
 ) {
-  if (!state.display || !["area", "bar", "line"].includes(state.display)) {
+  if (
+    !state.display ||
+    !["area", "bar", "line", "scatter"].includes(state.display)
+  ) {
     return;
+  }
+
+  if (state.display === "scatter") {
+    const metrics = state.settings["graph.metrics"] ?? [];
+    const dimensions = state.settings["graph.dimensions"] ?? [];
+    const bubble = state.settings["scatter.bubble"];
+
+    const couldBeMetric = getDefaultMetricFilter("scatter")(column);
+    const couldBeDimension = getDefaultDimensionFilter("scatter")(column);
+
+    if (metrics.length === 0 && couldBeMetric) {
+      addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+    } else if (dimensions.length === 0 && couldBeDimension) {
+      addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
+    } else if (!bubble && couldBeMetric) {
+      replaceMetricColumnAsScatterBubbleSize(
+        state,
+        column,
+        columnRef,
+        dataSource,
+      );
+    }
   }
 
   if (

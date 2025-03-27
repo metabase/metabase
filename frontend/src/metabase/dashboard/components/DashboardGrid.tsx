@@ -34,6 +34,7 @@ import { addUndo } from "metabase/redux/undo";
 import { Box, Flex } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
   type BaseDashboardCard,
   type Card,
@@ -46,6 +47,7 @@ import {
   isRecentCollectionItem,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -55,6 +57,7 @@ import {
   onUpdateDashCardVisualizationSettings,
   removeCardFromDashboard,
   replaceCard,
+  replaceCardWithVisualization,
   setDashCardAttributes,
   setMultipleDashCardAttributes,
   showClickBehaviorSidebar,
@@ -103,6 +106,11 @@ interface DashboardGridState {
   isAnimationPaused: boolean;
   dashcardCountByCardId: Record<CardId, number>;
   _lastProps?: LastProps;
+
+  visualizerModalStatus?: {
+    dashcardId: number;
+    state: Partial<VisualizerHistoryItem>;
+  };
 }
 
 /** Props from the previous render to use for comparison in getDerivedStateFromProps */
@@ -130,6 +138,7 @@ const mapDispatchToProps = {
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
+  replaceCardWithVisualization,
 };
 const connector = connect(mapStateToProps, mapDispatchToProps, null, {
   forwardRef: true,
@@ -516,6 +525,20 @@ class DashboardGridInner extends Component<
     this.setState({ replaceCardModalDashCard: dashcard });
   };
 
+  onEditVisualization = (
+    dashcard: BaseDashboardCard,
+    initialState: Partial<VisualizerHistoryItem>,
+  ) => {
+    this.setState({
+      visualizerModalStatus: {
+        dashcardId: dashcard.id,
+        state: initialState,
+      },
+    });
+
+    this.handleSetEditing();
+  };
+
   renderDashCard(
     dashcard: DashboardCard,
     {
@@ -571,7 +594,42 @@ class DashboardGridInner extends Component<
         autoScroll={shouldAutoScrollTo}
         isTrashedOnRemove={this.getIsLastDashboardQuestionDashcard(dashcard)}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-        editDashboard={this.handleSetEditing}
+        onEditVisualization={this.onEditVisualization}
+      />
+    );
+  }
+
+  onVisualizerModalSave = (visualization: VisualizerHistoryItem) => {
+    const { visualizerModalStatus } = this.state;
+
+    if (!visualizerModalStatus) {
+      return;
+    }
+
+    this.props.replaceCardWithVisualization({
+      dashcardId: visualizerModalStatus.dashcardId,
+      visualization,
+    });
+
+    this.onVisualizerModalClose();
+  };
+
+  onVisualizerModalClose = () => {
+    this.setState({ visualizerModalStatus: undefined });
+  };
+
+  renderVisualizerModal() {
+    const { visualizerModalStatus } = this.state;
+    if (!visualizerModalStatus) {
+      return null;
+    }
+
+    return (
+      <VisualizerModal
+        onSave={this.onVisualizerModalSave}
+        onClose={this.onVisualizerModalClose}
+        initialState={{ state: visualizerModalStatus.state }}
+        saveLabel={t`Save`}
       />
     );
   }
@@ -637,7 +695,7 @@ class DashboardGridInner extends Component<
 
   renderGrid() {
     const { width } = this.props;
-    const { layouts } = this.state;
+    const { layouts, visualizerModalStatus } = this.state;
     const rowHeight = this.getRowHeight();
     return (
       <GridLayout
@@ -658,7 +716,7 @@ class DashboardGridInner extends Component<
         onLayoutChange={this.onLayoutChange}
         onDrag={this.onDrag}
         onDragStop={this.onDragStop}
-        isEditing={this.isEditingLayout}
+        isEditing={this.isEditingLayout && !visualizerModalStatus}
         compactType="vertical"
         items={this.getVisibleCards()}
         itemRenderer={this.renderGridItem}
@@ -684,6 +742,7 @@ class DashboardGridInner extends Component<
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
         {this.renderReplaceCardModal()}
+        {this.renderVisualizerModal()}
       </Flex>
     );
   }

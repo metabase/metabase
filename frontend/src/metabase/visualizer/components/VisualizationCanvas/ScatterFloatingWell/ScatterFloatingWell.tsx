@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { Stack, Text } from "metabase/ui";
+import { Box, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   getVisualizerComputedSettings,
@@ -35,7 +35,7 @@ export function ScatterFloatingWell() {
   );
 
   return (
-    <Stack
+    <Box
       p="md"
       bg="bg-medium"
       style={{
@@ -45,14 +45,15 @@ export function ScatterFloatingWell() {
             ? "1px solid var(--mb-color-brand)"
             : "none",
       }}
+      ref={setNodeRef}
     >
-      <WellItem ref={setNodeRef}>
+      <WellItem>
         <Text truncate>
           {bubbleSize
             ? t`Bubble size` + `: ${bubbleSize.display_name}`
             : t`Bubble size`}
         </Text>
       </WellItem>
-    </Stack>
+    </Box>
   );
 }
