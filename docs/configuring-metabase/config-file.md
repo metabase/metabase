@@ -175,6 +175,8 @@ api-keys:
 {% endraw %}
 ```
 
+See below for more on [env vars in the config file](#referring-to-environment-variables-in-the-configyml).
+
 API keys that you create (the value of the `key`) must have the format `mb_` followed by a [Base64](https://en.wikipedia.org/wiki/Base64) string (if you're wearing formal attire, you'd say a _tetrasexagesimal_ string). So, `mb_` followed by letters and numbers, minimum: 12 characters, maximum: 254 characters. Concretely, the API key you create must satisfy the following regular expression: `mb_[A-Za-z0-9+/=]+`.
 
 You can generate a handsome API key using the `openssl rand` command:
