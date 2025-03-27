@@ -10990,7 +10990,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: Index notification_subscription.table_id
       preConditions:
-      rollback
+      rollback:
         - dropIndex:
             tableName: notification_subscription
             indexName: idx_notification_subscription_table_id
