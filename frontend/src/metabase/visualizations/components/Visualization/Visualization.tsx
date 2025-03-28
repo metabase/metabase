@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import cx from "classnames";
 import {
   type CSSProperties,
@@ -128,10 +129,12 @@ type VisualizationOwnProps = {
   isAction?: boolean;
   isDashboard?: boolean;
   isMobile?: boolean;
+  isShowingSummarySidebar: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
+  onEditSummary: () => void;
   query?: NativeQuery;
   rawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
@@ -545,9 +548,11 @@ class Visualization extends PureComponent<
       isQueryBuilder,
       isSettings,
       isShowingDetailsOnlyColumns,
+      isShowingSummarySidebar,
       isSlow,
       metadata,
       mode,
+      onEditSummary,
       query,
       queryBuilderMode,
       rawSeries = [],
@@ -615,7 +620,7 @@ class Visualization extends PureComponent<
             visualization.placeholderSeries &&
             !isDashboard
           ) {
-            // hide the error and show empty state instead of using placeholder series
+            // hide the error and display the empty state instead
             error = null;
             isPlaceholder = true;
           } else if (e instanceof ChartSettingsError && onOpenChartSettings) {
@@ -731,7 +736,11 @@ class Visualization extends PureComponent<
               isSlow={!!isSlow}
             />
           ) : isPlaceholder && visualization ? (
-            <EmptyVizState visualization={visualization} />
+            <EmptyVizState
+              visualization={visualization}
+              isSummarizeSidebarOpen={isShowingSummarySidebar}
+              onEditSummary={onEditSummary}
+            />
           ) : (
             series && (
               <div
