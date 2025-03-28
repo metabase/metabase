@@ -71,6 +71,7 @@
                               :uploads                                true
                               :identifiers-with-spaces                true
                               :cast                                   true
+                              :split-part                             true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
@@ -314,6 +315,10 @@
 (defmethod sql.qp/->integer :mysql
   [_ value]
   (h2x/maybe-cast :signed value))
+
+(defmethod sql.qp/->honeysql [:mysql :split-part]
+  [driver [_ text divider position]]
+  [:substring_index (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
