@@ -1,4 +1,4 @@
-.inlineEditingInput {
+.inlineEditingTextInput {
   transition: none;
   outline: 2px solid var(--mb-base-color-blue-50);
   outline-offset: -2px;
@@ -8,7 +8,13 @@
   background-color: var(--mb-base-color-white);
   border-radius: 0;
 
-  /** DateInput behaves a bit differently, therefore we need a style override for focused state */
+  /* Should be in sync with DEFAULT_FONT_SIZE */
+  font-size: 12.5px;
+
+  /* Properly alignment with BaseCell, to avoid text flickering (BaseCell has only border-bottom 1px) */
+  border-top-width: 0;
+
+  /* Keep outline consistent for inline editing, since focused and non focused state is semantically the same */
   &:focus {
     outline: 2px solid var(--mb-base-color-blue-50);
   }

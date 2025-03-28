@@ -31,6 +31,7 @@ export const EditingBodyCellCategorySelect = ({
   initialValue,
   datasetColumn,
   withCreateNew = true,
+  classNames,
   getDropdownLabelText = DefaultItemLabelTextGetter,
   onSubmit,
   onChangeValue,
@@ -81,7 +82,10 @@ export const EditingBodyCellCategorySelect = ({
           pointer
           onClick={() => combobox.openDropdown()}
           {...inputProps}
-          className={cx(S.fakeInput, inputProps?.className)}
+          classNames={{
+            wrapper: classNames?.wrapper,
+            input: cx(S.fakeInput, classNames?.selectTextInputElement),
+          }}
           // Disable input editing when the dropdown is open (UX)
           onChange={noop}
         />
