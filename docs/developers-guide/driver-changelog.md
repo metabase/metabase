@@ -21,6 +21,12 @@ title: Driver interface changelog
 - Added a feature `:test/arrays` and multimethod `native-array-query` to enable the testing of array types for
   databases that support them.
 
+- Added a feature `:cast` for drivers that support casting functions like `text`, `integer`, and `date`.
+
+- Added a feature `:distinct-where` for drivers that support the `distinct-where` function.
+
+- Added a feature `:split-part` for drivers that support the `split-part` function.
+
 ## Metabase 0.53.0
 
 - Added the multimethod `bad-connection-details` to allow mocking bad connection parameters for tests.
