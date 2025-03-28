@@ -123,7 +123,7 @@
     [:channel/slack
      [:map
       [:details ::ChannelTemplateSlackDetails]]]
-    [::mc/default :any]]])
+    [::mc/default :map]]])
 
 (defn- check-valid-channel-template
   [channel-template]
