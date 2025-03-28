@@ -20,7 +20,7 @@
    (clojure.core.async.impl.channels ManyToManyChannel)
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (metabase.server.streaming_response StreamingResponse)
-   (org.eclipse.jetty.util.thread QueuedThreadPool)))
+   (org.eclipse.jetty.util.thread VirtualThreadPool)))
 
 (set! *warn-on-reflection* true)
 
@@ -55,6 +55,7 @@
     (format "%.0fms (%s DB calls)" elapsed-time db-calls)))
 
 (defn- stats [diag-info-fn]
+  ""
   (str
    (when-let [^PoolBackedDataSource pool (let [data-source (mdb/data-source)]
                                            (when (instance? PoolBackedDataSource data-source)
@@ -62,12 +63,12 @@
      (format "App DB connections: %s/%s"
              (.getNumBusyConnectionsAllUsers pool) (.getNumConnectionsAllUsers pool)))
    " "
-   (when-let [^QueuedThreadPool pool (some-> (server/instance) .getThreadPool)]
+   (when-let [^VirtualThreadPool pool (some-> (server/instance) .getThreadPool)]
      (format "Jetty threads: %s/%s (%s idle, %s queued)"
-             (.getBusyThreads pool)
+             (.getThreads pool)
              (.getMaxThreads pool)
              (.getIdleThreads pool)
-             (.getQueueSize pool)))
+             0))
    " "
    (format "(%s total active threads)" (Thread/activeCount))
    " "

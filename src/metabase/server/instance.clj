@@ -15,7 +15,8 @@
    (org.eclipse.jetty.ee9.nested Request)
    (org.eclipse.jetty.ee9.servlet ServletHandler ServletContextHandler)
    (org.eclipse.jetty.server Server)
-   (org.eclipse.jetty.server.handler StatisticsHandler)))
+   (org.eclipse.jetty.server.handler StatisticsHandler)
+   (org.eclipse.jetty.util.thread VirtualThreadPool)))
 
 (set! *warn-on-reflection* true)
 
@@ -98,13 +99,17 @@
   ;; minutes we're in serious trouble. (Almost everything 'slow' should be returning a channel before then, but
   ;; some things like CSV downloads don't currently return channels at this time)
   (let [timeout         (config/config-int :mb-jetty-async-response-timeout)
+        thread-pool     (doto (VirtualThreadPool.)
+                          ;; Virtual Threads are cheap but have some cost so protect against unbounded growth
+                          (.setMaxThreads 10000)
+                          (.setTracking true))
         handler         (async-proxy-handler handler timeout)
         servlet-handler (doto (ServletContextHandler.)
                           (.setAllowNullPathInfo true)
                           (.setServletHandler handler))
         stats-handler   (doto (StatisticsHandler.)
                           (.setHandler servlet-handler))]
-    (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
+    (doto ^Server (#'ring-jetty/create-server (assoc options :async? true :thread-pool thread-pool))
       (.setHandler stats-handler))))
 
 (defn start-web-server!

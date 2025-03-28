@@ -273,6 +273,8 @@
                  "-Dfile.encoding=UTF-8"
                  "-Duser.language=en"
                  "-Duser.country=US"
+                 ;; Warn when virtual threads get pinned
+                 "-Djdk.tracePinnedThreads=full"
                  ;; Allow clojure goes fast tooling to work
                  "-Djdk.attach.allowAttachSelf"
                  ;; This will suppress the warning about dynamically loaded agents (like clj-memory-meter)
