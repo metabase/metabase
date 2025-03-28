@@ -133,7 +133,7 @@ describe("getHelpText", () => {
       if (!helpText) {
         continue;
       }
-      expect(() => formatExample(helpText.example)).not.toThrow();
+      expect(await formatExample(helpText.example)).toEqual(expect.any(String));
     }
   });
 });
