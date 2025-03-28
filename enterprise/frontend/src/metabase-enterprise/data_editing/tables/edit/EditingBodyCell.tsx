@@ -58,8 +58,12 @@ export const EditingBodyCellWrapper = (
       autoFocus
       inputProps={{
         variant: "unstyled",
-        className: S.inlineEditingInput,
         size: "sm",
+      }}
+      classNames={{
+        textInputElement: S.inlineEditingTextInput,
+        selectTextInputElement: S.inlineEditingTextInput,
+        dateTextInputElement: S.inlineEditingTextInput,
       }}
       field={field}
       initialValue={initialValue}
