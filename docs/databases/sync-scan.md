@@ -4,7 +4,9 @@ title: Syncing and scanning databases
 
 # Syncing and scanning databases
 
-Metabase runs different types of queries to stay up to date with your database.
+Metabase periodically runs different types of queries to stay up to date with your database's metadata. Knowing stuff about your data helps Metabase do things like display the right chart for the results automatically, and populate dropdown menus in filter widgets.
+
+There are a couple of things Metabase does:
 
 - [Syncs](#how-database-syncs-work) get updated schemas to display in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser).
 - [Scans](#how-database-scans-work) take samples of column values to populate filter dropdown menus and suggest helpful visualizations. Metabase doesn't store _complete_ tables from your database.
@@ -12,7 +14,7 @@ Metabase runs different types of queries to stay up to date with your database.
 
 ## Initial sync, scan, and fingerprinting
 
-When Metabase first connects to your database, Metabase performs a [sync](#how-database-syncs-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md). Once the sync is successful, Metabase runs [scans](#how-database-scans-work) of each table to look for URLs, JSON, encoded strings, etc. The [fingerprinting](#how-database-fingerprinting-works) queries run once the syncs are complete.
+When Metabase first connects to your database, Metabase performs a [sync](#how-database-syncs-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md). 
 
 You can follow the progress of these queries from **Admin** > **Troubleshooting** > **Logs**.
 
@@ -20,7 +22,7 @@ Once the queries are done running, you can view and edit the synced metadata fro
 
 ### Choose when syncs and scans happen
 
-By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this option **ON** to make changes to the sync and scan settings.
+By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, you might want to choose when syncs and scans happen:
 
 ### Database syncing
 
@@ -31,7 +33,7 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll be ab
 
 ### Scanning for filter values
 
-Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.
+Metabase can scan and cache the values present in a field so it can display things like checkbox filters in dashboards and questions. Metabase will only scan fields that people are actually using in your Metabase. So if people are using a filter widget on a dashboard, Metabase will scan that field to determine the values it should include in that dropdown menu. If people stop using the filter widget for a couple of weeks, Metabase will stop scanning and caching those values.
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
 
