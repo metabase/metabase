@@ -6,11 +6,13 @@ title: Amazon Athena
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
-## Connection and Sync
+## Connection and sync
+
+After connecting to a database, you'll see the "Connection and sync" section that displays the current connection status and options to manage your database connection.
 
 Here you can [sync the database schema and rescan field values](../sync-scan.md), and edit connection details.
 
-## Edit connection details
+### Edit connection details
 
 You can edit these settings at any time (and remember to save your changes).
 
@@ -201,6 +203,13 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
   ]
 }
 ```
+## Model features
+
+There aren't (yet) any model features available for Athena.
+
+## Danger zone
+
+See [Danger Zone](../danger-zone.md).
 
 ## Further reading
 

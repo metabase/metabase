@@ -14,7 +14,7 @@ MariaDB shares a driver with MySQL, so select the **MySQL** driver.
 
 Metabase supports the oldest supported version of Maria DB through the latest stable version. See [MariaDB Server releases](https://mariadb.com/kb/en/mariadb-server-release-dates/).
 
-## Settings
+## Edit connection details
 
 You can edit these settings at any time. Just remember to save your changes.
 
@@ -92,6 +92,10 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Syncing records that include JSON
 
 JSON schema inference doesn't work with MariaDB, due to implementation differences between MySQL and MariaDB.
+
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
 
 ## Further reading
 

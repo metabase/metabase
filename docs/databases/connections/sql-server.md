@@ -93,6 +93,10 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 To connect to Azure SQL, you'll need to set the port to 1433.
 
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
+
 ## Further reading
 
 - [Microsoft JDBC Driver for SQL Server support matrix](https://learn.microsoft.com/en-us/sql/connect/jdbc/microsoft-jdbc-driver-for-sql-server-support-matrix)

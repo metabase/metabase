@@ -14,7 +14,7 @@ To add a database connection, click on the **gear** icon in the top right, and n
 
 Metabase supports the oldest supported version through the latest stable version. See [MySQL end-of-life dates](https://endoflife.software/applications/databases/mysql).
 
-## Settings
+## Edit connection details
 
 You can edit these settings at any time. Just remember to save your changes.
 
@@ -168,6 +168,22 @@ mysql:
   The reason: typically, Metabase applies limits (e.g., 2000 or 10000 rows) to the final query results. But due to a known bug in Vitess, Vitess might apply these limits to subqueries, which can lead to unexpected results (for example, not all rows of results will be displayed within Metabase). The workaround is to add limits to each of your subqueries.
 
 - You may want to check in with the vendor that's hosting the platform, as Vitess can run into issues returning metadata from the information schema. Metabase needs this metadata to populate its application database; if Metabase can't get that metadata, fields may not appear (or appear empty).
+
+## Model features
+
+Choose whether to enable features related to [Metabase models](../../data-modeling/models.md). These features will often require that the database user account, the one you use to connect to your database, has both read and write privileges.
+
+### Model actions
+
+Turn this setting on to allow [actions](../../actions/introduction.md) from models created from this data to be run. Actions are able to read, write, and possibly delete data. Your database user will need write permissions.
+
+### Model persistence
+
+We'll create tables with model data and refresh them on a schedule you define. To enable [model persistence](../../data-modeling/model-persistence.md), you need to grant this connection's credentials read and write permissions on a schema Metabase provides.
+
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
 
 ## Further reading
 

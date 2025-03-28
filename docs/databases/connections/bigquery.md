@@ -34,6 +34,12 @@ For more information on **roles** in BigQuery, see [Google Cloud Platform's docu
 
 > **You can only download the key once**. If you delete the key, you'll need to create another service account with the same roles.
 
+## Connection and sync
+
+After connecting to a database, you'll see the "Connection and sync" section that displays the current connection status and options to manage your database connection.
+
+Here you can [sync the database schema and rescan field values](../sync-scan.md), and edit connection details.
+
 ## Edit connection details
 
 You can edit these settings at any time. Just remember to save your changes.
@@ -150,6 +156,14 @@ FROM [my_dataset.my_table]
 ## Troubleshooting
 
 If you're having trouble with your BigQuery connection, you can check out this [troubleshooting guide](../../troubleshooting-guide/bigquery-drive.md) that covers BigQuery issues, [this one](../../troubleshooting-guide/db-connection.md) on data warehouse connections, or visit [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has encountered and resolved a similar issue.
+
+## Model features
+
+There aren't (yet) any model features available for BigQuery.
+
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
 
 ## Further reading
 

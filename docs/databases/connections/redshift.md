@@ -102,6 +102,8 @@ The **Re-scan field values** button updates the cached field values that Metabas
 
 ## Model features
 
+Choose whether to enable features related to Metabase models. These will often require a write connection.
+
 ### Model persistence
 
 You can enable model persistence to allow Metabase to create tables with model data and refresh them on a schedule. This requires write permissions to a designated schema. 
@@ -110,10 +112,7 @@ Check out [Model persistence](../../data-modeling/model-persistence.md).
 
 ## Danger zone
 
-This section contains destructive actions for your database connection:
-
-- **Discard saved field values**: Removes all cached field values used for filter dropdowns.
-- **Remove this database**: Deletes this database connection from Metabase.
+See [Danger zone](../danger-zone.md).
 
 ## Further reading
 

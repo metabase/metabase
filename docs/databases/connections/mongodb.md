@@ -132,6 +132,10 @@ Instead, Metabase gets a sample of the fields in a collection by scanning a samp
 
 If you're not seeing all of the fields show up for a collection in Metabase, one workaround is to include all possible keys in the first document of the collection, and give those keys null values. That way, Metabase will be able to recognize the correct schema for the entire collection.
 
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
+
 ## Further reading
 
 See our troubleshooting guide for [troubleshooting your connection](../../troubleshooting-guide/db-connection.md).

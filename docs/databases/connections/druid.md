@@ -4,17 +4,13 @@ title: Druid
 
 # Druid
 
+> Prefer the Druid JDBC connection.
+
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
-Fill out the fields for that database, and click **Save changes** at the bottom.
+## Edit connection details
 
-## Select "Druid JBDC"
-
-Prefer the Druid JDBC connection.
-
-## Settings
-
-You can edit these settings at any time. Just remember to save your changes.
+Fill out the fields for that database, and click **Save changes** at the bottom. You can edit these settings at any time. Just remember to save your changes.
 
 ### Display name
 
@@ -31,8 +27,6 @@ The database port (e.g, 8082).
 ### Use an SSH tunnel
 
 See our [guide to SSH tunneling](../ssh-tunnel.md).
-
-## Advanced options
 
 ### Allow unfolding of JSON columns
 
@@ -65,6 +59,14 @@ See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
+
+## Model features
+
+There aren't (yet) any model features available for Druid.
+
+## Danger zone
+
+See [Danger Zone](../danger-zone.md).
 
 ## Further reading
 

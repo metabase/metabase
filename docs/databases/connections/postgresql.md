@@ -16,11 +16,18 @@ Fill out the fields for that database, and click **Save changes** at the bottom.
 
 Metabase supports the oldest supported version of PostgreSQL through the latest stable version. See [PostgreSQL versions](https://www.postgresql.org/support/versioning/).
 
-## Settings
+## Connection and sync
+
+### Sync database schema
+
+See [
+### Re-scan field values
+
+### Edit connection details
 
 You can edit these settings at any time. Just remember to save your changes.
 
-### Display name
+#### Display name
 
 The display name for the database in the Metabase interface.
 
@@ -169,6 +176,22 @@ See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
+
+## Model features
+
+Choose whether to enable features related to [Metabase models](../../data-modeling/models.md). These features will often require that the database user account, the one you use to connect to your database, has both read and write privileges.
+
+### Model actions
+
+Turn this setting on to allow [actions](../../actions/introduction.md) from models created from this data to be run. Actions are able to read, write, and possibly delete data. Your database user will need write permissions.
+
+### Model persistence
+
+We'll create tables with model data and refresh them on a schedule you define. To enable [model persistence](../../data-modeling/model-persistence.md), you need to grant this connection's credentials read and write permissions on a schema Metabase provides.
+
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
 
 ## Further reading
 
