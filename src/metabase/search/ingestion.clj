@@ -176,8 +176,8 @@
                                         (log/error err "Error indexing search entries")
                                         (analytics/inc! :metabase-search/index-error)
                                         (track-queue-size!))
-     ;; Note that each message can correspond to multiple documents,
-     ;; for example there would be 1 message for updating all
-     ;; the tables within a given database when it is renamed.
+                  ;; Note that each message can correspond to multiple documents,
+                  ;; for example there would be 1 message for updating all
+                  ;; the tables within a given database when it is renamed.
                   :max-batch-messages 50
                   :max-next-ms       100}))
