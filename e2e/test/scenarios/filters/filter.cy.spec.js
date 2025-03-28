@@ -567,9 +567,7 @@ describe("scenarios > question > filter", () => {
     H.enterCustomColumnDetails({ formula: "3.14159" });
     H.popover().within(() => {
       cy.button("Done").should("be.disabled");
-      cy.findByText("Standalone constants are not supported.").should(
-        "be.visible",
-      );
+      cy.findByText("Invalid expression").should("be.visible");
     });
   });
 
@@ -580,9 +578,7 @@ describe("scenarios > question > filter", () => {
     H.enterCustomColumnDetails({ formula: '"TheAnswer"' });
     H.popover().within(() => {
       cy.button("Done").should("be.disabled");
-      cy.findByText("Standalone constants are not supported.").should(
-        "be.visible",
-      );
+      cy.findByText("Invalid expression").should("be.visible");
     });
   });
 

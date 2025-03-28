@@ -34,6 +34,7 @@ export const OPERATOR_PRECEDENCE: Record<string, number> = {
   or: 5,
 };
 
+// `type` and `args` types have no effect. Type checking is done by MBQL lib.
 export const MBQL_CLAUSES: MBQLClauseMap = {
   // aggregation functions
   count: { displayName: `Count`, type: "aggregation", args: [] },
