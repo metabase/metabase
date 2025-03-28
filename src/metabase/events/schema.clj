@@ -211,9 +211,9 @@
 
 (mr/def ::action-events
   [:map #_{:closed true}
-   :action ::common/non-blank-string
+   [:action :keyword]
    ;; TODO ... this shouldn't be snake
-   :invocation_id  ::nano-id
+   [:invocation_id ::nano-id]
    ;; TODO well, some can have it :/ not feeling great about defining non-generic fields here
    (-> [:table_id {:optional true} pos-int?] (with-hydrate :table table-hydrate))
    (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))])
