@@ -329,7 +329,7 @@
 
       ;; Special handling for `FieldFilter`s on `:type/DateTime` fields. DateTime range is always generated.
       (and (params.dates/date-type? param-type)
-           (isa? ((some-fn :effective-type :base-type) field) :type/DateTime))
+           (isa? ((some-fn :effective-type :base-type) field) :type/DateTimeWithTZ))
       (field-filter->replacement-snippet-for-datetime-field driver field-filter)
 
       ;; convert other date to DateRange record types
