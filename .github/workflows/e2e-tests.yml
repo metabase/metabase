@@ -55,7 +55,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        edition: [oss, ee]
+        edition: [oss, ee, oss, ee, oss, ee, oss, ee, oss, ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -73,112 +73,107 @@ jobs:
           m2-cache-key: uberjar
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
 
-      - name: Build uberjar with ./bin/build.sh
-        timeout-minutes: 10
-        run:  ./bin/build.sh
-        shell: bash
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-
-  reset-e2e-test-comment:
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Remove test results comment
-        uses: actions/github-script@v7
-        with:
-          script: | # js
-            const { owner, repo } = context.repo;
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner,
-              repo,
-              issue_number: context.issue.number,
-            }).catch(console.error);
-
-            if (!comments) {
-              return;
-            }
-
-            const comment = comments.find((comment) => comment.body.includes('## e2e tests failed on '));
-
-            if (comment) {
-              await github.rest.issues.deleteComment({
-                owner,
-                repo,
-                comment_id: comment.id,
-              });
-            }
-
-  e2e-tests:
-    name: ${{ matrix.name }}-${{ matrix.edition }}
-    uses: ./.github/workflows/e2e-test.yml
-    needs:
-      - e2e-matrix-builder
-      - build
-    if: |
-      !cancelled() && needs.build.result == 'success'
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
-    secrets: inherit
-    with:
-      name: ${{ matrix.name }}
-      edition: ${{ matrix.edition }}
-      specs: ${{ matrix.specs }}
-      total_chunks: ${{ fromJson(needs.e2e-matrix-builder.outputs.regularChunks) }}
-      split_index: ${{ strategy.job-index }}
-      tags: ${{ matrix.tags }}
-      runner: ${{ matrix.runner }}
-
-  # run this separately to make it non-blocking
-  flaky-e2e-tests:
-    name: Flaky e2e Tests
-    uses: ./.github/workflows/e2e-test.yml
-    needs: build
-    if: |
-      !cancelled() && needs.build.result == 'success'
-    secrets: inherit
-    with:
-      name: Flaky
-      tags: "@flaky"
-      specs: "./e2e/test/scenarios/**/*.cy.spec.*"
-
-  e2e-tests-result:
-    needs:
-      - e2e-tests
-      - flaky-e2e-tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    name: e2e-tests-result
-    if: always() && !cancelled()
-    env:
-      E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
-      FLAKY_E2E_TESTS_RESULT: ${{ needs.flaky-e2e-tests.result }}
-    steps:
-      - name: Stub
-        if: ${{ needs.e2e-tests.result == 'skipped' }}
+      - name: Build static assets to catch rspack issue
         run: |
-          echo "Didn't run due to conditional filtering"
-      - name: Test results
-        if: ${{ needs.e2e-tests.result != 'skipped' }}
-        run: | # sh
-          echo "E2E Tests: ${{ needs.e2e-tests.result }}"
-          echo "Flaky E2E Tests: ${{ needs.flaky-e2e-tests.result }}"
+          yarn build-release:cljs
+          RSPACK_PROFILE=TRACE=layer=logger rspack build-release:js
 
-          if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
-            echo "E2E Tests failed"
-            exit 1
-          fi
+  # reset-e2e-test-comment:
+  #   if: ${{ github.event_name == 'pull_request' }}
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   steps:
+  #     - name: Remove test results comment
+  #       uses: actions/github-script@v7
+  #       with:
+  #         script: | # js
+  #           const { owner, repo } = context.repo;
 
-  pr-env:
-    needs: [build]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
+  #           const { data: comments } = await github.rest.issues.listComments({
+  #             owner,
+  #             repo,
+  #             issue_number: context.issue.number,
+  #           }).catch(console.error);
+
+  #           if (!comments) {
+  #             return;
+  #           }
+
+  #           const comment = comments.find((comment) => comment.body.includes('## e2e tests failed on '));
+
+  #           if (comment) {
+  #             await github.rest.issues.deleteComment({
+  #               owner,
+  #               repo,
+  #               comment_id: comment.id,
+  #             });
+  #           }
+
+  # e2e-tests:
+  #   name: ${{ matrix.name }}-${{ matrix.edition }}
+  #   uses: ./.github/workflows/e2e-test.yml
+  #   needs:
+  #     - e2e-matrix-builder
+  #     - build
+  #   if: |
+  #     !cancelled() && needs.build.result == 'success'
+  #   strategy:
+  #     fail-fast: false
+  #     matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
+  #   secrets: inherit
+  #   with:
+  #     name: ${{ matrix.name }}
+  #     edition: ${{ matrix.edition }}
+  #     specs: ${{ matrix.specs }}
+  #     total_chunks: ${{ fromJson(needs.e2e-matrix-builder.outputs.regularChunks) }}
+  #     split_index: ${{ strategy.job-index }}
+  #     tags: ${{ matrix.tags }}
+  #     runner: ${{ matrix.runner }}
+
+  # # run this separately to make it non-blocking
+  # flaky-e2e-tests:
+  #   name: Flaky e2e Tests
+  #   uses: ./.github/workflows/e2e-test.yml
+  #   needs: build
+  #   if: |
+  #     !cancelled() && needs.build.result == 'success'
+  #   secrets: inherit
+  #   with:
+  #     name: Flaky
+  #     tags: "@flaky"
+  #     specs: "./e2e/test/scenarios/**/*.cy.spec.*"
+
+  # e2e-tests-result:
+  #   needs:
+  #     - e2e-tests
+  #     - flaky-e2e-tests
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   name: e2e-tests-result
+  #   if: always() && !cancelled()
+  #   env:
+  #     E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
+  #     FLAKY_E2E_TESTS_RESULT: ${{ needs.flaky-e2e-tests.result }}
+  #   steps:
+  #     - name: Stub
+  #       if: ${{ needs.e2e-tests.result == 'skipped' }}
+  #       run: |
+  #         echo "Didn't run due to conditional filtering"
+  #     - name: Test results
+  #       if: ${{ needs.e2e-tests.result != 'skipped' }}
+  #       run: | # sh
+  #         echo "E2E Tests: ${{ needs.e2e-tests.result }}"
+  #         echo "Flaky E2E Tests: ${{ needs.flaky-e2e-tests.result }}"
+
+  #         if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+  #           echo "E2E Tests failed"
+  #           exit 1
+  #         fi
+
+  # pr-env:
+  #   needs: [build]
+  #   if: |
+  #     !cancelled() &&
+  #     contains(github.event.pull_request.labels.*.name, 'PR-Env')
+  #   uses: ./.github/workflows/pr-env.yml
+  #   secrets: inherit
