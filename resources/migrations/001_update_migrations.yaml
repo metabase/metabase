@@ -10905,7 +10905,7 @@ databaseChangeLog:
             indexName: idx_field_usage_query_execution_id
 
   - changeSet:
-      id: 54.2025-03-27T17:52:01
+      id: v54.2025-03-27T17:52:01
       author: luizarakaki
       comment: updating v_tasks to add new `status` field
       changes:
@@ -10936,7 +10936,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: 54.2025-03-28T11:22:01
+      id: v54.2025-03-28T11:22:01
       author: luizarakaki
       comment: updating v_content to add new `is_verified` field
       changes:
