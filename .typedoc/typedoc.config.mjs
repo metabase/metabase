@@ -18,6 +18,7 @@ const config = {
       name: "markdown",
       path: "../docs/embedding/sdk/generated/markdown",
       options: {
+        entryFileName: "index",
         flattenOutputFiles: false,
         hideBreadcrumbs: true,
         useCodeBlocks: true,
