@@ -1,48 +1,13 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.cast-test
   (:require
-   [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
-   [honey.sql :as sql]
-   [malli.core :as mc]
-   [medley.core :as m]
-   [metabase.actions.error :as actions.error]
-   [metabase.actions.models :as action]
-   [metabase.config :as config]
-   [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.driver :as driver]
-   [metabase.driver.postgres :as postgres]
-   [metabase.driver.postgres.actions :as postgres.actions]
-   [metabase.driver.sql :as driver.sql]
-   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
-   [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
-   [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.models.secret :as secret]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.sync.core :as sync]
-   [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.sync.sync-metadata.tables :as sync-tables]
-   [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]
-   [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]
-   [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
+
+(set! *warn-on-reflection* true)
 
 ;; integer()
 
@@ -89,10 +54,6 @@
               (doseq [[_ uncasted-value casted-value] rows]
                 (is (= (Long/parseLong uncasted-value)
                        casted-value))))))))))
-
-(defn p [x]
-  (prn x)
-  x)
 
 (deftest ^:parallel integer-cast-nested-native-query
   (mt/test-drivers (mt/normal-drivers-with-feature :cast)
