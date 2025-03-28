@@ -1,5 +1,6 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,17 +10,16 @@ import {
   SortableList,
 } from "metabase/core/components/Sortable";
 import Tables from "metabase/entities/tables";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Flex, isValidIconName } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
+import { Flex } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { TableFieldOrder, TableId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { FieldOrderPicker } from "./FieldOrderPicker";
 import { SortableField } from "./SortableField";
+import { getId, getItems, getItemsOrder, sortItems } from "./lib";
 
 /**
  * This is to prevent FieldOrderPicker's focus state outline being cut off.
@@ -42,32 +42,32 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
-  const fields = useMemo(() => table.fields ?? [], [table.fields]);
-  const initialFieldOrder = useMemo(() => getFieldOrder(fields), [fields]);
-  const [fieldOrder, setFieldOrder] = useState(initialFieldOrder);
-  const items = useMemo(() => {
-    return fields.sort((a, b) => {
-      return fieldOrder.indexOf(getId(a)) - fieldOrder.indexOf(getId(b));
-    });
-  }, [fieldOrder, fields]);
-  const isDragDisabled = fields.length <= 1;
+  const initialItems = useMemo(() => getItems(table.fields), [table.fields]);
+  const initialOrder = useMemo(
+    () => getItemsOrder(initialItems),
+    [initialItems],
+  );
+  const [items, setItems] = useState(initialItems);
+  const [order, setOrder] = useState(initialOrder);
+  const sortedItems = useMemo(() => sortItems(items, order), [items, order]);
+  const isDragDisabled = sortedItems.length <= 1;
 
-  const handleSortEnd = ({ itemIds: fieldOrder }: DragEndEvent) => {
-    setFieldOrder(fieldOrder);
-    dispatch(Tables.actions.setFieldOrder(table, fieldOrder));
+  const handleSortEnd = ({ itemIds }: DragEndEvent) => {
+    setOrder(itemIds);
+    dispatch(Tables.actions.setFieldOrder(table, itemIds));
   };
 
   const handleFieldOrderChange = (value: TableFieldOrder) => {
     dispatch(Tables.actions.updateProperty(table, "field_order", value));
   };
 
-  useEffect(() => {
-    // Update local state only when sidesheet is closed.
-    // This is to prevent items flickering on the list after handleSortEnd.
-    if (!isOpen) {
-      setFieldOrder(initialFieldOrder);
-    }
-  }, [initialFieldOrder, isOpen]);
+  useDeepCompareEffect(() => {
+    setOrder(initialOrder);
+  }, [initialOrder]);
+
+  useDeepCompareEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   return (
     <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
@@ -84,20 +84,16 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
         <Flex direction="column" gap="sm">
           <SortableList
             getId={getId}
-            items={items}
-            renderItem={({ item, id }) => {
-              const icon = item.icon();
-
-              return (
-                <SortableField
-                  disabled={isDragDisabled}
-                  icon={isValidIconName(icon) ? icon : "empty"}
-                  id={id}
-                  key={id}
-                  label={item.displayName() || NULL_DISPLAY_VALUE}
-                />
-              );
-            }}
+            items={sortedItems}
+            renderItem={({ item, id }) => (
+              <SortableField
+                disabled={isDragDisabled}
+                icon={item.icon}
+                id={id}
+                key={id}
+                label={item.label}
+              />
+            )}
             sensors={[pointerSensor]}
             onSortEnd={handleSortEnd}
           />
@@ -119,12 +115,3 @@ export const FieldOrderSidesheet = _.compose(
     selectorName: "getObjectUnfiltered",
   }),
 )(FieldOrderSidesheetBase);
-
-function getId(field: Field) {
-  return field.getId();
-}
-
-function getFieldOrder(fields: Field[] | undefined) {
-  const sortedFields = _.sortBy(fields ?? [], (field) => field.position);
-  return sortedFields.map(getId);
-}
