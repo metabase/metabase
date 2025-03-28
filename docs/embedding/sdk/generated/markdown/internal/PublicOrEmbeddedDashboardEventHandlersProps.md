@@ -17,9 +17,9 @@ Callback that is called when the dashboard is loaded.
 
 ###### Parameters
 
-| Parameter   | Type                                                                      |
-| ----------- | ------------------------------------------------------------------------- |
-| `dashboard` | [`MetabaseDashboard`](./generated/html/../MetabaseDashboard.md) \| `null` |
+| Parameter   | Type                                                     |
+| ----------- | -------------------------------------------------------- |
+| `dashboard` | [`MetabaseDashboard`](../MetabaseDashboard.md) \| `null` |
 
 ###### Returns
 
@@ -37,9 +37,9 @@ Callback that is called when the dashboard is loaded without cards.
 
 ###### Parameters
 
-| Parameter   | Type                                                                      |
-| ----------- | ------------------------------------------------------------------------- |
-| `dashboard` | [`MetabaseDashboard`](./generated/html/../MetabaseDashboard.md) \| `null` |
+| Parameter   | Type                                                     |
+| ----------- | -------------------------------------------------------- |
+| `dashboard` | [`MetabaseDashboard`](../MetabaseDashboard.md) \| `null` |
 
 ###### Returns
 

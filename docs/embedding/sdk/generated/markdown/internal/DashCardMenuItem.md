@@ -9,9 +9,9 @@ type DashCardMenuItem = {
 
 #### Type declaration
 
-| Name        | Type                                       |
-| ----------- | ------------------------------------------ |
-| `disabled?` | `boolean`                                  |
-| `iconName`  | [`IconName`](./generated/html/IconName.md) |
-| `label`     | `string`                                   |
-| `onClick`   | () => `void`                               |
+| Name        | Type                      |
+| ----------- | ------------------------- |
+| `disabled?` | `boolean`                 |
+| `iconName`  | [`IconName`](IconName.md) |
+| `label`     | `string`                  |
+| `onClick`   | () => `void`              |

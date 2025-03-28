@@ -14,4 +14,4 @@ action: () => Dispatcher;
 
 ###### Returns
 
-[`Dispatcher`](./generated/html/Dispatcher.md)
+[`Dispatcher`](Dispatcher.md)

@@ -4,4 +4,4 @@ type GetState = () => State;
 
 #### Returns
 
-[`State`](./generated/html/State.md)
+[`State`](State.md)

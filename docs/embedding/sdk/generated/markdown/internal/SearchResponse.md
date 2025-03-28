@@ -9,17 +9,17 @@ type SearchResponse<Id, Model, Result> = {
 
 #### Type declaration
 
-| Name               | Type                                                     |
-| ------------------ | -------------------------------------------------------- |
-| `available_models` | [`SearchModel`](./generated/html/SearchModel.md)\[]      |
-| `data`             | `Result`\[]                                              |
-| `models`           | `Model`\[] \| `null`                                     |
-| `table_db_id`      | [`DatabaseId`](./generated/html/DatabaseId.md) \| `null` |
+| Name               | Type                                    |
+| ------------------ | --------------------------------------- |
+| `available_models` | [`SearchModel`](SearchModel.md)\[]      |
+| `data`             | `Result`\[]                             |
+| `models`           | `Model`\[] \| `null`                    |
+| `table_db_id`      | [`DatabaseId`](DatabaseId.md) \| `null` |
 
 #### Type Parameters
 
-| Type Parameter                                                                               | Default type                                                      |
-| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `Id` *extends* [`SearchResultId`](./generated/html/SearchResultId.md)                        | [`SearchResultId`](./generated/html/SearchResultId.md)            |
-| `Model` *extends* [`SearchModel`](./generated/html/SearchModel.md)                           | [`SearchModel`](./generated/html/SearchModel.md)                  |
-| `Result` *extends* [`BaseSearchResult`](./generated/html/BaseSearchResult.md)<`Id`, `Model`> | [`SearchResult`](./generated/html/SearchResult.md)<`Id`, `Model`> |
+| Type Parameter                                                              | Default type                                     |
+| --------------------------------------------------------------------------- | ------------------------------------------------ |
+| `Id` *extends* [`SearchResultId`](SearchResultId.md)                        | [`SearchResultId`](SearchResultId.md)            |
+| `Model` *extends* [`SearchModel`](SearchModel.md)                           | [`SearchModel`](SearchModel.md)                  |
+| `Result` *extends* [`BaseSearchResult`](BaseSearchResult.md)<`Id`, `Model`> | [`SearchResult`](SearchResult.md)<`Id`, `Model`> |

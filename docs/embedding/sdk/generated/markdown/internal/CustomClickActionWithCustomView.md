@@ -6,6 +6,6 @@ type CustomClickActionWithCustomView = CustomClickActionBase & {
 
 #### Type declaration
 
-| Name   | Type                                                                                                                |
-| ------ | ------------------------------------------------------------------------------------------------------------------- |
-| `view` | (`parameters`: [`CustomClickActionContext`](./generated/html/CustomClickActionContext.md)) => `React_2.JSX.Element` |
+| Name   | Type                                                                                               |
+| ------ | -------------------------------------------------------------------------------------------------- |
+| `view` | (`parameters`: [`CustomClickActionContext`](CustomClickActionContext.md)) => `React_2.JSX.Element` |

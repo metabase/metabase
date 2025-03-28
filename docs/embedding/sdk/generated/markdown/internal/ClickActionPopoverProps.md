@@ -27,9 +27,9 @@ onClick: (action: RegularClickAction) => void;
 
 ###### Parameters
 
-| Parameter | Type                                                           |
-| --------- | -------------------------------------------------------------- |
-| `action`  | [`RegularClickAction`](./generated/html/RegularClickAction.md) |
+| Parameter | Type                                          |
+| --------- | --------------------------------------------- |
+| `action`  | [`RegularClickAction`](RegularClickAction.md) |
 
 ###### Returns
 
@@ -75,9 +75,9 @@ onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
 
 ###### Parameters
 
-| Parameter  | Type                                                                 |
-| ---------- | -------------------------------------------------------------------- |
-| `settings` | [`VisualizationSettings`](./generated/html/VisualizationSettings.md) |
+| Parameter  | Type                                                |
+| ---------- | --------------------------------------------------- |
+| `settings` | [`VisualizationSettings`](VisualizationSettings.md) |
 
 ###### Returns
 

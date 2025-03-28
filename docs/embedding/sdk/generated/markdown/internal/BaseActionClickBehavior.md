@@ -1,8 +1,8 @@
 #### Extended by
 
-* [`InsertActionClickBehavior`](./generated/html/InsertActionClickBehavior.md)
-* [`UpdateActionClickBehavior`](./generated/html/UpdateActionClickBehavior.md)
-* [`DeleteActionClickBehavior`](./generated/html/DeleteActionClickBehavior.md)
+* [`InsertActionClickBehavior`](InsertActionClickBehavior.md)
+* [`UpdateActionClickBehavior`](UpdateActionClickBehavior.md)
+* [`DeleteActionClickBehavior`](DeleteActionClickBehavior.md)
 
 #### Properties
 

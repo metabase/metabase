@@ -1,11 +1,11 @@
 #### Extended by
 
-* [`ClickBehaviorSidebarState`](./generated/html/ClickBehaviorSidebarState.md)
-* [`EditParameterSidebarState`](./generated/html/EditParameterSidebarState.md)
+* [`ClickBehaviorSidebarState`](ClickBehaviorSidebarState.md)
+* [`EditParameterSidebarState`](EditParameterSidebarState.md)
 
 #### Properties
 
-| Property                   | Type                                                               |
-| -------------------------- | ------------------------------------------------------------------ |
-| <a id="name"></a> `name?`  | [`DashboardSidebarName`](./generated/html/DashboardSidebarName.md) |
-| <a id="props"></a> `props` | `Record`<`string`, `unknown`> & { `dashcardId`: `number`; }        |
+| Property                   | Type                                                        |
+| -------------------------- | ----------------------------------------------------------- |
+| <a id="name"></a> `name?`  | [`DashboardSidebarName`](DashboardSidebarName.md)           |
+| <a id="props"></a> `props` | `Record`<`string`, `unknown`> & { `dashcardId`: `number`; } |
