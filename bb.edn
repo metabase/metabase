@@ -109,9 +109,10 @@
   {:doc      "Prints instructions to setup autocomplete"
    :examples [["./bin/mage setup-autocomplete" "Shows a link to instructions to make autocomplete work."]]
    :requires [[mage.autotab :as autotab]]
-   :task     (do
-               (cli/parse! (current-task))
-               (autotab/instructions))}
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum "bash" "zsh" "fish"]]]
+   :task     (autotab/instructions (cli/parse! (current-task)))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
