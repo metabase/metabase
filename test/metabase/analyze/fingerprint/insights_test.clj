@@ -201,7 +201,7 @@
                     (insights/insights [{:base_type :type/DateTime}
                                         {:base_type :type/Number}
                                         ;; Any column with a base type that is not number or temporal previously
-                                        ;; prevented timeseries insights from being callulated
+                                        ;; prevented timeseries insights from being calculated
                                         {:base_type :type/Text}])
                     [["2024-08-09" 10.0 "weekday"]
                      ["2024-08-10" 20.0 "weekend"]])))))
