@@ -94,10 +94,11 @@
   (let [rows (apply-coercions table-id rows)
         res  (perform-bulk-action! :bulk/create table-id rows)]
     (doseq [row (:created-rows res)]
-      (events/publish-event! :event/data-editing-row-create
+      (events/publish-event! :event/action.success
                              {:table_id    table-id
-                              :created_row row
-                              :actor_id    api/*current-user-id*}))
+                              :action      :row/create
+                              :actor_id    api/*current-user-id*
+                              :result      {:created_row row}}))
     (let [pk-field   (table-id->pk table-id)
           ;; actions code does not return coerced values
           ;; right now the FE works off qp outputs, which coerce output row data
@@ -141,10 +142,11 @@
         id->db-rows (query-db-rows table-id pk-field rows)
         res         (perform-bulk-action! :bulk/delete table-id rows)]
     (doseq [row rows]
-      (events/publish-event! :event/data-editing-row-delete
-                             {:table_id    table-id
-                              :deleted_row (get id->db-rows (get-row-pk pk-field row))
-                              :actor_id    api/*current-user-id*}))
+      (events/publish-event! :event/action.success
+                             {:action      :row/delete
+                              :table_id    table-id
+                              :actor_id    api/*current-user-id*
+                              :result      {:deleted_row (get id->db-rows (get-row-pk pk-field row))}}))
     res))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust

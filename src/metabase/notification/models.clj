@@ -189,6 +189,7 @@
 
 (t2/deftransforms :model/NotificationSubscription
   {:type            (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
+   :action          mi/transform-keyword
    :event_name      (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))
    :ui_display_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-ui-display-types))})
 

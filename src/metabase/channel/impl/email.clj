@@ -306,19 +306,19 @@
                      :when (seq emails)]
                  emails)))
 
-(def ^:private event-name->template
-  {:event/data-editing-row-create {:channel_type :channel/email
-                                   :details      {:type    :email/handlebars-resource
-                                                  :subject "Table {{payload.event_info.table.name}} has a new row"
-                                                  :path    "metabase/channel/email/data_editing_row_create.hbs"}}
-   :event/data-editing-row-update {:channel_type :channel/email
-                                   :details      {:type    :email/handlebars-resource
-                                                  :subject "Table {{payload.event_info.table.name}} has been updated"
-                                                  :path    "metabase/channel/email/data_editing_row_update.hbs"}}
-   :event/data-editing-row-delete {:channel_type :channel/email
-                                   :details      {:type    :email/handlebars-resource
-                                                  :subject "Table {{payload.event_info.table.name}} has a row deleted"
-                                                  :path    "metabase/channel/email/data_editing_row_delete.hbs"}}})
+(def ^:private action->template
+  {:row/create {:channel_type :channel/email
+                :details      {:type    :email/handlebars-resource
+                               :subject "Table {{payload.event_info.table.name}} has a new row"
+                               :path    "metabase/channel/email/data_editing_row_create.hbs"}}
+   :row/update {:channel_type :channel/email
+                :details      {:type    :email/handlebars-resource
+                               :subject "Table {{payload.event_info.table.name}} has been updated"
+                               :path    "metabase/channel/email/data_editing_row_update.hbs"}}
+   :row/delete {:channel_type :channel/email
+                :details      {:type    :email/handlebars-resource
+                               :subject "Table {{payload.event_info.table.name}} has a row deleted"
+                               :path    "metabase/channel/email/data_editing_row_delete.hbs"}}})
 
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
@@ -327,9 +327,9 @@
    template             :- ::models.channel/ChannelTemplate
    recipients           :- [:sequential ::models.notification/NotificationRecipient]]
   (let [event-topic (get-in notification-payload [:payload :event_topic])
-        template    (or
-                     template
-                     (get event-name->template event-topic))]
+        template    (or template
+                        (when (= :event/action.success event-topic)
+                          (get action->template (:action (:payload notification-payload)))))]
     (assert template (str "No template found for event " event-topic))
     [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
                       (notification-recipients->emails recipients notification-payload)

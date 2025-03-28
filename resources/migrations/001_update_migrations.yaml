@@ -11026,6 +11026,22 @@ databaseChangeLog:
                   name: query_execution_id
             indexName: idx_field_usage_query_execution_id
 
+  - changeSet:
+      id: v54.2025-03-28T16:01:00
+      author: crisptrutksi
+      comment: Add `notification_subscription.action` column
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: action
+                  type: ${text.type}
+                  remarks: The action associated with a given lifecycle system event, used for filtering system events
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

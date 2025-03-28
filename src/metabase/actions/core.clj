@@ -3,6 +3,7 @@
   (:require
    [metabase.actions.actions]
    [metabase.actions.error]
+   [metabase.actions.events]
    [metabase.actions.execution]
    [metabase.actions.http-action]
    [metabase.actions.models]
