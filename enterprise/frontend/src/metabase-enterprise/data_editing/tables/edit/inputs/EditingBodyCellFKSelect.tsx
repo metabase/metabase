@@ -16,11 +16,17 @@ export const EditingBodyCellFKSelect = (props: EditingBodyPrimitiveProps) => {
     [],
   );
 
+  const getSelectedLabelText = useCallback(
+    (item: SelectOption) => item.label,
+    [],
+  );
+
   if (shouldDisplayValuesList) {
     return (
       <EditingBodyCellCategorySelect
         {...props}
         getDropdownLabelText={getDropdownLabelText}
+        getSelectedLabelText={getSelectedLabelText}
         withCreateNew={false}
       />
     );
