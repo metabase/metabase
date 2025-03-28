@@ -1,12 +1,14 @@
 import type { StoryFn } from "@storybook/react";
 import * as jose from "jose";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
-import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
+import type { MetabaseAuthConfig } from "embedding-sdk";
+import * as sdk_live_code from "embedding-sdk";
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
 
 import { storybookThemes } from "./storybook-themes";
+
 const METABASE_INSTANCE_URL =
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
 const METABASE_JWT_SHARED_SECRET =
@@ -50,8 +52,10 @@ export const getStorybookSdkAuthConfigForUser = (
 export const storybookSdkAuthDefaultConfig =
   getStorybookSdkAuthConfigForUser("normal");
 
+let firstSdkVersion: string | null = null;
+
 export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
-  const sdkTheme = context.globals.sdkTheme;
+  const sdkTheme = context.globals.sdkTheme || "default";
   const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
 
   const user = context.globals.user;
@@ -60,9 +64,41 @@ export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
     return getStorybookSdkAuthConfigForUser(user);
   }, [user]);
 
+  const sdkVersion = (context.globals.sdkVersion || "live_code") as
+    | "live_code"
+    | "npm_53_stable"
+    | "npm_52_stable";
+
+  useEffect(() => {
+    if (firstSdkVersion === null) {
+      firstSdkVersion = sdkVersion;
+    } else {
+      if (sdkVersion !== firstSdkVersion) {
+        // alert("This requires a refresh, still WIP");
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+      }
+    }
+  }, [sdkVersion]);
+
+  const sdk = useMemo(() => {
+    switch (sdkVersion) {
+      case "live_code":
+        return sdk_live_code;
+      default:
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        return require(`./SDK_FROM_NPM`)[sdkVersion];
+    }
+  }, [sdkVersion]);
+
+  const { MetabaseProvider } = sdk;
+
+  const key = `sdk-${sdkVersion}-${sdkTheme}-${user}`;
+
   return (
-    <MetabaseProvider authConfig={authConfig} theme={theme} key={user}>
-      <Story />
+    <MetabaseProvider authConfig={authConfig} theme={theme} key={key}>
+      <Story sdk={sdk} />
     </MetabaseProvider>
   );
 };
