@@ -1,5 +1,6 @@
 import type {
   Field,
+  FieldWithMetadata,
   GetTableDataRequest,
   GetTableQueryMetadataRequest,
   GetTableRequest,
@@ -22,6 +23,10 @@ import {
   tag,
 } from "./tags";
 
+interface TableWithFieldMetadata extends Table {
+  fields: FieldWithMetadata[];
+}
+
 export const tableApi = Api.injectEndpoints({
   endpoints: builder => ({
     listTables: builder.query<Table[], TableListQuery | void>({
@@ -39,7 +44,10 @@ export const tableApi = Api.injectEndpoints({
       }),
       providesTags: table => (table ? provideTableTags(table) : []),
     }),
-    getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
+    getTableQueryMetadata: builder.query<
+      TableWithFieldMetadata,
+      GetTableQueryMetadataRequest
+    >({
       query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/table/${id}/query_metadata`,

@@ -17,7 +17,7 @@ import {
 } from "metabase/ui";
 import type {
   DatasetColumn,
-  Field,
+  FieldWithMetadata,
   RowValue,
   RowValues,
   Table,
@@ -38,7 +38,7 @@ interface EditingBaseRowModalProps {
   opened: boolean;
   currentRowIndex?: number;
   currentRowData?: RowValues;
-  fieldMetadataMap: Record<Field["name"], Field>;
+  fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
   isLoading?: boolean;
 }
 
@@ -193,7 +193,7 @@ type EditingInputWithEventsProps = {
   isEditingMode: boolean;
   initialValue?: RowValue;
   datasetColumn: DatasetColumn;
-  field?: Field;
+  field?: FieldWithMetadata;
   onSubmitValue: (key: string, value: RowValue) => void;
   onChangeValue: (key: string, value: RowValue) => void;
   error?: boolean;

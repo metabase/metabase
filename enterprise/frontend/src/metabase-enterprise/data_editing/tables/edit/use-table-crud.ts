@@ -15,7 +15,7 @@ import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
   DatasetData,
-  Field,
+  FieldWithMetadata,
   RowValue,
 } from "metabase-types/api";
 
@@ -55,7 +55,7 @@ export const useTableCRUD = ({
           ...acc,
           [item.name]: item,
         }),
-        {} as Record<Field["name"], Field>,
+        {} as Record<FieldWithMetadata["name"], FieldWithMetadata>,
       ) || {}
     );
   }, [tableMetadata]);
