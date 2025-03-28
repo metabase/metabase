@@ -38,15 +38,15 @@ interface Props extends OwnProps {
 
 const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
   const dispatch = useDispatch();
-
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
-
+  const fields = useMemo(() => table.fields ?? [], [table.fields]);
   const sortedFields = useMemo(
-    () => _.sortBy(table.fields ?? [], (field) => field.position),
-    [table.fields],
+    () => _.sortBy(fields ?? [], (field) => field.position),
+    [fields],
   );
+  const isDragDisabled = fields.length <= 1;
 
   const handleSortEnd = ({ itemIds: fieldOrder }: DragEndEvent) => {
     dispatch(Tables.actions.setFieldOrder(table, fieldOrder));
@@ -55,8 +55,6 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
   const handleFieldOrderChange = (value: TableFieldOrder) => {
     dispatch(Tables.actions.updateProperty(table, "field_order", value));
   };
-
-  const isDragDisabled = sortedFields.length <= 1;
 
   return (
     <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
