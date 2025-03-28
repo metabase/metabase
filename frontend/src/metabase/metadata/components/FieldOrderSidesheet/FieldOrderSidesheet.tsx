@@ -70,30 +70,32 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
 
   return (
     <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
-      <Flex pt={BUTTON_OUTLINE_WIDTH}>
-        <FieldOrderPicker
-          m={-BUTTON_OUTLINE_WIDTH}
-          p={BUTTON_OUTLINE_WIDTH}
-          value={table.field_order}
-          onChange={handleFieldOrderChange}
-        />
-      </Flex>
-
       <Flex direction="column" gap="sm">
-        <SortableList
-          getId={getId}
-          items={items}
-          renderItem={({ item, id }) => (
-            <SortableField
-              disabled={isDragDisabled}
-              field={item}
-              id={id}
-              key={id}
-            />
-          )}
-          sensors={[pointerSensor]}
-          onSortEnd={handleSortEnd}
-        />
+        <Flex pt={BUTTON_OUTLINE_WIDTH}>
+          <FieldOrderPicker
+            m={-BUTTON_OUTLINE_WIDTH}
+            p={BUTTON_OUTLINE_WIDTH}
+            value={table.field_order}
+            onChange={handleFieldOrderChange}
+          />
+        </Flex>
+
+        <Flex direction="column" gap="sm">
+          <SortableList
+            getId={getId}
+            items={items}
+            renderItem={({ item, id }) => (
+              <SortableField
+                disabled={isDragDisabled}
+                field={item}
+                id={id}
+                key={id}
+              />
+            )}
+            sensors={[pointerSensor]}
+            onSortEnd={handleSortEnd}
+          />
+        </Flex>
       </Flex>
     </Sidesheet>
   );
