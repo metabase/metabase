@@ -1,72 +1,34 @@
-import { PointerSensor, useSensor } from "@dnd-kit/core";
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { DragEndEvent } from "metabase/core/components/Sortable";
-import { SortableList } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
-import Tables from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { FieldId, SchemaId } from "metabase-types/api";
+import type { SchemaId } from "metabase-types/api";
 
 import MetadataTableColumn from "../MetadataTableColumn";
 
-interface OwnProps {
+interface Props {
   table: Table;
   idFields: Field[];
   selectedSchemaId: SchemaId;
 }
 
-interface DispatchProps {
-  onUpdateFieldOrder: (table: Table, fieldOrder: FieldId[]) => void;
-}
-
-type MetadataTableColumnListProps = OwnProps & DispatchProps;
-
-const mapDispatchToProps: DispatchProps = {
-  onUpdateFieldOrder: Tables.actions.setFieldOrder,
-};
-
 const getId = (field: Field) => field.getId();
 
-const MetadataTableColumnList = ({
+export const MetadataTableColumnList = ({
   table,
   idFields,
   selectedSchemaId,
-  onUpdateFieldOrder,
-}: MetadataTableColumnListProps) => {
+}: Props) => {
   const { fields = [], visibility_type } = table;
   const isHidden = visibility_type != null;
-
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 15 },
-  });
 
   const sortedFields = useMemo(
     () => _.sortBy(fields, (field) => field.position),
     [fields],
-  );
-
-  const handleSortEnd = useCallback(
-    ({ itemIds: fieldOrder }: DragEndEvent) => {
-      onUpdateFieldOrder(table, fieldOrder as number[]);
-    },
-    [table, onUpdateFieldOrder],
-  );
-
-  const renderItem = ({ item, id }: { item: Field; id: string | number }) => (
-    <MetadataTableColumn
-      key={id}
-      field={item}
-      idFields={idFields}
-      selectedDatabaseId={table.db_id}
-      selectedSchemaId={selectedSchemaId}
-      selectedTableId={table.id}
-    />
   );
 
   return (
@@ -86,18 +48,17 @@ const MetadataTableColumnList = ({
         </div>
       </div>
       <div>
-        <SortableList
-          items={sortedFields}
-          renderItem={renderItem}
-          getId={getId}
-          onSortEnd={handleSortEnd}
-          sensors={[pointerSensor]}
-          useDragOverlay={false}
-        />
+        {sortedFields.map((field) => (
+          <MetadataTableColumn
+            key={getId(field)}
+            field={field}
+            idFields={idFields}
+            selectedDatabaseId={table.db_id}
+            selectedSchemaId={selectedSchemaId}
+            selectedTableId={table.id}
+          />
+        ))}
       </div>
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(MetadataTableColumnList);
