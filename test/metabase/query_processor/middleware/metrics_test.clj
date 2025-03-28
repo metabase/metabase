@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.metrics-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.metrics-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
