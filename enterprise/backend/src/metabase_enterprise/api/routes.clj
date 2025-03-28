@@ -11,6 +11,7 @@
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.content-verification.api.routes]
+   [metabase-enterprise.data-editing-public.api]
    [metabase-enterprise.data-editing.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
@@ -64,6 +65,7 @@
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
    "/data-editing"               (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
+   "/data-editing-public"        (premium-handler metabase-enterprise.data-editing-public.api/routes :table-data-editing)
    "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
                                      (premium-handler :attached-dwh)
                                      (premium-handler :etl-connections))
