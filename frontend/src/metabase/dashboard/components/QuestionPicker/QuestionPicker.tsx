@@ -1,5 +1,5 @@
+import { useRegisterActions } from "kbar";
 import { useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -16,7 +16,6 @@ import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { Button, Flex, Icon, type IconProps } from "metabase/ui";
@@ -24,7 +23,7 @@ import type { Collection, CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
-
+import { addDashboardQuestion } from "./actions";
 interface QuestionPickerInnerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
   collectionsById: Record<CollectionId, Collection>;
@@ -69,32 +68,26 @@ function QuestionPickerInner({
     [databases],
   );
 
-  const onNewQuestion = (type: "native" | "notebook") => {
-    const newQuestionParams =
-      type === "notebook"
-        ? ({
-            mode: "notebook",
-            creationType: "custom_question",
-          } as const)
-        : ({
-            mode: "query",
-            type: "native",
-            creationType: "native_question",
-          } as const);
+  const onNewQuestion = (type: "native" | "notebook") =>
+    dispatch(addDashboardQuestion(type));
 
-    if (dashboard) {
-      dispatch(
-        push(
-          Urls.newQuestion({
-            ...newQuestionParams,
-            collectionId: dashboard.collection_id || undefined,
-            cardType: "question",
-            dashboardId: dashboard.id,
-          }),
-        ),
-      );
-    }
-  };
+  useRegisterActions(
+    [
+      {
+        name: "Add new question",
+        id: "new-question-dashboard",
+        shortcut: ["q"],
+        perform: () => onNewQuestion("notebook"),
+      },
+      {
+        name: "Add new native question",
+        id: "new-native-question-dashboard",
+        shortcut: ["n"],
+        perform: () => onNewQuestion("native"),
+      },
+    ],
+    [dashboard],
+  );
 
   return (
     <div className={S.questionPickerRoot}>
