@@ -16,7 +16,7 @@ import {
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { QueryDownloadPopover } from "./QueryDownloadPopover";
+import { QuestionDownloadWidget } from "./QuestionDownloadWidget";
 
 registerVisualizations();
 
@@ -57,7 +57,7 @@ const setup = ({
   setupCardQueryDownloadEndpoint(card, "json");
 
   renderWithProviders(
-    <QueryDownloadPopover
+    <QuestionDownloadWidget
       question={question}
       result={result}
       onDownload={onDownload}
@@ -70,7 +70,7 @@ const setup = ({
   return { onDownload };
 };
 
-describe("QueryDownloadPopover", () => {
+describe("QuestionDownloadWidget", () => {
   it("should display download options", async () => {
     setup();
 

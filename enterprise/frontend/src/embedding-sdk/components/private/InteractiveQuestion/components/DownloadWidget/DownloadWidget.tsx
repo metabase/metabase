@@ -1,8 +1,8 @@
-import { QueryDownloadPopover } from "metabase/query_builder/components/QueryDownloadPopover";
+import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import {
   type UseDownloadDataParams,
   useDownloadData,
-} from "metabase/query_builder/components/QueryDownloadPopover/use-download-data";
+} from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import type { StackProps } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../context";
@@ -23,7 +23,7 @@ const DownloadWidgetInner = ({
   });
 
   return (
-    <QueryDownloadPopover
+    <QuestionDownloadWidget
       question={question}
       result={result}
       onDownload={handleDownload}

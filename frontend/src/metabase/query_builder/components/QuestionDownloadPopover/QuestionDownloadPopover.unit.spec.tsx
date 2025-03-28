@@ -14,7 +14,7 @@ import {
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import QueryDownloadWidget from "./QueryDownloadWidget";
+import QuestionDownloadPopover from "./QuestionDownloadPopover";
 
 const TEST_CARD = createMockCard({
   dataset_query: createMockStructuredDatasetQuery({
@@ -45,11 +45,11 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
   setupCardQueryDownloadEndpoint(card, "json");
 
   renderWithProviders(
-    <QueryDownloadWidget question={question} result={result} />,
+    <QuestionDownloadPopover question={question} result={result} />,
   );
 };
 
-describe("QueryDownloadWidget", () => {
+describe("QuestionDownloadPopover", () => {
   it("should display query export options", async () => {
     setup();
 
