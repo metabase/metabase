@@ -186,7 +186,8 @@
 
 (defmethod serdes/hash-required-fields :model/Field
   [_field]
-  [:name :table_id :parent_id])
+  {:model :model/Field
+   :required-fields [:name :table_id :parent_id]})
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
