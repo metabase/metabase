@@ -1,3 +1,4 @@
+import { useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
@@ -5,7 +6,7 @@ import { t } from "ttag";
 
 import {
   useDatabaseListQuery,
-  // useSearchListQuery,
+  useSearchListQuery,
 } from "metabase/common/hooks";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -14,7 +15,7 @@ import { openDiagnostics } from "metabase/redux/app";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import {
   getHasDataAccess,
-  // getHasDatabaseWithActionsEnabled,
+  getHasDatabaseWithActionsEnabled,
   getHasNativeWrite,
 } from "metabase/selectors/data";
 
@@ -35,16 +36,16 @@ export const useCommandPaletteBasicActions = ({
   const { data: databases = [] } = useDatabaseListQuery({
     enabled: isLoggedIn,
   });
-  // const { data: models = [] } = useSearchListQuery({
-  //   query: { models: ["dataset"], limit: 1 },
-  //   enabled: isLoggedIn,
-  // });
+  const { data: models = [] } = useSearchListQuery({
+    query: { models: ["dataset"], limit: 1 },
+    enabled: isLoggedIn,
+  });
 
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);
-  // const hasDatabaseWithActionsEnabled =
-  //   getHasDatabaseWithActionsEnabled(databases);
-  // const hasModels = models.length > 0;
+  const hasDatabaseWithActionsEnabled =
+    getHasDatabaseWithActionsEnabled(databases);
+  const hasModels = models.length > 0;
 
   const openNewModal = useCallback(
     (modalId: string) => {
@@ -166,6 +167,18 @@ export const useCommandPaletteBasicActions = ({
     //   });
     // }
 
+    actions.push({
+      id: "report-issue",
+      name: t`Report an issue`,
+      section: "basic",
+      icon: "bug",
+      keywords: "bug, issue, problem, error, diagnostic",
+      shortcut: ["$mod+f1"],
+      perform: () => {
+        dispatch(openDiagnostics());
+      },
+    });
+
     const browseActions: RegisterShortcutProps[] = [
       {
         id: "browse-model",
@@ -209,8 +222,22 @@ export const useCommandPaletteBasicActions = ({
 
   useRegisterShortcut(initialActions, [initialActions]);
 
-  useRegisterShortcut(
-    [{ id: "report-issue", perform: () => dispatch(openDiagnostics()) }],
-    [openNewModal],
-  );
+  const openActionModal = [];
+
+  if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
+    openActionModal.push({
+      id: "create-action",
+      name: t`New action`,
+      section: "basic",
+      icon: "bolt",
+      perform: () => {
+        openNewModal("action");
+      },
+    });
+  }
+  useRegisterActions(openActionModal, [
+    hasDatabaseWithActionsEnabled,
+    hasNativeWrite,
+    hasModels,
+  ]);
 };
