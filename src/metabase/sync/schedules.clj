@@ -40,7 +40,7 @@
   "Schedule map for once an hour at a random minute of the hour."
   []
   ;; avoid around zero marks since it's busy time
-  (let [choices (range 5 50)]
+  (let [choices (range 5 55)]
     {:schedule_minute (rand-nth choices)
      :schedule_type   "hourly"}))
 
