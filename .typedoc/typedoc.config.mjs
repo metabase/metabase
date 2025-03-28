@@ -10,6 +10,7 @@ const config = {
   entryPoints: ["../resources/embedding-sdk/dist/index.d.ts"],
   router: "structure",
   customJs: "page-custom-logic.js",
+  customCss: "page-custom-styles.css",
   internalModule: "internal",
   collapseInternalModule: true,
   favicon: "../resources/frontend_client/favicon.ico",
