@@ -38,7 +38,8 @@ export type DataGridStylesNames =
   | "headerContainer"
   | "headerCell"
   | "bodyContainer"
-  | "bodyCell";
+  | "bodyCell"
+  | "footer";
 
 export type DataGridStylesProps = {
   classNames?: { [key in DataGridStylesNames]?: string };
@@ -366,6 +367,8 @@ export const DataGrid = function DataGrid<TData>({
             table={table}
             enablePagination={enablePagination}
             showRowsCount={showRowsCount}
+            style={styles?.footer}
+            className={classNames?.footer}
           />
         </div>
         {measureRoot}

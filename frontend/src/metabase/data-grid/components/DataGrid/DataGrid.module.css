@@ -121,12 +121,6 @@
   visibility: visible;
 }
 
-.footer {
-  position: sticky;
-  display: flex;
-  bottom: 0;
-}
-
 /** Used for storybook examples for class Styles Api */
 .__storybookStylesApiBodyCellExample {
   background-color: #eef6fd;

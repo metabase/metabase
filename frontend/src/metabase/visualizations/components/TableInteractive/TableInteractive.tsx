@@ -21,7 +21,7 @@ import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { DataGrid } from "metabase/data-grid";
+import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
   FOOTER_HEIGHT,
   HEADER_HEIGHT,
@@ -612,6 +612,14 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     };
   }, [tableTheme, backgroundColor]);
 
+  const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {
+    return {
+      footer: {
+        color: tableTheme.cell.textColor,
+      },
+    };
+  }, [tableTheme.cell.textColor]);
+
   const pageSize: number | undefined = useMemo(() => {
     if (settings["table.pagination"]) {
       const availableSpaceForRows = Math.max(
@@ -714,6 +722,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     >
       <DataGrid
         {...tableProps}
+        styles={dataGridStyles}
         isSortingDisabled={isDashboard && !isSettings}
         showRowsCount={isDashboard}
         emptyState={emptyState}

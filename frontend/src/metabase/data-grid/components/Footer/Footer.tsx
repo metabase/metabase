@@ -1,4 +1,5 @@
 import type { Table } from "@tanstack/react-table";
+import cx from "classnames";
 import { t } from "ttag";
 
 import { FOOTER_HEIGHT } from "metabase/data-grid/constants";
@@ -10,17 +11,21 @@ export interface FooterProps<TData> {
   table: Table<TData>;
   enablePagination?: boolean;
   showRowsCount?: boolean;
+  style?: React.CSSProperties;
+  className?: string;
 }
 
 export const Footer = <TData,>({
   table,
   showRowsCount,
   enablePagination,
+  className,
+  style,
 }: FooterProps<TData>) => {
   const wrapperAttributes = {
     "data-testid": "table-footer",
-    className: S.root,
-    style: { height: `${FOOTER_HEIGHT}px` },
+    className: cx(S.root, className),
+    style: { height: `${FOOTER_HEIGHT}px`, ...style },
   };
   const total = table.getPrePaginationRowModel().rows.length;
 
