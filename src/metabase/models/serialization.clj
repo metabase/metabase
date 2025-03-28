@@ -259,9 +259,8 @@
 (defn- cached-entity-id [entity]
   (if *skip-entity-id-calc*
     nil
-    (let [model (t2/model entity)
-          id (:id entity)
-          required-fields (hash-required-fields entity)]
+    (let [id (:id entity)
+          {:keys [model required-fields]} (hash-required-fields entity)]
       (if (and model id)
         (let [cached (swap! entity-id-cache
                             (fn [cache]

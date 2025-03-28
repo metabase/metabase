@@ -344,7 +344,8 @@
 
 (defmethod serdes/hash-required-fields :model/Database
   [_database]
-  [:name :engine])
+  {:model :model/Database
+   :required-fields [:name :engine]})
 
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]

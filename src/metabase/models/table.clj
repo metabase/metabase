@@ -133,7 +133,8 @@
 
 (defmethod serdes/hash-required-fields :model/Table
   [_table]
-  [:schema :name :db_id])
+  {:model :model/Table
+   :required-fields [:schema :name :db_id]})
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
