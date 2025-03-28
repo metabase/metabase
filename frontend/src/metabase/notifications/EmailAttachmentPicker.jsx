@@ -9,6 +9,10 @@ import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Box, Checkbox, Group, Icon, Text } from "metabase/ui";
 
+function getCardIdPair(card) {
+  return card.id + "|" + card.dashboard_card_id;
+}
+
 export default class EmailAttachmentPicker extends Component {
   DEFAULT_ATTACHMENT_TYPE = "csv";
 
@@ -56,7 +60,7 @@ export default class EmailAttachmentPicker extends Component {
       isEnabled: selectedCards.length > 0,
       selectedAttachmentType:
         this.attachmentTypeFor(selectedCards) || this.DEFAULT_ATTACHMENT_TYPE,
-      selectedCardIds: new Set(selectedCards.map(card => card.id)),
+      selectedCardIds: new Set(selectedCards.map(card => getCardIdPair(card))),
       isFormattingEnabled: getInitialFormattingState(selectedCards),
       isPivotingEnabled: getInitialPivotingState(selectedCards),
     };
@@ -90,8 +94,8 @@ export default class EmailAttachmentPicker extends Component {
     setPulse({
       ...pulse,
       cards: pulse.cards.map(card => {
-        card.include_csv = selectedCardIds.has(card.id) && isCsv;
-        card.include_xls = selectedCardIds.has(card.id) && isXls;
+        card.include_csv = selectedCardIds.has(getCardIdPair(card)) && isCsv;
+        card.include_xls = selectedCardIds.has(getCardIdPair(card)) && isXls;
         card.format_rows = isCsv && isFormattingEnabled; // Excel always uses formatting
         card.pivot_results = card.display === "pivot" && isPivotingEnabled;
         return card;
@@ -100,13 +104,13 @@ export default class EmailAttachmentPicker extends Component {
   }
 
   cardIds() {
-    return new Set(this.props.cards.map(card => card.id));
+    return new Set(this.props.cards.map(card => getCardIdPair(card)));
   }
 
   cardIdsToCards(cardIds) {
     const { pulse } = this.props;
 
-    return pulse.cards.filter(card => cardIds.has(card.id));
+    return pulse.cards.filter(card => cardIds.has(getCardIdPair(card)));
   }
 
   attachmentTypeFor(cards) {
@@ -142,7 +146,7 @@ export default class EmailAttachmentPicker extends Component {
    */
   onToggleCard(card) {
     this.setState(({ selectedAttachmentType, selectedCardIds }) => {
-      const id = card.id;
+      const id = getCardIdPair(card);
       const attachmentType =
         this.attachmentTypeFor(this.cardIdsToCards(selectedCardIds)) ||
         selectedAttachmentType;
@@ -301,7 +305,7 @@ export default class EmailAttachmentPicker extends Component {
                     <Checkbox
                       mb="1rem"
                       mr="0.5rem"
-                      checked={selectedCardIds.has(card.id)}
+                      checked={selectedCardIds.has(getCardIdPair(card))}
                       label={card.name}
                       onChange={() => {
                         this.onToggleCard(card);
