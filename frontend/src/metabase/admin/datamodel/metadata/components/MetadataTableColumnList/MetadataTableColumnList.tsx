@@ -1,13 +1,9 @@
-import type { UniqueIdentifier } from "@dnd-kit/core";
 import { PointerSensor, useSensor } from "@dnd-kit/core";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Grabber from "metabase/components/Grabber";
 import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { SortableList } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
@@ -63,13 +59,13 @@ const MetadataTableColumnList = ({
   );
 
   const renderItem = ({ item, id }: { item: Field; id: string | number }) => (
-    <SortableColumn
-      key={`sortable-${id}`}
-      id={id}
+    <MetadataTableColumn
+      key={id}
       field={item}
       idFields={idFields}
-      table={table}
+      selectedDatabaseId={table.db_id}
       selectedSchemaId={selectedSchemaId}
+      selectedTableId={table.id}
     />
   );
 
@@ -99,58 +95,6 @@ const MetadataTableColumnList = ({
           useDragOverlay={false}
         />
       </div>
-    </div>
-  );
-};
-
-interface SortableColumnProps {
-  id: UniqueIdentifier;
-  field: Field;
-  idFields: Field[];
-  table: Table;
-  selectedSchemaId: SchemaId;
-}
-
-const SortableColumn = ({
-  id,
-  field,
-  table,
-  idFields,
-  selectedSchemaId,
-}: SortableColumnProps) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id,
-  });
-
-  const dragHandle = (
-    <Grabber style={{ width: 10 }} {...attributes} {...listeners} />
-  );
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        position: "relative",
-        zIndex: isDragging ? 100 : 1,
-      }}
-    >
-      <MetadataTableColumn
-        field={field}
-        idFields={idFields}
-        selectedDatabaseId={table.db_id}
-        selectedSchemaId={selectedSchemaId}
-        selectedTableId={table.id}
-        dragHandle={dragHandle}
-      />
     </div>
   );
 };
