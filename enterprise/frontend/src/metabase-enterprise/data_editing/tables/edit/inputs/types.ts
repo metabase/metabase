@@ -1,5 +1,9 @@
 import type { MantineSize, TextInputProps } from "metabase/ui";
-import type { DatasetColumn, Field, RowValue } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  FieldWithMetadata,
+  RowValue,
+} from "metabase-types/api";
 
 export type EditingBodyCellConditionalStylesNames =
   | "wrapper"
@@ -10,7 +14,7 @@ export type EditingBodyCellConditionalStylesNames =
 export interface EditingBodyPrimitiveProps {
   autoFocus?: boolean;
   datasetColumn: DatasetColumn;
-  field?: Field;
+  field?: FieldWithMetadata;
   initialValue: RowValue;
   inputProps?: {
     size?: MantineSize;
