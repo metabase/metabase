@@ -12,6 +12,7 @@ import {
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -99,7 +100,12 @@ const PinnedQuestionCard = ({
                 errorIcon={errorIcon}
                 showTitle
                 isDashboard
-                isPinnedQuestion
+                labelRightSection={
+                  <PLUGIN_MODERATION.EntityModerationIcon
+                    question={question}
+                    filled
+                  />
+                }
               />
             )
           }

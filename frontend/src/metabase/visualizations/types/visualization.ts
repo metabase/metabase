@@ -173,6 +173,8 @@ export interface VisualizationProps {
   onUpdateWarnings?: any;
 
   dispatch: Dispatch;
+
+  labelRightSection?: React.ReactNode;
 }
 
 export type VisualizationPassThroughProps = {
@@ -180,7 +182,6 @@ export type VisualizationPassThroughProps = {
   canToggleSeriesVisibility?: boolean;
   isObjectDetail?: boolean;
   isQueryBuilder?: boolean;
-  isPinnedQuestion?: boolean;
   queryBuilderMode?: QueryBuilderMode;
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;
