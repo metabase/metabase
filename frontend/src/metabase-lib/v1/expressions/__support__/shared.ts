@@ -76,12 +76,14 @@ export const total = ref(ORDERS.TOTAL);
 export const subtotal = ref(ORDERS.SUBTOTAL);
 export const tax = ref(ORDERS.TAX);
 export const userId = ref(ORDERS.USER_ID);
-export const userName = ref(PEOPLE.NAME);
-export const price = ref(PRODUCTS.PRICE);
-export const ean = ref(PRODUCTS.EAN);
-export const name = ref(PEOPLE.NAME);
-export const category = ref(PRODUCTS.CATEGORY);
-export const email = ref(PEOPLE.EMAIL);
+export const userName = ref(PEOPLE.NAME, { "source-field": ORDERS.USER_ID });
+export const price = ref(PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID });
+export const ean = ref(PRODUCTS.EAN, { "source-field": ORDERS.PRODUCT_ID });
+export const name = ref(PEOPLE.NAME, { "source-field": ORDERS.USER_ID });
+export const category = ref(PRODUCTS.CATEGORY, {
+  "source-field": ORDERS.PRODUCT_ID,
+});
+export const email = ref(PEOPLE.EMAIL, { "source-field": ORDERS.USER_ID });
 export const bool = ["expression", "bool", { "base-type": "type/Boolean" }];
 export const segment = checkNotNull(
   metadata.segment(SEGMENT_ID),
