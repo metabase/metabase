@@ -95,10 +95,11 @@
         res  (perform-bulk-action! :bulk/create table-id rows)]
     (doseq [row (:created-rows res)]
       (events/publish-event! :event/action.success
-                             {:table_id    table-id
-                              :action      :row/create
+                             {:action      :row/create
                               :actor_id    api/*current-user-id*
-                              :result      {:created_row row}}))
+                              :table_id    table-id
+                              :result      {:created_row row
+                                            :table-id    table-id}}))
     (let [pk-field   (table-id->pk table-id)
           ;; actions code does not return coerced values
           ;; right now the FE works off qp outputs, which coerce output row data
@@ -127,7 +128,8 @@
             (events/publish-event! :event/action.success
                                    {:action   :row/updated
                                     :actor_id api/*current-user-id*
-                                    :result   {:table_id   table-id
+                                    :table_id table-id
+                                    :result   {:table-id   table-id
                                                :after      after-row
                                                :before     row-before
                                                :raw-update row}}))))
@@ -143,10 +145,12 @@
         res         (perform-bulk-action! :bulk/delete table-id rows)]
     (doseq [row rows]
       (events/publish-event! :event/action.success
-                             {:action      :row/delete
-                              :table_id    table-id
-                              :actor_id    api/*current-user-id*
-                              :result      {:deleted_row (get id->db-rows (get-row-pk pk-field row))}}))
+                             {:action   :row/delete
+                              :actor_id api/*current-user-id*
+                              :table_id table-id
+                              :result   {:table-id    table-id
+                                         :deleted_row (get id->db-rows (get-row-pk pk-field row))
+                                         :table_id    table-id}}))
     res))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
