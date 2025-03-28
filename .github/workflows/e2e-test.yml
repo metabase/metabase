@@ -80,7 +80,18 @@ jobs:
         if: inputs.name == 'embedding-sdk'
         uses: ./.github/actions/run-embedding-sdk-storybook
 
+      # Check if we need to download a jar or if it's already available
+      - name: Check for existing jar
+        id: check_jar
+        run: |
+          if [ -f "target/uberjar/metabase.jar" ]; then
+            echo "jar_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "jar_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
+        if: steps.check_jar.outputs.jar_exists == 'false'
         uses: actions/download-artifact@v4
         with:
           name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar

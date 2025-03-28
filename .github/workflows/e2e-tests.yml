@@ -48,9 +48,23 @@ jobs:
               node_version: requirements.node,
             };
 
-  build:
-    needs: [get-build-requirements]
+  check-build-needed:
     if: ${{ !cancelled() && !inputs.skip }}
+    runs-on: ubuntu-22.04
+    outputs:
+      build_needed: ${{ steps.check_changes.outputs.build_needed }}
+      parent_commit: ${{ steps.check_changes.outputs.parent_commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # We need the parent commit for comparison
+      - name: Check if build is needed
+        id: check_changes
+        uses: ./.github/actions/check-if-build-needed
+
+  build:
+    needs: [get-build-requirements, check-build-needed]
+    if: ${{ !cancelled() && !inputs.skip && needs.check-build-needed.outputs.build_needed == 'true' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     strategy:
@@ -74,6 +88,62 @@ jobs:
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
 
       - name: Build uberjar with ./bin/build.sh
+        timeout-minutes: 10
+        run:  ./bin/build.sh
+        shell: bash
+
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
+  download-previous-jar:
+    needs: [check-build-needed]
+    if: ${{ !cancelled() && !inputs.skip && needs.check-build-needed.outputs.build_needed == 'false' && needs.check-build-needed.outputs.parent_commit != '' }}
+    runs-on: ubuntu-22.04
+    outputs:
+      found_artifact: ${{ steps.download_ee.outputs.found_artifact && steps.download_oss.outputs.found_artifact }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download previous EE jar
+        id: download_ee
+        uses: ./.github/actions/e2e-download-uberjar
+        with:
+          edition: ee
+          commit: ${{ needs.check-build-needed.outputs.parent_commit }}
+      - name: Download previous OSS jar
+        id: download_oss
+        uses: ./.github/actions/e2e-download-uberjar
+        with:
+          edition: oss
+          commit: ${{ needs.check-build-needed.outputs.parent_commit }}
+
+  build-fallback:
+    needs: [get-build-requirements, download-previous-jar]
+    if: ${{ !cancelled() && !inputs.skip && needs.download-previous-jar.result == 'success' && needs.download-previous-jar.outputs.found_artifact != 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+      # make sure that builds on release branches get licenses, because we use them for releases
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+        with:
+          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: uberjar
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
+
+      - name: Build uberjar with ./bin/build.sh (fallback)
         timeout-minutes: 10
         run:  ./bin/build.sh
         shell: bash
@@ -120,8 +190,13 @@ jobs:
     needs:
       - e2e-matrix-builder
       - build
+      - download-previous-jar
+      - build-fallback
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() &&
+      (needs.build.result == 'success' ||
+       (needs.download-previous-jar.result == 'success' && needs.download-previous-jar.outputs.found_artifact == 'true') ||
+       needs.build-fallback.result == 'success')
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -139,9 +214,12 @@ jobs:
   flaky-e2e-tests:
     name: Flaky e2e Tests
     uses: ./.github/workflows/e2e-test.yml
-    needs: build
+    needs: [build, download-previous-jar, build-fallback]
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() &&
+      (needs.build.result == 'success' ||
+       (needs.download-previous-jar.result == 'success' && needs.download-previous-jar.outputs.found_artifact == 'true') ||
+       needs.build-fallback.result == 'success')
     secrets: inherit
     with:
       name: Flaky
@@ -176,7 +254,7 @@ jobs:
           fi
 
   pr-env:
-    needs: [build]
+    needs: [build, download-previous-jar, build-fallback]
     if: |
       !cancelled() &&
       contains(github.event.pull_request.labels.*.name, 'PR-Env')
