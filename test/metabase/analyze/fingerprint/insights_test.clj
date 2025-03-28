@@ -215,9 +215,9 @@
                                               [["2024-08-09" 10.0]
                                                ["2024-08-10" 20.0]]))
       nil?  {:base_type :type/Text}
-         ;; Extraction unit (day-of-week) is classified as a numeric column and doesn't produce insights here
+      ;; Extraction unit (day-of-week) is classified as a numeric column and doesn't produce insights here
       nil?  {:base_type :type/Text :unit :day-of-week}
-         ;; Spot check truncation units — should all generate insights
+      ;; Spot check truncation units — should all generate insights
       some? {:base_type :type/Text :unit :day}
       some? {:base_type :type/Text :unit :month}
       some? {:base_type :type/Text :unit :year})))
