@@ -3,7 +3,7 @@
     <p>{{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has deleted a row from {{payload.event_info.table.name}}</p>
     <p>Deleted row:</p>
     <ul>
-      {{#each payload.event_info.deleted_row}}
+      {{#each payload.event_info.result.deleted_row}}
         {{#if @value}}<li>{{@key}}: {{@value}}</li>{{/if}}
       {{/each}}
     </ul>

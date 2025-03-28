@@ -198,7 +198,7 @@
                 :details      {:type :slack/handlebars-text
                                :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has created a row for {{payload.event_info.table.name}}"
                                           "\n\n\n"
-                                          "{{#each payload.event_info.created_row}}\n"
+                                          "{{#each payload.event_info.result.created_row}}\n"
                                           "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
                                           "{{/each}}")}}
    :row/update {:channel_type :channel/slack
@@ -206,14 +206,14 @@
                                :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has updated a from {{payload.event_info.table.name}}\n\n"
                                           "## Update:"
                                           "\n\n"
-                                          "{{#each payload.event_info.update}}\n"
+                                          "{{#each payload.event_info.result.update}}\n"
                                           "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
                                           "{{/each}}")}}
    :row/delete {:channel_type :channel/slack
                 :details      {:type :slack/handlebars-text
                                :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has deleted a from {{payload.event_info.table.name}}"
                                           "\n\n"
-                                          "{{#each payload.event_info.deleted_row}}\n"
+                                          "{{#each payload.event_info.result.deleted_row}}\n"
                                           "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
                                           "{{/each}}")}}})
 
@@ -222,8 +222,10 @@
   (let [event-topic (:event_topic payload)
         template    (or template
                         (when (= :event/action.success event-topic)
-                          (get action->template (:action payload))))]
-    (assert template (str "No template found for event " event-topic))
-    (for [channel-id (map notification-recipient->channel-id recipients)]
-      {:channel-id  channel-id
-       :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]})))
+                          (get action->template (:action (:event_info payload)))))]
+    #_(assert template (str "No template found for event " event-topic))
+    (if-not template
+      []
+      (for [channel-id (map notification-recipient->channel-id recipients)]
+        {:channel-id  channel-id
+         :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]}))))

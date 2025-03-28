@@ -15,6 +15,7 @@
    [metabase.upload :as-alias upload]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (defn- perform-bulk-action! [action-kw table-id rows]
@@ -95,11 +96,12 @@
         res  (perform-bulk-action! :bulk/create table-id rows)]
     (doseq [row (:created-rows res)]
       (events/publish-event! :event/action.success
-                             {:action      :row/create
-                              :actor_id    api/*current-user-id*
-                              :table_id    table-id
-                              :result      {:created_row row
-                                            :table-id    table-id}}))
+                             {:action        :row/create
+                              :invocation_id (nano-id/nano-id)
+                              :actor_id      api/*current-user-id*
+                              :table_id      table-id
+                              :result        {:created_row row
+                                              :table-id    table-id}}))
     (let [pk-field   (table-id->pk table-id)
           ;; actions code does not return coerced values
           ;; right now the FE works off qp outputs, which coerce output row data
@@ -127,6 +129,7 @@
           (when (pos-int? result)
             (events/publish-event! :event/action.success
                                    {:action   :row/updated
+                                    :invocation_id (nano-id/nano-id)
                                     :actor_id api/*current-user-id*
                                     :table_id table-id
                                     :result   {:table-id   table-id
@@ -146,6 +149,7 @@
     (doseq [row rows]
       (events/publish-event! :event/action.success
                              {:action   :row/delete
+                              :invocation_id (nano-id/nano-id)
                               :actor_id api/*current-user-id*
                               :table_id table-id
                               :result   {:table-id    table-id

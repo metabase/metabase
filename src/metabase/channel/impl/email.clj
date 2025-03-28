@@ -324,15 +324,17 @@
   [:channel/email :notification/system-event]
   [_channel-type
    notification-payload #_:- #_notification/NotificationPayload
-   template             :- ::models.channel/ChannelTemplate
+   template             :- [:maybe ::models.channel/ChannelTemplate]
    recipients           :- [:sequential ::models.notification/NotificationRecipient]]
   (let [event-topic (get-in notification-payload [:payload :event_topic])
         template    (or template
                         (when (= :event/action.success event-topic)
-                          (get action->template (:action (:payload notification-payload)))))]
-    (assert template (str "No template found for event " event-topic))
-    [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
-                      (notification-recipients->emails recipients notification-payload)
-                      [{:type    "text/html; charset=utf-8"
-                        :content (channel.template/render-template template notification-payload)}]
-                      (-> template :details :recipient-type keyword))]))
+                          (get action->template (get-in notification-payload [:payload :event_info :action]))))]
+    #_(assert template (str "No template found for event " event-topic))
+    (if-not template
+      []
+      [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
+                        (notification-recipients->emails recipients notification-payload)
+                        [{:type    "text/html; charset=utf-8"
+                          :content (channel.template/render-template template notification-payload)}]
+                        (-> template :details :recipient-type keyword))])))
