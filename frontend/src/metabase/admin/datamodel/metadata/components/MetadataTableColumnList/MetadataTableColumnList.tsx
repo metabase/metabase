@@ -8,32 +8,16 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Grabber from "metabase/components/Grabber";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import AccordionList from "metabase/core/components/AccordionList";
 import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { SortableList } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
-import { Icon } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { FieldId, SchemaId, TableFieldOrder } from "metabase-types/api";
+import type { FieldId, SchemaId } from "metabase-types/api";
 
 import MetadataTableColumn from "../MetadataTableColumn";
-
-import { SortButtonContainer } from "./MetadataTableColumnList.styled";
-
-const ORDER_SECTIONS = [
-  {
-    items: [
-      { name: t`Database`, value: "database" },
-      { name: t`Alphabetical`, value: "alphabetical" },
-      { name: t`Custom`, value: "custom" },
-      { name: t`Smart`, value: "smart" },
-    ],
-  },
-];
 
 interface OwnProps {
   table: Table;
@@ -42,14 +26,12 @@ interface OwnProps {
 }
 
 interface DispatchProps {
-  onUpdateTable: (table: Table, name: string, value: unknown) => void;
   onUpdateFieldOrder: (table: Table, fieldOrder: FieldId[]) => void;
 }
 
 type MetadataTableColumnListProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
-  onUpdateTable: Tables.actions.updateProperty,
   onUpdateFieldOrder: Tables.actions.setFieldOrder,
 };
 
@@ -59,7 +41,6 @@ const MetadataTableColumnList = ({
   table,
   idFields,
   selectedSchemaId,
-  onUpdateTable,
   onUpdateFieldOrder,
 }: MetadataTableColumnListProps) => {
   const { fields = [], visibility_type } = table;
@@ -106,12 +87,6 @@ const MetadataTableColumnList = ({
               <span>{t`Type`}</span>
             </div>
           </div>
-          <SortButtonContainer>
-            <TableFieldOrderDropdown
-              table={table}
-              onUpdateTable={onUpdateTable}
-            />
-          </SortButtonContainer>
         </div>
       </div>
       <div>
@@ -125,54 +100,6 @@ const MetadataTableColumnList = ({
         />
       </div>
     </div>
-  );
-};
-
-interface TableFieldOrderOption {
-  name: string;
-  value: TableFieldOrder;
-}
-
-interface TableFieldOrderDropdownProps {
-  table: Table;
-  onUpdateTable: (table: Table, name: string, value: unknown) => void;
-}
-
-const TableFieldOrderDropdown = ({
-  table,
-  onUpdateTable,
-}: TableFieldOrderDropdownProps) => {
-  return (
-    <TippyPopoverWithTrigger
-      triggerContent={
-        <span
-          className={cx(CS.textBrand, CS.textBold)}
-          style={{ textTransform: "none", letterSpacing: 0 }}
-          aria-label={t`Sort`}
-        >
-          <Icon
-            className={CS.ml1}
-            name="sort_arrows"
-            size={14}
-            style={{ transform: "translateY(2px)" }}
-          />
-        </span>
-      }
-      popoverContent={({ closePopover }) => (
-        <AccordionList
-          className={CS.textBrand}
-          sections={ORDER_SECTIONS}
-          alwaysExpanded
-          itemIsSelected={({ value }: TableFieldOrderOption) =>
-            value === table.field_order
-          }
-          onChange={({ value }: TableFieldOrderOption) => {
-            onUpdateTable(table, "field_order", value);
-            closePopover();
-          }}
-        />
-      )}
-    />
   );
 };
 
