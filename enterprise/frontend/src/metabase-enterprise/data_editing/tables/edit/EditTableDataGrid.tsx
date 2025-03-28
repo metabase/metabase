@@ -13,7 +13,7 @@ import { Box } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import type {
   DatasetData,
-  Field,
+  FieldWithMetadata,
   RowValue,
   RowValues,
 } from "metabase-types/api";
@@ -27,7 +27,7 @@ import { useTableEditing } from "./use-table-editing";
 
 type EditTableDataGridProps = {
   data: DatasetData;
-  fieldMetadataMap: Record<Field["name"], Field>;
+  fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onRowExpandClick: (rowIndex: number) => void;
 };

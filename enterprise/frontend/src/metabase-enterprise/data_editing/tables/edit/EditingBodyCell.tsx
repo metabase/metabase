@@ -3,7 +3,7 @@ import { useCallback } from "react";
 
 import type {
   DatasetColumn,
-  Field,
+  FieldWithMetadata,
   RowValue,
   RowValues,
 } from "metabase-types/api";
@@ -15,7 +15,7 @@ import { EditingBodyCellConditional } from "./inputs";
 
 interface EditingBodyCellWrapperProps<TRow, TValue> {
   column: DatasetColumn;
-  field?: Field;
+  field?: FieldWithMetadata;
   cellContext: CellContext<TRow, TValue>;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onCellEditCancel: () => void;
