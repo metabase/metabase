@@ -27,14 +27,14 @@
   (testing "sending a notification will call render on all of its handlers"
     (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
-                     :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")
-                     :model/ChannelTemplate tmpl  {:channel_type notification.tu/test-channel-type}]
+                     :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")]
         (let [n                 (models.notification/create-notification!
                                  {:payload_type :notification/system-event}
                                  nil
                                  [{:channel_type notification.tu/test-channel-type
                                    :channel_id   (:id chn-1)
-                                   :template_id  (:id tmpl)
+                                   :template     {:name "my template"
+                                                  :channel_type notification.tu/test-channel-type}
                                    :recipients   [{:type    :notification-recipient/user
                                                    :user_id (mt/user->id :crowberto)}]}
                                   {:channel_type notification.tu/test-channel-type
@@ -65,7 +65,7 @@
             (testing "render-notification is called on all handlers with the correct channel and template"
               (is (=? [{:channel-type (keyword notification.tu/test-channel-type)
                         :notification-payload expected-notification-payload
-                        :template     tmpl
+                        :template     {:name "my template"}
                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}
                        {:channel-type (keyword notification.tu/test-channel-type)
                         :notification-payload expected-notification-payload
