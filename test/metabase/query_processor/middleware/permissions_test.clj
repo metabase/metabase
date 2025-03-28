@@ -434,8 +434,8 @@
             ;; be extra-sure in this case that the user is getting rejected for data perms and not card/collection perms
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403 "dataset" (assoc (mt/mbql-query venues {:limit 1})
-                                                                           :info {:card-id (u/the-id card)}))))))))))
+                   (mt/user-http-request :rasta :post 403 "dataset" {:query (assoc (mt/mbql-query venues {:limit 1})
+                                                                                   :info {:card-id (u/the-id card)})})))))))))
 
 (deftest e2e-ignore-user-supplied-perms-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `::query-perms/perms` in the query"

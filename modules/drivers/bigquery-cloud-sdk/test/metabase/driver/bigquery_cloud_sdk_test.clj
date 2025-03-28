@@ -689,7 +689,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should be able to query a Table that has a :type/Integer column marked as a PK or FK"
       (is (= [[1 "Plato Yeshua" "2014-04-01T08:30:00Z"]]
-             (mt/rows (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1, :order-by [[:asc $id]]}))))))))
+             (mt/rows (mt/user-http-request :rasta :post 202 "dataset" {:query (mt/mbql-query users {:limit 1, :order-by [[:asc $id]]})})))))))
 
 (deftest return-errors-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1222,7 +1222,7 @@
             (let [query  {:database (mt/id)
                           :type "native"
                           :native {:query (format "select * from `%s.orders` limit 100" test-db-name)}}
-                  result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+                  result (mt/user-http-request :crowberto :post 202 "dataset" {:query query})]
               (is (= "failed" (:status result)))
               (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")
                      (:error result)))))))

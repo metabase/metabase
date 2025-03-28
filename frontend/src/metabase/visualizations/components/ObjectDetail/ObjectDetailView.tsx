@@ -193,7 +193,7 @@ export function ObjectDetailView({
         ? Lib.toLegacyQuery(filterByPk(query, pkField, zoomedRowID))
         : undefined;
 
-      MetabaseApi.dataset(datasetQuery)
+      MetabaseApi.dataset({ query: datasetQuery })
         .then((result) => {
           if (result?.data?.rows?.length > 0) {
             const newRow = result.data.rows[0];

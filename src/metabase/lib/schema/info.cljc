@@ -18,8 +18,9 @@
    :collection
    :map-tiles
    :pulse
-   :dashboard-subscription
    :dashboard
+   :dashboard-ad-hoc
+   :dashboard-subscription
    :question
    :csv-download
    :xlsx-download
