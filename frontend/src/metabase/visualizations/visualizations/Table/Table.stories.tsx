@@ -3,6 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import {
   SdkVisualizationWrapper,
   VisualizationWrapper,
+  createWaitForResizeToStopDecorator,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box } from "metabase/ui";
@@ -18,6 +19,7 @@ registerVisualization(Table);
 
 export default {
   title: "viz/Table",
+  decorators: [createWaitForResizeToStopDecorator()],
 };
 
 const DefaultTemplate: StoryFn<{
