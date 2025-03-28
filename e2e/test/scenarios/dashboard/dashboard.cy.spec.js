@@ -1264,6 +1264,12 @@ describe("scenarios > dashboard", () => {
         assertPreventLeave();
         H.saveDashboard();
 
+        cy.findByRole("tab", { name: "Copy of Tab 1" }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+
         // remove tab
         H.editDashboard();
         H.deleteTab("Copy of Tab 1");
@@ -1271,7 +1277,7 @@ describe("scenarios > dashboard", () => {
         // can be a side effect
         cy.url().should("include", "tab-1");
         assertPreventLeave();
-        H.saveDashboard();
+        H.saveDashboard({ waitMs: 100 });
 
         // rename tab
         H.editDashboard();
