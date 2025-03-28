@@ -122,6 +122,16 @@
                   :embedding_version nil}
                  (format-response (most-recent-query-execution-for-query query)))))))))
 
+(deftest dashboard-ad-hoc-context-test
+  (let [query  (mt/mbql-query checkins {:aggregation [[:count]]})
+        result (mt/user-http-request :crowberto :post 202 "dataset" {:query query :dashboard_id 1})]
+    (testing "should return correct query results"
+      (is (=? {:data {:rows [[1000]]}}
+              (format-response result))))
+    (testing "should set `:context` to `:dashboard-ad-hoc` when `:dashboard_id` is passed"
+      (is (=? {:context :dashboard-ad-hoc}
+              (format-response (most-recent-query-execution-for-query query)))))))
+
 (deftest failure-test
   ;; clear out recent query executions!
   (t2/delete! :model/QueryExecution)
