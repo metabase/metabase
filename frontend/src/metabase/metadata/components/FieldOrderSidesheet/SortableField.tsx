@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { Box, Flex, Group, Icon, Text } from "metabase/ui";
+import { Box, Flex, Group, Icon, Text, isValidIconName } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 
 import S from "./SortableField.module.css";
@@ -20,9 +20,7 @@ export const SortableField = ({ disabled, field, id }: Props) => {
   const { isDragging, transform, transition, setNodeRef } = useSortable({ id });
   const draggable = !disabled;
   const label = field.displayName() || NULL_DISPLAY_VALUE;
-
-  // const icon = null; // TODO
-  const icon = "string"; // TODO
+  const icon = field.icon();
 
   return (
     <Sortable disabled={disabled} id={id}>
@@ -56,7 +54,7 @@ export const SortableField = ({ disabled, field, id }: Props) => {
           <Group flex="0 0 auto" gap="sm" ml="xs" wrap="nowrap">
             {draggable && <Icon className={S.grabber} name="grabber" />}
 
-            {icon && <Icon name={icon} />}
+            {isValidIconName(icon) && <Icon name={icon} />}
           </Group>
 
           <Text className={S.label} flex="1" fw="bold" lh="normal" mr="xs">
