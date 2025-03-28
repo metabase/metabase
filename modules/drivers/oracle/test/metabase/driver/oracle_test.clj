@@ -635,10 +635,7 @@
                          :type         :dimension
                          :widget-type :date/relative
                          :dimension    [:field (mt/id
-                                                :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]}}})
-              hours (assoc query :parameters [{:type   :date/relative
-                                               :value  "past3hours"
-                                               :target [:dimension [:template-tag "date_filter"]]}])]
+                                                :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]}}})]
           (doseq [value ["past30days" "past3hours"]
                   :let [query-with-params (assoc query :parameters [{:type   :date/relative
                                                                      :value  value
