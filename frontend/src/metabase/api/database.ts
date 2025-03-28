@@ -173,7 +173,7 @@ export const databaseApi = Api.injectEndpoints({
         ]),
     }),
     persistDatabase: builder.mutation<void, DatabaseId>({
-      query: id => ({
+      query: (id) => ({
         method: "POST",
         url: `/api/persist/database/${id}/persist`,
       }),
@@ -181,7 +181,7 @@ export const databaseApi = Api.injectEndpoints({
         invalidateTags(error, [idTag("database", id)]),
     }),
     unpersistDatabase: builder.mutation<void, DatabaseId>({
-      query: id => ({
+      query: (id) => ({
         method: "POST",
         url: `/api/persist/database/${id}/unpersist`,
       }),
@@ -189,7 +189,7 @@ export const databaseApi = Api.injectEndpoints({
         invalidateTags(error, [idTag("database", id)]),
     }),
     dismissDatabaseSyncSpinner: builder.mutation<void, DatabaseId>({
-      query: id => ({
+      query: (id) => ({
         method: "POST",
         url: `/api/database/${id}/dismiss_spinner`,
       }),

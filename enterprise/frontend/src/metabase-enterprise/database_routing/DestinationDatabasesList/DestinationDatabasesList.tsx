@@ -56,7 +56,7 @@ export const DestinationDatabasesList = ({
           <>
             <Text>{t`Name`}</Text>
             <Divider my="sm" />
-            {destinationDatabases.slice(0, previewCount).map(db => (
+            {destinationDatabases.slice(0, previewCount).map((db) => (
               <DestinationDatabasesListItem
                 key={db.id}
                 database={db}

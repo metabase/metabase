@@ -341,7 +341,7 @@ export const UploadSettingsForm = ({
       <UploadSettingsFormView
         databases={databases}
         uploadsSettings={uploadsSettings}
-        updateSettings={async settings => {
+        updateSettings={async (settings) => {
           dispatch(updateSettings(settings));
         }}
         saveStatusRef={saveStatusRef}

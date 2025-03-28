@@ -110,7 +110,7 @@ describe("admin > database > database routing", () => {
       cy.log("should be able to bulk create destination dbs via API");
       createDestinationDatabasesViaAPI({
         router_database_id: 2,
-        databases: _.range(2, 7).map(i => ({
+        databases: _.range(2, 7).map((i) => ({
           ...BASE_POSTGRES_MIRROR_DB_INFO,
           name: `Destination DB ${i}`,
         })),
@@ -366,8 +366,8 @@ describe("admin > database > database routing", () => {
         dbRoutingSection().should("not.exist");
 
         cy.log("should not show for attached data warehouses");
-        cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
-          req.reply(res => {
+        cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, (req) => {
+          req.reply((res) => {
             res.body.is_attached_dwh = true;
             res.body.is_sample = false;
           });

@@ -114,7 +114,7 @@ export const DatabaseRoutingSection = ({
                 id="database-routing-toggle"
                 checked={tempEnabled || hasDbRoutingEnabled(database)}
                 disabled={!!disabledFeatMsg || !isAdmin}
-                onChange={e => handleToggle(e.currentTarget.checked)}
+                onChange={(e) => handleToggle(e.currentTarget.checked)}
               />
             </Box>
           </Tooltip>

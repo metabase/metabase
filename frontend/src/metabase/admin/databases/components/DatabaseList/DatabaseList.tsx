@@ -48,7 +48,7 @@ export const DatabaseList = ({
   const error = deletionError || addSampleDatabaseError;
 
   const hasSampleDatabase = useMemo(() => {
-    return databases.some(db => db.is_sample);
+    return databases.some((db) => db.is_sample);
   }, [databases]);
 
   return (
