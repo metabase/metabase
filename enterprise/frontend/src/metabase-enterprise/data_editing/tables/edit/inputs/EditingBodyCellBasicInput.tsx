@@ -6,6 +6,7 @@ export const EditingBodyCellBasicInput = ({
   autoFocus,
   inputProps,
   initialValue,
+  classNames,
   onSubmit,
   onCancel,
   onChangeValue,
@@ -27,6 +28,10 @@ export const EditingBodyCellBasicInput = ({
       }}
       onBlur={event => {
         onSubmit(event.currentTarget.value || null);
+      }}
+      classNames={{
+        wrapper: classNames?.wrapper,
+        input: classNames?.textInputElement,
       }}
       {...inputProps}
     />

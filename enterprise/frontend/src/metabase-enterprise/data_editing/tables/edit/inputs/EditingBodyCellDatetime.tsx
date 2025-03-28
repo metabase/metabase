@@ -15,6 +15,7 @@ export const EditingBodyCellDatetime = ({
   inputProps,
   initialValue,
   datasetColumn,
+  classNames,
   onSubmit,
   onChangeValue,
   onCancel,
@@ -62,19 +63,20 @@ export const EditingBodyCellDatetime = ({
 
   return (
     <DateInput
-      size={inputProps?.size}
       autoFocus={autoFocus}
-      variant={inputProps?.variant}
-      placeholder={inputProps?.placeholder}
       value={value}
       valueFormat={valueFormat}
-      classNames={{ input: inputProps?.className }}
+      classNames={{
+        wrapper: classNames?.wrapper,
+        input: classNames?.dateTextInputElement,
+      }}
       // Keeps popover mounted when focused to improve time editing UX
       popoverProps={{ opened: isFocused }}
       onChange={handleChange}
       onBlur={handleBlur}
       onFocus={handleFocus}
       onKeyUp={handleKeyUp}
+      {...inputProps}
     />
   );
 };
