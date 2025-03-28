@@ -293,7 +293,6 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
       cy.findByLabelText("Edit column order").click();
       H.modal().findByLabelText("Sort").should("have.text", "Database");
-      //moveField(0, 200);
       H.moveDnDKitElement(H.modal().findByLabelText("ID"), {
         vertical: 50,
       });
