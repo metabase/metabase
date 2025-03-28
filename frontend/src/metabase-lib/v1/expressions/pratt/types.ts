@@ -9,7 +9,7 @@ type VariableId = number;
 export interface Token {
   type: NodeType;
   text: string;
-  value?: string | string;
+  value?: string;
   length: number;
   pos: number;
 }
