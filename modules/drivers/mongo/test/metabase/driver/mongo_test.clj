@@ -1033,7 +1033,7 @@
                                [:field (mt/id :nested-bindata :_id) {:base-type :type/MongoBSONID}]
                                "abcdefabcdefabcdefabcdef"]
                               [:=
-                               [:field (mt/id :nested-bindata :mixed_uuid) {:base-type :type/*}]
+                               [:field (mt/id :nested-bindata :mixed_uuid) {:base-type :type/MongoBinData}]
                                "11111111-1111-1111-1111-111111111111"]
                               [:=
                                [:field (mt/id :nested-bindata :date) {:base-type :type/Instant}]
