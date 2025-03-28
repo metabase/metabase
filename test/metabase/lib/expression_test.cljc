@@ -475,7 +475,7 @@
 (deftest ^:parallel diagnose-expression-test-2
   (testing "correct expression are accepted silently"
     (testing "type errors are reported"
-      (are [mode expr] (=? {:message  "Incompatible types detected."
+      (are [mode expr] (=? {:message  "Types are incompatible."
                             :friendly true}
                            (lib.expression/diagnose-expression
                             (lib.tu/venues-query) 0 mode

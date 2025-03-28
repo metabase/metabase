@@ -524,7 +524,7 @@
       (or (when-not (validator expr)
             (let [error (explainer expr)
                   humanized (str/join ", " (me/humanize error))]
-              {:message  (i18n/tru "Incompatible types detected.")
+              {:message  (i18n/tru "Types are incompatible.")
                :friendly true}))
           (when-let [dependency-path (and (= expression-mode :expression)
                                           expression-position
