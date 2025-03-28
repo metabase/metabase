@@ -200,20 +200,46 @@
           (is (=? (:operator parts) (:operator round-tripped-parts)))
           (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))
 
-    (testing "nested case/if should round-trip through expression-parts and expression-clause"
-      (let [expression (lib/upper (lib/case [[boolean-field int-field] [boolean-field string-field]] (lib/case [[boolean-field int-field]] dt-field)))
-            expected-parts  {:operator :upper
-                             :options {}
-                             :args [{:operator :case
-                                     :options {}
-                                     :args [boolean-field
-                                            int-field
-                                            boolean-field
-                                            string-field
-                                            {:operator :case
-                                             :options {}
-                                             :args [boolean-field int-field dt-field]}]}]}]
-        (is (=? expected-parts (lib.fe-util/expression-parts query expression)))))))
+    (testing "deeply nested case/if should round-trip through expression-parts and expression-clause"
+      (doseq [parts [{:lib/type :mbql/expression-parts
+                      :operator :case
+                      :options {}
+                      :args [boolean-field
+                             int-field
+                             "default"]}
+
+                     {:lib/type :mbql/expression-parts
+                      :operator :upper
+                      :options {}
+                      :args [{:lib/type :mbql/expression-parts
+                              :operator :case
+                              :options {}
+                              :args [boolean-field
+                                     string-field
+                                     {:lib/type :mbql/expression-parts
+                                      :operator :case
+                                      :options {}
+                                      :args [boolean-field
+                                             int-field
+                                             "default"]}]}]}
+
+                     {:lib/type :mbql/expression-parts
+                      :operator :upper
+                      :options {}
+                      :args [{:lib/type :mbql/expression-parts
+                              :operator :lower
+                              :options {}
+                              :args [{:lib/type :mbql/expression-parts
+                                      :operator :case
+                                      :options {}
+                                      :args [boolean-field string-field]}]}]}]]
+
+        (let [expression (lib.fe-util/expression-clause
+                          (:operator parts)
+                          (:args parts)
+                          (:options parts))
+              round-tripped-parts (lib.fe-util/expression-parts query expression)]
+          (is (=? parts round-tripped-parts)))))))
 
 (deftest ^:parallel string-filter-parts-test
   (let [query  (lib.tu/venues-query)
