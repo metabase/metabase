@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { render, screen, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import type { Database } from "metabase-types/api";
 
 import type { DeleteDatabaseModalProps } from "./DeleteDatabaseModal";
@@ -24,8 +28,9 @@ const setup = async ({
   hasContent?: boolean;
 } = {}) => {
   fetchMock.get("path:/api/database/1/usage_info", getUsageInfo(hasContent));
-  render(
+  renderWithProviders(
     <DeleteDatabaseModal
+      opened
       title={"Delete the destination database?"}
       defaultDatabaseRemovalMessage={
         "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
