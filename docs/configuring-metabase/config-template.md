@@ -55,6 +55,17 @@ config:
       user: metabase
       password: metasample123
       dbname: sample
+  api-keys:
+  - name: Admin API key
+    group: admin
+    description: API key with admin permissions.
+    creator: first@example.com
+    key: mb_firsttestapikey123
+  - name: All Users API key
+    group: all-users
+    description: API key with permissions of the All Users group.
+    creator: first@example.com
+    key: mb_secondtestapikey456
   settings:
     admin-email: null
     aggregated-query-row-limit: null
