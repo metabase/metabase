@@ -1,6 +1,7 @@
 import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -66,7 +67,10 @@ export async function setup({
   setupSettingsEndpoints(settingOverrides);
   fetchMock.put("path:/api/setting", 200);
 
-  renderWithProviders(<Setup />, { storeInitialState: state });
+  renderWithProviders(<Route path="/" component={Setup} />, {
+    withRouter: true,
+    storeInitialState: state,
+  });
 
   // there is some async stuff going on with the locale loading
   await screen.findByText("Let's get started");

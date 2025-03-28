@@ -102,32 +102,12 @@ export const DestinationDatabaseConnectionModalInner = ({
       onClose={handleCloseModal}
       padding="xl"
       classNames={{
-        content: S.modalRoot,
+        content: S.modalContent,
         header: S.modalHeader,
         body: S.modalBody,
       }}
     >
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
-        <Flex
-          py="sm"
-          px="md"
-          mb="md"
-          bg="accent-gray-light"
-          align="center"
-          justify="space-between"
-          bd="1px solid border"
-          style={{ borderRadius: ".5rem" }}
-        >
-          <Text>{t`You can also add databases programmatically via the API.`}</Text>
-          <ExternalLink
-            key="link"
-            href={docsUrl}
-            style={{ display: "flex", alignItems: "center", gap: 4 }}
-          >
-            {t`Learn more`} <Icon name="share" aria-hidden />
-          </ExternalLink>
-        </Flex>
-
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         <DatabaseEditConnectionForm
           database={destinationDatabase}
           isAttachedDWH={destinationDatabase?.is_attached_dwh ?? false}
@@ -139,6 +119,23 @@ export const DestinationDatabaseConnectionModalInner = ({
             name: { isSlug: true },
             engine: { fieldState: "hidden" },
           }}
+          prepend={
+            <Flex
+              bg="accent-gray-light"
+              align="center"
+              justify="space-between"
+              className={S.apiInfo}
+            >
+              <Text>{t`You can also add databases programmatically via the API.`}</Text>
+              <ExternalLink
+                key="link"
+                href={docsUrl}
+                style={{ display: "flex", alignItems: "center", gap: 4 }}
+              >
+                {t`Learn more`} <Icon name="share" aria-hidden />
+              </ExternalLink>
+            </Flex>
+          }
           autofocusFieldName="name"
         />
       </LoadingAndErrorWrapper>

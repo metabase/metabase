@@ -1,8 +1,17 @@
+import { useFormikContext } from "formik";
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
+import Button from "metabase/core/components/Button";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import { FormFooter } from "metabase/core/components/FormFooter";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import {
+  DatabaseForm,
+  DatabaseFormProvider,
+} from "metabase/databases/components/DatabaseForm";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { UnstyledButton } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 import type { InviteInfo } from "metabase-types/store";
 
@@ -26,6 +35,7 @@ import { InviteUserForm } from "../InviteUserForm";
 import { SetupSection } from "../SetupSection";
 import type { NumberedStepProps } from "../types";
 
+import S from "./DatabaseStep.module.css";
 import { StepDescription } from "./DatabaseStep.styled";
 
 export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
@@ -77,12 +87,20 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
         <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
       </StepDescription>
-      <DatabaseForm
+
+      <DatabaseFormProvider
         initialValues={database}
         onSubmit={handleDatabaseSubmit}
         onEngineChange={handleEngineChange}
-        onCancel={handleStepCancel}
-      />
+      >
+        {props => (
+          <DatabaseForm
+            {...props}
+            footer={<DatabaseStepFormFooter onCancel={handleStepCancel} />}
+          />
+        )}
+      </DatabaseFormProvider>
+
       {isEmailConfigured && (
         <SetupSection
           title={t`Need help connecting to your data?`}
@@ -96,6 +114,32 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         </SetupSection>
       )}
     </ActiveStep>
+  );
+};
+
+const DatabaseStepFormFooter = ({ onCancel }: { onCancel: () => void }) => {
+  const { values } = useFormikContext<DatabaseData>();
+
+  if (!values.engine) {
+    return (
+      <UnstyledButton
+        className={S.linkButton}
+        c="brand"
+        p="0"
+        mt="1rem"
+        onClick={onCancel}
+      >
+        {t`I'll add my data later`}
+      </UnstyledButton>
+    );
+  }
+
+  return (
+    <FormFooter>
+      <FormErrorMessage inline />
+      <Button type="button" onClick={onCancel}>{t`Skip`}</Button>
+      <FormSubmitButton title={t`Connect database`} primary />
+    </FormFooter>
   );
 };
 

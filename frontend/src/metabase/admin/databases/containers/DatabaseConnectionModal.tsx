@@ -62,7 +62,7 @@ export const DatabaseConnectionModalInner = ({
       onClose={handleCloseModal}
       padding="xl"
       classNames={{
-        content: S.modalRoot,
+        content: S.modalContent,
         header: S.modalHeader,
         body: S.modalBody,
       }}
