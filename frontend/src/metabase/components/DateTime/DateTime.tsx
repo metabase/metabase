@@ -9,6 +9,7 @@ import type { DatetimeUnit } from "metabase-types/api";
 type DateTimeProps = {
   value: string | Date | number | Moment;
   componentProps?: React.ComponentProps<"span">;
+  local?: boolean;
   unit?: DatetimeUnit;
 };
 
@@ -17,10 +18,11 @@ type DateTimeProps = {
  * because that is an instance setting and should be respected globally
  */
 const DateTime = forwardRef<HTMLSpanElement, DateTimeProps>(function DateTime(
-  { value, unit = "default", ...props }: DateTimeProps,
+  { value, unit = "default", local = true, ...props }: DateTimeProps,
   ref,
 ) {
-  const options = MetabaseSettings.formattingOptions();
+  const options = { ...MetabaseSettings.formattingOptions(), local };
+
   const formattedTime = formatDateTimeWithUnit(
     value,
     unit ?? "default",
