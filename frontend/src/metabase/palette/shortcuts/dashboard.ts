@@ -1,4 +1,6 @@
-export const dashboardShortcuts = {
+import type { ShortcutDef } from "../types";
+
+export const dashboardShortcuts: Record<string, ShortcutDef> = {
   "bookmark-dashboard": {
     name: "Bookmark Dashboard",
     shortcut: ["o"],
@@ -8,21 +10,25 @@ export const dashboardShortcuts = {
     name: "Add Filter",
     shortcut: ["f"],
     shortcutGroup: "dashboard",
+    shortcutContext: "When editing",
   },
   "add-notebook-question": {
     name: "Add Notebook Question",
     shortcut: ["a q"],
     shortcutGroup: "dashboard",
+    shortcutContext: "When editing",
   },
   "add-native-question": {
     name: "Add Native Question",
     shortcut: ["a n"],
     shortcutGroup: "dashboard",
+    shortcutContext: "When editing",
   },
   "cancel-edit": {
     name: "Cancel Edit Dashboard",
-    shortcut: ["c"],
+    shortcut: ["e"],
     shortcutGroup: "dashboard",
+    shortcutContext: "When editing",
   },
   "copy-dashboard": {
     name: "Copy dashboard",
@@ -53,5 +59,6 @@ export const dashboardShortcuts = {
     name: "Save Dashboard",
     shortcut: ["s"],
     shortcutGroup: "dashboard",
+    shortcutContext: "When editing",
   },
 };

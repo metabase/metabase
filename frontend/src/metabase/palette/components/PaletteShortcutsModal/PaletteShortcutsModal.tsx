@@ -1,9 +1,11 @@
-import { useKBar } from "kbar";
+import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Styles from "metabase/css/core/index.css";
 import { METAKEY } from "metabase/lib/browser";
-import { shortcuts } from "metabase/palette/shortcuts";
+import { shortcuts as ALL_SHORTCUTS } from "metabase/palette/shortcuts";
+import type { ShortcutGroup } from "metabase/palette/types";
 import {
   Group,
   Kbd,
@@ -14,19 +16,14 @@ import {
   Text,
 } from "metabase/ui";
 
-// import S from "./PaletteShortcutsModal.module.css";
-
-export const GROUP_LABLES = {
-  global: `General`,
-  dashboard: "Dashboard",
-  question: "Querying & the notebook",
-};
+import { GROUP_LABLES } from "../../constants";
 
 const groupedShortcuts = _.groupBy(
-  _.mapObject(shortcuts, (val, id) => ({ id, ...val })),
+  _.mapObject(ALL_SHORTCUTS, (val, id) => ({ id, ...val })),
   "shortcutGroup",
 );
-const shortcutGroups = Object.keys(groupedShortcuts);
+
+const shortcutGroups = Object.keys(groupedShortcuts) as ShortcutGroup[];
 
 export const PaletteShortcutsModal = ({
   onClose,
@@ -35,14 +32,11 @@ export const PaletteShortcutsModal = ({
   onClose: ModalProps["onClose"];
   open: boolean;
 }) => {
-  const { actions } = useKBar(state => ({ actions: state.actions }));
-
   return (
     <Modal
       opened={open}
       onClose={onClose}
       title={t`Shortcuts`}
-      withCloseButton={false}
       size="xl"
       styles={{
         content: {
@@ -74,26 +68,39 @@ export const PaletteShortcutsModal = ({
             style={{ height: "100%" }}
           >
             <ScrollArea h="100%" pr="lg">
-              {groupedShortcuts[shortcutGroup].map(shortcut => (
-                <Group
-                  key={shortcut.id}
-                  justify="space-between"
-                  style={{ borderRadius: "0.5rem" }}
-                  p="sm"
-                  my="sm"
-                  bg={
-                    Object.keys(actions).includes(shortcut.id)
-                      ? "brand-light"
-                      : undefined
-                  }
-                >
-                  <Text>
-                    {shortcut.name}
-                    {Object.keys(actions).includes(shortcut.id) ? "*" : null}
-                  </Text>
-                  <Shortcut shortcut={shortcut.shortcut[0]} />
-                </Group>
-              ))}
+              {(() => {
+                const shortcuts = groupedShortcuts[shortcutGroup];
+
+                const shortcutContexts = _.groupBy(
+                  shortcuts,
+                  "shortcutContext",
+                );
+
+                return Object.keys(shortcutContexts).map(context => [
+                  context !== String(undefined) ? (
+                    <Text
+                      py="sm"
+                      m="sm"
+                      key="context"
+                      className={cx(Styles.borderBottom, Styles.textBold)}
+                    >
+                      {context}
+                    </Text>
+                  ) : null,
+                  ...shortcutContexts[context].map(shortcut => (
+                    <Group
+                      key={shortcut.id}
+                      justify="space-between"
+                      style={{ borderRadius: "0.5rem" }}
+                      p="sm"
+                      my="sm"
+                    >
+                      <Text>{shortcut.name}</Text>
+                      <Shortcut shortcut={shortcut.shortcut[0]} />
+                    </Group>
+                  )),
+                ]);
+              })()}
             </ScrollArea>
           </Tabs.Panel>
         ))}
@@ -103,13 +110,17 @@ export const PaletteShortcutsModal = ({
 };
 
 const Shortcut = (props: { shortcut: string }) => {
-  const keys = props.shortcut.replace("$mod", METAKEY).split?.("+") || [];
+  const string = props.shortcut
+    .replace("$mod", METAKEY)
+    .replace(" ", " > ")
+    .replace("+", " + ");
+  const result = string.split(" ").map(x => {
+    if (x === "+" || x === ">") {
+      return x;
+    }
 
-  return (
-    <Group gap="0.5rem">
-      {keys.map(key => (
-        <Kbd key={key}>{key}</Kbd>
-      ))}
-    </Group>
-  );
+    return <Kbd key={x}>{x}</Kbd>;
+  });
+
+  return <Group gap="0.5rem">{result}</Group>;
 };

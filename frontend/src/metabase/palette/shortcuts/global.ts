@@ -1,10 +1,7 @@
 import { t } from "ttag";
 
-// import type { ShortcutAction } from "../types";
-
-// type ShortcutDef = Pick<ShortcutAction, "name" | "shortcut" | "shortcutGroup">;
-
-export const globalShortcuts = {
+import type { ShortcutDef } from "../types";
+export const globalShortcuts: Record<string, ShortcutDef> = {
   "create-question": {
     name: "Create a question",
     shortcut: ["q"],

@@ -5,7 +5,7 @@ import type React from "react";
 import type { IconName } from "metabase/ui";
 import type { ModerationReviewStatus } from "metabase-types/api";
 
-import type { GROUP_LABLES } from "./components/PaletteShortcutsModal";
+import type { GROUP_LABLES } from "./constants";
 
 interface PaletteActionExtras {
   extra?: {
@@ -36,7 +36,15 @@ export type PaletteActionImpl = ActionImpl &
     icon?: IconName;
   };
 
+export type ShortcutGroup = keyof typeof GROUP_LABLES;
+
 export type ShortcutAction = Action & {
   shortcut: string[];
-  shortcutGroup: keyof typeof GROUP_LABLES;
+  shortcutGroup: ShortcutGroup;
+  shortcutContext?: string;
 };
+
+export type ShortcutDef = Pick<
+  ShortcutAction,
+  "name" | "shortcut" | "shortcutGroup" | "shortcutContext"
+>;
