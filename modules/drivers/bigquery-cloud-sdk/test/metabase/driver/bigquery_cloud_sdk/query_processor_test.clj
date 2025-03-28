@@ -1292,6 +1292,7 @@
               index indexes]
         (testing "split part"
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                          (lib/with-fields [main-string])
                           (lib/expression "SPLITPART" (lib/split-part main-string delimiter index))
                           (lib/limit 100))
                 result (-> query qp/process-query)
@@ -1299,4 +1300,4 @@
                 rows (mt/rows result)]
             (is (= :type/Text (-> cols last :base_type)))
             (doseq [row rows]
-              (is (string? (last row))))))))))
+              (is (string? (last row)) (str "Not actually a string: " (pr-str (last row)))))))))))
