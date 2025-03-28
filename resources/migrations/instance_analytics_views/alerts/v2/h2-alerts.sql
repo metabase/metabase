@@ -1,6 +1,6 @@
 drop view if exists v_alerts;
 
-create view v_alerts as
+create or replace view v_alerts as
 select
     n.id as entity_id,
     'notification_' || n.id as entity_qualified_id,
