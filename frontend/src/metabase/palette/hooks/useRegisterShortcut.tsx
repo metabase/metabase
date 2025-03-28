@@ -4,7 +4,7 @@ import type { DependencyList } from "react";
 import { shortcuts } from "../shortcuts";
 import type { ShortcutAction } from "../types";
 
-type RegisterShortcutProps = {
+export type RegisterShortcutProps = {
   id: keyof typeof shortcuts;
   perform: () => void;
 } & Partial<ShortcutAction>;
@@ -13,7 +13,7 @@ export const useRegisterShortcut = (
   shortcutsToRegister: RegisterShortcutProps[],
   deps: DependencyList = [],
 ) => {
-  const actions = shortcutsToRegister.map(({ id, perform }) => {
+  const actions = shortcutsToRegister.map(({ id, ...rest }) => {
     const shortcutDef = shortcuts[id];
 
     if (shortcutDef === undefined) {
@@ -23,7 +23,7 @@ export const useRegisterShortcut = (
     return {
       ...shortcutDef,
       id,
-      perform,
+      ...rest,
     };
   });
 

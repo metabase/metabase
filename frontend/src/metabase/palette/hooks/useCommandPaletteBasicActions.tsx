@@ -1,4 +1,3 @@
-import { type Action, useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
@@ -6,7 +5,7 @@ import { t } from "ttag";
 
 import {
   useDatabaseListQuery,
-  useSearchListQuery,
+  // useSearchListQuery,
 } from "metabase/common/hooks";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -15,11 +14,14 @@ import { openDiagnostics } from "metabase/redux/app";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import {
   getHasDataAccess,
-  getHasDatabaseWithActionsEnabled,
+  // getHasDatabaseWithActionsEnabled,
   getHasNativeWrite,
 } from "metabase/selectors/data";
 
-import { useRegisterShortcut } from "./useRegisterShortcut";
+import {
+  type RegisterShortcutProps,
+  useRegisterShortcut,
+} from "./useRegisterShortcut";
 
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
@@ -33,16 +35,16 @@ export const useCommandPaletteBasicActions = ({
   const { data: databases = [] } = useDatabaseListQuery({
     enabled: isLoggedIn,
   });
-  const { data: models = [] } = useSearchListQuery({
-    query: { models: ["dataset"], limit: 1 },
-    enabled: isLoggedIn,
-  });
+  // const { data: models = [] } = useSearchListQuery({
+  //   query: { models: ["dataset"], limit: 1 },
+  //   enabled: isLoggedIn,
+  // });
 
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);
-  const hasDatabaseWithActionsEnabled =
-    getHasDatabaseWithActionsEnabled(databases);
-  const hasModels = models.length > 0;
+  // const hasDatabaseWithActionsEnabled =
+  //   getHasDatabaseWithActionsEnabled(databases);
+  // const hasModels = models.length > 0;
 
   const openNewModal = useCallback(
     (modalId: string) => {
@@ -52,12 +54,12 @@ export const useCommandPaletteBasicActions = ({
     [dispatch],
   );
 
-  const initialActions = useMemo<Action[]>(() => {
-    const actions: Action[] = [];
+  const initialActions = useMemo<RegisterShortcutProps[]>(() => {
+    const actions: RegisterShortcutProps[] = [];
 
     if (hasDataAccess) {
       actions.push({
-        id: "new_question",
+        id: "create-question",
         name: t`New question`,
         section: "basic",
         icon: "insight",
@@ -79,7 +81,7 @@ export const useCommandPaletteBasicActions = ({
 
     if (hasNativeWrite) {
       actions.push({
-        id: "new_query",
+        id: "create-native-query",
         name: t`New SQL query`,
         section: "basic",
         icon: "sql",
@@ -98,32 +100,28 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
-    actions.push(
-      ...[
-        {
-          id: "new_dashboard",
-          name: t`New dashboard`,
-          section: "basic",
-          icon: "dashboard",
-          perform: () => {
-            openNewModal("dashboard");
-          },
-        },
-        {
-          id: "new_collection",
-          name: t`New collection`,
-          section: "basic",
-          icon: "collection",
-          perform: () => {
-            openNewModal("collection");
-          },
-        },
-      ],
-    );
+    actions.push({
+      id: "create-dashboard",
+      name: t`New dashboard`,
+      section: "basic",
+      icon: "dashboard",
+      perform: () => {
+        openNewModal("dashboard");
+      },
+    });
+    actions.push({
+      id: "create-collection",
+      name: t`New collection`,
+      section: "basic",
+      icon: "collection",
+      perform: () => {
+        openNewModal("collection");
+      },
+    });
 
     if (hasNativeWrite) {
       actions.push({
-        id: "new_model",
+        id: "create-model",
         name: t`New model`,
         section: "basic",
         icon: "model",
@@ -136,7 +134,7 @@ export const useCommandPaletteBasicActions = ({
 
     if (hasDataAccess) {
       actions.push({
-        id: "new_metric",
+        id: "create-metric",
         name: t`New metric`,
         section: "basic",
         icon: "metric",
@@ -156,21 +154,21 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
-    if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
-      actions.push({
-        id: "new_action",
-        name: t`New action`,
-        section: "basic",
-        icon: "bolt",
-        perform: () => {
-          openNewModal("action");
-        },
-      });
-    }
+    // if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
+    //   actions.push({
+    //     id: "create-action",
+    //     name: t`New action`,
+    //     section: "basic",
+    //     icon: "bolt",
+    //     perform: () => {
+    //       openNewModal("action");
+    //     },
+    //   });
+    // }
 
-    const browseActions: Action[] = [
+    const browseActions: RegisterShortcutProps[] = [
       {
-        id: "navigate_models",
+        id: "browse-model",
         name: t`Browse models`,
         section: "basic",
         icon: "model",
@@ -179,12 +177,21 @@ export const useCommandPaletteBasicActions = ({
         },
       },
       {
-        id: "navigate_data",
+        id: "browse-database",
         name: t`Browse databases`,
         section: "basic",
         icon: "database",
         perform: () => {
           dispatch(push("/browse/databases"));
+        },
+      },
+      {
+        id: "browse-metric",
+        name: t`Browse Metrics`,
+        section: "basic",
+        icon: "metric",
+        perform: () => {
+          dispatch(push("/browse/metrics"));
         },
       },
     ];
@@ -193,14 +200,14 @@ export const useCommandPaletteBasicActions = ({
   }, [
     dispatch,
     hasDataAccess,
-    hasDatabaseWithActionsEnabled,
+    //hasDatabaseWithActionsEnabled,
     hasNativeWrite,
-    hasModels,
+    //hasModels,
     collectionId,
     openNewModal,
   ]);
 
-  useRegisterActions(initialActions, [initialActions]);
+  useRegisterShortcut(initialActions, [initialActions]);
 
   useRegisterShortcut(
     [{ id: "report-issue", perform: () => dispatch(openDiagnostics()) }],

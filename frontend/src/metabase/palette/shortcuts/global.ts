@@ -26,7 +26,7 @@ export const globalShortcuts = {
     shortcutGroup: "global",
   },
   "create-model": {
-    name: "create a model",
+    name: "Create a model",
     shortcut: ["m"],
     shortcutGroup: "global",
   },
@@ -35,6 +35,22 @@ export const globalShortcuts = {
     shortcut: ["k"],
     shortcutGroup: "global",
   },
+  "browse-database": {
+    name: "Browse databases",
+    shortcut: ["b d"],
+    shortcutGroup: "global",
+  },
+  "browse-model": {
+    name: "Browse models",
+    shortcut: ["b m"],
+    shortcutGroup: "global",
+  },
+  "browse-metric": {
+    name: "Browse metrics",
+    shortcut: ["b k"],
+    shortcutGroup: "global",
+  },
+
   "report-issue": {
     name: t`Report an issue`,
     shortcut: ["$mod+f1"],
