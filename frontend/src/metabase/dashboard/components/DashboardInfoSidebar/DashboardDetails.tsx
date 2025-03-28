@@ -7,6 +7,7 @@ import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
 import Link from "metabase/core/components/Link";
 import Styles from "metabase/css/core/index.css";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { DashboardPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";
 import { collection as collectionUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
@@ -15,7 +16,8 @@ import type { Dashboard } from "metabase-types/api";
 
 import SidebarStyles from "./DashboardInfoSidebar.module.css";
 
-export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
+export const DashboardDetails = () => {
+  const { dashboard } = useDashboardContext();
   const lastEditInfo = dashboard["last-edit-info"];
   const createdAt = dashboard.created_at;
 
