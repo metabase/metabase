@@ -727,12 +727,10 @@
     (cond-> card
       (not= (:entity_id card) eid) (assoc :entity_id eid))))
 
-(defn- add-card-entity-id-to-query
-  "Queries now carry the card's entity ID in the `:info` block; make sure that's populated on reading the card."
+(defn- drop-card-entity-id-from-query
+  "Queries stored in the database don't retain the `:card-entity-id` in the `:info` block, however."
   [card]
-  (if-let [eid (and (:dataset_query card) (:entity_id card))]
-    (assoc-in card [:dataset_query :info :card-entity-id] eid)
-    card))
+  (m/update-existing card :dataset_query m/dissoc-in [:info :card-entity-id]))
 
 (defn- derive-ident [prefix entity_id stage-number tail]
   (let [entity_id (cond-> entity_id
@@ -845,7 +843,6 @@
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
       ensure-clause-idents
-      add-card-entity-id-to-query
       ;; At this point, the card should be at schema version 20.
       upgrade-card-schema-to-latest))
 
@@ -855,8 +852,8 @@
       (assoc :metabase_version config/mb-version-string)
       maybe-normalize-query
       generate-card-entity-id
-      add-card-entity-id-to-query
       card.metadata/populate-result-metadata
+      drop-card-entity-id-from-query
       pre-insert
       populate-query-fields
       (ensure-clause-idents ::before-insert)))
@@ -887,7 +884,6 @@
       (apply-dashboard-question-updates)
 
       maybe-normalize-query
-      add-card-entity-id-to-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
       ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
       ;; verified-result-metadata? flag (see #37009).
@@ -895,6 +891,7 @@
        (or (empty? (:result_metadata card))
            (not verified-result-metadata?))
         card.metadata/populate-result-metadata)
+      drop-card-entity-id-from-query
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at))
