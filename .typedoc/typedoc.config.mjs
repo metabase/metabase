@@ -16,7 +16,7 @@ const config = {
   outputs: [
     {
       name: "markdown",
-      path: "../docs/embedding/sdk/api_markdown",
+      path: "../docs/embedding/sdk/generated/markdown",
       options: {
         flattenOutputFiles: false,
         hideBreadcrumbs: true,
@@ -48,7 +48,11 @@ const config = {
             "remark-link-rewrite",
             {
               replacer: async url => {
-                return `./api_html/${url}`;
+                if (url.includes("generated/html")) {
+                  return url;
+                }
+
+                return `./generated/html/${url}`;
               },
             },
           ],
@@ -57,7 +61,7 @@ const config = {
     },
     {
       name: "html",
-      path: "../docs/embedding/sdk/api_html",
+      path: "../docs/embedding/sdk/generated/html",
       options: {
         hideGenerator: true,
         navigation: {
