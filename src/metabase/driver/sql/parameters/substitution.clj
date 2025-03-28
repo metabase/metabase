@@ -297,7 +297,7 @@
   (letfn [(->datetime-replacement-snippet-info
             [range]
             (->replacement-snippet-info driver range (field->identifier driver field type value)))]
-    (-> (params.dates/date-str->datetime-range value)
+    (-> (params.dates/date-str->datetime-range value ((some-fn :effective-type :base-type) field))
         params/map->DateTimeRange
         ->datetime-replacement-snippet-info)))
 
