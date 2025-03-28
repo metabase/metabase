@@ -44,7 +44,6 @@ export const SortableField = ({ disabled, field, id }: Props) => {
             [S.dragging]: isDragging,
           })}
           gap="md"
-          // data-testid={draggable ? `draggable-item-${title}` : null}
           mih={40}
           px="sm"
           py="xs"
