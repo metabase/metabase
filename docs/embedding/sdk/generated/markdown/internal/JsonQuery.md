@@ -10,7 +10,7 @@ type JsonQuery = DatasetQuery & {
 
 #### Type declaration
 
-| Name              | Type                                                                                                                 |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `cache-strategy?` | [`CacheStrategy`](./generated/html/CacheStrategy.md) & { `avg-execution-ms`: `number`; `invalidated-at`: `string`; } |
-| `parameters?`     | `unknown`\[]                                                                                                         |
+| Name              | Type                                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| `cache-strategy?` | [`CacheStrategy`](CacheStrategy.md) & { `avg-execution-ms`: `number`; `invalidated-at`: `string`; } |
+| `parameters?`     | `unknown`\[]                                                                                        |

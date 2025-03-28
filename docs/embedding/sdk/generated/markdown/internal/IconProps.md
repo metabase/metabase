@@ -13,7 +13,7 @@ type IconProps = SVGAttributes<SVGSVGElement> & BoxProps & {
 | Name         | Type                                                                    |
 | ------------ | ----------------------------------------------------------------------- |
 | `className?` | `string`                                                                |
-| `name`       | [`IconName`](./generated/html/IconName.md)                              |
+| `name`       | [`IconName`](IconName.md)                                               |
 | `onClick?`   | (`event`: `MouseEvent_2`<`HTMLImageElement` \| `SVGElement`>) => `void` |
 | `size?`      | `string` \| `number`                                                    |
 | `tooltip?`   | `ReactNode`                                                             |

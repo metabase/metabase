@@ -64,11 +64,11 @@ optional onBeforeSave: (question: MetabaseQuestion | undefined, context: {
 
 ###### Parameters
 
-| Parameter               | Type                                                                         |
-| ----------------------- | ---------------------------------------------------------------------------- |
-| `question`              | [`MetabaseQuestion`](./generated/html/../MetabaseQuestion.md) \| `undefined` |
-| `context`               | { `isNewQuestion`: `boolean`; }                                              |
-| `context.isNewQuestion` | `boolean`                                                                    |
+| Parameter               | Type                                                        |
+| ----------------------- | ----------------------------------------------------------- |
+| `question`              | [`MetabaseQuestion`](../MetabaseQuestion.md) \| `undefined` |
+| `context`               | { `isNewQuestion`: `boolean`; }                             |
+| `context.isNewQuestion` | `boolean`                                                   |
 
 ###### Returns
 
@@ -98,11 +98,11 @@ optional onSave: (question: MetabaseQuestion | undefined, context: {
 
 ###### Parameters
 
-| Parameter               | Type                                                                         |
-| ----------------------- | ---------------------------------------------------------------------------- |
-| `question`              | [`MetabaseQuestion`](./generated/html/../MetabaseQuestion.md) \| `undefined` |
-| `context`               | { `isNewQuestion`: `boolean`; }                                              |
-| `context.isNewQuestion` | `boolean`                                                                    |
+| Parameter               | Type                                                        |
+| ----------------------- | ----------------------------------------------------------- |
+| `question`              | [`MetabaseQuestion`](../MetabaseQuestion.md) \| `undefined` |
+| `context`               | { `isNewQuestion`: `boolean`; }                             |
+| `context.isNewQuestion` | `boolean`                                                   |
 
 ###### Returns
 

@@ -4,9 +4,9 @@ const ModifyQuestion: ({ questionId, plugins, onSave, onBeforeSave, entityTypeFi
 
 #### Parameters
 
-| Parameter                                                                                           | Type                                                                       |
-| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `{ questionId, plugins, onSave, onBeforeSave, entityTypeFilter, isSaveEnabled, targetCollection, }` | [`InteractiveQuestionProps`](./generated/html/InteractiveQuestionProps.md) |
+| Parameter                                                                                           | Type                                                      |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `{ questionId, plugins, onSave, onBeforeSave, entityTypeFilter, isSaveEnabled, targetCollection, }` | [`InteractiveQuestionProps`](InteractiveQuestionProps.md) |
 
 #### Returns
 

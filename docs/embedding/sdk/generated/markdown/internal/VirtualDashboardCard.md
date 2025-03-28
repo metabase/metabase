@@ -13,9 +13,9 @@ type VirtualDashboardCard = BaseDashboardCard & {
 
 #### Type declaration
 
-| Name                     | Type                                                                                                                                                                                                                                  |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `card`                   | [`VirtualCard`](./generated/html/VirtualCard.md)                                                                                                                                                                                      |
-| `card_id`                | `null`                                                                                                                                                                                                                                |
-| `parameter_mappings?`    | \| [`VirtualDashCardParameterMapping`](./generated/html/VirtualDashCardParameterMapping.md)\[] \| `null`                                                                                                                              |
-| `visualization_settings` | [`BaseDashboardCard`](./generated/html/BaseDashboardCard.md)\[`"visualization_settings"`] & { `link`: [`LinkCardSettings`](./generated/html/LinkCardSettings.md); `virtual_card`: [`VirtualCard`](./generated/html/VirtualCard.md); } |
+| Name                     | Type                                                                                                                                                                               |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `card`                   | [`VirtualCard`](VirtualCard.md)                                                                                                                                                    |
+| `card_id`                | `null`                                                                                                                                                                             |
+| `parameter_mappings?`    | \| [`VirtualDashCardParameterMapping`](VirtualDashCardParameterMapping.md)\[] \| `null`                                                                                            |
+| `visualization_settings` | [`BaseDashboardCard`](BaseDashboardCard.md)\[`"visualization_settings"`] & { `link`: [`LinkCardSettings`](LinkCardSettings.md); `virtual_card`: [`VirtualCard`](VirtualCard.md); } |

@@ -1,11 +1,11 @@
 #### Extends
 
-* [`BaseActionClickBehavior`](./generated/html/BaseActionClickBehavior.md)
+* [`BaseActionClickBehavior`](BaseActionClickBehavior.md)
 
 #### Properties
 
-| Property                             | Type       | Overrides                                                                                                                                       | Inherited from                                                                                                                      |
-| ------------------------------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="actiontype"></a> `actionType` | `"insert"` | [`BaseActionClickBehavior`](./generated/html/BaseActionClickBehavior.md).[`actionType`](./generated/html/BaseActionClickBehavior.md#actiontype) | -                                                                                                                                   |
-| <a id="tableid"></a> `tableId`       | `number`   | -                                                                                                                                               | -                                                                                                                                   |
-| <a id="type"></a> `type`             | `"action"` | -                                                                                                                                               | [`BaseActionClickBehavior`](./generated/html/BaseActionClickBehavior.md).[`type`](./generated/html/BaseActionClickBehavior.md#type) |
+| Property                             | Type       | Overrides                                                                                                     | Inherited from                                                                                    |
+| ------------------------------------ | ---------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| <a id="actiontype"></a> `actionType` | `"insert"` | [`BaseActionClickBehavior`](BaseActionClickBehavior.md).[`actionType`](BaseActionClickBehavior.md#actiontype) | -                                                                                                 |
+| <a id="tableid"></a> `tableId`       | `number`   | -                                                                                                             | -                                                                                                 |
+| <a id="type"></a> `type`             | `"action"` | -                                                                                                             | [`BaseActionClickBehavior`](BaseActionClickBehavior.md).[`type`](BaseActionClickBehavior.md#type) |

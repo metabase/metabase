@@ -6,6 +6,6 @@ type SingleSeries = {
 
 #### Type declaration
 
-| Name   | Type                               |
-| ------ | ---------------------------------- |
-| `card` | [`Card`](./generated/html/Card.md) |
+| Name   | Type              |
+| ------ | ----------------- |
+| `card` | [`Card`](Card.md) |

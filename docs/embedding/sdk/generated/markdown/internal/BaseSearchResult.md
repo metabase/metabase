@@ -1,9 +1,9 @@
 #### Type Parameters
 
-| Type Parameter                                                        |
-| --------------------------------------------------------------------- |
-| `Id` *extends* [`SearchResultId`](./generated/html/SearchResultId.md) |
-| `Model` *extends* [`SearchModel`](./generated/html/SearchModel.md)    |
+| Type Parameter                                       |
+| ---------------------------------------------------- |
+| `Id` *extends* [`SearchResultId`](SearchResultId.md) |
+| `Model` *extends* [`SearchModel`](SearchModel.md)    |
 
 #### Properties
 

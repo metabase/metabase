@@ -6,11 +6,11 @@ type CustomDashboardCardMenuItem = ({ question, }: {
 
 #### Parameters
 
-| Parameter                 | Type                                                                        |
-| ------------------------- | --------------------------------------------------------------------------- |
-| `{ question, }`           | { `question`: [`MetabaseQuestion`](./generated/html/MetabaseQuestion.md); } |
-| `{ question, }.question`? | [`MetabaseQuestion`](./generated/html/MetabaseQuestion.md)                  |
+| Parameter                 | Type                                                       |
+| ------------------------- | ---------------------------------------------------------- |
+| `{ question, }`           | { `question`: [`MetabaseQuestion`](MetabaseQuestion.md); } |
+| `{ question, }.question`? | [`MetabaseQuestion`](MetabaseQuestion.md)                  |
 
 #### Returns
 
-[`DashCardMenuItem`](./generated/html/internal/DashCardMenuItem.md)
+[`DashCardMenuItem`](internal/DashCardMenuItem.md)

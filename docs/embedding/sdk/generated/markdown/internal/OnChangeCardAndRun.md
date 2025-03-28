@@ -4,9 +4,9 @@ type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 #### Parameters
 
-| Parameter | Type                                                                   |
-| --------- | ---------------------------------------------------------------------- |
-| `opts`    | [`OnChangeCardAndRunOpts`](./generated/html/OnChangeCardAndRunOpts.md) |
+| Parameter | Type                                                  |
+| --------- | ----------------------------------------------------- |
+| `opts`    | [`OnChangeCardAndRunOpts`](OnChangeCardAndRunOpts.md) |
 
 #### Returns
 

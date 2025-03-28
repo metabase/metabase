@@ -1,6 +1,6 @@
 #### Extends
 
-* `Omit`<[`ForeignKey`](./generated/html/ForeignKey.md), `"origin"` | `"destination"`>
+* `Omit`<[`ForeignKey`](ForeignKey.md), `"origin"` | `"destination"`>
 
 #### Properties
 

@@ -9,9 +9,9 @@ type SegmentListItem = SegmentDisplayInfo & {
 
 #### Type declaration
 
-| Name          | Type                                                     |
-| ------------- | -------------------------------------------------------- |
-| `displayName` | `string`                                                 |
-| `name`        | `string`                                                 |
-| `segment`     | [`SegmentMetadata`](./generated/html/SegmentMetadata.md) |
-| `stageIndex`  | `number`                                                 |
+| Name          | Type                                    |
+| ------------- | --------------------------------------- |
+| `displayName` | `string`                                |
+| `name`        | `string`                                |
+| `segment`     | [`SegmentMetadata`](SegmentMetadata.md) |
+| `stageIndex`  | `number`                                |

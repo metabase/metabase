@@ -45,9 +45,9 @@ optional onClick: (item: CollectionItem) => void;
 
 ###### Parameters
 
-| Parameter | Type                                                            |
-| --------- | --------------------------------------------------------------- |
-| `item`    | [`CollectionItem`](./generated/html/internal/CollectionItem.md) |
+| Parameter | Type                                           |
+| --------- | ---------------------------------------------- |
+| `item`    | [`CollectionItem`](internal/CollectionItem.md) |
 
 ###### Returns
 

@@ -4,9 +4,9 @@ type SdkErrorComponent = ({ message, }: SdkErrorComponentProps) => JSX_3.Element
 
 #### Parameters
 
-| Parameter      | Type                                                                   |
-| -------------- | ---------------------------------------------------------------------- |
-| `{ message, }` | [`SdkErrorComponentProps`](./generated/html/SdkErrorComponentProps.md) |
+| Parameter      | Type                                                  |
+| -------------- | ----------------------------------------------------- |
+| `{ message, }` | [`SdkErrorComponentProps`](SdkErrorComponentProps.md) |
 
 #### Returns
 

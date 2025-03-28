@@ -2,7 +2,7 @@
 
 | Property                                     | Type                                                                                  |
 | -------------------------------------------- | ------------------------------------------------------------------------------------- |
-| <a id="best-fit"></a> `best-fit?`            | [`InsightExpression`](./generated/html/InsightExpression.md)                          |
+| <a id="best-fit"></a> `best-fit?`            | [`InsightExpression`](InsightExpression.md)                                           |
 | <a id="col"></a> `col`                       | `string`                                                                              |
 | <a id="last-change"></a> `last-change`       | `number`                                                                              |
 | <a id="last-value"></a> `last-value`         | `number`                                                                              |

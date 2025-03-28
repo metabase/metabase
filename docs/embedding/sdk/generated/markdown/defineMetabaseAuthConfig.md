@@ -6,10 +6,10 @@ Defines a Metabase auth config.
 
 #### Parameters
 
-| Parameter | Type                                                           |
-| --------- | -------------------------------------------------------------- |
-| `config`  | [`MetabaseAuthConfig`](./generated/html/MetabaseAuthConfig.md) |
+| Parameter | Type                                          |
+| --------- | --------------------------------------------- |
+| `config`  | [`MetabaseAuthConfig`](MetabaseAuthConfig.md) |
 
 #### Returns
 
-[`MetabaseAuthConfig`](./generated/html/MetabaseAuthConfig.md)
+[`MetabaseAuthConfig`](MetabaseAuthConfig.md)

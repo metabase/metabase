@@ -4,9 +4,9 @@ const CreateQuestion: (props?: CreateQuestionProps) => JSX_2.Element;
 
 #### Parameters
 
-| Parameter | Type                                                             |
-| --------- | ---------------------------------------------------------------- |
-| `props`?  | [`CreateQuestionProps`](./generated/html/CreateQuestionProps.md) |
+| Parameter | Type                                            |
+| --------- | ----------------------------------------------- |
+| `props`?  | [`CreateQuestionProps`](CreateQuestionProps.md) |
 
 #### Returns
 

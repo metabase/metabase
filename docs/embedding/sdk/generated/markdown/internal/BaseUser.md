@@ -1,6 +1,6 @@
 #### Extended by
 
-* [`User`](./generated/html/User.md)
+* [`User`](User.md)
 
 #### Properties
 

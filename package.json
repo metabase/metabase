@@ -322,7 +322,6 @@
     "react-refresh": "^0.14.2",
     "reg-cli": "^0.17.7",
     "remark-behead": "^3.1.0",
-    "remark-link-rewrite": "^1.0.7",
     "semver": "^7.6.3",
     "shadow-cljs": "^2.28.20",
     "source-map-loader": "^4.0.1",

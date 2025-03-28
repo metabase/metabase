@@ -6,6 +6,6 @@ type TransformedSeries = RawSeries & {
 
 #### Type declaration
 
-| Name   | Type                                   |
-| ------ | -------------------------------------- |
-| `_raw` | [`Series`](./generated/html/Series.md) |
+| Name   | Type                  |
+| ------ | --------------------- |
+| `_raw` | [`Series`](Series.md) |

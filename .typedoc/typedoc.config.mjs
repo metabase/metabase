@@ -42,21 +42,7 @@ const config = {
           hideValues: false,
           leftAlignHeaders: false,
         },
-        remarkPlugins: [
-          ["remark-behead", { minDepth: 4 }],
-          [
-            "remark-link-rewrite",
-            {
-              replacer: async url => {
-                if (url.includes("generated/html")) {
-                  return url;
-                }
-
-                return `./generated/html/${url}`;
-              },
-            },
-          ],
-        ],
+        remarkPlugins: [["remark-behead", { minDepth: 4 }]],
       },
     },
     {

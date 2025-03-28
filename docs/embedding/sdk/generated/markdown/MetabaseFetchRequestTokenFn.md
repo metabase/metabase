@@ -13,5 +13,5 @@ type MetabaseFetchRequestTokenFn = (url: string) => Promise<
 #### Returns
 
 `Promise`<
-\| [`MetabaseEmbeddingSessionToken`](./generated/html/MetabaseEmbeddingSessionToken.md)
+\| [`MetabaseEmbeddingSessionToken`](MetabaseEmbeddingSessionToken.md)
 \| `null`>

@@ -1,10 +1,10 @@
 #### Extends
 
-* [`BaseSidebarState`](./generated/html/BaseSidebarState.md)
+* [`BaseSidebarState`](BaseSidebarState.md)
 
 #### Properties
 
-| Property                   | Type                                                                         | Overrides                                                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| <a id="name"></a> `name`   | `"editParameter"`                                                            | [`BaseSidebarState`](./generated/html/BaseSidebarState.md).[`name`](./generated/html/BaseSidebarState.md#name)   |
-| <a id="props"></a> `props` | [`EditParameterSidebarProps`](./generated/html/EditParameterSidebarProps.md) | [`BaseSidebarState`](./generated/html/BaseSidebarState.md).[`props`](./generated/html/BaseSidebarState.md#props) |
+| Property                   | Type                                                        | Overrides                                                                      |
+| -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| <a id="name"></a> `name`   | `"editParameter"`                                           | [`BaseSidebarState`](BaseSidebarState.md).[`name`](BaseSidebarState.md#name)   |
+| <a id="props"></a> `props` | [`EditParameterSidebarProps`](EditParameterSidebarProps.md) | [`BaseSidebarState`](BaseSidebarState.md).[`props`](BaseSidebarState.md#props) |

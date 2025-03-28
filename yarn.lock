@@ -18964,13 +18964,6 @@ remark-gfm@^4.0.0:
     remark-stringify "^11.0.0"
     unified "^11.0.0"
 
-remark-link-rewrite@^1.0.7:
-  version "1.0.7"
-  resolved "https://registry.yarnpkg.com/remark-link-rewrite/-/remark-link-rewrite-1.0.7.tgz#c8b5ad3708b0a8f6dd93caeab4c4d4c3e7e0d3a4"
-  integrity sha512-jfmXL8VL3O7Ca4g+Ya0A0S9LIpVhCUSqMHiei4N8Z8Mx9z/oEI1HDoa1ZcF9/tS0I7NwydGsPkw2zT4eeoD6+Q==
-  dependencies:
-    unist-util-visit "^4.1.1"
-
 remark-mdx@^3.1.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/remark-mdx/-/remark-mdx-3.1.0.tgz#f979be729ecb35318fa48e2135c1169607a78343"
@@ -21727,7 +21720,7 @@ unist-util-visit@^4.0.0:
     unist-util-is "^5.0.0"
     unist-util-visit-parents "^5.1.1"
 
-unist-util-visit@^4.1.0, unist-util-visit@^4.1.1:
+unist-util-visit@^4.1.0:
   version "4.1.2"
   resolved "https://registry.yarnpkg.com/unist-util-visit/-/unist-util-visit-4.1.2.tgz#125a42d1eb876283715a3cb5cceaa531828c72e2"
   integrity sha512-MSd8OUGISqHdVvfY9TPhyK2VdUrPgxkUtWSuMHF6XAAFuL4LokseigBnZtPnJMu+FbynTkFNnFlyjxpVKujMRg==
