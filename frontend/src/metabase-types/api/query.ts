@@ -87,6 +87,7 @@ export interface ReferenceOptions {
   "temporal-unit"?: DatetimeUnit;
   "join-alias"?: string;
   "base-type"?: string;
+  "source-field"?: number;
 }
 
 type BinningOptions =
