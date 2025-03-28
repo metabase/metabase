@@ -20,7 +20,7 @@
    [toucan2.core :as t2]))
 
 (defn- card-metadata [card]
-  (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card)))
+  (:result_metadata (t2/select-one :model/Card :id (u/the-id card))))
 
 (defn- round-to-2-decimals
   "Defaults [[mt/round-all-decimals]] to 2 digits"

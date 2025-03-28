@@ -22,7 +22,7 @@ export const SidebarIcon = styled(
   color?: string | null;
   isSelected: boolean;
 }>`
-  ${props =>
+  ${(props) =>
     !props.color &&
     css`
       color: var(--mb-color-brand);
@@ -47,14 +47,14 @@ type NodeRootProps = ComponentProps<typeof TreeNode.Root> & {
 };
 
 export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
-  color: ${props => getTextColor(props.isSelected)};
-  background-color: ${props =>
+  color: ${(props) => getTextColor(props.isSelected)};
+  background-color: ${(props) =>
     props.isSelected ? alpha("brand", 0.2) : "unset"};
-  padding-left: ${props => props.depth}rem;
+  padding-left: ${(props) => props.depth}rem;
   border-radius: 4px;
 
   ${ExpandToggleButton} {
-    ${props => props.isSelected && activeColorCSS}
+    ${(props) => props.isSelected && activeColorCSS}
   }
 
   &:hover {
@@ -82,7 +82,7 @@ const collectionDragAndDropHoverStyle = css`
 `;
 
 export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
-  ${props => props.hovered && collectionDragAndDropHoverStyle}
+  ${(props) => props.hovered && collectionDragAndDropHoverStyle}
 `;
 
 const itemContentStyle = css`
@@ -98,7 +98,7 @@ export const FullWidthButton = styled.button<{ isSelected: boolean }>`
   ${itemContentStyle}
   ${TreeNode.NameContainer} {
     font-weight: 700;
-    color: ${props => (props.isSelected ? color("brand") : "inherit")};
+    color: ${(props) => (props.isSelected ? color("brand") : "inherit")};
     text-align: start;
 
     &:hover {

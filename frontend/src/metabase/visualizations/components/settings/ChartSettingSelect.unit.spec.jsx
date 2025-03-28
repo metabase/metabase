@@ -12,7 +12,7 @@ const options = [
   { name: "No value", value: null },
 ];
 
-const selectOption = async optionText => {
+const selectOption = async (optionText) => {
   const select = screen.getByTestId("chart-setting-select");
   await userEvent.click(select);
   const option = screen.getByText(optionText);

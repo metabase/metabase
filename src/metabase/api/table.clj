@@ -534,7 +534,7 @@
     (let [cards (t2/select :model/Card
                            {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
                                         :c.description :c.collection_id :c.database_id :c.type
-                                        :c.source_card_id :c.created_at :c.entity_id
+                                        :c.source_card_id :c.created_at :c.entity_id :c.card_schema
                                         [:r.status :moderated_status]]
                             :from      [[:report_card :c]]
                             :left-join [[{:select   [:moderated_item_id :status]

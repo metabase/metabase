@@ -70,7 +70,7 @@ export const ErrorDiagnosticModal = ({
     const { description, ...diagnosticSelections } = values;
 
     const selectedKeys = Object.keys(diagnosticSelections).filter(
-      key => diagnosticSelections[key],
+      (key) => diagnosticSelections[key],
     );
     const selectedInfo = {
       ..._.pick(errorInfo, ...selectedKeys),
@@ -89,7 +89,7 @@ export const ErrorDiagnosticModal = ({
     const { description, ...diagnosticSelections } = values;
 
     const selectedKeys = Object.keys(diagnosticSelections).filter(
-      key => diagnosticSelections[key],
+      (key) => diagnosticSelections[key],
     );
     const selectedInfo = {
       ..._.pick(errorInfo, ...selectedKeys),

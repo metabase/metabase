@@ -81,7 +81,7 @@ describe("getHelpText", () => {
           getHelpText("datetime-diff", database, reportTimezone),
         );
         const unitArg = checkNotNull(
-          helpText.args?.find(arg => arg.name === "unit"),
+          helpText.args?.find((arg) => arg.name === "unit"),
         );
         expect(unitArg.description).toContain("second");
         expect(unitArg.description).not.toContain("millisecond");

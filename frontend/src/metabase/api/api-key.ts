@@ -12,7 +12,7 @@ import { Api } from "./api";
 import { idTag, invalidateTags, listTag, provideApiKeyListTags } from "./tags";
 
 export const apiKeyApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listApiKeys: builder.query<ApiKey[], void>({
       query: () => `/api/api-key`,
       providesTags: (apiKeys = []) => provideApiKeyListTags(apiKeys),
@@ -22,7 +22,7 @@ export const apiKeyApi = Api.injectEndpoints({
       providesTags: provideApiKeyListTags([]),
     }),
     createApiKey: builder.mutation<CreateApiKeyResponse, CreateApiKeyRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: `/api/api-key`,
         body,
@@ -40,12 +40,12 @@ export const apiKeyApi = Api.injectEndpoints({
         invalidateTags(error, [listTag("api-key"), idTag("api-key", id)]),
     }),
     deleteApiKey: builder.mutation<void, ApiKeyId>({
-      query: id => ({ method: "DELETE", url: `/api/api-key/${id}` }),
+      query: (id) => ({ method: "DELETE", url: `/api/api-key/${id}` }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("api-key"), idTag("api-key", id)]),
     }),
     regenerateApiKey: builder.mutation<RegenerateApiKeyResponse, ApiKeyId>({
-      query: id => ({ method: "PUT", url: `/api/api-key/${id}/regenerate` }),
+      query: (id) => ({ method: "PUT", url: `/api/api-key/${id}/regenerate` }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("api-key"), idTag("api-key", id)]),
     }),

@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { ComponentType, ForwardedRef } from "react";
 import { Component, forwardRef } from "react";
+import type { Responsive as ReactGridLayout } from "react-grid-layout";
 import type { ConnectedProps } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -78,17 +79,6 @@ import { GridLayout } from "./grid/GridLayout";
 
 type GridBreakpoint = "desktop" | "mobile";
 
-type LayoutItem = {
-  i: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  minW: number;
-  minH: number;
-  dashcard: BaseDashboardCard;
-};
-
 type ExplicitSizeProps = {
   width: number;
 };
@@ -96,7 +86,10 @@ type ExplicitSizeProps = {
 interface DashboardGridState {
   visibleCardIds: Set<number>;
   initialCardSizes: { [key: string]: { w: number; h: number } };
-  layouts: { desktop: LayoutItem[]; mobile: LayoutItem[] };
+  layouts: {
+    desktop: ReactGridLayout.Layout[];
+    mobile: ReactGridLayout.Layout[];
+  };
   addSeriesModalDashCard: BaseDashboardCard | null;
   replaceCardModalDashCard: BaseDashboardCard | null;
   isDragging: boolean;
@@ -257,7 +250,7 @@ class DashboardGridInner extends Component<
           dashcardData,
           state.visibleCardIds,
         )
-      : new Set(dashboard.dashcards.map(card => card.id));
+      : new Set(dashboard.dashcards.map((card) => card.id));
 
     const visibleCards = getVisibleCards(
       dashboard.dashcards,
@@ -301,7 +294,7 @@ class DashboardGridInner extends Component<
     layout,
     breakpoint,
   }: {
-    layout: LayoutItem[];
+    layout: ReactGridLayout.Layout[];
     breakpoint: GridBreakpoint;
   }) => {
     const { setMultipleDashCardAttributes, isEditing } = this.props;
@@ -315,9 +308,9 @@ class DashboardGridInner extends Component<
 
     const changes: SetDashCardAttributesOpts[] = [];
 
-    layout.forEach(layoutItem => {
+    layout.forEach((layoutItem) => {
       const dashboardCard = this.getVisibleCards().find(
-        card => String(card.id) === layoutItem.i,
+        (card) => String(card.id) === layoutItem.i,
       );
       if (dashboardCard) {
         const keys = ["h", "w", "x", "y"];
@@ -355,7 +348,12 @@ class DashboardGridInner extends Component<
     isEditing = this.props.isEditing,
     selectedTabId = this.props.selectedTabId,
   ) => {
-    return getVisibleCards(cards, visibleCardIds, isEditing, selectedTabId);
+    return getVisibleCards(
+      cards,
+      visibleCardIds,
+      isEditing,
+      selectedTabId,
+    ) as DashboardCard[];
   };
 
   getDashcardCountByCardId = (cards: BaseDashboardCard[]) =>
@@ -446,7 +444,7 @@ class DashboardGridInner extends Component<
     };
 
     const replaceCardModalRecentFilter = (items: RecentItem[]) => {
-      return items.filter(item => {
+      return items.filter((item) => {
         if (isRecentCollectionItem(item) && item.dashboard) {
           if (item.dashboard.id !== dashboard.id) {
             return false;
@@ -634,7 +632,7 @@ class DashboardGridInner extends Component<
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
     return (
-      <GridLayout
+      <GridLayout<DashboardCard>
         className={cx({
           [DashboardS.DashEditing]: this.isEditingLayout,
           [DashboardS.DashDragging]: this.state.isDragging,

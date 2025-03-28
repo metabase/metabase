@@ -41,7 +41,7 @@ function setup({ dashboards = [] }) {
 
   setupDatabaseEndpoints(database);
   setupDashboardsEndpoints(dashboards);
-  dashboards.forEach(dashboard =>
+  dashboards.forEach((dashboard) =>
     setupDashboardQueryMetadataEndpoint(
       dashboard,
       createMockDashboardQueryMetadata({ databases: [database] }),

@@ -87,7 +87,7 @@ export const ExportSettingsWidget = ({
         }}
       >
         <Group gap="xs" wrap="nowrap">
-          {formats.map(format => (
+          {formats.map((format) => (
             <Chip
               key={format}
               value={format}

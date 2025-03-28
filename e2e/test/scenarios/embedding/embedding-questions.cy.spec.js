@@ -321,7 +321,7 @@ describe("scenarios > embedding > questions > downloads", () => {
 
   context("without token", () => {
     it("should not be possible to disable downloads", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
         H.openStaticEmbeddingModal({ activeTab: "lookAndFeel" });
@@ -367,7 +367,7 @@ describe("scenarios > embedding > questions > downloads", () => {
         cy.log(
           "Trying to prevent downloads via query params doesn't have any effect",
         );
-        cy.url().then(url => {
+        cy.url().then((url) => {
           cy.visit(url + "&downloads=false");
         });
 
@@ -381,7 +381,7 @@ describe("scenarios > embedding > questions > downloads", () => {
     beforeEach(() => H.setTokenFeatures("all"));
 
     it("should be possible to disable downloads", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
         H.openStaticEmbeddingModal({

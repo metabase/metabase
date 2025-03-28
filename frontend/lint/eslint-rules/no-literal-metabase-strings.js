@@ -43,7 +43,7 @@ module.exports = {
       },
       TemplateLiteral(node) {
         const quasis = node.quasis;
-        quasis.forEach(quasi => {
+        quasis.forEach((quasi) => {
           if (LITERAL_METABASE_STRING_REGEX.exec(quasi.value.raw)) {
             context.report({
               node,
@@ -69,7 +69,7 @@ module.exports = {
           /eslint-disable-next-line\s+no-literal-metabase-strings/;
         const ALLOWED_ESLINT_DISABLE_LINE_REGEX =
           /eslint-disable-next-line\s+no-literal-metabase-strings -- \w+/;
-        comments.forEach(comment => {
+        comments.forEach((comment) => {
           if (ESLINT_DISABLE_BLOCK_REGEX.exec(comment.value)) {
             const { start, end } = comment.loc;
             context.report({

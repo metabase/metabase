@@ -48,7 +48,7 @@ export default class SegmentRetireModal extends Component {
               ref={this.revisionMessage}
               className={cx(CS.input, CS.full)}
               placeholder={t`This will show up in the activity feed and in an email that will be sent to anyone on your team who created something that uses this segment.`}
-              onChange={e => this.setState({ valid: !!e.target.value })}
+              onChange={(e) => this.setState({ valid: !!e.target.value })}
             />
           </div>
 

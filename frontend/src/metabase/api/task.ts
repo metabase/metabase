@@ -9,22 +9,22 @@ import { Api } from "./api";
 import { provideTaskListTags, provideTaskTags } from "./tags";
 
 export const taskApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listTasks: builder.query<ListTasksResponse, ListTasksRequest | void>({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/task",
         params,
       }),
-      providesTags: response =>
+      providesTags: (response) =>
         response ? provideTaskListTags(response.data) : [],
     }),
     getTask: builder.query<Task, number>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/task/${id}`,
       }),
-      providesTags: task => (task ? provideTaskTags(task) : []),
+      providesTags: (task) => (task ? provideTaskTags(task) : []),
     }),
     getTasksInfo: builder.query<TaskInfo, void>({
       query: () => ({

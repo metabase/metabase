@@ -44,7 +44,7 @@ export function MultiAutocomplete({
     value: controlledValue,
     defaultValue,
     finalValue: [],
-    onChange: val => {
+    onChange: (val) => {
       onChange?.(val);
     },
   });
@@ -67,7 +67,7 @@ export function MultiAutocomplete({
     const values = unique(newValues)
       .map(parseValues)
       .flat()
-      .filter(val => shouldCreate(val, []));
+      .filter((val) => shouldCreate(val, []));
     stupidRef.current = values;
     setLastSelectedValues(values);
     setSelectedValues(values);
@@ -159,7 +159,7 @@ export function MultiAutocomplete({
       onFocus={handleFocus}
       onSearchChange={handleSearchChange}
       onPasteCapture={handlePaste}
-      onBlur={e => {
+      onBlur={(e) => {
         setIsFocused(false);
         onBlur?.(e);
       }}

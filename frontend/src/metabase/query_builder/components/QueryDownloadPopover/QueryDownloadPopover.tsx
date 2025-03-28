@@ -80,8 +80,8 @@ export const QueryDownloadPopover = ({
         canConfigureFormatting={canConfigureFormatting(format)}
         canConfigurePivoting={canConfigurePivoting}
         onChangeFormat={setFormat}
-        onToggleFormatting={() => setIsFormatted(prev => !prev)}
-        onTogglePivoting={() => setIsPivoted(prev => !prev)}
+        onToggleFormatting={() => setIsFormatted((prev) => !prev)}
+        onTogglePivoting={() => setIsPivoted((prev) => !prev)}
       />
       {hasTruncatedResults && (
         <Box>

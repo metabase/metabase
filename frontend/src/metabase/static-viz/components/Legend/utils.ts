@@ -123,7 +123,7 @@ export const calculateLegendRows = ({
   }
 
   const renderedWidth = Math.max(
-    ...rows.map(row =>
+    ...rows.map((row) =>
       row.reduce(
         (currRowWidth, item) =>
           currRowWidth +
@@ -161,7 +161,7 @@ function calculateNumRowsCols(
     colWidth = Math.floor(width / ++numCols);
   } while (
     items.every(
-      item =>
+      (item) =>
         calculateItemWidth(item, fontSize, fontWeight) +
           legendItemMarginRight <=
         colWidth,
@@ -252,7 +252,7 @@ export const calculateLegendRowsWithColumns = ({
     renderedWidth = colWidth * numCols;
   } else {
     const lastColumnWidth = Math.max(
-      ...rows.map(row => {
+      ...rows.map((row) => {
         if (row.length < numCols) {
           return 0;
         }

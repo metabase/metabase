@@ -193,14 +193,21 @@
 (defn- number->expression-arg
   [value]
   (if (u.number/bigint? value)
-    (str value)
+    (lib.expression/value value)
     value))
 
 (defn- expression-arg->number
-  [value]
-  (cond
-    (number? value) value
-    (string? value) (u.number/parse-bigint value)))
+  [arg]
+  (lib.util.match/match-one arg
+    (value :guard number?)
+    value
+
+    [:value {:base-type :type/BigInteger} (value :guard string?)]
+    (u.number/parse-bigint value)
+
+    ;; do not match inner clauses
+    _
+    nil))
 
 (def ^:private NumberFilterParts
   [:map

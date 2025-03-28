@@ -177,12 +177,12 @@ function LinkVizInner({
             value={url ?? ""}
             autoFocus={autoFocus}
             placeholder={"https://example.com"}
-            onChange={e => handleLinkChange(e.target.value)}
+            onChange={(e) => handleLinkChange(e.target.value)}
             onFocus={onFocusInput}
             // we need to debounce this or it may close the popover before the click event can fire
             onBlur={_.debounce(onBlurInput, 100)}
             // the dashcard really wants to turn all mouse events into drag events
-            onMouseDown={e => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           />
         </TippyPopover>
       </EditLinkCardWrapper>

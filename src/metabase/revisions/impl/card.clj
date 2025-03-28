@@ -4,6 +4,7 @@
 
 (def ^:private excluded-columns-for-card-revision
   #{:cache_invalidated_at
+    :card_schema
     :created_at
     :creator_id
     :entity_id

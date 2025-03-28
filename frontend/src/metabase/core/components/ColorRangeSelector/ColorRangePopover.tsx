@@ -148,14 +148,14 @@ const getDefaultColor = (
 };
 
 const getDefaultColorMapping = (colors: string[]) => {
-  return Object.fromEntries(colors.map(color => [color, ["white", color]]));
+  return Object.fromEntries(colors.map((color) => [color, ["white", color]]));
 };
 
 const getDefaultIsInverted = (
   value: string[],
   colorMapping: Record<string, string[]>,
 ) => {
-  return Object.values(colorMapping).some(range => {
+  return Object.values(colorMapping).some((range) => {
     return _.isEqual(value, [...range].reverse());
   });
 };
