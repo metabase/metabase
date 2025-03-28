@@ -20,7 +20,7 @@ import {
 } from "metabase/data-grid/constants";
 import { isVirtualRow } from "metabase/data-grid/guards";
 import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme";
-import type { DataGridInstance } from "metabase/data-grid/types";
+import type { DataGridInstance, DataGridTheme } from "metabase/data-grid/types";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { getScrollBarSize } from "metabase/lib/dom";
 
@@ -50,8 +50,9 @@ export interface DataGridProps<TData>
   extends DataGridInstance<TData>,
     DataGridStylesProps {
   emptyState?: React.ReactNode;
-  isSortingDisabled?: boolean;
   showRowsCount?: boolean;
+  isColumnReorderingDisabled?: boolean;
+  theme?: DataGridTheme;
 }
 
 export const DataGrid = function DataGrid<TData>({
@@ -65,11 +66,11 @@ export const DataGrid = function DataGrid<TData>({
   theme,
   classNames,
   styles,
-  isSortingDisabled,
   enablePagination,
   showRowsCount,
   getTotalHeight,
   getVisibleRows,
+  isColumnReorderingDisabled,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
@@ -222,7 +223,9 @@ export const DataGrid = function DataGrid<TData>({
                             backgroundColor: stickyElementsBackgroundColor,
                             ...styles?.headerCell,
                           }}
-                          isSortingDisabled={isSortingDisabled}
+                          isColumnReorderingDisabled={
+                            isColumnReorderingDisabled
+                          }
                           header={header}
                           onClick={onHeaderCellClick}
                         >
