@@ -275,3 +275,17 @@
            (with-meta (meta form)))
        form))
    m))
+
+(defn- into! [transient-coll1 transient-coll2]
+  (reduce conj! transient-coll1 (persistent! transient-coll2)))
+
+(defn pmap
+  "Like `clojure.core/pmap`, but uses parallel streams for better efficiency."
+  [f, ^java.util.Collection coll]
+  (-> (.parallelStream coll)
+      (.map f)
+      (.collect (fn [] (volatile! (transient [])))
+                (fn [acc x] (vswap! acc conj! x))
+                (fn [acc1 acc2] (vswap! acc1 into! @acc2)))
+      deref
+      persistent!))
