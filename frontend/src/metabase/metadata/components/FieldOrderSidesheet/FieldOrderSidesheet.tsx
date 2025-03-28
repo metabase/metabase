@@ -69,21 +69,23 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
         />
       </Flex>
 
-      <SortableList
-        getId={getId}
-        items={sortedFields}
-        renderItem={({ item, id }) => (
-          <SortableField
-            disabled={isDragDisabled}
-            field={item}
-            id={id}
-            key={id}
-          />
-        )}
-        sensors={[pointerSensor]}
-        useDragOverlay={false}
-        onSortEnd={handleSortEnd}
-      />
+      <Flex direction="column" gap="sm">
+        <SortableList
+          getId={getId}
+          items={sortedFields}
+          renderItem={({ item, id }) => (
+            <SortableField
+              disabled={isDragDisabled}
+              field={item}
+              id={id}
+              key={id}
+            />
+          )}
+          sensors={[pointerSensor]}
+          useDragOverlay={false}
+          onSortEnd={handleSortEnd}
+        />
+      </Flex>
     </Sidesheet>
   );
 };
