@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.server.protocols :as server.protocols]
+   [metabase.server.qos-handler :as server.qos-handler]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [ring.adapter.jetty :as ring-jetty]
@@ -102,8 +103,10 @@
         servlet-handler (doto (ServletContextHandler.)
                           (.setAllowNullPathInfo true)
                           (.setServletHandler handler))
+        ; need to use the .get becuase ServletContextHandler provides a Supplier which returns the
+        qos-handler     (server.qos-handler/qos-handler 45 (.get servlet-handler))
         stats-handler   (doto (StatisticsHandler.)
-                          (.setHandler servlet-handler))]
+                          (.setHandler qos-handler))]
     (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
       (.setHandler stats-handler))))
 
