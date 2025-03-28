@@ -1,14 +1,150 @@
 (ns metabase.query-processor.middleware.metrics
   (:require
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
+
+(defn- filters->condition
+  [filters]
+  (when (seq filters)
+    (let [fc (count filters)]
+      (lib.util/fresh-uuids
+       (cond (= fc 1) (first filters)
+             (> fc 1) (apply lib/and filters))))))
+
+(def aggregation-operators-with-predicate
+  #{:count-where
+    :sum-where})
+
+(def aggregation-operators-0-arity
+  #{:count
+    :cum-count})
+
+(def aggregation-operators-1-arity
+  #{:avg
+    :cum-sum
+    :distinct
+    :max
+    :median
+    :min
+    :offset
+    :stddev
+    :sum
+    :var})
+
+(defn- merge-conditions
+  [c1 c2]
+  (let [c2-operator (first c2)
+        c2-maybe-unwrapped (cond-> c2
+                             (= :and c2-operator) (subvec 2))
+        c1-operator (first c1)]
+    (if (= :and c1-operator)
+      (if (= :and c2-operator)
+        (into c1 c2-maybe-unwrapped)
+        (conj c1 c2-maybe-unwrapped))
+      (if (= :and c2-operator)
+        (apply lib/and c1 c2-maybe-unwrapped)
+        (lib/and c1 c2-maybe-unwrapped)))))
+
+;; TODO: to `merge-conditions`
+(defn- transform-aggregation-with-predicate
+  [condition aggregation]
+  (assert (vector? aggregation))
+  ;; Following is probably too convoluted. How to untangle nested if?
+  (let [condition-operator (first condition)
+        condition-unwrapped (cond-> condition
+                              (= :and condition-operator) (subvec 2))
+        original-predicate (aggregation 3)
+        predicate-operator (first original-predicate)
+        adjusted-predicate (if (= :and predicate-operator)
+                             (if (= :and condition-operator)
+                               (into original-predicate condition-unwrapped)
+                               (conj original-predicate condition-unwrapped))
+                             (if (= :and condition-operator)
+                               (apply lib/and (cons original-predicate condition-unwrapped))
+                               (lib/and original-predicate condition-unwrapped)))]
+    (assoc aggregation 3 (lib.util/fresh-uuids adjusted-predicate))))
+
+(defn- transform-0-arity-aggregation
+  "Transform zero arity aggregating functions (count and cum-count) into"
+  [condition aggregation]
+  (if (or (not (vector? aggregation))
+          (not (contains? aggregation-operators-0-arity (first aggregation)))
+          (empty? condition))
+    aggregation
+    (let [operator (first aggregation)
+          clause-meta (meta aggregation)
+          opts (lib.options/options aggregation)
+          aggregating-fn (case operator
+                           :count lib/sum
+                           :cum-count lib/cum-sum)]
+      (-> (aggregating-fn (lib/case [[condition 1]]))
+          ;; explicit overwrite of new options with options of original clause
+          ;; TODO: Maybe this will needs some more of special casing
+          (lib.options/with-options opts)
+          ;; I believe the following is redundant (or isn't it?)
+          (with-meta clause-meta)))))
+
+;; TODO: Preconditions.
+;; TODO: Ensure proper rendering of percentage (ie. how to propagate semantic type)
+(defn- transform-share-aggregation
+  [condition aggregation]
+  (let [opts (lib.options/options aggregation)
+        predicate (nth aggregation 2)
+        aggregation-meta (meta aggregation)]
+    (-> (lib// (lib/count-where (merge-conditions predicate condition))
+               (lib/count-where condition))
+        (lib.options/with-options opts)
+        (with-meta aggregation-meta))))
+
+;; TODO: Implementation should consider that aggregation clauses can not be used inside aggregation clauses
+;;       but only inside of other expressions.
+(defn- case-wrap-metric-aggregation
+  [aggregation condition]
+  (cond->> aggregation
+    (seq condition)
+    (walk/postwalk
+     ;; TODO: extend to other types
+     (fn [form]
+       (if-not (and (vector? form)
+                    (not (map-entry? form)))
+         form
+         (let [operator (first form)]
+           (cond
+
+             (= :share operator)
+             (transform-share-aggregation condition form)
+
+             ;; TODO: Special case!!! (no. 1)
+             (contains? aggregation-operators-with-predicate operator)
+             (transform-aggregation-with-predicate condition form)
+
+             ;; TODO: Should be structured differently!!! -- named, documented
+             (contains? aggregation-operators-0-arity operator)
+             (transform-0-arity-aggregation condition form)
+
+             (or (contains? aggregation-operators-1-arity operator)
+                 (= :percentile operator))
+             (assoc form 2 (lib/case [[condition (nth form 2)]]))
+
+             :else form #_(throw (Exception. "nope")))))))))
+
+(defn- maybe-case-wrap-metric-aggregation
+  "Entrypoint into the marvelous world of transforming metric aggregation into one that hase case wrapped column arg."
+  [aggregation {:keys [aggregation-names filters] :as _metric-info}]
+  (if (empty? filters)
+    aggregation
+    (-> aggregation
+        (case-wrap-metric-aggregation (filters->condition filters))
+        (lib.options/update-options merge aggregation-names))))
 
 (defn- replace-metric-aggregation-refs [query stage-number lookup]
   (if-let [aggregations (lib/aggregations query stage-number)]
@@ -16,7 +152,7 @@
       (assoc-in query [:stages stage-number :aggregation]
                 (lib.util.match/replace aggregations
                   [:metric _ metric-id]
-                  (if-let [{replacement :aggregation metric-name :name} (get lookup metric-id)]
+                  (if-let [{replacement :aggregation metric-name :name :as metric-info} (get lookup metric-id)]
                     ;; We have to replace references from the source-metric with references appropriate for
                     ;; this stage (expression/aggregation -> field, field-id to string)
                     (let [replacement (lib.util.match/replace replacement
@@ -25,7 +161,9 @@
                                           (lib/ref col)
                                           ;; This is probably due to a field-id where it shouldn't be
                                           &match))]
-                      (update (lib.util/fresh-uuids replacement)
+                      (update (-> replacement
+                                  (maybe-case-wrap-metric-aggregation metric-info)
+                                  lib.util/fresh-uuids)
                               1
                               #(merge
                                 %
@@ -59,7 +197,12 @@
                             ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
                             ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
                             :aggregation aggregation
-                            :name metric-name}]
+                            :name metric-name
+                            ;; WIP
+                            :filters (lib/filters metric-query)
+                            :aggregation-names (select-keys (m/find-first (comp #{:source/aggregations} :lib/source)
+                                                                          (lib/returned-columns metric-query))
+                                                            [:name :display-name])}]
                           (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
          not-empty)))
 
@@ -139,7 +282,8 @@
                                (reduce #(expression-with-name-from-source %1 agg-stage-index %2)
                                        $q (lib/expressions metric-query -1))
                                (include-implicit-joins $q agg-stage-index metric-query)
-                               (reduce #(lib/filter %1 agg-stage-index %2) $q (lib/filters metric-query -1))
+                               ;; TODO: remove when certain
+                               #_(reduce #(lib/filter %1 agg-stage-index %2) $q (lib/filters metric-query -1))
                                (replace-metric-aggregation-refs $q agg-stage-index lookup)))
                            (throw (ex-info "Incompatible metric" {:query query
                                                                   :metric metric-query}))))
@@ -181,7 +325,8 @@
    replaced with the actual aggregation of the metric."
   [query stage-path expanded-stages last-metric-stage-number metric-metadata]
   (mu/disable-enforcement
-    (let [[pre-transition-stages [last-metric-stage _following-stage & following-stages]] (split-at last-metric-stage-number expanded-stages)
+    (let [[pre-transition-stages [last-metric-stage _following-stage & following-stages]]
+          (split-at last-metric-stage-number expanded-stages)
           metric-name (:name metric-metadata)
           metric-aggregation (-> last-metric-stage :aggregation first)
           stage-query (temp-query-at-stage-path query stage-path)
@@ -190,9 +335,12 @@
                                  (fn [stage]
                                    (dissoc stage :breakout :order-by :aggregation :fields :lib/stage-metadata)))
           ;; Needed for field references to resolve further in the pipeline
-          stage-query (lib/with-fields stage-query last-metric-stage-number (lib/fieldable-columns stage-query last-metric-stage-number))
+          stage-query (lib/with-fields
+                        stage-query last-metric-stage-number
+                        (lib/fieldable-columns stage-query last-metric-stage-number))
           new-metric-stage (lib.util/query-stage stage-query last-metric-stage-number)
           lookup {(:id metric-metadata)
+                  ;; TODO: this is missing query requried for update, or not?
                   {:name metric-name :aggregation metric-aggregation}}
           stage-query (replace-metric-aggregation-refs
                        stage-query
