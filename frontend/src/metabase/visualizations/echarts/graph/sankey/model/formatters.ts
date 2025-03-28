@@ -8,12 +8,12 @@ export const getSankeyFormatters = (
   columns: SankeyChartColumns,
   settings: ComputedVisualizationSettings,
 ): SankeyFormatters => {
-  const source = memoize(value => {
+  const source = memoize((value) => {
     return String(
       formatValue(value, settings.column?.(columns.source.column) ?? {}),
     );
   });
-  const target = memoize(value => {
+  const target = memoize((value) => {
     return String(
       formatValue(value, settings.column?.(columns.target.column) ?? {}),
     );
@@ -26,7 +26,7 @@ export const getSankeyFormatters = (
     node,
     source,
     target,
-    value: memoize(value => {
+    value: memoize((value) => {
       if (typeof value !== "number") {
         return "";
       }
@@ -34,7 +34,7 @@ export const getSankeyFormatters = (
         formatValue(value, settings.column?.(columns.value.column) ?? {}),
       );
     }),
-    valueCompact: memoize(value => {
+    valueCompact: memoize((value) => {
       if (typeof value !== "number") {
         return "";
       }

@@ -100,7 +100,7 @@ export const isStackingValueValid = (
     return true;
   }
 
-  const stackableDisplays = seriesDisplays.filter(display =>
+  const stackableDisplays = seriesDisplays.filter((display) =>
     STACKABLE_SERIES_DISPLAY_TYPES.has(display),
   );
   return stackableDisplays.length > 1;
@@ -110,7 +110,7 @@ export const isShowStackValuesValid = (
   seriesDisplays: string[],
   settings: ComputedVisualizationSettings,
 ) => {
-  const areAllAreas = seriesDisplays.every(display => display === "area");
+  const areAllAreas = seriesDisplays.every((display) => display === "area");
 
   return !areAllAreas && settings["stackable.stack_type"] !== "normalized";
 };
@@ -157,7 +157,7 @@ export const getSeriesOrderVisibilitySettings = (
   }
 
   const generateDefault = (keys: string[]) => {
-    return keys.map(key => ({
+    return keys.map((key) => ({
       key,
       color: seriesColors[key],
       enabled: true,
@@ -166,15 +166,15 @@ export const getSeriesOrderVisibilitySettings = (
   };
 
   const removeMissingOrder = (keys: string[], order: SeriesOrderSetting[]) =>
-    order.filter(o => keys.includes(o.key));
+    order.filter((o) => keys.includes(o.key));
   const newKeys = (keys: string[], order: SeriesOrderSetting[]) =>
-    keys.filter(key => !order.find(o => o.key === key));
+    keys.filter((key) => !order.find((o) => o.key === key));
 
   if (
     !seriesOrder ||
     !_.isArray(seriesOrder) ||
     !seriesOrder.every(
-      order =>
+      (order) =>
         order.key !== undefined &&
         order.name !== undefined &&
         order.color !== undefined,
@@ -187,7 +187,7 @@ export const getSeriesOrderVisibilitySettings = (
   return [
     ...removeMissingOrder(seriesKeys, seriesOrder),
     ...generateDefault(newKeys(seriesKeys, seriesOrder)),
-  ].map(item => ({
+  ].map((item) => ({
     ...item,
     name: seriesSettings?.[item.key]?.title || item.key,
     color: seriesColors[item.key],
@@ -218,7 +218,7 @@ export const isYAxisUnpinFromZeroValid = (
   }
 
   return seriesDisplays.every(
-    display =>
+    (display) =>
       display !== "area" && display !== "bar" && display !== "waterfall",
   );
 };
@@ -285,7 +285,7 @@ export const getAvailableXAxisScales = (
   const options = [];
 
   const dimensionColumn = data.cols.find(
-    col => col != null && col.name === settings["graph.dimensions"]?.[0],
+    (col) => col != null && col.name === settings["graph.dimensions"]?.[0],
   );
 
   if (settings["graph.x_axis._is_timeseries"]) {
@@ -318,7 +318,7 @@ export const isXAxisScaleValid = (
   const isWaterfall = series[0].card.display === "waterfall";
   const xAxisScale = settings["graph.x_axis.scale"];
   const options = getAvailableXAxisScales(series, settings).map(
-    option => option.value,
+    (option) => option.value,
   );
 
   if (xAxisScale && !options.includes(xAxisScale)) {
@@ -402,23 +402,23 @@ export function getAvailableAdditionalColumns(
     return [];
   }
 
-  getCardsColumns(rawSeries, settings).forEach(cardColumns => {
+  getCardsColumns(rawSeries, settings).forEach((cardColumns) => {
     alreadyIncludedColumns.add(cardColumns.dimension.column);
     if ("breakout" in cardColumns) {
       alreadyIncludedColumns.add(cardColumns.breakout.column);
       alreadyIncludedColumns.add(cardColumns.metric.column);
     } else {
-      cardColumns.metrics.forEach(columnDescriptor =>
+      cardColumns.metrics.forEach((columnDescriptor) =>
         alreadyIncludedColumns.add(columnDescriptor.column),
       );
     }
   });
 
   return rawSeries
-    .flatMap(singleSeries => {
+    .flatMap((singleSeries) => {
       return singleSeries.data.cols;
     })
-    .filter(column => !alreadyIncludedColumns.has(column));
+    .filter((column) => !alreadyIncludedColumns.has(column));
 }
 
 export function getComputedAdditionalColumnsValue(
@@ -428,7 +428,7 @@ export function getComputedAdditionalColumnsValue(
   const isScatter = rawSeries[0].card.display === "scatter";
 
   const availableAdditionalColumnKeys = new Set(
-    getAvailableAdditionalColumns(rawSeries, settings).map(column =>
+    getAvailableAdditionalColumns(rawSeries, settings).map((column) =>
       getColumnKey(column),
     ),
   );

@@ -10,8 +10,8 @@ export function cancelable<T>(promise: Promise<T>): CancellablePromise<T> {
 
   const wrappedPromise = new Promise<T>((resolve, reject) => {
     promise.then(
-      value => (canceled ? reject({ isCanceled: true }) : resolve(value)),
-      error => (canceled ? reject({ isCanceled: true }) : reject(error)),
+      (value) => (canceled ? reject({ isCanceled: true }) : resolve(value)),
+      (error) => (canceled ? reject({ isCanceled: true }) : reject(error)),
     );
   });
 
@@ -35,7 +35,7 @@ export function timeout(
 
 // returns a promise that resolves after a given duration
 export function delay(duration: number) {
-  return new Promise(resolve => setTimeout(resolve, duration));
+  return new Promise((resolve) => setTimeout(resolve, duration));
 }
 
 export interface Deferred<T = unknown> {

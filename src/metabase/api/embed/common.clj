@@ -106,7 +106,7 @@
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
   [card-or-id]
-  (-> (t2/select-one [:model/Card :dataset_query :parameters], :id (u/the-id card-or-id))
+  (-> (t2/select-one [:model/Card :dataset_query :parameters :card_schema], :id (u/the-id card-or-id))
       api.public/combine-parameters-and-template-tags
       :parameters))
 

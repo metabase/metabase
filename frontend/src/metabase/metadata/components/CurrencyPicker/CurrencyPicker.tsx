@@ -35,7 +35,7 @@ export const CurrencyPicker = ({ value, onChange, ...props }: Props) => {
       fw="bold"
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={t`Select a currency type`}
-      renderOption={item => {
+      renderOption={(item) => {
         const selected = item.option.value === value;
 
         return (
@@ -97,5 +97,5 @@ function getData() {
 }
 
 function getSymbols() {
-  return Object.fromEntries(getData().map(item => [item.value, item.symbol]));
+  return Object.fromEntries(getData().map((item) => [item.value, item.symbol]));
 }

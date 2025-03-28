@@ -1,5 +1,3 @@
-/* eslint-disable jest/expect-expect */
-
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
@@ -93,7 +91,7 @@ const setup = ({
   fieldId,
   initialValue = null,
 }: SetupOpts) => {
-  const field = checkNotNull(fields.find(field => field.id === fieldId));
+  const field = checkNotNull(fields.find((field) => field.id === fieldId));
 
   renderWithProviders(
     <TestComponent field={field} initialValue={initialValue} />,
@@ -105,7 +103,7 @@ describe("SemanticTypePicker", () => {
     it("does not show deprecated semantic types", async () => {
       setup({ fieldId: TEMPORAL_FIELD.id });
 
-      await verifySemanticTypesVisibility({
+      await assertSemanticTypesVisibility({
         visibleTypes: ["Creation date"],
         hiddenTypes: ["Cancelation date"],
       });
@@ -119,7 +117,7 @@ describe("SemanticTypePicker", () => {
 
       expect(screen.getByText("Cancelation date")).toBeInTheDocument();
 
-      await verifySemanticTypesVisibility({
+      await assertSemanticTypesVisibility({
         visibleTypes: ["Creation date", "Cancelation date"],
       });
     });
@@ -145,7 +143,7 @@ describe("SemanticTypePicker", () => {
   it("shows Category semantic type for boolean field's", async () => {
     setup({ fieldId: BOOLEAN_FIELD.id });
 
-    await verifySemanticTypesVisibility({
+    await assertSemanticTypesVisibility({
       visibleTypes: ["Category"],
     });
   });
@@ -153,10 +151,10 @@ describe("SemanticTypePicker", () => {
   describe("Entity Key, Foreign Key, and No semantic type", () => {
     it.each(FIELDS)(
       "shows Entity Key, Foreign Key, and No semantic type when field's effective_type is derived from $display_name",
-      async field => {
+      async (field) => {
         setup({ fieldId: field.id });
 
-        await verifySemanticTypesVisibility({
+        await assertSemanticTypesVisibility({
           visibleTypes: ["Entity Key", "Foreign Key", "No semantic type"],
         });
       },
@@ -167,7 +165,7 @@ describe("SemanticTypePicker", () => {
     it("shows Entity Name when field's effective_type is derived from text/Type", async () => {
       setup({ fieldId: TEXT_FIELD.id });
 
-      await verifySemanticTypesVisibility({
+      await assertSemanticTypesVisibility({
         visibleTypes: ["Entity Name"],
       });
     });
@@ -181,10 +179,10 @@ describe("SemanticTypePicker", () => {
       STRUCTURED_FIELD,
     ])(
       "does not show Entity Name when field's effective_type is derived from $display_name",
-      async field => {
+      async (field) => {
         setup({ fieldId: field.id });
 
-        await verifySemanticTypesVisibility({
+        await assertSemanticTypesVisibility({
           hiddenTypes: ["Entity Name"],
         });
       },
@@ -194,10 +192,10 @@ describe("SemanticTypePicker", () => {
   describe("Field containing JSON", () => {
     it.each([STRUCTURED_FIELD, COLLECTION_FIELD])(
       "shows Field containing JSON semantic type when field's effective_type is derived from $display_name",
-      async field => {
+      async (field) => {
         setup({ fieldId: field.id });
 
-        await verifySemanticTypesVisibility({
+        await assertSemanticTypesVisibility({
           visibleTypes: ["Field containing JSON"],
           hiddenTypes: ["Category", "Title"],
         });
@@ -209,7 +207,7 @@ describe("SemanticTypePicker", () => {
     it("also shows semantic types derived from text/Number when field's effective_type is derived from $display_name", async () => {
       setup({ fieldId: TEXT_FIELD.id });
 
-      await verifySemanticTypesVisibility({
+      await assertSemanticTypesVisibility({
         visibleTypes: [
           "Latitude",
           "Longitude",
@@ -242,7 +240,7 @@ describe("SemanticTypePicker", () => {
     const picker = screen.getByPlaceholderText("Select a semantic type");
     await userEvent.click(picker);
 
-    await verifySemanticTypesVisibility({
+    await assertSemanticTypesVisibility({
       visibleTypes: ["Title"],
       hiddenTypes: ["Birthday", "Creation date"],
     });
@@ -263,14 +261,14 @@ describe("SemanticTypePicker", () => {
       fieldId,
     });
 
-    await verifySemanticTypesVisibility({
+    await assertSemanticTypesVisibility({
       visibleTypes: ["Birthday", "Creation date"],
       hiddenTypes: ["Title"],
     });
   });
 });
 
-async function verifySemanticTypesVisibility({
+async function assertSemanticTypesVisibility({
   visibleTypes = [],
   hiddenTypes = [],
 }: {

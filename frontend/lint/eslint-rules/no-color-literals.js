@@ -30,7 +30,9 @@ module.exports = {
         }
       },
       TemplateLiteral(node) {
-        if (node.quasis.filter(q => COLOR_REGEX.test(q.value.raw)).length > 0) {
+        if (
+          node.quasis.filter((q) => COLOR_REGEX.test(q.value.raw)).length > 0
+        ) {
           context.report({ node, message: LINT_MESSAGE });
         }
       },

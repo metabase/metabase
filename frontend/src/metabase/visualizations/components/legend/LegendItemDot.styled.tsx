@@ -22,10 +22,10 @@ export const InnerCircle = styled.div<{ isVisible: boolean }>`
   height: 12px;
   border-radius: 50%;
   color-adjust: exact;
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.isVisible ? props.color : "var(--mb-color-background)"};
   border: 2px solid
-    ${props => (props.isVisible ? props.color : "var(--mb-color-text-light)")};
+    ${(props) => (props.isVisible ? props.color : "var(--mb-color-text-light)")};
   transition: all 0.2s;
 `;
 

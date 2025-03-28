@@ -13,10 +13,10 @@ const path = require("path");
  * @returns
  */
 const collectFailingTests = (on, config) => {
-  on("after:run", async results => {
+  on("after:run", async (results) => {
     const failedSpecs = results.runs
-      .filter(run => run.stats.failures > 0)
-      .map(run => run.spec.relative);
+      .filter((run) => run.stats.failures > 0)
+      .map((run) => run.spec.relative);
 
     if (failedSpecs.length > 0) {
       const failedTestFilePath = "../../cypress/test-results/";

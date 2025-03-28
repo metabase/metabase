@@ -17,7 +17,7 @@ export const useEscapeToCloseModal = (
 ) => {
   useKey(
     "Escape",
-    e => {
+    (e) => {
       e.stopPropagation();
       handler(e);
     },

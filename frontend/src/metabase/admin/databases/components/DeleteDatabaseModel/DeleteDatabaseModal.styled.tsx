@@ -22,8 +22,8 @@ interface DeleteDatabaseModalSectionProps {
 }
 
 export const DeleteDatabaseModalSection = styled.div<DeleteDatabaseModalSectionProps>`
-  height: ${props => (props.isHidden ? 0 : "unset")};
-  opacity: ${props => (props.isHidden ? 0 : 1)};
+  height: ${(props) => (props.isHidden ? 0 : "unset")};
+  opacity: ${(props) => (props.isHidden ? 0 : 1)};
   padding: 0.125rem;
   transition:
     all 350ms,

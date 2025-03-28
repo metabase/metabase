@@ -78,7 +78,7 @@ const setup = ({
 
   const children = (
     <div>
-      {mocks.map(mock => (
+      {mocks.map((mock) => (
         <InteractiveQuestion key={mock.card.id} questionId={mock.card.id} />
       ))}
     </div>

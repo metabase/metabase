@@ -23,11 +23,11 @@ export function UserSuccessModal({ params }) {
   const userId = parseInt(params.userId);
   const { data: user, isLoading, error } = useGetUserQuery(userId);
 
-  const temporaryPassword = useSelector(state =>
+  const temporaryPassword = useSelector((state) =>
     getUserTemporaryPassword(state, { userId }),
   );
   const hasSsoEnabled = useSelector(isSsoEnabled);
-  const hasPasswordLoginEnabled = useSelector(state =>
+  const hasPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, "enable-password-login"),
   );
   const dispatch = useDispatch();

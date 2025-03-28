@@ -36,9 +36,10 @@ export const InputMeridiemContainer = styled.div`
 `;
 
 export const InputMeridiemButton = styled.button<InputPeriodButtonProps>`
-  color: ${props => (props.isSelected ? color("brand") : color("text-light"))};
-  cursor: ${props => (props.isSelected ? "" : "pointer")};
-  font-weight: ${props => (props.isSelected ? "bold" : "")};
+  color: ${(props) =>
+    props.isSelected ? color("brand") : color("text-light")};
+  cursor: ${(props) => (props.isSelected ? "" : "pointer")};
+  font-weight: ${(props) => (props.isSelected ? "bold" : "")};
 `;
 
 export const InputClearButton = styled(IconButtonWrapper)`

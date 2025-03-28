@@ -14,7 +14,9 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test :as mt]
-   [metabase.test.data.users :as test.users]))
+   [metabase.test.data.users :as test.users])
+  (:import
+   (java.sql SQLException)))
 
 (deftest ^:parallel exception-chain-test
   (testing "Should be able to get a sequence of exceptions by following causes, with the top-level Exception first"
@@ -52,7 +54,31 @@
                    (update :stacktrace sequential?)
                    (update :via (fn [causes]
                                   (for [cause causes]
-                                    (update cause :stacktrace sequential?)))))))))))
+                                    (update cause :stacktrace sequential?))))))))))
+  (testing "SQLExceptions that include stack traces should have them removed"
+    (let [e1 (ex-info "mock databricks jdbc driver exception" {:level 1})
+          e2 (SQLException. "mock sql exception\n\tat line1\n\tat line2\n\tat line3" e1)
+          e3 (ex-info "mock exception" {:level 3} e2)]
+      (is (= {:status     :failed
+              :class      clojure.lang.ExceptionInfo
+              :error      "mock sql exception"
+              :stacktrace true
+              :ex-data    {:level 1}
+              :via        [{:status        :failed
+                            :class         java.sql.SQLException,
+                            :error         "mock sql exception\n\tat line1\n\tat line2\n\tat line3",
+                            :stacktrace    true
+                            :state nil}
+                           {:status     :failed
+                            :class      clojure.lang.ExceptionInfo
+                            :error      "mock exception"
+                            :stacktrace true
+                            :ex-data    {:level 3}}]}
+             (-> (#'catch-exceptions/exception-response e3)
+                 (update :stacktrace sequential?)
+                 (update :via (fn [causes]
+                                (for [cause causes]
+                                  (update cause :stacktrace sequential?))))))))))
 
 (defn catch-exceptions
   ([run]

@@ -23,7 +23,7 @@ export function DashboardSubscriptionMenuItem({
 
   // dashcardData only contains question cards, text ones don't appear here
   const hasDataCards = dashboard?.dashcards?.some(
-    dashCard => !["text", "heading"].includes(dashCard.card.display),
+    (dashCard) => !["text", "heading"].includes(dashCard.card.display),
   );
 
   if (!canManageSubscriptions || !hasDataCards) {

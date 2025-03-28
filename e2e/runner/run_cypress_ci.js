@@ -27,7 +27,7 @@ const startServer = async () => {
   await CypressBackend.start();
 };
 
-const runTests = async testSuite => {
+const runTests = async (testSuite) => {
   printBold(`Running ${testSuite} Cypress Tests`);
   await runCypress(testSuite, process.exit);
 };

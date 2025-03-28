@@ -76,7 +76,7 @@ export const settings = {
     persistDefault: true,
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
       // hide the setting widget if there are invalid columns
-      !data || data.cols.some(col => !isColumnValid(col)),
+      !data || data.cols.some((col) => !isColumnValid(col)),
     getProps: (
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
@@ -101,7 +101,7 @@ export const settings = {
         return undefined;
       }
       const columnsToPartition = data.cols.filter(
-        col => !isPivotGroupColumn(col),
+        (col) => !isPivotGroupColumn(col),
       );
       let setting: PivotTableColumnSplitSetting;
       if (storedValue == null) {
@@ -109,7 +109,7 @@ export const settings = {
           columnsToPartition,
           isDimension,
         );
-        const [first, second, ...rest] = _.sortBy(dimensions, col =>
+        const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
           getIn(col, ["fingerprint", "global", "distinct-count"]),
         );
 
@@ -126,8 +126,8 @@ export const settings = {
           columns = [first, second];
           rows = rest;
         }
-        setting = _.mapObject({ rows, columns, values }, cols =>
-          cols.map(col => col.name),
+        setting = _.mapObject({ rows, columns, values }, (cols) =>
+          cols.map((col) => col.name),
         );
       } else {
         setting = updateValueWithCurrentColumns(
@@ -165,11 +165,11 @@ export const settings = {
       const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
 
       return columnFormats
-        .map(columnFormat => {
+        .map((columnFormat) => {
           const hasOnlyFormattableColumns =
             columnFormat.columns
               .map((columnName: string) =>
-                data.cols.find(column => column.name === columnName),
+                data.cols.find((column) => column.name === columnName),
               )
               .filter(Boolean) ?? [].every(isFormattablePivotColumn);
 
@@ -190,12 +190,12 @@ export const settings = {
     ): boolean => {
       const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
 
-      return columnFormats.every(columnFormat => {
+      return columnFormats.every((columnFormat) => {
         const hasOnlyFormattableColumns =
           columnFormat.columns
-            .map(columnName =>
+            .map((columnName) =>
               (data.cols as DatasetColumn[]).find(
-                column => column.name === columnName,
+                (column) => column.name === columnName,
               ),
             )
             .filter(Boolean) ?? [].every(isFormattablePivotColumn);
@@ -216,7 +216,7 @@ export const settings = {
       };
     },
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
-      !data?.cols.some(col => isFormattablePivotColumn(col)),
+      !data?.cols.some((col) => isFormattablePivotColumn(col)),
   },
 };
 
@@ -260,7 +260,7 @@ export const _columnSettings = {
       return rows
         .slice(0, -1)
         .some(
-          row =>
+          (row) =>
             _.isEqual(row, column.name) || _.isEqual(row, column.field_ref),
         );
     },
@@ -273,7 +273,7 @@ export const _columnSettings = {
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column
-      return !rows.slice(0, -1).some(row => _.isEqual(row, column.name));
+      return !rows.slice(0, -1).some((row) => _.isEqual(row, column.name));
     },
   },
   column_title: {

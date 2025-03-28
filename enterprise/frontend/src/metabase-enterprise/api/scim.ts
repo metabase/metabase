@@ -6,7 +6,7 @@ import type {
 import { EnterpriseApi } from "./api";
 
 export const scimApi = EnterpriseApi.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getScimToken: builder.query<MaskedScimApiKey, void>({
       query: () => ({
         method: "GET",
