@@ -35,7 +35,7 @@ function setup({
   const mockDbs = new Array(mockDbCount)
     .fill(null)
     .map((_, i) => createMockDatabase({ id: i + 2 }));
-  mockDbs.forEach(db => setupDatabaseEndpoints(db));
+  mockDbs.forEach((db) => setupDatabaseEndpoints(db));
 
   (useListDatabasesQuery as jest.Mock).mockReturnValue(
     // eslint-disable-next-line react-hooks/rules-of-hooks

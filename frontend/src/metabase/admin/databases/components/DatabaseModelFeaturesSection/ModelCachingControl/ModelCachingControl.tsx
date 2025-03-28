@@ -1,17 +1,16 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
+import { hasFeature } from "metabase/admin/databases/utils";
 import {
-  PERSIST_DATABASE,
-  UNPERSIST_DATABASE,
-} from "metabase/admin/databases/database";
+  usePersistDatabaseMutation,
+  useUnpersistDatabaseMutation,
+} from "metabase/api";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { useDispatch } from "metabase/lib/redux";
-import { MetabaseApi } from "metabase/services";
 import { Box, Flex, Switch, Tooltip } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
+import type { Database } from "metabase-types/api";
 
 import { Description, Error, Label } from "../../DatabaseFeatureComponents";
 
@@ -32,23 +31,23 @@ function isLackPermissionsError(response: ErrorResponse) {
 
 export function ModelCachingControl({ database, disabled }: Props) {
   const [error, setError] = useState<string | null>(null);
-  const dispatch = useDispatch();
 
   const databaseId = database.id;
-  const isEnabled = database.isPersisted();
+  const isEnabled = hasFeature(database, "persist-models-enabled");
 
   const siteUUID = useSetting("site-uuid");
   const cacheSchemaName = getModelCacheSchemaName(databaseId, siteUUID || "");
+
+  const [persistDatabase] = usePersistDatabaseMutation();
+  const [unpersistDatabase] = useUnpersistDatabaseMutation();
 
   const handleCachingChange = async () => {
     setError(null);
     try {
       if (isEnabled) {
-        await MetabaseApi.db_unpersist({ dbId: databaseId });
-        await dispatch({ type: UNPERSIST_DATABASE });
+        await unpersistDatabase(databaseId).unwrap();
       } else {
-        await MetabaseApi.db_persist({ dbId: databaseId });
-        await dispatch({ type: PERSIST_DATABASE });
+        await persistDatabase(databaseId).unwrap();
       }
     } catch (error) {
       const response = error as ErrorResponse;

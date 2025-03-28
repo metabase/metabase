@@ -13,7 +13,7 @@ import { useRedirectDestinationDatabase } from "./hooks";
 if (hasPremiumFeature("database_routing")) {
   PLUGIN_DB_ROUTING.DatabaseRoutingSection = DatabaseRoutingSection;
 
-  PLUGIN_DB_ROUTING.getDatabaseNameFieldProps = isSlug => {
+  PLUGIN_DB_ROUTING.getDatabaseNameFieldProps = (isSlug) => {
     if (!isSlug) {
       return {};
     }
@@ -26,7 +26,7 @@ if (hasPremiumFeature("database_routing")) {
     };
   };
 
-  PLUGIN_DB_ROUTING.getPrimaryDBEngineFieldState = db =>
+  PLUGIN_DB_ROUTING.getPrimaryDBEngineFieldState = (db) =>
     db.router_user_attribute ? "disabled" : "default";
 
   PLUGIN_DB_ROUTING.useRedirectDestinationDatabase =
