@@ -111,7 +111,7 @@ type VisualizationOwnProps = {
   errorMessageOverride?: string;
   expectedDuration?: number;
   getExtraDataForClick?: (
-    clicked: ClickObject | undefined,
+    clicked: ClickObject | null,
   ) => Record<string, unknown>;
   getHref?: () => string | undefined;
   gridSize?: {
@@ -119,7 +119,7 @@ type VisualizationOwnProps = {
     height: number;
   };
   gridUnit?: number;
-  handleVisualizationClick?: (clicked: ClickObject) => void;
+  handleVisualizationClick?: (clicked: ClickObject | null) => void;
   headerIcon?: IconProps;
   width?: number | null;
   height?: number | null;
@@ -388,7 +388,7 @@ class Visualization extends PureComponent<
     }
   }
 
-  getClickActions(clicked: ClickObject | null) {
+  getClickActions(clicked?: ClickObject | null) {
     if (!clicked) {
       return [];
     }
@@ -430,7 +430,7 @@ class Visualization extends PureComponent<
     };
   };
 
-  visualizationIsClickable = (clicked?: ClickObject) => {
+  visualizationIsClickable = (clicked: ClickObject | null) => {
     if (!clicked) {
       return false;
     }
@@ -443,11 +443,7 @@ class Visualization extends PureComponent<
     }
   };
 
-  handleVisualizationClick = (clicked?: ClickObject) => {
-    if (!clicked) {
-      return;
-    }
-
+  handleVisualizationClick = (clicked: ClickObject | null) => {
     const { handleVisualizationClick } = this.props;
 
     if (typeof handleVisualizationClick === "function") {
