@@ -233,7 +233,7 @@
 
 (lib.common/defop count       [] [x])
 (lib.common/defop cum-count   [] [x])
-(lib.common/defop count-where [x y])
+(lib.common/defop count-where [x])
 (lib.common/defop avg         [x])
 (lib.common/defop distinct    [x])
 (lib.common/defop max         [x])
@@ -265,7 +265,8 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    aggregable :- Aggregable]
+    ;; WIP
+    aggregable :- :any #_Aggregable]
    ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
    (if (= (lib.dispatch/dispatch-value aggregable) :metadata/metric)
      (recur query stage-number (lib.ref/ref aggregable))
