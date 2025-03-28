@@ -107,8 +107,9 @@
                                  "9000 AS B, "
                                  "'2022-10-12'::date AS C, "
                                  "0.123 AS D, "
-                                 "0.6666667 AS E;")
-          formatting-viz    {:table.column_widths [50 50 50 50 50]
+                                 "0.6666667 AS E, "
+                                 "'https://example.com/image.jpg' AS F;")
+          formatting-viz    {:table.column_widths [50 50 50 50 50 50]
                              :column_settings
                              {"[\"name\",\"A\"]" {:column_title "Eh"
                                                   :number_style "percent"
@@ -122,13 +123,21 @@
                                                   :prefix       "---"
                                                   :suffix       "___"}
                               "[\"name\",\"E\"]" {:column_title "E"
-                                                  :decimals     3}}}
+                                                  :decimals     3}
+                              "[\"name\",\"F\"]" {:column_title "Eff"
+                                                  :view_as     "image"}}}
           disabled-cols-viz {:table.columns
                              [{:name "B" :enabled true}
                               {:name "A" :enabled true}
                               {:name "C" :enabled false}
                               {:name "D" :enabled false}
-                              {:name "E" :enabled false}]}]
+                              {:name "E" :enabled false}]}
+          expected-img-cell {:type :element,
+                             :attrs
+                             {:src "https://example.com/image.jpg",
+                              :style "max-width: 100%; max-height: 30px; object-fit: contain; display: block;"},
+                             :tag :img,
+                             :content nil}]
       (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query          {:database (mt/id)
                                                                                   :type     :native
                                                                                   :native   {:query q}}
@@ -136,8 +145,8 @@
         (testing "Custom column titles and column format settings are respected in render."
           (let [doc     (render.tu/render-card-as-hickory! card-id)
                 row-els (hik.s/select (hik.s/tag :tr) doc)]
-            (is (= [["Eh" "Bee" "Sea" "D" "E"]
-                    ["10%" "9E3" "12/10/2022" "---0.12___" "0.667"]]
+            (is (= [["Eh" "Bee" "Sea" "D" "E" "Eff"]
+                    ["10%" "9E3" "12/10/2022" "---0.12___" "0.667" expected-img-cell]]
                    (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els)))))
         (testing "Site Localization Settings are respected in columns."
           (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style      "D/M/YYYY"
@@ -146,8 +155,8 @@
                                                                 :type/Number   {:number_separators ",."}}]
             (let [doc     (render.tu/render-card-as-hickory! card-id)
                   row-els (hik.s/select (hik.s/tag :tr) doc)]
-              (is (= [["Eh" "Bee" "Sea" "D" "E"]
-                      ["10%" "9E3" "12-10-2022" "---0,12___" "0,667"]]
+              (is (= [["Eh" "Bee" "Sea" "D" "E" "Eff"]
+                      ["10%" "9E3" "12-10-2022" "---0,12___" "0,667" expected-img-cell]]
                      (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els))))))
         (testing "Visibility type on Fields is respected."
           (let [data-map      {:data {:cols [{:name            "A"
@@ -177,20 +186,28 @@
                 th-els  (hik.s/select (hik.s/tag :th) doc)
                 eh-th   (first (filter #(= "Eh" (first (:content %))) th-els))
                 style   (get-in eh-th [:attrs :style])]
-            (def tsp-style style)
             (is (and (str/includes? style "white-space: normal")
                      (str/includes? style "min-width: 25px"))
-                "The 'Eh' column should have text wrapping enabled with appropriate min-width"))))
-      (testing "Disabled columns are not rendered, and column re-ordering is respected."
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          {:database (mt/id)
-                                                                           :type     :native
-                                                                           :native   {:query q}}
-                                                  :visualization_settings disabled-cols-viz}]
+                "The 'Eh' column should have text wrapping enabled with appropriate min-width")))
+        (testing "View as image settings are respected in columns."
           (let [doc     (render.tu/render-card-as-hickory! card-id)
-                row-els (hik.s/select (hik.s/tag :tr) doc)]
-            (is (= [["B" "A"]
-                    ["9,000" "0.1"]]
-                   (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els)))))))))
+                img-els (hik.s/select (hik.s/tag :img) doc)
+                first-img (first img-els)
+                style   (get-in first-img [:attrs :style])]
+            (is (and (some? img-els)
+                     (= "https://example.com/image.jpg" (get-in first-img [:attrs :src]))
+                     (str/includes? style "max-height: 30px"))
+                "The 'F' column should render images with max-height of 30px")))
+        (testing "Disabled columns are not rendered, and column re-ordering is respected."
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query          {:database (mt/id)
+                                                                             :type     :native
+                                                                             :native   {:query q}}
+                                                    :visualization_settings disabled-cols-viz}]
+            (let [doc     (render.tu/render-card-as-hickory! card-id)
+                  row-els (hik.s/select (hik.s/tag :tr) doc)]
+              (is (= [["B" "A"]
+                      ["9,000" "0.1"]]
+                     (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els))))))))))
 
 (deftest table-row-index-column-test
   (mt/dataset test-data

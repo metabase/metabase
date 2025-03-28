@@ -71,7 +71,7 @@
     (str (str/trim (subs text 0 max-column-character-length)) "...")
     text))
 
-(defn- render-table-head [column-names {:keys [bar-width row]} columns col->styles row-index?]
+(defn- render-table-head [column-names {:keys [row]} columns col->styles row-index?]
   [:thead
    [:tr
     (when row-index?
@@ -92,9 +92,7 @@
                        (get col->styles (:name col)))
                :title title}
           (truncate-text (h title))]))
-     row)
-    (when bar-width
-      [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
+     row)]])
 
 (defn calculate-pct-widths
   "Calculate the widths for label and minibar as percentages.
@@ -180,12 +178,13 @@
   - column-names: Sequence of column names/identifiers
   - rows: Sequence of row data, each containing cell values
   - columns: Column configuration objects with type information
+  - viz-settings: Viz settings
   - minibar-cols: Columns that should display mini-bar visualizations instead of raw values
   - col->styles: Map of column names to their style specifications
   - row-index?: Boolean flag to include row index numbers (1-based)"
-  [get-background-color column-names rows columns minibar-cols col->styles row-index?]
+  [get-background-color column-names rows columns viz-settings minibar-cols col->styles row-index?]
   [:tbody
-   (for [[row-idx {:keys [row bar-width]}] (m/indexed rows)]
+   (for [[row-idx {:keys [row]}] (m/indexed rows)]
      [:tr {:style (style/style {:color style/color-gray-3})}
       (when row-index?
         [:td {:style (style/style
@@ -194,19 +193,29 @@
                         {:border-bottom 0}))}
          (inc row-idx)])
       (for [[col-idx cell] (m/indexed row)]
-        (let [column (nth columns col-idx)]
+        (let [column       (nth columns col-idx)
+              column-name  (get column-names col-idx)
+              minibar-col  (first (filter #(= (:name column) (:name %)) minibar-cols))
+              col-settings (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name column-name}] {})]
           [:td {:style (style/style
                         (row-style-for-type cell)
                         (get col->styles (:name column))
                         {:background-color (get-background-color cell (get column-names col-idx) row-idx)}
-                        (when (and bar-width (= col-idx 1))
-                          {:font-weight 700})
                         (when (= row-idx (dec (count rows)))
                           {:border-bottom 0})
                         (when (= col-idx (dec (count row)))
                           {:border-right 0}))}
-           (if-let [minibar-col (first (filter #(= (:name column) (:name %)) minibar-cols))]
+           (cond
+             ;; Minibar column
+             (some? minibar-col)
              (render-minibar cell (get-in minibar-col [:fingerprint :type :type/Number]) (get col->styles (:name column)))
+
+             ;; View as image
+             (= (get col-settings ::mb.viz/view-as) "image")
+             [:img {:src (h cell)
+                    :style (style/style style/view-as-img-style)}]
+
+             :else
              (h cell))]))])])
 
 (defn- get-min-width
@@ -248,6 +257,10 @@
            (::mb.viz/text-align col-setting)
            (assoc column-name {:text-align (get-text-align (::mb.viz/text-align col-setting))})
 
+           ;; view as image
+           (= (::mb.viz/view-as col-setting) "image")
+           (assoc column-name {:vertical-align "middle"})
+
            ;; minibar
            (::mb.viz/show-mini-bar col-setting)
            (assoc column-name (if column-widths
@@ -284,7 +297,7 @@
                                                              (update row :row #(m/remove-nth pivot-grouping-idx %)))))))
          color-getter       (partial js.color/get-background-color color-selector)
          thead              (render-table-head (vec col-names) header columns col->styles row-index?)
-         tbody              (render-table-body color-getter cols-for-color-lookup rows columns minibar-cols col->styles row-index?)]
+         tbody              (render-table-body color-getter cols-for-color-lookup rows columns viz-settings minibar-cols col->styles row-index?)]
      [:table {:style       (style/style {:max-width     "100%"
                                          :white-space   "nowrap"
                                          :border        (str "1px solid " style/color-border)
