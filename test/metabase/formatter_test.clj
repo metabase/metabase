@@ -5,14 +5,22 @@
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]))
 
-(defn format
+(defn- format-with-field-id
   [value viz]
   (str ((formatter/number-formatter {:id 1}
                                     {::mb.viz/column-settings
                                      {{::mb.viz/field-id 1} viz}})
         value)))
 
-(defn format-with-merged-settings
+(defn- format-with-colname-key
+  "Include both field-id and column-name keys in column settings #55066"
+  [value viz]
+  (str ((formatter/number-formatter {:id 1 :name "FOO"}
+                                    {::mb.viz/column-settings
+                                     {{::mb.viz/column-name "FOO"} viz}})
+        value)))
+
+(defn- format-with-field-id-and-colname-keys
   "Include both field-id and column-name keys in column settings #55066"
   [value viz]
   (str ((formatter/number-formatter {:id 1 :name "FOO"}
@@ -21,18 +29,13 @@
                                       {::mb.viz/column-name "FOO"} viz}})
         value)))
 
-(defn format-with-name-key
-  "Include both field-id and column-name keys in column settings #55066"
-  [value viz]
-  (str ((formatter/number-formatter {:id 1 :name "FOO"}
-                                    {::mb.viz/column-settings
-                                     {{::mb.viz/column-name "FOO"} viz}})
-        value)))
-
 (def ^:private formatters
-  [{:name " field-id only" :fmt-fn format}
-   {:name " column-name only" :fmt-fn format-with-name-key}
-   {:name " both field-id and column-name" :fmt-fn format-with-merged-settings}])
+  [{:name " field-id only"
+    :fmt-fn format-with-field-id}
+   {:name " column-name only"
+    :fmt-fn format-with-colname-key}
+   {:name " both field-id and column-name"
+    :fmt-fn format-with-field-id-and-colname-keys}])
 
 (deftest regular-number-formatting
   (doseq [{:keys [name fmt-fn]} formatters]
