@@ -4,6 +4,10 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.54.0
+
+- `POST /api/dataset` and `POST /api/dataset/pivot` require the query to be passed via the new `query` key.
+
 ## Metabase 0.53.0
 
 - The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:
