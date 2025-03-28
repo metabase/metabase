@@ -93,7 +93,7 @@
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)
-   {:context (if (some? dashboard_id) :dashboard-adhoc :adhoc)}))
+   {:context (if (some? dashboard_id) :dashboard-ad-hoc :ad-hoc)}))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
@@ -208,7 +208,7 @@
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
-              :context     (if (some? dashboard_id) :dashboard-adhoc :adhoc)}]
+              :context     (if (some? dashboard_id) :dashboard-ad-hoc :ad-hoc)}]
     (qp.streaming/streaming-response [rff :api]
       (qp.pivot/run-pivot-query (assoc query
                                        :constraints (qp.constraints/default-query-constraints)

@@ -19,7 +19,7 @@
    :map-tiles
    :pulse
    :dashboard
-   :dashboard-adhoc
+   :dashboard-ad-hoc
    :dashboard-subscription
    :question
    :csv-download

@@ -15,6 +15,7 @@ import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   getCard,
+  getDashboardId,
   getFirstQueryResult,
   getIsResultDirty,
   getIsRunning,
@@ -151,11 +152,13 @@ export const runQuestionQuery = ({
 
     const startTime = new Date();
     const cancelQueryDeferred = defer();
+    const parentDashboardId = getDashboardId(getState());
 
     apiRunQuestionQuery(question, {
       cancelDeferred: cancelQueryDeferred,
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,
+      parentDashboardId,
     })
       .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
       .catch((error) => dispatch(queryErrored(startTime, error)));
