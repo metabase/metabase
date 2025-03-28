@@ -3,23 +3,25 @@ import type { StoryFn } from "@storybook/react";
 import { type ComponentProps, useState } from "react";
 
 import {
-  createMockNotification,
+  createMockAlertNotification,
   createMockNotificationHandlerEmail,
   createMockNotificationHandlerSlack,
 } from "metabase-types/api/mocks/notification";
 
-import { AlertListModal } from "./AlertListModal";
+import { TableNotificationsListModal } from "./TableNotificationsListModal";
 
 export default {
-  title: "Notifications/AlertListModal",
-  component: AlertListModal,
+  title: "Notifications/TableNotificationsListModal",
+  component: TableNotificationsListModal,
 };
 
-const Template: StoryFn<ComponentProps<typeof AlertListModal>> = args => {
+const Template: StoryFn<
+  ComponentProps<typeof TableNotificationsListModal>
+> = args => {
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <AlertListModal
+    <TableNotificationsListModal
       {...args}
       opened={isOpen}
       onClose={() => {
@@ -30,8 +32,8 @@ const Template: StoryFn<ComponentProps<typeof AlertListModal>> = args => {
   );
 };
 
-const questionAlerts = [
-  createMockNotification({
+const tableNotifications = [
+  createMockAlertNotification({
     handlers: [
       createMockNotificationHandlerEmail(),
       createMockNotificationHandlerSlack(),
@@ -43,7 +45,7 @@ export const Default = {
   render: Template,
 
   args: {
-    questionAlerts,
+    tableNotifications,
     onCreate: action("onCreate"),
     onEdit: action("onEdit"),
     onClose: action("onClose"),

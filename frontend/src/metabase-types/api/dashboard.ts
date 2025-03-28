@@ -117,6 +117,7 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   entity_id: BaseEntityId;
   visualization_settings?: DashCardVisualizationSettings;
   justAdded?: boolean;
+  isAdded?: boolean;
   created_at: string;
   updated_at: string;
 };

@@ -18,8 +18,8 @@ import {
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
+  AlertNotification,
   ChannelApiResponse,
-  Notification,
   NotificationChannel,
 } from "metabase-types/api";
 import {
@@ -30,7 +30,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockChannel } from "metabase-types/api/mocks/channel";
 import {
-  createMockNotification,
+  createMockAlertNotification,
   createMockNotificationCronSubscription,
 } from "metabase-types/api/mocks/notification";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -158,7 +158,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
   it("should show the editing alert data when in edit mode", async () => {
     // Create a custom notification with weekly schedule on Monday at 2pm
-    const mockNotification = createMockNotification({
+    const mockNotification = createMockAlertNotification({
       subscriptions: [
         createMockNotificationCronSubscription({
           cron_schedule: "0 0 14 ? * 2 *",
@@ -206,7 +206,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
   it("should show hourly schedule with 5 minutes past the hour", async () => {
     // Create a notification with hourly schedule at 5 minutes past the hour
-    const mockNotification = createMockNotification({
+    const mockNotification = createMockAlertNotification({
       subscriptions: [
         createMockNotificationCronSubscription({
           // Hourly at 5 minutes past the hour
@@ -341,7 +341,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
     const onAlertUpdatedMock = jest.fn();
 
     // Create a weekly notification (Mondays at 2pm)
-    const mockNotification = createMockNotification({
+    const mockNotification = createMockAlertNotification({
       id: notificationId,
       subscriptions: [
         createMockNotificationCronSubscription({
@@ -409,7 +409,7 @@ function setup({
   isSlackSetup?: boolean;
   isHttpSetup?: boolean;
   webhooksResult?: NotificationChannel[];
-  editingNotification?: Notification;
+  editingNotification?: AlertNotification;
   onAlertCreatedMock?: jest.Mock;
   onAlertUpdatedMock?: jest.Mock;
 }) {

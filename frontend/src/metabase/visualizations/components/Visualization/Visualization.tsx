@@ -189,7 +189,10 @@ const isLoading = (series: Series | null) => {
     series.length > 0 &&
     _.every(
       series,
-      s => !!s.data || _.isObject(s.card.visualization_settings.virtual_card),
+      s =>
+        !!s.data ||
+        _.isObject(s.card.visualization_settings.virtual_card) ||
+        s.card.display === "table-editable", // TODO [WRK]: refactor this after we add saved editable table view entity
     )
   );
 };

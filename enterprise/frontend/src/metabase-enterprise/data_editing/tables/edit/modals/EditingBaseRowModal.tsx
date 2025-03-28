@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useFormik } from "formik";
 import { Fragment, useCallback, useEffect } from "react";
@@ -26,6 +27,7 @@ import type {
 import type { UpdatedRowCellsHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 
+import { DeleteRowConfirmationModal } from "./DeleteRowConfirmationModal";
 import S from "./EditingBaseRowModal.module.css";
 
 interface EditingBaseRowModalProps {
@@ -57,6 +59,11 @@ export function EditingBaseRowModal({
   isLoading,
 }: EditingBaseRowModalProps) {
   const isEditingMode = !!currentRowData;
+
+  const [
+    isDeleteRequested,
+    { open: requestDeletion, close: closeDeletionModal },
+  ] = useDisclosure();
 
   const validateForm = useCallback(
     (values: EditingFormValues) => {
@@ -111,6 +118,22 @@ export function EditingBaseRowModal({
     [isEditingMode, currentRowIndex, onEdit],
   );
 
+  const handleDeleteConfirmation = useCallback(() => {
+    if (currentRowIndex !== undefined) {
+      onRowDelete(currentRowIndex);
+      closeDeletionModal();
+    }
+  }, [currentRowIndex, closeDeletionModal, onRowDelete]);
+
+  if (isDeleteRequested) {
+    return (
+      <DeleteRowConfirmationModal
+        onCancel={closeDeletionModal}
+        onConfirm={handleDeleteConfirmation}
+      />
+    );
+  }
+
   return (
     <Modal.Root opened={opened} onClose={onClose}>
       <Modal.Overlay />
@@ -124,12 +147,9 @@ export function EditingBaseRowModal({
               gap="xs"
               mr={rem(-5) /* aligns cross with modal right padding */}
             >
-              {isEditingMode && currentRowIndex != null && (
-                <ActionIcon variant="subtle">
-                  <Icon
-                    name="trash"
-                    onClick={() => onRowDelete(currentRowIndex)}
-                  />
+              {isEditingMode && (
+                <ActionIcon variant="subtle" onClick={requestDeletion}>
+                  <Icon name="trash" />
                 </ActionIcon>
               )}
               <ActionIcon variant="subtle" onClick={onClose}>

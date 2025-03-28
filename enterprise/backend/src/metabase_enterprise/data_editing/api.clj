@@ -2,6 +2,7 @@
   (:require
    [clojure.data :refer [diff]]
    [medley.core :as m]
+   [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -67,18 +68,46 @@
                qp-result->row-map
                (m/index-by #(get-row-pk pk-field %))))))))
 
+(defn- apply-coercions
+  "For fields that have a coercion_strategy, apply the coercion function (defined in data-editing.coerce) to the corresponding value in each row.
+  Intentionally does not coerce primary key values (behaviour for pks with coercion strategies is undefined)."
+  [table-id input-rows]
+  (let [input-keys  (into #{} (mapcat keys) input-rows)
+        field-names (map name input-keys)
+        ;; TODO not sure how to do an :in clause with toucan2
+        fields      (mapv #(t2/select-one :model/Field :table_id table-id :name %) field-names)
+        coerce-fn   (->> (for [{field-name :name, :keys [coercion_strategy, semantic_type]} fields
+                               :when (not (isa? semantic_type :type/PK))]
+                           [(keyword field-name)
+                            (or (when (nil? coercion_strategy) identity)
+                                (data-editing.coerce/input-coercion-fn coercion_strategy)
+                                (throw (ex-info "Coercion strategy has no defined coercion function"
+                                                {:status 400
+                                                 :field field-name
+                                                 :coercion_strategy coercion_strategy})))])
+                         (into {}))
+        coerce      (fn [k v] (some-> v ((coerce-fn k identity))))]
+    (for [row input-rows]
+      (m/map-kv-vals coerce row))))
+
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
-  (let [res (perform-bulk-action! :bulk/create table-id rows)]
+  (let [rows (apply-coercions table-id rows)
+        res  (perform-bulk-action! :bulk/create table-id rows)]
     (doseq [row (:created-rows res)]
       (events/publish-event! :event/data-editing-row-create
                              {:table_id    table-id
                               :created_row row
                               :actor_id    api/*current-user-id*}))
-    res))
+    (let [pk-field   (table-id->pk table-id)
+          ;; actions code does not return coerced values
+          ;; right now the FE works off qp outputs, which coerce output row data
+          ;; still feels messy, revisit this
+          id->db-row (query-db-rows table-id pk-field (map #(update-keys % keyword) (:created-rows res)))]
+      {:created-rows (vals id->db-row)})))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
@@ -87,8 +116,9 @@
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (if (empty? rows)
     {:updated []}
-    (let [pk-field   (table-id->pk table-id)
-          id->db-row (query-db-rows table-id pk-field rows)
+    (let [rows         (apply-coercions table-id rows)
+          pk-field     (table-id->pk table-id)
+          id->db-row   (query-db-rows table-id pk-field rows)
           updated-rows (volatile! [])]
       (doseq [row rows]
         (let [;; well, this is a trick, but I haven't figured out how to do single row update

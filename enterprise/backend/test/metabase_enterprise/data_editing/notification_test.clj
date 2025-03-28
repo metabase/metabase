@@ -2,13 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
-   [metabase.driver :as driver]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.sync.core :as sync]
-   [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (use-fixtures :each (fn [thunk]
                       (mt/with-premium-features #{:table-data-editing}
