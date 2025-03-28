@@ -6,10 +6,6 @@ title: API changelog
 
 ## Metabase 0.54.0
 
-- `POST /api/dataset` and `POST /api/dataset/pivot` require the query to be passed via the new `query` key.
-
-## Metabase 0.53.0
-
 - The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:
 
   - The majority of `/api/alert` endpoints have been removed in favor of the new `/api/notification` endpoints. For backward compatibility, these endpoints will remain available until the next release:
@@ -21,6 +17,8 @@ title: API changelog
     - An overview of the new notification system can be found at `src/metabase/notification/README.md`
     - Notification API documentation at `{{YOUR_URL}}/api/docs/#tag/apinotification`
     - Interactive API documentation available at `/api/docs` endpoint
+
+- `POST /api/dataset` and `POST /api/dataset/pivot` require the query to be passed via the new `query` key.
 
 ## Metabase 0.52.0
 
