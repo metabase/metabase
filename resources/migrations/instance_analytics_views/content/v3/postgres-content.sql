@@ -73,12 +73,12 @@ select
     null as event_timestamp
     from report_card
         left join (
-        select
-            moderated_item_type || '_' || moderated_item_id as entity_qualified_id,
-            case when status = 'verified' then true else false end as is_verified
-        from moderation_review
-        where most_recent
-    ) as moderation on 'card_' || report_card.id = moderation.entity_qualified_id
+            select
+                moderated_item_type || '_' || moderated_item_id as entity_qualified_id,
+                case when status = 'verified' then true else false end as is_verified
+            from moderation_review
+            where most_recent
+        ) as moderation on 'card_' || report_card.id = moderation.entity_qualified_id
 union
 select
     report_dashboard.id as entity_id,
@@ -104,12 +104,12 @@ select
     null as event_timestamp
     from report_dashboard
         left join (
-        select
-            moderated_item_type || '_' || moderated_item_id as entity_qualified_id,
-            case when status = 'verified' then true else false end as is_verified
-        from moderation_review
-        where most_recent
-    ) as moderation on 'dashboard_' || report_dashboard.id = moderation.entity_qualified_id
+            select
+                moderated_item_type || '_' || moderated_item_id as entity_qualified_id,
+                case when status = 'verified' then true else false end as is_verified
+            from moderation_review
+            where most_recent
+        ) as moderation on 'dashboard_' || report_dashboard.id = moderation.entity_qualified_id
 union
 select
     event.id as entity_id,
