@@ -87,7 +87,7 @@ export const EditingBodyCellCategorySelect = ({
   const inputLabel = useMemo(() => {
     if (isLoading || !optionValueSelectOptionMap) {
       return (
-        <Input.Placeholder c="var(--mb-color-text-light)">
+        <Input.Placeholder c="text-light">
           {t`Loading...`}
         </Input.Placeholder>
       );
@@ -95,7 +95,7 @@ export const EditingBodyCellCategorySelect = ({
 
     if (!value && inputProps?.placeholder) {
       return (
-        <Input.Placeholder c="var(--mb-color-text-light)">
+        <Input.Placeholder c="text-light">
           {inputProps.placeholder}
         </Input.Placeholder>
       );
