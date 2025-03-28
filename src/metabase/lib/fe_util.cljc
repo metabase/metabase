@@ -198,12 +198,6 @@
     expression-clause :- ::lib.schema.expression/expression]
    (expression-parts-method query stage-index expression-clause)))
 
-(defmethod lib.common/->op-arg :mbql/expression-parts
-  [{:keys [operator options args] :or {options {}}}]
-  (lib.common/->op-arg (lib.options/ensure-uuid (into [(keyword operator) options]
-                                                      (map lib.common/->op-arg)
-                                                      args))))
-
 (defn- case-or-if-pairs
   [args]
   (mapv #(into [] %) (partition 2 args)))
@@ -228,6 +222,13 @@
   (cond-> clause
     (case-or-if-expression? clause) group-case-or-if-args))
 
+(defmethod lib.common/->op-arg :mbql/expression-parts
+  [{:keys [operator options args] :or {options {}}}]
+  (fix-expression-clause
+   (lib.common/->op-arg (lib.options/ensure-uuid (into [(keyword operator) options]
+                                                       (map lib.common/->op-arg)
+                                                       args)))))
+
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
   [operator :- :keyword
@@ -235,7 +236,7 @@
    options  :- [:maybe :map]]
   (fix-expression-clause
    (lib.options/ensure-uuid
-    (into [operator options] (map (comp fix-expression-clause lib.common/->op-arg)) args))))
+    (into [operator options] (map lib.common/->op-arg) args))))
 
 (defn- expression-clause-with-in
   "Like [[expression-clause]], but also auto-converts `:=` and `:!=` to `:in` and `:not-in` when there are more than 2
