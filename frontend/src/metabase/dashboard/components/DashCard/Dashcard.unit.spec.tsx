@@ -1,5 +1,8 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   act,
+  getIcon,
   mockGetBoundingClientRect,
   queryIcon,
   renderWithProviders,
@@ -29,6 +32,7 @@ const testDashboard = createMockDashboard();
 const tableDashcard = createMockDashboardCard({
   card: createMockCard({
     name: "My Card",
+    description: "This is a table card",
     display: "table",
   }),
 });
@@ -132,6 +136,22 @@ describe("DashCard", () => {
     expect(screen.getByText("My Card")).toBeVisible();
   });
 
+  it("should show card's description in a tooltip", async () => {
+    setup();
+    expect(screen.queryByText("This is a table card")).not.toBeInTheDocument();
+    userEvent.hover(getIcon("info"));
+    expect(await screen.findByText("This is a table card")).toBeVisible();
+  });
+
+  it("should not show the info icon if a card doesn't have description", () => {
+    setup({
+      dashcard: createMockDashboardCard({
+        card: createMockCard({ description: null }),
+      }),
+    });
+    expect(queryIcon("info")).not.toBeInTheDocument();
+  });
+
   it("should show a table card", () => {
     setup();
     act(() => {
@@ -210,6 +230,11 @@ describe("DashCard", () => {
   });
 
   describe("edit mode", () => {
+    it("should not show the info icon", () => {
+      setup({ isEditing: true });
+      expect(queryIcon("info")).not.toBeInTheDocument();
+    });
+
     it("should show a 'replace card' action", async () => {
       setup({ isEditing: true });
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
