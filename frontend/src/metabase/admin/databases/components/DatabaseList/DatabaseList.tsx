@@ -3,20 +3,13 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import AdminS from "metabase/css/admin.module.css";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { FormMessage } from "metabase/forms";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { Button, Flex, Loader, UnstyledButton } from "metabase/ui";
 import type { Database, Engine } from "metabase-types/api";
-
-import {
-  AddSampleDatabaseLink,
-  TableCellContent,
-  TableCellSpinner,
-} from "../../containers/DatabaseListApp.styled";
 
 const query = {
   ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
@@ -55,17 +48,16 @@ export const DatabaseList = ({
     <>
       <div className={CS.wrapper} data-testid="database-list">
         <section className={cx(AdminS.PageHeader, CS.px2, CS.clearfix)}>
-          {isAdmin && (
-            <Link
-              to="/admin/databases/create"
-              className={cx(
-                ButtonsS.Button,
-                ButtonsS.ButtonPrimary,
-                CS.floatRight,
-              )}
-            >{t`Add database`}</Link>
-          )}
-          <h2 className={CS.m0}>{t`Databases`}</h2>
+          <Flex justify="space-between" align="center">
+            <h2 className={CS.m0}>{t`Databases`}</h2>
+            {isAdmin && (
+              <Button
+                variant="filled"
+                component={Link}
+                to="/admin/databases/create"
+              >{t`Add database`}</Button>
+            )}
+          </Flex>
         </section>
         {error && (
           <section>
@@ -90,9 +82,9 @@ export const DatabaseList = ({
                     })}
                   >
                     <td>
-                      <TableCellContent>
+                      <Flex align="center">
                         {!isSyncCompleted(database) && (
-                          <TableCellSpinner size={16} borderWidth={2} />
+                          <Loader size="xs" mr="sm" />
                         )}
                         <Link
                           to={"/admin/databases/" + database.id}
@@ -100,7 +92,7 @@ export const DatabaseList = ({
                         >
                           {database.name}
                         </Link>
-                      </TableCellContent>
+                      </Flex>
                     </td>
                     <td>
                       {engines?.[database.engine ?? ""]?.["driver-name"] ??
@@ -111,7 +103,7 @@ export const DatabaseList = ({
               ) : (
                 <tr>
                   <td colSpan={4}>
-                    <LoadingSpinner />
+                    <Loader size="1rem" />
                     <h3>{t`Loading ...`}</h3>
                   </td>
                 </tr>
@@ -130,11 +122,12 @@ export const DatabaseList = ({
                     {t`Restoring the sample database...`}
                   </span>
                 ) : (
-                  <AddSampleDatabaseLink
+                  <UnstyledButton
+                    c="brand"
                     onClick={() => addSampleDatabase(query)}
                   >
                     {t`Bring the sample database back`}
-                  </AddSampleDatabaseLink>
+                  </UnstyledButton>
                 )}
               </span>
             </div>
