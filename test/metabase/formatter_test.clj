@@ -7,7 +7,7 @@
 
 (defn- format-with-field-id
   [value viz]
-  (str ((formatter/number-formatter {:id 1}
+  (str ((formatter/number-formatter {:id 1 :field_ref [:field 1 nil]}
                                     {::mb.viz/column-settings
                                      {{::mb.viz/field-id 1} viz}})
         value)))
@@ -162,6 +162,7 @@
             ([type value] (fmt-with-type type value nil))
             ([type value decimals]
              (let [fmt-fn (formatter/number-formatter {:id 1
+                                                       :field_ref [:field 1 nil]
                                                        :effective_type type}
                                                       {::mb.viz/column-settings
                                                        {{::mb.viz/field-id 1}
