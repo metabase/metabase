@@ -4,10 +4,12 @@ import type {
   ColumnDefTemplate,
   ColumnSizingState,
   HeaderContext,
+  Row,
   RowData,
   SortingState,
   Table,
 } from "@tanstack/react-table";
+import type { VirtualItem } from "@tanstack/react-virtual";
 import type React from "react";
 import type { RefObject } from "react";
 
@@ -169,6 +171,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Controlls whether cell selection is enabled */
   enableSelection?: boolean;
 
+  /** Items per page. Undefined disables pagination. */
+  pageSize?: number;
+
   /** Callback when a column is resized */
   onColumnResize?: (columnSizingMap: ColumnSizingState) => void;
 
@@ -233,7 +238,12 @@ export interface DataGridInstance<TData> {
   measureRoot: React.ReactNode;
   columnsReordering: ColumnsReordering;
   selection: DataGridSelection;
+  enableRowVirtualization: boolean;
+  enablePagination: boolean;
+  theme?: DataGridTheme;
   measureColumnWidths: () => void;
+  getTotalHeight: () => number;
+  getVisibleRows: () => MaybeVirtualRow<TData>[];
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
     columnId?: string,
@@ -244,5 +254,12 @@ export interface DataGridInstance<TData> {
     columnId: string,
   ) => void;
   onAddColumnClick?: React.MouseEventHandler<HTMLButtonElement>;
-  onScroll?: React.UIEventHandler<HTMLDivElement>;
+  onWheel?: React.UIEventHandler<HTMLDivElement>;
 }
+
+export type VirtualRow<TData> = {
+  row: Row<TData>;
+  virtualRow: VirtualItem;
+};
+
+export type MaybeVirtualRow<TData> = Row<TData> | VirtualRow<TData>;

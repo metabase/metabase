@@ -89,6 +89,14 @@ class Table extends Component<TableProps, TableState> {
 
   static settings = {
     ...columnSettings({ hidden: true }),
+    "table.pagination": {
+      section: t`Columns`,
+      title: t`Paginate results`,
+      inline: true,
+      widget: "toggle",
+      dashboard: true,
+      default: false,
+    },
     "table.row_index": {
       section: t`Columns`,
       title: t`Show row index`,

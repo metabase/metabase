@@ -10,12 +10,12 @@ import { Icon } from "metabase/ui";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import {
-  ObjectDetailFooterRoot,
   PaginationButton,
+  PaginationFooterRoot,
   PaginationMessage,
-} from "./ObjectDetailFooter.styled";
+} from "./PaginationFooter.styled";
 
-interface ObjectDetailFooterProps {
+interface PaginationFooterProps {
   className?: string;
   "data-testid"?: string;
   start: number;
@@ -27,9 +27,9 @@ interface ObjectDetailFooterProps {
   singleItem?: boolean;
 }
 
-export const ObjectDetailFooter = forwardRef<
+export const PaginationFooter = forwardRef<
   HTMLDivElement,
-  ObjectDetailFooterProps
+  PaginationFooterProps
 >(function ObjectDetailFooter(
   {
     className,
@@ -41,7 +41,7 @@ export const ObjectDetailFooter = forwardRef<
     onPreviousPage,
     onNextPage,
     singleItem,
-  }: ObjectDetailFooterProps,
+  }: PaginationFooterProps,
   ref,
 ) {
   const paginateMessage = useMemo(() => {
@@ -75,7 +75,7 @@ export const ObjectDetailFooter = forwardRef<
   );
 
   return (
-    <ObjectDetailFooterRoot
+    <PaginationFooterRoot
       className={cx(
         className,
         DashboardS.fullscreenNormalText,
@@ -104,6 +104,6 @@ export const ObjectDetailFooter = forwardRef<
       >
         <Icon name="chevronright" />
       </PaginationButton>
-    </ObjectDetailFooterRoot>
+    </PaginationFooterRoot>
   );
 });

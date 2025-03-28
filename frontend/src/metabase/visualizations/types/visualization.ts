@@ -143,8 +143,10 @@ export interface VisualizationProps {
   width: number;
   height: number;
 
-  visualizationIsClickable: (clickObject?: ClickObject) => boolean;
-  getExtraDataForClick?: (clickObject?: ClickObject) => Record<string, unknown>;
+  visualizationIsClickable: (clickObject: ClickObject | null) => boolean;
+  getExtraDataForClick?: (
+    clickObject: ClickObject | null,
+  ) => Record<string, unknown>;
 
   onRender: ({
     yAxisSplit,
@@ -157,7 +159,7 @@ export interface VisualizationProps {
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
-  onVisualizationClick: (clickObject?: ClickObject) => void;
+  onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
     settings: VisualizationSettings,
     question?: Question,

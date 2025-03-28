@@ -4,6 +4,7 @@ import type { StoryFn } from "@storybook/react";
 import { type ComponentProps, useEffect, useMemo } from "react";
 
 import { getStore } from "__support__/entities-store";
+import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
@@ -46,7 +47,7 @@ export default {
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
-    WaitForResizeToStopDecorator,
+    createWaitForResizeToStopDecorator(),
     MockIsEmbeddingDecorator,
   ],
   parameters: {
@@ -60,28 +61,6 @@ function ReduxDecorator(Story: StoryFn) {
       <Story />
     </MetabaseReduxProvider>
   );
-}
-
-/**
- * This is an arbitrary number, it should be big enough to pass CI tests.
- * This works because we set delays for ExplicitSize to 0 in storybook.
- */
-const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
-function WaitForResizeToStopDecorator(Story: StoryFn) {
-  const asyncCallback = useMemo(() => createAsyncCallback(), []);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(
-      asyncCallback,
-      TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING,
-    );
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [asyncCallback]);
-
-  return <Story />;
 }
 
 declare global {

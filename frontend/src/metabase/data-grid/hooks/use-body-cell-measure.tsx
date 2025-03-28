@@ -32,6 +32,7 @@ export const useCellMeasure = (
           pointerEvents: "none",
           zIndex: -999,
           fontSize: DEFAULT_FONT_SIZE,
+          overflow: "visible",
         }}
       >
         {cell}
@@ -76,7 +77,7 @@ export const useBodyCellMeasure = (theme?: DataGridTheme) => {
         wrap={true}
         value=""
         contentTestId=""
-        style={{ fontSize: theme?.fontSize }}
+        style={{ fontSize: theme?.fontSize, overflow: "visible" }}
       />
     ),
     [theme?.fontSize],
