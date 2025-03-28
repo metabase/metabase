@@ -65,6 +65,12 @@ const config = {
         frontmatterGlobals: {
           layout: "docs-api",
         },
+        pretty: true,
+        customFooterHtml:
+          '<script type="text/javascript" src="/gdpr-cookie-notice/dist/script.js"></script>' +
+          '<script type="text/javascript" src="/js/cookie-consent.js"></script>' +
+          '<link href="/gdpr-cookie-notice/dist/style.css" rel="stylesheet" />' +
+          '<link href="/css/gdpr.css" rel="stylesheet" />',
       },
     },
   ],
