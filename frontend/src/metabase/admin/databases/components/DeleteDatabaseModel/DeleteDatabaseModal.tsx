@@ -228,8 +228,3 @@ export const DeleteDatabaseModalSection = ({
     />
   );
 };
-
-// & + & {
-//   margin-top: 1.25rem;
-// }
-// `;
