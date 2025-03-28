@@ -4,6 +4,7 @@
   Currently used to store card's rows data when sending notification since it can be large and we don't want to keep it in memory."
   (:require
    [clojure.java.io :as io]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.random :as random]
    [taoensso.nippy :as nippy])
@@ -27,31 +28,17 @@
 
 (defn- temp-file
   []
-  (doto (File/createTempFile "notification-" ".edn" @temp-dir)
+  (doto (File/createTempFile "notification-" ".npy" @temp-dir)
     (.deleteOnExit)))
 
 (defn- write-to-file
   [^File file data]
-  (spit file data))
+  (nippy/freeze-to-file file data))
 
 (defn- read-from-file
   [^File file]
   (when (.exists file)
-    (slurp file)))
-
-#_(defn- temp-file
-    []
-    (doto (File/createTempFile "notification-" ".npy" @temp-dir)
-      (.deleteOnExit)))
-
-#_(defn- write-to-file
-    [^File file data]
-    (nippy/freeze-to-file file data))
-
-#_(defn- read-from-file
-    [^File file]
-    (when (.exists file)
-      (nippy/thaw-from-file file)))
+    (nippy/thaw-from-file file)))
 
 (.addShutdownHook
  (Runtime/getRuntime)
