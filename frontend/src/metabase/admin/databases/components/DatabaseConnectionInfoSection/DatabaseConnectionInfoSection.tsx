@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
+  useDismissDatabaseSyncSpinnerMutation,
   useRescanDatabaseFieldValuesMutation,
   useSyncDatabaseSchemaMutation,
 } from "metabase/api";
@@ -11,8 +12,7 @@ import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Button, Flex, Tooltip } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 
 import { isDbModifiable } from "../../utils";
 import { DatabaseConnectionHealthInfo } from "../DatabaseConnectionHealthInfo";
@@ -25,16 +25,15 @@ import S from "./DatabaseConnectionInfoSection.module.css";
 
 export const DatabaseConnectionInfoSection = ({
   database,
-  dismissSyncSpinner,
 }: {
   database: Database;
-  dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
 }) => {
   const isSynced = isSyncCompleted(database);
 
   const dispatch = useDispatch();
   const [syncDatabaseSchema] = useSyncDatabaseSchemaMutation();
   const [rescanDatabaseFieldValues] = useRescanDatabaseFieldValuesMutation();
+  const [dismissSyncSpinner] = useDismissDatabaseSyncSpinnerMutation();
 
   const handleSyncDatabaseSchema = async () => {
     await syncDatabaseSchema(database.id);
@@ -43,7 +42,7 @@ export const DatabaseConnectionInfoSection = ({
   };
 
   const handleDismissSyncSpinner = useCallback(
-    () => dismissSyncSpinner(database.id),
+    () => dismissSyncSpinner(database.id).unwrap(),
     [database.id, dismissSyncSpinner],
   );
 

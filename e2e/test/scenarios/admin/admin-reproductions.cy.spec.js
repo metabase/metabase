@@ -16,7 +16,6 @@ describe("issue 26470", { tags: "@external" }, () => {
       "unpersist",
     );
 
-    cy.clock(Date.now());
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
 
     cy.findByTestId("database-model-features-section")
