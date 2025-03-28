@@ -32,7 +32,12 @@ function plain(error: ExpressionError) {
   };
 }
 
-function asToken(token: Omit<Token, "length">) {
+function asToken(token: {
+  type: NodeType;
+  pos: number;
+  text: string;
+  value?: string;
+}) {
   return new Token({
     ...token,
     length: token.text.length,
