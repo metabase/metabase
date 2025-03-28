@@ -78,7 +78,7 @@
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
       (let [query (mt/mbql-query checkins
                     {:aggregation [[:count]]})
-            result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+            result (mt/user-http-request :crowberto :post 202 "dataset" {:query query})]
         (testing "\nAPI Response"
           (is (=?
                {:data                   {:rows             [[1000]]
@@ -132,7 +132,7 @@
       (let [query  {:database (mt/id)
                     :type     "native"
                     :native   {:query "foobar"}}
-            result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+            result (mt/user-http-request :crowberto :post 202 "dataset" {:query query})]
         (testing "\nAPI Response"
           (is (malli= [:map
                        [:data        [:map
@@ -290,7 +290,7 @@
                     :context     "ad-hoc"
                     :json_query  (merge query-defaults card-query)
                     :database_id (mt/id)}
-                   (-> (mt/user-http-request :crowberto :post 202 "dataset" card-query)
+                   (-> (mt/user-http-request :crowberto :post 202 "dataset" {:query card-query})
                        (update-in [:data :native_form :query]
                                   #(str/split-lines (or (driver/prettify-native-form :h2 %)
                                                         "error: no query generated")))))))))))))
@@ -345,9 +345,9 @@
     (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (let [{row-count :row_count, :as result}
             (mt/user-http-request :crowberto :post 202 "dataset"
-                                  {:database (mt/id)
-                                   :type     :query
-                                   :query    {:source-table (mt/id :venues)}})]
+                                  {:query {:database (mt/id)
+                                           :type     :query
+                                           :query    {:source-table (mt/id :venues)}}})]
         (is (= 10
                (or row-count result)))))))
 
@@ -363,7 +363,7 @@
                      [:status [:= "failed"]]
                      [:error  [:= "You do not have permissions to run this query."]]]
                     (mt/user-http-request :rasta :post "dataset"
-                                          (mt/mbql-query venues {:limit 1}))))))))
+                                          {:query (mt/mbql-query venues {:limit 1})})))))))
 
 (deftest ^:parallel compile-test
   (testing "POST /api/dataset/native"
@@ -468,8 +468,8 @@
   (mt/test-driver :postgres
     (testing "expected (desired) and actual timezone should be returned as part of query results"
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
-        (let [results (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query checkins
-                                                                         {:aggregation [[:count]]}))]
+        (let [results (mt/user-http-request :rasta :post 202 "dataset" {:query (mt/mbql-query checkins
+                                                                                 {:aggregation [[:count]]})})]
           (is (= {:requested_timezone "US/Pacific"
                   :results_timezone   "US/Pacific"}
                  (-> results
@@ -480,8 +480,8 @@
   (testing "exceptions with stacktraces should have the stacktrace removed"
     (mt/test-driver :databricks
       (let [res (mt/user-http-request :rasta :post 202 "dataset"
-                                      (lib/native-query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                                        "asdf;"))]
+                                      {:query (lib/native-query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                                                "asdf;")})]
         (is (= {:error_type "invalid-query"
                 :status "failed"
                 :class "class com.databricks.client.support.exceptions.ErrorException"}
@@ -493,7 +493,7 @@
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
-          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (api.pivots/pivot-query))
+          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" {:query (api.pivots/pivot-query)})
                 rows   (mt/rows result)]
             (is (= 1144 (:row_count result)))
             (is (= "completed" (:status result)))
@@ -516,7 +516,7 @@
             (let [query  (-> (api.pivots/pivot-query)
                              (assoc-in [:query :fields] [[:expression "test-expr"]])
                              (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
-                  result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
+                  result (mt/user-http-request :crowberto :post 202 "dataset/pivot" {:query query})
                   rows   (mt/rows result)]
               (is (= 1144 (:row_count result)))
               (is (= 1144 (count rows)))
@@ -544,7 +544,7 @@
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
-          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (api.pivots/filters-query))
+          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" {:query (api.pivots/filters-query)})
                 rows   (mt/rows result)]
             (is (= 140 (:row_count result)))
             (is (= "completed" (:status result)))
@@ -561,7 +561,7 @@
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
-          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (api.pivots/parameters-query))
+          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" {:query (api.pivots/parameters-query)})
                 rows   (mt/rows result)]
             (is (= 137 (:row_count result)))
             (is (= "completed" (:status result)))
@@ -697,7 +697,7 @@
                                   (lib/limit 2))]
         (is (=? {:data {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]
                                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
-                (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
+                (mt/user-http-request :crowberto :post 202 "dataset" {:query query})))))))
 
 (deftest ^:parallel mlv2-query-convert-to-native-test
   (testing "POST /api/dataset/native"
