@@ -1,17 +1,17 @@
-name: id
-display_name: ID
+name: is_verified
+display_name: Is Verified
 description: null
-created_at: '2023-06-14T14:56:02.702697Z'
+created_at: '2025-03-28T14:16:49.658537Z'
 active: true
 visibility_type: normal
 table_id:
 - Internal Metabase Database
 - public
-- v_audit_log
-database_type: int4
-base_type: type/Integer
-effective_type: type/Integer
-semantic_type: type/PK
+- v_content
+database_type: bool
+base_type: type/Boolean
+effective_type: type/Boolean
+semantic_type: type/Category
 database_is_auto_increment: false
 database_required: false
 fk_target_field_id: null
@@ -20,10 +20,10 @@ json_unfolding: false
 parent_id: null
 coercion_strategy: null
 preview_display: true
-position: 0
+position: 11
 custom_position: 0
-database_position: 0
-has_field_values: null
+database_position: 11
+has_field_values: auto-list
 settings: null
 caveats: null
 points_of_interest: null
@@ -33,10 +33,10 @@ serdes/meta:
   model: Database
 - id: public
   model: Schema
-- id: v_audit_log
+- id: v_content
   model: Table
-- id: id
+- id: is_verified
   model: Field
-database_indexed: false
+database_indexed: null
 database_partitioned: null
-entity_id: U2L_HytdF-u32p3WkH3G7
+entity_id: null
