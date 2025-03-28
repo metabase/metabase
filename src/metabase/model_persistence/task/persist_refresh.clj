@@ -129,7 +129,7 @@
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
                                    (let [current-state (t2/select-one-fn :state :model/PersistedInfo :id (:id persisted-info))
-                                         card-info     (t2/select-one [:model/Card :archived :type]
+                                         card-info     (t2/select-one [:model/Card :archived :type :card_schema]
                                                                       :id (:card_id persisted-info))]
                                      (if (or (contains? (persisted-info/prunable-states) current-state)
                                              (:archived card-info)
