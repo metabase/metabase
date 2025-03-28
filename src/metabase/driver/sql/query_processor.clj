@@ -647,8 +647,7 @@
                (cast-temporal-byte driver coercion-strategy honeysql-form)
 
                [:type/Text (:isa? :Coercion/String->Decimal)]
-               ;; TODO: DECIMAL seems to be universal aka defined by standard. Verify!
-               (h2x/cast :decimal honeysql-form)
+               (h2x/cast :float8  honeysql-form)
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
