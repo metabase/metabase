@@ -76,7 +76,7 @@ jobs:
       - name: Build static assets to catch rspack issue
         run: |
           yarn build-release:cljs
-          RSPACK_PROFILE=TRACE=layer=logger rspack build-release:js
+          RSPACK_PROFILE=TRACE=layer=logger yarn build-release:js
 
   # reset-e2e-test-comment:
   #   if: ${{ github.event_name == 'pull_request' }}
