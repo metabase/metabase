@@ -530,13 +530,8 @@ describe("issue 41381", () => {
     H.addCustomColumn();
     H.enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
     H.popover().within(() => {
-      // TODO: QUE-726 restore test
-      // cy.findByText("Invalid expression").should("not.exist");
-      // cy.button("Done").should("be.enabled");
-      cy.findByText("Standalone constants are not supported.").should(
-        "be.visible",
-      );
-      cy.button("Done").should("be.disabled");
+      cy.findByText("Invalid expression").should("not.exist");
+      cy.button("Done").should("be.enabled");
     });
   });
 });
