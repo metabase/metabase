@@ -10,13 +10,15 @@ import { TooltipTime } from "./ModerationReviewIcon.styled";
 export interface ModerationReviewIconProps {
   review: ModerationReview;
   currentUser: User;
+  filled?: boolean;
 }
 
 const ModerationReviewIcon = ({
   review,
   currentUser,
+  filled,
 }: ModerationReviewIconProps): JSX.Element => {
-  const { name: iconName, color: iconColor } = getIconForReview(review);
+  const { name: iconName, color: iconColor } = getIconForReview(review, filled);
   const { user: moderator } = review;
 
   const tooltip = moderator && (

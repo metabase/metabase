@@ -52,6 +52,7 @@ function _CartesianChart(props: VisualizationProps) {
     isDashboard,
     isEditing,
     isQueryBuilder,
+    labelRightSection,
     isFullscreen,
     hovered,
     onChangeCardAndRun,
@@ -144,6 +145,7 @@ function _CartesianChart(props: VisualizationProps) {
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
       {showTitle && (
         <LegendCaption
+          labelRightSection={labelRightSection}
           title={settings["card.title"]}
           description={description}
           icon={headerIcon}
