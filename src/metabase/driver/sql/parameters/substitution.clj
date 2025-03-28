@@ -297,7 +297,7 @@
   (letfn [(->datetime-replacement-snippet-info
             [range]
             (->replacement-snippet-info driver range (field->identifier driver field type value)))]
-    (-> (params.dates/date-str->datetime-range value)
+    (-> (params.dates/date-str->datetime-range value ((some-fn :effective-type :base-type) field))
         params/map->DateTimeRange
         ->datetime-replacement-snippet-info)))
 
@@ -329,7 +329,7 @@
 
       ;; Special handling for `FieldFilter`s on `:type/DateTime` fields. DateTime range is always generated.
       (and (params.dates/date-type? param-type)
-           (isa? ((some-fn :effective-type :base-type) field) :type/DateTimeWithTZ))
+           (isa? ((some-fn :effective-type :base-type) field) :type/DateTime))
       (field-filter->replacement-snippet-for-datetime-field driver field-filter)
 
       ;; convert other date to DateRange record types

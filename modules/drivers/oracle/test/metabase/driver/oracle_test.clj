@@ -39,7 +39,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.time LocalDate LocalDateTime)))
+   (java.time LocalDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -639,13 +639,13 @@
               hours (assoc query :parameters [{:type   :date/relative
                                                :value  "past3hours"
                                                :target [:dimension [:template-tag "date_filter"]]}])]
-          (doseq [[expected value] [[LocalDate "past30days"] [LocalDateTime "past3hours"]]
+          (doseq [value ["past30days" "past3hours"]
                   :let [query-with-params (assoc query :parameters [{:type   :date/relative
                                                                      :value  value
                                                                      :target [:dimension [:template-tag "date_filter"]]}])
                         parameters (:params (qp.compile/compile query-with-params))]]
             (is (= 2 (count parameters)))
-            (is (= [expected expected] (map type parameters)))))))))
+            (is (= [LocalDateTime LocalDateTime] (map type parameters)))))))))
 
 (deftest nest-window-functions-test
   (mt/test-driver
