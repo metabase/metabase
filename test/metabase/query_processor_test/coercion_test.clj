@@ -12,7 +12,7 @@
 ;; ATM will fail with mongo
 (deftest string-to-number-coercion-test
   (mt/test-drivers
-    (mt/normal-drivers)
+    (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (mt/dataset
       string-nums
       (doseq [[human-col col res] [["integer" :int_col   10.0]
