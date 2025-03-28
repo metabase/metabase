@@ -1299,5 +1299,4 @@
                 rows (mt/rows result)]
             (is (= :type/Text (-> cols last :base_type)))
             (doseq [row rows]
-              (is (or (string? (last row))
-                      (nil? (last row)))))))))))
+              (is (string? (last row))))))))))
