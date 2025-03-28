@@ -18,10 +18,8 @@ export const RemoveDestinationDatabaseModal = ({
   const dbId = parseInt(params.databaseId, 10);
   const destDbId = parseInt(params.destinationDatabaseId, 10);
 
-  const destinationDbReq = useGetDatabaseQuery({ id: destDbId });
+  const { data: db, isLoading, error } = useGetDatabaseQuery({ id: destDbId });
   const [deleteDatabase] = useDeleteDatabaseMutation();
-
-  const destDb = destinationDbReq.data;
 
   const handleCloseModal = () => {
     dispatch(push(Urls.viewDatabase(dbId)));
@@ -31,27 +29,22 @@ export const RemoveDestinationDatabaseModal = ({
     await deleteDatabase(destDbId).unwrap();
   };
 
+  if (isLoading || error || !db) {
+    return (
+      <Modal opened onClose={handleCloseModal} padding="xl">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Modal>
+    );
+  }
+
   return (
-    <Modal
+    <DeleteDatabaseModal
       opened
+      title={t`Delete the ${db.name} destination database?`}
+      defaultDatabaseRemovalMessage={t`Users routed to this database will lose access to every question, model, metric, and segment if you continue.`}
       onClose={handleCloseModal}
-      padding="0"
-      withCloseButton={false}
-    >
-      <LoadingAndErrorWrapper
-        loading={destinationDbReq.isLoading}
-        error={destinationDbReq.error}
-      >
-        {destDb && (
-          <DeleteDatabaseModal
-            title={t`Delete the ${destDb.name} destination database?`}
-            defaultDatabaseRemovalMessage={t`Users routed to this database will lose access to every question, model, metric, and segment if you continue.`}
-            onClose={handleCloseModal}
-            onDelete={handleDelete}
-            database={destDb}
-          />
-        )}
-      </LoadingAndErrorWrapper>
-    </Modal>
+      onDelete={handleDelete}
+      database={db}
+    />
   );
 };
