@@ -20,7 +20,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ChannelSetupModal } from "metabase/notifications/modals/shared/ChannelSetupModal";
 import { AlertModalSettingsBlock } from "metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "metabase/notifications/modals/shared/components/AlertTriggerIcon";
-import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannelsPicker/NotificationChannelsPicker";
+import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
 import { getDefaultTableNotificationRequest } from "metabase/notifications/utils";
 import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
@@ -84,6 +84,7 @@ export const CreateOrEditTableNotificationModal = ({
   const [requestBody, setRequestBody] = useState<
     CreateTableNotificationRequest | UpdateTableNotificationRequest | null
   >(null);
+  // console.log({ requestBody });
 
   const isEditMode = !!notification;
   const subscription = requestBody?.subscriptions[0];
@@ -239,6 +240,7 @@ export const CreateOrEditTableNotificationModal = ({
           title={t`Where do you want to send the notifications?`}
         >
           <NotificationChannelsPicker
+            enableTemplates
             notificationHandlers={requestBody.handlers}
             channels={channelSpec ? channelSpec.channels : undefined}
             onChange={(newHandlers: NotificationHandler[]) => {

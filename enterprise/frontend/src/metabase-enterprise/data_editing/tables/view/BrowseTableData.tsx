@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useGetTableDataQuery, useGetTableQuery } from "metabase/api";
 import Link from "metabase/core/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { TableNotificationsTriggerButton } from "metabase/notifications/modals/TableNotificationsModals/TableNotificationsTriggerButton";
+import { TableNotificationsTrigger } from "metabase/notifications/modals/TableNotificationsModals/TableNotificationsTrigger";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { closeNavbar } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -120,7 +120,7 @@ export const BrowseTableData = ({
               isRunning={isLoading}
               onRun={refetchTableDataQuery}
             />
-            <TableNotificationsTriggerButton tableId={tableId} />
+            <TableNotificationsTrigger tableId={tableId} />
           </Flex>
         </Group>
       </Group>

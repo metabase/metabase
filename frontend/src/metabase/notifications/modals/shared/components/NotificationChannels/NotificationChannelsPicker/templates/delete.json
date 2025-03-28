@@ -1,0 +1,40 @@
+{
+  "payload_type": "notification/system-event",
+  "condition": null,
+  "creator": {
+    "first_name": "Crowberto",
+    "last_name": "Corv",
+    "email": "crowberto@metabase.com",
+    "common_name": "Crowberto Corv",
+    "id": 3
+  },
+  "payload": {
+    "event_info": {
+      "table_id": 97,
+      "after": { "ID": 1, "NAME": "Updated Category" },
+      "before": { "ID": 1, "NAME": "African" },
+      "update": { "NAME": "Updated Category" },
+      "actor_id": 3,
+      "table": { "name": "CATEGORIES" },
+      "actor": {
+        "first_name": "Crowberto",
+        "last_name": "Corv",
+        "email": "crowberto@metabase.com",
+        "common_name": "Crowberto Corv"
+      }
+    },
+    "event_topic": "event/data-editing-row-update",
+    "custom": {}
+  },
+  "context": {
+    "application_name": "Metabase",
+    "application_color": "#509EE3",
+    "application_logo_url": "http://static.metabase.com/email_logo.png",
+    "site_name": "Metabase Test",
+    "site_url": "https://testmb.com",
+    "admin_email": null,
+    "style": {
+      "button": "display: inline-block; box-sizing: border-box; padding: 0.5rem 1.375rem; font-size: 1.063rem; font-weight: bold; text-decoration: none; cursor: pointer; color: #fff; border: 1px solid #509EE3; background-color: #509EE3; border-radius: 4px;"
+    }
+  }
+}

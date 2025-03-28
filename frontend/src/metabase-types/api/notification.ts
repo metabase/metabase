@@ -74,12 +74,24 @@ export type NotificationRecipient =
   | NotificationRecipientUser
   | NotificationRecipientRawValue;
 
+export type TemplateDetails = {
+  type: string;
+  subject: string;
+  body: string;
+};
+
+export type ChannelTemplate = {
+  name: string;
+  channel_type: string;
+  details: TemplateDetails;
+};
+
 type NotificationHandlerBase = {
   notification_id?: NotificationId;
   template_id?: number | null;
   channel_id?: number | null;
   channel?: Channel | null;
-  template?: unknown | null; // TODO: hydrated template
+  template?: ChannelTemplate | null; // TODO: hydrated template
   active?: boolean;
 
   id?: number;

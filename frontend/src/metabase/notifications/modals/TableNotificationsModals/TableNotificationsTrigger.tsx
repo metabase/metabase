@@ -27,7 +27,7 @@ type AlertModalMode =
   | "delete-confirm-modal"
   | "unsubscribe-confirm-modal";
 
-export const TableNotificationsTriggerButton = ({
+export const TableNotificationsTrigger = ({
   tableId,
   ...props
 }: TableNotificationsModalProps) => {
@@ -125,13 +125,7 @@ export const TableNotificationsTriggerButton = ({
           hasNotifications ? t`Edit notifications` : t`Create notification`
         }
       >
-        <ActionIcon
-          size="lg"
-          variant="subtle"
-          color="gray"
-          onClick={handleOpen}
-          {...props}
-        >
+        <ActionIcon size="lg" variant="subtle" onClick={handleOpen} {...props}>
           <Icon name="alert" />
         </ActionIcon>
       </Tooltip>
