@@ -1,5 +1,5 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -42,13 +42,16 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
     activationConstraint: { distance: 15 },
   });
   const fields = useMemo(() => table.fields ?? [], [table.fields]);
-  const sortedFields = useMemo(
-    () => _.sortBy(fields ?? [], (field) => field.position),
-    [fields],
-  );
+  const [fieldOrder, setFieldOrder] = useState(getFieldOrder(fields));
+  const items = useMemo(() => {
+    return fields.sort((a, b) => {
+      return fieldOrder.indexOf(getId(a)) - fieldOrder.indexOf(getId(b));
+    });
+  }, [fieldOrder, fields]);
   const isDragDisabled = fields.length <= 1;
 
   const handleSortEnd = ({ itemIds: fieldOrder }: DragEndEvent) => {
+    setFieldOrder(fieldOrder);
     dispatch(Tables.actions.setFieldOrder(table, fieldOrder));
   };
 
@@ -70,7 +73,7 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
       <Flex direction="column" gap="sm">
         <SortableList
           getId={getId}
-          items={sortedFields}
+          items={items}
           renderItem={({ item, id }) => (
             <SortableField
               disabled={isDragDisabled}
@@ -102,4 +105,9 @@ export const FieldOrderSidesheet = _.compose(
 
 function getId(field: Field) {
   return field.getId();
+}
+
+function getFieldOrder(fields: Field[] | undefined) {
+  const sortedFields = _.sortBy(fields ?? [], (field) => field.position);
+  return sortedFields.map(getId);
 }
