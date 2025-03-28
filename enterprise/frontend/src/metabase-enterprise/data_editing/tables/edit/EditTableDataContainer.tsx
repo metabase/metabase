@@ -68,6 +68,8 @@ export const EditTableDataContainer = ({
     dispatch(closeNavbar());
   });
 
+  const handleCreateView = () => {};
+
   if (!database || isLoading || tableIdLoading) {
     // TODO: show loader
     return null;
@@ -84,7 +86,8 @@ export const EditTableDataContainer = ({
         {table && (
           <EditTableDataHeader
             table={table}
-            onCreate={handleModalOpenAndExpandedRow}
+            onCreateRow={handleModalOpenAndExpandedRow}
+            onCreateView={handleCreateView}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (

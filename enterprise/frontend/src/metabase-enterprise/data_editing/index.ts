@@ -2,6 +2,7 @@ import { PLUGIN_DATA_EDITING } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { isDatabaseTableEditingEnabled } from "./settings";
+import { CreateEditTableViewContainer } from "./tables/create_view/CreateEditTableViewContainer";
 import { EditTableDataContainer } from "./tables/edit";
 import { EditTableDataWithUpdate } from "./tables/edit/EditTableDataWithUpdate";
 import { BrowseTableData } from "./tables/view";
@@ -13,4 +14,5 @@ if (hasPremiumFeature("table_data_editing")) {
   PLUGIN_DATA_EDITING.VIEW_PAGE_COMPONENT = BrowseTableData;
   PLUGIN_DATA_EDITING.EDIT_PAGE_COMPONENT = EditTableDataContainer;
   PLUGIN_DATA_EDITING.CARD_TABLE_COMPONENT = EditTableDataWithUpdate;
+  PLUGIN_DATA_EDITING.CREATE_VIEW_PAGE_COMPONENT = CreateEditTableViewContainer;
 }

@@ -1,18 +1,20 @@
 import { t } from "ttag";
 
-import { Button, Flex, Group, Icon, Title } from "metabase/ui";
+import { Button, Divider, Flex, Group, Icon, Title } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 import { EditTableDataBackButton } from "./EditTableDataBackButton";
 
 interface EditTableDataHeaderProps {
   table: Table;
-  onCreate: () => void;
+  onCreateRow: () => void;
+  onCreateView: () => void;
 }
 
 export const EditTableDataHeader = ({
   table,
-  onCreate,
+  onCreateRow,
+  onCreateView,
 }: EditTableDataHeaderProps) => {
   return (
     <Flex
@@ -30,8 +32,13 @@ export const EditTableDataHeader = ({
         <Button
           leftSection={<Icon name="add" />}
           variant="filled"
-          onClick={onCreate}
+          onClick={onCreateRow}
         >{t`New record`}</Button>
+        <Divider orientation="vertical" />
+        <Button
+          leftSection={<Icon name="table2" />}
+          onClick={onCreateView}
+        >{t`Create a view`}</Button>
       </Group>
     </Flex>
   );

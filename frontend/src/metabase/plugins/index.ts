@@ -637,4 +637,10 @@ export const PLUGIN_DATA_EDITING = {
     className?: string;
     refetchTableDataQuery: () => void;
   }>,
+  CREATE_VIEW_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+  }>,
 };
