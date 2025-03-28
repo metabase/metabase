@@ -53,6 +53,7 @@ export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
       )}
       value={value}
       onChange={handleChange}
+      onOptionSubmit={() => combobox.closeDropdown()}
       {...props}
     />
   );
