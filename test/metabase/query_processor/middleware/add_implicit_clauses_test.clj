@@ -217,7 +217,8 @@
           (is (=? (lib.tu.macros/$ids [$venues.id
                                        (mbql.u/update-field-options field-ref dissoc :temporal-unit)
                                        $venues.category-id->categories.name])
-                  (get-in (qp.add-implicit-clauses/add-implicit-clauses query)
+                  (get-in (qp.store/with-metadata-provider meta/metadata-provider
+                            (qp.add-implicit-clauses/add-implicit-clauses query))
                           [:query :fields]))))))))
 
 (deftest ^:parallel add-correct-implicit-fields-for-deeply-nested-source-queries-test
