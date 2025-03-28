@@ -6,11 +6,11 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Flex, Popover } from "metabase/ui";
 import type { Dataset } from "metabase-types/api";
 
-import { QueryDownloadPopover } from "../QueryDownloadPopover";
+import { QuestionDownloadWidget } from "../QuestionDownloadWidget";
 import {
   type UseDownloadDataParams,
   useDownloadData,
-} from "../QueryDownloadPopover/use-download-data";
+} from "../QuestionDownloadWidget/use-download-data";
 
 export type QueryDownloadWidgetProps = {
   className?: string;
@@ -53,7 +53,7 @@ const QueryDownloadWidget = ({
         </Flex>
       </Popover.Target>
       <Popover.Dropdown p="0.75rem">
-        <QueryDownloadPopover
+        <QuestionDownloadWidget
           question={question}
           result={result}
           onDownload={(opts) => {

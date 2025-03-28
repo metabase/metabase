@@ -15,8 +15,8 @@ import {
 } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { useStore } from "metabase/lib/redux";
-import { QueryDownloadPopover } from "metabase/query_builder/components/QueryDownloadPopover";
-import { useDownloadData } from "metabase/query_builder/components/QueryDownloadPopover/use-download-data";
+import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
+import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import {
   ActionIcon,
   Icon,
@@ -113,7 +113,7 @@ export const DashCardMenu = ({
 
     if (menuView === "download") {
       return (
-        <QueryDownloadPopover
+        <QuestionDownloadWidget
           question={question}
           result={result}
           onDownload={(opts) => {
