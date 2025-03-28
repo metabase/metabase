@@ -417,7 +417,8 @@
     (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
 
-    (or (= base-type :type/*) (= base-type :type/UUID))
+    ;; type/MongoBinData is how it's currently synced, but handle DBs that we synced with previous types
+    (or (= base-type :type/MongoBinData) (= base-type :type/*) (= base-type :type/UUID))
     (try
       (-> (str value)
           java.util.UUID/fromString

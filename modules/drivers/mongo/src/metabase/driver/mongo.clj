@@ -220,10 +220,7 @@
                                                             "object"     {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
                                                                                    "then" "$$item.v"
                                                                                    "else" nil}}
-                                                            "type"       {"$type" "$$item.v"}
-                                                            "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
-                                                                                       "args" ["$$item.v" {"$type" "$$item.v"}]
-                                                                                       "lang" "js"}}}}}}}
+                                                            "type"       {"$type" "$$item.v"}}}}}}
                        {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
                        {"$project" {"path"       "$kvs.k"
                                     "result"     {"$literal" false}
@@ -322,7 +319,7 @@
         "string"     :type/Text
         "object"     :type/Dictionary
         "array"      :type/Array
-        "binData"    :type/*
+        "binData"    :type/MongoBinData
         ;; "uuid" is not a database type like the rest here
         ;; it's determined by the subtype of binData fields in describe-table
         "uuid"       :type/UUID
