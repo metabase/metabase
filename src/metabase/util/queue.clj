@@ -4,7 +4,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.time :as u.time])
   (:import
    (java.time Duration Instant)
    (java.util.concurrent ArrayBlockingQueue BlockingQueue DelayQueue Delayed ExecutorService Executors SynchronousQueue TimeUnit)
@@ -74,31 +75,25 @@
   [^DelayQueue queue delay-ms value]
   (.offer queue (->DelayValue value (.plus (Instant/now) (Duration/ofMillis delay-ms)))))
 
-(defn- take-batch* [^BlockingQueue queue ^long max-messages ^long latest-time acc]
+(defn- take-batch* [^BlockingQueue queue ^long max-messages ^long poll-ms acc]
   (loop [acc acc]
-    (let [remaining-ms (- latest-time (System/currentTimeMillis))]
-      (if (or (neg? remaining-ms) (>= (count acc) max-messages))
-        acc
-        (if-let [item (.poll queue remaining-ms TimeUnit/MILLISECONDS)]
-          (recur (conj acc
-                       (if (instance? DelayQueue queue)
-                         (:value item)
-                         item)))
-          (not-empty acc))))))
+    (if (>= (count acc) max-messages)
+      acc
+      (if-let [item (if (pos? poll-ms)
+                      (.poll queue poll-ms TimeUnit/MILLISECONDS)
+                      (.poll queue))]
+        (recur (conj acc (if (instance? DelayQueue queue)
+                           (:value item)
+                           item)))
+        (not-empty acc)))))
 
-(def ^:dynamic *take-batch-wait-ms*
-  "Time to wait for the first message to be available in take-batch! in milliseconds."
-  Long/MAX_VALUE)
-
-(defn take-batch!
+(defn- take-batch!
   "Get a batch of messages off the given queue.
-  Will wait for the first message to be available, then will collect up to max-messages in max-batch-ms, whichever comes first.
-  For convenience, if the queue is a DelayQueue, the returned values will be the actual values, not the Delay objects.
-
-  By default, will wait indefinitely for the first message, but that can be controlled with *take-batch-wait-ms*."
-  ([^BlockingQueue queue ^long max-batch-messages ^long max-batch-ms]
-   (when-let [fst (.poll queue *take-batch-wait-ms* TimeUnit/MILLISECONDS)]
-     (take-batch* queue max-batch-messages (+ (System/currentTimeMillis) max-batch-ms) [(if (instance? DelayQueue queue) (:value fst) fst)]))))
+  Will wait max-first-ms for the first message to be available, then will collect up to max-message, waiting up to max-next-ms for each additional message, whichever comes first.
+  For convenience, if the queue is a DelayQueue, the returned values will be the actual values, not the Delay objects."
+  ([^BlockingQueue queue ^long max-first-ms ^long max-batch-messages ^long max-next-ms]
+   (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
+     (take-batch* queue max-batch-messages max-next-ms [(if (instance? DelayQueue queue) (:value fst) fst)]))))
 
 (defonce ^:private listeners (atom {}))
 
@@ -106,7 +101,7 @@
                                   :err-handler {:optional true} [:=> [:cat [:fn (ms/InstanceOfClass Throwable) :string]] :any]
                                   :pool-size {:optional true} number?
                                   :max-batch-messages {:optional true} number?
-                                  :max-batch-ms {:optional true} number?]])
+                                  :max-next-ms {:optional true} number?]])
 
 (defn listener-exists?
   "Returns true if there is a running listener with the given name"
@@ -116,12 +111,12 @@
 (mu/defn- listener-thread [listener-name :- :string
                            queue :- (ms/InstanceOfClass BlockingQueue)
                            handler :- [:=> [:cat [:sequential :any]] :any]
-                           {:keys [success-handler err-handler max-batch-messages max-batch-ms]} :- ::listener-options]
+                           {:keys [success-handler err-handler max-batch-messages max-next-ms]} :- ::listener-options]
   (log/infof "Listener %s started" listener-name)
   (while true
     (try
       (log/debugf "Listener %s waiting for next batch..." listener-name)
-      (let [batch (take-batch! queue max-batch-messages max-batch-ms)]
+      (let [batch (take-batch! queue Long/MAX_VALUE max-batch-messages max-next-ms)]
         (if (seq batch)
           (do
             (log/debugf "Listener %s processing batch of %d" listener-name (count batch))
@@ -153,7 +148,7 @@
   - err-handler: A function called when the handler throws an exception. Accepts [exception, duration-in-ms, listener-name]
   - pool-size: Number of threads in the listener. Default: 1
   - max-batch-messages: Max number of items to batch up before calling handler. Default 50
-  - max-batch-ms: Max number of ms to let queued items collect before calling the handler. Default 100"
+  - max-next-ms: Max number of ms to wait for each additional message before calling the handler. Default 100"
   [listener-name :- :string
    queue :- (ms/InstanceOfClass BlockingQueue)
    handler :- [:=> [:cat [:sequential :any]] :any]
@@ -161,12 +156,12 @@
            err-handler
            pool-size
            max-batch-messages
-           max-batch-ms]
+           max-next-ms]
     :or   {success-handler (constantly nil)
            err-handler (constantly nil)
            pool-size       1
            max-batch-messages 50
-           max-batch-ms     100}} :- ::listener-options]
+           max-next-ms     100}} :- ::listener-options]
   (if (listener-exists? listener-name)
     (log/errorf "Listener %s already exists" listener-name)
 
@@ -188,10 +183,10 @@
 
       (dotimes [_ pool-size]
         (.submit ^ExecutorService executor ^Callable #(listener-thread listener-name queue handler
-                                                                       {:success-handler  success-handler
-                                                                        :err-handler     err-handler
+                                                                       {:success-handler    success-handler
+                                                                        :err-handler        err-handler
                                                                         :max-batch-messages max-batch-messages
-                                                                        :max-batch-ms     max-batch-ms})))
+                                                                        :max-next-ms        max-next-ms})))
 
       (swap! listeners assoc listener-name executor))))
 
