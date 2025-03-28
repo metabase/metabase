@@ -1,6 +1,6 @@
 import type { Table } from "@tanstack/react-table";
 import cx from "classnames";
-import { t } from "ttag";
+import { msgid, ngettext } from "ttag";
 
 import { FOOTER_HEIGHT } from "metabase/data-grid/constants";
 import { PaginationFooter } from "metabase/visualizations/components/PaginationFooter/PaginationFooter";
@@ -51,7 +51,9 @@ export const Footer = <TData,>({
   if (showRowsCount) {
     return (
       <div {...wrapperAttributes}>
-        <span className={S.rowsCount}>{t`${total} rows`}</span>
+        <span className={S.rowsCount}>
+          {ngettext(msgid`${total} row`, `${total} rows`, total)}
+        </span>
       </div>
     );
   }
