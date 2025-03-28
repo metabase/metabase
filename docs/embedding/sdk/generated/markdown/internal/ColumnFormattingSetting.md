@@ -1,5 +1,5 @@
 ```ts
-type ColumnFormattingSetting = 
+type ColumnFormattingSetting =
   | ColumnSingleFormattingSetting
   | ColumnRangeFormattingSetting;
 ```

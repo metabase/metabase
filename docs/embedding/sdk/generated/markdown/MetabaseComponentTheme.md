@@ -1,88 +1,88 @@
 ```ts
 type MetabaseComponentTheme = {
   cartesian: {
-     goalLine: {
-        label: {
-           fontSize: string;
-          };
-       };
-     label: {
+    goalLine: {
+      label: {
         fontSize: string;
-       };
-     padding: string;
+      };
     };
+    label: {
+      fontSize: string;
+    };
+    padding: string;
+  };
   collectionBrowser: {
-     breadcrumbs: {
-        expandButton: {
-           backgroundColor: ColorCssVariableOrString;
-           hoverBackgroundColor: ColorCssVariableOrString;
-           hoverTextColor: ColorCssVariableOrString;
-           textColor: ColorCssVariableOrString;
-          };
-       };
-     emptyContent: {
-        icon: {
-           height: CSSProperties["width"];
-           width: CSSProperties["width"];
-          };
-        subtitle: {
-           fontSize: CSSProperties["fontSize"];
-          };
-        title: {
-           fontSize: CSSProperties["fontSize"];
-          };
-       };
+    breadcrumbs: {
+      expandButton: {
+        backgroundColor: ColorCssVariableOrString;
+        hoverBackgroundColor: ColorCssVariableOrString;
+        hoverTextColor: ColorCssVariableOrString;
+        textColor: ColorCssVariableOrString;
+      };
     };
-  dashboard: {
-     backgroundColor: string;
-     card: {
-        backgroundColor: string;
-        border: string;
-       };
-     gridBorderColor: string;
-    };
-  number: {
-     value: {
+    emptyContent: {
+      icon: {
+        height: CSSProperties["width"];
+        width: CSSProperties["width"];
+      };
+      subtitle: {
         fontSize: CSSProperties["fontSize"];
-        lineHeight: string;
-       };
+      };
+      title: {
+        fontSize: CSSProperties["fontSize"];
+      };
     };
+  };
+  dashboard: {
+    backgroundColor: string;
+    card: {
+      backgroundColor: string;
+      border: string;
+    };
+    gridBorderColor: string;
+  };
+  number: {
+    value: {
+      fontSize: CSSProperties["fontSize"];
+      lineHeight: string;
+    };
+  };
   pivotTable: {
-     cell: {
-        fontSize: string;
-       };
-     rowToggle: {
-        backgroundColor: string;
-        textColor: string;
-       };
+    cell: {
+      fontSize: string;
     };
+    rowToggle: {
+      backgroundColor: string;
+      textColor: string;
+    };
+  };
   popover: {
-     zIndex: number;
-    };
+    zIndex: number;
+  };
   question: {
-     backgroundColor: string;
-     toolbar: {
-        backgroundColor: string;
-       };
+    backgroundColor: string;
+    toolbar: {
+      backgroundColor: string;
     };
+  };
   table: {
-     cell: {
-        backgroundColor: string;
-        fontSize: string;
-        textColor: string;
-       };
-     idColumn: {
-        backgroundColor: string;
-        textColor: string;
-       };
-     stickyBackgroundColor: string;
+    cell: {
+      backgroundColor: string;
+      fontSize: string;
+      textColor: string;
     };
+    idColumn: {
+      backgroundColor: string;
+      textColor: string;
+    };
+    stickyBackgroundColor: string;
+  };
   tooltip: {
-     backgroundColor: string;
-     focusedBackgroundColor: string;
-     secondaryTextColor: string;
-     textColor: string;
-    };
+    backgroundColor: string;
+    focusedBackgroundColor: string;
+    secondaryTextColor: string;
+    textColor: string;
+  };
 };
 ```
 
@@ -99,15 +99,15 @@ in DEFAULT\_METABASE\_COMPONENT\_THEME at \[default-component-theme.ts]
 ```ts
 cartesian: {
   goalLine: {
-     label: {
-        fontSize: string;
-       };
-    };
+    label: {
+      fontSize: string;
+    }
+  }
   label: {
-     fontSize: string;
-    };
+    fontSize: string;
+  }
   padding: string;
-};
+}
 ```
 
 Cartesian charts
@@ -128,26 +128,26 @@ Cartesian charts
 ```ts
 collectionBrowser: {
   breadcrumbs: {
-     expandButton: {
-        backgroundColor: ColorCssVariableOrString;
-        hoverBackgroundColor: ColorCssVariableOrString;
-        hoverTextColor: ColorCssVariableOrString;
-        textColor: ColorCssVariableOrString;
-       };
-    };
+    expandButton: {
+      backgroundColor: ColorCssVariableOrString;
+      hoverBackgroundColor: ColorCssVariableOrString;
+      hoverTextColor: ColorCssVariableOrString;
+      textColor: ColorCssVariableOrString;
+    }
+  }
   emptyContent: {
-     icon: {
-        height: CSSProperties["width"];
-        width: CSSProperties["width"];
-       };
-     subtitle: {
-        fontSize: CSSProperties["fontSize"];
-       };
-     title: {
-        fontSize: CSSProperties["fontSize"];
-       };
-    };
-};
+    icon: {
+      height: CSSProperties["width"];
+      width: CSSProperties["width"];
+    }
+    subtitle: {
+      fontSize: CSSProperties["fontSize"];
+    }
+    title: {
+      fontSize: CSSProperties["fontSize"];
+    }
+  }
+}
 ```
 
 | Name                                            | Type                                                                                                                                                                                                                                                                                                                                                                               |
@@ -175,11 +175,11 @@ collectionBrowser: {
 dashboard: {
   backgroundColor: string;
   card: {
-     backgroundColor: string;
-     border: string;
-    };
+    backgroundColor: string;
+    border: string;
+  }
   gridBorderColor: string;
-};
+}
 ```
 
 | Name                   | Type                                                 | Description                                                                                                                                                             |
@@ -218,13 +218,13 @@ Number chart
 ```ts
 pivotTable: {
   cell: {
-     fontSize: string;
-    };
+    fontSize: string;
+  }
   rowToggle: {
-     backgroundColor: string;
-     textColor: string;
-    };
-};
+    backgroundColor: string;
+    textColor: string;
+  }
+}
 ```
 
 Pivot table \*
@@ -244,7 +244,7 @@ Pivot table \*
 ```ts
 popover: {
   zIndex: number;
-};
+}
 ```
 
 Popover
@@ -261,9 +261,9 @@ Popover
 question: {
   backgroundColor: string;
   toolbar: {
-     backgroundColor: string;
-    };
-};
+    backgroundColor: string;
+  }
+}
 ```
 
 | Name                       | Type                             | Description                                        |
@@ -279,16 +279,16 @@ question: {
 ```ts
 table: {
   cell: {
-     backgroundColor: string;
-     fontSize: string;
-     textColor: string;
-    };
+    backgroundColor: string;
+    fontSize: string;
+    textColor: string;
+  }
   idColumn: {
-     backgroundColor: string;
-     textColor: string;
-    };
+    backgroundColor: string;
+    textColor: string;
+  }
   stickyBackgroundColor: string;
-};
+}
 ```
 
 Data tables \*

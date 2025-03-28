@@ -1,5 +1,7 @@
 ```ts
-const defineMetabaseAuthConfig: (config: MetabaseAuthConfig) => MetabaseAuthConfig;
+const defineMetabaseAuthConfig: (
+  config: MetabaseAuthConfig,
+) => MetabaseAuthConfig;
 ```
 
 Defines a Metabase auth config.

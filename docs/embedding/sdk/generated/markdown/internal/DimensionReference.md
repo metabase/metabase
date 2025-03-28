@@ -1,5 +1,3 @@
 ```ts
-type DimensionReference = 
-  | DimensionReferenceWithOptions
-  | TemplateTagReference;
+type DimensionReference = DimensionReferenceWithOptions | TemplateTagReference;
 ```

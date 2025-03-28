@@ -4,13 +4,19 @@ type InteractiveQuestionConfig = {
   entityTypeFilter: EntityTypeFilterKeys[];
   initialSqlParameters: ParameterValues_2;
   isSaveEnabled: boolean;
-  onBeforeSave: (question: MetabaseQuestion | undefined, context: {
-     isNewQuestion: boolean;
-    }) => Promise<void>;
+  onBeforeSave: (
+    question: MetabaseQuestion | undefined,
+    context: {
+      isNewQuestion: boolean;
+    },
+  ) => Promise<void>;
   onNavigateBack: () => void;
-  onSave: (question: MetabaseQuestion | undefined, context: {
-     isNewQuestion: boolean;
-    }) => void;
+  onSave: (
+    question: MetabaseQuestion | undefined,
+    context: {
+      isNewQuestion: boolean;
+    },
+  ) => void;
   targetCollection: SdkCollectionId;
   withDownloads: boolean;
 };

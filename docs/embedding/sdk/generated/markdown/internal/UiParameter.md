@@ -1,9 +1,9 @@
 ```ts
-type UiParameter = 
+type UiParameter =
   | FieldFilterUiParameter
-  | ValuePopulatedParameter & {
-  hidden: boolean;
-};
+  | (ValuePopulatedParameter & {
+      hidden: boolean;
+    });
 ```
 
 #### Type declaration

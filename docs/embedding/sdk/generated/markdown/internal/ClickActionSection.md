@@ -1,5 +1,5 @@
 ```ts
-type ClickActionSection = 
+type ClickActionSection =
   | "auto"
   | "auto-popover"
   | "breakout"

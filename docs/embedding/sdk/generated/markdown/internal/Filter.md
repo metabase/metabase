@@ -1,7 +1,3 @@
 ```ts
-type Filter = 
-  | FieldFilter
-  | CompoundFilter
-  | NotFilter
-  | SegmentFilter;
+type Filter = FieldFilter | CompoundFilter | NotFilter | SegmentFilter;
 ```

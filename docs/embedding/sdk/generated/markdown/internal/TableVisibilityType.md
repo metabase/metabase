@@ -1,5 +1,5 @@
 ```ts
-type TableVisibilityType = 
+type TableVisibilityType =
   | null
   | "details-only"
   | "hidden"

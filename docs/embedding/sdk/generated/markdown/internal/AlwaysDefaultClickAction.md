@@ -2,7 +2,7 @@
 type AlwaysDefaultClickAction = {
   defaultAlways: true;
   name: string;
- } & AlwaysDefaultClickActionSubAction;
+} & AlwaysDefaultClickActionSubAction;
 ```
 
 #### Type declaration

@@ -1,5 +1,5 @@
 ```ts
-type Expression = 
+type Expression =
   | NumericLiteral
   | StringLiteral
   | BooleanLiteral

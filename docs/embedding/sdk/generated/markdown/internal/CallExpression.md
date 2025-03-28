@@ -1,5 +1,5 @@
 ```ts
-type CallExpression = 
+type CallExpression =
   | [ExpressionOperator, ...ExpressionOperand[]]
   | [ExpressionOperator, ...ExpressionOperand[], CallOptions];
 ```

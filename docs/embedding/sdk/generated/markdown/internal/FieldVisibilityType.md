@@ -1,3 +1,8 @@
 ```ts
-type FieldVisibilityType = "details-only" | "hidden" | "normal" | "retired" | "sensitive";
+type FieldVisibilityType =
+  | "details-only"
+  | "hidden"
+  | "normal"
+  | "retired"
+  | "sensitive";
 ```

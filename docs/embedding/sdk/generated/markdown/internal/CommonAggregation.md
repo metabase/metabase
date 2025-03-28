@@ -1,5 +1,5 @@
 ```ts
-type CommonAggregation = 
+type CommonAggregation =
   | CountAgg
   | CountFieldAgg
   | AvgAgg

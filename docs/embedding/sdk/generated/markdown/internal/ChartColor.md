@@ -1,11 +1,11 @@
 ```ts
-type ChartColor = 
+type ChartColor =
   | string
   | {
-  base: string;
-  shade: string;
-  tint: string;
-};
+      base: string;
+      shade: string;
+      tint: string;
+    };
 ```
 
 #### Type declaration

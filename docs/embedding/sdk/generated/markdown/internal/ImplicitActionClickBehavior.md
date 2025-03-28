@@ -1,5 +1,5 @@
 ```ts
-type ImplicitActionClickBehavior = 
+type ImplicitActionClickBehavior =
   | InsertActionClickBehavior
   | UpdateActionClickBehavior
   | DeleteActionClickBehavior;

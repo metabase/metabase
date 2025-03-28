@@ -4,7 +4,7 @@ type SearchResponse<Id, Model, Result> = {
   data: Result[];
   models: Model[] | null;
   table_db_id: DatabaseId | null;
- } & PaginationResponse;
+} & PaginationResponse;
 ```
 
 #### Type declaration

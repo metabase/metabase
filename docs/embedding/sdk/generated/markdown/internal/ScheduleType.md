@@ -1,3 +1,9 @@
 ```ts
-type ScheduleType = "every_n_minutes" | "hourly" | "daily" | "weekly" | "monthly" | "cron";
+type ScheduleType =
+  | "every_n_minutes"
+  | "hourly"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "cron";
 ```

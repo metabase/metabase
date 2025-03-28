@@ -1,5 +1,5 @@
 ```ts
-type EngineFieldType = 
+type EngineFieldType =
   | "string"
   | "password"
   | "text"

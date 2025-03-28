@@ -1,5 +1,5 @@
 ```ts
-type AggregationType = 
+type AggregationType =
   | "count"
   | "sum"
   | "cum-sum"

@@ -1,5 +1,5 @@
 ```ts
-type SmartScalarComparisonType = 
+type SmartScalarComparisonType =
   | "anotherColumn"
   | "previousValue"
   | "previousPeriod"

@@ -1,5 +1,3 @@
 ```ts
-type FieldValue = 
-  | NotRemappedFieldValue
-  | RemappedFieldValue;
+type FieldValue = NotRemappedFieldValue | RemappedFieldValue;
 ```

@@ -1,5 +1,6 @@
 ```ts
-type UserInfo = Pick<BaseUser, 
+type UserInfo = Pick<
+  BaseUser,
   | "id"
   | "common_name"
   | "first_name"
@@ -8,5 +9,6 @@ type UserInfo = Pick<BaseUser,
   | "date_joined"
   | "last_login"
   | "is_superuser"
-| "is_qbnewb">;
+  | "is_qbnewb"
+>;
 ```

@@ -1,5 +1,5 @@
 ```ts
-type ClickAction = 
+type ClickAction =
   | RegularClickAction
   | DefaultClickAction
   | AlwaysDefaultClickAction

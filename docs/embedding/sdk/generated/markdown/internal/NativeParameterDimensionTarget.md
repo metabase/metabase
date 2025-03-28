@@ -1,5 +1,5 @@
 ```ts
-type NativeParameterDimensionTarget = 
+type NativeParameterDimensionTarget =
   | ["dimension", VariableTarget]
   | ["dimension", VariableTarget, DimensionTargetOptions];
 ```

@@ -1,5 +1,5 @@
 ```ts
-type EmbeddingHomepageStatus = 
+type EmbeddingHomepageStatus =
   | EmbeddingHomepageDismissReason
   | "visible"
   | "hidden";

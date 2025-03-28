@@ -1,5 +1,5 @@
 ```ts
-type DashboardSidebarName = 
+type DashboardSidebarName =
   | "addQuestion"
   | "action"
   | "clickBehavior"

@@ -1,3 +1,7 @@
 ```ts
-type CollectionBrowserListColumns = "type" | "name" | "lastEditedBy" | "lastEditedAt";
+type CollectionBrowserListColumns =
+  | "type"
+  | "name"
+  | "lastEditedBy"
+  | "lastEditedAt";
 ```

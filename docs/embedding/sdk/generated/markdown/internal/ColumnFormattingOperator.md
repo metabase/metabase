@@ -1,5 +1,5 @@
 ```ts
-type ColumnFormattingOperator = 
+type ColumnFormattingOperator =
   | ConditionalFormattingCommonOperator
   | ConditionalFormattingComparisonOperator
   | ConditionalFormattingStringOperator

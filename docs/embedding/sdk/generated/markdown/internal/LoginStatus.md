@@ -1,5 +1,5 @@
 ```ts
-type LoginStatus = 
+type LoginStatus =
   | LoginStatusUninitialized
   | LoginStatusSuccess
   | LoginStatusLoading

@@ -1,5 +1,5 @@
 ```ts
-type DashboardCard = 
+type DashboardCard =
   | ActionDashboardCard
   | QuestionDashboardCard
   | VirtualDashboardCard;

@@ -1,3 +1,11 @@
 ```ts
-type InsideFilter = ["inside", ConcreteFieldReference, ConcreteFieldReference, NumericLiteral, NumericLiteral, NumericLiteral, NumericLiteral];
+type InsideFilter = [
+  "inside",
+  ConcreteFieldReference,
+  ConcreteFieldReference,
+  NumericLiteral,
+  NumericLiteral,
+  NumericLiteral,
+  NumericLiteral,
+];
 ```

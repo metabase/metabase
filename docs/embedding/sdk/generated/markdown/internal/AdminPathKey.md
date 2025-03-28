@@ -1,5 +1,5 @@
 ```ts
-type AdminPathKey = 
+type AdminPathKey =
   | "data-model"
   | "settings"
   | "people"

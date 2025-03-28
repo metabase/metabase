@@ -1,5 +1,5 @@
 ```ts
-type ConditionalFormattingStringOperator = 
+type ConditionalFormattingStringOperator =
   | "="
   | "!="
   | "contains"

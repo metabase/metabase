@@ -1,3 +1,9 @@
 ```ts
-type ConditionalFormattingComparisonOperator = "=" | "!=" | "<" | ">" | "<=" | ">=";
+type ConditionalFormattingComparisonOperator =
+  | "="
+  | "!="
+  | "<"
+  | ">"
+  | "<="
+  | ">=";
 ```

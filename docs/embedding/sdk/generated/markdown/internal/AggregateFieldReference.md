@@ -1,5 +1,5 @@
 ```ts
-type AggregateFieldReference = 
+type AggregateFieldReference =
   | ["aggregation", number, ReferenceOptions | null]
   | ["aggregation", number];
 ```

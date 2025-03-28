@@ -1,5 +1,8 @@
 ```ts
-type MetabaseClickActionPluginsConfig = (clickActions: ClickAction[], clickedDataPoint: MetabaseDataPointObject) => ClickAction[];
+type MetabaseClickActionPluginsConfig = (
+  clickActions: ClickAction[],
+  clickedDataPoint: MetabaseDataPointObject,
+) => ClickAction[];
 ```
 
 #### Parameters

@@ -1,3 +1,3 @@
 ```ts
-type CardDisplayType = typeof cardDisplayTypes[number];
+type CardDisplayType = (typeof cardDisplayTypes)[number];
 ```

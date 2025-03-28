@@ -1,5 +1,5 @@
 ```ts
-type ConcreteFieldReference = 
+type ConcreteFieldReference =
   | LocalFieldReference
   | FieldLiteral
   | ForeignFieldReference

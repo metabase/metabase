@@ -1,5 +1,3 @@
 ```ts
-type ParameterValue = 
-  | NotRemappedParameterValue
-  | RemappedParameterValue;
+type ParameterValue = NotRemappedParameterValue | RemappedParameterValue;
 ```

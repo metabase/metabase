@@ -1,5 +1,5 @@
 ```ts
-type DimensionReferenceWithOptions = 
+type DimensionReferenceWithOptions =
   | FieldReference
   | ExpressionReference
   | AggregateFieldReference;

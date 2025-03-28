@@ -1,8 +1,6 @@
 ```ts
 type DashboardCardCustomMenuItem = {
-  customItems: (
-     | DashCardMenuItem
-     | CustomDashboardCardMenuItem)[];
+  customItems: (DashCardMenuItem | CustomDashboardCardMenuItem)[];
   withDownloads: boolean;
   withEditLink: boolean;
 };

@@ -1,5 +1,5 @@
 ```ts
-type EntityCustomDestinationClickBehavior = 
+type EntityCustomDestinationClickBehavior =
   | DashboardCustomDestinationClickBehavior
   | QuestionCustomDestinationClickBehavior;
 ```

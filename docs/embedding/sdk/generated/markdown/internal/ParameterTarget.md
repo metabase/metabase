@@ -1,5 +1,5 @@
 ```ts
-type ParameterTarget = 
+type ParameterTarget =
   | ParameterVariableTarget
   | ParameterDimensionTarget
   | ParameterTextTarget;

@@ -1,3 +1,3 @@
 ```ts
-type DateTimeAbsoluteUnit = typeof dateTimeAbsoluteUnits[number];
+type DateTimeAbsoluteUnit = (typeof dateTimeAbsoluteUnits)[number];
 ```
