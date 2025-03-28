@@ -14,6 +14,7 @@ interface VirtualGridOptions<TData> {
   table: ReactTable<TData>;
   measureRowHeight: (rowIndex: number) => number;
   defaultRowHeight: number;
+  enableRowVirtualization?: boolean;
 }
 
 export interface VirtualGrid {
@@ -31,6 +32,7 @@ export const useVirtualGrid = <TData,>({
   table,
   measureRowHeight,
   defaultRowHeight,
+  enableRowVirtualization,
 }: VirtualGridOptions<TData>): VirtualGrid => {
   const { rows: tableRows } = table.getRowModel();
   const visibleColumns = table.getVisibleLeafColumns();
@@ -68,6 +70,7 @@ export const useVirtualGrid = <TData,>({
     getScrollElement: () => gridRef.current,
     estimateSize: () => defaultRowHeight,
     overscan: 3,
+    enabled: enableRowVirtualization,
     measureElement: (element) => {
       const rowIndexRaw = element?.getAttribute("data-dataset-index");
       const rowIndex = rowIndexRaw != null ? parseInt(rowIndexRaw, 10) : null;

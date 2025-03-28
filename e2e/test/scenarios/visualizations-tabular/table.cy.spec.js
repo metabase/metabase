@@ -421,6 +421,61 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     assertCanViewOrdersTableDashcard();
   });
 
+  it("should allow enabling pagination in dashcard viz settings", () => {
+    // Page rows count is based on the available space which can differ depending on the platform and scroll bar system settings
+    const rowsRegex = /Rows \d+-\d+ of first 2000/;
+    const idCellSelector = '[data-column-id="ID"]';
+    const firstPageId = 6;
+    const secondPageId = 12;
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.dashboardCards()
+      .eq(0)
+      .as("tableDashcard")
+      .findByText(rowsRegex)
+      .should("not.exist");
+
+    cy.get("@tableDashcard").findByText("2000 rows");
+
+    // Enable pagination
+    H.editDashboard();
+    H.showDashcardVisualizationSettings(0);
+    H.modal().within(() => {
+      cy.findByText("Paginate results").click();
+      cy.findByText(rowsRegex);
+      cy.button("Done").click();
+    });
+
+    H.saveDashboard();
+
+    // Ensure pagination works
+    cy.get("@tableDashcard").findByText(rowsRegex);
+    cy.get(idCellSelector).should("contain", firstPageId);
+    cy.get(idCellSelector).should("not.contain", secondPageId);
+
+    cy.findByLabelText("Next page").click();
+    cy.get("@tableDashcard").findByText(rowsRegex);
+    cy.get(idCellSelector).should("contain", secondPageId);
+    cy.get(idCellSelector).should("not.contain", firstPageId);
+
+    cy.findByLabelText("Previous page").click();
+    cy.get("@tableDashcard").findByText(rowsRegex);
+    cy.get(idCellSelector).should("contain", firstPageId);
+    cy.get(idCellSelector).should("not.contain", secondPageId);
+
+    H.editDashboard();
+
+    // Ensure resizing change page size
+    H.resizeDashboardCard({ card: cy.get("@tableDashcard"), x: 600, y: 600 });
+    H.saveDashboard();
+    cy.get("@tableDashcard")
+      .findByText(rowsRegex)
+      .scrollIntoView()
+      .should("be.visible");
+    // Table got taller so elements from the second page have become visible
+    cy.get(idCellSelector).should("contain", secondPageId);
+  });
+
   it("should support text wrapping setting", () => {
     H.createQuestionAndDashboard({
       questionDetails: {
