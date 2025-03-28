@@ -237,7 +237,9 @@
    args     :- [:sequential [:or ExpressionArg ExpressionParts]]
    options  :- [:maybe :map]]
   (fix-expression-clause
-   (into [operator options] (map lib.common/->op-arg) args)))
+   (into [(keyword operator) options]
+         (map lib.common/->op-arg)
+         args)))
 
 (defn- expression-clause-with-in
   "Like [[expression-clause]], but also auto-converts `:=` and `:!=` to `:in` and `:not-in` when there are more than 2
