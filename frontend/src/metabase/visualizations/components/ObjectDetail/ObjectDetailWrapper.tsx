@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
@@ -24,6 +24,12 @@ export function ObjectDetailWrapper({
   ...rest
 }: ObjectDetailProps) {
   const [currentObjectIndex, setCurrentObjectIndex] = useState(0);
+
+  useEffect(() => {
+    if (data.rows.length <= currentObjectIndex) {
+      setCurrentObjectIndex(0);
+    }
+  }, [data.rows, currentObjectIndex]);
 
   // only show modal if this object detail was triggered via an object detail zoom action
   const shouldShowModal = isObjectDetail;
@@ -85,10 +91,6 @@ export function ObjectDetailWrapper({
   }
 
   const hasPagination = data?.rows?.length > 1;
-
-  if (data.rows.length <= currentObjectIndex) {
-    setCurrentObjectIndex(data.rows.length - 1);
-  }
 
   return (
     <>
