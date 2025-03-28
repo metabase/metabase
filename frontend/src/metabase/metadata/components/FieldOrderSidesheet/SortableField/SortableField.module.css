@@ -1,6 +1,10 @@
-.sortableField {
-  border: 1px solid var(--mb-color-border);
+.sortableField,
+.content {
   border-radius: var(--default-border-radius);
+}
+
+.content {
+  border: 1px solid var(--mb-color-border);
 
   &.draggable {
     cursor: grab;

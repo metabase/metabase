@@ -17,13 +17,18 @@ export const SortableField = ({ disabled, icon, id, label }: Props) => {
   const draggable = !disabled;
 
   return (
-    <Sortable disabled={disabled} draggingStyle={{ opacity: 0.5 }} id={id}>
+    <Sortable
+      className={S.sortableField}
+      disabled={disabled}
+      draggingStyle={{ opacity: 0.5 }}
+      id={id}
+    >
       <Flex
         align="center"
         aria-label={label}
         bg="bg-white"
         c="text-medium"
-        className={cx(S.sortableField, {
+        className={cx(S.content, {
           [S.draggable]: draggable,
         })}
         draggable={draggable}
