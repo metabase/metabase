@@ -21,11 +21,12 @@
     :channel_id   http-channel-id}])
 
 (defn test-row-notification!
-  [event-name request-fn channel-type->assert-fns]
+  [action request-fn channel-type->assert-fns]
   (data-editing.tu/with-temp-test-db!
     (mt/with-temp [:model/Channel chn {:type :channel/http}]
       (notification.tu/with-system-event-notification!
-        [_notification {:subscriptions [{:event_name event-name
+        [_notification {:subscriptions [{:event_name :event/action.success
+                                         :action     action
                                          :table_id   (mt/id :categories)}]
                         :handlers      (all-handlers (:id chn))}]
         (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
@@ -37,7 +38,7 @@
 
 (deftest create-row-notification-test
   (test-row-notification!
-   :event/data-editing-row-create
+   :row/create
    (fn []
      (mt/user-http-request
       :crowberto
@@ -63,19 +64,23 @@
                               email
                               #"Crowberto Corv has created a row for CATEGORIES"
                               #"NAME: New Category"))))
-    :channel/http    (fn [[req :as reqs]]
-                       (is (= 1 (count reqs)))
-                       (is (=? {:body {:event_info {:actor       {:common_name "Crowberto Corv"
-                                                                  :email "crowberto@metabase.com"
-                                                                  :first_name "Crowberto"
-                                                                  :last_name "Corv"}
-                                                    :actor_id    (mt/user->id :crowberto),
-                                                    :created_row {"ID" (mt/malli=? :int) "NAME" "New Category"}
-                                                    :table       {:name "CATEGORIES"}
-                                                    :table_id    (mt/id :categories)}
-                                       :event_name :event/data-editing-row-create,
-                                       :type "system_event"}}
-                               req)))}))
+    :channel/http    (fn [reqs]
+                       (let [reqs (filter (comp #{"row"} namespace :action :event_info :body) reqs)]
+                         (is (= 1 (count reqs)))
+                         (is (=? {:body {:type       "system_event"
+                                         :event_name :event/action.success
+                                         :event_info {:action   :row/create
+                                                      :actor    {:common_name "Crowberto Corv"
+                                                                 :email       "crowberto@metabase.com"
+                                                                 :first_name  "Crowberto"
+                                                                 :last_name   "Corv"}
+                                                      :actor_id (mt/user->id :crowberto),
+                                                      :table    {:name "CATEGORIES"}
+                                                      :table_id (mt/id :categories)
+                                                      :result   {:table-id    (mt/id :categories)
+                                                                 :created_row {"ID"   (mt/malli=? :int)
+                                                                               "NAME" "New Category"}}}}}
+                                 (first reqs)))))}))
 
 (deftest update-row-notification-test
   (test-row-notification!
@@ -94,13 +99,13 @@
                                                :text
                                                {:type "mrkdwn",
                                                 :text "*Crowberto Corv has updated a from CATEGORIES*\n*Update:*\n• NAME : Updated Category"}}]}]
-                              :channel-id "#test-pulse"}
+                              :channel-id  "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
                      (is (=? {:subject "Table CATEGORIES has been updated"
                               :message [{"Crowberto Corv has updated a row in CATEGORIES" true
-                                         "NAME: Updated Category" true}]}
+                                         "NAME: Updated Category"                         true}]}
                              (mt/summarize-multipart-single-email
                               email
                               #"Crowberto Corv has updated a row in CATEGORIES"
@@ -108,9 +113,9 @@
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
                      (is (=? {:body {:event_info {:actor    {:common_name "Crowberto Corv"
-                                                             :email "crowberto@metabase.com"
-                                                             :first_name "Crowberto"
-                                                             :last_name "Corv"}
+                                                             :email       "crowberto@metabase.com"
+                                                             :first_name  "Crowberto"
+                                                             :last_name   "Corv"}
                                                   :actor_id (mt/user->id :crowberto),
                                                   :after    {:ID 1 :NAME "Updated Category"}
                                                   :before   {:ID 1 :NAME (mt/malli=? :string)}

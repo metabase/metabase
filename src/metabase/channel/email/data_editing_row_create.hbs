@@ -3,7 +3,7 @@
     <p>{{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has created a row for {{payload.event_info.table.name}}</p>
     <p>Changes:</p>
     <ul>
-      {{#each payload.event_info.created_row}}
+      {{#each payload.event_info.result.created_row}}
         {{#if @value}}<li>{{@key}}: {{@value}}</li>{{/if}}
       {{/each}}
     </ul>

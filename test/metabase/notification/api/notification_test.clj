@@ -841,10 +841,12 @@
 (deftest list-filter-table-notifications-test
   (let [table-id (mt/id :categories)]
     (notification.tu/with-system-event-notification!
-      [{noti-id-1 :id} {:subscriptions [{:event_name :event/data-editing-row-create
+      [{noti-id-1 :id} {:subscriptions [{:event_name :event/action.success
+                                         :action     :row/create
                                          :table_id   table-id}]}]
       (notification.tu/with-system-event-notification!
-        [{noti-id-2 :id} {:subscriptions [{:event_name :event/data-editing-row-create
+        [{noti-id-2 :id} {:subscriptions [{:event_name :event/action.success
+                                           :action :row/create
                                            :table_id   table-id}]}]
         (testing "returns notifications for the given table"
           (is (= #{noti-id-1 noti-id-2}
@@ -1053,12 +1055,14 @@
                                               :handlers     [@notification.tu/default-email-handler]
                                               :subscriptions [{:type       :notification-subscription/system-event
                                                                :table_id   table-id
-                                                               :event_name :event/data-editing-row-create}]})]
+                                                               :action     :row/create
+                                                               :event_name :event/action.success}]})]
       (testing "can create a table notification"
         (is (=? {:condition     ["=" ["context" "event_info" "table_id"] table-id]
                  :creator_id    (mt/user->id :crowberto)
                  :payload_type  "notification/system-event"
-                 :subscriptions [{:event_name "event/data-editing-row-create"
+                 :subscriptions [{:event_name "event/action.success"
+                                  :action     "row/create"
                                   :table_id   table-id
                                   :type       "notification-subscription/system-event"}]}
                 notification))

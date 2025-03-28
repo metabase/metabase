@@ -131,3 +131,4 @@ modules/drivers/*/.lsp/*
 /bin/bb
 
 .aider*
+/config.yml
