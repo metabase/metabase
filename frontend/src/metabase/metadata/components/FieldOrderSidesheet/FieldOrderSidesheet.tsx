@@ -1,5 +1,5 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -42,7 +42,8 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
     activationConstraint: { distance: 15 },
   });
   const fields = useMemo(() => table.fields ?? [], [table.fields]);
-  const [fieldOrder, setFieldOrder] = useState(getFieldOrder(fields));
+  const initialFieldOrder = useMemo(() => getFieldOrder(fields), [fields]);
+  const [fieldOrder, setFieldOrder] = useState(initialFieldOrder);
   const items = useMemo(() => {
     return fields.sort((a, b) => {
       return fieldOrder.indexOf(getId(a)) - fieldOrder.indexOf(getId(b));
@@ -58,6 +59,14 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
   const handleFieldOrderChange = (value: TableFieldOrder) => {
     dispatch(Tables.actions.updateProperty(table, "field_order", value));
   };
+
+  useEffect(() => {
+    // Update local state only when sidesheet is closed.
+    // This is to prevent items flickering on the list after handleSortEnd.
+    if (!isOpen) {
+      setFieldOrder(initialFieldOrder);
+    }
+  }, [initialFieldOrder, isOpen]);
 
   return (
     <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
