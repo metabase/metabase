@@ -10905,6 +10905,68 @@ databaseChangeLog:
             indexName: idx_field_usage_query_execution_id
 
   - changeSet:
+      id: v54.2025-03-27T17:52:01
+      author: luizarakaki
+      comment: updating v_tasks to add new `status` field
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v2/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v2/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v2/h2-tasks.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v1/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v1/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v1/h2-tasks.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v54.2025-03-28T11:22:01
+      author: luizarakaki
+      comment: updating v_content to add new `is_verified` field
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v3/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v3/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v3/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v2/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v2/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v2/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
       id: v55.2025-03-24T16:28:41
       author: bshepherdson
       comment: Add report_card.card_schema

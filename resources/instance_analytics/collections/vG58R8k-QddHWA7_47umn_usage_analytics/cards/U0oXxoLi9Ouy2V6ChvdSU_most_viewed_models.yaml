@@ -342,6 +342,7 @@ serdes/meta:
   label: most_viewed_models
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: vUNKNOWN (9863ce2)
 source_card_id: P6Ityjj7igswKh4NgZZjz
