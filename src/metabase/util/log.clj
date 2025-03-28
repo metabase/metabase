@@ -55,7 +55,7 @@
 
 (defn- ->str
   [val] ^String
-  (if val
+  (if-some val
     (if (keyword? val)
       (str (symbol val)) ;; fastest way to get a fully-quallified keyword as a string
       (.toString ^Object val))
