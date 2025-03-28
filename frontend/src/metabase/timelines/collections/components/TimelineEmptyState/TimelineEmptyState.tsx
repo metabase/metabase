@@ -34,8 +34,7 @@ const TimelineEmptyState = ({
       </Tooltip>
       <Box maw="25rem">
         <Title
-          order={2}
-          size="lg"
+          order={4}
           mb="sm"
         >{t`Add context to your time series charts`}</Title>
         <Text fz="md">

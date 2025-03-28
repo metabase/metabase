@@ -88,7 +88,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
       <Stack className={S.MainStack} gap={0}>
         <Flex align="center" gap="sm" p="1rem" pb="0.75rem">
           <UpsellGem size={gemSize} />
-          <Title lh={1.25} order={2} className={S.Title}>
+          <Title lh={1.25} order={3} className={S.Title}>
             {title}
           </Title>
         </Flex>

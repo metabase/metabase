@@ -30,7 +30,7 @@ export function EmbeddingOption({
     >
       {icon}
       <Flex gap="md" mt="md" mb="sm" direction={"row"} align="center">
-        <Title id={titleId} order={2}>
+        <Title id={titleId} order={3}>
           {title}
         </Title>
         {label}

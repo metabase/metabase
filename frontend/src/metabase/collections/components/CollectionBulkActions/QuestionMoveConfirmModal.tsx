@@ -117,7 +117,7 @@ export const QuestionMoveConfirmModal = ({
           py="3rem"
         >
           <Loader size="lg" />
-          <Title>{t`Checking on some things...`}</Title>
+          <Title order={2}>{t`Checking on some things...`}</Title>
         </Flex>
       );
     } else {

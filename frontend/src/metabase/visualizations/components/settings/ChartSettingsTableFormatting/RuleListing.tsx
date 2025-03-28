@@ -40,6 +40,7 @@ export const RuleListing = ({
       <>
         <Stack gap="sm">
           <Title
+            order={2}
             fw="bold"
             fz="lg"
           >{t`Rules will be applied in this order`}</Title>
