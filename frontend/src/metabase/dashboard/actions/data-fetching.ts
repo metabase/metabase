@@ -330,7 +330,7 @@ export const fetchCardDataAction = createAsyncThunk<
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = await fetchDataOrError(
         maybeUsePivotEndpoint(MetabaseApi.dataset, card)(
-          { ...datasetQuery, ignore_cache: ignoreCache },
+          { query: datasetQuery },
           queryOptions,
         ),
       );

@@ -85,12 +85,15 @@
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   query :- [:map
-             [:database {:optional true} [:maybe :int]]]]
+   {:keys [query dashboard_id]} :- [:map
+                                    [:query [:map
+                                             [:database {:optional true} [:maybe ms/PositiveInt]]]
+                                     :dashboard_id {:optional true} [:maybe ms/PositiveInt]]]]
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)))
+       qp/userland-query-with-default-constraints)
+   {:context (if (some? dashboard_id) :dashboard-adhoc :adhoc)}))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
@@ -196,13 +199,16 @@
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
-   {:keys [database] :as query} :- [:map
-                                    [:database {:optional true} [:maybe ms/PositiveInt]]]]
+   {{:keys [database] :as query} :query
+    dashboard_id                 :dashboard_id} :- [:map
+                                                    [:query [:map
+                                                             [:database {:optional true} [:maybe ms/PositiveInt]]]]
+                                                    [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]]]
   (when-not database
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
-              :context     :ad-hoc}]
+              :context     (if (some? dashboard_id) :dashboard-adhoc :adhoc)}]
     (qp.streaming/streaming-response [rff :api]
       (qp.pivot/run-pivot-query (assoc query
                                        :constraints (qp.constraints/default-query-constraints)

@@ -114,7 +114,7 @@ export async function runQuestionQuery(
       card,
       question.metadata(),
     )(
-      datasetQueryWithParameters,
+      { query: datasetQueryWithParameters },
       cancelDeferred
         ? {
             cancelled: cancelDeferred.promise,
