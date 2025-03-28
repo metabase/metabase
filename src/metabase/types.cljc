@@ -351,7 +351,7 @@
 (derive :Coercion/UNIXNanoSeconds->DateTime :Coercion/UNIXTime->Temporal)
 
 (derive :Coercion/String->Number :Coercion/*)
-(derive :Coercion/String->Decimal :Coercion/String->Number)
+(derive :Coercion/String->Float :Coercion/String->Number)
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
@@ -459,7 +459,7 @@
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal :type/* :type/DateTime)
 
-(coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Decimal :type/Text :type/Decimal)
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Float :type/Text :type/Float)
 
 (defn is-coercible-from?
   "Whether `coercion-strategy` is allowed for `base-type`."
