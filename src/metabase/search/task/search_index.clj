@@ -8,7 +8,8 @@
    [metabase.search.ingestion :as ingestion]
    [metabase.task :as task]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.queue :as queue])
   (:import
    (java.time Instant)
    (java.util Date)
@@ -95,7 +96,7 @@
                        (simple/repeat-forever))))]
     (task/schedule-task! job trigger)))
 
-(defmethod task/init! ::SearchIndexUpdate [_]
+(defmethod queue/init-listener! ::SearchIndexUpdate [_]
   (ingestion/start-listener!))
 
 (comment

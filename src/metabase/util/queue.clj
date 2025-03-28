@@ -94,13 +94,13 @@
    (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
      (take-batch* queue max-batch-messages max-next-ms [(if (instance? DelayQueue queue) (:value fst) fst)]))))
 
-(defonce ^:private listeners (atom {}))
-
 (mr/def ::listener-options [:map [:success-handler {:optional true} [:=> [:cat :any :double :string] :any]
                                   :err-handler {:optional true} [:=> [:cat [:fn (ms/InstanceOfClass Throwable) :string]] :any]
                                   :pool-size {:optional true} number?
                                   :max-batch-messages {:optional true} number?
                                   :max-next-ms {:optional true} number?]])
+
+(defonce ^:private ^{:malli/schema [:map-of :string (ms/InstanceOfClass ExecutorService)]} listeners (atom {}))
 
 (defn listener-exists?
   "Returns true if there is a running listener with the given name"
@@ -111,7 +111,7 @@
                            queue :- (ms/InstanceOfClass BlockingQueue)
                            handler :- [:=> [:cat [:sequential :any]] :any]
                            {:keys [success-handler err-handler max-batch-messages max-next-ms]} :- ::listener-options]
-  (log/infof "Listener %s started" listener-name)
+  (log/debugf "Thread for listener %s started" listener-name)
   (while true
     (try
       (log/debugf "Listener %s waiting for next batch..." listener-name)
@@ -127,7 +127,7 @@
               (success-handler output duration listener-name)))
           (log/debugf "Listener %s found no items to process" listener-name)))
       (catch InterruptedException e
-        (log/infof "Listener %s interrupted" listener-name)
+        (log/debugf "Listener thread %s stopped" listener-name)
         (throw e))
       (catch Exception e
         (err-handler e listener-name)
@@ -170,16 +170,7 @@
                      (doto (BasicThreadFactory$Builder.)
                        (.namingPattern (str "queue-" listener-name "-%d"))
                        (.daemon true))))]
-      (log/infof "Starting listener %s with %d threads" listener-name pool-size)
-      (.addShutdownHook
-       (Runtime/getRuntime)
-       (Thread. ^Runnable (fn []
-                            (.shutdownNow ^ExecutorService executor)
-                            (try
-                              (.awaitTermination ^ExecutorService executor 30 TimeUnit/SECONDS)
-                              (catch InterruptedException _
-                                (log/warn (str "Interrupted while waiting for " listener-name "executor to terminate")))))))
-
+      (log/infof "Starting listener %s with %d threads %s" (u/format-color 'green listener-name) pool-size (u/emoji "\uD83C\uDFA7"))
       (dotimes [_ pool-size]
         (.submit ^ExecutorService executor ^Callable #(listener-thread listener-name queue handler
                                                                        {:success-handler    success-handler
@@ -202,3 +193,32 @@
       (swap! listeners dissoc listener-name)
       (log/infof "Stopping listener %s...done" listener-name))
     (log/infof "No running listener named %s" listener-name)))
+
+(defmulti init-listener!
+  "Initialize a listener with a given name. All implementations of this method are called once and only
+  once when the server is starting up. Task namespaces (`metabase.*.task`) should add new
+  implementations of this method to start new listeners they define (i.e., with a call to `queue/listen!`.)
+
+  The dispatch value for this function can be any unique keyword, but by convention is a namespaced keyword version of
+  the name of the listener being initialized; for sake of consistency with the listener name itself, the keyword should be left
+  CamelCased.
+
+    (defmethod qeueue/listener-init! ::ExampleListener [_]
+      (queue/listen! (queue/listen! \"example-listener\" queue handler))"
+  {:arglists '([job-name-string])}
+  keyword)
+
+(defn start-listeners!
+  "Call all implementations of `init-listener!`. Called by metabase.core/init!"
+  []
+  (doseq [[k f] (methods init-listener!)]
+    (try
+      (f k)
+      (catch Throwable e
+        (log/errorf e "Error initializing listener %s" k)))))
+
+(defn stop-listeners!
+  "Stops all running listeners"
+  []
+  (doseq [[name _] @listeners]
+    (stop-listening! name)))
