@@ -715,6 +715,7 @@ class Visualization extends PureComponent<
                 settings={settings}
                 icon={headerIcon}
                 actionButtons={extra}
+                hasInfoTooltip={!isDashboard || !isEditing}
                 width={width}
                 getHref={getHref}
                 onChangeCardAndRun={
