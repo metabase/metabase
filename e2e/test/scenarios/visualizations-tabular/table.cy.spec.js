@@ -1,7 +1,10 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
@@ -22,6 +25,38 @@ describe("scenarios > visualizations > table", () => {
     // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText(option).click(clickOpts);
   }
+
+  it("should not be sortable when displays raw query results (metabase#19817)", () => {
+    H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+    cy.findByLabelText("Switch to data").click();
+    const initialColumnsOrder = ["Created At: Year", "Count"];
+
+    H.assertTableData({
+      columns: initialColumnsOrder,
+    });
+
+    H.tableHeaderColumn("Count").as("countHeaderInPreview");
+    H.moveDnDKitElementByAlias("@countHeaderInPreview", { horizontal: -100 });
+
+    H.assertTableData({
+      columns: initialColumnsOrder,
+    });
+
+    H.notebookButton().click();
+
+    cy.findAllByTestId("step-preview-button").eq(1).click();
+
+    H.assertTableData({
+      columns: initialColumnsOrder,
+    });
+
+    H.tableHeaderColumn("Count").as("countHeaderInNotebook");
+    H.moveDnDKitElementByAlias("@countHeaderInNotebook", { horizontal: -100 });
+
+    H.assertTableData({
+      columns: initialColumnsOrder,
+    });
+  });
 
   it("should allow changing column title when the field ref is the same except for the join-alias", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");

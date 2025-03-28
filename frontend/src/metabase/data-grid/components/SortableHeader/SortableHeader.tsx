@@ -15,7 +15,7 @@ type DragPosition = { x: number; y: number };
 export interface SortableHeaderProps<TData, TValue> {
   children: React.ReactNode;
   className?: string;
-  isSortingDisabled?: boolean;
+  isColumnReorderingDisabled?: boolean;
   style?: React.CSSProperties;
   header: Header<TData, TValue>;
   onClick?: (e: React.MouseEvent<HTMLDivElement>, columnId: string) => void;
@@ -25,7 +25,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   header,
   className,
   children,
-  isSortingDisabled,
+  isColumnReorderingDisabled,
   style: styleProp,
   onClick,
 }: SortableHeaderProps<TData, TValue>) {
@@ -38,7 +38,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({
       id,
-      disabled: isSortingDisabled || !!isPinned,
+      disabled: isColumnReorderingDisabled || !!isPinned,
     });
 
   const dragStartPosition = useRef<DragPosition | null>(null);
