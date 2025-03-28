@@ -1,7 +1,10 @@
 const { H } = cy;
 
-// TODO: QUE-726 restore test
-describe.skip("scenarios > custom column > literals", () => {
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+
+describe("scenarios > custom column > literals", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -139,6 +142,63 @@ describe.skip("scenarios > custom column > literals", () => {
     H.assertTableData({
       columns: ["Column", "Average of Column"],
       firstRows: [["10", "10"]],
+    });
+  });
+
+  it("should support custom columns in nested questions (QUE-726)", () => {
+    const baseQuestionDetails = {
+      name: "QUE-726 Base question",
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [
+          ["field", PRODUCTS.ID, { "base-type": "type/Integer" }],
+          ["field", PRODUCTS.TITLE, { "base-type": "type/Text" }],
+          ["field", PRODUCTS.PRICE, { "base-type": "type/Number" }],
+          ["expression", "Rustic", { "base-type": "type/Text" }],
+          ["expression", "MinPrice", { "base-type": "type/Number" }],
+        ],
+        expressions: {
+          Rustic: [
+            "value",
+            "Rustic Paper Wallet",
+            { "base-type": "type/Text" },
+          ],
+          MinPrice: ["value", 20, { "base-type": "type/Number" }],
+        },
+      },
+    };
+
+    H.createQuestion(baseQuestionDetails).then(({ body: { id } }) => {
+      const nestedQuestion = {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": `card__${id}`,
+            filter: [
+              "and",
+              [
+                "=",
+                ["field", "TITLE", { "base-type": "type/Text" }],
+                ["field", "Rustic", { "base-type": "type/Text" }],
+              ],
+              [
+                ">",
+                ["field", "PRICE", { "base-type": "type/Number" }],
+                ["field", "MinPrice", { "base-type": "type/Number" }],
+              ],
+            ],
+          },
+          type: "query",
+        },
+      };
+
+      H.visitQuestionAdhoc(nestedQuestion);
+      H.assertTableData({
+        columns: ["ID", "Title", "Price", "Rustic", "MinPrice"],
+        firstRows: [
+          ["1", "Rustic Paper Wallet", "29.46", "Rustic Paper Wallet", "20"],
+        ],
+      });
     });
   });
 });

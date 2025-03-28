@@ -89,6 +89,12 @@ export function resolve({
     const [op, ...operands] = expression;
 
     if (op === "value") {
+      const [value] = operands;
+      if (!isCompatible(type, typeof value)) {
+        throw new ResolverError(
+          t`Expecting ${type} but found ${JSON.stringify(value)}`,
+        );
+      }
       return expression;
     } else if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
