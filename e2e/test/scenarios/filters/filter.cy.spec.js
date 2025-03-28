@@ -401,7 +401,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("isempty([Reviewer])");
+    cy.contains("isEmpty([Reviewer])");
     H.CustomExpressionEditor.clear().type("NOT IsEmpty([Reviewer])").blur();
 
     cy.button("Update").click();
@@ -429,7 +429,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("isnull([Rating])");
+    cy.contains("isNull([Rating])");
     H.CustomExpressionEditor.clear()
       .type("NOT IsNull([Rating])", { delay: 50 })
       .blur();
@@ -567,7 +567,9 @@ describe("scenarios > question > filter", () => {
     H.enterCustomColumnDetails({ formula: "3.14159" });
     H.popover().within(() => {
       cy.button("Done").should("be.disabled");
-      cy.findByText("Expecting boolean but found 3.14159");
+      cy.findByText("Standalone constants are not supported.").should(
+        "be.visible",
+      );
     });
   });
 
@@ -578,7 +580,9 @@ describe("scenarios > question > filter", () => {
     H.enterCustomColumnDetails({ formula: '"TheAnswer"' });
     H.popover().within(() => {
       cy.button("Done").should("be.disabled");
-      cy.findByText('Expecting boolean but found "TheAnswer"');
+      cy.findByText("Standalone constants are not supported.").should(
+        "be.visible",
+      );
     });
   });
 

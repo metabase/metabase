@@ -1,9 +1,15 @@
 (ns metabase.internal-stats
   (:require
+   [metabase.internal-stats.embedding :as embedding-stats]
    [metabase.internal-stats.query-executions :as query-execution-stats]
    [metabase.internal-stats.questions :as question-stats]
    [metabase.internal-stats.users :as user-stats]
    [potemkin :as p]))
+
+(p/import-vars
+ [embedding-stats
+  embedding-dashboard-count
+  embedding-question-count])
 
 (p/import-vars
  [user-stats

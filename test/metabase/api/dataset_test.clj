@@ -476,6 +476,18 @@
                      :data
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
+(deftest databricks-stack-trace-test
+  (testing "exceptions with stacktraces should have the stacktrace removed"
+    (mt/test-driver :databricks
+      (let [res (mt/user-http-request :rasta :post 202 "dataset"
+                                      (lib/native-query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                                        "asdf;"))]
+        (is (= {:error_type "invalid-query"
+                :status "failed"
+                :class "class com.databricks.client.support.exceptions.ErrorException"}
+               (select-keys res [:error_type :status :class])))
+        (is (not (str/includes? (:error res) "\n\tat ")))))))
+
 (deftest ^:parallel pivot-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
