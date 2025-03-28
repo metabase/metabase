@@ -223,9 +223,9 @@
 
 (tx/defdataset string-nums
   [["string_nums"
-    [{:field-name "int_col" :base-type :type/Text}
-     {:field-name "dec_col" :base-type :type/Text}
-     {:field-name "mix_col" :base-type :type/Text}]
+    [{:field-name "int_col"   :base-type :type/Text}
+     {:field-name "float_col" :base-type :type/Text}
+     {:field-name "mix_col"   :base-type :type/Text}]
     [["0" "0.5" "0"]
      ["1" "1.5" "0.5"]
      ["2" "2.5" "1"]
