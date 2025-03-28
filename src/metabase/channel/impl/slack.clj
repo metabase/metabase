@@ -175,7 +175,7 @@
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [parts]
   (for [part  parts
-        :let  [attachment (part->attachment-data (channel.shared/realize-data-rows part))]
+        :let  [attachment (part->attachment-data (channel.shared/maybe-realize-data-rows part))]
         :when attachment]
     attachment))
 

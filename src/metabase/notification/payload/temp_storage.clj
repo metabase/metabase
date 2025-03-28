@@ -27,17 +27,31 @@
 
 (defn- temp-file
   []
-  (doto (File/createTempFile "notification-" ".npy" @temp-dir)
+  (doto (File/createTempFile "notification-" ".edn" @temp-dir)
     (.deleteOnExit)))
 
 (defn- write-to-file
   [^File file data]
-  (nippy/freeze-to-file file data))
+  (spit file data))
 
 (defn- read-from-file
   [^File file]
   (when (.exists file)
-    (nippy/thaw-from-file file)))
+    (slurp file)))
+
+#_(defn- temp-file
+    []
+    (doto (File/createTempFile "notification-" ".npy" @temp-dir)
+      (.deleteOnExit)))
+
+#_(defn- write-to-file
+    [^File file data]
+    (nippy/freeze-to-file file data))
+
+#_(defn- read-from-file
+    [^File file]
+    (when (.exists file)
+      (nippy/thaw-from-file file)))
 
 (.addShutdownHook
  (Runtime/getRuntime)
@@ -75,6 +89,11 @@
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Public APIs                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
+
+(defn is-cleanable?
+  "Returns true if x implements the Cleanable protocol"
+  [x]
+  (instance? Cleanable x))
 
 (defn to-temp-file!
   "Write data to a temporary file. Returns a TempFileStorage type that:
