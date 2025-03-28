@@ -980,7 +980,6 @@
                       {:source-table "card__1"}))))))))))
 
 (deftest ^:parallel expression-literals-test
-  ;; TODO Fix this test for H2 (QUE-726)
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expression-literals)
     (let [query (mt/mbql-query venues
                   {:fields      [[:expression "one"]

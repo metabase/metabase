@@ -1,7 +1,6 @@
 const { H } = cy;
 
-// TODO: QUE-726 restore test
-describe.skip("scenarios > custom column > literals", () => {
+describe("scenarios > custom column > literals", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
