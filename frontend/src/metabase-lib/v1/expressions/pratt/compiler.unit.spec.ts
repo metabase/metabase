@@ -2,7 +2,7 @@ import { compile, lexify, parse } from ".";
 
 describe("pratt/compiler", () => {
   function expr(source: string) {
-    const ast = parse(lexify(source), {
+    const ast = parse(lexify(source).tokens, {
       throwOnError: true,
     });
 

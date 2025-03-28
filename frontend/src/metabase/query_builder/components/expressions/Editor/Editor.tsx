@@ -22,7 +22,7 @@ import {
   format,
 } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
-import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
+import { COMMA, GROUP } from "metabase-lib/v1/expressions/pratt";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { FunctionBrowser } from "../FunctionBrowser";
@@ -365,12 +365,7 @@ function getTooltipPosition(state: EditorState) {
   const pos = state.selection.main.head;
   const source = state.doc.toString();
   let token = tokenAtPos(source, pos);
-  if (
-    pos > 0 &&
-    token &&
-    token.type === TOKEN.Operator &&
-    (token.op === "," || token.op === "(")
-  ) {
+  if (pos > 0 && token && (token.type === COMMA || token.type === GROUP)) {
     // when we're `,` or `(`, return the previous token instead
     token = tokenAtPos(source, pos - 1);
   }

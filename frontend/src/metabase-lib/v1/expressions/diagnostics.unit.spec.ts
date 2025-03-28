@@ -5,7 +5,7 @@ import {
   diagnose,
   diagnoseAndCompile,
 } from "./diagnostics";
-import { tokenize } from "./tokenizer";
+import { lexify } from "./pratt";
 
 describe("diagnostics", () => {
   describe("diagnose", () => {
@@ -23,7 +23,7 @@ describe("diagnostics", () => {
 
     it("should count matching parentheses", () => {
       const count = (expr: string) =>
-        countMatchingParentheses(tokenize(expr).tokens);
+        countMatchingParentheses(lexify(expr).tokens);
       expect(count("()")).toEqual(0);
       expect(count("(")).toEqual(1);
       expect(count(")")).toEqual(-1);
