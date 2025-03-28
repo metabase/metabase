@@ -87,8 +87,8 @@
    _query-params
    {:keys [query dashboard_id]} :- [:map
                                     [:query [:map
-                                             [:database {:optional true} [:maybe ms/PositiveInt]]]
-                                     :dashboard_id {:optional true} [:maybe ms/PositiveInt]]]]
+                                             [:database {:optional true} [:maybe ms/PositiveInt]]]]
+                                    [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]]]
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
