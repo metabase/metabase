@@ -30,7 +30,7 @@ A dashboard component with the features available in the `InteractiveDashboard` 
 
 [EditableDashboardProps](./generated/html/EditableDashboardProps.html)
 
-{% include_markdown_api "{{ dirname }}/generated/markdown/EditableDashboardProps.md" %}
+{% include_file "{{ dirname }}/generated/markdown/EditableDashboardProps.md" %}
 
 _\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParameters` to declutter the user interface is fine._
 
