@@ -239,8 +239,8 @@
                 updated-template    (-> updated-notification :handlers first :template)]
             (is (=? (-> created-template
                         (assoc :name "New Name")
-                        (dissoc :updated_at))
-                    (dissoc updated-template :updated_at)))))
+                        (dissoc :updated_at :created_at))
+                    (dissoc updated-template :updated_at :created_at)))))
 
         (testing "can delete the template"
           (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
