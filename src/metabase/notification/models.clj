@@ -548,8 +548,10 @@
       (when (seq subscriptions)
         (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id notification-id) subscriptions)))
       (doseq [{:keys [recipients template] :as handler} handlers+recipients]
-        (let [template-id (when template
-                            (t2/insert-returning-pk! :model/ChannelTemplate template))
+        ;; assert can either template_id exists, then template but be nil, and vice versa
+        (let [template-id (if template
+                            (t2/insert-returning-pk! :model/ChannelTemplate template)
+                            (:template_id handler))
               handler    (-> handler
                              (dissoc :recipients :template)
                              (assoc :notification_id notification-id

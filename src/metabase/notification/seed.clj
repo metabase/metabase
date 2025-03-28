@@ -111,18 +111,10 @@
 
 (defn- create-notification!
   [notification]
-  (let [handlers (for [handler (:handlers notification)]
-                   (if-let [template (:template handler)]
-                     (-> handler
-                         (dissoc :template)
-                         (assoc :template_id (t2/insert-returning-pk!
-                                              :model/ChannelTemplate
-                                              template)))
-                     handler))]
-    (models.notification/create-notification!
-     (dissoc notification :handlers :subscriptions)
-     (:subscriptions notification)
-     handlers)))
+  (models.notification/create-notification!
+   (dissoc notification :handlers :subscriptions)
+   (:subscriptions notification)
+   (:handlers notification)))
 
 (defn- replace-notification!
   "Replace an existing notification with a new one"
