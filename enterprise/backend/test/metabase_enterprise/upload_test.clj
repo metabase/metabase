@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :scheduler :test-users))
 
 (deftest uploads-disabled-for-sandboxed-user-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)

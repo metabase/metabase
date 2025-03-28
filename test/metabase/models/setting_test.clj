@@ -22,7 +22,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 ;; ## TEST SETTINGS DEFINITIONS
 

@@ -23,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (deftest ^:parallel describe-database-test
   (mt/test-driver :presto-jdbc

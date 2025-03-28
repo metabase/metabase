@@ -16,7 +16,7 @@
 
 (use-fixtures
   :once
-  (fixtures/initialize :db :web-server))
+  (fixtures/initialize :db :scheduler :web-server))
 
 (comment api.action/keep-me)
 
