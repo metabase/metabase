@@ -709,6 +709,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return <div ref={ref} className={className} />;
   }
 
+  const isColumnReorderingDisabled =
+    (isDashboard || mode == null || isRawTable) && !isSettings;
+
   return (
     <div
       ref={ref}
@@ -723,8 +726,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       <DataGrid
         {...tableProps}
         styles={dataGridStyles}
-        isSortingDisabled={isDashboard && !isSettings}
         showRowsCount={isDashboard}
+        isColumnReorderingDisabled={isColumnReorderingDisabled}
         emptyState={emptyState}
         onBodyCellClick={handleBodyCellClick}
         onAddColumnClick={handleAddColumnButtonClick}
