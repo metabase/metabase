@@ -80,7 +80,6 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
             />
           )}
           sensors={[pointerSensor]}
-          useDragOverlay={false}
           onSortEnd={handleSortEnd}
         />
       </Flex>
