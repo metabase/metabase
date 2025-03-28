@@ -12,8 +12,10 @@
   (:import
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
-   (org.eclipse.jetty.server Request Server)
-   (org.eclipse.jetty.server.handler AbstractHandler StatisticsHandler)))
+   (org.eclipse.jetty.ee9.nested Request)
+   (org.eclipse.jetty.ee9.servlet ServletHandler ServletContextHandler)
+   (org.eclipse.jetty.server Server)
+   (org.eclipse.jetty.server.handler StatisticsHandler)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,9 +61,9 @@
   ^Server []
   @instance*)
 
-(defn- async-proxy-handler ^AbstractHandler [handler timeout]
-  (proxy [AbstractHandler] []
-    (handle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
+(defn- async-proxy-handler ^ServletHandler [handler timeout]
+  (proxy [ServletHandler] []
+    (doHandle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
       (let [^AsyncContext context (doto (.startAsync request)
                                     (.setTimeout timeout))
             request-map           (servlet/build-request-map request)
@@ -95,10 +97,13 @@
   ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results later after 10
   ;; minutes we're in serious trouble. (Almost everything 'slow' should be returning a channel before then, but
   ;; some things like CSV downloads don't currently return channels at this time)
-  (let [timeout       (config/config-int :mb-jetty-async-response-timeout)
-        handler       (async-proxy-handler handler timeout)
-        stats-handler (doto (StatisticsHandler.)
-                        (.setHandler handler))]
+  (let [timeout         (config/config-int :mb-jetty-async-response-timeout)
+        handler         (async-proxy-handler handler timeout)
+        servlet-handler (doto (ServletContextHandler.)
+                          (.setAllowNullPathInfo true)
+                          (.setServletHandler handler))
+        stats-handler   (doto (StatisticsHandler.)
+                          (.setHandler servlet-handler))]
     (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
       (.setHandler stats-handler))))
 
