@@ -1,7 +1,5 @@
-import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import { noop } from "underscore";
 
 import { skipToken, useGetFieldValuesQuery } from "metabase/api";
 import { getFieldOptions } from "metabase/querying/filters/components/FilterValuePicker/utils";
@@ -15,7 +13,6 @@ import {
   useCombobox,
 } from "metabase/ui";
 
-import S from "./EditingBodyCellCategorySelect.module.css";
 import type { EditingBodyPrimitiveProps } from "./types";
 
 type EditingBodyCellCategorySelectProps = EditingBodyPrimitiveProps & {
@@ -78,17 +75,23 @@ export const EditingBodyCellCategorySelect = ({
     >
       <Combobox.Target>
         <Input
-          value={value}
+          component="button"
           pointer
           onClick={() => combobox.openDropdown()}
           {...inputProps}
           classNames={{
             wrapper: classNames?.wrapper,
-            input: cx(S.fakeInput, classNames?.selectTextInputElement),
+            input: classNames?.selectTextInputElement,
           }}
-          // Disable input editing when the dropdown is open (UX)
-          onChange={noop}
-        />
+        >
+          {value ? (
+            value
+          ) : inputProps?.placeholder ? (
+            <Input.Placeholder c="var(--mb-color-text-light)">
+              {inputProps.placeholder}
+            </Input.Placeholder>
+          ) : null}
+        </Input>
       </Combobox.Target>
 
       <Combobox.Dropdown mah="none" miw={250}>
