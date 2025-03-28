@@ -1,13 +1,6 @@
 drop view if exists v_content;
 
 create or replace view v_content as
-    with moderation as (
-        select
-            moderated_item_type || '_' || moderated_item_id as entity_qualified_id,
-            case when status = 'verified' then true else false end as is_verified
-        from moderation_review
-        where most_recent
-    )
 select
     action.id as entity_id,
     'action_' || action.id as entity_qualified_id,
@@ -79,7 +72,13 @@ select
     case when query_type='native' then true else false end as question_is_native,
     null as event_timestamp
     from report_card
-        left join moderation on 'card_' || report_card.id = moderation.entity_qualified_id
+        left join (
+        select
+            moderated_item_type || '_' || moderated_item_id as entity_qualified_id,
+            case when status = 'verified' then true else false end as is_verified
+        from moderation_review
+        where most_recent
+    ) as moderation on 'card_' || report_card.id = moderation.entity_qualified_id
 union
 select
     report_dashboard.id as entity_id,
@@ -104,7 +103,13 @@ select
     null as question_is_native,
     null as event_timestamp
     from report_dashboard
-        left join moderation on 'dashboard_' || report_dashboard.id = moderation.entity_qualified_id
+        left join (
+        select
+            moderated_item_type || '_' || moderated_item_id as entity_qualified_id,
+            case when status = 'verified' then true else false end as is_verified
+        from moderation_review
+        where most_recent
+    ) as moderation on 'dashboard_' || report_dashboard.id = moderation.entity_qualified_id
 union
 select
     event.id as entity_id,
