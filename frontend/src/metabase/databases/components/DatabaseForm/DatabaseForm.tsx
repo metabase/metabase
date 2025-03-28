@@ -183,7 +183,7 @@ const DatabaseFormBody = ({
           autoFocus={autofocusFieldName === "name"}
         />
       )}
-      {fields.map(field => (
+      {fields.map((field) => (
         <DatabaseDetailField
           key={field.name}
           field={field}

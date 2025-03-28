@@ -6,6 +6,10 @@ export const createMockAdminState = (
   app: createMockAdminAppState(),
   permissions: createMockPermissionsState(),
   settings: { settings: [], warnings: {} },
+  databases: {
+    deletionError: null,
+    deletes: [],
+  },
   ...opts,
 });
 

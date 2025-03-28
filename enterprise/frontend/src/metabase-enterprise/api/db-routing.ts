@@ -8,7 +8,7 @@ import type {
 import { EnterpriseApi } from "./api";
 
 export const dbRoutingApi = EnterpriseApi.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     updateRouterDatabase: builder.mutation<void, UpdateDatabaseRouterRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
@@ -22,7 +22,7 @@ export const dbRoutingApi = EnterpriseApi.injectEndpoints({
       Database,
       CreateDestinationDatabaseRequest
     >({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/ee/database-routing/mirror-database",
         body,

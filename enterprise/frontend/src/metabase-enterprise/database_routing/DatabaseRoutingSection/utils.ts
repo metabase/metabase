@@ -1,12 +1,13 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import type Database from "metabase-lib/v1/metadata/Database";
+import { hasActionsEnabled, hasFeature } from "metabase/admin/databases/utils";
+import type { Database } from "metabase-types/api";
 
 export const getDisabledFeatureMessage = (database: Database) => {
   return match({
-    hasActionsEnabled: database.hasActionsEnabled(),
-    isPersisted: database.isPersisted(),
+    hasActionsEnabled: hasActionsEnabled(database),
+    isPersisted: hasFeature(database, "persist-models-enabled"),
     isUploadDb: database.uploads_enabled,
   })
     .with(

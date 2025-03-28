@@ -614,8 +614,7 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 
 export const PLUGIN_DB_ROUTING = {
   DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
-    database: Database;
-    refetchDatabase: () => void;
+    database: DatabaseType;
   }>,
   getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
   getDestinationDatabaseRoutes: (_IsAdmin: any) =>

@@ -42,7 +42,7 @@ export const DatabaseEditConnectionForm = withRouter(
   }: {
     database?: Partial<DatabaseData>;
     isAttachedDWH: boolean;
-    initializeError?: DatabaseEditErrorType;
+    initializeError?: unknown;
     handleSaveDb?: (database: DatabaseData) => Promise<{ id: DatabaseId }>;
     onSubmitted: (savedDB: { id: DatabaseId }) => void;
     onCancel: () => void;

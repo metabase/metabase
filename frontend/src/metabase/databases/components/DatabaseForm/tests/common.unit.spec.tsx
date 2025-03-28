@@ -58,7 +58,7 @@ describe("DatabaseForm", () => {
       h2: {
         ...TEST_ENGINES.h2,
         "details-fields":
-          TEST_ENGINES.h2["details-fields"]?.map(field => {
+          TEST_ENGINES.h2["details-fields"]?.map((field) => {
             if (field.name === "is-destination-database") {
               return {
                 name: "is-destination-database",
