@@ -1,6 +1,6 @@
 drop view if exists v_alerts;
 
-create or replace view v_alerts as
+create view v_alerts as
 with parsed_cron as (
     select
         n.id,
