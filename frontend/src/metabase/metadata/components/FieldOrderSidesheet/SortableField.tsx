@@ -20,12 +20,7 @@ export const SortableField = ({ disabled, field, id }: Props) => {
   const icon = field.icon();
 
   return (
-    <Sortable
-      disabled={disabled}
-      draggingStyle={{ opacity: 0.5 }}
-      key={id}
-      id={id}
-    >
+    <Sortable disabled={disabled} draggingStyle={{ opacity: 0.5 }} id={id}>
       <Flex
         align="center"
         aria-label={label}
