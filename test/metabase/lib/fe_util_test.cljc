@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
@@ -43,6 +44,18 @@
                  :operator short-op
                  :args vector?}
                 (lib/expression-parts query expression-clause)))))))
+
+(deftest ^:parallel literals-expression-parts-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))]
+    (testing "string literal"
+      (is (=? "foo" (lib/expression-parts query "foo")))
+      (is (=? "" (lib/expression-parts query ""))))
+    (testing "number literal"
+      (is (=? 42 (lib/expression-parts query 42)))
+      (is (=? 0 (lib/expression-parts query 0))))
+    (testing "boolean literal"
+      (is (=? true (lib/expression-parts query true)))
+      (is (=? false (lib/expression-parts query false))))))
 
 (deftest ^:parallel filter-parts-field-properties-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
@@ -112,9 +125,7 @@
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
           (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
-          (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
-  (is (=? [:= {:lib/uuid string?} [:+ {} [:field {:lib/uuid string?} (meta/id :products :id)] 2] 1]
-          (lib/expression-clause := [(lib/expression-clause :+ [(meta/field-metadata :products :id) 2] {}) 1] {}))))
+          (lib/expression-clause := [(meta/field-metadata :products :id) 1] {}))))
 
 (deftest ^:parallel invisible-expression-parts-test
   (is (=? {:lib/type :mbql/expression-parts
@@ -125,6 +136,110 @@
                   1]}
           (lib/expression-parts (lib.tu/venues-query) -1 (lib/= (lib/ref (meta/field-metadata :products :id))
                                                                 1)))))
+(deftest ^:parallel case-or-if-parts-test
+  (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        int-field    (meta/field-metadata :venues :category-id)
+        string-field (meta/field-metadata :venues :name)
+        dt-field     (meta/field-metadata :users :last-login)
+        boolean-field (meta/field-metadata :venues :category-id)
+        test-cases {(lib/case [[boolean-field int-field]])
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field]}
+
+                    (lib/case [[boolean-field int-field]] nil)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field]}
+
+                    (lib/case [[boolean-field int-field]] string-field)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field string-field]}
+
+                    (lib/case [[boolean-field int-field] [boolean-field string-field]])
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field boolean-field string-field]}
+
+                    (lib/case [[boolean-field int-field] [boolean-field string-field]] nil)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field boolean-field string-field]}
+
+                    (lib/case [[boolean-field int-field] [boolean-field string-field]] dt-field)
+                    {:operator :case
+                     :options {}
+                     :args [boolean-field int-field boolean-field string-field dt-field]}}]
+    (testing "case pairs should be flattened in expression parts"
+      (doseq [[clause parts] test-cases]
+        (let [{:keys [operator options args]} parts
+              res (lib.fe-util/expression-parts query -1 clause)]
+          (is (=? operator (:operator res)))
+          (is (=? options  (:options res)))
+          (is (=? (map :id args) (map :id (:args res)))))))
+
+    (testing "case pairs should be unflattened in expression clause"
+      (doseq [[expected-expression parts] test-cases]
+        (let [{:keys [operator options args]} parts
+              actual-expression (lib.fe-util/expression-clause operator args options)
+              [expected-op _ expected-args] expected-expression
+              [actual-op _ actual-args] actual-expression]
+          (is (=? expected-op actual-op))
+          (is (=? (map :id expected-args) (map :id actual-args))))))
+
+    (testing "case/if should round-trip through expression-parts and expression-clause"
+      (doseq [[clause] test-cases]
+        (let [parts                     (lib.fe-util/expression-parts query clause)
+              round-tripped-expression  (lib.fe-util/expression-clause
+                                         (:operator parts)
+                                         (:args parts)
+                                         nil)
+              round-tripped-parts       (lib.fe-util/expression-parts query round-tripped-expression)]
+
+          (is (=? (:operator parts) (:operator round-tripped-parts)))
+          (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))
+
+    (testing "deeply nested case/if should round-trip through expression-parts and expression-clause"
+      (doseq [parts [{:lib/type :mbql/expression-parts
+                      :operator :case
+                      :options {}
+                      :args [boolean-field
+                             int-field
+                             "default"]}
+
+                     {:lib/type :mbql/expression-parts
+                      :operator :upper
+                      :options {}
+                      :args [{:lib/type :mbql/expression-parts
+                              :operator :case
+                              :options {}
+                              :args [boolean-field
+                                     string-field
+                                     {:lib/type :mbql/expression-parts
+                                      :operator :case
+                                      :options {}
+                                      :args [boolean-field
+                                             int-field
+                                             "default"]}]}]}
+
+                     {:lib/type :mbql/expression-parts
+                      :operator :upper
+                      :options {}
+                      :args [{:lib/type :mbql/expression-parts
+                              :operator :lower
+                              :options {}
+                              :args [{:lib/type :mbql/expression-parts
+                                      :operator :case
+                                      :options {}
+                                      :args [boolean-field string-field]}]}]}]]
+
+        (let [expression (lib.fe-util/expression-clause
+                          (:operator parts)
+                          (:args parts)
+                          (:options parts))
+              round-tripped-parts (lib.fe-util/expression-parts query expression)]
+          (is (=? parts round-tripped-parts)))))))
 
 (deftest ^:parallel string-filter-parts-test
   (let [query  (lib.tu/venues-query)
@@ -740,7 +855,7 @@
     (is (= [{:type :table, :id "card__1"}]
            (lib/table-or-card-dependent-metadata lib.tu/metadata-provider-with-card "card__1")))))
 
-(deftest ^:parallel maybe-expand-temporal-expression-test
+(deftest ^:parallel expand-temporal-expression-test
   (let [update-temporal-unit (fn [expr temporal-type] (update-in expr [2 1] assoc :temporal-unit temporal-type))
         expr [:=
               {:lib/uuid "4fcaefe5-5c20-4cbc-98ed-6007b67843a4"}
@@ -748,7 +863,7 @@
               "2024-05-13T16:35"]]
     (testing "Expandable temporal units"
       (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} int?] start end]
-                                (#'lib.fe-util/maybe-expand-temporal-expression (update-temporal-unit expr unit)))
+                                (#'lib.fe-util/expand-temporal-expression (update-temporal-unit expr unit)))
         :hour "2024-05-13T16:00:00" "2024-05-13T16:59:59"
         :week "2024-05-12" "2024-05-18"
         :month "2024-05-01" "2024-05-31"
@@ -756,6 +871,6 @@
         :year  "2024-01-01" "2024-12-31")
       (testing "Non-expandable temporal units"
         (are [unit] (let [expr (update-temporal-unit expr unit)]
-                      (= expr
-                         (#'lib.fe-util/maybe-expand-temporal-expression expr)))
+                      (= false
+                         (#'lib.fe-util/expandable-temporal-expression? expr)))
           :minute :day)))))

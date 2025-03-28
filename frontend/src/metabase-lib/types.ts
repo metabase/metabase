@@ -280,7 +280,14 @@ export type ExpressionOperator =
   | "segment"
   | "offset";
 
-export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
+export type ExpressionArg =
+  | null
+  | boolean
+  | number
+  | string
+  | ColumnMetadata
+  | SegmentMetadata
+  | MetricMetadata;
 
 export type ExpressionParts = {
   operator: ExpressionOperator;
