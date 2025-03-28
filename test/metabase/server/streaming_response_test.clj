@@ -93,9 +93,9 @@
              (mt/rows
               (mt/user-http-request :lucky
                                     :post 202 "dataset"
-                                    {:database (mt/id)
-                                     :type     "native"
-                                     :native   {:query {:sleep 10}}})))))))
+                                    {:query {:database (mt/id)
+                                             :type     "native"
+                                             :native   {:query {:sleep 10}}}})))))))
 
 (deftest truly-async-test
   (testing "StreamingResponses should truly be asynchronous, and not block Jetty threads while waiting for results"

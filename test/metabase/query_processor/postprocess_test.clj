@@ -9,7 +9,7 @@
 
 (deftest ^:parallel row-type-agnostic-test
   (let [metadata                  {:cols [{:base_type :type/Integer}]}
-        api-qp-middleware-options (delay (-> (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1}))
+        api-qp-middleware-options (delay (-> (mt/user-http-request :rasta :post 202 "dataset" {:query (mt/mbql-query users {:limit 1})})
                                              :json_query
                                              :middleware))]
     (mt/test-drivers (mt/normal-drivers)

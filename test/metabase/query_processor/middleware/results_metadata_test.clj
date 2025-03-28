@@ -131,9 +131,9 @@
                                            :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
                                            :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-      (mt/user-http-request :rasta :post 202 "dataset" {:database lib.schema.id/saved-questions-virtual-database-id
-                                                        :type     :query
-                                                        :query    {:source-table (str "card__" (u/the-id card))}})
+      (mt/user-http-request :rasta :post 202 "dataset" {:query {:database lib.schema.id/saved-questions-virtual-database-id
+                                                                :type     :query
+                                                                :query    {:source-table (str "card__" (u/the-id card))}}})
       (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
              (card-metadata card))))))
 
