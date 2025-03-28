@@ -10952,6 +10952,9 @@ databaseChangeLog:
 
   - changeSet:
       id: v54.2025-03-19T16:01:00
+      validCheckSum:
+        - 9:f9ef48517975631bf92a57fb07dd6f5d
+        - 9:5268197f771915386c95802e7d9eda62
       author: qnkhuat
       comment: Add `notification_subscription.table_id` column
       preConditions:
