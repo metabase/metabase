@@ -1,5 +1,5 @@
 ```ts
-type RegularClickAction = 
+type RegularClickAction =
   | ReduxClickAction
   | QuestionChangeClickAction
   | PopoverClickAction

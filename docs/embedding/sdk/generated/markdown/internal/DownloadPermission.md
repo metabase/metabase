@@ -1,5 +1,5 @@
 ```ts
-type DownloadPermission = 
+type DownloadPermission =
   | DataPermissionValue.FULL
   | DataPermissionValue.LIMITED
   | DataPermissionValue.NONE;

@@ -1,5 +1,5 @@
 ```ts
-type MetabaseAuthConfig = 
+type MetabaseAuthConfig =
   | MetabaseAuthConfigWithProvider
   | MetabaseAuthConfigWithApiKey;
 ```

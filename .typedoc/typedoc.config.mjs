@@ -23,6 +23,8 @@ const config = {
         useCodeBlocks: true,
         expandObjects: true,
         expandParameters: true,
+        formatWithPrettier: true,
+        prettierConfigFile: "../.prettierrc",
         hidePageHeader: true,
         hidePageTitle: true,
         hideGroupHeadings: true,

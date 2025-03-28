@@ -1,5 +1,9 @@
 ```ts
-type InsightExpression = 
-  | [InsightExpressionOperator, InsightExpressionOperand, InsightExpressionOperand]
+type InsightExpression =
+  | [
+      InsightExpressionOperator,
+      InsightExpressionOperand,
+      InsightExpressionOperand,
+    ]
   | [InsightExpressionOperator, InsightExpressionOperand];
 ```

@@ -1,5 +1,3 @@
 ```ts
-type FieldReference = 
-  | ConcreteFieldReference
-  | AggregateFieldReference;
+type FieldReference = ConcreteFieldReference | AggregateFieldReference;
 ```

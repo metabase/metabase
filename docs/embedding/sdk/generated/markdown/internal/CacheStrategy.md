@@ -1,5 +1,5 @@
 ```ts
-type CacheStrategy = 
+type CacheStrategy =
   | DoNotCacheStrategy
   | AdaptiveStrategy
   | DurationStrategy

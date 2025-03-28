@@ -1,3 +1,5 @@
 ```ts
-type CreateQuestionProps = Partial<Omit<InteractiveQuestionProps, "questionId" | "children">>;
+type CreateQuestionProps = Partial<
+  Omit<InteractiveQuestionProps, "questionId" | "children">
+>;
 ```

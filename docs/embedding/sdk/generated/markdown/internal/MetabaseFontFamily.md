@@ -1,5 +1,5 @@
 ```ts
-type MetabaseFontFamily = 
+type MetabaseFontFamily =
   | "Roboto"
   | "Merriweather"
   | "Open Sans"

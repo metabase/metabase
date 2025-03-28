@@ -1,5 +1,5 @@
 ```ts
-type PivotTableColumnSplitSetting = 
+type PivotTableColumnSplitSetting =
   | ColumnNameColumnSplitSetting
   | FieldRefColumnSplitSetting;
 ```

@@ -1,5 +1,5 @@
 ```ts
-type ClickBehavior = 
+type ClickBehavior =
   | ActionMenuClickBehavior
   | CrossFilterClickBehavior
   | CustomDestinationClickBehavior

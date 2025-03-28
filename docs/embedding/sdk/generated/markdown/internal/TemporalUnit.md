@@ -1,5 +1,5 @@
 ```ts
-type TemporalUnit = 
+type TemporalUnit =
   | "minute"
   | "hour"
   | "day"

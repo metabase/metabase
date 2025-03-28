@@ -1,6 +1,3 @@
 ```ts
-type DatetimeUnit = 
-  | "default"
-  | DateTimeAbsoluteUnit
-  | DateTimeRelativeUnit;
+type DatetimeUnit = "default" | DateTimeAbsoluteUnit | DateTimeRelativeUnit;
 ```

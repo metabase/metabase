@@ -1,9 +1,9 @@
 ```ts
-type StructuredParameterDimensionTarget = 
-  | ["dimension", 
-  | ConcreteFieldReference
-  | ExpressionReference]
-  | ["dimension", 
-  | ConcreteFieldReference
-  | ExpressionReference, DimensionTargetOptions];
+type StructuredParameterDimensionTarget =
+  | ["dimension", ConcreteFieldReference | ExpressionReference]
+  | [
+      "dimension",
+      ConcreteFieldReference | ExpressionReference,
+      DimensionTargetOptions,
+    ];
 ```

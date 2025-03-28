@@ -1,3 +1,6 @@
 ```ts
-type ActionParametersMapping = Pick<DashboardParameterMapping, "parameter_id" | "target">;
+type ActionParametersMapping = Pick<
+  DashboardParameterMapping,
+  "parameter_id" | "target"
+>;
 ```

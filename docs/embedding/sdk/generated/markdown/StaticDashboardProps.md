@@ -1,3 +1,4 @@
 ```ts
-type StaticDashboardProps = SdkDashboardDisplayProps & PublicOrEmbeddedDashboardEventHandlersProps;
+type StaticDashboardProps = SdkDashboardDisplayProps &
+  PublicOrEmbeddedDashboardEventHandlersProps;
 ```

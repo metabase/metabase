@@ -1,5 +1,7 @@
 ```ts
-type VirtualCard = Partial<Omit<Card, "name" | "dataset_query" | "visualization_settings" | "display">> & {
+type VirtualCard = Partial<
+  Omit<Card, "name" | "dataset_query" | "visualization_settings" | "display">
+> & {
   dataset_query: Record<string, never>;
   display: VirtualCardDisplay;
   name: null;

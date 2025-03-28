@@ -1,3 +1,7 @@
 ```ts
-type ComparisonFilter = ["<" | "<=" | ">=" | ">", ConcreteFieldReference, OrderableValue];
+type ComparisonFilter = [
+  "<" | "<=" | ">=" | ">",
+  ConcreteFieldReference,
+  OrderableValue,
+];
 ```

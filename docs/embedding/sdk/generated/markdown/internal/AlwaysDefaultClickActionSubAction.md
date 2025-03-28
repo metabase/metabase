@@ -1,5 +1,5 @@
 ```ts
-type AlwaysDefaultClickActionSubAction = 
+type AlwaysDefaultClickActionSubAction =
   | QuestionChangeClickActionBase
   | ReduxClickActionBase
   | UrlClickActionBase;

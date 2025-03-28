@@ -1,5 +1,5 @@
 ```ts
-type BinningOptions = 
+type BinningOptions =
   | DefaultBinningOptions
   | NumBinsBinningOptions
   | BinWidthBinningOptions;

@@ -1,5 +1,5 @@
 ```ts
-type SetupStep = 
+type SetupStep =
   | "welcome"
   | "language"
   | "user_info"

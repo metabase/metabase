@@ -1,7 +1,7 @@
 ```ts
-type MetabaseFetchRequestTokenFn = (url: string) => Promise<
-  | MetabaseEmbeddingSessionToken
-| null>;
+type MetabaseFetchRequestTokenFn = (
+  url: string,
+) => Promise<MetabaseEmbeddingSessionToken | null>;
 ```
 
 #### Parameters

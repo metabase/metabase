@@ -1,7 +1,8 @@
 ```ts
 type EditorButtonProps = {
   isOpen: boolean;
-} & ActionIconProps & HTMLAttributes<HTMLButtonElement>;
+} & ActionIconProps &
+  HTMLAttributes<HTMLButtonElement>;
 ```
 
 #### Type declaration

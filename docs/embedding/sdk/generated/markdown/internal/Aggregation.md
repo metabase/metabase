@@ -1,8 +1,5 @@
 ```ts
-type Aggregation = 
-  | CommonAggregation
-  | MetricAgg
-  | InlineExpressionAgg;
+type Aggregation = CommonAggregation | MetricAgg | InlineExpressionAgg;
 ```
 
 An aggregation MBQL clause

@@ -1,5 +1,8 @@
 ```ts
-type Settings = InstanceSettings & PublicSettings & UserSettings & PrivilegedSettings;
+type Settings = InstanceSettings &
+  PublicSettings &
+  UserSettings &
+  PrivilegedSettings;
 ```
 
 Important distinction between `null` and `undefined` settings values.

@@ -1,5 +1,3 @@
 ```ts
-type TableId = 
-  | ConcreteTableId
-  | VirtualTableId;
+type TableId = ConcreteTableId | VirtualTableId;
 ```

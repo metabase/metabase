@@ -1,5 +1,5 @@
 ```ts
-type DayOfWeekId = 
+type DayOfWeekId =
   | "sunday"
   | "monday"
   | "tuesday"

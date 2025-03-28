@@ -1,3 +1,7 @@
 ```ts
-type ExpressionReference = ["expression", ExpressionName, (ReferenceOptions | null)?];
+type ExpressionReference = [
+  "expression",
+  ExpressionName,
+  (ReferenceOptions | null)?,
+];
 ```

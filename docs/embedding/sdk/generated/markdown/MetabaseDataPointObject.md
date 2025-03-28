@@ -1,3 +1,6 @@
 ```ts
-type MetabaseDataPointObject = Pick<ClickObject, "value" | "column" | "data" | "event">;
+type MetabaseDataPointObject = Pick<
+  ClickObject,
+  "value" | "column" | "data" | "event"
+>;
 ```

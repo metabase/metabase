@@ -1,3 +1,4 @@
 ```ts
-type QuestionChangeClickAction = ClickActionBase & QuestionChangeClickActionBase;
+type QuestionChangeClickAction = ClickActionBase &
+  QuestionChangeClickActionBase;
 ```

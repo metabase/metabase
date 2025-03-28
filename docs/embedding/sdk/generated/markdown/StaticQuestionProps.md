@@ -1,7 +1,11 @@
 ```ts
 type StaticQuestionProps = {
   withChartTypeSelector: boolean;
- } & Pick<InteractiveQuestionProviderProps, "questionId" | "initialSqlParameters"> & FlexibleSizeProps;
+} & Pick<
+  InteractiveQuestionProviderProps,
+  "questionId" | "initialSqlParameters"
+> &
+  FlexibleSizeProps;
 ```
 
 #### Type declaration

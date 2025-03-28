@@ -1,5 +1,3 @@
 ```ts
-type OrderableValue = 
-  | NumericLiteral
-  | DatetimeLiteral;
+type OrderableValue = NumericLiteral | DatetimeLiteral;
 ```

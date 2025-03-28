@@ -1,5 +1,5 @@
 ```ts
-type DashboardSidebarState = 
+type DashboardSidebarState =
   | BaseSidebarState
   | ClickBehaviorSidebarState
   | EditParameterSidebarState;

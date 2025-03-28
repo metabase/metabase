@@ -1,7 +1,8 @@
 ```ts
-type CustomClickAction = ClickActionBase & CustomClickActionBase & {
-  onClick: (parameters: CustomClickActionContext) => void;
-};
+type CustomClickAction = ClickActionBase &
+  CustomClickActionBase & {
+    onClick: (parameters: CustomClickActionContext) => void;
+  };
 ```
 
 #### Type declaration

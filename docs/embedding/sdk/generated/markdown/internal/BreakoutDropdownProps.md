@@ -1,3 +1,6 @@
 ```ts
-type BreakoutDropdownProps = Omit<PopoverProps, "children" | "onClose" | "opened">;
+type BreakoutDropdownProps = Omit<
+  PopoverProps,
+  "children" | "onClose" | "opened"
+>;
 ```

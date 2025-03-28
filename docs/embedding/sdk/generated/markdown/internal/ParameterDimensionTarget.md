@@ -1,5 +1,5 @@
 ```ts
-type ParameterDimensionTarget = 
+type ParameterDimensionTarget =
   | NativeParameterDimensionTarget
   | StructuredParameterDimensionTarget;
 ```

@@ -1,3 +1,3 @@
 ```ts
-type SearchModel = typeof SEARCH_MODELS[number];
+type SearchModel = (typeof SEARCH_MODELS)[number];
 ```

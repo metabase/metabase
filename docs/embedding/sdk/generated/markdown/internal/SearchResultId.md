@@ -1,5 +1,5 @@
 ```ts
-type SearchResultId = 
+type SearchResultId =
   | CollectionId
   | CardId
   | DatabaseId

@@ -2,12 +2,11 @@
 type VirtualDashboardCard = BaseDashboardCard & {
   card: VirtualCard;
   card_id: null;
-  parameter_mappings:   | VirtualDashCardParameterMapping[]
-     | null;
+  parameter_mappings: VirtualDashCardParameterMapping[] | null;
   visualization_settings: BaseDashboardCard["visualization_settings"] & {
-     link: LinkCardSettings;
-     virtual_card: VirtualCard;
-    };
+    link: LinkCardSettings;
+    virtual_card: VirtualCard;
+  };
 };
 ```
 

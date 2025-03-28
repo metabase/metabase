@@ -1,7 +1,8 @@
 ```ts
 type MetabaseDashboardPluginsConfig = {
-  dashboardCardMenu:   | DashboardCardMenuCustomElement
-     | DashboardCardCustomMenuItem;
+  dashboardCardMenu:
+    | DashboardCardMenuCustomElement
+    | DashboardCardCustomMenuItem;
 };
 ```
 
@@ -10,7 +11,7 @@ type MetabaseDashboardPluginsConfig = {
 ##### dashboardCardMenu?
 
 ```ts
-optional dashboardCardMenu: 
+optional dashboardCardMenu:
   | DashboardCardMenuCustomElement
   | DashboardCardCustomMenuItem;
 ```

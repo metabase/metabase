@@ -1,5 +1,3 @@
 ```ts
-type VisualizationDisplay = 
-  | VirtualCardDisplay
-  | CardDisplayType;
+type VisualizationDisplay = VirtualCardDisplay | CardDisplayType;
 ```

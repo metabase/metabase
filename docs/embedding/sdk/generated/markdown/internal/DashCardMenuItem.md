@@ -4,7 +4,7 @@ type DashCardMenuItem = {
   iconName: IconName;
   label: string;
   onClick: () => void;
- } & MenuItemProps;
+} & MenuItemProps;
 ```
 
 #### Type declaration

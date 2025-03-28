@@ -1,5 +1,5 @@
 ```ts
-type CustomDestinationClickBehavior = 
+type CustomDestinationClickBehavior =
   | EntityCustomDestinationClickBehavior
   | ArbitraryCustomDestinationClickBehavior;
 ```

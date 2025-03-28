@@ -1,5 +1,5 @@
 ```ts
-type FieldFilter = 
+type FieldFilter =
   | EqualityFilter
   | ComparisonFilter
   | BetweenFilter

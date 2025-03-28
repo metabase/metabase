@@ -1,5 +1,3 @@
 ```ts
-type DatasetQuery = 
-  | StructuredDatasetQuery
-  | NativeDatasetQuery;
+type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 ```

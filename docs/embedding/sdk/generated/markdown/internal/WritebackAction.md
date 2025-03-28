@@ -1,5 +1,5 @@
 ```ts
-type WritebackAction = WritebackActionBase & 
+type WritebackAction = WritebackActionBase &
   | QueryAction
   | ImplicitQueryAction
   | HttpAction;

@@ -1,5 +1,5 @@
 ```ts
-type ClickBehaviorTarget = 
+type ClickBehaviorTarget =
   | ClickBehaviorDimensionTarget
   | ClickBehaviorParameterTarget
   | ClickBehaviorVariableTarget;

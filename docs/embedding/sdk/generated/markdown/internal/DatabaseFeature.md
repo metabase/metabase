@@ -1,5 +1,5 @@
 ```ts
-type DatabaseFeature = 
+type DatabaseFeature =
   | "actions"
   | "basic-aggregations"
   | "binning"

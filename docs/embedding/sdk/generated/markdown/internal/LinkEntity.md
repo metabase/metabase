@@ -1,5 +1,3 @@
 ```ts
-type LinkEntity = 
-  | RestrictedLinkEntity
-  | UnrestrictedLinkEntity;
+type LinkEntity = RestrictedLinkEntity | UnrestrictedLinkEntity;
 ```

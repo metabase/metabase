@@ -1,3 +1,3 @@
 ```ts
-type DateTimeRelativeUnit = typeof dateTimeRelativeUnits[number];
+type DateTimeRelativeUnit = (typeof dateTimeRelativeUnits)[number];
 ```

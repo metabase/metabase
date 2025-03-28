@@ -1,3 +1,8 @@
 ```ts
-type BetweenFilter = ["between", ConcreteFieldReference, OrderableValue, OrderableValue];
+type BetweenFilter = [
+  "between",
+  ConcreteFieldReference,
+  OrderableValue,
+  OrderableValue,
+];
 ```

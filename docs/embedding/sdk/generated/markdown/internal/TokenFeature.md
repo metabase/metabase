@@ -1,3 +1,3 @@
 ```ts
-type TokenFeature = typeof tokenFeatures[number];
+type TokenFeature = (typeof tokenFeatures)[number];
 ```

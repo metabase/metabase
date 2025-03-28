@@ -1,7 +1,7 @@
 ```ts
 type DefaultClickAction = ClickActionBase & {
   default: true;
- } & AlwaysDefaultClickActionSubAction;
+} & AlwaysDefaultClickActionSubAction;
 ```
 
 #### Type declaration

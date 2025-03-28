@@ -1,5 +1,5 @@
 ```ts
-type CollectionId = 
+type CollectionId =
   | RegularCollectionId
   | "root"
   | "personal"
