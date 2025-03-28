@@ -1137,7 +1137,7 @@ describe("issue 33441", () => {
       name: "Date",
     });
     H.popover().within(() => {
-      cy.findByText("Invalid expression").should("be.visible");
+      cy.findByText("Incompatible types detected.").should("be.visible");
       cy.button("Done").should("be.disabled");
     });
   });
