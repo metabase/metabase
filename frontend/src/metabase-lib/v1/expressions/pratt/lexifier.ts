@@ -1,4 +1,8 @@
-import { OPERATOR, TOKEN, tokenize } from "../tokenizer";
+import type { SyntaxNodeRef } from "@lezer/common";
+import { t } from "ttag";
+
+import { ParseError } from "../errors";
+import { OPERATOR, tokenize } from "../tokenizer";
 
 import {
   ADD,
@@ -20,125 +24,216 @@ import {
   NUMBER,
   STRING,
   SUB,
-  WS,
 } from "./syntax";
-import type { Token } from "./types";
+import { type NodeType, Token } from "./types";
 
-export function lexify(expression: string) {
+const escapes = {
+  '"': '"',
+  "'": "'",
+  b: "\b",
+  f: "\f",
+  n: "\n",
+  r: "\r",
+  t: "\t",
+  v: "\x0b",
+};
+
+export function lexify(source: string) {
   const lexs: Token[] = [];
+  const errors: ParseError[] = [];
 
-  const { tokens, errors } = tokenize(expression);
-  if (errors && errors.length > 0) {
-    errors.forEach((error) => {
-      const { pos } = error;
-
-      if (typeof pos === "number") {
-        lexs.push({ type: BAD_TOKEN, text: expression[pos], length: 1, pos });
-      }
-    });
+  function token(
+    node: SyntaxNodeRef,
+    token: {
+      type: NodeType;
+      value?: string;
+    },
+  ) {
+    lexs.push(
+      new Token({
+        pos: node.from,
+        length: node.to - node.from,
+        text: source.slice(node.from, node.to),
+        ...token,
+      }),
+    );
+    return false;
   }
 
-  let start = 0;
-  for (let i = 0; i < tokens.length; ++i) {
-    const token = tokens[i];
-    if (start < token.start) {
-      lexs.push({
-        type: WS,
-        text: expression.slice(start, token.start),
-        length: token.start - start,
-        pos: start,
+  function error(node: SyntaxNodeRef, message: string) {
+    errors.push(
+      new ParseError(message, {
+        pos: node.from,
+        len: node.to - node.from,
+      }),
+    );
+
+    return token(node, { type: BAD_TOKEN });
+  }
+
+  tokenize(source).iterate(function (node) {
+    if (node.type.name === "Identifier") {
+      return token(node, {
+        type: IDENTIFIER,
       });
     }
-    start = token.end;
-    let text = expression.slice(token.start, token.end);
-    let value = undefined;
-    const pos = token.start;
-    let length = token.end - token.start;
-    let type = BAD_TOKEN;
-    switch (token.type) {
-      case TOKEN.Number:
-        type = NUMBER;
-        break;
-      case TOKEN.String:
-        type = STRING;
-        value = token.value;
-        break;
-      case TOKEN.Identifier:
-        type = text[0] === "[" ? FIELD : IDENTIFIER;
-        break;
-      case TOKEN.Boolean:
-        type = BOOLEAN;
-        break;
-      case TOKEN.Operator:
-        switch (token.op) {
-          case OPERATOR.Comma:
-            type = COMMA;
-            break;
-          case OPERATOR.OpenParenthesis:
-            type = GROUP;
-            break;
-          case OPERATOR.CloseParenthesis:
-            type = GROUP_CLOSE;
-            break;
-          case OPERATOR.Plus:
-            type = ADD;
-            break;
-          case OPERATOR.Minus:
-            type = SUB;
-            break;
-          case OPERATOR.Star:
-          case OPERATOR.Slash:
-            type = MULDIV_OP;
-            break;
-          case OPERATOR.Equal:
-          case OPERATOR.NotEqual:
-            type = EQUALITY;
-            break;
-          case OPERATOR.LessThan:
-          case OPERATOR.GreaterThan:
-          case OPERATOR.LessThanEqual:
-          case OPERATOR.GreaterThanEqual:
-            type = COMPARISON;
-            break;
-          case OPERATOR.Not:
-            type = LOGICAL_NOT;
-            break;
-          case OPERATOR.And:
-            type = LOGICAL_AND;
-            break;
-          case OPERATOR.Or:
-            type = LOGICAL_OR;
-            break;
-          default:
-            break;
-        }
-        break;
+
+    if (node.type.name === "Reference") {
+      const value = source.slice(node.from, node.to);
+      let start = node.from + 1;
+      let end = node.to - 1;
+      if (value.at(0) !== "[") {
+        start = node.from;
+        error(node, t`Missing opening bracket`);
+      } else if (value.at(-1) !== "]") {
+        end = node.to;
+        error(node, t`Missing a closing bracket`);
+      }
+
+      return token(node, {
+        type: FIELD,
+        value: source.slice(start, end),
+      });
     }
 
-    if (type === IDENTIFIER) {
-      const next = tokens[i + 1];
-      if (
-        next &&
-        next.type === TOKEN.Operator &&
-        next.op === OPERATOR.OpenParenthesis
-      ) {
-        type = CALL;
-        length = next.start - token.start;
-        text = expression.slice(token.start, next.start);
-        start = next.start;
+    if (node.type.name === "Number") {
+      const value = source.slice(node.from, node.to).toLowerCase();
+      const [, exponent, ...rest] = value.split("e");
+      if (typeof exponent === "string" && !exponent.match(/[0-9]$/)) {
+        error(node, t`Missing exponent`);
+      } else if (rest.length > 0) {
+        error(node, t`Malformed exponent`);
+      }
+
+      return token(node, { type: NUMBER });
+    }
+
+    if (node.type.name === "String") {
+      const openQuote = source[node.from];
+      const closeQuote = source[node.to - 1];
+      const penultimate = source[node.to - 2];
+      if (openQuote === "'" || openQuote === '"') {
+        let end = node.to - 1;
+        if (closeQuote !== openQuote || penultimate === "\\") {
+          end = node.to;
+          error(node, t`Missing closing quotes`);
+        }
+
+        return token(node, {
+          type: STRING,
+          value: source
+            // remove quotes
+            .slice(node.from + 1, end)
+            // expand escape sequences
+            .replace(/\\./g, (match) => {
+              const ch = match[1];
+              return escapes[ch as keyof typeof escapes] ?? ch;
+            }),
+        });
       }
     }
 
-    lexs.push({ type, text, length, pos, value });
-  }
+    if (node.type.name === "Boolean") {
+      const op = source.slice(node.from, node.to);
+      if (isValidBoolean(op)) {
+        return token(node, {
+          type: BOOLEAN,
+        });
+      }
+    }
 
-  // This simplifies the parser
-  lexs.push({
-    type: END_OF_INPUT,
-    text: "\n",
-    length: 1,
-    pos: expression.length,
+    switch (parseOperator(node.type.name)) {
+      case null:
+        break;
+      case OPERATOR.Comma:
+        return token(node, { type: COMMA });
+      case OPERATOR.OpenParenthesis: {
+        const prev = lexs.at(-1);
+        if (prev?.type === IDENTIFIER) {
+          prev.type = CALL;
+        }
+        return token(node, { type: GROUP });
+      }
+      case OPERATOR.CloseParenthesis:
+        return token(node, { type: GROUP_CLOSE });
+      case OPERATOR.Plus:
+        return token(node, { type: ADD });
+      case OPERATOR.Minus:
+        return token(node, { type: SUB });
+      case OPERATOR.Star:
+      case OPERATOR.Slash:
+        return token(node, { type: MULDIV_OP });
+      case OPERATOR.Equal:
+      case OPERATOR.NotEqual:
+        return token(node, { type: EQUALITY });
+      case OPERATOR.LessThan:
+      case OPERATOR.GreaterThan:
+      case OPERATOR.LessThanEqual:
+      case OPERATOR.GreaterThanEqual:
+        return token(node, { type: COMPARISON });
+      case OPERATOR.Not:
+        return token(node, { type: LOGICAL_NOT });
+      case OPERATOR.And:
+        return token(node, { type: LOGICAL_AND });
+      case OPERATOR.Or:
+        return token(node, { type: LOGICAL_OR });
+    }
+
+    // Handle parse errors
+    if (node.type.name === "⚠") {
+      if (node.node.toTree().positions.length === 0 && node.to !== node.from) {
+        const text = source.slice(node.from, node.to);
+
+        if (text === "]") {
+          // This bracket is closing the previous identifier, but it
+          // does not have a matching opening bracket.
+          const prev = lexs.at(-1);
+          if (prev && prev.type === IDENTIFIER) {
+            const name = source.slice(prev.pos, prev.pos + prev.length);
+            error(node, `Missing an opening bracket for ${name}`);
+          }
+          return false;
+        }
+
+        if (text.length === 1) {
+          error(node, `Invalid character: ${text}`);
+          return false;
+        }
+      }
+    }
   });
 
-  return lexs.sort((a, b) => a.pos - b.pos);
+  // This simplifies the parser
+  lexs.push(
+    new Token({
+      type: END_OF_INPUT,
+      text: "\n",
+      length: 1,
+      pos: source.length,
+    }),
+  );
+
+  return {
+    tokens: lexs.sort((a, b) => a.pos - b.pos),
+    errors,
+  };
+}
+
+function isValidBoolean(op: string): op is "true" | "false" {
+  const lower = op.toLowerCase();
+  return lower === "true" || lower === "false";
+}
+
+const VALID_OPERATORS = new Set(Object.values(OPERATOR));
+
+function isValidOperator(op: string): op is OPERATOR {
+  return VALID_OPERATORS.has(op as OPERATOR);
+}
+
+function parseOperator(op: string): OPERATOR | null {
+  const lower = op.toLowerCase();
+  if (isValidOperator(lower)) {
+    return lower;
+  }
+  return null;
 }
