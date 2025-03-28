@@ -180,4 +180,4 @@
      ;; for example there would be 1 message for updating all
      ;; the tables within a given database when it is renamed.
                   :max-batch-messages 50
-                  :max-batch-ms       100}))
+                  :max-next-ms       100}))
