@@ -9,7 +9,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
-;; ATM will fail with mongo
 (deftest string-to-number-coercion-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
