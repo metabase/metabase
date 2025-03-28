@@ -10,6 +10,7 @@ import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
+import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -28,7 +29,7 @@ import {
 } from "metabase/ui";
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
 import * as Urls from "metabase-enterprise/urls";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { Database } from "metabase-types/api";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
@@ -36,10 +37,8 @@ import { getDisabledFeatureMessage, getSelectErrorMessage } from "./utils";
 
 export const DatabaseRoutingSection = ({
   database,
-  refetchDatabase,
 }: {
   database: Database;
-  refetchDatabase: () => void;
 }) => {
   const dispatch = useDispatch();
 
@@ -67,9 +66,8 @@ export const DatabaseRoutingSection = ({
 
   const handleUserAttributeChange = async (attribute: string) => {
     await updateRouterDatabase({ id: database.id, user_attribute: attribute });
-    refetchDatabase();
 
-    if (!database.hasDatabaseRoutingEnabled()) {
+    if (!hasDbRoutingEnabled(database)) {
       dispatch(addUndo({ message: t`Database routing enabled` }));
     } else {
       dispatch(addUndo({ message: t`Database routing updated` }));
@@ -81,9 +79,8 @@ export const DatabaseRoutingSection = ({
     setTempEnabled(enabled);
     if (!enabled) {
       await updateRouterDatabase({ id: database.id, user_attribute: null });
-      refetchDatabase();
 
-      if (database.hasDatabaseRoutingEnabled()) {
+      if (hasDbRoutingEnabled(database)) {
         dispatch(addUndo({ message: t`Database routing disabled` }));
       }
     }
@@ -115,9 +112,9 @@ export const DatabaseRoutingSection = ({
             <Box>
               <Switch
                 id="database-routing-toggle"
-                checked={tempEnabled || database.hasDatabaseRoutingEnabled()}
+                checked={tempEnabled || hasDbRoutingEnabled(database)}
                 disabled={!!disabledFeatMsg || !isAdmin}
-                onChange={e => handleToggle(e.currentTarget.checked)}
+                onChange={(e) => handleToggle(e.currentTarget.checked)}
               />
             </Box>
           </Tooltip>
@@ -155,7 +152,7 @@ export const DatabaseRoutingSection = ({
             <Text fw="bold">{t`Destination databases`}</Text>
             {isAdmin && (
               <>
-                {database.hasDatabaseRoutingEnabled() ? (
+                {hasDbRoutingEnabled(database) ? (
                   <Button
                     component={Link}
                     to={Urls.createDestinationDatabase(database.id)}

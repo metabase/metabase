@@ -40,7 +40,7 @@ export function ModelActionsSection({
             <Switch
               id="model-actions-toggle"
               checked={hasModelActionsEnabled}
-              onChange={e =>
+              onChange={(e) =>
                 handleToggleModelActionsEnabled(e.currentTarget.checked)
               }
               disabled={disabled}
