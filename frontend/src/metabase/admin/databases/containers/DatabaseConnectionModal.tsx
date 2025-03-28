@@ -8,12 +8,13 @@ import title from "metabase/hoc/Title";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { Modal } from "metabase/ui";
-import type { DatabaseData, DatabaseId } from "metabase-types/api";
+import type {
+  DatabaseData,
+  DatabaseEditErrorType,
+  DatabaseId,
+} from "metabase-types/api";
 
-import {
-  DatabaseEditConnectionForm,
-  type DatabaseEditErrorType,
-} from "../components/DatabaseEditConnectionForm";
+import { DatabaseEditConnectionForm } from "../components/DatabaseEditConnectionForm";
 
 import S from "./DatabaseConnectionModal.module.css";
 

@@ -64,7 +64,7 @@ export const DestinationDatabaseConnectionModalInner = ({
   const handleCreateDestinationDatabase = async (database: DatabaseData) => {
     return createDistinationDatabase({
       router_database_id: parseInt(databaseId, 10),
-      mirrors: [database],
+      destination_database: database,
     }).unwrap();
   };
 

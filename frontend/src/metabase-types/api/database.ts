@@ -184,6 +184,15 @@ export interface UpdateDatabaseRequest {
   settings?: DatabaseSettings | null;
 }
 
+export type DatabaseEditErrorType = {
+  data: {
+    message: string;
+    errors: { [key: string]: string };
+  };
+  statusText: string;
+  message: string;
+};
+
 export interface DatabaseIdFieldListQuery {
   include_editable_data_model?: boolean;
 }
@@ -196,7 +205,7 @@ export interface SavedQuestionDatabase {
 
 export interface CreateDestinationDatabaseRequest {
   router_database_id: DatabaseId;
-  mirrors: { name: string; details?: Record<string, unknown> }[];
+  destination_database: { name: string; details?: Record<string, unknown> };
 }
 
 export interface UpdateDatabaseRouterRequest {
