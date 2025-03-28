@@ -9,9 +9,10 @@ import {
   SortableList,
 } from "metabase/core/components/Sortable";
 import Tables from "metabase/entities/tables";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Flex } from "metabase/ui";
+import { Flex, isValidIconName } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { TableFieldOrder, TableId } from "metabase-types/api";
@@ -84,14 +85,19 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
           <SortableList
             getId={getId}
             items={items}
-            renderItem={({ item, id }) => (
-              <SortableField
-                disabled={isDragDisabled}
-                field={item}
-                id={id}
-                key={id}
-              />
-            )}
+            renderItem={({ item, id }) => {
+              const icon = item.icon();
+
+              return (
+                <SortableField
+                  disabled={isDragDisabled}
+                  icon={isValidIconName(icon) ? icon : "empty"}
+                  id={id}
+                  key={id}
+                  label={item.displayName() || NULL_DISPLAY_VALUE}
+                />
+              );
+            }}
             sensors={[pointerSensor]}
             onSortEnd={handleSortEnd}
           />
