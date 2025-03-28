@@ -38,8 +38,6 @@ export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
       }}
       data={data}
       fw="bold"
-      nothingFoundMessage={t`Didn't find any results`}
-      placeholder={t`Select a currency type`}
       inputContainer={() => (
         <Combobox.Target>
           <Button
