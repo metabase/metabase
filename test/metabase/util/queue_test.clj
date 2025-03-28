@@ -131,7 +131,6 @@
   (testing "Standard behavior with a handler"
     (let [listener-name "test-listener"
           items-handled (atom 0)
-          items-handled (atom 0)
           last-batch (atom nil)
           queue (queue/delay-queue)
           thread-name "queue-test-listener-1"]

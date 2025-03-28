@@ -4,8 +4,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.time :as u.time])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time Duration Instant)
    (java.util.concurrent ArrayBlockingQueue BlockingQueue DelayQueue Delayed ExecutorService Executors SynchronousQueue TimeUnit)
