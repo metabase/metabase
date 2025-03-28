@@ -222,7 +222,6 @@
                           {:staus-code 400})))
         {:rows-deleted [1]}))))
 
-if-some
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [driver action database {database-id :database :keys [update-row] :as query}]
   (let [source-table         (get-in query [:query :source-table])
