@@ -49,6 +49,8 @@ function _CartesianChart(props: VisualizationProps) {
     showTitle,
     headerIcon,
     actionButtons,
+    isDashboard,
+    isEditing,
     isQueryBuilder,
     isFullscreen,
     hovered,
@@ -146,6 +148,7 @@ function _CartesianChart(props: VisualizationProps) {
           description={description}
           icon={headerIcon}
           actionButtons={actionButtons}
+          hasInfoTooltip={!isDashboard || !isEditing}
           getHref={canSelectTitle ? getHref : undefined}
           onSelectTitle={
             canSelectTitle ? () => onOpenQuestion(card.id) : undefined
