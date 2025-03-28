@@ -18,9 +18,11 @@ import type { EditingBodyPrimitiveProps } from "./types";
 type EditingBodyCellCategorySelectProps = EditingBodyPrimitiveProps & {
   withCreateNew?: boolean;
   getDropdownLabelText?: (item: SelectOption) => string;
+  getSelectedLabelText?: (item: SelectOption) => string;
 };
 
 const DefaultItemLabelTextGetter = (item: SelectOption) => item.label;
+const DefaultSelectedLabelTextGetter = (item: SelectOption) => item.value;
 
 export const EditingBodyCellCategorySelect = ({
   autoFocus,
@@ -30,6 +32,7 @@ export const EditingBodyCellCategorySelect = ({
   withCreateNew = true,
   classNames,
   getDropdownLabelText = DefaultItemLabelTextGetter,
+  getSelectedLabelText = DefaultSelectedLabelTextGetter,
   onSubmit,
   onChangeValue,
   onCancel,
@@ -67,6 +70,55 @@ export const EditingBodyCellCategorySelect = ({
     [onSubmit, setValue, onChangeValue, combobox],
   );
 
+  const optionValueSelectOptionMap = useMemo(
+    () =>
+      fieldData
+        ? getFieldOptions(fieldData.values).reduce(
+            (map, item) => ({
+              ...map,
+              [item.value]: item,
+            }),
+            {} as Record<string, SelectOption>,
+          )
+        : null,
+    [fieldData],
+  );
+
+  const inputLabel = useMemo(() => {
+    if (isLoading || !optionValueSelectOptionMap) {
+      return (
+        <Input.Placeholder c="text-light">
+          {t`Loading...`}
+        </Input.Placeholder>
+      );
+    }
+
+    if (!value && inputProps?.placeholder) {
+      return (
+        <Input.Placeholder c="text-light">
+          {inputProps.placeholder}
+        </Input.Placeholder>
+      );
+    }
+
+    if (value) {
+      // Type safety, should always be present
+      if (value in optionValueSelectOptionMap) {
+        return getSelectedLabelText(optionValueSelectOptionMap[value]);
+      }
+
+      return value;
+    }
+
+    return null;
+  }, [
+    isLoading,
+    value,
+    optionValueSelectOptionMap,
+    inputProps?.placeholder,
+    getSelectedLabelText,
+  ]);
+
   return (
     <Combobox
       store={combobox}
@@ -84,13 +136,7 @@ export const EditingBodyCellCategorySelect = ({
             input: classNames?.selectTextInputElement,
           }}
         >
-          {value ? (
-            value
-          ) : inputProps?.placeholder ? (
-            <Input.Placeholder c="var(--mb-color-text-light)">
-              {inputProps.placeholder}
-            </Input.Placeholder>
-          ) : null}
+          {inputLabel}
         </Input>
       </Combobox.Target>
 

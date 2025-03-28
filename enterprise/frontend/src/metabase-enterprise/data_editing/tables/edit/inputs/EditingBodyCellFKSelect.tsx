@@ -12,7 +12,12 @@ export const EditingBodyCellFKSelect = (props: EditingBodyPrimitiveProps) => {
   const shouldDisplayValuesList = field?.has_field_values === "list";
 
   const getDropdownLabelText = useCallback(
-    (item: SelectOption) => `[${item.value}]: ${item.label}`,
+    (item: SelectOption) => `${item.label} [${item.value}]`,
+    [],
+  );
+
+  const getSelectedLabelText = useCallback(
+    (item: SelectOption) => item.label,
     [],
   );
 
@@ -21,6 +26,7 @@ export const EditingBodyCellFKSelect = (props: EditingBodyPrimitiveProps) => {
       <EditingBodyCellCategorySelect
         {...props}
         getDropdownLabelText={getDropdownLabelText}
+        getSelectedLabelText={getSelectedLabelText}
         withCreateNew={false}
       />
     );
