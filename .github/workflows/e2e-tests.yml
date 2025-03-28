@@ -141,7 +141,7 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs: build
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() && needs.build.result == 'success' && !contains(github.ref, 'release-x')
     secrets: inherit
     with:
       name: Flaky
