@@ -12,12 +12,12 @@ import {
   useDownloadData,
 } from "../QuestionDownloadWidget/use-download-data";
 
-export type QueryDownloadWidgetProps = {
+export type QuestionDownloadPopoverProps = {
   className?: string;
 } & Pick<UseDownloadDataParams, "question" | "result"> &
   Partial<Omit<UseDownloadDataParams, "question" | "result">>;
 
-const QueryDownloadWidget = ({
+const QuestionDownloadPopover = ({
   className,
   question,
   result,
@@ -26,7 +26,7 @@ const QueryDownloadWidget = ({
   uuid,
   token,
   visualizationSettings,
-}: QueryDownloadWidgetProps) => {
+}: QuestionDownloadPopoverProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const [, handleDownload] = useDownloadData({
@@ -66,11 +66,13 @@ const QueryDownloadWidget = ({
   );
 };
 
-interface QueryDownloadWidgetOpts {
+interface ShouldRenderDownloadPopoverProps {
   result?: Dataset;
 }
 
-QueryDownloadWidget.shouldRender = ({ result }: QueryDownloadWidgetOpts) => {
+QuestionDownloadPopover.shouldRender = ({
+  result,
+}: ShouldRenderDownloadPopoverProps) => {
   return (
     result &&
     !result.error &&
@@ -79,4 +81,4 @@ QueryDownloadWidget.shouldRender = ({ result }: QueryDownloadWidgetOpts) => {
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QueryDownloadWidget;
+export default QuestionDownloadPopover;
