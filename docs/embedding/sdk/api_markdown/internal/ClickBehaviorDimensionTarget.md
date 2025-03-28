@@ -1,7 +1,0 @@
-#### Properties
-
-| Property                           | Type                                                                                                                                                                                                                                                            |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="dimension"></a> `dimension` | \| \[`"dimension"`, `undefined` \| `null` \| [`FieldReference`](./api_html/FieldReference.md)] \| \[`"dimension"`, `undefined` \| `null` \| [`FieldReference`](./api_html/FieldReference.md), [`DimensionTargetOptions`](./api_html/DimensionTargetOptions.md)] |
-| <a id="id"></a> `id`               | `string`                                                                                                                                                                                                                                                        |
-| <a id="type"></a> `type`           | `"dimension"`                                                                                                                                                                                                                                                   |
