@@ -88,11 +88,13 @@ const MetadataHeader = ({
           mx="xl"
         >
           <Button
+            aria-label={t`Edit column order`}
             leftSection={<Icon name="sort_arrows" />}
             onClick={() => setIsFieldOrderSidesheetOpen((isOpen) => !isOpen)}
           >{t`Edit column order`}</Button>
 
           <Button
+            aria-label={t`Table settings`}
             component={Link}
             leftSection={<Icon name="gear" />}
             to={Urls.dataModelTableSettings(
