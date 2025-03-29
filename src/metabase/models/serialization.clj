@@ -181,9 +181,20 @@
 
 (defmulti hash-fields
   "Returns a seq of functions which will be transformed into a seq of values for hash calculation by calling each
-   function on an entity map."
+   function on an entity map.  If you update an method of this function, you will likely need to update has-required-fields as well."
   {:arglists '([model-or-instance])}
   mi/dispatch-on-model)
+
+(defmulti hash-required-fields
+  "Returns a seq of keywords corresponding to the fields required by hash-fields."
+  {:arglists '([model-or-instance])}
+  mi/dispatch-on-model)
+
+(defmethod hash-required-fields :default
+  [entity]
+  (throw (ex-info "Called hash-required-fields on an unsupported model"
+                  {:entity entity
+                   :model (t2/model entity)})))
 
 (defn- increment-hash-values
   "Potenially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
@@ -209,16 +220,84 @@
        (increment-hash-values increment)
        raw-hash)))
 
+(defn calculate-entity-id
+  "Given an entity, calculates the `:entity_id` based on the [[identity-hash]]."
+  [entity increment]
+  (u/generate-nano-id (identity-hash entity increment)))
+
+(defonce ^{:doc "The cache of calculated entity_ids"} entity-id-cache (atom {}))
+
+(def ^:dynamic *skip-entity-id-calc*
+  "Flag to skip calculating missing entity-ids when querying"
+  false)
+(def ^:dynamic *max-retries*
+  "The number of times we will retry hashing in an attempt to find a unique hash"
+  1000)
+(def ^:dynamic *retry-batch-size*
+  "The number of entity ids we will try per iteration of retries"
+  50)
+
+(defn- deduplicated-entity-id [model cache entity]
+  (let [id (:id entity)
+        cached-entity-ids (->> cache model vals (map deref) set)]
+    (loop [retry 0]
+      (if (> retry *max-retries*)
+        (throw (ex-info "Failed to find unique entity-id for entity"
+                        {:model model
+                         :entity entity
+                         :retry retry}))
+        (let [end-retry-count (+ retry *retry-batch-size*)
+              entity-ids (for [i (range retry end-retry-count)]
+                           (calculate-entity-id entity i))
+              used-entity-ids (t2/select-fn-set :entity_id model :entity_id [:in entity-ids])
+              next-entity-id (some #(and (not (contains? used-entity-ids %))
+                                         (not (contains? cached-entity-ids %))
+                                         %)
+                                   entity-ids)]
+          (or next-entity-id (recur end-retry-count)))))))
+
+(defn- cached-entity-id [entity]
+  (if *skip-entity-id-calc*
+    nil
+    (let [id (:id entity)
+          {:keys [model required-fields]} (hash-required-fields entity)]
+      (if (and model id)
+        (let [cached (swap! entity-id-cache
+                            (fn [cache]
+                              (cond-> cache
+                                (-> cache model (get id) not)
+                                (assoc-in [model id]
+                                          (delay (deduplicated-entity-id
+                                                  model
+                                                  cache
+                                                  (if (every? (partial contains? entity)
+                                                              required-fields)
+                                                    entity
+                                                    (binding [*skip-entity-id-calc* true]
+                                                      (t2/select-one model :id id)))))))))]
+          (-> cached model (get id) deref))
+        (throw (ex-info "Entity is missing either an id or a model, so we cannot calculate an entity-id"
+                        {:entity entity
+                         :id id
+                         :model model}))))))
+
 (defn backfill-entity-id
   "Given an entity with a (possibly empty) `:entity_id` field:
   - Return the `:entity_id` if it's set.
   - Compute the backfill `:entity_id` based on the [[identity-hash]]."
   ([entity]
-   (backfill-entity-id entity 0))
-  ([entity increment]
    (or (:entity_id entity)
        (:entity-id entity)
-       (u/generate-nano-id (identity-hash entity increment)))))
+       (cached-entity-id entity))))
+
+(defn add-entity-id
+  "Given an entity with a (possibly empty) `:entity_id` field, add an entity-id (using cached-entity-id) if it is missing."
+  [entity]
+  (if-let [new-id (and (contains? entity :entity_id)
+                       (nil? (:entity_id entity))
+                       (cached-entity-id entity))]
+    (assoc entity :entity_id new-id)
+    entity))
 
 (defn identity-hash?
   "Returns true if s is a valid identity hash string."

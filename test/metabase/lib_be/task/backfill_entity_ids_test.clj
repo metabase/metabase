@@ -9,9 +9,7 @@
 (defn with-sample-data!
   "Run f in a context where a specific set of 5 rows exist in the application db and every row for a given model that
   isn't in that sample data has been added to failed-rows."
-  [model f]
-  (doseq [{:keys [id]} (t2/select model)]
-    (#'backfill-entity-ids/add-failed-row! id))
+  [_model f]
   (mt/with-temp
     [:model/Database {db-id :id :as db} {}
      :model/Table {table-id :id :as table} {}
@@ -27,8 +25,7 @@
         :table table
         :field1 field1
         :field2 field2
-        :field3 field3}))
-  (#'backfill-entity-ids/reset-failed-rows!))
+        :field3 field3})))
 
 (deftest ^:synchronized backfill-databases-test
   (testing "Can backfill databases"
@@ -91,7 +88,7 @@
 
 (deftest ^:synchronized backfill-limit-test
   (testing "Only backfills up to batch-size records"
-    (binding [backfill-entity-ids/*batch-size* 1]
+    (binding [backfill-entity-ids/*backfill-batch-size* 1]
       (with-sample-data! :model/Field
         (fn [{:keys [field1-id field2-id field3-id]}]
           (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
@@ -111,7 +108,6 @@
   (testing "Doesn't backfill failed rows"
     (with-sample-data! :model/Field
       (fn [{:keys [field1-id field2-id field3-id]}]
-        (#'backfill-entity-ids/add-failed-row! field2-id)
         (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
         (is (not (nil? (:entity_id (t2/select-one :model/Field :id field1-id)))))
         (is (nil? (:entity_id (t2/select-one :model/Field :id field2-id))))
@@ -126,8 +122,6 @@
           (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
           ;; #'failed-rows is a var containing an atom, @#'failed-rows is the atom, and @@#'failed-rows is the
           ;; #contents of that atom
-          (is (contains? @@#'backfill-entity-ids/failed-rows field1-id))
-          (is (contains? @@#'backfill-entity-ids/failed-rows field2-id))
           (is (nil? (:entity_id (t2/select-one :model/Field :id field1-id))))
 
           (is (nil? (:entity_id (t2/select-one :model/Field :id field2-id)))))))))

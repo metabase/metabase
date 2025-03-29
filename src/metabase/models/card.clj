@@ -893,7 +893,11 @@
 ;; NOTE: The columns required for this hashing must be kept in sync with [[ensure-clause-idents]].
 (defmethod serdes/hash-fields :model/Card
   [_card]
-  [:name (serdes/hydrated-hash :collection) :created_at])
+  [:name (serdes/hydrated-hash :collection :collection_id) :created_at])
+
+(defmethod serdes/hash-required-fields :model/Card
+  [_card]
+  [:name :collection_id :created_at])
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
