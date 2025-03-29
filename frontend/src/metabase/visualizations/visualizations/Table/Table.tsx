@@ -255,11 +255,8 @@ class Table extends Component<TableProps, TableState> {
     }
 
     if (isString(column)) {
-      const canWrapText = (columnSettings: OptionsType) => {
-        return [undefined, null, "auto", "link"].includes(
-          columnSettings["view_as"],
-        );
-      };
+      const canWrapText = (columnSettings: OptionsType) =>
+        columnSettings["view_as"] !== "image";
 
       settings["text_wrapping"] = {
         title: t`Wrap text`,
