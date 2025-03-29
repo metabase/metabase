@@ -772,7 +772,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: t`Medium`,
       },
       {
-        name: "caseInsensitive",
+        name: '"case-insensitive"',
         description: t`Optional. To perform a case-insensitive match.`,
         example: "case-insensitive",
       },
@@ -801,7 +801,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: t`Medium`,
       },
       {
-        name: "caseInsensitive",
+        name: '"case-insensitive"',
         description: t`Optional. To perform a case-insensitive match.`,
         example: "case-insensitive",
       },
@@ -830,7 +830,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: t`Medium`,
       },
       {
-        name: "caseInsensitive",
+        name: '"case-insensitive"',
         description: t`Optional. To perform a case-insensitive match.`,
         example: "case-insensitive",
       },
@@ -859,7 +859,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: t`Medium`,
       },
       {
-        name: "caseInsensitive",
+        name: '"case-insensitive"',
         description: t`Optional. To perform a case-insensitive match.`,
         example: "case-insensitive",
       },
