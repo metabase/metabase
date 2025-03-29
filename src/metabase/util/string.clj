@@ -70,7 +70,7 @@
     s
     (loop [index (count s)]
       (let [truncated (subs s 0 index)
-            bytes (.getBytes truncated "UTF-8")]
+            bytes (.getBytes ^String truncated "UTF-8")]
         (if (<= (count bytes) max-bytes)
           truncated
           (recur (dec index)))))))
@@ -80,7 +80,7 @@
   [s max-bytes]
   (if (nil? s)
     s
-    (let [bytes (.getBytes s "UTF-8")]
+    (let [bytes (.getBytes ^String s "UTF-8")]
       (if (<= (count bytes) max-bytes)
         s
         ;; first do big first-pass at truncating, then truncate the rest of the way to preserve a valid string
