@@ -13,14 +13,13 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { createMockEntityId } from "./entity-id";
+import { MOCK_CARD_ENTITY_ID } from "./entity-id";
 import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
 } from "./query";
 import { createMockUser } from "./user";
 
-const MOCK_CARD_ENTITY_ID = createMockEntityId();
 export const createMockCard = (opts?: Partial<Card>): Card => ({
   id: 1,
   entity_id: MOCK_CARD_ENTITY_ID,
@@ -87,6 +86,7 @@ export const createMockUnsavedCard = (
   display: "table",
   dataset_query: createMockStructuredDatasetQuery(),
   visualization_settings: createMockVisualizationSettings(),
+  entity_id: MOCK_CARD_ENTITY_ID,
   ...opts,
 });
 

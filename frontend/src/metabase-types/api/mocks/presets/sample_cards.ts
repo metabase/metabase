@@ -5,6 +5,7 @@ import type {
   UnsavedCard,
 } from "metabase-types/api";
 import {
+  MOCK_CARD_ENTITY_ID,
   createMockNativeCard,
   createMockStructuredCard,
 } from "metabase-types/api/mocks";
@@ -20,10 +21,12 @@ export const createAdHocCard = (
   opts?: Partial<StructuredUnsavedCard>,
 ): StructuredUnsavedCard => ({
   display: "table",
+  entity_id: MOCK_CARD_ENTITY_ID,
   visualization_settings: {},
   dataset_query: {
     type: "query",
     database: SAMPLE_DB_ID,
+    info: { "card-entity-id": MOCK_CARD_ENTITY_ID },
     query: {
       "source-table": ORDERS_ID,
     },
@@ -35,10 +38,12 @@ export const createAdHocNativeCard = (
   opts?: Partial<NativeUnsavedCard>,
 ): NativeUnsavedCard => ({
   display: "table",
+  entity_id: MOCK_CARD_ENTITY_ID,
   visualization_settings: {},
   dataset_query: {
     type: "native",
     database: SAMPLE_DB_ID,
+    info: { "card-entity-id": MOCK_CARD_ENTITY_ID },
     native: {
       query: "select * from orders",
       "template-tags": {},
@@ -51,10 +56,12 @@ export const createEmptyAdHocNativeCard = (
   opts?: Partial<NativeUnsavedCard>,
 ): NativeUnsavedCard => ({
   display: "table",
+  entity_id: MOCK_CARD_ENTITY_ID,
   visualization_settings: {},
   dataset_query: {
     type: "native",
     database: SAMPLE_DB_ID,
+    info: { "card-entity-id": MOCK_CARD_ENTITY_ID },
     native: {
       query: "",
       "template-tags": {},

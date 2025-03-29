@@ -17,6 +17,7 @@ import type {
 import {
   createMockColumn,
   createMockDataset,
+  createMockEntityId,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
   createMockSavedQuestionsDatabase,
@@ -212,11 +213,15 @@ const PIVOT_TABLE_PRODUCT_CATEGORY_FIELD: ConcreteFieldReference = [
   { "source-field": ORDERS.PRODUCT_ID },
 ];
 
+const PIVOT_CARD_ENTITY_ID = createMockEntityId();
+
 const PIVOT_TABLE_QUESTION: UnsavedCard<StructuredDatasetQuery> = {
   display: "pivot",
+  entity_id: PIVOT_CARD_ENTITY_ID,
   dataset_query: {
     type: "query",
     database: SAMPLE_DB_ID,
+    info: { "card-entity-id": PIVOT_CARD_ENTITY_ID },
     query: {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],

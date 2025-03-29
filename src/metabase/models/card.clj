@@ -719,6 +719,19 @@
                                                   (lib/query (:dataset_query card))
                                                   lib/suggested-name))))
 
+(defn- generate-card-entity-id
+  [card]
+  (let [eid (or (:entity_id card)
+                (-> card :dataset_query :info :card-entity-id)
+                (u/generate-nano-id))]
+    (cond-> card
+      (not= (:entity_id card) eid) (assoc :entity_id eid))))
+
+(defn- drop-card-entity-id-from-query
+  "Queries stored in the database don't retain the `:card-entity-id` in the `:info` block, however."
+  [card]
+  (m/update-existing card :dataset_query m/dissoc-in [:info :card-entity-id]))
+
 (defn- derive-ident [prefix entity_id stage-number tail]
   (let [entity_id (cond-> entity_id
                     (instance? clojure.lang.IDeref entity_id) deref)]
@@ -838,7 +851,9 @@
   (-> card
       (assoc :metabase_version config/mb-version-string)
       maybe-normalize-query
+      generate-card-entity-id
       card.metadata/populate-result-metadata
+      drop-card-entity-id-from-query
       pre-insert
       populate-query-fields
       (ensure-clause-idents ::before-insert)))
@@ -876,6 +891,7 @@
        (or (empty? (:result_metadata card))
            (not verified-result-metadata?))
         card.metadata/populate-result-metadata)
+      drop-card-entity-id-from-query
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at))
