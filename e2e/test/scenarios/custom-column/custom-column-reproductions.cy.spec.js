@@ -1528,6 +1528,6 @@ describe("issue #55940", () => {
     H.CustomExpressionEditor.type("Offset(");
     H.CustomExpressionEditor.helpText()
       .should("be.visible")
-      .should("contain", "Offset(Sum([Total]) -1)");
+      .should("contain", "Offset(Sum([Total]), -1)");
   });
 });
