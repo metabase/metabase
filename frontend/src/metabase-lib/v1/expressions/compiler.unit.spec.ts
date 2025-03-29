@@ -295,7 +295,13 @@ describe("old recursive-parser tests", () => {
       expression: [
         "case",
         [[["contains", "A", "B", { "case-sensitive": false }], 0]],
-        { default: "9223372036854775807" },
+        {
+          default: [
+            "value",
+            "9223372036854775807",
+            { base_type: "type/BigInteger" },
+          ],
+        },
       ],
     },
     {

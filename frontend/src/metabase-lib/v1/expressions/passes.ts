@@ -1,8 +1,4 @@
-import type {
-  CallExpression,
-  CaseOptions,
-  Expression,
-} from "metabase-types/api";
+import type { CallExpression, Expression } from "metabase-types/api";
 
 import { MBQL_CLAUSES } from "./config";
 import {
@@ -12,7 +8,6 @@ import {
   isNumberLiteral,
   isOptionsObject,
   isStringLiteral,
-  isValue,
 } from "./matchers";
 
 export type CompilerPass = (expr: Expression) => Expression;
@@ -55,17 +50,9 @@ export const adjustCaseOrIf: CompilerPass = (tree) =>
       }
       if (operands.length > 2 * pairCount) {
         const lastOperand = operands[operands.length - 1];
-        let options: CaseOptions = {};
-        if (isOptionsObject(lastOperand)) {
-          options = lastOperand;
-        } else if (isValue(lastOperand)) {
-          const valueLiteral = lastOperand[1];
-          if (valueLiteral != null) {
-            options = { default: valueLiteral };
-          }
-        } else {
-          options = { default: lastOperand };
-        }
+        const options = isOptionsObject(lastOperand)
+          ? lastOperand
+          : { default: lastOperand };
         return withAST([operator, pairs, options], node);
       }
       return withAST([operator, pairs], node);
