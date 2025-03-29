@@ -12,6 +12,7 @@ import {
   isNumberLiteral,
   isOptionsObject,
   isStringLiteral,
+  isValue,
 } from "./matchers";
 
 export type CompilerPass = (expr: Expression) => Expression;
@@ -53,10 +54,17 @@ export const adjustCaseOrIf: CompilerPass = (tree) =>
         pairs.push([tst, val]);
       }
       if (operands.length > 2 * pairCount) {
-        const defaultValue = operands[operands.length - 1];
-        let options: CaseOptions = defaultValue as CaseOptions;
-        if (!isOptionsObject(defaultValue)) {
-          options = { default: defaultValue };
+        const lastOperand = operands[operands.length - 1];
+        let options: CaseOptions = {};
+        if (isOptionsObject(lastOperand)) {
+          options = lastOperand;
+        } else if (isValue(lastOperand)) {
+          const defaultValue = lastOperand[1];
+          if (defaultValue != null) {
+            options = { default: defaultValue };
+          }
+        } else {
+          options = { default: lastOperand };
         }
         return withAST([operator, pairs, options], node);
       }
@@ -270,9 +278,9 @@ function withAST(
 const DEFAULT_PASSES = [
   adjustOptions,
   adjustOffset,
-  adjustCaseOrIf,
   adjustMultiArgOptions,
   adjustBigIntLiteral,
   adjustTopLevelLiteral,
+  adjustCaseOrIf,
   adjustBooleans,
 ];
