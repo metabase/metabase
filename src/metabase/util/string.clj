@@ -63,6 +63,29 @@
     (str (subs s 0 (- max-length 3)) "...")
     s))
 
+(defn- remove-chars
+  "Removes individual chars until it fits in the required bytes"
+  [s max-bytes]
+  (if (nil? s)
+    s
+    (loop [index (count s)]
+      (let [truncated (subs s 0 index)
+            bytes (.getBytes ^String truncated "UTF-8")]
+        (if (<= (count bytes) max-bytes)
+          truncated
+          (recur (dec index)))))))
+
+(defn limit-bytes
+  "Limits the string to the given number of bytes, ensuring it's still a valid UTF-8 string"
+  [s max-bytes]
+  (if (nil? s)
+    s
+    (let [bytes (.getBytes ^String s "UTF-8")]
+      (if (<= (count bytes) max-bytes)
+        s
+        ;; first do big first-pass at truncating, then truncate the rest of the way to preserve a valid string
+        (remove-chars (String. (byte-array (take max-bytes bytes)) "UTF-8") max-bytes)))))
+
 (defn random-string
   "Returns a string of `n` random alphanumeric characters.
 
