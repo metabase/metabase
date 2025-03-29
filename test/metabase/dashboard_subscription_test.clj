@@ -228,7 +228,7 @@
 (defn execute-dashboard
   [& args]
   (let [dashboard-result (apply notification.payload.execute/execute-dashboard args)]
-    (map channel.shared/realize-data-rows dashboard-result)))
+    (map channel.shared/maybe-realize-data-rows dashboard-result)))
 
 (deftest ^:parallel execute-dashboard-test
   (testing "it runs for each non-virtual card"
@@ -977,7 +977,7 @@
 
 (defn- result-attachment
   [part]
-  (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/realize-data-rows part)]
+  (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/maybe-realize-data-rows part)]
     (when (seq rows)
       [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
          (with-open [os baos]

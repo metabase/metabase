@@ -88,8 +88,8 @@
     result :result
     :as part}]
   (when (pos-int? (:row_count result))
-    (let [realize-data-rows (requiring-resolve 'metabase.channel.shared/realize-data-rows)
-          result            (:result (realize-data-rows part))]
+    (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
+          result            (:result (maybe-realize-data-rows part))]
       (->>
        [(when-let [temp-file (and (:include_csv card)
                                   (create-temp-file-or-throw "csv"))]

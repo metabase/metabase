@@ -4,6 +4,7 @@
   Currently used to store card's rows data when sending notification since it can be large and we don't want to keep it in memory."
   (:require
    [clojure.java.io :as io]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.random :as random]
    [taoensso.nippy :as nippy])
@@ -75,6 +76,11 @@
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Public APIs                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
+
+(defn is-cleanable?
+  "Returns true if x implements the Cleanable protocol"
+  [x]
+  (instance? Cleanable x))
 
 (defn to-temp-file!
   "Write data to a temporary file. Returns a TempFileStorage type that:

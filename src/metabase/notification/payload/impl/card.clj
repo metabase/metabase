@@ -65,9 +65,15 @@
         (throw (IllegalArgumentException. error-text))))))
 
 (defmethod notification.send/do-after-notification-sent :notification/card
-  [{:keys [id creator_id handlers] :as notification-info} _notification-payload]
+  [{:keys [id creator_id handlers payload] :as notification-info} _notification-payload]
   (when (-> notification-info :payload :send_once)
     (t2/update! :model/Notification (:id notification-info) {:active false}))
+  (try
+    (let [rows (-> payload :result :data_rows)]
+      (when (and rows (notification.payload/is-cleanable? rows))
+        (notification.payload/cleanup! rows)))
+    (catch Exception e
+      (log/warn e "Error cleaning up temp files for notification" id)))
   (events/publish-event! :event/alert-send
                          {:id      id
                           :user-id creator_id

@@ -136,8 +136,13 @@
 
 (defn- data-rows-to-disk!
   [qp-result]
-  (log/debugf "Storing %d rows to disk" (:row_count qp-result))
-  (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))
+  (if (<= (:row_count qp-result) 1000)
+    (do
+      (log/debugf "Less than 1000 rows, skip storing %d rows to disk" (:row_count qp-result))
+      qp-result)
+    (do
+      (log/debugf "Storing %d rows to disk" (:row_count qp-result))
+      (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))))
 
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
@@ -282,5 +287,5 @@
 
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
-     :result result
+     :result (data-rows-to-disk! result)
      :type   :card}))

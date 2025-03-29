@@ -50,22 +50,23 @@
 
 (defn- part->attachment-data
   [part]
-  (case (:type part)
-    :card
-    (let [{:keys [card dashcard result]}         part
-          {card-id :id card-name :name :as card} card]
-      {:title           (or (-> dashcard :visualization_settings :card.title)
-                            card-name)
-       :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-       :title_link      (urls/card-url card-id)
-       :attachment-name "image.png"
-       :fallback        card-name})
+  (let [part (channel.shared/maybe-realize-data-rows part)]
+    (case (:type part)
+      :card
+      (let [{:keys [card dashcard result]}         part
+            {card-id :id card-name :name :as card} card]
+        {:title           (or (-> dashcard :visualization_settings :card.title)
+                              card-name)
+         :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
+         :title_link      (urls/card-url card-id)
+         :attachment-name "image.png"
+         :fallback        card-name})
 
-    :text
-    (text->markdown-block (:text part))
+      :text
+      (text->markdown-block (:text part))
 
-    :tab-title
-    (text->markdown-block (format "# %s" (:text part)))))
+      :tab-title
+      (text->markdown-block (format "# %s" (:text part))))))
 
 (def ^:private slack-width
   "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
@@ -175,7 +176,7 @@
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [parts]
   (for [part  parts
-        :let  [attachment (part->attachment-data (channel.shared/realize-data-rows part))]
+        :let  [attachment (part->attachment-data part)]
         :when attachment]
     attachment))
 
