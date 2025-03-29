@@ -59,9 +59,9 @@ export const adjustCaseOrIf: CompilerPass = (tree) =>
         if (isOptionsObject(lastOperand)) {
           options = lastOperand;
         } else if (isValue(lastOperand)) {
-          const defaultValue = lastOperand[1];
-          if (defaultValue != null) {
-            options = { default: defaultValue };
+          const valueLiteral = lastOperand[1];
+          if (valueLiteral != null) {
+            options = { default: valueLiteral };
           }
         } else {
           options = { default: lastOperand };
