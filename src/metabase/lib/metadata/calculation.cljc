@@ -324,7 +324,8 @@
    ;; for binning and bucketing
    [:default {:optional true} :boolean]
    ;; for order by
-   [:direction {:optional true} [:enum :asc :desc]]])
+   [:direction {:optional true} [:enum :asc :desc]]
+   [:visibility-type {:optional true}] :string])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
