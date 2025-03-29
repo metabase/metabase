@@ -76,7 +76,7 @@
   ([stop-after queue timeout]
    (analyzer-loop* stop-after (partial query-analysis/next-card-or-id! queue timeout))))
 
-(jobs/defjob ^{DisallowConcurrentExecution true
+(task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Analyze "}
   QueryAnalyzer [_ctx]
   (analyzer-loop!))

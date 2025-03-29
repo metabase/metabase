@@ -151,7 +151,7 @@
         (log/infof "Updating timezone of trigger %s to %s. Was: %s" trigger-key new-timezone (:timezone trigger))
         (task/reschedule-trigger! (build-trigger subscription-id (get subscription-id->cron subscription-id)))))))
 
-(jobs/defjob ^{:doc "Triggers that send a notification for a subscription."}
+(task/defjob ^{:doc "Triggers that send a notification for a subscription."}
   SendNotification
   [context]
   (let [{:strs [subscription-id]} (qc/from-job-data context)]
@@ -175,7 +175,7 @@
     (doseq [subscription-id to-create]
       (create-new-trigger! (get subscription-id->subscription subscription-id)))))
 
-(jobs/defjob
+(task/defjob
   ^{:doc
     "Find all notification subscriptions with cron schedules and create a trigger for each.
     Run once on startup."

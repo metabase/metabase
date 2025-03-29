@@ -89,16 +89,16 @@
             (analytics/inc! :metabase-search/index-error)
             (throw e)))))))
 
-(jobs/defjob ^{:doc "Ensure a Search Index exists"}
+(task/defjob ^{:doc "Ensure a Search Index exists"}
   SearchIndexInit [_ctx]
   (init!))
 
-(jobs/defjob ^{DisallowConcurrentExecution true
+(task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
   (reindex!))
 
-(jobs/defjob ^{:doc                        "Keep Search Index updated"}
+(task/defjob ^{:doc                        "Keep Search Index updated"}
   SearchIndexUpdate [ctx]
   (update-index! ctx))
 

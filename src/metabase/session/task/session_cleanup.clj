@@ -11,7 +11,7 @@
 (def ^:private session-cleanup-job-key (jobs/key "metabase.task.session-cleanup.job"))
 (def ^:private session-cleanup-trigger-key (triggers/key "metabase.task.session-cleanup.trigger"))
 
-(jobs/defjob ^{:doc "Job that cleans up outdated sessions."}
+(task/defjob ^{:doc "Job that cleans up outdated sessions."}
   SessionCleanup
   [_]
   (session/cleanup-sessions!))

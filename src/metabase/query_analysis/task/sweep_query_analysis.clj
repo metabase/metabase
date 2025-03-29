@@ -89,7 +89,7 @@
    (log/info "Deleting analysis for archived cards")
    (log/infof "Deleted analysis for %s cards" (delete-orphan-analysis!))))
 
-(jobs/defjob ^{DisallowConcurrentExecution true
+(task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Backfill QueryField for cards created earlier. Runs once per instance."}
   SweepQueryAnalysis [_ctx]
   (when (public-settings/query-analysis-enabled)
