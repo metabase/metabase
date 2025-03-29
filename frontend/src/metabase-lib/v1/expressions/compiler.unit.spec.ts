@@ -240,6 +240,71 @@ describe("old recursive-parser tests", () => {
       expression: ["ends-with", { "case-sensitive": false }, "A", "B", "C"],
     },
     {
+      source: "case(contains('A', 'B', 'C'), 1, 2)",
+      expression: [
+        "case",
+        [[["contains", {}, "A", "B", "C"], 1]],
+        { default: 2 },
+      ],
+    },
+    {
+      source: "case(contains('A', 'B', 'case-insensitive'), 1, 2)",
+      expression: [
+        "case",
+        [[["contains", "A", "B", { "case-sensitive": false }], 1]],
+        { default: 2 },
+      ],
+    },
+    {
+      source: "case(contains('A', 'B', 'C', 'case-insensitive'), 1, 2)",
+      expression: [
+        "case",
+        [[["contains", { "case-sensitive": false }, "A", "B", "C"], 1]],
+        { default: 2 },
+      ],
+    },
+    {
+      source:
+        "case(contains('A', 'B', 'C', 'case-insensitive'), 1, contains('D', 'E', 'F', 'case-insensitive'), 2, 3)",
+      expression: [
+        "case",
+        [
+          [["contains", { "case-sensitive": false }, "A", "B", "C"], 1],
+          [["contains", { "case-sensitive": false }, "D", "E", "F"], 2],
+        ],
+        { default: 3 },
+      ],
+    },
+    {
+      source:
+        "case(contains('A', 'B', 'case-insensitive'), 9223372036854775807, 0)",
+      expression: [
+        "case",
+        [
+          [
+            ["contains", "A", "B", { "case-sensitive": false }],
+            ["value", "9223372036854775807", { base_type: "type/BigInteger" }],
+          ],
+        ],
+        { default: 0 },
+      ],
+    },
+    {
+      source:
+        "case(contains('A', 'B', 'case-insensitive'), 0, 9223372036854775807)",
+      expression: [
+        "case",
+        [[["contains", "A", "B", { "case-sensitive": false }], 0]],
+        {
+          default: [
+            "value",
+            "9223372036854775807",
+            { base_type: "type/BigInteger" },
+          ],
+        },
+      ],
+    },
+    {
       source: "interval([Created At], -1, 'days', 'include-current')",
       expression: [
         "time-interval",
