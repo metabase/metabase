@@ -51,7 +51,10 @@ export const FieldPicker = ({
     }));
     return items.map((item) => ({
       ...item,
-      isSelected: isColumnSelected(item, items),
+      isSelected:
+        item.columnInfo.visibilityType === "details-only"
+          ? false
+          : isColumnSelected(item, items),
       isDisabled: isColumnDisabled?.(item, items),
     }));
   }, [query, stageIndex, columns, isColumnSelected, isColumnDisabled]);

@@ -310,6 +310,7 @@
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/column
   [query stage-number field-metadata]
+  (log/info "display-info-method :metadata/column field-metadata: " (pr-str field-metadata))
   (merge
    ((get-method lib.metadata.calculation/display-info-method :default) query stage-number field-metadata)
    ;; These have to be calculated even if the metadata has display-name to support nested fields
@@ -322,6 +323,10 @@
      {:description description})
    (when-let [fingerprint (:fingerprint field-metadata)]
      {:fingerprint fingerprint})
+   ;; Include visibility_type if present
+   (when-let [visibility-type (:visibility-type field-metadata)]
+     (log/info "Found visibility_type: " (pr-str visibility-type))
+     {:visibility-type visibility-type})
    ;; if this column comes from a source Card (Saved Question/Model/etc.) use the name of the Card as the 'table' name
    ;; rather than the ACTUAL table name.
    (when (= (:lib/source field-metadata) :source/card)

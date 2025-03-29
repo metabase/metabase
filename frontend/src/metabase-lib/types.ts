@@ -146,6 +146,7 @@ export type ColumnDisplayInfo = {
   longDisplayName: string;
   semanticType: string | null;
   effectiveType: string;
+  visibilityType: string;
 
   isCalculated: boolean;
   isFromJoin: boolean;
