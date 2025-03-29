@@ -69,6 +69,8 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
+import { EmptyVizState } from "../EmptyVizState/EmptyVizState";
+
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
@@ -557,6 +559,7 @@ class Visualization extends PureComponent<
       selectedTimelineEventIds,
       showAllLegendItems,
       showTitle,
+      style,
       tableHeaderHeight,
       timelineEvents,
       token,
@@ -579,7 +582,6 @@ class Visualization extends PureComponent<
 
     // these may be overridden below
     let { series, hovered, clicked } = this.state;
-    let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);
@@ -594,7 +596,7 @@ class Visualization extends PureComponent<
     const loading = isLoading(series);
 
     // don't try to load settings unless data is loaded
-    let settings = this.props.settings || this.state.computedSettings;
+    const settings = this.props.settings || this.state.computedSettings;
 
     if (!loading && !error) {
       if (!visualization) {
@@ -613,10 +615,8 @@ class Visualization extends PureComponent<
             visualization.placeholderSeries &&
             !isDashboard
           ) {
-            // hide the error and replace series with the placeholder series
+            // hide the error and show empty state instead of using placeholder series
             error = null;
-            series = visualization.placeholderSeries;
-            settings = getComputedSettingsForSeries(series);
             isPlaceholder = true;
           } else if (e instanceof ChartSettingsError && onOpenChartSettings) {
             error = (
@@ -667,16 +667,6 @@ class Visualization extends PureComponent<
       gridSize = {
         width: Math.round(width / (gridUnit * 4)),
         height: Math.round(height / (gridUnit * 3)),
-      };
-    }
-
-    if (isPlaceholder) {
-      hovered = null;
-      style = {
-        ...style,
-        opacity: 0.2,
-        filter: "grayscale()",
-        pointerEvents: "none",
       };
     }
 
@@ -740,6 +730,8 @@ class Visualization extends PureComponent<
               expectedDuration={expectedDuration}
               isSlow={!!isSlow}
             />
+          ) : isPlaceholder && visualization ? (
+            <EmptyVizState visualization={visualization} />
           ) : (
             series && (
               <div
