@@ -256,9 +256,8 @@ class Table extends Component<TableProps, TableState> {
 
     if (isString(column)) {
       const canWrapText = (columnSettings: OptionsType) => {
-        return (
-          columnSettings["view_as"] == null ||
-          columnSettings["view_as"] === "auto"
+        return [undefined, null, "auto", "link"].includes(
+          columnSettings["view_as"],
         );
       };
 
