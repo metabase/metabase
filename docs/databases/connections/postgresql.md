@@ -18,10 +18,9 @@ Metabase supports the oldest supported version of PostgreSQL through the latest 
 
 ## Connection and sync
 
-### Sync database schema
+After connecting to a database, you'll see the "Connection and sync" section that displays the current connection status and options to manage your database connection.
 
-See [
-### Re-scan field values
+Here you can [sync the database schema and rescan field values](../sync-scan.md), and edit connection details.
 
 ### Edit connection details
 
