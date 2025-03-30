@@ -773,7 +773,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: "caseSensitivity",
-        description: t`Optional. To perform a case-insensitive match.`,
+        description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
         example: "case-insensitive",
         template: '"case-insensitive"',
       },
@@ -803,7 +803,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: "caseSensitivity",
-        description: t`Optional. To perform a case-insensitive match.`,
+        description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
         example: "case-insensitive",
         template: '"case-insensitive"',
       },
@@ -833,7 +833,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: "caseSensitivity",
-        description: t`Optional. To perform a case-insensitive match.`,
+        description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
         example: "case-insensitive",
         template: '"case-insensitive"',
       },
@@ -863,7 +863,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: "caseSensitivity",
-        description: t`Optional. To perform a case-insensitive match.`,
+        description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
         example: "case-insensitive",
         template: '"case-insensitive"',
       },
