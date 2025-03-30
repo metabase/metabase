@@ -754,7 +754,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "contains",
     category: "string",
     description: () =>
-      t`Returns true if string1 contains string2 within it (or string3, etc. if specified).`,
+      t`Returns \`true\` if \`string1\` contains \`string2\` within it (or \`string3\`, etc. if specified).`,
     args: [
       {
         name: t`string1`,
