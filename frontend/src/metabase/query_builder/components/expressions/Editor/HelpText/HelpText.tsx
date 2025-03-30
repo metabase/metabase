@@ -62,6 +62,12 @@ const components = {
       return <code>{children}</code>;
     }
     const source = children.join("");
+
+    if (source.startsWith("$")) {
+      // The code is an argument name
+      return <code className={S.arg}>{source.slice(1)}</code>;
+    }
+
     return <HighlightExpressionSource inline expression={source} />;
   },
 };

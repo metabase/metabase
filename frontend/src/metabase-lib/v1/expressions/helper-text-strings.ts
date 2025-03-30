@@ -428,12 +428,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: t`value2`,
-        description: t`This will be added to the end of \`value1\`.`,
+        description: t`This will be added to the end of \`$value1\`.`,
         example: ", ",
       },
       {
         name: "…",
-        description: t`This will be added to the end of \`value2\`, and so on.`,
+        description: t`This will be added to the end of \`$value2\`, and so on.`,
         example: ["dimension", t`First Name`],
       },
     ],
@@ -716,7 +716,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "datetimeDiff",
     category: "date",
     description: () =>
-      t`Get the difference between two datetime values (\`datetime2\` minus \`datetime1\`) using the specified unit of time.`,
+      t`Get the difference between two datetime values (\`$datetime2\` minus \`$datetime1\`) using the specified unit of time.`,
     args: [
       {
         name: t`datetime1`,
@@ -755,7 +755,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "contains",
     category: "string",
     description: () =>
-      t`Returns \`true\` if \`string1\` contains \`string2\` within it (or \`string3\`, etc. if specified).`,
+      t`Returns \`true\` if \`$string1\` contains \`$string2\` within it (or \`$string3\`, etc. if specified).`,
     args: [
       {
         name: t`string1`,
@@ -785,7 +785,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "doesNotContain",
     category: "string",
     description: () =>
-      t`Returns true if \`string1\` does not contain \`string2\` within it (and \`string3\`, etc. if specified).`,
+      t`Returns true if \`$string1\` does not contain \`$string2\` within it (and \`$string3\`, etc. if specified).`,
     args: [
       {
         name: t`string1`,
@@ -815,7 +815,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "startsWith",
     category: "string",
     description: () =>
-      t`Returns true if the beginning of the \`string1\` matches the \`string2\` (or \`string3\`, etc. if specified).`,
+      t`Returns true if the beginning of the \`$string1\` matches the \`$string2\` (or \`$string3\`, etc. if specified).`,
     args: [
       {
         name: t`string1`,
@@ -845,7 +845,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "endsWith",
     category: "string",
     description: () =>
-      t`Returns true if the end of the \`string1\` matches the \`string2\` (or \`string3\`, etc. if specified).`,
+      t`Returns true if the end of the \`$string1\` matches the \`$string2\` (or \`$string3\`, etc. if specified).`,
     args: [
       {
         name: t`string1`,
@@ -1056,12 +1056,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: t`value2`,
-        description: t`If \`value1\` is empty, \`value2\` gets returned if its not empty.`,
+        description: t`If \`$value1\` is empty, \`$value2\` gets returned if its not empty.`,
         example: ["dimension", t`Notes`],
       },
       {
         name: "…",
-        description: t`If \`value1\` is empty, and \`value2\` is empty, the next non-empty one will be returned.`,
+        description: t`If \`$value1\` is empty, and \`$value2\` is empty, the next non-empty one will be returned.`,
         example: t`No comments`,
       },
     ],
@@ -1127,7 +1127,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "in",
     category: "logical",
     description: () =>
-      t`Returns true if \`value1\` equals \`value2\` (or \`value3\`, etc. if specified).`,
+      t`Returns true if \`value1\` equals \`$value2\` (or \`$value3\`, etc. if specified).`,
     args: [
       {
         name: t`value1`,
@@ -1151,7 +1151,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "notIn",
     category: "logical",
     description: () =>
-      t`Returns true if \`value1\` doesn't equal \`value2\` (and \`value3\`, etc. if specified).`,
+      t`Returns true if \`$value1\` doesn't equal \`$value2\` (and \`$value3\`, etc. if specified).`,
     args: [
       {
         name: t`value1`,
