@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
-import { adjustCaseOrIf } from "./passes";
+import { applyPasses } from "./passes";
 import type { HelpText, HelpTextConfig } from "./types";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
@@ -1417,7 +1417,7 @@ const getHelpExample = ({ name, args = [] }: HelpTextConfig): Expression => {
     }
   }
 
-  return adjustCaseOrIf([name, ...parameters]);
+  return applyPasses([name, ...parameters]);
 };
 
 export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
