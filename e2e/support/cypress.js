@@ -16,29 +16,6 @@ import {
 
 import "./commands";
 
-const VISUALIZATION_ERROR_REGEX = /Visualization/;
-const DASHBOARD_GRID_ERROR_REGEX = /DashboardGrid/;
-const UNSAFE_COMPONENT_ERROR_REGEX = /UNSAFE_component/;
-const UNRECOGNIZED_PROP_REGEX =
-  /Warning: React does not recognize the `.*?` prop on a DOM element/;
-// const NON_BOOLEAN_ATTR_REGEX =
-//   /Warning: Received `.*?` for a non-boolean attribute/;
-// const INVALID_DOM_PROPS_REGEX =
-//   /Warning: Invalid values for props .* on <.*?> tag/;
-
-const knownErrorPatterns = [
-  [UNRECOGNIZED_PROP_REGEX],
-  // [NON_BOOLEAN_ATTR_REGEX],
-  // [INVALID_DOM_PROPS_REGEX],
-  [UNSAFE_COMPONENT_ERROR_REGEX, VISUALIZATION_ERROR_REGEX],
-  [UNSAFE_COMPONENT_ERROR_REGEX, DASHBOARD_GRID_ERROR_REGEX],
-];
-
-export const hasKnownError = (message) =>
-  knownErrorPatterns.some((patterns) =>
-    patterns.every((regex) => regex.test(message)),
-  );
-
 const isCI = Cypress.env("CI");
 
 // remove default html output on test failure
