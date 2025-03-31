@@ -208,7 +208,7 @@
 
       (queue/listen! listener-name
                      queue
-                     (fn [batch] (is (<= 10 (count batch))) (count batch))
+                     (fn [batch] (is (<= (count batch) 10)) (count batch))
                      {:success-handler    (fn [result _ name] (swap! batches-handled + result) (swap! handlers-used conj name))
                       :pool-size          3
                       :max-batch-messages 10
