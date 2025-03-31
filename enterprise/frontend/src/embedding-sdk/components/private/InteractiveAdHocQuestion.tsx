@@ -36,6 +36,7 @@ export const InteractiveAdHocQuestion = ({
   withChartTypeSelector = true,
   withDownloads = false,
   initialSqlParameters,
+  onNavigateBack,
 }: InteractiveAdHocQuestionProps &
   Omit<InteractiveQuestionProps, "questionId"> &
   InteractiveQuestionDefaultViewProps) => {
@@ -63,6 +64,7 @@ export const InteractiveAdHocQuestion = ({
       targetCollection={targetCollection}
       initialSqlParameters={initialSqlParameters}
       withDownloads={withDownloads}
+      onNavigateBack={onNavigateBack}
     >
       {children ?? (
         <InteractiveQuestionDefaultView
