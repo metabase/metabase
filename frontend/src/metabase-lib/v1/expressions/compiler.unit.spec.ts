@@ -43,14 +43,33 @@ function aggregation(source: string) {
 
 describe("old recursive-parser tests", () => {
   it("should parse numeric literals", () => {
-    expect(expr("0")).toEqual(["value", 0, null]);
-    expect(expr("42")).toEqual(["value", 42, null]);
-    expect(expr("1.0")).toEqual(["value", 1, null]);
-    expect(expr("0.123")).toEqual(["value", 0.123, null]);
+    expect(expr("0")).toEqual(["value", 0, { base_type: "type/Integer" }]);
+    expect(expr("42")).toEqual(["value", 42, { base_type: "type/Integer" }]);
+    expect(expr("1.0")).toEqual(["value", 1, { base_type: "type/Integer" }]);
+    expect(expr("0.123")).toEqual([
+      "value",
+      0.123,
+      { base_type: "type/Float" },
+    ]);
+    expect(expr("9223372036854775807")).toEqual([
+      "value",
+      "9223372036854775807",
+      { base_type: "type/BigInteger" },
+    ]);
   });
 
   it("should parse string literals", () => {
-    // the strings are wrapped in length because top-level literals are not allowed
+    expect(expr("'Universe'")).toEqual([
+      "value",
+      "Universe",
+      { base_type: "type/Text" },
+    ]);
+    expect(expr('"answer"')).toEqual([
+      "value",
+      "answer",
+      { base_type: "type/Text" },
+    ]);
+    expect(expr('"\\""')).toEqual(["value", '"', { base_type: "type/Text" }]);
     expect(expr("length('Universe')")).toEqual(["length", "Universe"]);
     expect(expr('length("answer")')).toEqual(["length", "answer"]);
     expect(expr('length("\\"")')).toEqual(["length", '"']);
@@ -75,15 +94,15 @@ describe("old recursive-parser tests", () => {
   });
 
   it("should parse unary expressions", () => {
-    expect(expr("+6")).toEqual(["value", 6, null]);
-    expect(expr("++7")).toEqual(["value", 7, null]);
-    expect(expr("-+8")).toEqual(["value", -8, null]);
+    expect(expr("+6")).toEqual(["value", 6, { base_type: "type/Integer" }]);
+    expect(expr("++7")).toEqual(["value", 7, { base_type: "type/Integer" }]);
+    expect(expr("-+8")).toEqual(["value", -8, { base_type: "type/Integer" }]);
   });
 
   it("should flatten unary expressions", () => {
     expect(expr("--5")).toEqual(["-", -5]);
-    expect(expr("- 6")).toEqual(["value", -6, null]);
-    expect(expr("+-7")).toEqual(["value", -7, null]);
+    expect(expr("- 6")).toEqual(["value", -6, { base_type: "type/Integer" }]);
+    expect(expr("+-7")).toEqual(["value", -7, { base_type: "type/Integer" }]);
     expect(expr("sqrt(-1)")).toEqual(["sqrt", -1]);
     expect(expr("- [Total]")).toEqual(["-", total]);
     expect(expr("-[Total]")).toEqual(["-", total]);

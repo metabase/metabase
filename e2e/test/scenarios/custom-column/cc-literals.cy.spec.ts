@@ -153,9 +153,9 @@ describe("scenarios > custom column > literals", () => {
         fields: [
           ["field", PRODUCTS.ID, { "base-type": "type/Integer" }],
           ["field", PRODUCTS.TITLE, { "base-type": "type/Text" }],
-          ["field", PRODUCTS.PRICE, { "base-type": "type/Number" }],
-          ["expression", "Rustic", { "base-type": "type/Text" }],
-          ["expression", "MinPrice", { "base-type": "type/Number" }],
+          ["field", PRODUCTS.PRICE, { "base-type": "type/Float" }],
+          ["expression", "Rustic"],
+          ["expression", "MinPrice"],
         ],
         expressions: {
           Rustic: [
@@ -163,7 +163,7 @@ describe("scenarios > custom column > literals", () => {
             "Rustic Paper Wallet",
             { "base-type": "type/Text" },
           ],
-          MinPrice: ["value", 20, { "base-type": "type/Number" }],
+          MinPrice: ["value", 20.0, { "base-type": "type/Float" }],
         },
       },
     };
@@ -183,8 +183,8 @@ describe("scenarios > custom column > literals", () => {
               ],
               [
                 ">",
-                ["field", "PRICE", { "base-type": "type/Number" }],
-                ["field", "MinPrice", { "base-type": "type/Number" }],
+                ["field", "PRICE", { "base-type": "type/Float" }],
+                ["field", "MinPrice", { "base-type": "type/Float" }],
               ],
             ],
           },
