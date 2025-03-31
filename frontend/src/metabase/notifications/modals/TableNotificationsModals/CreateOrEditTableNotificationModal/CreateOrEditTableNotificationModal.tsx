@@ -36,21 +36,45 @@ import type {
 
 import type { TableNotificationTriggerOption } from "./types";
 
+// Template loading functions
+const loadTemplate = async (event: SystemEvent): Promise<any> => {
+  switch (event) {
+    case "event/data-editing-row-create":
+      return import(
+        "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/insert.json"
+      );
+    case "event/data-editing-row-update":
+      return import(
+        "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/update.json"
+      );
+    case "event/data-editing-row-delete":
+      return import(
+        "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/delete.json"
+      );
+    default:
+      return null;
+  }
+};
+
+// Format JSON for tooltip display
+const formatJsonForTooltip = (json: any) => {
+  return json ? JSON.stringify(json, null, 2) : "";
+};
 const NOTIFICATION_TRIGGER_OPTIONS_MAP: Record<
   SystemEvent,
   TableNotificationTriggerOption
 > = {
   "event/data-editing-row-create": {
     value: "event/data-editing-row-create",
-    label: t`When new table record is created`,
+    label: t`When new records are created`,
   },
   "event/data-editing-row-update": {
     value: "event/data-editing-row-update",
-    label: t`When table record is updated`,
+    label: t`When any cell changes it's value`,
   },
   "event/data-editing-row-delete": {
     value: "event/data-editing-row-delete",
-    label: t`When table record is deleted`,
+    label: t`When a record is deleted`,
   },
 };
 
@@ -84,10 +108,32 @@ export const CreateOrEditTableNotificationModal = ({
   const [requestBody, setRequestBody] = useState<
     CreateTableNotificationRequest | UpdateTableNotificationRequest | null
   >(null);
-  // console.log({ requestBody });
+
+  // State to store the template JSON for the current event_name
+  const [templateJson, setTemplateJson] = useState<string>("");
 
   const isEditMode = !!notification;
   const subscription = requestBody?.subscriptions[0];
+
+  // Load JSON template when event_name changes
+  useEffect(() => {
+    const loadTemplateForEvent = async () => {
+      if (subscription?.event_name) {
+        try {
+          const templateModule = await loadTemplate(subscription.event_name);
+          const formattedJson = formatJsonForTooltip(templateModule.default);
+          setTemplateJson(formattedJson);
+        } catch (error) {
+          console.error("Error loading template:", error);
+          setTemplateJson("");
+        }
+      } else {
+        setTemplateJson("");
+      }
+    };
+
+    loadTemplateForEvent();
+  }, [subscription?.event_name]);
 
   const { data: channelSpec, isLoading: isLoadingChannelInfo } =
     useGetChannelInfoQuery();
@@ -102,7 +148,7 @@ export const CreateOrEditTableNotificationModal = ({
   const triggerOptions = useMemo(
     () =>
       Object.keys(NOTIFICATION_TRIGGER_OPTIONS_MAP).map(
-        trigger => NOTIFICATION_TRIGGER_OPTIONS_MAP[trigger as SystemEvent],
+        (trigger) => NOTIFICATION_TRIGGER_OPTIONS_MAP[trigger as SystemEvent],
       ),
     [],
   );
@@ -202,7 +248,7 @@ export const CreateOrEditTableNotificationModal = ({
       size="lg"
       onClose={onClose}
       padding="2.5rem"
-      title={isEditMode ? t`Edit notification` : t`New notification`}
+      title={isEditMode ? t`Edit alert` : t`New alert`}
       styles={{
         body: {
           paddingLeft: 0,
@@ -220,7 +266,7 @@ export const CreateOrEditTableNotificationModal = ({
               data-testid="notification-event-select"
               data={triggerOptions}
               value={subscription.event_name}
-              onChange={value => {
+              onChange={(value) => {
                 if (value) {
                   setRequestBody({
                     ...requestBody,
@@ -237,7 +283,7 @@ export const CreateOrEditTableNotificationModal = ({
           </Flex>
         </AlertModalSettingsBlock>
         <AlertModalSettingsBlock
-          title={t`Where do you want to send the notifications?`}
+          title={t`Where do you want to send the alerts?`}
         >
           <NotificationChannelsPicker
             enableTemplates
@@ -249,9 +295,9 @@ export const CreateOrEditTableNotificationModal = ({
                 handlers: newHandlers,
               });
             }}
-            emailRecipientText={t`Email notifications to:`}
-            getInvalidRecipientText={domains =>
-              t`You're only allowed to email notifications to addresses ending in ${domains}`
+            formattedJsonTemplate={templateJson}
+            getInvalidRecipientText={(domains) =>
+              t`You're only allowed to email alerts to addresses ending in ${domains}`
             }
           />
         </AlertModalSettingsBlock>

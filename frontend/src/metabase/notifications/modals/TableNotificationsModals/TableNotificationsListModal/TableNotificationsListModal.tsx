@@ -62,7 +62,7 @@ export const TableNotificationsListModal = ({
       size={rem(600)}
       onClose={onClose}
       padding="xl"
-      title={t`Edit notifications`}
+      title={t`Edit alerts`}
       {...modalProps}
     >
       <Stack gap="lg" mb="lg" mt="1rem">
@@ -85,10 +85,7 @@ export const TableNotificationsListModal = ({
         })}
       </Stack>
       <div>
-        <Button
-          variant="filled"
-          onClick={onCreate}
-        >{t`New notification`}</Button>
+        <Button variant="filled" onClick={onCreate}>{t`New alert`}</Button>
       </div>
     </Modal>
   );

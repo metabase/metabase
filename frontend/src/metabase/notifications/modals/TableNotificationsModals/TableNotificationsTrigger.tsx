@@ -12,13 +12,13 @@ import { DeleteConfirmModal } from "metabase/notifications/modals/shared/DeleteC
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/shared/UnsubscribeConfirmModal";
 import { addUndo } from "metabase/redux/undo";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
-import type { TableNotification } from "metabase-types/api";
+import type { TableId, TableNotification } from "metabase-types/api";
 
 import { CreateOrEditTableNotificationModal } from "./CreateOrEditTableNotificationModal/CreateOrEditTableNotificationModal";
 import { TableNotificationsListModal } from "./TableNotificationsListModal/TableNotificationsListModal";
 
 interface TableNotificationsModalProps {
-  tableId: number;
+  tableId: TableId;
 }
 
 type AlertModalMode =
@@ -120,11 +120,7 @@ export const TableNotificationsTrigger = ({
 
   return (
     <>
-      <Tooltip
-        label={
-          hasNotifications ? t`Edit notifications` : t`Create notification`
-        }
-      >
+      <Tooltip label={hasNotifications ? t`Edit alerts` : t`Create alert`}>
         <ActionIcon size="lg" variant="subtle" onClick={handleOpen} {...props}>
           <Icon name="alert" />
         </ActionIcon>
@@ -162,7 +158,7 @@ export const TableNotificationsTrigger = ({
       )}
       {activeModal === "delete-confirm-modal" && editingItem && (
         <DeleteConfirmModal
-          title={t`Delete this notification?`}
+          title={t`Delete this alert?`}
           onConfirm={() => handleDelete(editingItem)}
           onClose={handleInternalModalClose}
         />
@@ -170,8 +166,8 @@ export const TableNotificationsTrigger = ({
 
       {activeModal === "unsubscribe-confirm-modal" && editingItem && (
         <UnsubscribeConfirmModal
-          title={t`Unsubscribe from this notification?`}
-          description={t`You'll stop receiving this notification from now on. Depending on your organization’s permissions you might need to ask a moderator to be re-added in the future.`}
+          title={t`Unsubscribe from this alert?`}
+          description={t`You'll stop receiving this alert from now on. Depending on your organization’s permissions you might need to ask a moderator to be re-added in the future.`}
           onConfirm={() => handleUnsubscribe(editingItem)}
           onClose={handleInternalModalClose}
         />

@@ -4,6 +4,7 @@ import { Button, Flex, Group, Icon, Title } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 import { EditTableDataBackButton } from "./EditTableDataBackButton";
+import { TableNotificationsTrigger } from "metabase/notifications/modals";
 
 interface EditTableDataHeaderProps {
   table: Table;
@@ -32,6 +33,7 @@ export const EditTableDataHeader = ({
           variant="filled"
           onClick={onCreate}
         >{t`New record`}</Button>
+        <TableNotificationsTrigger tableId={table.id} />
       </Group>
     </Flex>
   );

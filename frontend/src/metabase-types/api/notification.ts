@@ -76,7 +76,7 @@ export type NotificationRecipient =
 
 export type TemplateDetails = {
   type: string;
-  subject: string;
+  subject?: string;
   body: string;
 };
 
