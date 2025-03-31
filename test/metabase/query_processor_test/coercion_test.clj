@@ -13,7 +13,7 @@
   (mt/test-drivers
     (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (mt/dataset
-      string-nums
+      string-nums-db
       (doseq [[human-col col res] [["integer" :int_col   10.0]
                                    ["float"   :float_col 12.5]
                                    ["mixed"   :mix_col   7.259]]]

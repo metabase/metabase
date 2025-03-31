@@ -221,7 +221,7 @@
      ["four_loko"]
      ["ouija_board"]]]])
 
-(tx/defdataset string-nums
+(tx/defdataset string-nums-db
   [["string_nums"
     [{:field-name "int_col"   :base-type :type/Text}
      {:field-name "float_col" :base-type :type/Text}
