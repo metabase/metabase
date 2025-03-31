@@ -89,6 +89,14 @@ class Table extends Component<TableProps, TableState> {
 
   static settings = {
     ...columnSettings({ hidden: true }),
+    "table.pagination": {
+      section: t`Columns`,
+      title: t`Paginate results`,
+      inline: true,
+      widget: "toggle",
+      dashboard: true,
+      default: false,
+    },
     "table.row_index": {
       section: t`Columns`,
       title: t`Show row index`,
@@ -249,7 +257,7 @@ class Table extends Component<TableProps, TableState> {
     if (isString(column)) {
       const canWrapText = (columnSettings: OptionsType) => {
         return (
-          columnSettings["view_as"] === null ||
+          columnSettings["view_as"] == null ||
           columnSettings["view_as"] === "auto"
         );
       };
@@ -259,6 +267,9 @@ class Table extends Component<TableProps, TableState> {
         default: false,
         widget: "toggle",
         inline: true,
+        isValid: (_column, columnSettings) => {
+          return canWrapText(columnSettings);
+        },
         getHidden: (_column, columnSettings) => {
           return !canWrapText(columnSettings);
         },
