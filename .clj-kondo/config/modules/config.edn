@@ -2,7 +2,7 @@
 ;;
 ;; ## `api`:
 ;;
-;; Map of module name => the "core" external public-facing API namespace(s). You have three options here:
+;; Map of module name maps to the "core" external public-facing API namespace(s). You have three options here:
 ;;
 ;; 1. Special sentinel value `:any` means means this module does not (yet) have external public-facing API
 ;;    namespace(s). This is mostly a temporary placeholder until we go in and create module namespaces, which means
