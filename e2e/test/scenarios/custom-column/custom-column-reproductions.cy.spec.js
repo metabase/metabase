@@ -1513,3 +1513,21 @@ describe("issue #55686", () => {
     H.CustomExpressionEditor.completion("notEmpty").should("be.visible");
   });
 });
+
+describe("issue #55940", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should show the correct example for Offset (metabase#55940)", () => {
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+
+    H.CustomExpressionEditor.type("Offset(");
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "Offset(Sum([Total]), -1)");
+  });
+});

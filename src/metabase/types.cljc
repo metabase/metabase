@@ -274,6 +274,7 @@
 
 (derive :type/TextLike :type/*)
 (derive :type/MongoBSONID :type/TextLike)
+(derive :type/MongoBinData :type/TextLike)
 (derive :type/MySQLEnum :type/Text)
 ;; IP address can be either a data type e.g. Postgres `inet` or a semantic type e.g. a `text` column that has IP
 ;; addresses
@@ -435,6 +436,14 @@
          {\"Temporal\" \"type/Temporal\", ...}"
      (clj->js (into {} (for [tyype (distinct (mapcat descendants [:type/* :Semantic/* :Relation/*]))]
                          [(name tyype) (u/qualified-name tyype)])))))
+
+#?(:cljs
+   (def ^:export LEVEL_ONE_TYPES
+     "Return js array of level one types formatted as values of [[TYPE]] js object.
+
+     Level one types are children (i.e. direct descendants) of :type/*."
+     (to-array (distinct (map u/qualified-name
+                              (filter #((parents %) :type/*) (descendants :type/*)))))))
 
 (coercion-hierarchies/define-types! :Coercion/UNIXNanoSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
 (coercion-hierarchies/define-types! :Coercion/UNIXMicroSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)

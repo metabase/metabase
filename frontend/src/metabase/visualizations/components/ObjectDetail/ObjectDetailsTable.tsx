@@ -115,7 +115,6 @@ export function DetailsTableCell({
       <span
         className={cx(
           {
-            [CS.cursorPointer]: onVisualizationClick,
             link: isClickable && isLink,
           },
           className,
