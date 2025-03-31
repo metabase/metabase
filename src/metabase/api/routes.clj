@@ -8,6 +8,7 @@
    [metabase.api.card]
    [metabase.api.cards]
    [metabase.api.collection]
+   [metabase.api.content-translation]
    [metabase.api.dashboard]
    [metabase.api.database]
    [metabase.api.dataset]
@@ -140,6 +141,7 @@
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.api.collection)
+   "/content-translation"  (+auth 'metabase.api.content-translation)
    "/dashboard"            (+auth 'metabase.api.dashboard)
    "/database"             (+auth 'metabase.api.database)
    "/dataset"              'metabase.api.dataset
