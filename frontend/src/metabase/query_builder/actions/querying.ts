@@ -158,7 +158,7 @@ export const runQuestionQuery = ({
       cancelDeferred: cancelQueryDeferred,
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,
-      parentDashboardId,
+      isDashboard: parentDashboardId != null,
     })
       .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
       .catch((error) => dispatch(queryErrored(startTime, error)));

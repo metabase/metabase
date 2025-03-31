@@ -1,7 +1,6 @@
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   CardId,
-  DashboardId,
   DatabaseId,
   FieldId,
   SegmentId,
@@ -35,7 +34,7 @@ export interface NativeDatasetQuery {
 
 export type DatasetRequest = {
   query: DatasetQuery;
-  dashboard_id?: DashboardId;
+  is_dashboard?: boolean;
 };
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;

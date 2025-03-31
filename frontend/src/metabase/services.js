@@ -81,7 +81,7 @@ export async function runQuestionQuery(
     isDirty = false,
     ignoreCache = false,
     collectionPreview = false,
-    parentDashboardId = null,
+    isDashboard = false,
   } = {},
 ) {
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
@@ -120,7 +120,7 @@ export async function runQuestionQuery(
       card,
       question.metadata(),
     )(
-      { query: datasetQueryWithParameters, dashboard_id: parentDashboardId },
+      { query: datasetQueryWithParameters, is_dashboard: isDashboard },
       cancelDeferred
         ? {
             cancelled: cancelDeferred.promise,

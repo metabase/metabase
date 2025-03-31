@@ -85,15 +85,15 @@
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   {:keys [query dashboard_id]} :- [:map
+   {:keys [query is_dashboard]} :- [:map
                                     [:query [:map
                                              [:database {:optional true} [:maybe :int]]]]
-                                    [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]]]
+                                    [:is_dashboard {:default false} :boolean]]]
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)
-   {:context (if (some? dashboard_id) :dashboard-ad-hoc :ad-hoc)}))
+   {:context (if is_dashboard :dashboard-ad-hoc :ad-hoc)}))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
@@ -202,15 +202,15 @@
   [_route-params
    _query-params
    {{:keys [database] :as query} :query
-    dashboard_id                 :dashboard_id} :- [:map
+    is_dashboard                 :is_dashboard} :- [:map
                                                     [:query [:map
                                                              [:database {:optional true} [:maybe ms/PositiveInt]]]]
-                                                    [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]]]
+                                                    [:is_dashboard {:default false} :boolean]]]
   (when-not database
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
-              :context     (if (some? dashboard_id) :dashboard-ad-hoc :ad-hoc)}]
+              :context     (if is_dashboard :dashboard-ad-hoc :ad-hoc)}]
     (qp.streaming/streaming-response [rff :api]
       (qp.pivot/run-pivot-query (assoc query
                                        :constraints (qp.constraints/default-query-constraints)
