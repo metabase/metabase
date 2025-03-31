@@ -173,8 +173,10 @@ export function HelpText({
             >
               {args.map(({ name, description }, index) => (
                 <Fragment key={index}>
-                  <Box className={S.arg}>{wrapPlaceholder(name)}</Box>
-                  <Box>
+                  <Box className={S.arg} data-testid={`arg-${name}-name`}>
+                    {wrapPlaceholder(name)}
+                  </Box>
+                  <Box data-testid={`arg-${name}-description`}>
                     <Markdown components={components}>{description}</Markdown>
                   </Box>
                 </Fragment>
