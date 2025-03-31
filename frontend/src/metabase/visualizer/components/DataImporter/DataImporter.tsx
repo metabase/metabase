@@ -1,49 +1,21 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Flex, Icon, Text, TextInput } from "metabase/ui";
-import { getDataSources } from "metabase/visualizer/selectors";
-import {
-  addDataSource,
-  removeDataSource,
-} from "metabase/visualizer/visualizer.slice";
-import type { VisualizerDataSource } from "metabase-types/store/visualizer";
+import { Box, Flex, Icon, Tabs, TextInput } from "metabase/ui";
 
-import { RecentsList } from "./RecentsList";
-import type { ResultsListProps } from "./ResultsList";
 import { SearchResultsList } from "./SearchResultsList";
 
 export const DataImporter = () => {
-  const dispatch = useDispatch();
-  const dataSources = useSelector(getDataSources);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<string | null>("compare");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
-
-  const dataSourceIds = useMemo(
-    () => new Set(dataSources.map(s => s.id)),
-    [dataSources],
-  );
-
-  const handleDataSourceSelect: ResultsListProps["onSelect"] = useCallback(
-    (source: VisualizerDataSource) => {
-      if (dataSourceIds.has(source.id)) {
-        dispatch(removeDataSource(source));
-      } else {
-        dispatch(addDataSource(source.id));
-      }
-    },
-    [dataSourceIds, dispatch],
-  );
 
   const handleSearchChange: React.ChangeEventHandler<HTMLInputElement> =
     useCallback(e => {
       setSearch(e.target.value);
     }, []);
-
-  const showRecents = search.trim() === "";
 
   return (
     <Flex
@@ -53,6 +25,12 @@ export const DataImporter = () => {
       }}
     >
       <Box>
+        <Tabs value={activeTab} onChange={setActiveTab}>
+          <Tabs.List grow justify="space-between">
+            <Tabs.Tab value="compare">Compare</Tabs.Tab>
+            <Tabs.Tab value="explore">Explore</Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
         <TextInput
           m="xs"
           variant="filled"
@@ -70,21 +48,10 @@ export const DataImporter = () => {
           overflowY: "auto",
         }}
       >
-        {showRecents ? (
-          <>
-            <Text>{t`Recents`}</Text>
-            <RecentsList
-              onSelect={handleDataSourceSelect}
-              dataSourceIds={dataSourceIds}
-            />
-          </>
-        ) : (
-          <SearchResultsList
-            search={debouncedSearch}
-            onSelect={handleDataSourceSelect}
-            dataSourceIds={dataSourceIds}
-          />
-        )}
+        <SearchResultsList
+          search={debouncedSearch}
+          mode={activeTab === "explore" ? "both" : "add"}
+        />
       </Flex>
     </Flex>
   );

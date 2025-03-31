@@ -183,7 +183,7 @@ export const Visualizer = (props: VisualizerProps) => {
         <Box className={S.dataSidebar}>
           {dataImporterOpen ? (
             <Flex direction="column" miw={320} h="100%">
-              <Box p="md" h="91%">
+              <Box p="md" h="100%">
                 <Flex align="center">
                   <Title order={4} mb="xs">{t`Add data`}</Title>
                   <Button
@@ -195,23 +195,6 @@ export const Visualizer = (props: VisualizerProps) => {
                 </Flex>
                 <DataImporter />
               </Box>
-              <Flex
-                bg="white"
-                p="md"
-                align="center"
-                justify="center"
-                flex={1}
-                style={{
-                  borderTop: "1px solid var(--mb-color-border)",
-                  cursor: "pointer",
-                }}
-              >
-                <Button
-                  variant="transparent"
-                  onClick={() => handlers.toggle()}
-                >{t`Adjust columns`}</Button>
-                <Icon name="chevrondown" />
-              </Flex>
             </Flex>
           ) : (
             <Flex direction="column" miw={320} p="md" h="100%">

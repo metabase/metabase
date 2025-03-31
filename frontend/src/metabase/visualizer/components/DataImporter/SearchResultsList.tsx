@@ -1,24 +1,58 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-import { skipToken, useSearchQuery } from "metabase/api";
+import { skipToken, useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Loader } from "metabase/ui";
+import { getDataSources } from "metabase/visualizer/selectors";
 import { createDataSource } from "metabase/visualizer/utils";
-import type { VisualizerDataSourceId } from "metabase-types/store/visualizer";
+import {
+  addDataSource,
+  removeDataSource,
+} from "metabase/visualizer/visualizer.slice";
+import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
-import { ResultsList, type ResultsListProps } from "./ResultsList";
+import { ResultsList } from "./ResultsList";
 
 interface SearchResultsListProps {
   search: string;
-  onSelect: ResultsListProps["onSelect"];
-  dataSourceIds: Set<VisualizerDataSourceId>;
+  mode: "swap" | "add" | "both";
 }
 
-export function SearchResultsList({
-  search,
-  onSelect,
-  dataSourceIds,
-}: SearchResultsListProps) {
+export function SearchResultsList({ search, mode }: SearchResultsListProps) {
+  const dispatch = useDispatch();
+  const dataSources = useSelector(getDataSources);
+  const dataSourceIds = useMemo(
+    () => new Set(dataSources.map(s => s.id)),
+    [dataSources],
+  );
+
+  const onAdd = useCallback(
+    (item: VisualizerDataSource) => {
+      if (dataSourceIds.has(item.id)) {
+        // remove data source if it exists
+        dispatch(removeDataSource(item));
+      } else {
+        // add data source
+        dispatch(addDataSource(item.id));
+      }
+    },
+    [dispatch, dataSourceIds],
+  );
+
+  const onSwap = useCallback(
+    (item: VisualizerDataSource) => {
+      // remove all data sources
+      dataSources.forEach(dataSource => {
+        dispatch(removeDataSource(dataSource));
+      });
+
+      // add data source
+      dispatch(addDataSource(item.id));
+    },
+    [dispatch, dataSources],
+  );
+
   const { data: result = { data: [] } } = useSearchQuery(
     search.length > 0
       ? {
@@ -33,9 +67,21 @@ export function SearchResultsList({
     },
   );
 
+  const { data: allRecents = [] } = useListRecentsQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
+
   const items = useMemo(() => {
-    if (!Array.isArray(result.data)) {
-      return [];
+    if (
+      search.length === 0 ||
+      !Array.isArray(result.data) ||
+      result.data.length === 0
+    ) {
+      return allRecents
+        .filter(maybeCard =>
+          ["card", "dataset", "metric"].includes(maybeCard.model),
+        )
+        .map(card => createDataSource("card", card.id, card.name));
     }
     return result.data
       .map(item =>
@@ -44,7 +90,7 @@ export function SearchResultsList({
           : null,
       )
       .filter(isNotNull);
-  }, [result]);
+  }, [result, allRecents, search]);
 
   if (items.length === 0) {
     return <Loader />;
@@ -53,8 +99,10 @@ export function SearchResultsList({
   return (
     <ResultsList
       items={items}
-      onSelect={onSelect}
+      mode={mode}
       dataSourceIds={dataSourceIds}
+      onAdd={onAdd}
+      onSwap={onSwap}
     />
   );
 }
