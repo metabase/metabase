@@ -113,7 +113,7 @@
                       :embedding-dashboard-count embedding-dashboard-count
                       :embedding-question-count embedding-question-count
                       :external-users ext-users
-                      :interal-users (- users ext-users)
+                      :internal-users (- users ext-users)
                       :domains (internal-stats/email-domain-count)})]
     (log/info "Reporting embedding stats:" stats)
     stats))
