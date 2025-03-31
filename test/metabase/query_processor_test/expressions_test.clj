@@ -536,14 +536,14 @@
     ;; Verify that :order-by of [:expression "One"] does NOT mean ORDER BY 1, which would result in ordering by the
     ;; first column in the select list $id. We want this to mean "order by the expression with value 1".
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
-      (is (= [[29 "20th Century Cafe" 1]
-              [8  "25°"               1]]
+      (is (= [[29 1 "20th Century Cafe"]
+              [8  1 "25°"]]
              (mt/rows
               (mt/run-mbql-query venues
                 {:expressions {"One" [:value 1 nil]}
-                 :fields      [$id $name [:expression "One"]]
-                 :order-by    [[:asc $name]
-                               [:asc [:expression "One"]]]
+                 :fields      [$id [:expression "One"] $name]
+                 :order-by    [[:asc [:expression "One"]]
+                               [:asc $name]]
                  :limit       2})))))))
 
 (deftest ^:parallel order-by-literal-expression-test
