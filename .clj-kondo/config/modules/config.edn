@@ -53,6 +53,7 @@
            eid-translation
            embed
            integrations
+           internal-stats
            models
            premium-features
            public-settings
@@ -193,7 +194,7 @@
            util}}
 
   eid-translation
-  {:api  #{metabase.eid-translation}
+  {:api  #{metabase.eid-translation.core}
    :uses #{}}
 
   embed
@@ -220,6 +221,10 @@
           metabase.integrations.ldap.default-implementation
           metabase.integrations.slack}
    :uses #{api config events models permissions plugins premium-features util enterprise/enhancements}}
+
+  internal-stats
+  {:api #{metabase.internal-stats}
+   :uses #{db models}}
 
   legacy-mbql
   {:api #{metabase.legacy-mbql.normalize
@@ -385,7 +390,7 @@
   premium-features
   {:api  #{metabase.premium-features.core
            metabase.premium-features.token-check}
-   :uses #{config db models plugins util}}
+   :uses #{config db internal-stats models plugins util}}
 
   public-settings
   {:api  #{metabase.public-settings}
@@ -660,6 +665,10 @@
   {:api #{metabase-enterprise.impersonation.core
           metabase-enterprise.impersonation.api}
    :uses #{api audit driver enterprise/sandbox lib models permissions premium-features query-processor util}}
+
+  enterprise/internal-stats
+  {:api #{metabase-enterprise.internal-stats}
+   :uses #{models premium-features}}
 
   enterprise/llm
   {:api  #{metabase-enterprise.llm.api}

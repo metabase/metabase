@@ -9,7 +9,7 @@ export default {
   component: ColorPill,
 };
 
-const Template: StoryFn<ColorPillProps> = args => {
+const Template: StoryFn<ColorPillProps> = (args) => {
   return <ColorPill {...args} />;
 };
 

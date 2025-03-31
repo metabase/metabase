@@ -70,7 +70,7 @@ describe("raw data query", () => {
     it("should return data step with actions", () => {
       expect(steps.length).toBe(1);
       expect(dataStep.type).toBe("data");
-      expect(dataStep.actions.map(action => action.type)).toEqual([
+      expect(dataStep.actions.map((action) => action.type)).toEqual([
         "join",
         "expression",
         "filter",
@@ -88,7 +88,7 @@ describe("filtered and summarized query", () => {
 
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, and summarize steps", () => {
-      expect(steps.map(s => s.type)).toEqual(["data", "filter", "summarize"]);
+      expect(steps.map((s) => s.type)).toEqual(["data", "filter", "summarize"]);
     });
 
     it("should allow adding a new stage for questions", () => {
@@ -184,7 +184,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return [data, filter, summarize] and [filter, summarize] steps", () => {
-      expect(steps.map(s => s.type)).toEqual([
+      expect(steps.map((s) => s.type)).toEqual([
         "data",
         "filter",
         "summarize",
@@ -295,8 +295,8 @@ describe("aggregated query without breakout", () => {
 
     expect(
       steps
-        .find(step => step.type === "summarize")
-        ?.actions.map(action => action.type),
+        .find((step) => step.type === "summarize")
+        ?.actions.map((action) => action.type),
     ).toEqual(["join", "expression"]);
   });
 });

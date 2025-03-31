@@ -110,12 +110,12 @@ export function FormCollectionAndDashboardPicker({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  const openCollection = useSelector(state =>
+  const openCollection = useSelector((state) =>
     Collections.selectors.getObject(state, { entityId: "root" }),
   );
 
   const selectedItem = useSelector(
-    state =>
+    (state) =>
       Dashboard.selectors.getObject(state, {
         entityId: dashboardIdInput.value,
       }) ||
@@ -152,7 +152,7 @@ export function FormCollectionAndDashboardPicker({
       namespace: type === "snippet-collections" ? "snippets" : undefined,
       allowCreateNew: showCreateNewCollectionOption,
       hasRecents: type !== "snippet-collections",
-      confirmButtonText: item =>
+      confirmButtonText: (item) =>
         item === "dashboard"
           ? t`Select this dashboard`
           : t`Select this collection`,
@@ -175,7 +175,7 @@ export function FormCollectionAndDashboardPicker({
       if (dashboardTabIdFieldName) {
         try {
           const dashboard = dashboardId
-            ? await fetchDashboard({ id: dashboardId }).then(res => res.data)
+            ? await fetchDashboard({ id: dashboardId }).then((res) => res.data)
             : undefined;
           const defaultTabId = dashboard?.tabs?.length
             ? String(dashboard.tabs[0].id)

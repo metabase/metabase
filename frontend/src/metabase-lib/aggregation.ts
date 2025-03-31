@@ -39,7 +39,7 @@ export function aggregate(
 
 export function aggregateByCount(query: Query, stageIndex: number): Query {
   const operators = availableAggregationOperators(query, stageIndex);
-  const countOperator = operators.find(operator => {
+  const countOperator = operators.find((operator) => {
     const info = displayInfo(query, stageIndex, operator);
     return info.shortName === "count";
   });

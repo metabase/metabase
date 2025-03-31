@@ -9,7 +9,7 @@ export default {
   component: ColorRange,
 };
 
-const Template: StoryFn<ColorRangeProps> = args => {
+const Template: StoryFn<ColorRangeProps> = (args) => {
   return <ColorRange {...args} />;
 };
 

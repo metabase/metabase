@@ -22,7 +22,7 @@ export function FilterOperatorPicker<T extends string>({
   onChange,
 }: FilterOperatorPickerProps<T>) {
   const label = useMemo(() => {
-    const option = options.find(option => option.operator === value);
+    const option = options.find((option) => option.operator === value);
     return option ? option.name.toLowerCase() : t`operator`;
   }, [value, options]);
 
@@ -42,7 +42,7 @@ export function FilterOperatorPicker<T extends string>({
         </Button>
       </Menu.Target>
       <Menu.Dropdown>
-        {options.map(option => (
+        {options.map((option) => (
           <Menu.Item
             key={option.operator}
             aria-selected={option.operator === value}

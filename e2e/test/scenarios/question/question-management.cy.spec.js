@@ -25,7 +25,7 @@ describe(
 
     Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
       context(`${permission} access`, () => {
-        userGroup.forEach(user => {
+        userGroup.forEach((user) => {
           onlyOn(permission === "curate", () => {
             describe(`${user} user`, () => {
               beforeEach(() => {
@@ -210,7 +210,7 @@ describe(
                       );
 
                       // Simulate a couple gets, so that the dashboards appears in recents for various users
-                      cy.get("@dashboardId").then(dashboardId => {
+                      cy.get("@dashboardId").then((dashboardId) => {
                         cy.request(`/api/dashboard/${dashboardId}`);
                         cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
                       });
@@ -367,7 +367,7 @@ describe(
                   .findByText("First collection")
                   .should("be.visible");
 
-                findPickerItem("Orders in a dashboard").then($button => {
+                findPickerItem("Orders in a dashboard").then(($button) => {
                   expect($button).to.have.attr("disabled");
                 });
                 H.entityPickerModal().within(() => {
@@ -455,7 +455,7 @@ H.describeWithSnowplow("send snowplow question events", () => {
 });
 
 function assertRequestNot403(xhr_alias) {
-  cy.wait("@" + xhr_alias).then(xhr => {
+  cy.wait("@" + xhr_alias).then((xhr) => {
     expect(xhr.status).not.to.eq(403);
   });
 }
@@ -483,19 +483,19 @@ function findPickerItem(name) {
 }
 
 function findActivePickerItem(name) {
-  return findPickerItem(name).then($button => {
+  return findPickerItem(name).then(($button) => {
     expect($button).to.have.attr("data-active", "true");
   });
 }
 
 function findSelectedPickerItem(name) {
-  return findPickerItem(name).then($button => {
+  return findPickerItem(name).then(($button) => {
     expect($button).to.have.attr("aria-selected", "true");
   });
 }
 
 function findInactivePickerItem(name) {
-  return findPickerItem(name).then($button => {
+  return findPickerItem(name).then(($button) => {
     expect($button).not.to.have.attr("data-active", "true");
   });
 }

@@ -183,8 +183,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         url: "/api/dataset",
         middleware: true,
       },
-      req => {
-        req.on("response", res => {
+      (req) => {
+        req.on("response", (res) => {
           // Throttle the response to 500 Kbps to simulate a mobile 3G connection
           res.setThrottle(500);
         });
@@ -583,7 +583,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
         ({ body }) => {
-          const tableId = body.find(table => table.name === "products").id;
+          const tableId = body.find((table) => table.name === "products").id;
           H.openTable({
             database: WRITABLE_DB_ID,
             table: tableId,
@@ -833,7 +833,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
     );
 
-    cy.get("@metricId").then(metricId => {
+    cy.get("@metricId").then((metricId) => {
       const questionDetails = {
         query: {
           "source-table": ORDERS_ID,
@@ -873,7 +873,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
     );
 
-    cy.get("@metricId").then(metricId => {
+    cy.get("@metricId").then((metricId) => {
       const questionDetails = {
         query: {
           "source-table": `card__${metricId}`,
@@ -1038,7 +1038,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.findAllByTestId("notebook-cell-item")
       .filter(`:contains(${CUSTOM_COLUMN_LONG_NAME})`)
-      .then(items => {
+      .then((items) => {
         for (let index = 0; index < items.length; ++index) {
           cy.wrap(items[index]).within(() => {
             assertRemoveClauseIconSize();
@@ -1163,6 +1163,157 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
       locale: "en",
+    });
+  });
+
+  it("should support browser based navigation (metabase#55162)", () => {
+    cy.intercept(`/api/table/${PRODUCTS_ID}/fks`).as("tableFK");
+    H.createQuestion(
+      { query: { "source-table": PRODUCTS_ID }, name: "products" },
+      { visitQuestion: true, wrapId: true },
+    );
+
+    cy.get("@questionId").then((PRODUCT_QUESTION_ID) => {
+      cy.findByRole("button", { name: /Editor/ }).click();
+      cy.findByRole("button", { name: /Visualization/ }).click();
+
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products/notebook`,
+      );
+
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      cy.go("forward");
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products/notebook`,
+      );
+
+      H.openQuestionActions("Turn into a model");
+
+      H.modal()
+        .findByRole("button", { name: "Turn this into a model" })
+        .click();
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/notebook`,
+      );
+
+      H.openQuestionActions("Edit metadata");
+      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      H.openQuestionActions("Edit metadata");
+
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      );
+
+      H.datasetEditBar().findByText("Query").click();
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      );
+
+      cy.go("forward");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/query`,
+      );
+
+      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/query`,
+      );
+
+      cy.go("back");
+
+      // This should work, but doesn't (metabase#55486)
+      // cy.location("pathname").should(
+      //   "equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      // );
+
+      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+
+      cy.findAllByTestId("detail-shortcut")
+        .first()
+        .findByRole("button", { hidden: true })
+        .click({ force: true });
+
+      // Cannot navigate back and forth to details modal (metabase#55487)
+      // cy.go("back");
+
+      // cy.location("pathname").should(
+      //   "equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products`,
+      // );
+
+      // cy.go("forward");
+
+      // cy.location("pathname").should(
+      //   "equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products/1`,
+      // );
+
+      /**
+       * foreign key relation orders should work, but it consistently fails in CI
+       */
+      // cy.wait("@tableFK");
+
+      // H.modal().findByTestId("fk-relation-orders").click();
+
+      // cy.location("pathname").should("contain", "/question");
+      // cy.findByTestId("filter-pill").should("contain.text", "Product ID is 1");
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      H.openQuestionActions("Turn back to saved question");
+
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      // Going back returns us to a model URL, which it should not (metabase#55488)
+      // cy.go("back");
+      // cy.location("pathname").should(
+      //   "not.equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products`,
+      // );
     });
   });
 });

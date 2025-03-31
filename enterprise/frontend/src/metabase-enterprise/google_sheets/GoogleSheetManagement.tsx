@@ -258,7 +258,7 @@ function GoogleSheetsConnectModal({
         dispatch(reloadSettings());
         onClose();
       })
-      .catch(response => {
+      .catch((response) => {
         setErrorMessage(response?.data?.message ?? "Something went wrong");
       });
   };
@@ -307,7 +307,7 @@ function GoogleSheetsConnectModal({
             my="sm"
             disabled={isSavingFolderLink}
             value={folderLink}
-            onChange={e => setFolderLink(e.target.value)}
+            onChange={(e) => setFolderLink(e.target.value)}
             placeholder="https://drive.google.com/drive/folders/abc123-xyz456"
           />
           <Text
@@ -357,7 +357,7 @@ function GoogleSheetsDisconnectModal({
           onClose();
         }
       })
-      .catch(response => {
+      .catch((response) => {
         setErrorMessage(response?.data?.message ?? "Something went wrong");
       });
   };

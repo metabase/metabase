@@ -58,8 +58,6 @@ If you need to use a certificate, connect via the [default method](#using-metaba
 
 ## Connecting to a MongoDB Atlas cluster
 
-> You can use Metabase with Atlas Dedicated and Free clusters. Metabase does not currently support Atlas Flex.
-
 ### Whitelist IP addresses
 
 If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist) in your Atlas cluster. If you are using self-hosted Metabase, you'll need to whitelist the IP of your Metabase instance.

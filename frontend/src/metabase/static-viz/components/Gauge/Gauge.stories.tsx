@@ -15,7 +15,7 @@ export default {
   component: GaugeContainer,
 };
 
-const Template: StoryFn<GaugeContainerProps> = args => {
+const Template: StoryFn<GaugeContainerProps> = (args) => {
   return <GaugeContainer {...args} />;
 };
 

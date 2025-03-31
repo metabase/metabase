@@ -317,7 +317,7 @@ const waitForLoadingRequests = async (getState: () => State) => {
   await waitFor(
     () => {
       const requests = getRequests(getState());
-      const areRequestsLoading = requests.some(request => request.loading);
+      const areRequestsLoading = requests.some((request) => request.loading);
       expect(areRequestsLoading).toBe(false);
     },
     { timeout: 5000 },
@@ -325,9 +325,9 @@ const waitForLoadingRequests = async (getState: () => State) => {
 };
 
 const getRequests = (state: State): RequestState[] => {
-  return Object.values(state.requests).flatMap(group =>
-    Object.values(group).flatMap(entity =>
-      Object.values(entity).flatMap(request => Object.values(request)),
+  return Object.values(state.requests).flatMap((group) =>
+    Object.values(group).flatMap((entity) =>
+      Object.values(entity).flatMap((request) => Object.values(request)),
     ),
   );
 };

@@ -22,7 +22,7 @@ const DEFAULT_CUSTOM_SCHEDULE = "0 * * * ?";
 
 function isCustomSchedule(setting) {
   const value = setting.value || setting.default;
-  const defaultSchedules = setting.options.map(o => o.value);
+  const defaultSchedules = setting.options.map((o) => o.value);
   return !defaultSchedules.includes(value);
 }
 
@@ -41,7 +41,7 @@ export const ModelCachingScheduleWidget = ({ setting, disabled, onChange }) => {
   );
 
   const handleScheduleChange = useCallback(
-    nextValue => {
+    (nextValue) => {
       if (nextValue === "custom") {
         setCustom(true);
         setCustomCronSchedule(DEFAULT_CUSTOM_SCHEDULE);

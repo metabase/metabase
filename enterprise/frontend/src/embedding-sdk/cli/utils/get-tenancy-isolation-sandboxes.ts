@@ -25,7 +25,7 @@ export function getTenancyIsolationSandboxes(options: Options): Sandbox[] {
 
   // Define column-based tenant isolation for each chosen tables
   for (const tableId in tenancyColumnNames) {
-    const table = chosenTables.find(t => Number(t.id) === Number(tableId));
+    const table = chosenTables.find((t) => Number(t.id) === Number(tableId));
 
     const tenancyColumnName = tenancyColumnNames[tableId];
 
@@ -35,7 +35,7 @@ export function getTenancyIsolationSandboxes(options: Options): Sandbox[] {
 
     for (const groupId of groupIds) {
       const tenancyField = table.fields?.find(
-        f => f.name === tenancyColumnName,
+        (f) => f.name === tenancyColumnName,
       );
 
       if (!tenancyField) {

@@ -22,7 +22,7 @@ export const getActionIconOverrides =
             },
           },
         }),
-        viewHeader: theme => ({
+        viewHeader: (theme) => ({
           root: {
             color: theme.fn.themeColor("text-dark"),
             backgroundColor: "transparent",
@@ -39,7 +39,7 @@ export const getActionIconOverrides =
             },
           },
         }),
-        viewFooter: theme => ({
+        viewFooter: (theme) => ({
           root: {
             color: theme.fn.themeColor("text-medium"),
             "&:hover": {

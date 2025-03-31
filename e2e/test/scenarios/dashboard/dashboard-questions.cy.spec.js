@@ -173,7 +173,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true, idAlias: "anotherDashboardId" },
       );
 
-      cy.get("@anotherDashboardId").then(anotherDashboardId => {
+      cy.get("@anotherDashboardId").then((anotherDashboardId) => {
         H.createQuestion(
           {
             name: "Total Orders",
@@ -362,7 +362,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true },
       );
 
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         //Simulate having picked the dashboard in the entity picker previously
         cy.request("POST", "/api/activity/recents", {
           context: "selection",
@@ -502,7 +502,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.findByTestId("public-link-input")
         .invoke("val")
         .should("not.be.empty")
-        .then(publicLink => {
+        .then((publicLink) => {
           cy.signOut();
           cy.visit(publicLink);
           cy.findByTestId("embed-frame-header")
@@ -620,7 +620,7 @@ describe("Dashboard > Dashboard Questions", () => {
       );
 
       // there has to be a card already in the trash from this dashboard for this to reproduce
-      cy.get("@deletedCardId").then(deletedCardId => {
+      cy.get("@deletedCardId").then((deletedCardId) => {
         cy.request("PUT", `/api/card/${deletedCardId}`, { archived: true });
       });
 
@@ -650,7 +650,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true, idAlias: "dashboardWithTitleId" },
       );
 
-      cy.get("@dashboardWithTitleId").then(dashboardId => {
+      cy.get("@dashboardWithTitleId").then((dashboardId) => {
         // add a text card to the dashboard
         H.visitDashboard(dashboardId);
         H.editDashboard();
@@ -828,7 +828,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true, idAlias: "purpleDashboardId" },
       );
 
-      cy.get("@blueDashboardId").then(blueDashboardId => {
+      cy.get("@blueDashboardId").then((blueDashboardId) => {
         H.visitDashboard(blueDashboardId);
       });
 
@@ -840,7 +840,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.sidebar().findByText("Average Quantity by Month Question").click();
       H.saveDashboard();
 
-      cy.get("@purpleDashboardId").then(purpleDashboardId => {
+      cy.get("@purpleDashboardId").then((purpleDashboardId) => {
         H.visitDashboard(purpleDashboardId);
       });
 
@@ -873,8 +873,8 @@ describe("Dashboard > Dashboard Questions", () => {
       let shouldError = true;
 
       // Simulate an error to ensure that it's passed back and shown in the modal.
-      cy.get("@avgQuanityQuestionId").then(questionId => {
-        cy.intercept("PUT", `**/api/card/${questionId}**`, req => {
+      cy.get("@avgQuanityQuestionId").then((questionId) => {
+        cy.intercept("PUT", `**/api/card/${questionId}**`, (req) => {
           if (shouldError === true) {
             shouldError = false;
             req.reply({
@@ -901,7 +901,7 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Move it").click();
       });
 
-      cy.get("@purpleDashboardId").then(purpleDashboardId => {
+      cy.get("@purpleDashboardId").then((purpleDashboardId) => {
         H.visitDashboard(purpleDashboardId);
       });
 
@@ -1096,7 +1096,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true, idAlias: "personalDashboardId" },
       );
 
-      cy.get("@personalDashboardId").then(personalDashboardId => {
+      cy.get("@personalDashboardId").then((personalDashboardId) => {
         H.visitDashboard(personalDashboardId);
       });
 
@@ -1112,7 +1112,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.signOut();
       cy.signIn("normal");
 
-      cy.get("@totalOrdersQuestionId").then(totalOrdersQuestionId => {
+      cy.get("@totalOrdersQuestionId").then((totalOrdersQuestionId) => {
         H.visitQuestion(totalOrdersQuestionId);
       });
 
@@ -1326,7 +1326,7 @@ function seedMigrationToolData() {
       collection_id: S.FIRST_COLLECTION_ID,
     },
   }).then(({ body: { dashboard_id, card_id } }) => {
-    cy.get("@questionThreeCard").then(questionThreeCard => {
+    cy.get("@questionThreeCard").then((questionThreeCard) => {
       H.updateDashboardCards({
         dashboard_id,
         cards: [
@@ -1348,7 +1348,7 @@ function seedMigrationToolData() {
       collection_id: S.FIRST_COLLECTION_ID,
     },
   }).then(({ body: { dashboard_id, card_id } }) => {
-    cy.get("@questionThreeCard").then(questionThreeCard => {
+    cy.get("@questionThreeCard").then((questionThreeCard) => {
       H.updateDashboardCards({
         dashboard_id,
         cards: [

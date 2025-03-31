@@ -9,7 +9,7 @@ describe("ChartSettingFieldsPartition", () => {
     render(
       <ChartSettingFieldsPartition
         partitions={[
-          { name: "rows", title: "Rows", columnFilter: x => Boolean(x) },
+          { name: "rows", title: "Rows", columnFilter: (x) => Boolean(x) },
         ]}
         columns={[createMockColumn()]}
       />,
@@ -22,7 +22,7 @@ describe("ChartSettingFieldsPartition", () => {
     render(
       <ChartSettingFieldsPartition
         partitions={[
-          { name: "rows", title: "Rows", columnFilter: x => Boolean(x) },
+          { name: "rows", title: "Rows", columnFilter: (x) => Boolean(x) },
         ]}
         columns={[
           createMockColumn({
@@ -30,7 +30,7 @@ describe("ChartSettingFieldsPartition", () => {
             display_name: fieldName,
           }),
         ]}
-        getColumnTitle={column => column.display_name}
+        getColumnTitle={(column) => column.display_name}
         value={{ rows: [fieldName] }}
       />,
     );

@@ -122,7 +122,7 @@ const AttributePicker = ({
       }
       disabled={attributesOptions.length === 0}
     >
-      {attributesOptions.map(attributesOption => (
+      {attributesOptions.map((attributesOption) => (
         <Option key={attributesOption} value={attributesOption}>
           {attributesOption}
         </Option>

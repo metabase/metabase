@@ -42,7 +42,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
   const Y = ["dimension", "Y"];
 
   describe("for filters", () => {
-    const filter = e => collect(e, "boolean");
+    const filter = (e) => collect(e, "boolean");
 
     it("should resolve segments correctly", () => {
       expect(filter(A).segments).toEqual(["A"]);
@@ -119,7 +119,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
   });
 
   describe("for expressions (for custom columns)", () => {
-    const expr = e => collect(e, "expression");
+    const expr = (e) => collect(e, "expression");
 
     it("should resolve segments correctly", () => {
       expect(expr(["trim", A]).segments).toEqual([]);
@@ -173,7 +173,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
 
       it.each(["in", "not-in"])(
         "should reject multi-arg function calls without options when there is not enough arguments",
-        tag => {
+        (tag) => {
           expect(() => expr([tag])).toThrow();
           expect(() => expr([tag, A])).toThrow();
           expect(() => expr([tag, A, B])).not.toThrow();
@@ -183,7 +183,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
 
       it.each(["contains", "does-not-contain", "starts-with", "ends-with"])(
         "should reject multi-arg function calls with options when there is not enough arguments",
-        tag => {
+        (tag) => {
           const options = { "case-sensitive": true };
           expect(() => expr([tag])).toThrow();
           expect(() => expr([tag, A])).toThrow();
@@ -259,7 +259,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
   });
 
   describe("for aggregations", () => {
-    const aggregation = e => collect(e, "aggregation");
+    const aggregation = (e) => collect(e, "aggregation");
 
     it("should resolve dimensions correctly", () => {
       expect(aggregation(A).dimensions).toEqual([]);
@@ -293,7 +293,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
   });
 
   describe("for CASE expressions", () => {
-    const expr = e => collect(e, "expression");
+    const expr = (e) => collect(e, "expression");
 
     it("should handle CASE with two arguments", () => {
       // CASE(A,B)

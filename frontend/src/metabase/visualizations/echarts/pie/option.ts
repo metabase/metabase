@@ -193,7 +193,7 @@ function getSeriesDataFromSlices(
       return [];
     }
 
-    return slices.map(s => {
+    return slices.map((s) => {
       const ringRadiuses = calcInnerOuterRadiusesForRing(
         innerRadius,
         outerRadius,
@@ -284,7 +284,7 @@ function getSeriesDataFromSlices(
   }
 
   return getSeriesData(
-    getArrayFromMapValues(chartModel.sliceTree).filter(s => s.visible),
+    getArrayFromMapValues(chartModel.sliceTree).filter((s) => s.visible),
   );
 }
 

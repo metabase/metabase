@@ -40,7 +40,7 @@ describe("utils", () => {
   describe("openInNewTab", () => {
     it.each(["", "/", "/baz"])(
       "should open the provided link in a new tab",
-      url => {
+      (url) => {
         openInNewTab(url);
 
         expect(mockWindowOpen).toHaveBeenCalledTimes(1);

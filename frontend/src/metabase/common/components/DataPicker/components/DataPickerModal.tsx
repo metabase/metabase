@@ -123,7 +123,7 @@ export const DataPickerModal = ({
     (recentItems: RecentItem[]) => {
       if (databaseId) {
         return recentItems.filter(
-          item => getRecentItemDatabaseId(item) === databaseId,
+          (item) => getRecentItemDatabaseId(item) === databaseId,
         );
       }
 
@@ -263,7 +263,7 @@ const FilterButton = ({
       </Popover.Target>
       <Popover.Dropdown>
         <Checkbox.Group value={value} onChange={onChange} px="1rem" py="0.5rem">
-          {options.map(option => (
+          {options.map((option) => (
             <Checkbox
               key={`filter-${option.value}`}
               label={option.label}

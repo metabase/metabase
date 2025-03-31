@@ -12,7 +12,7 @@ export const FullscreenToggle = ({
     <ToolbarButton
       tooltipLabel={label}
       icon={isFullscreen ? "contract" : "expand"}
-      onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
+      onClick={(e) => onFullscreenChange(!isFullscreen, !e.altKey)}
       aria-label={label}
     />
   );

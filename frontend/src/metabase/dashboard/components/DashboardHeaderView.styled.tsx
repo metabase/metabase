@@ -25,7 +25,7 @@ export const HeaderFixedWidthContainer = styled(
   justify-items: apart;
 
   ${breakpointMaxMedium} {
-    ${props =>
+    ${(props) =>
       props.isNavBarOpen &&
       css`
         flex-direction: column;
@@ -43,7 +43,7 @@ export const HeaderContainer = styled.div<{
   offsetSidebar: boolean;
   isFixedWidth: boolean;
 }>`
-  ${props =>
+  ${(props) =>
     props.isFixedWidth &&
     props.offsetSidebar &&
     css`
@@ -112,10 +112,10 @@ export const HeaderContent = styled.div<HeaderContentProps>`
   padding-bottom: 0.75rem;
 
   ${HeaderCaptionContainer} {
-    top: ${props => (props.showSubHeader ? "0px" : "10px")};
+    top: ${(props) => (props.showSubHeader ? "0px" : "10px")};
   }
   ${HeaderLastEditInfoLabel} {
-    opacity: ${props => (props.showSubHeader ? "1x" : "0")};
+    opacity: ${(props) => (props.showSubHeader ? "1x" : "0")};
   }
 
   ${({ hasSubHeader }) =>
@@ -156,7 +156,7 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
   }
 
   ${breakpointMaxMedium} {
-    ${props =>
+    ${(props) =>
       props.isNavBarOpen &&
       css`
         width: 100%;
@@ -180,7 +180,7 @@ export const HeaderButtonSection = styled.div<TypeForItemsThatRespondToNavBarOpe
   gap: 0.5rem;
 
   ${breakpointMaxMedium} {
-    ${props =>
+    ${(props) =>
       props.isNavBarOpen &&
       css`
         width: 100%;

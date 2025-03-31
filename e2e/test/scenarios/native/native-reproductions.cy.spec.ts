@@ -195,7 +195,7 @@ describe("issue 53194", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    Object.values(REVIEWS).forEach(fieldId => {
+    Object.values(REVIEWS).forEach((fieldId) => {
       cy.request("PUT", `/api/field/${fieldId}`, {
         visibility_type: "sensitive",
       });
@@ -275,6 +275,6 @@ describe("issue 52806", () => {
     H.visitQuestionAdhoc(questionDetails);
     cy.findByTestId("main-logo-link").click();
     H.modal().button("Discard changes").click();
-    cy.location().should(location => expect(location.search).to.eq(""));
+    cy.location().should((location) => expect(location.search).to.eq(""));
   });
 });
