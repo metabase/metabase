@@ -290,7 +290,7 @@
             (testing "POST /api/dataset/native"
               (is (=? {:query  validate-native-form
                        :params nil}
-                      (-> (mt/user-http-request :crowberto :post 200 "dataset/native" card-query)
+                      (-> (mt/user-http-request :crowberto :post 200 "dataset/native" {:query card-query})
                           (update :query #(str/split-lines (or (driver/prettify-native-form :h2 %)
                                                                "error: no query generated")))))))
             (testing "POST /api/dataset"
@@ -395,8 +395,8 @@
                            "LIMIT 1048575")
               :params nil}
              (mt/user-http-request :crowberto :post 200 "dataset/native"
-                                   (assoc (mt/mbql-query venues {:fields [$id $name]})
-                                          :pretty false)))))))
+                                   {:query  (mt/mbql-query venues {:fields [$id $name]})
+                                    :pretty false}))))))
 
 (deftest ^:parallel compile-test-2
   (testing "POST /api/dataset/native"
@@ -412,10 +412,10 @@
                          "  1048575"]
                 :params nil}
                (-> (mt/user-http-request :crowberto :post 200 "dataset/native"
-                                         (assoc (mt/mbql-query checkins
-                                                  {:fields [$id]
-                                                   :filter [:= $date "2015-11-13"]})
-                                                :pretty false))
+                                         {:query  (mt/mbql-query checkins
+                                                    {:fields [$id]
+                                                     :filter [:= $date "2015-11-13"]})
+                                          :pretty false})
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
 (deftest compile-test-3
@@ -431,8 +431,8 @@
                          [:permissions-error? [:= true]]
                          [:message            [:= "You do not have permissions to run this query."]]]
                         (mt/user-http-request :rasta :post "dataset/native"
-                                              (mt/mbql-query venues
-                                                {:fields [$id $name]}))))))))))
+                                              {:query (mt/mbql-query venues
+                                                        {:fields [$id $name]})})))))))))
 
 (deftest ^:parallel compile-test-4
   (testing "POST /api/dataset/native"
@@ -448,9 +448,8 @@
                              "  1048575")
                 :params nil}
                (mt/user-http-request :crowberto :post 200 "dataset/native"
-                                     (assoc
-                                      (mt/mbql-query venues {:fields [$id $name]})
-                                      :pretty true))))))))
+                                     {:query  (mt/mbql-query venues {:fields [$id $name]})
+                                      :pretty true})))))))
 
 (deftest ^:parallel compile-test-5
   (testing "POST /api/dataset/native"
@@ -465,7 +464,7 @@
                              "  1048575")
                 :params nil}
                (mt/user-http-request :crowberto :post 200 "dataset/native"
-                                     (mt/mbql-query venues {:fields [$id $name]}))))))))
+                                     {:query (mt/mbql-query venues {:fields [$id $name]})})))))))
 
 (deftest ^:parallel compile-test-6
   (testing "POST /api/dataset/native"
@@ -480,10 +479,10 @@
                    "default" "b"}}
                  (-> (mt/user-http-request
                       :crowberto :post 200 "dataset/native"
-                      (mt/mbql-query venues
-                        {:expressions
-                         {:E [:case [[[:= [:get-day [:now]] [:get-day [:now]]] "a"]]
-                              {:default "b"}]}}))
+                      {:query (mt/mbql-query venues
+                                {:expressions
+                                 {:E [:case [[[:= [:get-day [:now]] [:get-day [:now]]] "a"]]
+                                      {:default "b"}]}})})
                      :query json/decode first (get-in ["$project" "E"])))))))))
 
 (deftest report-timezone-test
@@ -744,7 +743,7 @@
                   "LIMIT"
                   "  2"],
                  :params nil}
-                (-> (mt/user-http-request :crowberto :post 200 "dataset/native" query)
+                (-> (mt/user-http-request :crowberto :post 200 "dataset/native" {:query query})
                     (update :query (fn [s]
                                      (some->> s
                                               (driver/prettify-native-form :h2)

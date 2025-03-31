@@ -184,9 +184,11 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map
-                                           [:database ms/PositiveInt]
-                                           [:pretty   {:default true} [:maybe :boolean]]]]
+   {{:keys [database] :as query} :query
+    pretty                       :pretty} :- [:map
+                                              [:query [:map
+                                                       [:database ms/PositiveInt]]]
+                                              [:pretty {:default true} :boolean]]]
   (model-persistence/with-persisted-substituion-disabled
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)

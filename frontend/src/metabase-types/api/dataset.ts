@@ -137,6 +137,11 @@ export interface ErrorEmbedDataset {
   status: string;
 }
 
+export interface NativeDatasetRequest {
+  query: DatasetQuery;
+  pretty?: boolean;
+}
+
 export interface NativeDatasetResponse {
   query: string;
   // some engines, e.g. mongo, require a "collection", which is the name of the source table

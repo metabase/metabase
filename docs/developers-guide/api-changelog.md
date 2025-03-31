@@ -6,7 +6,7 @@ title: API changelog
 
 ## Metabase 0.55.0
 
-- `POST /api/dataset` and `POST /api/dataset/pivot` require the query to be passed via the new `query` key.
+- `POST /api/dataset`, `POST /api/dataset/native`, `POST /api/dataset/pivot` require the query to be passed via the new `query` key.
 
 ## Metabase 0.54.0
 
