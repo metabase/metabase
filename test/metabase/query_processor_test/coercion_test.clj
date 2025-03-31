@@ -11,7 +11,7 @@
 
 (deftest string-to-number-coercion-test
   (mt/test-drivers
-    (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+    (mt/normal-drivers)
     (mt/dataset
       string-nums-db
       (doseq [[human-col col res] [["integer" :int_col   10.0]
