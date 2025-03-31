@@ -3,7 +3,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [i18n.common :as i18n]
-   [metabuild-common.core :as u])
+   [metabuild-common.core :as u]
+   [metabuild.core.env :as env])
   (:import
    (java.io FileOutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
@@ -80,9 +81,11 @@
 (defn create-artifact-for-locale!
   "Create an artifact with translated strings for `locale` for backend (Clojure) usage."
   [locale]
-  (let [target-file (target-filename locale)]
-    (u/step (format "Create backend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
-      (u/create-directory-unless-exists! target-directory)
-      (u/delete-file-if-exists! target-file)
-      (write-edn-file! (i18n/po-contents locale) target-file)
-      (u/assert-file-exists target-file))))
+  (let [target-file (target-filename locale)
+        ci? (env/env :ci)]
+    (when-not ci?
+      (u/step (format "Create backend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))))
+    (u/create-directory-unless-exists! target-directory)
+    (u/delete-file-if-exists! target-file)
+    (write-edn-file! (i18n/po-contents locale) target-file)
+    (u/assert-file-exists target-file)))

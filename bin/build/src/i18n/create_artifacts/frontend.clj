@@ -5,7 +5,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [i18n.common :as i18n]
-   [metabuild-common.core :as u])
+   [metabuild-common.core :as u]
+   [metabuild-common.env :as env])
   (:import
    (java.io FileOutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
@@ -57,12 +58,14 @@
 (defn create-artifact-for-locale!
   "Create an artifact with translated strings for `locale` for frontend (JS) usage."
   [locale]
-  (let [target-file (target-filename locale)]
-    (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
-      (u/create-directory-unless-exists! target-directory)
-      (u/delete-file-if-exists! target-file)
-      (u/step "Write JSON"
-        (with-open [os (FileOutputStream. (io/file target-file))
-                    w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
-          (json/generate-stream (i18n-map locale) w)))
-      (u/assert-file-exists target-file))))
+  (let [target-file (target-filename locale)
+        ci? (env/env :ci)]
+    (when-not ci?
+      (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))))
+    (u/create-directory-unless-exists! target-directory)
+    (u/delete-file-if-exists! target-file)
+    (u/step "Write JSON"
+      (with-open [os (FileOutputStream. (io/file target-file))
+                  w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
+        (json/generate-stream (i18n-map locale) w)))
+    (u/assert-file-exists target-file)))
