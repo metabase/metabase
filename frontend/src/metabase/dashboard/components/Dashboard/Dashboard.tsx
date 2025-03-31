@@ -30,6 +30,17 @@ import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
+import {
+  Description,
+  ExportAsPdfButton,
+  FullscreenToggle,
+  Grid,
+  NightModeToggleButton,
+  ParameterList,
+  RefreshWidget,
+  Tabs,
+  Title,
+} from "./components";
 
 function Dashboard() {
   const {
@@ -432,10 +443,14 @@ function Dashboard() {
   );
 }
 
-export function isCancelledFetchDashboardResult(
-  result: FetchDashboardResult,
-): result is CancelledFetchDashboardResult {
-  return isObject(result.payload) && Boolean(result.payload.isCancelled);
-}
+Dashboard.Tabs = Tabs;
+Dashboard.Title = Title;
+Dashboard.Description = Description;
+Dashboard.ParameterList = ParameterList;
+Dashboard.Grid = Grid;
+Dashboard.FullscreenToggle = FullscreenToggle;
+Dashboard.NightModeToggle = NightModeToggleButton;
+Dashboard.ExportAsPdfButton = ExportAsPdfButton;
+Dashboard.RefreshWidget = RefreshWidget;
 
 export { Dashboard };

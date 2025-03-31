@@ -18,10 +18,12 @@ import { ParametersList } from "../../../parameters/components/ParametersList";
 
 interface DashboardParameterListProps {
   isFullscreen: boolean;
+  className?: string;
 }
 
 export function DashboardParameterList({
   isFullscreen,
+  className,
 }: DashboardParameterListProps) {
   const dashboard = useSelector(getDashboardComplete);
   const parameters = useSelector(getValuePopulatedParameters);
@@ -34,6 +36,7 @@ export function DashboardParameterList({
 
   return (
     <ParametersList
+      className={className}
       parameters={parameters}
       editingParameter={editingParameter}
       hideParameters={hiddenParameterSlugs}

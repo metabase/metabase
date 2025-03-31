@@ -40,6 +40,10 @@ export const ExportAsPdfButton = ({
     );
   };
 
+  if (!dashboard) {
+    return null;
+  }
+
   return (
     <Button
       variant="subtle"
@@ -47,6 +51,7 @@ export const ExportAsPdfButton = ({
       leftSection={<Icon name="document" />}
       color={color || "text-dark"}
       onClick={saveAsPDF}
+      {...buttonProps}
     >
       {getExportTabAsPdfButtonText(dashboard?.tabs)}
     </Button>
