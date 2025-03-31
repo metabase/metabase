@@ -102,7 +102,7 @@ What happens to related items when you delete a collection?
 
 | Related item                                   | In Trash | Permanently deleted | Restored |
 | ---------------------------------------------- | -------- | ------------------- | -------- |
-| All items and subcollections in the collection | In Trash | N/A | Restored |
+| All items and subcollections in the collection | In Trash | N/A                 | Restored |
 
 > You can't permanently delete collections
 
