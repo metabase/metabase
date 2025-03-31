@@ -50,8 +50,7 @@ export const NotificationList = ({
           {t`Not seeing one here?`}
         </TextButton>
       </NotificationHeader>
-<<<<<<< HEAD
-      {listItems.map(listItem => {
+      {listItems.map((listItem) => {
         switch (listItem.type) {
           case "pulse":
             return (
@@ -98,29 +97,6 @@ export const NotificationList = ({
             );
         }
       })}
-=======
-      {listItems.map((listItem) =>
-        listItem.type === "pulse" ? (
-          <DashboardNotificationCard
-            key={`${listItem.type}-${listItem.item.id}`}
-            listItem={listItem}
-            user={user}
-            isEditable={canManageSubscriptions}
-            onUnsubscribe={onUnsubscribe}
-            onArchive={onArchive}
-          />
-        ) : (
-          <NotificationCard
-            key={`${listItem.type}-${listItem.item.id}`}
-            listItem={listItem}
-            user={user}
-            isEditable={canManageSubscriptions}
-            onUnsubscribe={onUnsubscribe}
-            onArchive={onArchive}
-          />
-        ),
-      )}
->>>>>>> master
       {children}
     </div>
   );

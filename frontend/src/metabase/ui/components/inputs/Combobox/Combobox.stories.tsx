@@ -69,8 +69,8 @@ function ComboboxTemplate(props: StorybookProps) {
   }, [props.asyncDataFetch]);
 
   const options = data
-    .filter(item => item.toLowerCase().includes(search.toLowerCase().trim()))
-    .map(item => (
+    .filter((item) => item.toLowerCase().includes(search.toLowerCase().trim()))
+    .map((item) => (
       <Combobox.Option value={item} key={item} selected={item === value}>
         {item}
       </Combobox.Option>
@@ -81,7 +81,7 @@ function ComboboxTemplate(props: StorybookProps) {
       size={props.size}
       store={combobox}
       withinPortal={false}
-      onOptionSubmit={val => {
+      onOptionSubmit={(val) => {
         setValue(val);
         combobox.closeDropdown();
       }}
@@ -105,7 +105,7 @@ function ComboboxTemplate(props: StorybookProps) {
           <Combobox.Search
             value={search}
             placeholder="Search..."
-            onChange={event => setSearch(event.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
           />
         )}
         <Combobox.Options>
@@ -132,16 +132,11 @@ export default {
   argTypes,
 };
 
-<<<<<<< HEAD
 export const Default = {
   render: ComboboxTemplate,
   args: {
     size: "md",
   },
-=======
-const Template: StoryFn<ComboboxProps> = (args) => {
-  return <Combobox {...args} />;
->>>>>>> master
 };
 
 export const MinWidth = {

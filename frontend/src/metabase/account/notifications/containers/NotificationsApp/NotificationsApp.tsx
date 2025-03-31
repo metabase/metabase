@@ -48,8 +48,7 @@ const NotificationsAppInner = ({
 
   const items = useMemo(() => {
     const combinedItems: NotificationListItem[] = [
-<<<<<<< HEAD
-      ...configuredNotifications.map(alert => {
+      ...configuredNotifications.map((alert) => {
         if (isTableNotification(alert)) {
           return {
             item: alert,
@@ -61,14 +60,7 @@ const NotificationsAppInner = ({
           type: "question-notification" as const,
         };
       }),
-      ...pulses.map(pulse => ({
-=======
-      ...questionNotifications.map((alert) => ({
-        item: alert,
-        type: "question-notification" as const,
-      })),
       ...pulses.map((pulse) => ({
->>>>>>> master
         item: pulse,
         type: "pulse" as const,
       })),
