@@ -80,7 +80,7 @@
 (defn is-cleanable?
   "Returns true if x implements the Cleanable protocol"
   [x]
-  (instance? Cleanable x))
+  (satisfies? Cleanable x))
 
 (defn to-temp-file!
   "Write data to a temporary file. Returns a TempFileStorage type that:
