@@ -22,11 +22,11 @@ After connecting to a database, you'll see the "Connection and sync" section tha
 
 Here you can [sync the database schema and rescan field values](../sync-scan.md), and edit connection details.
 
-### Edit connection details
+## Edit connection details
 
 You can edit these settings at any time. Just remember to save your changes.
 
-#### Display name
+### Display name
 
 The display name for the database in the Metabase interface.
 
@@ -139,8 +139,6 @@ Note: if you're using GCP and you managed to issue client certificates, everythi
 ### Use an SSH tunnel
 
 See our [guide to SSH tunneling](../ssh-tunnel.md).
-
-## Advanced settings
 
 ### Unfold JSON Columns
 
