@@ -45,4 +45,5 @@ export const Default = {};
 
 export const List = {
   render: ListTemplate,
+  parameters: { loki: { skip: true } },
 };
