@@ -79,7 +79,7 @@ export default function App() {
 | `targetCollection`      | number \| "root" \| "personal"                                       | (optional) The collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.                                                                                                                                                             |
 | `initialSqlParameters`  | `Record<string, string \| string[]>`                                 | (optional) A mapping of [SQL parameters names](../../questions/native-editor/sql-parameters.md) to parameter values, such as `{ product_id: "42" }`.                                                                                                                                                               |
 
-## Passing SQL parameters to questions
+## Pass SQL parameters to SQL questions with `initialSqlParameters`
 
 You can pass parameter values to questions defined with SQL via the `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
 
@@ -88,6 +88,8 @@ You can pass parameter values to questions defined with SQL via the `initialSqlP
 <StaticQuestion questionId={questionId} initialSqlParameters={{ product_id: 50 }} />
 {% endraw %}
 ```
+
+`initialSqlParameters` can't be used with questions built using the query builder.
 
 ## Customizing interactive questions
 
