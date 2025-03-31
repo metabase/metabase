@@ -51,10 +51,10 @@ export function compileExpression({
     const expression = applyPasses(compiled, [
       adjustOptions,
       adjustOffset,
-      adjustCaseOrIf,
       adjustMultiArgOptions,
       adjustBigIntLiteral,
       adjustTopLevelLiteral,
+      adjustCaseOrIf,
       shouldResolve &&
         resolverPass({
           database,
