@@ -63,7 +63,6 @@ describe("HelpText (OSS)", () => {
     );
 
     helpText?.args?.forEach(({ name, description }) => {
-      // const expectedName = name === "…" ? "…" : name;
       expect(
         within(argumentsBlock).getByTestId(`arg-${name}-name`),
       ).toHaveTextContent(name);
