@@ -130,7 +130,7 @@ export const addSectionToDashboard =
 
     const sectionDashcards = sectionLayout
       .getLayout(position)
-      .map(dashcardOverrides =>
+      .map((dashcardOverrides) =>
         createDashCard({
           dashboard_id: dashId,
           dashboard_tab_id: tabId ?? null,
@@ -291,7 +291,7 @@ export const removeCardFromDashboard = createThunkAction(
     dashcardId: DashCardId;
     cardId: DashboardCard["card_id"];
   }) =>
-    dispatch => {
+    (dispatch) => {
       dispatch(closeAddCardAutoWireToasts());
 
       dispatch(cancelFetchCardData(cardId, dashcardId));
@@ -323,7 +323,7 @@ export const trashDashboardQuestion = createThunkAction(
     dashcardId: DashCardId;
     cardId: DashboardCard["card_id"];
   }) =>
-    async dispatch => {
+    async (dispatch) => {
       await dispatch(
         Questions.actions.setArchived({ id: cardId }, true, {
           notify: {
@@ -346,7 +346,7 @@ const undoTrashDashboardQuestion = createThunkAction(
     dashcardId: DashCardId;
     cardId: DashboardCard["card_id"];
   }) =>
-    async dispatch => {
+    async (dispatch) => {
       await dispatch(
         Questions.actions.setArchived({ id: cardId }, false, {
           notify: {

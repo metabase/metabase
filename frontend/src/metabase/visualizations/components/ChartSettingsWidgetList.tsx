@@ -15,10 +15,10 @@ const ChartSettingsWidgetList = ({
   widgets,
   extraWidgetProps,
 }: ChartSettingsWidgetListProps) => {
-  const widgetsAreGrouped = widgets.some(widget => widget.group);
+  const widgetsAreGrouped = widgets.some((widget) => widget.group);
 
   if (!widgetsAreGrouped) {
-    return widgets.map(widget => (
+    return widgets.map((widget) => (
       <ChartSettingsWidget key={widget.id} {...widget} {...extraWidgetProps} />
     ));
   } else {
@@ -41,7 +41,7 @@ const ChartSettingsWidgetList = ({
             </ChartSettingsWidgetListHeader>
           )}
           <div>
-            {_.sortBy(groupedWidgets[group], "index").map(widget => (
+            {_.sortBy(groupedWidgets[group], "index").map((widget) => (
               <ChartSettingsWidget
                 key={widget.id}
                 {...widget}

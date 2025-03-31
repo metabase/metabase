@@ -91,7 +91,7 @@ describe("visualization.lib.timeseries", () => {
     TEST_CASES.map(([expectedUnit, expectedCount, data]) => {
       it(`should return ${expectedCount} ${expectedUnit}`, () => {
         const { unit, count } = computeTimeseriesDataInverval(
-          data.map(d => new Date(d)),
+          data.map((d) => new Date(d)),
         );
         expect(unit).toBe(expectedUnit);
         expect(count).toBe(expectedCount);
@@ -100,7 +100,7 @@ describe("visualization.lib.timeseries", () => {
 
     const units = ["minute", "hour", "day", "week", "month", "year"];
 
-    units.forEach(testUnit => {
+    units.forEach((testUnit) => {
       it(`should return one ${testUnit} when ${testUnit} interval is set`, () => {
         const { unit, count } = computeTimeseriesDataInverval(
           [

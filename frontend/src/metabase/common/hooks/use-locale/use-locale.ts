@@ -11,7 +11,9 @@ import { getSetting } from "metabase/selectors/settings";
  * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare#locales
  * */
 export const useLocale = () => {
-  const instanceLocale = useSelector(state => getSetting(state, "site-locale"));
+  const instanceLocale = useSelector((state) =>
+    getSetting(state, "site-locale"),
+  );
   const userLocale: string | undefined =
     useSelector(getCurrentUser)?.locale || undefined;
   return userLocale || instanceLocale;

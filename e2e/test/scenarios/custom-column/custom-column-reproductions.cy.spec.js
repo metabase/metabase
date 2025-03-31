@@ -502,7 +502,7 @@ describe("issue 19745", () => {
   function updateQuestion() {
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
@@ -679,7 +679,7 @@ describe("issue 23862", () => {
           display: "table",
         },
         {
-          callback: xhr => expect(xhr.response.body.error).not.to.exist,
+          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
         },
       );
     });
@@ -800,7 +800,7 @@ describe.skip("issue 25189", () => {
   });
 });
 
-["postgres" /*, "mysql" */].forEach(dialect => {
+["postgres" /*, "mysql" */].forEach((dialect) => {
   describe(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
     const tableName = "colors27745";
 
@@ -1359,7 +1359,7 @@ describe("issue 53527", () => {
     },
   };
 
-  const mbqlQuestionDetails = cardId => ({
+  const mbqlQuestionDetails = (cardId) => ({
     name: "Quotes MBQL",
     query: {
       "source-table": `card__${cardId}`,
@@ -1436,7 +1436,7 @@ describe("issue 54638", () => {
       cy.findByText("Learn more")
         .scrollIntoView()
         .should("be.visible")
-        .then($a => {
+        .then(($a) => {
           expect($a).to.have.attr("target", "_blank");
           // Update attr to open in same tab, since Cypress does not support
           // testing in multiple tabs.
@@ -1509,7 +1509,25 @@ describe("issue #55686", () => {
     H.addCustomColumn();
     H.CustomExpressionEditor.type("not");
 
-    H.CustomExpressionEditor.completion("notnull").should("be.visible");
-    H.CustomExpressionEditor.completion("notempty").should("be.visible");
+    H.CustomExpressionEditor.completion("notNull").should("be.visible");
+    H.CustomExpressionEditor.completion("notEmpty").should("be.visible");
+  });
+});
+
+describe("issue #55940", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should show the correct example for Offset (metabase#55940)", () => {
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+
+    H.CustomExpressionEditor.type("Offset(");
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "Offset(Sum([Total]), -1)");
   });
 });

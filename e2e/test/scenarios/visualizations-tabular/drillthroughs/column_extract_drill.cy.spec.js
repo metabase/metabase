@@ -329,7 +329,7 @@ H.describeWithSnowplow("extract action", () => {
 
       H.createQuestion(questionDetails).then(({ body: { id: modelId } }) => {
         // set semantic type to URL
-        H.setModelMetadata(modelId, field => {
+        H.setModelMetadata(modelId, (field) => {
           if (field.name === CC_NAME) {
             return { ...field, semantic_type: "type/URL" };
           }
@@ -344,7 +344,7 @@ H.describeWithSnowplow("extract action", () => {
 
       cy.findByTestId("table-scroll-container").scrollTo("right");
 
-      const urlCase = URL_CASES.find(c => c.option === "Path");
+      const urlCase = URL_CASES.find((c) => c.option === "Path");
       extractColumnAndCheck({
         column: CC_NAME,
         option: urlCase.option,

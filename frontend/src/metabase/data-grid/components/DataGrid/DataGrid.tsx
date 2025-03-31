@@ -18,11 +18,14 @@ import {
   HEADER_HEIGHT,
   PINNED_COLUMN_Z_INDEX,
 } from "metabase/data-grid/constants";
+import { isVirtualRow } from "metabase/data-grid/guards";
 import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme";
 import type { DataGridInstance, DataGridTheme } from "metabase/data-grid/types";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { Box } from "metabase/ui";
+
+import { Footer } from "../Footer/Footer";
 
 import S from "./DataGrid.module.css";
 
@@ -36,7 +39,8 @@ export type DataGridStylesNames =
   | "headerContainer"
   | "headerCell"
   | "bodyContainer"
-  | "bodyCell";
+  | "bodyCell"
+  | "footer";
 
 export type DataGridStylesProps = {
   classNames?: { [key in DataGridStylesNames]?: string };
@@ -47,7 +51,8 @@ export interface DataGridProps<TData>
   extends DataGridInstance<TData>,
     DataGridStylesProps {
   emptyState?: React.ReactNode;
-  isSortingDisabled?: boolean;
+  showRowsCount?: boolean;
+  isColumnReorderingDisabled?: boolean;
   theme?: DataGridTheme;
 }
 
@@ -62,15 +67,18 @@ export const DataGrid = function DataGrid<TData>({
   theme,
   classNames,
   styles,
-  isSortingDisabled,
+  enablePagination,
+  showRowsCount,
+  getTotalHeight,
+  getVisibleRows,
+  isColumnReorderingDisabled,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
-  onScroll,
+  onWheel,
 }: DataGridProps<TData>) {
   const {
     virtualColumns,
-    virtualRows,
     virtualPaddingLeft,
     virtualPaddingRight,
     rowVirtualizer,
@@ -104,8 +112,7 @@ export const DataGrid = function DataGrid<TData>({
     (gridRef.current?.offsetWidth ?? Infinity) - ADD_COLUMN_BUTTON_WIDTH;
 
   const addColumnMarginRight =
-    virtualGrid.rowVirtualizer.getTotalSize() >=
-    (gridRef.current?.offsetHeight ?? Infinity)
+    getTotalHeight() >= (gridRef.current?.offsetHeight ?? Infinity)
       ? getScrollBarSize()
       : 0;
 
@@ -161,7 +168,7 @@ export const DataGrid = function DataGrid<TData>({
                   : 0,
               ...styles?.tableGrid,
             }}
-            onScroll={onScroll}
+            onWheel={onWheel}
           >
             <div
               data-testid="table-header"
@@ -171,7 +178,7 @@ export const DataGrid = function DataGrid<TData>({
                 ...styles?.headerContainer,
               }}
             >
-              {table.getHeaderGroups().map(headerGroup => (
+              {table.getHeaderGroups().map((headerGroup) => (
                 <div
                   key={headerGroup.id}
                   className={cx(S.row, classNames?.row)}
@@ -188,17 +195,14 @@ export const DataGrid = function DataGrid<TData>({
                     items={table.getState().columnOrder}
                     strategy={horizontalListSortingStrategy}
                   >
-                    {virtualColumns.map(virtualColumn => {
+                    {virtualColumns.map((virtualColumn) => {
                       const header = headerGroup.headers[virtualColumn.index];
-
                       const headerCell = flexRender(
                         header.column.columnDef.header,
                         header.getContext(),
                       );
                       const width = header.column.getSize();
-
                       const isPinned = header.column.getIsPinned();
-
                       const style: React.CSSProperties = isPinned
                         ? {
                             width,
@@ -225,7 +229,9 @@ export const DataGrid = function DataGrid<TData>({
                             backgroundColor: stickyElementsBackgroundColor,
                             ...styles?.headerCell,
                           }}
-                          isSortingDisabled={isSortingDisabled}
+                          isColumnReorderingDisabled={
+                            isColumnReorderingDisabled
+                          }
                           header={header}
                           onClick={onHeaderCellClick}
                         >
@@ -260,28 +266,40 @@ export const DataGrid = function DataGrid<TData>({
               style={{
                 display: "grid",
                 position: "relative",
-                height: `${rowVirtualizer.getTotalSize()}px`,
+                height: `${getTotalHeight()}px`,
                 backgroundColor: theme?.cell?.backgroundColor,
                 color: theme?.cell?.textColor,
                 ...styles?.bodyContainer,
               }}
             >
-              {virtualRows.map(virtualRow => {
-                const row = table.getRowModel().rows[virtualRow.index];
+              {getVisibleRows().map((maybeVirtualRow) => {
+                const { row, virtualRow } = isVirtualRow(maybeVirtualRow)
+                  ? maybeVirtualRow
+                  : { row: maybeVirtualRow, virtualRow: undefined };
+
+                const virtualRowStyles: React.CSSProperties =
+                  virtualRow != null
+                    ? {
+                        position: "absolute",
+                        minHeight: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }
+                    : {};
+
+                const dataIndex =
+                  virtualRow != null ? virtualRow.index : row.index;
+
                 return (
                   <div
                     role="row"
                     key={row.id}
                     ref={rowMeasureRef}
                     data-dataset-index={row.index}
-                    data-index={virtualRow.index}
+                    data-index={dataIndex}
                     data-allow-page-break-after="true"
                     className={cx(S.row, classNames?.row)}
                     style={{
-                      position: "absolute",
-                      width: "100%",
-                      minHeight: `${virtualRow.size}px`,
-                      transform: `translateY(${virtualRow.start}px)`,
+                      ...virtualRowStyles,
                       ...styles?.row,
                     }}
                   >
@@ -295,7 +313,7 @@ export const DataGrid = function DataGrid<TData>({
                       />
                     ) : null}
 
-                    {virtualColumns.map(virtualColumn => {
+                    {virtualColumns.map((virtualColumn) => {
                       const cell = row.getVisibleCells()[virtualColumn.index];
                       const isPinned = cell.column.getIsPinned();
                       const width = cell.column.getSize();
@@ -318,20 +336,25 @@ export const DataGrid = function DataGrid<TData>({
                           key={cell.id}
                           data-column-id={cell.column.id}
                           className={cx(S.bodyCell, classNames?.bodyCell)}
+<<<<<<< HEAD
                           onClick={e =>
                             onBodyCellClick?.(e, {
                               rowIndex: cell.row.index,
                               columnId: cell.column.id,
                               cellId: cell.id,
                             })
+=======
+                          onClick={(e) =>
+                            onBodyCellClick?.(e, cell.row.index, cell.column.id)
+>>>>>>> master
                           }
-                          onMouseDown={e =>
+                          onMouseDown={(e) =>
                             selection.handlers.handleCellMouseDown(e, cell)
                           }
-                          onMouseUp={e =>
+                          onMouseUp={(e) =>
                             selection.handlers.handleCellMouseUp(e, cell)
                           }
-                          onMouseOver={e =>
+                          onMouseOver={(e) =>
                             selection.handlers.handleCellMouseOver(e, cell)
                           }
                           style={style}
@@ -358,6 +381,13 @@ export const DataGrid = function DataGrid<TData>({
             </div>
           </div>
           {isAddColumnButtonSticky ? addColumnButton : null}
+          <Footer
+            table={table}
+            enablePagination={enablePagination}
+            showRowsCount={showRowsCount}
+            style={styles?.footer}
+            className={classNames?.footer}
+          />
         </div>
         {measureRoot}
       </DndContext>

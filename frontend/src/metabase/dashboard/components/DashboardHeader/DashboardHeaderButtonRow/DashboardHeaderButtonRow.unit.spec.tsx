@@ -137,7 +137,7 @@ const setup = ({
   });
   const MOCK_STORE_DASHBOARD = createMockStoreDashboard({
     ...MOCK_DASHBOARD,
-    dashcards: MOCK_DASHBOARD.dashcards.map(dc => dc.id),
+    dashcards: MOCK_DASHBOARD.dashcards.map((dc) => dc.id),
     tabs: [],
   });
   const MOCK_DASH_STATE = createMockDashboardState({
@@ -271,7 +271,7 @@ describe("DashboardHeaderButtonRow", () => {
       setup({ isEditing: true, hasModelActionsEnabled: false });
       await expectButtonsToStrictMatchHeader({
         expectedButtons: DASHBOARD_EDITING_ACTIONS.filter(
-          action => action !== DASHBOARD_ACTION.ADD_ACTION_ELEMENT,
+          (action) => action !== DASHBOARD_ACTION.ADD_ACTION_ELEMENT,
         ),
         checkLength: true,
       });
@@ -282,7 +282,7 @@ describe("DashboardHeaderButtonRow", () => {
       const buttons = screen.getAllByTestId("dashboard-header-row-button");
 
       const validActions = DASHBOARD_VIEW_ACTIONS.filter(
-        action => action !== DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
+        (action) => action !== DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
       );
 
       for (const button of buttons) {
@@ -325,7 +325,7 @@ describe("DashboardHeaderButtonRow", () => {
       const buttons = screen.getAllByTestId("dashboard-header-row-button");
 
       const validActions = DASHBOARD_EDITING_ACTIONS.filter(
-        action => action !== DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
+        (action) => action !== DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
       );
 
       for (const button of buttons) {

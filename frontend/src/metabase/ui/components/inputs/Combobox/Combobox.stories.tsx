@@ -132,11 +132,16 @@ export default {
   argTypes,
 };
 
+<<<<<<< HEAD
 export const Default = {
   render: ComboboxTemplate,
   args: {
     size: "md",
   },
+=======
+const Template: StoryFn<ComboboxProps> = (args) => {
+  return <Combobox {...args} />;
+>>>>>>> master
 };
 
 export const MinWidth = {

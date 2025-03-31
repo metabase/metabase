@@ -81,7 +81,7 @@ class TableQuestions extends Component {
               <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
                   {Object.values(entities).map(
-                    entity =>
+                    (entity) =>
                       entity &&
                       entity.id &&
                       entity.name && (

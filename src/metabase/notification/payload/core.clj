@@ -145,13 +145,13 @@
          :payload (payload notification)
          :context (default-context)))
 
-(defmulti should-send-notification?
-  "Determine whether a notification should be sent. Default to true."
+(defmulti skip-reason
+  "Return the reason to skip the notification, or nil if it should be sent."
   {:arglists '([notification-payload])}
   :payload_type)
 
-(defmethod should-send-notification? :default
+(defmethod skip-reason :default
   [notification-payload]
-  (if-let [condition (not-empty (:condition notification-payload))]
-    (notification.condition/evaluate-expression condition notification-payload)
-    true))
+  (when-let [condition (not-empty (:condition notification-payload))]
+    (when-not (notification.condition/evaluate-expression condition notification-payload)
+      :condition-not-met)))

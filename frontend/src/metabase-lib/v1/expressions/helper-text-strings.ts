@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
-import { adjustCaseOrIf } from "./passes";
+import { applyPasses } from "./passes";
 import type { HelpText, HelpTextConfig } from "./types";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
@@ -505,7 +505,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "rtrim",
-    structure: "rtrim",
+    structure: "rTrim",
     category: "string",
     description: () => t`Removes trailing whitespace from a string of text.`,
     args: [
@@ -518,7 +518,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "ltrim",
-    structure: "ltrim",
+    structure: "lTrim",
     category: "string",
     description: () => t`Removes leading whitespace from a string of text.`,
     args: [
@@ -985,7 +985,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "is-null",
-    structure: "isnull",
+    structure: "isNull",
     category: "logical",
     description: () => t`Checks if a column is null`,
     args: [
@@ -999,7 +999,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "not-null",
-    structure: "notnull",
+    structure: "notNull",
     category: "logical",
     description: () => t`Checks if a column is not null`,
     args: [
@@ -1012,7 +1012,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "is-empty",
-    structure: "isempty",
+    structure: "isEmpty",
     category: "string",
     description: () => t`Checks if a column is empty`,
     args: [
@@ -1026,7 +1026,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "not-empty",
-    structure: "notempty",
+    structure: "notEmpty",
     category: "string",
     description: () => t`Checks if a column is not empty`,
     args: [
@@ -1388,7 +1388,7 @@ export const getHelpText = (
   database: Database,
   reportTimezone?: string,
 ): HelpText | undefined => {
-  const helperTextConfig = HELPER_TEXT_STRINGS.find(h => h.name === name);
+  const helperTextConfig = HELPER_TEXT_STRINGS.find((h) => h.name === name);
 
   if (!helperTextConfig) {
     return;
@@ -1417,7 +1417,7 @@ const getHelpExample = ({ name, args = [] }: HelpTextConfig): Expression => {
     }
   }
 
-  return adjustCaseOrIf([name, ...parameters]);
+  return applyPasses([name, ...parameters]);
 };
 
 export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
@@ -1428,5 +1428,5 @@ export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
 
 export const getFunctionByStructure = (structure: string) =>
   HELPER_TEXT_STRINGS.find(
-    h => h.structure.toLowerCase() === structure.toLowerCase(),
+    (h) => h.structure.toLowerCase() === structure.toLowerCase(),
   )?.name;

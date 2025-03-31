@@ -37,7 +37,7 @@ export class RestfulRequest {
   }
 
   // Triggers the request; modelled as a Redux thunk action so wrap this to `dispatch()` call
-  trigger = params => async dispatch => {
+  trigger = (params) => async (dispatch) => {
     dispatch({ type: this.actions.requestStarted });
     try {
       const result = await this.endpoint(params, dispatch);
@@ -48,7 +48,7 @@ export class RestfulRequest {
     }
   };
 
-  reset = () => dispatch => dispatch(this.actions.reset);
+  reset = () => (dispatch) => dispatch(this.actions.reset);
 
   mergeToDictionary = (dict, result) => {
     dict = dict || {};
@@ -60,7 +60,7 @@ export class RestfulRequest {
   };
 
   getReducers = () => ({
-    [this.actions.requestStarted]: state => ({
+    [this.actions.requestStarted]: (state) => ({
       ...state,
       loading: true,
       error: null,
@@ -79,7 +79,7 @@ export class RestfulRequest {
       loading: false,
       error: error,
     }),
-    [this.actions.resetRequest]: state => ({
+    [this.actions.resetRequest]: (state) => ({
       ...state,
       ...this.getDefaultState(),
     }),

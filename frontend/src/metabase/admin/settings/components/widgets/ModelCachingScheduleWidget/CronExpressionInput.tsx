@@ -65,8 +65,8 @@ export function CronExpressionInput({
         type="text"
         labelProps={{ fw: 600 }}
         value={value}
-        onChange={event => handleChange(event.target.value)}
-        onBlur={event => handleBlur(event.target.value)}
+        onChange={(event) => handleChange(event.target.value)}
+        onBlur={(event) => handleBlur(event.target.value)}
         rightSection={<CronFormatTooltip />}
       />
 

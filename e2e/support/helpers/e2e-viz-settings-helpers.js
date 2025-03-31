@@ -7,7 +7,7 @@ export function openSeriesSettings(field, isBreakout = false) {
       .click({ force: true });
   } else {
     cy.findAllByTestId("chart-setting-select")
-      .then($elements => {
+      .then(($elements) => {
         for (const element of $elements) {
           if (element.value === field) {
             return cy.wrap(element);
