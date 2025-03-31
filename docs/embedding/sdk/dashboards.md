@@ -14,9 +14,17 @@ You can embed an interactive, editable, or static dashboard.
 
 You can embed a dashboard using the one of the dashboard components:
 
-- `InteractiveDashboard`
 - `StaticDashboard`
+
+A lightweight dashboard component with no drill-downs or click behaviors. Use this component when you just want to show your data quickly without interaction.
+
+- `InteractiveDashboard`
+
+A dashboard component with drill downs, click behaviors, and the ability to view and click into questions. Use this component when you want to allow users to delve deeper into your data.
+
 - `EditableDashboard`
+
+A dashboard component with the features available in the `InteractiveDashboard` as well as the ability to add and update questions, layout, and content within your dashboard. Use this component when you want to give users the ability to modify your dashboards, such as within an admin panel.
 
 ## Dashboard component props
 
