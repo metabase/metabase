@@ -6,6 +6,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import { getHelpText } from "../helper-text-strings";
 import {
   CALL,
+  END_OF_INPUT,
   FIELD,
   IDENTIFIER,
   OPERATORS,
@@ -109,6 +110,10 @@ export function tokenAtPos(source: string, pos: number): Token | null {
 
   const token = tokens[idx];
   const prevToken = tokens[idx - 1];
+
+  if (token.type === END_OF_INPUT) {
+    return null;
+  }
 
   if (prevToken && prevToken.type === STRING && prevToken.length === 1) {
     // dangling single- or double-quote
