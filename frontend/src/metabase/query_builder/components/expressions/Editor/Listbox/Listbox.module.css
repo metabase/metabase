@@ -27,9 +27,10 @@
 }
 
 .label {
-  white-space: pre;
+  white-space: pre-wrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  overflow-wrap: break-word;
 }
 
 .highlight {
