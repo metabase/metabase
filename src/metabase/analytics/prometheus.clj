@@ -226,7 +226,7 @@
    :stats_seconds {:description  "Time in seconds stats have been collected for" :type :gauge}
    :responses_bytes_total {:description  "Total number of bytes across all responses" :type :counter}})
 
-(defn jetty-stats-collected
+(defn- jetty-stats-collected
   [^StatisticsHandler stats-handler]
   (let [stats (jetty-stats->map stats-handler)
         array (ArrayList. (count stats))]
