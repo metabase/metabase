@@ -3,13 +3,13 @@ import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { Box, Flex, Icon, Tabs, TextInput } from "metabase/ui";
+import { Box, Flex, Icon, TextInput } from "metabase/ui";
 
 import { SearchResultsList } from "./SearchResultsList";
 
 export const DataImporter = () => {
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<string | null>("compare");
+  const [activeTab] = useState<string | null>("explore");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
 
   const handleSearchChange: React.ChangeEventHandler<HTMLInputElement> =
@@ -25,12 +25,6 @@ export const DataImporter = () => {
       }}
     >
       <Box>
-        <Tabs value={activeTab} onChange={setActiveTab}>
-          <Tabs.List grow justify="space-between">
-            <Tabs.Tab value="compare">Compare</Tabs.Tab>
-            <Tabs.Tab value="explore">Explore</Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
         <TextInput
           m="xs"
           variant="filled"

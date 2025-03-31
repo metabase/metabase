@@ -13,3 +13,9 @@
   color: var(--mb-color-text-white);
   background-color: var(--mb-color-brand);
 }
+
+.resultItemActions {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
