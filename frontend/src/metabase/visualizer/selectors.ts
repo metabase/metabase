@@ -38,7 +38,8 @@ const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 
 export const getCards = (state: State) => state.visualizer.cards;
 
-const getRawSettings = (state: State) => getCurrentHistoryItem(state).settings;
+export const getVisualizerRawSettings = (state: State) =>
+  getCurrentHistoryItem(state).settings;
 
 const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
@@ -49,7 +50,7 @@ const getVisualizerColumnValuesMapping = (state: State) =>
 // Public selectors
 
 export function getVisualizationTitle(state: State) {
-  const settings = getRawSettings(state);
+  const settings = getVisualizerRawSettings(state);
   return settings["card.title"] ?? getDefaultVisualizationName();
 }
 
@@ -111,6 +112,18 @@ export const getUsedDataSources = createSelector(
   },
 );
 
+export const getIsMultiseriesCartesianChart = createSelector(
+  [
+    getVisualizationType,
+    getVisualizerColumnValuesMapping,
+    getVisualizerRawSettings,
+  ],
+  (display, columnValuesMapping, settings) =>
+    display &&
+    isCartesianChart(display) &&
+    shouldSplitVisualizerSeries(columnValuesMapping, settings),
+);
+
 const getVisualizerDatasetData = createSelector(
   [
     getUsedDataSources,
@@ -136,10 +149,17 @@ export const getVisualizerRawSeries = createSelector(
   [
     getVisualizationType,
     getVisualizerColumnValuesMapping,
-    getRawSettings,
+    getVisualizerRawSettings,
     getVisualizerDatasetData,
+    getIsMultiseriesCartesianChart,
   ],
-  (display, columnValuesMapping, settings, data): RawSeries => {
+  (
+    display,
+    columnValuesMapping,
+    settings,
+    data,
+    isMultiseriesCartesianChart,
+  ): RawSeries => {
     if (!display) {
       return [];
     }
@@ -158,10 +178,7 @@ export const getVisualizerRawSeries = createSelector(
       } as SingleSeries,
     ];
 
-    if (
-      isCartesianChart(display) &&
-      shouldSplitVisualizerSeries(columnValuesMapping, settings)
-    ) {
+    if (isMultiseriesCartesianChart) {
       return splitVisualizerSeries(series, columnValuesMapping);
     }
 
