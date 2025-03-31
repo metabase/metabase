@@ -6,7 +6,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
-import ListSearchField from "metabase/components/ListSearchField";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
@@ -25,7 +24,6 @@ import {
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
-import DataSelectorS from "./DataSelector.module.css";
 import DataBucketPicker from "./DataSelectorDataBucketPicker";
 import DatabasePicker from "./DataSelectorDatabasePicker";
 import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
@@ -39,11 +37,8 @@ import {
   Trigger,
 } from "./TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "./constants";
-import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
 import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
 import { getDataTypes } from "./utils";
-
-const MIN_SEARCH_LENGTH = 2;
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
 const DATA_BUCKET_STEP = "BUCKET";
@@ -130,7 +125,6 @@ export class UnconnectedDataSelector extends Component {
       selectedSchemaId: props.selectedSchemaId,
       selectedTableId: props.selectedTableId,
       selectedFieldId: props.selectedFieldId,
-      searchText: "",
       isSavedEntityPickerShown: false,
       savedEntityType: null,
       isPopoverOpen: props.isInitiallyOpen && !props.readOnly,
@@ -161,7 +155,6 @@ export class UnconnectedDataSelector extends Component {
     useOnlyAvailableSchema: PropTypes.bool,
     isInitiallyOpen: PropTypes.bool,
     tableFilter: PropTypes.func,
-    hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
     canSelectModel: PropTypes.bool,
@@ -194,7 +187,6 @@ export class UnconnectedDataSelector extends Component {
     useOnlyAvailableSchema: true,
     hideSingleSchema: true,
     hideSingleDatabase: false,
-    hasTableSearch: false,
     canChangeDatabase: true,
     hasTriggerExpandControl: true,
     isPopover: true,
@@ -442,15 +434,12 @@ export class UnconnectedDataSelector extends Component {
   }
 
   isSearchLoading = () => {
-    const { models, metrics, allLoading, allFetched } = this.props;
+    const { models, metrics, allFetched } = this.props;
+    const areModelsAndMetricsLoaded = models != null && metrics != null;
 
-    if (this.showTableSearch()) {
-      // If search is enabled, use allLoading to get the state of the most-recent API call
-      return models == null || metrics == null || !allLoading;
-    }
-
-    // If search is disabled, use allFetched to prevent showing loading state when things are just being reloaded
-    return models == null || metrics == null || !allFetched;
+    // If search is disabled, we don't want to show loading state when things are just being reloaded,
+    // so we use allFetched instead of allLoading.
+    return !areModelsAndMetricsLoaded || !allFetched;
   };
 
   getCardType() {
@@ -910,7 +899,7 @@ export class UnconnectedDataSelector extends Component {
       hasNextStep,
       onBack: hasPreviousStep ? this.previousStep : null,
       hasFiltering: true,
-      hasInitialFocus: !this.showTableSearch(),
+      hasInitialFocus: true,
     };
 
     switch (this.state.activeStep) {
@@ -962,38 +951,8 @@ export class UnconnectedDataSelector extends Component {
     this.handleClose();
   };
 
-  showTableSearch = () => {
-    const { hasTableSearch, steps } = this.props;
-    const { activeStep } = this.state;
-    const hasTableStep = steps.includes(TABLE_STEP);
-    const isAllowedToShowOnActiveStep = [
-      DATA_BUCKET_STEP,
-      SCHEMA_STEP,
-      DATABASE_STEP,
-    ].includes(activeStep);
-
-    return hasTableSearch && hasTableStep && isAllowedToShowOnActiveStep;
-  };
-
-  handleSearchTextChange = (searchText) =>
-    this.setState({
-      searchText,
-    });
-
-  handleSearchItemSelect = async (item) => {
-    const tableOrCardId = getSearchItemTableOrCardId(item);
-    await this.props.fetchFields(tableOrCardId);
-    if (this.props.setSourceTableFn) {
-      const table = this.props.metadata.table(tableOrCardId);
-      this.props.setSourceTableFn(table.id, table.db_id);
-    }
-    this.togglePopoverOpen();
-    this.handleClose();
-  };
-
   handleClose = () => {
     const { onClose } = this.props;
-    this.setState({ searchText: "" });
     if (typeof onClose === "function") {
       onClose();
     }
@@ -1006,62 +965,18 @@ export class UnconnectedDataSelector extends Component {
     });
   };
 
-  getSearchInputPlaceholder = () => {
-    const { activeStep, selectedDataBucketId, isSavedEntityPickerShown } =
-      this.state;
-    if (activeStep === DATA_BUCKET_STEP) {
-      return t`Search for some data…`;
-    }
-    if (selectedDataBucketId === DATA_BUCKET.MODELS) {
-      return t`Search for a model…`;
-    }
-    return isSavedEntityPickerShown
-      ? t`Search for a question…`
-      : t`Search for a table…`;
-  };
-
-  getSearchModels = () => {
-    const { selectedDataBucketId, isSavedEntityPickerShown } = this.state;
-    if (!this.props.hasNestedQueriesEnabled) {
-      return ["table"];
-    }
-    if (!this.hasUsableModelsOrMetrics()) {
-      return isSavedEntityPickerShown ? ["card"] : ["card", "table"];
-    }
-    if (!selectedDataBucketId) {
-      return [
-        "dataset",
-        "table",
-        ...(this.props.canSelectMetric ? ["metric"] : []),
-        ...(this.props.canSelectSavedQuestion ? ["card"] : []),
-      ];
-    }
-    return {
-      [DATA_BUCKET.MODELS]: ["dataset"],
-      [DATA_BUCKET.RAW_DATA]: ["table"],
-      [DATA_BUCKET.SAVED_QUESTIONS]: ["card"],
-      [DATA_BUCKET.METRICS]: ["metric"],
-    }[selectedDataBucketId];
-  };
-
   hasDataAccess = () => {
     const { hasDataAccess, databases } = this.props;
     return hasDataAccess || databases?.length > 0;
   };
 
   renderContent = () => {
-    const {
-      searchText,
-      isSavedEntityPickerShown,
-      selectedDataBucketId,
-      selectedTable,
-    } = this.state;
+    const { isSavedEntityPickerShown, selectedDataBucketId, selectedTable } =
+      this.state;
     const { canChangeDatabase, selectedDatabaseId, selectedCollectionId } =
       this.props;
 
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
-
-    const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
 
     const isPickerOpen =
       isSavedEntityPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
@@ -1071,43 +986,20 @@ export class UnconnectedDataSelector extends Component {
     }
 
     if (this.hasDataAccess()) {
-      return (
-        <>
-          {this.showTableSearch() && (
-            <Box className={DataSelectorS.TableSearchContainer}>
-              <ListSearchField
-                fullWidth
-                autoFocus
-                value={searchText}
-                placeholder={this.getSearchInputPlaceholder()}
-                onChange={(e) => this.handleSearchTextChange(e.target.value)}
-                onResetClick={() => this.handleSearchTextChange("")}
-              />
-            </Box>
-          )}
-          {isSearchActive && (
-            <SearchResults
-              searchModels={this.getSearchModels()}
-              searchQuery={searchText.trim()}
-              databaseId={currentDatabaseId}
-              onSelect={this.handleSearchItemSelect}
-            />
-          )}
-          {!isSearchActive &&
-            (isPickerOpen ? (
-              <SavedEntityPicker
-                collectionId={selectedCollectionId}
-                type={this.getCardType()}
-                tableId={selectedTable?.id}
-                databaseId={currentDatabaseId}
-                onSelect={this.handleSavedEntitySelect}
-                onBack={this.handleSavedEntityPickerClose}
-              />
-            ) : (
-              this.renderActiveStep()
-            ))}
-        </>
-      );
+      if (isPickerOpen) {
+        return (
+          <SavedEntityPicker
+            collectionId={selectedCollectionId}
+            type={this.getCardType()}
+            tableId={selectedTable?.id}
+            databaseId={currentDatabaseId}
+            onSelect={this.handleSavedEntitySelect}
+            onBack={this.handleSavedEntityPickerClose}
+          />
+        );
+      }
+
+      return this.renderActiveStep();
     }
 
     return (

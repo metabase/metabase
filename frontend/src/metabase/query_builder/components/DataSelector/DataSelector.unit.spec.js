@@ -513,7 +513,6 @@ describe("DataSelector", () => {
         models={[]}
         metrics={[]}
         hasNestedQueriesEnabled
-        hasTableSearch
         loaded
         search={[{}]}
         triggerElement={<div />}
@@ -534,7 +533,6 @@ describe("DataSelector", () => {
         models={[]}
         metrics={[]}
         hasNestedQueriesEnabled
-        hasTableSearch
         loaded
         search={[{}]}
         triggerElement={<div />}
