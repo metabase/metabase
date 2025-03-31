@@ -33,7 +33,7 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll be ab
 
 ### Scanning for filter values
 
-Metabase can scan and cache the values present in a field so it can display things like checkbox filters in dashboards and questions. Metabase will only scan fields that people are actually using in your Metabase. So if people are using a filter widget on a dashboard, Metabase will scan that field to determine the values it should include in that dropdown menu. If people stop using the filter widget for a couple of weeks, Metabase will stop scanning and caching those values.
+Metabase can scan and cache the values present in a field so it can display things like checkbox filters in dashboards and questions. Metabase will only scan fields that people are actually using in your Metabase. So if people are using a filter widget on a dashboard, Metabase will scan and cache values from that field to include in dropdown menus. If people stop using the filter widget for a couple of weeks, Metabase will stop scanning and caching those values.
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
 
