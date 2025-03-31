@@ -351,7 +351,7 @@ export class UnconnectedDataSelector extends Component {
       selectedTableId: sourceId,
     } = this.props;
 
-    if (!this.isSearchLoading() && !activeStep) {
+    if (!this.isLoading() && !activeStep) {
       await this.hydrateActiveStep();
     }
 
@@ -433,13 +433,10 @@ export class UnconnectedDataSelector extends Component {
     }
   }
 
-  isSearchLoading = () => {
-    const { models, metrics, allFetched } = this.props;
-    const areModelsAndMetricsLoaded = models != null && metrics != null;
+  isLoading = () => {
+    const { models, metrics, loading } = this.props;
 
-    // If search is disabled, we don't want to show loading state when things are just being reloaded,
-    // so we use allFetched instead of allLoading.
-    return !areModelsAndMetricsLoaded || !allFetched;
+    return models == null || metrics == null || loading;
   };
 
   getCardType() {
@@ -574,7 +571,7 @@ export class UnconnectedDataSelector extends Component {
   getPreviousStep() {
     const { steps } = this.props;
     const { activeStep } = this.state;
-    if (this.isSearchLoading() || activeStep === null) {
+    if (this.isLoading() || activeStep === null) {
       return null;
     }
 
@@ -981,7 +978,7 @@ export class UnconnectedDataSelector extends Component {
     const isPickerOpen =
       isSavedEntityPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
 
-    if (this.isSearchLoading()) {
+    if (this.isLoading()) {
       return <LoadingAndErrorWrapper loading />;
     }
 
