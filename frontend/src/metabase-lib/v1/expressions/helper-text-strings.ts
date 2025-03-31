@@ -10,7 +10,6 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
 import { isLiteral } from "./matchers";
-import { applyPasses } from "./passes";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
