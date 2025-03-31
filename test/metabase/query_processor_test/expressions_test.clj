@@ -558,7 +558,7 @@
                 {:expressions standard-literal-expression-defs
                  :fields      (into [$id] standard-literal-expression-refs)
                  :order-by    (into [[:asc  $id]]
-                                    (map #(conj [:asc] %) standard-literal-expression-refs))
+                                    (map #(vector :asc %) standard-literal-expression-refs))
                  :limit       2})))))))
 
 (deftest ^:parallel breakout-by-literal-expression-test
