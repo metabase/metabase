@@ -220,7 +220,7 @@
                             (tru "Sorry, the row you''re trying to delete doesn''t exist")
                             (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
                           {:staus-code 400})))
-        {:rows-deleted [1]}))))
+        {:rows-deleted 1}))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [driver action database {database-id :database :keys [update-row] :as query}]
@@ -240,7 +240,7 @@
                             (tru "Sorry, the row you''re trying to update doesn''t exist")
                             (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
                           {:status-code 400})))
-        {:rows-updated [1]}))))
+        {:rows-updated 1}))))
 
 (defmulti select-created-row
   "Multimethod for converting the result of an insert into the created row.
@@ -539,7 +539,7 @@
                                                        {:status-code 400, :errors errors})))
                                      ;; `:bulk/update` returns {:rows-updated <number-of-rows-updated>} on success.
                                      (transduce
-                                      (map (comp first :rows-updated))
+                                      (map :rows-updated)
                                       (completing +
                                                   (fn [num-rows-updated]
                                                     {:rows-updated num-rows-updated}))
