@@ -18,6 +18,7 @@
 (p/import-vars
  [i18n.impl
   available-locale?
+  supported-locale?
   fallback-locale
   locale
   normalized-locale-string

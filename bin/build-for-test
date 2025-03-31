@@ -21,6 +21,9 @@ uberjar-hash() {
 check-uberjar-hash() {
   expected_hash=$(source-hash)
   actual_hash=$(uberjar-hash)
+  echo "expected_hash: $expected_hash"
+  echo "actual_hash: $actual_hash"
+
   if [ "$expected_hash" == "$actual_hash" ]; then
     return 0
   else

@@ -14,7 +14,7 @@ import type { ColumnItem } from "./types";
 export type BaseRow = Record<string, unknown> & { id: number | string };
 
 export type TableProps<Row extends BaseRow> = {
-  columns: ColumnItem[];
+  columns: ColumnItem<Row>[];
   rows: Row[];
   rowRenderer: (row: Row) => React.ReactNode;
   sortColumnName?: string | null;
