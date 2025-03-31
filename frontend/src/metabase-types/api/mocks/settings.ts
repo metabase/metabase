@@ -133,6 +133,7 @@ export const createMockTokenFeatures = (
   cache_preemptive: false,
   metabot_v3: false,
   ai_sql_fixer: false,
+  ai_sql_generation: false,
   ...opts,
 });
 

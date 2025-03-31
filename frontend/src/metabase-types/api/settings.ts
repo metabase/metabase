@@ -224,6 +224,7 @@ export const tokenFeatures = [
   "cache_preemptive",
   "metabot_v3",
   "ai_sql_fixer",
+  "ai_sql_generation",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
