@@ -175,6 +175,7 @@ export const InteractiveQuestionProvider = ({
 
   return (
     <InteractiveQuestionContext.Provider value={questionContext}>
+      <ShouldError pizzaAbc="abc"></ShouldError>
       {children}
     </InteractiveQuestionContext.Provider>
   );
@@ -188,4 +189,8 @@ export const useInteractiveQuestionContext = () => {
     );
   }
   return context;
+};
+
+const ShouldError = (props: any) => {
+  return <div {...props}>hello</div>;
 };

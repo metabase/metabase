@@ -15,6 +15,7 @@ beforeEach(function () {
       .as("consoleError")
       .callsFake((msg, ...args) => {
         // Count the error
+        console.log("COUNTING ERROR", msg, ...args);
         countConsoleErrors([msg, ...args]);
 
         // Call original console.error
@@ -24,6 +25,11 @@ beforeEach(function () {
 });
 
 afterEach(function () {
+  console.log("AFTER EACH");
+  console.log({
+    hasConsoleErrors: hasConsoleErrors(),
+    errorSummary: getErrorSummary(),
+  });
   if (this.currentTest.state === "failed") {
     return;
   }

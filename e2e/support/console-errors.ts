@@ -35,6 +35,7 @@ export function resetConsoleErrorCounters(): void {
 }
 
 export function countConsoleErrors(args: any[]): void {
+  console.log("countConsoleErrors()", args);
   if (!args || !args.length) {
     return;
   }
@@ -67,6 +68,7 @@ export function getErrorSummary(): string {
 }
 
 export function hasConsoleErrors(): boolean {
+  console.log("errorCounts", errorCounts);
   return Array.from(errorCounts.values()).some((count) => count > 0);
 }
 
