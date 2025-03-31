@@ -443,13 +443,13 @@ describe("issue 55951", () => {
 
     cy.intercept<unknown, ListDatabasesResponse>(
       "GET",
-      "/api/database",
+      "/api/database*",
       (request) => {
         request.continue((response) => {
           response.body.data = mockResponseData(response.body.data);
 
           // Setting this to be arbitrarly long so that H.repeatAssertion is guaranteed to detect the issue
-          return new Promise((resolve) => setTimeout(resolve, 5000));
+          return new Promise((resolve) => setTimeout(resolve, 2000));
         });
       },
     );
@@ -462,7 +462,9 @@ describe("issue 55951", () => {
         cy.findByText("Sample Database").should("be.visible");
 
         H.repeatAssertion(() => {
-          cy.findByTestId("loading-indicator").should("not.exist");
+          cy.findByTestId("loading-indicator", { timeout: 250 }).should(
+            "not.exist",
+          );
         });
       });
   });
