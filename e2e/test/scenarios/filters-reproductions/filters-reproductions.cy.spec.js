@@ -838,7 +838,7 @@ describe("issue 29094", () => {
       H.enterCustomColumnDetails({ formula: "[Tax] * 22" });
       cy.realPress("Tab");
       cy.button("Done").should("be.disabled");
-      cy.findByText("Invalid expression").should("exist");
+      cy.findByText("Types are incompatible.").should("exist");
     });
   });
 });
