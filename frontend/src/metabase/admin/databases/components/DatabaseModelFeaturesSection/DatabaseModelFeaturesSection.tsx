@@ -28,14 +28,9 @@ export const DatabaseModelFeaturesSection = ({
     showModelCachingSection:
       isModelPersistenceEnabled && database.supportsPersistence(),
   };
-<<<<<<< HEAD
-
-  const hasNoContent = Object.values(contentVisibility).every(x => x === false);
-=======
   const hasNoContent = Object.values(contentVisibility).every(
     (x) => x === false,
   );
->>>>>>> master
 
   const handleToggleModelActionsEnabled = useCallback(
     (nextValue: boolean) =>

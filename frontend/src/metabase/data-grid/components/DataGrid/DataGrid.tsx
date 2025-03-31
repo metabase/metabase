@@ -336,17 +336,12 @@ export const DataGrid = function DataGrid<TData>({
                           key={cell.id}
                           data-column-id={cell.column.id}
                           className={cx(S.bodyCell, classNames?.bodyCell)}
-<<<<<<< HEAD
-                          onClick={e =>
+                          onClick={(e) =>
                             onBodyCellClick?.(e, {
                               rowIndex: cell.row.index,
                               columnId: cell.column.id,
                               cellId: cell.id,
                             })
-=======
-                          onClick={(e) =>
-                            onBodyCellClick?.(e, cell.row.index, cell.column.id)
->>>>>>> master
                           }
                           onMouseDown={(e) =>
                             selection.handlers.handleCellMouseDown(e, cell)
