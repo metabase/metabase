@@ -196,7 +196,7 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :split-part]
   [driver [_ text divider position]]
-  [:nullif
+  [:coalesce
    [:at
     [:split
      (sql.qp/->honeysql driver text)
