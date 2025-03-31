@@ -119,7 +119,9 @@ function setupForeignKeyCountQueryEndpoints() {
       url: "path:/api/dataset",
       matchPartialBody: true,
       body: {
-        query: { "source-table": ORDERS_TABLE.id },
+        query: {
+          query: { "source-table": ORDERS_TABLE.id },
+        },
       },
     },
     createMockDataset({
@@ -135,7 +137,9 @@ function setupForeignKeyCountQueryEndpoints() {
       url: "path:/api/dataset",
       matchPartialBody: true,
       body: {
-        query: { "source-table": REVIEWS_TABLE.id },
+        query: {
+          query: { "source-table": REVIEWS_TABLE.id },
+        },
       },
     },
     createMockDataset({
