@@ -14,7 +14,7 @@ export function getGroupName(
 
 export function getGroupItems(query: Lib.Query): GroupItem[] {
   const stageIndexes = Lib.stageIndexes(query);
-  return stageIndexes.flatMap(stageIndex => {
+  return stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
     const segments = Lib.availableSegments(query, stageIndex);
@@ -28,7 +28,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
         key: `${stageIndex}-${groupIndex}`,
         displayName: getGroupName(groupInfo, stageIndex),
         icon: getColumnGroupIcon(groupInfo),
-        columnItems: availableColumns.map(column => {
+        columnItems: availableColumns.map((column) => {
           const columnInfo = Lib.displayInfo(query, stageIndex, column);
           return {
             column,
@@ -36,7 +36,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
             stageIndex,
           };
         }),
-        segmentItems: availableSegments.map(segment => {
+        segmentItems: availableSegments.map((segment) => {
           const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
           return {
             segment,
@@ -52,7 +52,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
 
 export function hasFilters(query: Lib.Query) {
   const stageIndexes = Lib.stageIndexes(query);
-  const filters = stageIndexes.flatMap(stageIndex =>
+  const filters = stageIndexes.flatMap((stageIndex) =>
     Lib.filters(query, stageIndex),
   );
   return filters.length > 0;

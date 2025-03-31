@@ -149,7 +149,7 @@ function NumberValueInput({
         value={values[0]}
         placeholder={t`Enter a number`}
         aria-label={t`Filter value`}
-        onChange={newValue => onChange([newValue])}
+        onChange={(newValue) => onChange([newValue])}
         onFocus={onFocus}
         onBlur={onBlur}
       />

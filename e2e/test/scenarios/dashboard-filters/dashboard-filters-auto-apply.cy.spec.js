@@ -410,7 +410,7 @@ describe(
       describe("public embeds", () => {
         it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
           createDashboard({ dashboardDetails: { auto_apply_filters: false } });
-          cy.get("@dashboardId").then(dashboardId => {
+          cy.get("@dashboardId").then((dashboardId) => {
             H.visitPublicDashboard(dashboardId);
           });
 
@@ -455,7 +455,7 @@ describe(
               },
             },
           });
-          cy.get("@dashboardId").then(dashboardId => {
+          cy.get("@dashboardId").then((dashboardId) => {
             const embeddingPayload = {
               resource: { dashboard: dashboardId },
               params: {},
@@ -513,7 +513,7 @@ describe(
               auto_apply_filters: false,
             },
           });
-          cy.get("@dashboardId").then(dashboardId => {
+          cy.get("@dashboardId").then((dashboardId) => {
             visitFullAppEmbeddingUrl({
               url: `/dashboard/${dashboardId}`,
               qs: { side_nav: false, logo: false },
@@ -679,7 +679,7 @@ const createDashboard = ({
 };
 
 const getParameterMapping = ({ card_id }, parameters) => ({
-  parameter_mappings: parameters.map(parameter => {
+  parameter_mappings: parameters.map((parameter) => {
     return {
       card_id,
       parameter_id: parameter.id,
@@ -701,7 +701,7 @@ const openSlowDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  cy.get("@dashboardId").then(dashboardId => {
+  cy.get("@dashboardId").then((dashboardId) => {
     return cy.visit({
       url: `/dashboard/${dashboardId}`,
       qs: params,
@@ -716,7 +716,7 @@ const openSlowPublicDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  cy.get("@dashboardId").then(dashboardId => {
+  cy.get("@dashboardId").then((dashboardId) => {
     H.visitPublicDashboard(dashboardId, { params });
   });
 
@@ -728,7 +728,7 @@ const openSlowEmbeddingDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  cy.get("@dashboardId").then(dashboardId => {
+  cy.get("@dashboardId").then((dashboardId) => {
     const embeddingPayload = {
       resource: { dashboard: dashboardId },
       params: {},
@@ -746,7 +746,7 @@ const openSlowFullAppEmbeddingDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  cy.get("@dashboardId").then(dashboardId => {
+  cy.get("@dashboardId").then((dashboardId) => {
     visitFullAppEmbeddingUrl({
       url: `/dashboard/${dashboardId}`,
       qs: params,

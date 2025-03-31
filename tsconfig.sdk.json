@@ -11,7 +11,8 @@
     "paths": {
       "*": ["./frontend/src/*", "./enterprise/frontend/src/*"],
       "cljs/*": ["./target/cljs_release/*"]
-    }
+    },
+    "stripInternal": true
   },
   "include": [
     "frontend/src/**/*.ts",

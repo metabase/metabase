@@ -29,7 +29,7 @@ import { PermissionsTable } from "../PermissionsTable";
 
 import { PermissionTableContainer } from "./CollectionPermissionsModal.styled";
 
-const getDefaultTitle = namespace =>
+const getDefaultTitle = (namespace) =>
   namespace === "snippets"
     ? t`Permissions for this folder`
     : t`Permissions for this collection`;

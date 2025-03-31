@@ -2,6 +2,7 @@ import {
   addDatabaseConnectionStep,
   askForTenancyColumns,
   askIfHasDatabase,
+  checkIfDockerContainerExists,
   checkIfReactProject,
   checkIsDockerRunning,
   checkSdkAvailable,
@@ -30,6 +31,10 @@ export const CLI_STEPS: CliStepConfig[] = [
   { id: "checkIfReactProject", executeStep: checkIfReactProject },
   { id: "checkSdkAvailable", executeStep: checkSdkAvailable },
   { id: "checkIsDockerRunning", executeStep: checkIsDockerRunning },
+  {
+    id: "checkIfDockerContainerExists",
+    executeStep: checkIfDockerContainerExists,
+  },
   { id: "generateCredentials", executeStep: generateCredentials },
   {
     id: "startLocalMetabaseContainer",
@@ -50,14 +55,15 @@ export const CLI_STEPS: CliStepConfig[] = [
   {
     id: "askForTenancyColumns",
     executeStep: askForTenancyColumns,
-    runIf: hasValidLicense,
+    runIf: (state) => !state.useSampleDatabase && hasValidLicense(state),
   },
   {
     id: "setupPermissions",
     executeStep: setupPermissions,
 
     // We need at least one table with a tenancy column to set up sandboxing.
-    runIf: state =>
+    runIf: (state) =>
+      !state.useSampleDatabase &&
       hasValidLicense(state) &&
       Object.keys(state.tenancyColumnNames ?? {}).length > 0,
   },

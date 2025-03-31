@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
-import { Icon } from "metabase/ui";
+import { Icon, type IconProps } from "metabase/ui";
 
 export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
   display: flex;
@@ -34,7 +35,7 @@ export const LegendItemTitle = styled.div<{ isInsidePopover?: boolean }>`
   margin-left: ${LEGEND_ITEM_TITLE_MARGIN}px;
   overflow: hidden;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
-  max-width: ${props =>
+  max-width: ${(props) =>
     props.isInsidePopover
       ? `calc(100% - ${LEGEND_ITEM_DOT_SIZE}px - ${LEGEND_ITEM_TITLE_MARGIN}px)`
       : "unset"};
@@ -44,7 +45,20 @@ export const LegendItemTitle = styled.div<{ isInsidePopover?: boolean }>`
   }
 `;
 
-export const LegendItemRemoveIcon = styled(Icon)`
+export const LegendItemRemoveIcon = styled(
+  forwardRef<SVGSVGElement, IconProps>(
+    function LegendItemRemoveIcon(props, ref) {
+      return (
+        <Icon
+          {...props}
+          name={props.name ?? "close"}
+          size={props.size ?? 12}
+          ref={ref}
+        />
+      );
+    },
+  ),
+)`
   color: var(--mb-color-text-light);
   cursor: pointer;
   margin-left: 0.5rem;
@@ -53,8 +67,3 @@ export const LegendItemRemoveIcon = styled(Icon)`
     color: var(--mb-color-text-medium);
   }
 `;
-
-LegendItemRemoveIcon.defaultProps = {
-  name: "close",
-  size: 12,
-};

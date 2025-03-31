@@ -101,14 +101,14 @@ describe("scenarios > question > settings", () => {
         .as("title")
         .should("have.text", "Products → Title");
 
-      cy.findByTestId("chartsettings-sidebar").scrollTo("top");
-      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+      cy.findByTestId("chartsettings-list-container").scrollTo("top");
+      cy.findByTestId("chartsettings-list-container").should(([$el]) => {
         expect($el.scrollTop).to.eql(0);
       });
 
       H.moveDnDKitElement(cy.get("@title"), { vertical: 15 });
 
-      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+      cy.findByTestId("chartsettings-list-container").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
       });
     });
@@ -424,13 +424,13 @@ describe("scenarios > question > settings", () => {
       ];
 
       cy.findByTestId("TableInteractive-root").within(() => {
-        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
+        columnNames.forEach((text) => cy.findByText(text).should("be.visible"));
       });
 
       H.openVizSettingsSidebar();
 
       cy.findByTestId("chartsettings-sidebar").within(() => {
-        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
+        columnNames.forEach((text) => cy.findByText(text).should("be.visible"));
         cy.findByText("More Columns").should("not.exist");
 
         cy.icon("eye_outline").first().click();

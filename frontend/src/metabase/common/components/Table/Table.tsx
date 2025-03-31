@@ -62,7 +62,7 @@ export function Table<Row extends BaseRow>({
         {cols && <colgroup>{cols}</colgroup>}
         <thead>
           <tr>
-            {columns.map(column => {
+            {columns.map((column) => {
               const { sortable = true } = column;
               return (
                 <th key={String(column.key)}>

@@ -28,7 +28,7 @@ export const ColorSelector = ({
   const [opened, { toggle, close }] = useDisclosure(false);
 
   return (
-    <Popover opened={opened} onClose={close} position="bottom-start">
+    <Popover opened={opened} onClose={close} position="bottom-start" trapFocus>
       <Popover.Target>
         <Center data-testid="color-selector-button">
           <ColorPill {...props} color={value} onClick={toggle} />

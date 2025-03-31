@@ -49,7 +49,7 @@ describe("issue 21532", () => {
     cy.findByText("Getting set up");
 
     cy.go("back");
-    cy.location().should(location => {
+    cy.location().should((location) => {
       expect(location.pathname).to.eq("/");
     });
   });

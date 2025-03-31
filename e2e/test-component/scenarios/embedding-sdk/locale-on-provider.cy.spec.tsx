@@ -51,7 +51,7 @@ describeEE("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
   it("when locale=de-CH it should fallback to `de.json`", () => {
     setup({ locale: "de-CH" });
 
-    cy.request("/app/locales/de.json").then(response => {
+    cy.request("/app/locales/de.json").then((response) => {
       expect(response.status).to.eq(200);
     });
 
@@ -61,7 +61,7 @@ describeEE("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
   it("when locale=pt it should fallback to pt_BR.json", () => {
     setup({ locale: "pt" });
 
-    cy.request("/app/locales/pt_BR.json").then(response => {
+    cy.request("/app/locales/pt_BR.json").then((response) => {
       expect(response.status).to.eq(200);
     });
 
@@ -71,7 +71,7 @@ describeEE("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
   it("when locale=zh-TW it use it as it's available", () => {
     setup({ locale: "zh-TW" });
 
-    cy.request("/app/locales/zh_TW.json").then(response => {
+    cy.request("/app/locales/zh_TW.json").then((response) => {
       expect(response.status).to.eq(200);
     });
 

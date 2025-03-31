@@ -38,7 +38,7 @@ export default {
   },
 };
 
-const Template: StoryFn<InteractiveQuestionComponentProps> = args => {
+const Template: StoryFn<InteractiveQuestionComponentProps> = (args) => {
   return (
     <Box bg="var(--mb-color-background)" mih="100vh">
       <InteractiveQuestion {...args} />
@@ -52,7 +52,7 @@ export const Default = {
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
-    saveToCollectionId: undefined,
+    targetCollection: undefined,
     title: true,
     withResetButton: true,
   },
@@ -72,6 +72,17 @@ export const EditorOnly = {
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
-    saveToCollectionId: undefined,
+    targetCollection: undefined,
   },
+};
+
+export const CreateQuestion = {
+  render(args: InteractiveQuestionComponentProps) {
+    return (
+      <Box bg="var(--mb-color-background)" mih="100vh">
+        <InteractiveQuestion {...args} />
+      </Box>
+    );
+  },
+  args: { questionId: "new" },
 };

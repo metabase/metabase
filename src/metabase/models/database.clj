@@ -193,12 +193,11 @@
                (log/error e (u/format-color :red "Health check: failure with error %s {:id %d}" (:name database) (:id database)))
                (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))))
 
-(defn check-health-and-schedule-tasks!
-  "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
+(defn check-health!
+  "Health checks databases connected to metabase asynchronously using a thread pool."
   []
   (doseq [database (t2/select :model/Database)]
-    (health-check-database! database)
-    (check-and-schedule-tasks-for-db! database)))
+    (health-check-database! database)))
 
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
 ;; implement behavior when an object is deleted can do it without having to put code here

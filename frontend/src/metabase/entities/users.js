@@ -62,7 +62,7 @@ const Users = createEntity({
   },
 
   objectSelectors: {
-    getName: user => user.common_name,
+    getName: (user) => user.common_name,
   },
 
   actionTypes: {
@@ -73,7 +73,7 @@ const Users = createEntity({
   },
 
   actionDecorators: {
-    create: thunkCreator => user => async (dispatch, getState) => {
+    create: (thunkCreator) => (user) => async (dispatch, getState) => {
       if (!MetabaseSettings.isEmailConfigured()) {
         user = {
           ...user,
@@ -90,7 +90,7 @@ const Users = createEntity({
         ...result,
       };
     },
-    update: thunkCreator => user => async (dispatch, getState) => {
+    update: (thunkCreator) => (user) => async (dispatch, getState) => {
       const result = await thunkCreator(user)(dispatch, getState);
       if (user.user_group_memberships) {
         // group ids were just updated
@@ -103,7 +103,7 @@ const Users = createEntity({
   objectActions: {
     resetPasswordEmail:
       ({ email }) =>
-      async dispatch => {
+      async (dispatch) => {
         await entityCompatibleQuery(
           email,
           dispatch,
@@ -113,7 +113,7 @@ const Users = createEntity({
       },
     resetPasswordManual:
       async ({ id }, password = generatePassword()) =>
-      async dispatch => {
+      async (dispatch) => {
         await entityCompatibleQuery(
           { id, password },
           dispatch,
@@ -123,7 +123,7 @@ const Users = createEntity({
       },
     deactivate:
       ({ id }) =>
-      async dispatch => {
+      async (dispatch) => {
         await entityCompatibleQuery(
           id,
           dispatch,
@@ -133,7 +133,7 @@ const Users = createEntity({
       },
     reactivate:
       ({ id }) =>
-      async dispatch => {
+      async (dispatch) => {
         const user = await entityCompatibleQuery(
           id,
           dispatch,

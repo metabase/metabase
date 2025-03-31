@@ -9,13 +9,13 @@ interface ActionOptionProps {
 }
 
 export const ActionOptionListItem = styled.div<ActionOptionProps>`
-  color: ${props =>
+  color: ${(props) =>
     props.isSelected ? color("text-white") : color("text-normal")};
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.isSelected ? color("brand") : color("bg-white")};
   cursor: pointer;
   display: flex;
-  align-items: ${props => (props.hasDescription ? "flex-start" : "center")};
+  align-items: ${(props) => (props.hasDescription ? "flex-start" : "center")};
   gap: ${space(1)};
   border: 1px solid var(--mb-color-border);
   border-radius: ${space(1)};

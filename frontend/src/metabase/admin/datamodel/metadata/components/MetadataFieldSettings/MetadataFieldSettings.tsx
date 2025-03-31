@@ -90,7 +90,7 @@ const MetadataFieldSettings = ({
   loading = true,
   params: { schemaId, section },
 }: MetadataFieldSettingsProps) => {
-  const schema = schemas.find(schema => schema.id === schemaId);
+  const schema = schemas.find((schema) => schema.id === schemaId);
   if (!schema || (!fetched && loading)) {
     return <LoadingAndErrorWrapper loading />;
   }

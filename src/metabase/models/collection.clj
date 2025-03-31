@@ -339,25 +339,37 @@
       (and first-name last-name) (trs "{0} {1}''s Personal Collection" first-name last-name)
       :else                      (trs "{0}''s Personal Collection" (or first-name last-name email)))))
 
+(mu/defn user->personal-collection-names :- ms/Map
+  "Come up with a nice name for the Personal Collection for the passed `user-or-ids`.
+  Returns a map of user-id -> name"
+  [user-or-ids user-or-site]
+  (into {} (when-let [ids (seq (filter some? (map u/the-id user-or-ids)))]
+             (t2/select-pk->fn #(format-personal-collection-name (:first_name %) (:last_name %) (:email %) user-or-site)
+                               [:model/User :first_name :last_name :email :id]
+                               :id [:in ids]))))
+
 (mu/defn user->personal-collection-name :- ms/NonBlankString
-  "Come up with a nice name for the Personal Collection for `user-or-id`."
+  "Calls `user->personal-collection-names` for a single user-id and returns the name"
   [user-or-id user-or-site]
-  (let [{first-name :first_name
-         last-name  :last_name
-         email      :email} (t2/select-one ['User :first_name :last_name :email]
-                                           :id (u/the-id user-or-id))]
-    (format-personal-collection-name first-name last-name email user-or-site)))
+  (first (vals (user->personal-collection-names [user-or-id] user-or-site))))
+
+(defn personal-collections-with-ui-details
+  "Like `personal-collection-with-ui-details`, but for a sequence of collections and returns a sequence of modified collections"
+  [collections]
+  (let [collection-names (user->personal-collection-names (filter some? (map :personal_owner_id collections)) :user)]
+    (map (fn [{:keys [personal_owner_id] :as collection}]
+           (if-not personal_owner_id
+             collection
+             (let [collection-name (get collection-names personal_owner_id)]
+               (assoc collection
+                      :name collection-name
+                      :slug (u/slugify collection-name))))) collections)))
 
 (defn personal-collection-with-ui-details
   "For Personal collection, we make sure the collection's name and slug is translated to user's locale
   This is only used for displaying purposes, For insertion or updating  the name, use site's locale instead"
-  [{:keys [personal_owner_id] :as collection}]
-  (if-not personal_owner_id
-    collection
-    (let [collection-name (user->personal-collection-name personal_owner_id :user)]
-      (assoc collection
-             :name collection-name
-             :slug (u/slugify collection-name)))))
+  [collection]
+  (first (personal-collections-with-ui-details [collection])))
 
 (def ^:private CollectionWithLocationAndPersonalOwnerID
   "Schema for a Collection instance that has a valid `:location`, and a `:personal_owner_id` key *present* (but not

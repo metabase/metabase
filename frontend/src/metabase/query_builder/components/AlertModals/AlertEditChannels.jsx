@@ -20,16 +20,16 @@ class AlertEditChannelsInner extends Component {
   }
 
   // Technically pulse definition is equal to alert definition
-  onSetPulse = alert => {
+  onSetPulse = (alert) => {
     // If the pulse channel has been added, it PulseEditChannels puts the default schedule to it
     // We want to have same schedule for all channels
     const schedule = getScheduleFromChannel(
-      alert.channels.find(c => c.channel_type === "email"),
+      alert.channels.find((c) => c.channel_type === "email"),
     );
 
     this.props.onAlertChange({
       ...alert,
-      channels: alert.channels.map(channel => ({ ...channel, ...schedule })),
+      channels: alert.channels.map((channel) => ({ ...channel, ...schedule })),
     });
   };
 
@@ -48,7 +48,7 @@ class AlertEditChannelsInner extends Component {
             users={users}
             setPulse={this.onSetPulse}
             emailRecipientText={t`Email alerts to:`}
-            invalidRecipientText={domains =>
+            invalidRecipientText={(domains) =>
               t`You're only allowed to email alerts to addresses ending in ${domains}`
             }
           />

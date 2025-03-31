@@ -21,7 +21,7 @@ interface ContainerLabelProps {
 export const ContainerLabel = styled.div<ContainerLabelProps>`
   display: block;
   margin-bottom: 0.5em;
-  padding-top: ${props => (props.paddingTop ? "0.5rem" : "0")};
+  padding-top: ${(props) => (props.paddingTop ? "0.5rem" : "0")};
   color: var(--mb-color-text-medium);
   font-weight: 700;
 `;
@@ -35,7 +35,7 @@ interface InputContainerProps {
 }
 export const InputContainer = styled.label<InputContainerProps>`
   display: block;
-  padding-bottom: ${props => (props.lessBottomPadding ? "1.5rem" : "2rem")};
+  padding-bottom: ${(props) => (props.lessBottomPadding ? "1.5rem" : "2rem")};
 `;
 
 export const DefaultParameterValueWidget = styled(ParameterValueWidget)`

@@ -4,8 +4,6 @@ title: Embedded analytics SDK - Using the SDK with Next.js
 
 # Embedded analytics SDK - Using the SDK with Next.js
 
-{% include beta-blockquote.html %}
-
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 Some notes on using the Embedded analytics SDK with [Next.js](https://nextjs.org/). The SDK is tested to work with Next.js 14, although it may work with other versions.

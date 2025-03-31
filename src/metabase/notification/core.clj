@@ -4,6 +4,7 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.seed :as notification.seed]
    [metabase.notification.send :as notification.send]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
@@ -36,3 +37,11 @@
     (if (:notification/sync? options)
       (notification.send/send-notification-sync! notification)
       (notification.send/send-notification-async! notification))))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                    Load the implementations                                     ;;
+;; ------------------------------------------------------------------------------------------------;;
+(when-not *compile-files*
+  ;; load payload impls here rather than payload.core.
+  ;; the impls depend on payload.core and would cause a cyclic dependency
+  (u/find-and-load-namespaces! "metabase.notification.payload.impl"))

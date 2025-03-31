@@ -88,7 +88,7 @@ describe("DatePicker", () => {
     describe("Specific Dates", () => {
       const singleDateOperators = ["=", "<", ">"];
 
-      singleDateOperators.forEach(operator => {
+      singleDateOperators.forEach((operator) => {
         it(`shows a single specific date picker for a ${operator} operator`, () => {
           const filter = createDateFilter(operator, "2020-01-01");
 
@@ -125,8 +125,8 @@ describe("DatePicker", () => {
       const relativeTimeValues = [2, -2];
       const relativeTimeUnits = ["day", "week", "month", "quarter", "year"];
 
-      relativeTimeValues.forEach(value => {
-        relativeTimeUnits.forEach(unit => {
+      relativeTimeValues.forEach((value) => {
+        relativeTimeUnits.forEach((unit) => {
           it(`shows a relative picker for a ${value} ${unit} time interval`, () => {
             const filter = createDateFilter("time-interval", value, unit);
 
@@ -145,7 +145,7 @@ describe("DatePicker", () => {
         });
       });
 
-      relativeTimeUnits.forEach(unit => {
+      relativeTimeUnits.forEach((unit) => {
         it(`shows a current time picker for the current ${unit}`, () => {
           const filter = createDateFilter("time-interval", "current", unit);
 
@@ -168,7 +168,7 @@ describe("DatePicker", () => {
 
     const filter = createDateFilter();
 
-    datePickerTypes.forEach(type => {
+    datePickerTypes.forEach((type) => {
       it(`shows a ${type} date picker when the user clicks ${type} on the shortcut screen`, async () => {
         render(<DatePickerStateWrapper filter={filter} />);
 
@@ -334,8 +334,8 @@ describe("DatePicker", () => {
       const relativeTimeDirection = ["previous", "next"];
       const relativeTimeValue = 4;
 
-      relativeTimeDirection.forEach(direction => {
-        relativeTimeUnits.forEach(unit => {
+      relativeTimeDirection.forEach((direction) => {
+        relativeTimeUnits.forEach((unit) => {
           it(`can set a relative ${direction} ${unit} filter`, async () => {
             const changeSpy = jest.fn();
 
@@ -373,7 +373,7 @@ describe("DatePicker", () => {
 
       const currentTimeUnits = ["day", "week", "month", "quarter", "year"];
 
-      currentTimeUnits.forEach(unit => {
+      currentTimeUnits.forEach((unit) => {
         it(`can set a current ${unit} filter`, async () => {
           const commitSpy = jest.fn();
 

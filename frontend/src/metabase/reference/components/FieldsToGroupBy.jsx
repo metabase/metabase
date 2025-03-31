@@ -51,7 +51,7 @@ class FieldsToGroupBy extends Component {
                       }),
                     )
                   }
-                  secondaryOnClick={event => {
+                  secondaryOnClick={(event) => {
                     event.stopPropagation();
                     onChangeLocation(
                       `/reference/databases/${databaseId}/tables/${field.table_id}/fields/${field.id}`,

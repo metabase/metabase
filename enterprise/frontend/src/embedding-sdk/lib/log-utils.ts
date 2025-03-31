@@ -8,7 +8,7 @@
 export const bigWarningHeader = (message: string) => {
   return [
     `%c${message}\n`,
-    "color: #FCF0A6; font-size: 16px; font-weight: bold;",
+    "color: #F28222; font-size: 16px; font-weight: bold;",
   ];
 };
 

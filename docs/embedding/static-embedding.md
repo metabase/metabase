@@ -8,7 +8,7 @@ redirect_from:
 
 Also known as: standalone embedding, or signed embedding.
 
-{% include shared/in-page-promo.html %}
+{% include shared/in-page-promo-embedding-workshop.html %}
 
 In general, embedding works by displaying a Metabase URL inside an iframe in your website. A **static embed** (or signed embed) is an iframe that's loading a Metabase URL secured with a signed JSON Web Token (JWT). Metabase will only load the URL if the request supplies a JWT signed with the secret shared between your app and your Metabase. The JWT also includes a reference to the resource to load, e.g., the dashboard ID, and any values for locked parameters.
 

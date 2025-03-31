@@ -3,8 +3,8 @@ import styled from "@emotion/styled";
 export const SidebarAside = styled.aside<{ $width: number }>`
   display: flex;
   flex-direction: column;
-  width: ${props => props.$width}px;
-  min-width: ${props => props.$width}px;
+  width: ${(props) => props.$width}px;
+  min-width: ${(props) => props.$width}px;
   border-left: 1px solid var(--mb-color-border);
   background: var(--mb-color-bg-white);
 `;
@@ -18,7 +18,7 @@ export const ChildrenContainer = styled.div`
 
 export const ButtonContainer = styled.div<{ spaceBetween?: boolean }>`
   display: flex;
-  justify-content: ${props =>
+  justify-content: ${(props) =>
     props.spaceBetween ? "space-between" : "flex-start"};
   align-items: center;
   gap: 20px;

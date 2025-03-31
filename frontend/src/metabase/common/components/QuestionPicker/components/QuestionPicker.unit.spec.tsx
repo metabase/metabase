@@ -151,7 +151,7 @@ const flattenCollectionTree = (
 };
 
 const setupCollectionTreeMocks = (node: NestedCollectionItem[]) => {
-  node.forEach(node => {
+  node.forEach((node) => {
     if (!node.descendants) {
       return;
     }
@@ -189,7 +189,7 @@ const commonSetup = () => {
     createMockCollectionItem,
   );
 
-  allItems.forEach(item => {
+  allItems.forEach((item) => {
     if (item.model !== "collection") {
       fetchMock.get(`path:/api/card/${item.id}`, item);
     } else {

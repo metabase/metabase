@@ -20,7 +20,7 @@ export function setupRecentViewsAndSelectionsEndpoints(
   mockOptions: MockOptionsMethodGet = {},
 ) {
   fetchMock.get(
-    url =>
+    (url) =>
       url.endsWith(
         `/api/activity/recents?${querystring.stringify({ context })}`,
       ),

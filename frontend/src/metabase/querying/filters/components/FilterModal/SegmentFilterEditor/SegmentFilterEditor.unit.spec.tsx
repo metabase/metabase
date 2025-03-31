@@ -98,7 +98,7 @@ describe("SegmentFilterEditor", () => {
 
 function getSegmentItems(query: Lib.Query, stageIndex: number): SegmentItem[] {
   const segments = Lib.availableSegments(query, stageIndex);
-  return segments.map(segment => {
+  return segments.map((segment) => {
     const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
 
     return {

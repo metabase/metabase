@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
 import { color, lighten } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, type IconProps } from "metabase/ui";
 
 import { PermissionsSelectOption } from "./PermissionsSelectOption";
 
@@ -9,7 +10,7 @@ export const PermissionsSelectRoot = styled.div<{ isDisabled: boolean }>`
   display: flex;
   align-items: center;
   min-width: 180px;
-  cursor: ${props => (props.isDisabled ? "default" : "pointer")};
+  cursor: ${(props) => (props.isDisabled ? "default" : "pointer")};
 `;
 
 export const SelectedOption = styled(PermissionsSelectOption)`
@@ -52,19 +53,25 @@ export const ToggleLabel = styled.label`
   margin-right: 1rem;
 `;
 
-export const WarningIcon = styled(Icon)`
+export const WarningIcon = styled(
+  forwardRef<SVGSVGElement, IconProps>(function WarningIcon(props, ref) {
+    return (
+      <Icon
+        {...props}
+        size={props.size ?? 18}
+        name={props.name ?? "warning"}
+        ref={ref}
+      />
+    );
+  }),
+)`
   margin-right: 0.25rem;
   color: var(--mb-color-text-light);
 `;
 
-WarningIcon.defaultProps = {
-  size: 18,
-  name: "warning",
-};
-
 export const DisabledPermissionOption = styled(PermissionsSelectOption)<{
   isHighlighted: boolean;
 }>`
-  color: ${props =>
+  color: ${(props) =>
     props.isHighlighted ? color("text-medium") : color("text-light")};
 `;

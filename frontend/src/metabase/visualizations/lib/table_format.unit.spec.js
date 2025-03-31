@@ -1,4 +1,4 @@
-import { ALL_OPERATOR_NAMES } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+import { ALL_OPERATOR_NAMES } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting/get-operators-for-columns";
 import {
   OPERATOR_FORMATTER_FACTORIES,
   canCompareSubstrings,
@@ -34,7 +34,7 @@ describe("compileFormatter", () => {
       "ends-with",
     ];
 
-    textFormatters.forEach(factoryName => {
+    textFormatters.forEach((factoryName) => {
       const factory = OPERATOR_FORMATTER_FACTORIES[factoryName]("", "#fff");
       expect(factory("foo")).toBeNull();
       expect(factory("")).toBeNull();

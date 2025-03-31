@@ -117,7 +117,9 @@ const TableSimpleInner = forwardRef<HTMLDivElement, TableSimpleProps>(
     const setSort = useCallback(
       (colIndex: number) => {
         if (sortColumn === colIndex) {
-          setSortDirection(direction => (direction === "asc" ? "desc" : "asc"));
+          setSortDirection((direction) =>
+            direction === "asc" ? "desc" : "asc",
+          );
         } else {
           setSortColumn(colIndex);
         }
@@ -144,18 +146,18 @@ const TableSimpleInner = forwardRef<HTMLDivElement, TableSimpleProps>(
     const end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
 
     const handlePreviousPage = useCallback(() => {
-      setPage(p => p - 1);
+      setPage((p) => p - 1);
     }, []);
 
     const handleNextPage = useCallback(() => {
-      setPage(p => p + 1);
+      setPage((p) => p + 1);
     }, []);
 
     const rowIndexes = useMemo(() => {
       let indexes = _.range(0, rows.length);
 
       if (sortColumn != null) {
-        indexes = _.sortBy(indexes, rowIndex => {
+        indexes = _.sortBy(indexes, (rowIndex) => {
           const value = rows[rowIndex][sortColumn];
           const column = cols[sortColumn];
           return formatCellValueForSorting(value, column);
@@ -270,6 +272,6 @@ const TableSimpleInner = forwardRef<HTMLDivElement, TableSimpleProps>(
 );
 
 export const TableSimple = ExplicitSize<TableSimpleProps>({
-  refreshMode: props =>
+  refreshMode: (props) =>
     props.isDashboard && !props.isEditing ? "debounceLeading" : "throttle",
 })(TableSimpleInner);

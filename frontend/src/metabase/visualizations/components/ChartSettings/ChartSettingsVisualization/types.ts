@@ -1,3 +1,4 @@
+import type { StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
@@ -8,7 +9,7 @@ import type {
 
 import type { ChartSettingsFooterProps } from "../ChartSettingsFooter";
 
-export type ChartSettingsVisualizationProps = {
+export type ChartSettingsVisualizationProps = Omit<StackProps, "onReset"> & {
   rawSeries: RawSeries;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;

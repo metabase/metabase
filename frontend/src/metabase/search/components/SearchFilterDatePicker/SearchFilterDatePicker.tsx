@@ -34,7 +34,7 @@ export const SearchFilterDatePicker = ({
     <DatePicker
       filter={filter}
       onCommit={onCommit}
-      onFilterChange={f => onFilterChange(f)}
+      onFilterChange={(f) => onFilterChange(f)}
       dateShortcutOptions={CREATED_AT_SHORTCUTS}
     >
       <SearchFilterApplyButton onApply={() => onCommit(filter)} />

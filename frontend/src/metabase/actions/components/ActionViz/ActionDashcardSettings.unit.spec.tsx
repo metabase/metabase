@@ -85,7 +85,7 @@ const setup = (
     React.ComponentProps<typeof ConnectedActionDashcardSettings>
   >,
 ) => {
-  const searchItems = models.map(model =>
+  const searchItems = models.map((model) =>
     createMockCollectionItem({ ...model, model: "dataset" }),
   );
   const closeSpy = jest.fn();
@@ -548,7 +548,7 @@ function dashcardFactory({
     ...actionDashcardWithAction,
     action: action,
     parameter_mappings: mapped
-      ? action.parameters.map(parameter => ({
+      ? action.parameters.map((parameter) => ({
           parameter_id: dashboardParameter.id,
           target: parameter.target,
         }))

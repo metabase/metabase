@@ -70,9 +70,9 @@ export function updateCardTemplateTagNames(
   const tags = query
     .templateTags()
     // only tags for cards
-    .filter(tag => tag.type === "card")
+    .filter((tag) => tag.type === "card")
     // only tags for given cards
-    .filter(tag => cardById[tag["card-id"]]);
+    .filter((tag) => cardById[tag["card-id"]]);
   // reduce over each tag, updating query text with the new tag name
   return tags.reduce((query, tag) => {
     const card = cardById[tag["card-id"]];
@@ -228,10 +228,10 @@ export default class NativeQuery extends AtomicQuery {
       updateIn(
         this._datasetQuery,
         ["native", "template-tags"],
-        templateTags => {
+        (templateTags) => {
           const entries = Array.from(Object.entries(templateTags));
 
-          const oldIndex = _.findIndex(entries, entry => entry[1].id === id);
+          const oldIndex = _.findIndex(entries, (entry) => entry[1].id === id);
 
           entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
           return _.object(entries);
@@ -261,7 +261,7 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   variableTemplateTags(): TemplateTag[] {
-    return this.templateTags().filter(t =>
+    return this.templateTags().filter((t) =>
       ["dimension", "text", "number", "date"].includes(t.type),
     );
   }
@@ -271,18 +271,18 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   hasSnippets() {
-    return this.templateTags().some(t => t.type === "snippet");
+    return this.templateTags().some((t) => t.type === "snippet");
   }
 
   referencedQuestionIds(): number[] {
     return this.templateTags()
-      .filter(tag => tag.type === "card")
-      .map(tag => tag["card-id"]);
+      .filter((tag) => tag.type === "card")
+      .map((tag) => tag["card-id"]);
   }
 
   private _validateTemplateTags() {
     return this.templateTags()
-      .map(tag => {
+      .map((tag) => {
         if (!tag["display-name"]) {
           return new ValidationError(t`Missing widget label: ${tag.name}`);
         }
@@ -309,7 +309,7 @@ export default class NativeQuery extends AtomicQuery {
 
   setTemplateTag(name: string, tag: TemplateTag): NativeQuery {
     return this.setDatasetQuery(
-      updateIn(this.datasetQuery(), ["native", "template-tags"], tags => ({
+      updateIn(this.datasetQuery(), ["native", "template-tags"], (tags) => ({
         ...tags,
         [name]: tag,
       })),
@@ -333,9 +333,9 @@ export default class NativeQuery extends AtomicQuery {
     operatorFilter = _.identity,
   ): DimensionOptions {
     const dimensions = this.templateTags()
-      .filter(tag => tag.type === "dimension" && operatorFilter(tag))
-      .map(tag => new TemplateTagDimension(tag.name, this.metadata(), this))
-      .filter(dimension => dimensionFilter(dimension));
+      .filter((tag) => tag.type === "dimension" && operatorFilter(tag))
+      .map((tag) => new TemplateTagDimension(tag.name, this.metadata(), this))
+      .filter((dimension) => dimensionFilter(dimension));
     return new DimensionOptions({
       dimensions: dimensions,
       count: dimensions.length,
@@ -346,15 +346,15 @@ export default class NativeQuery extends AtomicQuery {
     variableFilter: VariableFilter = () => true,
   ): TemplateTagVariable[] {
     return this.templateTags()
-      .filter(tag => tag.type !== "dimension")
-      .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))
+      .filter((tag) => tag.type !== "dimension")
+      .map((tag) => new TemplateTagVariable([tag.name], this.metadata(), this))
       .filter(variableFilter);
   }
 
   updateSnippetsWithIds(snippets): NativeQuery {
     const tagsBySnippetName = _.chain(this.templateTags())
-      .filter(tag => tag.type === "snippet" && tag["snippet-id"] == null)
-      .groupBy(tag => tag["snippet-name"])
+      .filter((tag) => tag.type === "snippet" && tag["snippet-id"] == null)
+      .groupBy((tag) => tag["snippet-name"])
       .value();
 
     if (Object.keys(tagsBySnippetName).length === 0) {
@@ -378,8 +378,8 @@ export default class NativeQuery extends AtomicQuery {
 
   updateSnippetNames(snippets): NativeQuery {
     const tagsBySnippetId = _.chain(this.templateTags())
-      .filter(tag => tag.type === "snippet")
-      .groupBy(tag => tag["snippet-id"])
+      .filter((tag) => tag.type === "snippet")
+      .groupBy((tag) => tag["snippet-id"])
       .value();
 
     if (Object.keys(tagsBySnippetId).length === 0) {

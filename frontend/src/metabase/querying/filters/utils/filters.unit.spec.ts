@@ -42,7 +42,7 @@ function createFilteredQuery(query: Lib.Query) {
 function createMultiStageFilteredQuery() {
   const stageIndexes = Array.from({ length: STAGE_COUNT }, (_, i) => i);
   return stageIndexes.reduce(
-    query => Lib.appendStage(createFilteredQuery(query)),
+    (query) => Lib.appendStage(createFilteredQuery(query)),
     createQuery(),
   );
 }
@@ -50,7 +50,7 @@ function createMultiStageFilteredQuery() {
 describe("getGroupItems", () => {
   it("should return groups for all stages", () => {
     const query = createMultiStageFilteredQuery();
-    expect(getGroupItems(query).map(group => group.displayName)).toEqual([
+    expect(getGroupItems(query).map((group) => group.displayName)).toEqual([
       "Orders",
       "Products",
       "User",
@@ -93,7 +93,7 @@ describe("removeFilters", () => {
     const newQuery = removeFilters(query);
     const stageIndexes = Lib.stageIndexes(newQuery);
     expect(stageIndexes).toEqual([0, 1, 2, 3, 4]);
-    stageIndexes.forEach(stageIndex => {
+    stageIndexes.forEach((stageIndex) => {
       expect(Lib.filters(newQuery, stageIndex)).toHaveLength(0);
     });
   });

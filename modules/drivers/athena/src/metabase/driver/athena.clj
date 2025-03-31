@@ -337,12 +337,15 @@
         (map describe-database->clj)))
 
 (defn- describe-table-fields-with-nested-fields [database schema table-name]
-  (into #{}
-        (comp (remove-invalid-columns)
-              (map-indexed (fn [i column-metadata]
-                             (assoc column-metadata :database-position i)))
-              (map athena.schema-parser/parse-schema))
-        (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name))))
+  (let [describe-results (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name))]
+    (doseq [result describe-results]
+      (log/tracef "DESCRIBE result: %s" (pr-str result)))
+    (into #{}
+          (comp (remove-invalid-columns)
+                (map-indexed (fn [i column-metadata]
+                               (assoc column-metadata :database-position i)))
+                (map athena.schema-parser/parse-schema))
+          describe-results)))
 
 (defn- describe-table-fields-without-nested-fields [driver columns]
   (set
@@ -369,6 +372,8 @@
   (try
     (with-open [rs (.getColumns metadata catalog schema table-name nil)]
       (let [columns (jdbc/metadata-result rs)]
+        (when (empty? columns)
+          (log/trace "Falling back to DESCRIBE due to #43980"))
         (if (or (table-has-nested-fields? columns)
                 ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
                 ; but doesn't suffer from the bug in the JDBC driver as metabase#43980

@@ -158,7 +158,7 @@ export function UploadSettingsFormView({
 
   const hasValidDatabases = databaseOptions.length > 0;
   const isH2db = Boolean(
-    dbId && databases.find(db => db.id === dbId)?.engine === "h2",
+    dbId && databases.find((db) => db.id === dbId)?.engine === "h2",
   );
 
   return (
@@ -213,7 +213,7 @@ export function UploadSettingsFormView({
             <Input
               value={tablePrefix ?? ""}
               placeholder={t`upload_`}
-              onChange={e => {
+              onChange={(e) => {
                 resetButtons();
                 setTablePrefix(e.target.value);
               }}

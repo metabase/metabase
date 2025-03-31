@@ -54,7 +54,7 @@ export const CollectionBulkActions = memo(
       if (selectedItems) {
         await tryOrClear(
           Promise.all(
-            selectedItems.map(item => item.setCollection?.(collection)),
+            selectedItems.map((item) => item.setCollection?.(collection)),
           ),
         );
         handleCloseModal();

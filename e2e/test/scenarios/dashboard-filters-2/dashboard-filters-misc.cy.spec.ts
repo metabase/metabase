@@ -66,6 +66,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
       H.popover()
         .findByLabelText("Created At")
         .findByLabelText("Temporal bucket")
+        .realHover()
         .click();
       H.popover().last().findByText("Week").click();
       H.getNotebookStep("summarize")
@@ -151,7 +152,7 @@ describe("pivot tables", () => {
         query: createPivotableQuery(this.baseQuestion),
         name: "Question - pivot viz",
         display: "pivot",
-      }).then(response => {
+      }).then((response) => {
         const card = response.body;
         QSHelpers.createAndVisitDashboard([card]);
       });

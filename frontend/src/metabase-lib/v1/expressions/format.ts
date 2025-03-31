@@ -106,7 +106,7 @@ function formatMetric([, metricId]: FieldReference, options: Options) {
     throw new Error("`query` is a required parameter to format expressions");
   }
 
-  const metric = Lib.availableMetrics(query, stageIndex).find(metric => {
+  const metric = Lib.availableMetrics(query, stageIndex).find((metric) => {
     const [_, availableMetricId] = Lib.legacyRef(query, stageIndex, metric);
 
     return availableMetricId === metricId;
@@ -128,7 +128,7 @@ function formatSegment([, segmentId]: FieldReference, options: Options) {
     throw new Error("`query` is a required parameter to format expressions");
   }
 
-  const segment = Lib.availableSegments(query, stageIndex).find(segment => {
+  const segment = Lib.availableSegments(query, stageIndex).find((segment) => {
     const [_, availableSegmentId] = Lib.legacyRef(query, stageIndex, segment);
 
     return availableSegmentId === segmentId;
@@ -160,7 +160,7 @@ function formatFunctionOptions(fnOptions: Record<string, any>) {
 }
 
 function formatFunction([fn, ...operands]: any[], formatOptions: Options) {
-  const args = operands.filter(arg => !isOptionsObject(arg));
+  const args = operands.filter((arg) => !isOptionsObject(arg));
   const options = operands.find(isOptionsObject);
   if (options) {
     const formattedOptions = formatFunctionOptions(options);
@@ -169,14 +169,14 @@ function formatFunction([fn, ...operands]: any[], formatOptions: Options) {
     }
   }
   const formattedName = getExpressionName(fn) ?? "";
-  const formattedArgs = args.map(arg => format(arg, formatOptions));
+  const formattedArgs = args.map((arg) => format(arg, formatOptions));
   return args.length === 0
     ? formattedName
     : `${formattedName}(${formattedArgs.join(", ")})`;
 }
 
 function formatOperator([op, ...operands]: any[], options: Options) {
-  const args = operands.filter(arg => !isOptionsObject(arg));
+  const args = operands.filter((arg) => !isOptionsObject(arg));
   const formattedOperator = getExpressionName(op) || op;
   const formattedArgs = args.map((arg, index) => {
     const argOp = isOperator(arg) && arg[0];

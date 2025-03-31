@@ -157,10 +157,10 @@ export default class Dimension {
     const dimensionOptions = this.field().dimension_options;
 
     if (!DimensionTypes && dimensionOptions) {
-      return dimensionOptions.map(option => this._dimensionForOption(option));
+      return dimensionOptions.map((option) => this._dimensionForOption(option));
     } else {
       return [].concat(
-        ...(DimensionTypes || []).map(DimensionType =>
+        ...(DimensionTypes || []).map((DimensionType) =>
           DimensionType.dimensions(this),
         ),
       );
@@ -656,7 +656,7 @@ export class FieldDimension extends Dimension {
     this._fieldIdOrName = fieldIdOrName;
 
     if (additionalProperties) {
-      Object.keys(additionalProperties).forEach(k => {
+      Object.keys(additionalProperties).forEach((k) => {
         this[k] = additionalProperties[k];
       });
     }
@@ -877,13 +877,13 @@ export class FieldDimension extends Dimension {
     const joinAlias = this.joinAlias();
 
     if (joinAlias) {
-      return dimensions.map(d => d.withJoinAlias(joinAlias));
+      return dimensions.map((d) => d.withJoinAlias(joinAlias));
     }
 
     const sourceField = this.sourceField();
 
     if (sourceField) {
-      return dimensions.map(d => d.withSourceField(sourceField));
+      return dimensions.map((d) => d.withSourceField(sourceField));
     }
 
     const field = this.field();
@@ -891,7 +891,7 @@ export class FieldDimension extends Dimension {
     // Add FK dimensions if this field is an FK
     if (field.target?.table?.fields) {
       const fkDimensions = field.target.table.fields.map(
-        field =>
+        (field) =>
           new FieldDimension(
             field.id,
             {
@@ -908,8 +908,8 @@ export class FieldDimension extends Dimension {
     if (field.isDate() && !this.isIntegerFieldId()) {
       const temporalDimensions = _.difference(
         DATETIME_UNITS,
-        dimensions.map(dim => dim.temporalUnit()),
-      ).map(unit => this.withTemporalUnit(unit));
+        dimensions.map((dim) => dim.temporalUnit()),
+      ).map((unit) => this.withTemporalUnit(unit));
 
       dimensions = [...dimensions, ...temporalDimensions];
     }
@@ -917,7 +917,7 @@ export class FieldDimension extends Dimension {
     const baseType = this.getOption("base-type");
 
     if (baseType) {
-      dimensions = dimensions.map(dimension =>
+      dimensions = dimensions.map((dimension) =>
         dimension.withOption("base-type", baseType),
       );
     }
@@ -1066,7 +1066,7 @@ export class FieldDimension extends Dimension {
   }
 }
 
-const isFieldDimension = dimension => dimension instanceof FieldDimension;
+const isFieldDimension = (dimension) => dimension instanceof FieldDimension;
 
 /**
  * Expression reference, `["expression", expression-name]`
@@ -1102,7 +1102,7 @@ export class ExpressionDimension extends Dimension {
     this._expressionName = expressionName;
 
     if (additionalProperties) {
-      Object.keys(additionalProperties).forEach(k => {
+      Object.keys(additionalProperties).forEach((k) => {
         this[k] = additionalProperties[k];
       });
     }
@@ -1179,7 +1179,7 @@ export class ExpressionDimension extends Dimension {
           const expressions = datasetQuery?.expressions ?? {};
           const expr = expressions[this.name()];
 
-          const field = mbql => {
+          const field = (mbql) => {
             const dimension = Dimension.parseMBQL(
               mbql,
               this._metadata,
@@ -1188,9 +1188,9 @@ export class ExpressionDimension extends Dimension {
             return dimension?.field();
           };
 
-          type = infer(expr, mbql => field(mbql)?.base_type) ?? type;
+          type = infer(expr, (mbql) => field(mbql)?.base_type) ?? type;
           semantic_type =
-            infer(expr, mbql => field(mbql)?.semantic_type) ?? semantic_type;
+            infer(expr, (mbql) => field(mbql)?.semantic_type) ?? semantic_type;
         } else {
           type = infer(this._expressionName);
         }
@@ -1343,7 +1343,7 @@ export class ExpressionDimension extends Dimension {
   }
 }
 
-const isExpressionDimension = dimension =>
+const isExpressionDimension = (dimension) =>
   dimension instanceof ExpressionDimension;
 
 export class TemplateTagDimension extends FieldDimension {

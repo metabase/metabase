@@ -5,5 +5,5 @@ export interface GaugeArcPathProps {
 }
 
 export const GaugeArcPath = styled.path<GaugeArcPathProps>`
-  cursor: ${props => props.isClickable && "pointer"};
+  cursor: ${(props) => props.isClickable && "pointer"};
 `;

@@ -26,7 +26,7 @@ import {
 } from "./tags";
 
 export const dashboardApi = Api.injectEndpoints({
-  endpoints: builder => {
+  endpoints: (builder) => {
     const updateDashboardPropertyMutation = <
       Key extends keyof UpdateDashboardRequest,
     >() =>
@@ -45,12 +45,12 @@ export const dashboardApi = Api.injectEndpoints({
         ListDashboardsResponse,
         ListDashboardsRequest | void
       >({
-        query: params => ({
+        query: (params) => ({
           method: "GET",
           url: "/api/dashboard",
           params,
         }),
-        providesTags: dashboards =>
+        providesTags: (dashboards) =>
           dashboards ? provideDashboardListTags(dashboards) : [],
       }),
       getDashboard: builder.query<Dashboard, GetDashboardRequest>({
@@ -59,7 +59,7 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}`,
           noEvent: ignore_error,
         }),
-        providesTags: dashboard =>
+        providesTags: (dashboard) =>
           dashboard ? provideDashboardTags(dashboard) : [],
       }),
       getDashboardQueryMetadata: builder.query<
@@ -71,11 +71,11 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}/query_metadata`,
           params,
         }),
-        providesTags: metadata =>
+        providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
       }),
       createDashboard: builder.mutation<Dashboard, CreateDashboardRequest>({
-        query: body => ({
+        query: (body) => ({
           method: "POST",
           url: "/api/dashboard",
           body,
@@ -100,7 +100,7 @@ export const dashboardApi = Api.injectEndpoints({
           invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
-        query: id => ({
+        query: (id) => ({
           method: "DELETE",
           url: `/api/dashboard/${id}`,
         }),
@@ -108,7 +108,7 @@ export const dashboardApi = Api.injectEndpoints({
           invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
       }),
       saveDashboard: builder.mutation<Dashboard, SaveDashboardRequest>({
-        query: body => ({
+        query: (body) => ({
           method: "POST",
           url: `/api/dashboard/save`,
           body,
@@ -126,13 +126,13 @@ export const dashboardApi = Api.injectEndpoints({
           invalidateTags(error, [listTag("dashboard")]),
       }),
       listEmbeddableDashboards: builder.query<GetEmbeddableDashboard[], void>({
-        query: params => ({
+        query: (params) => ({
           method: "GET",
           url: "/api/dashboard/embeddable",
           params,
         }),
         providesTags: (result = []) => [
-          ...result.map(res => idTag("embed-dashboard", res.id)),
+          ...result.map((res) => idTag("embed-dashboard", res.id)),
           listTag("embed-dashboard"),
         ],
       }),
@@ -141,13 +141,13 @@ export const dashboardApi = Api.injectEndpoints({
       updateDashboardEmbeddingParams:
         updateDashboardPropertyMutation<"embedding_params">(),
       listPublicDashboards: builder.query<GetPublicDashboard[], void>({
-        query: params => ({
+        query: (params) => ({
           method: "GET",
           url: "/api/dashboard/public",
           params,
         }),
         providesTags: (result = []) => [
-          ...result.map(res => idTag("public-dashboard", res.id)),
+          ...result.map((res) => idTag("public-dashboard", res.id)),
           listTag("public-dashboard"),
         ],
       }),

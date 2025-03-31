@@ -14,7 +14,7 @@ export default {
   decorators: [CommonSdkStoryCorsWrapper],
 };
 
-const Template: ComponentStory<typeof StaticDashboard> = args => {
+const Template: ComponentStory<typeof StaticDashboard> = (args) => {
   return <StaticDashboard {...args} />;
 };
 

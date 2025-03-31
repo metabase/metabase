@@ -72,7 +72,7 @@ export function NumberInputWidget({
   const valueOptions = unsavedArrayValue
     .map((item): SelectItem | null => {
       const option = parameter?.values_source_config?.values?.find(
-        option => getValue(option)?.toString() === item?.toString(),
+        (option) => getValue(option)?.toString() === item?.toString(),
       );
 
       if (!option) {
@@ -92,7 +92,7 @@ export function NumberInputWidget({
     .filter(isNotNull);
 
   const customLabelOptions = options.filter(
-    option => option.label !== option.value,
+    (option) => option.label !== option.value,
   );
 
   function parseValue(value: string | number | undefined): number | null {
@@ -116,10 +116,10 @@ export function NumberInputWidget({
           <MultiAutocomplete
             onChange={(values: string[]) =>
               setUnsavedArrayValue(
-                values.map(value => parseValue(value) ?? undefined),
+                values.map((value) => parseValue(value) ?? undefined),
               )
             }
-            value={filteredUnsavedArrayValue.map(value => value?.toString())}
+            value={filteredUnsavedArrayValue.map((value) => value?.toString())}
             placeholder={placeholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
@@ -133,15 +133,15 @@ export function NumberInputWidget({
           />
         </TokenFieldWrapper>
       ) : (
-        _.times(arity, i => (
+        _.times(arity, (i) => (
           <div key={i}>
             <NumericInput
               fullWidth
               className={CS.p1}
               autoFocus={autoFocus && i === 0}
               value={unsavedArrayValue[i]}
-              onChange={newValue => {
-                setUnsavedArrayValue(unsavedArrayValue => {
+              onChange={(newValue) => {
+                setUnsavedArrayValue((unsavedArrayValue) => {
                   const newUnsavedValue = [...unsavedArrayValue];
                   newUnsavedValue[i] = newValue;
                   return newUnsavedValue;

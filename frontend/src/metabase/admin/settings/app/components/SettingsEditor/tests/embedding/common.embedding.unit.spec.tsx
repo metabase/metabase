@@ -113,13 +113,13 @@ describe("[OSS] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         ).toBeInTheDocument();
         expect(
@@ -141,16 +141,16 @@ describe("[OSS] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedded analytics SDK",
+              name: "Embedded analytics SDK for React",
             }),
           ).getByRole("button", { name: "Try it out" }),
         );
 
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).not.toBeChecked();
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).toBeEnabled();
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
@@ -329,13 +329,13 @@ describe("[OSS] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         ).toBeInTheDocument();
         expect(
@@ -355,16 +355,16 @@ describe("[OSS] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedded analytics SDK",
+              name: "Embedded analytics SDK for React",
             }),
           ).getByRole("button", { name: "Try it out" }),
         );
 
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).toBeChecked();
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).toBeEnabled();
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
@@ -481,7 +481,9 @@ describe("[OSS] embedding settings", () => {
     });
 
     expect(screen.getByText("Static embedding")).toBeInTheDocument();
-    expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
+    expect(
+      screen.getByText("Embedded analytics SDK for React"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
   });
 
@@ -496,7 +498,7 @@ describe("[OSS] embedding settings", () => {
       await userEvent.click(
         within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         ).getByRole("button", { name: "Try it out" }),
       );
@@ -538,7 +540,7 @@ describe("[OSS] embedding settings", () => {
         );
       });
 
-      it("should show quick start section", () => {
+      it("should show quickstart section", () => {
         expect(
           screen.getByText("Try Embedded analytics SDK"),
         ).toBeInTheDocument();
@@ -547,7 +549,7 @@ describe("[OSS] embedding settings", () => {
         ).toBeInTheDocument();
 
         expect(
-          screen.getByRole("link", { name: "Check out the Quick Start" }),
+          screen.getByRole("link", { name: "Check out the Quickstart" }),
         ).toHaveProperty(
           "href",
           "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=oss",
@@ -630,7 +632,7 @@ describe("[OSS] embedding settings", () => {
 
       const withinEmbeddingSdkCard = within(
         screen.getByRole("article", {
-          name: "Embedded analytics SDK",
+          name: "Embedded analytics SDK for React",
         }),
       );
       expect(
@@ -664,7 +666,7 @@ describe("[OSS] embedding settings", () => {
 
       const withinEmbeddingSdkCard = within(
         screen.getByRole("article", {
-          name: "Embedded analytics SDK",
+          name: "Embedded analytics SDK for React",
         }),
       );
 

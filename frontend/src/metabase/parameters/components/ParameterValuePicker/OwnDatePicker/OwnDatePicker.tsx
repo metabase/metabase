@@ -106,7 +106,7 @@ function DateComponentRouter(props: {
         <DateRelativeWidget
           {...componentProps}
           // TODO fix types (metabase#40226)
-          setValue={val => props.setValue(val ?? null)}
+          setValue={(val) => props.setValue(val ?? null)}
         />
       );
     case "date/month-year":

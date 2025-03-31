@@ -74,7 +74,7 @@ export function buildTypedOperatorOptions(
   sectionId: ParameterSectionId,
   sectionName: string,
 ): ParameterMappingOptions[] {
-  return PARAMETER_OPERATOR_TYPES[operatorType].map(operatorOption => {
+  return PARAMETER_OPERATOR_TYPES[operatorType].map((operatorOption) => {
     return {
       ...operatorOption,
       sectionId,

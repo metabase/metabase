@@ -31,9 +31,8 @@ import {
 import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type {
   BaseDashboardCard,
   Card,
@@ -147,7 +146,7 @@ type OwnProps = {
   isNightMode: boolean;
   withCardTitle?: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
-  mode?: QueryClickActionsMode | Mode;
+  getClickActionMode?: ClickActionModeGetter;
   // public dashboard passes it explicitly
   width?: number;
   // public or embedded dashboard passes it as noop
@@ -252,7 +251,7 @@ class DashboardGridInner extends Component<
           dashcardData,
           state.visibleCardIds,
         )
-      : new Set(dashboard.dashcards.map(card => card.id));
+      : new Set(dashboard.dashcards.map((card) => card.id));
 
     const visibleCards = getVisibleCards(
       dashboard.dashcards,
@@ -310,9 +309,9 @@ class DashboardGridInner extends Component<
 
     const changes: SetDashCardAttributesOpts[] = [];
 
-    layout.forEach(layoutItem => {
+    layout.forEach((layoutItem) => {
       const dashboardCard = this.getVisibleCards().find(
-        card => String(card.id) === layoutItem.i,
+        (card) => String(card.id) === layoutItem.i,
       );
       if (dashboardCard) {
         const keys = ["h", "w", "x", "y"];
@@ -533,7 +532,7 @@ class DashboardGridInner extends Component<
         onReplaceAllDashCardVisualizationSettings={
           this.props.onReplaceAllDashCardVisualizationSettings
         }
-        mode={this.props.mode}
+        getClickActionMode={this.props.getClickActionMode}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }

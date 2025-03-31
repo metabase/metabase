@@ -51,9 +51,9 @@ const serializersByOperatorName: Record<
     return `next${value}${unit}s${options["include-current"] ? "~" : ""}`;
   }),
   current: getFilterValueSerializer((_, unit) => `this${unit}`),
-  before: getFilterValueSerializer(value => `~${value}`),
-  after: getFilterValueSerializer(value => `${value}~`),
-  on: getFilterValueSerializer(value => `${value}`),
+  before: getFilterValueSerializer((value) => `~${value}`),
+  after: getFilterValueSerializer((value) => `${value}~`),
+  on: getFilterValueSerializer((value) => `${value}`),
   between: getFilterValueSerializer((from, to) => `${from}~${to}`),
   exclude: (filter: any[]) => {
     const [_op, _field, ...values] = filter;
@@ -74,11 +74,11 @@ const serializersByOperatorName: Record<
 };
 
 function getFilterOperator(filter: any[] = []) {
-  return DATE_OPERATORS.find(op => op.test(filter as any));
+  return DATE_OPERATORS.find((op) => op.test(filter as any));
 }
 
 function getExcludeOperator(filter: any[] = []) {
-  return EXCLUDE_OPERATORS.find(op => op.test(filter as any));
+  return EXCLUDE_OPERATORS.find((op) => op.test(filter as any));
 }
 
 export function filterToUrlEncoded(filter: any[]) {

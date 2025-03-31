@@ -1,3 +1,93 @@
+## [0.52.17](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.16...embedding-sdk-0.52.17) (2025-03-20)
+
+
+### Bug Fixes
+
+* **sdk:** Consolidate StaticQuestion code using InteractiveQuestion code ([#55170](https://github.com/metabase/metabase/issues/55170)) ([f7d56bb](https://github.com/metabase/metabase/commit/f7d56bbb04403061ef1d81b9621e52659c6cf2ab))
+* **sdk:** Entity ID support for CreateDashboardModal ([#55358](https://github.com/metabase/metabase/issues/55358)) ([#55397](https://github.com/metabase/metabase/issues/55397)) ([d3ddb71](https://github.com/metabase/metabase/commit/d3ddb71c90668622ae2e2ab0ec9534f6f944930a))
+* **sdk:** Fix ad-hoc question view when clicking into SDK dashboard ([#55254](https://github.com/metabase/metabase/issues/55254)) ([#55420](https://github.com/metabase/metabase/issues/55420)) ([4dd789e](https://github.com/metabase/metabase/commit/4dd789ebb8c528fb8afe6efff0c2e0809e19167d))
+* **sdk:** mark all react-dom dependency requests as external for React 19 compatibility ([#55071](https://github.com/metabase/metabase/issues/55071)) ([#55326](https://github.com/metabase/metabase/issues/55326)) ([8179255](https://github.com/metabase/metabase/commit/817925500644915620e36e0a650ee2c542680c3d))
+* **sdk:** Popovers not working on Safari ([#55012](https://github.com/metabase/metabase/issues/55012)) ([#55022](https://github.com/metabase/metabase/issues/55022)) ([459694e](https://github.com/metabase/metabase/commit/459694ee68dd19e4ebab195668d7b56140db3ef4))
+
+
+### Features
+
+* **sdk:** Add DownloadWidget and DownloadWidgetDropdown ([#55149](https://github.com/metabase/metabase/issues/55149)) ([b6fe817](https://github.com/metabase/metabase/commit/b6fe817fe7cc7e97095b70fcef77d46c72d6793e))
+* **sdk:** Add entity IDs to CollectionBrowser ([#54985](https://github.com/metabase/metabase/issues/54985)) ([#55086](https://github.com/metabase/metabase/issues/55086)) ([7ffef05](https://github.com/metabase/metabase/commit/7ffef051ddf780f25698cfb254544d49e9b84de4))
+* **sdk:** Add stable ID support where missing ([#54975](https://github.com/metabase/metabase/issues/54975)) ([#55080](https://github.com/metabase/metabase/issues/55080)) ([949c1e4](https://github.com/metabase/metabase/commit/949c1e44c507c3b613267a865864c07442b1c6bf))
+* **sdk:** do not setup sandboxing and show user switcher if using a sample database ([#55105](https://github.com/metabase/metabase/issues/55105)) ([#55356](https://github.com/metabase/metabase/issues/55356)) ([775d72c](https://github.com/metabase/metabase/commit/775d72c4c7f4ea3ec48fba68814ce978cc051c6e))
+* **sdk:** Ensure that all dashboards use entity ID the same way ([#55010](https://github.com/metabase/metabase/issues/55010)) ([#55092](https://github.com/metabase/metabase/issues/55092)) ([5165ee5](https://github.com/metabase/metabase/commit/5165ee59c77d9515912b0f553dd0dc91c1797ac0))
+
+
+
+## [0.52.16](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.15...embedding-sdk-0.52.16) (2025-03-12)
+
+
+### Bug Fixes
+
+* **sdk:** [EMB-154] Pivot table visualization settings tabs caused jarring width change ([#54314](https://github.com/metabase/metabase/issues/54314)) ([4514326](https://github.com/metabase/metabase/commit/4514326c0b0996c1a4bb2a437a876157f18e0f47))
+* **sdk:** Fix ColorRangeSelector in Conditional Formatting ([#54616](https://github.com/metabase/metabase/issues/54616)) ([37fd560](https://github.com/metabase/metabase/commit/37fd560cf8e583f315cce6c8e5d86257d39ea51a))
+* **sdk:** mark react-dom/client as external to fix warnings in React 19 ([#54919](https://github.com/metabase/metabase/issues/54919)) ([#54924](https://github.com/metabase/metabase/issues/54924)) ([be077d8](https://github.com/metabase/metabase/commit/be077d8e2d6f098f2906b9799842daef71018e45))
+* **sdk:** remove react-router console error in LegendLabel when in React 19 ([#54926](https://github.com/metabase/metabase/issues/54926)) ([#54953](https://github.com/metabase/metabase/issues/54953)) ([6042d7b](https://github.com/metabase/metabase/commit/6042d7bc07ad8d258c2611118aaa3cf6eb06ee57))
+
+
+### Features
+
+* **sdk:** experimental react 19 version range support ([#54904](https://github.com/metabase/metabase/issues/54904)) ([#55002](https://github.com/metabase/metabase/issues/55002)) ([840e63d](https://github.com/metabase/metabase/commit/840e63dd2fe0ae7fbec3c62a3407a99918cfe2bb))
+
+
+
+## [0.52.15](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.14...embedding-sdk-0.52.15) (2025-02-27)
+
+
+### Bug Fixes
+
+* **sdk:** deprecate the CreateQuestion component ([#54288](https://github.com/metabase/metabase/issues/54288)) ([e7669a3](https://github.com/metabase/metabase/commit/e7669a37cb38b8ecc76f3d8ba78fd440fc6c861a)), closes [#54212](https://github.com/metabase/metabase/issues/54212)
+* **sdk:** expose the correct type for saveToCollection ([#54428](https://github.com/metabase/metabase/issues/54428)) ([#54433](https://github.com/metabase/metabase/issues/54433)) ([d3dcfc5](https://github.com/metabase/metabase/commit/d3dcfc502f14a280d07b03b9ec4d841b50939098))
+* **sdk:** Rename saveToCollectionId => saveToCollection ([#54264](https://github.com/metabase/metabase/issues/54264)) ([fd64b07](https://github.com/metabase/metabase/commit/fd64b073a7a98a7407139a846c070cd4a279745c)), closes [#54225](https://github.com/metabase/metabase/issues/54225)
+
+
+### Features
+
+* **sdk:** use questionId={new} for creating new questions ([#54404](https://github.com/metabase/metabase/issues/54404)) ([ee5e616](https://github.com/metabase/metabase/commit/ee5e61647c9c8ecd5f148941c45e07afd785a6c1))
+
+
+
+## [0.52.14](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.13...embedding-sdk-0.52.14) (2025-02-26)
+
+
+### Bug Fixes
+
+* **sdk:** move some emotion to css, scope it to .mb-wrapper and use it in the sdk ([#54202](https://github.com/metabase/metabase/issues/54202)) ([#54331](https://github.com/metabase/metabase/issues/54331)) ([835926e](https://github.com/metabase/metabase/commit/835926e61ffb82a63a5a663aedd4f79668b73c32))
+
+
+
+## [0.52.13](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.12...embedding-sdk-0.52.13) (2025-02-26)
+
+
+### Bug Fixes
+
+* **sdk:** add forwardRef to remove 'Function components cannot be given ([#54280](https://github.com/metabase/metabase/issues/54280)) ([#54291](https://github.com/metabase/metabase/issues/54291)) ([4b9d687](https://github.com/metabase/metabase/commit/4b9d6877be4ce18ad2c9ce88918ea24bbd8b20cd))
+* **sdk:** Add missing support of mapQuestionClickActions plugin for InteractiveDashboard ([#54240](https://github.com/metabase/metabase/issues/54240)) ([508f441](https://github.com/metabase/metabase/commit/508f44192f055a5e35195c648ced1940f35bb105))
+* **sdk:** auto-select sample database tables in cli ([#53654](https://github.com/metabase/metabase/issues/53654)) ([#53863](https://github.com/metabase/metabase/issues/53863)) ([406e969](https://github.com/metabase/metabase/commit/406e969c66084f740629cc4f6053adef9fc097bc))
+
+
+### Features
+
+* **sdk:** cli should ask to remove the instance early if one exists ([#53545](https://github.com/metabase/metabase/issues/53545)) ([#54322](https://github.com/metabase/metabase/issues/54322)) ([5d7acae](https://github.com/metabase/metabase/commit/5d7acae7694dcc8880953db755671956bd7e04a8))
+* **sdk:** use new querying layout for create question flow ([#53976](https://github.com/metabase/metabase/issues/53976)) ([#54246](https://github.com/metabase/metabase/issues/54246)) ([eaf44ed](https://github.com/metabase/metabase/commit/eaf44eddb7278a16284b73989aa8009023e759ae))
+
+
+
+## [0.52.12](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.11...embedding-sdk-0.52.12) (2025-02-25)
+
+
+### Bug Fixes
+
+* **sdk:** fix visual artifacts in binning options ([#54130](https://github.com/metabase/metabase/issues/54130)) ([9187756](https://github.com/metabase/metabase/commit/9187756e4579d973914066092782750d20595b32)), closes [#53961](https://github.com/metabase/metabase/issues/53961)
+
+
+
 ## [0.52.11](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.10...embedding-sdk-0.52.11) (2025-02-18)
 
 

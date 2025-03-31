@@ -28,7 +28,7 @@ export const QuestionSettingsDropdown = ({
       />
     </Popover.Target>
     <Popover.Dropdown miw="20rem" mah={height ?? FLEXIBLE_SIZE_DEFAULT_HEIGHT}>
-      <InteractiveQuestion.QuestionSettings />
+      <InteractiveQuestion.QuestionSettings maw="20rem" />
     </Popover.Dropdown>
   </Popover>
 );

@@ -1,7 +1,8 @@
 import { keyframes } from "@emotion/react";
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
-import Button from "metabase/core/components/Button";
+import Button, { type ButtonProps } from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
@@ -24,19 +25,29 @@ export interface BookmarkIconProps {
 }
 
 export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
-  color: ${props => (props.isBookmarked ? color("brand") : "")};
-  animation-name: ${props =>
+  color: ${(props) => (props.isBookmarked ? color("brand") : "")};
+  animation-name: ${(props) =>
     props.isBookmarked ? expandKeyframes : shrinkKeyframes};
-  animation-play-state: ${props => (props.isAnimating ? "running" : "paused")};
+  animation-play-state: ${(props) =>
+    props.isAnimating ? "running" : "paused"};
   animation-duration: 0.3s;
   animation-timing-function: linear;
 `;
 
-interface BookmarkButtonProps {
-  isBookmarked: boolean;
-}
+const BaseBookmarkButton = forwardRef<HTMLButtonElement, ButtonProps>(
+  function BookmarkButton(props, ref) {
+    return (
+      <Button
+        {...props}
+        ref={ref}
+        onlyIcon={props.onlyIcon ?? true}
+        iconSize={props.iconSize ?? 16}
+      />
+    );
+  },
+);
 
-export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
+export const BookmarkButton = styled(BaseBookmarkButton)`
   padding: 0.25rem 0.5rem;
   height: 2rem;
   width: 2rem;
@@ -50,8 +61,3 @@ export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
     vertical-align: middle;
   }
 `;
-
-BookmarkButton.defaultProps = {
-  onlyIcon: true,
-  iconSize: 16,
-};

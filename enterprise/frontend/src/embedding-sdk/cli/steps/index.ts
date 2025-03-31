@@ -1,4 +1,5 @@
 export * from "./check-docker-running";
+export * from "./check-docker-container-exist";
 export * from "./create-api-key";
 export * from "./generate-credentials";
 export * from "./generate-credentials-file";

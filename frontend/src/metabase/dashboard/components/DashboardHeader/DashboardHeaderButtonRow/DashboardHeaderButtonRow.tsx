@@ -48,7 +48,7 @@ export const DashboardHeaderButtonRow = ({
     : DASHBOARD_VIEW_ACTIONS;
 
   const visibleDashboardActionKeys = dashboardActionKeys
-    ? buttonOptions.filter(key => dashboardActionKeys.includes(key))
+    ? buttonOptions.filter((key) => dashboardActionKeys.includes(key))
     : buttonOptions;
 
   const dispatch = useDispatch();
@@ -59,7 +59,7 @@ export const DashboardHeaderButtonRow = ({
 
   return (
     <>
-      {visibleDashboardActionKeys.map(dashboardActionKey => {
+      {visibleDashboardActionKeys.map((dashboardActionKey) => {
         const config = dashboardActionButtons[dashboardActionKey];
         if (dashboard) {
           const buttonComponentProps: HeaderButtonProps = {

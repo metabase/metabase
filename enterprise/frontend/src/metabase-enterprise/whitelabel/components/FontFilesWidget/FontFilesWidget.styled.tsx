@@ -67,7 +67,7 @@ export const TableBodyCell = styled.div<TableBodyCellProps>`
   color: var(--mb-color-text-medium);
   padding-top: 1rem;
   padding-bottom: 1rem;
-  font-weight: ${props => props.fontWeight};
+  font-weight: ${(props) => props.fontWeight};
 `;
 
 export const TableBodyCellLabel = styled.span`

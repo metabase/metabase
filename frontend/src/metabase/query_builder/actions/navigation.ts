@@ -39,7 +39,7 @@ const setCurrentState = createAction(SET_CURRENT_STATE);
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
   POP_STATE,
-  location => async (dispatch, getState) => {
+  (location) => async (dispatch, getState) => {
     dispatch(cancelQuery());
 
     const zoomedObjectId = getZoomedObjectId(getState());

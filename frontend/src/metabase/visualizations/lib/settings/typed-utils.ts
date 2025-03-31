@@ -45,12 +45,13 @@ const mergeTableColumns = (
   secondTableColumns: TableColumnOrderSetting[],
 ) => {
   const addedColumns = firstTableColumns.filter(
-    ({ name }) => secondTableColumns.findIndex(col => col.name === name) === -1,
+    ({ name }) =>
+      secondTableColumns.findIndex((col) => col.name === name) === -1,
   );
   const removedColumns = secondTableColumns
     .filter(
       ({ name }) =>
-        firstTableColumns.findIndex(col => col.name === name) === -1,
+        firstTableColumns.findIndex((col) => col.name === name) === -1,
     )
     .map(({ name }) => name);
 

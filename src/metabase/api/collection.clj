@@ -152,10 +152,8 @@
     (t2/hydrate collections :can_write :is_personal :can_delete)
     ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
-    (for [collection collections]
-      (-> collection
-          (dissoc ::collection.root/is-root?)
-          collection/personal-collection-with-ui-details))))
+    (collection/personal-collections-with-ui-details  (for [collection collections]
+                                                        (dissoc collection ::collection.root/is-root?)))))
 
 (defn- shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.

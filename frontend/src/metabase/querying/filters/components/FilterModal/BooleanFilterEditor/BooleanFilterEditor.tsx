@@ -75,7 +75,7 @@ export function BooleanFilterEditor({
               label={t`True`}
               checked={values.length > 0 ? values[0] : false}
               indeterminate={valueCount === 0}
-              onChange={event =>
+              onChange={(event) =>
                 handleValuesChange(event.target.checked ? [true] : [])
               }
             />
@@ -83,7 +83,7 @@ export function BooleanFilterEditor({
               label={t`False`}
               checked={values.length > 0 ? !values[0] : false}
               indeterminate={valueCount === 0}
-              onChange={event =>
+              onChange={(event) =>
                 handleValuesChange(event.target.checked ? [false] : [])
               }
             />

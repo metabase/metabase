@@ -132,7 +132,7 @@ function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
           const hasPagination = metadata.total > PAGE_SIZE;
 
           const modelCacheInfo = persistedModels.filter(
-            cacheInfo => cacheInfo.state !== "deletable",
+            (cacheInfo) => cacheInfo.state !== "deletable",
           );
 
           if (modelCacheInfo.length === 0) {
@@ -166,7 +166,7 @@ function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {modelCacheInfo.map(job => (
+                  {modelCacheInfo.map((job) => (
                     <JobTableItem
                       key={job.id}
                       job={job}

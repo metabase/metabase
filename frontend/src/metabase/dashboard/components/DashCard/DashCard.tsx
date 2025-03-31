@@ -20,9 +20,8 @@ import { useSelector, useStore } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getVisualizationRaw } from "metabase/visualizations";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type {
   Card,
   CardId,
@@ -53,7 +52,7 @@ export interface DashCardProps {
   gridItemWidth: number;
   totalNumGridCols: number;
   slowCards: Record<CardId, boolean>;
-  mode?: QueryClickActionsMode | Mode;
+  getClickActionMode?: ClickActionModeGetter;
 
   clickBehaviorSidebarDashcard?: DashboardCard | null;
 
@@ -94,7 +93,7 @@ function DashCardInner({
   slowCards,
   gridItemWidth,
   totalNumGridCols,
-  mode,
+  getClickActionMode,
   isEditing = false,
   isNightMode = false,
   isFullscreen = false,
@@ -115,7 +114,7 @@ function DashCardInner({
   onReplaceAllDashCardVisualizationSettings,
   downloadsEnabled,
 }: DashCardProps) {
-  const dashcardData = useSelector(state =>
+  const dashcardData = useSelector((state) =>
     getDashcardData(state, dashcard.id),
   );
   const store = useStore();
@@ -127,7 +126,7 @@ function DashCardInner({
   const cardRootRef = useRef<HTMLDivElement>(null);
 
   const handlePreviewToggle = useCallback(() => {
-    setIsPreviewingCard(wasPreviewingCard => !wasPreviewingCard);
+    setIsPreviewingCard((wasPreviewingCard) => !wasPreviewingCard);
   }, []);
 
   useMount(() => {
@@ -162,7 +161,7 @@ function DashCardInner({
   }, [mainCard, dashcard]);
 
   const series = useMemo(() => {
-    return cards.map(card => {
+    return cards.map((card) => {
       const isSlow = card.id ? slowCards[card.id] : false;
       const isUsuallyFast =
         card.query_average_duration &&
@@ -190,11 +189,11 @@ function DashCardInner({
 
   const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(
-      ...series.map(s => s.card.query_average_duration || 0),
+      ...series.map((s) => s.card.query_average_duration || 0),
     );
-    const isUsuallyFast = series.every(s => s.isUsuallyFast);
+    const isUsuallyFast = series.every((s) => s.isUsuallyFast);
     let isSlow: CardSlownessStatus = false;
-    if (isLoading && series.some(s => s.isSlow)) {
+    if (isLoading && series.some((s) => s.isSlow)) {
       isSlow = isUsuallyFast ? "usually-fast" : "usually-slow";
     }
     return { expectedDuration, isSlow };
@@ -333,7 +332,7 @@ function DashCardInner({
           dashboard={dashboard}
           dashcard={dashcard}
           series={series}
-          mode={mode}
+          getClickActionMode={getClickActionMode}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}
           totalNumGridCols={totalNumGridCols}

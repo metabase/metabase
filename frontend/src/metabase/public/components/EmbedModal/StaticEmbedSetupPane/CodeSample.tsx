@@ -52,7 +52,7 @@ export const CodeSample = ({
                 dataTestId,
               }}
             >
-              {languageOptions.map(option => (
+              {languageOptions.map((option) => (
                 <Option key={option.id} value={option.id}>
                   {option.name}
                 </Option>

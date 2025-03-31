@@ -19,7 +19,7 @@ H.describeWithSnowplow(
         H.mockSessionPropertiesTokenFeatures({ attached_dwh: true });
       });
 
-      H.CSV_FILES.forEach(testFile => {
+      H.CSV_FILES.forEach((testFile) => {
         it(`${testFile.valid ? "Can" : "Cannot"} upload ${
           testFile.fileName
         } to "Our analytics" using DWH`, () => {

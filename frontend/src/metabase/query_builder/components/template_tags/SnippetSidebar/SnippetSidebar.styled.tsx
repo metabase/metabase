@@ -36,7 +36,7 @@ interface SearchSnippetIconProps {
 }
 
 export const SearchSnippetIcon = styled(Icon)<SearchSnippetIconProps>`
-  display: ${props => props.isHidden && "none"};
+  display: ${(props) => props.isHidden && "none"};
   cursor: pointer;
   margin-right: 0.5rem;
 
@@ -50,7 +50,7 @@ interface AddSnippetIconProps {
 }
 
 export const AddSnippetIcon = styled(Icon)<AddSnippetIconProps>`
-  display: ${props => props.isHidden && "none"};
+  display: ${(props) => props.isHidden && "none"};
   color: var(--mb-color-brand);
   cursor: pointer;
   padding: 0.5rem;
@@ -77,7 +77,7 @@ interface HideSearchIconProps {
 }
 
 export const HideSearchIcon = styled(Icon)<HideSearchIconProps>`
-  display: ${props => props.isHidden && "none"};
+  display: ${(props) => props.isHidden && "none"};
   cursor: pointer;
   padding: 0.5rem;
 

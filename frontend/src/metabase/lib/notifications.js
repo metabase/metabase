@@ -26,18 +26,18 @@ export const formatLink = (item, type) => {
   }
 };
 
-export const formatChannel = channel => {
+export const formatChannel = (channel) => {
   const parts = [
     formatChannelType(channel),
     formatChannelSchedule(channel),
     formatChannelDetails(channel),
   ];
 
-  return parts.filter(p => p).join(" ");
+  return parts.filter((p) => p).join(" ");
 };
 
-export const formatChannels = channels => {
-  return channels.map(channel => formatChannel(channel)).join(", ");
+export const formatChannels = (channels) => {
+  return channels.map((channel) => formatChannel(channel)).join(", ");
 };
 
 export const formatChannelType = ({ channel_type }) => {
@@ -86,7 +86,7 @@ export const formatChannelDetails = ({ channel_type, details }) => {
   }
 };
 
-export const formatChannelRecipients = item => {
+export const formatChannelRecipients = (item) => {
   const emailCount = getRecipientsCount(item, "email");
   const slackCount = getRecipientsCount(item, "slack");
 
@@ -113,14 +113,14 @@ export const formatChannelRecipients = item => {
 
 export const getRecipientsCount = (item, channelType) => {
   return item.channels
-    .filter(channel => channel.channel_type === channelType)
+    .filter((channel) => channel.channel_type === channelType)
     .reduce((total, channel) => total + channel.recipients.length, 0);
 };
 
 export const canArchive = (item, user) => {
-  const recipients = item.channels.flatMap(channel => {
+  const recipients = item.channels.flatMap((channel) => {
     if (channel.recipients) {
-      return channel.recipients.map(recipient => recipient.id);
+      return channel.recipients.map((recipient) => recipient.id);
     } else {
       return [];
     }

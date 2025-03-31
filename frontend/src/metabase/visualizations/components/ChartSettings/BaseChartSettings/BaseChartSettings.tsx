@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
+import { Stack } from "metabase/ui";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
   getComputedSettings,
@@ -19,7 +20,6 @@ import type { Widget } from "../types";
 
 import {
   ChartSettingsListContainer,
-  ChartSettingsMenu,
   SectionContainer,
 } from "./BaseChartSettings.styled";
 import { useChartSettingsSections } from "./hooks";
@@ -34,6 +34,7 @@ export const BaseChartSettings = ({
   widgets,
   chartSettings,
   transformedSeries,
+  ...stackProps
 }: BaseChartSettingsProps) => {
   const {
     chartSettingCurrentSection,
@@ -70,14 +71,15 @@ export const BaseChartSettings = ({
         {
           series: series,
         },
-      ).some(widget => !widget.hidden);
+      ).some((widget) => !widget.hidden);
     },
     [chartSettings, series],
   );
 
   const styleWidget = useMemo(() => {
     const seriesSettingsWidget =
-      currentWidget && widgets.find(widget => widget.id === "series_settings");
+      currentWidget &&
+      widgets.find((widget) => widget.id === "series_settings");
 
     const display = transformedSeries?.[0]?.card?.display;
     // In the pie the chart, clicking on the "measure" settings menu will only
@@ -109,7 +111,7 @@ export const BaseChartSettings = ({
         return null;
       }
 
-      const singleSeriesForColumn = transformedSeries?.find(single => {
+      const singleSeriesForColumn = transformedSeries?.find((single) => {
         const metricColumn = single.data.cols[1];
         if (metricColumn) {
           return (
@@ -134,7 +136,7 @@ export const BaseChartSettings = ({
 
   const formattingWidget = useMemo(() => {
     const widget =
-      currentWidget && widgets.find(widget => widget.id === currentWidget.id);
+      currentWidget && widgets.find((widget) => widget.id === currentWidget.id);
 
     if (widget) {
       return { ...widget, props: { ...widget.props, ...currentWidget.props } };
@@ -187,27 +189,36 @@ export const BaseChartSettings = ({
 
   return (
     <>
-      <ChartSettingsMenu data-testid="chartsettings-sidebar">
+      <Stack
+        data-testid="chartsettings-sidebar"
+        h="100%"
+        spacing={0}
+        className={CS.overflowHidden}
+        {...stackProps}
+      >
         {showSectionPicker && (
           <SectionContainer>
             <Radio
               value={chartSettingCurrentSection ?? undefined}
               onChange={handleShowSection}
               options={sectionNames}
-              optionNameFn={v => v}
-              optionValueFn={v => v}
-              optionKeyFn={v => v}
+              optionNameFn={(v) => v}
+              optionValueFn={(v) => v}
+              optionKeyFn={(v) => v}
               variant="underlined"
             />
           </SectionContainer>
         )}
-        <ChartSettingsListContainer className={CS.scrollShow}>
+        <ChartSettingsListContainer
+          data-testid="chartsettings-list-container"
+          className={CS.scrollShow}
+        >
           <ChartSettingsWidgetList
             widgets={visibleWidgets}
             extraWidgetProps={extraWidgetProps}
           />
         </ChartSettingsListContainer>
-      </ChartSettingsMenu>
+      </Stack>
       <ChartSettingsWidgetPopover
         anchor={popoverRef as HTMLElement}
         widgets={[styleWidget, formattingWidget].filter(

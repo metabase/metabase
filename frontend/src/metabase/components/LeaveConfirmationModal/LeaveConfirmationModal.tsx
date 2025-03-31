@@ -43,7 +43,7 @@ const LeaveConfirmationModalBase = ({
   useBeforeUnload(isEnabled);
 
   useEffect(() => {
-    const removeLeaveHook = router.setRouteLeaveHook(route, location => {
+    const removeLeaveHook = router.setRouteLeaveHook(route, (location) => {
       if (isEnabled && !isConfirmed && !isLocationAllowed(location)) {
         setIsConfirmationVisible(true);
         setNextLocation(location);

@@ -1,11 +1,16 @@
 import type React from "react";
 
 import type { IconName } from "metabase/ui";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { ClickActionProps } from "metabase-lib/v1/queries/drills/types";
 import type { Card, Series, VisualizationSettings } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
+
+export type ClickActionModeGetter = (data: {
+  question: Question;
+}) => QueryClickActionsMode | Mode;
 
 export type {
   ClickActionProps,

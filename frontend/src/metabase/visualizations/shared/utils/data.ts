@@ -140,7 +140,7 @@ export const trimData = (
         currentValue.metrics,
       );
 
-      Object.keys(currentValue.breakout ?? {}).map(breakoutName => {
+      Object.keys(currentValue.breakout ?? {}).map((breakoutName) => {
         groupedValue.breakout ??= {};
         groupedValue.breakout[breakoutName] = {
           metrics: sumMetrics(
@@ -177,7 +177,7 @@ const getBreakoutDistinctValues = (
   const formattedDistinctValues: string[] = [];
   const usedRawValues = new Set<RowValue>();
 
-  data.rows.forEach(row => {
+  data.rows.forEach((row) => {
     const rawValue = row[breakout.index];
 
     if (usedRawValues.has(rawValue)) {
@@ -196,7 +196,7 @@ const getBreakoutSeries = (
   metric: ColumnDescriptor,
   dimension: ColumnDescriptor,
 ): Series<GroupedDatum, SeriesInfo>[] => {
-  return breakoutValues.map(breakoutValue => {
+  return breakoutValues.map((breakoutValue) => {
     const breakoutName = String(breakoutValue);
     return {
       seriesKey: breakoutName,
@@ -217,7 +217,7 @@ const getMultipleMetricSeries = (
   dimension: ColumnDescriptor,
   metrics: ColumnDescriptor[],
 ): Series<GroupedDatum, SeriesInfo>[] => {
-  return metrics.map(metric => {
+  return metrics.map((metric) => {
     return {
       seriesKey: metric.column.name,
       seriesName: metric.column.display_name ?? metric.column.name,
@@ -262,10 +262,10 @@ export const getOrderedSeries = (
   }
 
   return seriesOrder
-    .filter(orderSetting => orderSetting.enabled)
-    .map(orderSetting => {
+    .filter((orderSetting) => orderSetting.enabled)
+    .map((orderSetting) => {
       const foundSeries = series.find(
-        singleSeries => singleSeries.seriesKey === orderSetting.key,
+        (singleSeries) => singleSeries.seriesKey === orderSetting.key,
       );
       if (foundSeries === undefined) {
         throw new TypeError("Series not found");
@@ -277,6 +277,6 @@ export const getOrderedSeries = (
 export const sanatizeResultData = (data: DatasetData) => {
   return {
     ...data,
-    cols: data.cols.filter(col => col.expression_name !== "pivot-grouping"),
+    cols: data.cols.filter((col) => col.expression_name !== "pivot-grouping"),
   };
 };

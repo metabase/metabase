@@ -8,7 +8,7 @@ export function findColumnFilters(
   const filters = Lib.filters(query, stageIndex);
   const { filterPositions } = Lib.displayInfo(query, stageIndex, column);
   return filterPositions != null
-    ? filterPositions.map(index => filters[index])
+    ? filterPositions.map((index) => filters[index])
     : [];
 }
 

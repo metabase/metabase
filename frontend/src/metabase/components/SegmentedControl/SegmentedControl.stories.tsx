@@ -11,7 +11,7 @@ export default {
   component: SegmentedControl,
 };
 
-const Template: StoryFn<SegmentedControlProps<number>> = args => {
+const Template: StoryFn<SegmentedControlProps<number>> = (args) => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
 

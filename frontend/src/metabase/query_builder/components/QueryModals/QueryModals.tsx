@@ -75,7 +75,7 @@ export function QueryModals({
   const showAlertsAfterQuestionSaved = useCallback(() => {
     const hasAlertsCreatedByCurrentUser = _.any(
       questionAlerts,
-      alert => alert.creator.id === user.id,
+      (alert) => alert.creator.id === user.id,
     );
 
     if (hasAlertsCreatedByCurrentUser) {
@@ -157,11 +157,11 @@ export function QueryModals({
           question={question}
           originalQuestion={originalQuestion}
           initialCollectionId={initialCollectionId}
-          onSave={async question => {
+          onSave={async (question) => {
             await onSave(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
-          onCreate={async question => {
+          onCreate={async (question) => {
             await onCreate(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
@@ -192,11 +192,11 @@ export function QueryModals({
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion}
-          onSave={async question => {
+          onSave={async (question) => {
             await onSave(question);
             showAlertsAfterQuestionSaved();
           }}
-          onCreate={async question => {
+          onCreate={async (question) => {
             await onCreate(question);
             showAlertsAfterQuestionSaved();
           }}
@@ -272,7 +272,7 @@ export function QueryModals({
                 ? question.collectionId()
                 : initialCollectionId,
             }}
-            copy={async formValues => {
+            copy={async (formValues) => {
               if (!questionWithParameters) {
                 return;
               }

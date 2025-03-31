@@ -76,7 +76,7 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
       expect(status).to.equal(200);
       cy.wrap(body.id).as(`${engine}ID`);
     })
-    .then(dbId => {
+    .then((dbId) => {
       // Make sure we have all the metadata because we'll need to use it in tests
       assertOnDatabaseMetadata(engine);
 
@@ -94,7 +94,7 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
 
 function assertOnDatabaseMetadata(engine) {
   cy.request("GET", "/api/database").then(({ body }) => {
-    const { id } = body.data.find(db => {
+    const { id } = body.data.find((db) => {
       return db.engine === engine;
     });
 
@@ -143,11 +143,11 @@ function recursiveCheckFields(id, i = 0) {
         .then(({ body: schema }) => {
           return schema[0].id;
         })
-        .then(tableId => {
+        .then((tableId) => {
           cy.request("GET", `/api/table/${tableId}/query_metadata`).then(
             ({ body: table }) => {
               const field = table.fields.find(
-                field => field.semantic_type !== "type/PK",
+                (field) => field.semantic_type !== "type/PK",
               );
               if (!field.last_analyzed) {
                 recursiveCheckFields(id, ++i);
@@ -189,7 +189,7 @@ export const setupWritableDB = (type = "postgres") => {
   cy.task("connectAndQueryDB", {
     connectionConfig: connectionConfig[type],
     query: dbCheckQuery[type],
-  }).then(results => {
+  }).then((results) => {
     if (!results.rows.length) {
       cy.log(`**-- Adding ${type} DB for actions --**`);
       cy.task("connectAndQueryDB", {
@@ -227,7 +227,7 @@ export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
-      const table = body?.tables?.find(table => table.name === name);
+      const table = body?.tables?.find((table) => table.name === name);
       return table ? table.id : null;
     });
 }
@@ -236,7 +236,7 @@ export function getTable({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
-      const table = body?.tables?.find(table => table.name === name);
+      const table = body?.tables?.find((table) => table.name === name);
       return table || null;
     });
 }
@@ -246,7 +246,7 @@ export const createModelFromTableName = ({
   modelName = "Test Action Model",
   idAlias = "modelId",
 }) => {
-  getTableId({ name: tableName }).then(tableId => {
+  getTableId({ name: tableName }).then((tableId) => {
     cy.createQuestion(
       {
         database: WRITABLE_DB_ID,
@@ -287,7 +287,7 @@ export function waitForSyncToFinish({
       });
     } else if (tableName) {
       const table = body.tables.find(
-        table =>
+        (table) =>
           table.name === tableName && table.initial_sync_status === "complete",
       );
 

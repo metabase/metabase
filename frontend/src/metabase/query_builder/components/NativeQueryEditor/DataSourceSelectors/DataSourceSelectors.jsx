@@ -69,10 +69,10 @@ const DataSourceSelectors = ({
     const allDatabases = query
       .metadata()
       .databasesList({ savedQuestions: false })
-      .filter(db => db.canWrite());
+      .filter((db) => db.canWrite());
 
     if (editorContext === "action") {
-      return allDatabases.filter(database => database.hasActionsEnabled());
+      return allDatabases.filter((database) => database.hasActionsEnabled());
     }
 
     return allDatabases;
@@ -151,7 +151,7 @@ PopulatedDataSourceSelectors.propTypes = PopulatedDataSourceSelectorsPropTypes;
 
 const checkIfThereAreMultipleDatabases = (database, databases) =>
   database == null ||
-  (databases.length > 1 && databases.some(db => db.id === database.id));
+  (databases.length > 1 && databases.some((db) => db.id === database.id));
 
 const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
   <div

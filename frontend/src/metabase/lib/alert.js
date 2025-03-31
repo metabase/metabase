@@ -28,9 +28,9 @@ export function alertIsValid(alert, channelSpec) {
   return (
     channelSpec.channels &&
     enabledChannels.length > 0 &&
-    enabledChannels.every(channel => channelIsValid(channel)) &&
+    enabledChannels.every((channel) => channelIsValid(channel)) &&
     enabledChannels
-      .filter(c => c.enabled)
-      .every(c => channelSpec.channels[c.channel_type]?.configured)
+      .filter((c) => c.enabled)
+      .every((c) => channelSpec.channels[c.channel_type]?.configured)
   );
 }

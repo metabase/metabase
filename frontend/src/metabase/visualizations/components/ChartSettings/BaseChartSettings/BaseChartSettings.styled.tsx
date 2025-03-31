@@ -26,14 +26,8 @@ export const SectionContainer = styled.div`
   }
 `;
 
-export const ChartSettingsMenu = styled.div`
-  flex: 1 0 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-`;
-
 export const ChartSettingsListContainer = styled.div`
   position: relative;
   padding: 1.5rem 0;
+  overflow: scroll;
 `;

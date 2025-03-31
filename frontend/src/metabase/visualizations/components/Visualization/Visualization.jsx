@@ -59,12 +59,12 @@ const defaultProps = {
   onUpdateQuestion: () => {},
   onUpdateVisualizationSettings: () => {},
   // prefer passing in a function that doesn't cause the application to reload
-  onChangeLocation: location => {
+  onChangeLocation: (location) => {
     window.location = location;
   },
 };
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
@@ -72,18 +72,18 @@ const mapStateToProps = state => ({
 
 const SMALL_CARD_WIDTH_THRESHOLD = 150;
 
-const isLoading = series => {
+const isLoading = (series) => {
   return !(
     series &&
     series.length > 0 &&
     _.every(
       series,
-      s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
+      (s) => s.data || _.isObject(s.card.visualization_settings.virtual_card),
     )
   );
 };
 
-const deriveStateFromProps = props => {
+const deriveStateFromProps = (props) => {
   const transformed = props.rawSeries
     ? getVisualizationTransformed(extractRemappings(props.rawSeries))
     : null;
@@ -175,9 +175,9 @@ class Visualization extends PureComponent {
     if (state.series && state.series[0].card.display !== "table") {
       warnings = warnings.concat(
         props.rawSeries
-          .filter(s => s.data && s.data.rows_truncated != null)
+          .filter((s) => s.data && s.data.rows_truncated != null)
           .map(
-            s =>
+            (s) =>
               t`Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`,
           ),
       );
@@ -191,7 +191,7 @@ class Visualization extends PureComponent {
     }
   }
 
-  handleHoverChange = hovered => {
+  handleHoverChange = (hovered) => {
     if (hovered) {
       this.setState({ hovered });
       // If we previously set a timeout for clearing the hover clear it now since we received
@@ -216,13 +216,18 @@ class Visualization extends PureComponent {
       : undefined;
   }
 
-  getMode(maybeModeOrQueryMode, question) {
-    if (maybeModeOrQueryMode instanceof Mode) {
-      return maybeModeOrQueryMode;
+  getMode(modeOrModeGetter, question) {
+    const modeOrQueryMode =
+      typeof modeOrModeGetter === "function"
+        ? modeOrModeGetter({ question })
+        : modeOrModeGetter;
+
+    if (modeOrQueryMode instanceof Mode) {
+      return modeOrQueryMode;
     }
 
-    if (question && maybeModeOrQueryMode) {
-      return new Mode(question, maybeModeOrQueryMode);
+    if (question && modeOrQueryMode) {
+      return new Mode(question, modeOrQueryMode);
     }
 
     if (question) {
@@ -242,7 +247,7 @@ class Visualization extends PureComponent {
     } = this.props;
 
     const card =
-      rawSeries.find(series => series.card.id === clicked.cardId)?.card ??
+      rawSeries.find((series) => series.card.id === clicked.cardId)?.card ??
       rawSeries[0].card;
 
     const question = this._getQuestionForCardCached(metadata, card);
@@ -262,7 +267,7 @@ class Visualization extends PureComponent {
       : [];
   }
 
-  visualizationIsClickable = clicked => {
+  visualizationIsClickable = (clicked) => {
     try {
       return this.getClickActions(clicked).length > 0;
     } catch (e) {
@@ -271,7 +276,7 @@ class Visualization extends PureComponent {
     }
   };
 
-  handleVisualizationClick = clicked => {
+  handleVisualizationClick = (clicked) => {
     const { handleVisualizationClick } = this.props;
 
     if (typeof handleVisualizationClick === "function") {
@@ -302,7 +307,7 @@ class Visualization extends PureComponent {
     const { rawSeries } = this.props;
 
     const previousCard =
-      rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
+      rawSeries.find((series) => series.card.id === nextCard?.id)?.card ??
       rawSeries[0].card;
 
     this.props.onChangeCardAndRun({
@@ -319,12 +324,12 @@ class Visualization extends PureComponent {
     }
   };
 
-  onRenderError = error => {
+  onRenderError = (error) => {
     console.error(error);
     this.setState({ error });
   };
 
-  onErrorBoundaryError = genericError => {
+  onErrorBoundaryError = (genericError) => {
     this.setState({ genericError });
   };
 
@@ -418,7 +423,7 @@ class Visualization extends PureComponent {
     if (!error && !genericError) {
       noResults = _.every(
         series,
-        s => s && s.data && datasetContainsNoResults(s.data),
+        (s) => s && s.data && datasetContainsNoResults(s.data),
       );
     }
 
@@ -481,6 +486,7 @@ class Visualization extends PureComponent {
           className={className}
           style={style}
           data-testid="visualization-root"
+          data-viz-ui-name={visualization?.uiName}
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
@@ -581,7 +587,7 @@ export default _.compose(
   connect(mapStateToProps),
   ExplicitSize({
     selector: ".CardVisualization",
-    refreshMode: props => (props.isVisible ? "throttle" : "debounceLeading"),
+    refreshMode: (props) => (props.isVisible ? "throttle" : "debounceLeading"),
   }),
 )(
   forwardRef(function VisualizationForwardRef(props, ref) {

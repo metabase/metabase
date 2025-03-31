@@ -76,6 +76,10 @@ export const getMajorVersion = (versionString: string) =>
     .replace(/-rc\d+/i, "")
     .split(".")[0];
 
+export const isReleaseBranch = (branchName: string) => {
+  return branchName.startsWith("release-x.");
+};
+
 export const getReleaseBranch = (versionString: string) => {
   if (!isValidVersionString(versionString)) {
     throw new Error(`Invalid version string: ${versionString}`);

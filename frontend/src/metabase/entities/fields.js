@@ -89,12 +89,12 @@ const Fields = createEntity({
           const uniqueId = getUniqueFieldId({ id, table_id });
           return [...Fields.getObjectStatePath(uniqueId), "values"];
         },
-        field => {
+        (field) => {
           return Fields.getQueryKey({ id: field.id });
         },
       ),
       withNormalize(FieldSchema),
-    )(field => async dispatch => {
+    )((field) => async (dispatch) => {
       const { field_id, ...data } = await MetabaseApi.field_values({
         fieldId: field.id,
       });
@@ -148,7 +148,7 @@ const Fields = createEntity({
     updateFieldDimension: createThunkAction(
       UPDATE_FIELD_DIMENSION,
       ({ id }, dimension) =>
-        dispatch =>
+        (dispatch) =>
           entityCompatibleQuery(
             { id, ...dimension },
             dispatch,
@@ -158,7 +158,7 @@ const Fields = createEntity({
     deleteFieldDimension: createThunkAction(
       DELETE_FIELD_DIMENSION,
       ({ id }) =>
-        async dispatch => {
+        async (dispatch) => {
           await entityCompatibleQuery(
             id,
             dispatch,
@@ -176,7 +176,7 @@ const Fields = createEntity({
 
   actions: {
     addParamValues: createAction(ADD_PARAM_VALUES),
-    addFields: createAction(ADD_FIELDS, fields =>
+    addFields: createAction(ADD_FIELDS, (fields) =>
       normalize(fields, [FieldSchema]),
     ),
   },

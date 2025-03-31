@@ -109,7 +109,7 @@ export const EmbedFrame = ({
   useGlobalTheme(theme);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const hasEmbedBranding = useSelector(
-    state => !getSetting(state, "hide-embed-branding?"),
+    (state) => !getSetting(state, "hide-embed-branding?"),
   );
 
   const isPublicDashboard = Boolean(

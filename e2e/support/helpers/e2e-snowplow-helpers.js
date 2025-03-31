@@ -36,7 +36,7 @@ export const expectGoodSnowplowEvent = (eventData, count = 1) => {
     "micro/good",
     ({ body }) => {
       lastReceivedEvent = body?.[0].event?.unstruct_event?.data?.data;
-      lastFoundEventCount = body.filter(snowplowEvent =>
+      lastFoundEventCount = body.filter((snowplowEvent) =>
         isDeepMatch(
           snowplowEvent?.event?.unstruct_event?.data?.data,
           eventData,
@@ -100,7 +100,7 @@ function isArrayDeepMatch(array, partialArray) {
   return true;
 }
 
-export const expectGoodSnowplowEvents = count => {
+export const expectGoodSnowplowEvents = (count) => {
   retrySnowplowRequest("micro/good", ({ body }) => body.length >= count)
     .its("body")
     .should("have.length", count);
@@ -110,7 +110,7 @@ export const expectNoBadSnowplowEvents = () => {
   sendSnowplowRequest("micro/bad").its("body").should("deep.equal", []);
 };
 
-const sendSnowplowRequest = url => {
+const sendSnowplowRequest = (url) => {
   return cy.request({
     url: `${SNOWPLOW_URL}/${url}`,
     json: true,
@@ -123,7 +123,7 @@ const retrySnowplowRequest = (
   messageOrMessageFn = null,
   timeout = SNOWPLOW_TIMEOUT,
 ) => {
-  return sendSnowplowRequest(url).then(response => {
+  return sendSnowplowRequest(url).then((response) => {
     if (condition(response)) {
       return cy.wrap(response);
     } else if (timeout > 0) {
@@ -144,6 +144,6 @@ const retrySnowplowRequest = (
   });
 };
 
-const blockSnowplowRequest = url => {
-  return cy.intercept("POST", `${SNOWPLOW_URL}/${url}`, req => req.destroy());
+const blockSnowplowRequest = (url) => {
+  return cy.intercept("POST", `${SNOWPLOW_URL}/${url}`, (req) => req.destroy());
 };

@@ -51,7 +51,7 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
   const id = useMemo(() => _.uniqueId("radio-"), []);
   const name = nameProp || id;
   const selectedOptionIndex = options.findIndex(
-    option => option.value === value,
+    (option) => option.value === value,
   );
   return (
     <SegmentedList {...props} role="radiogroup">

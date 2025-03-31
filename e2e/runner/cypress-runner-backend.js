@@ -7,6 +7,8 @@ const http = require("http");
 const os = require("os");
 const path = require("path");
 
+const { delay } = require("./cypress-runner-utils");
+
 const CypressBackend = {
   server: null,
   createServer(port = process.env.BACKEND_PORT || 4000) {
@@ -108,19 +110,14 @@ const CypressBackend = {
       this.server.process.unref(); // detach console
     }
 
-    // Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
-    function delay(duration) {
-      return new Promise((resolve, reject) => setTimeout(resolve, duration));
-    }
-
     async function isReady(host) {
       // This is needed until we can use NodeJS native `fetch`.
       function request(url) {
         return new Promise((resolve, reject) => {
-          const req = http.get(url, res => {
+          const req = http.get(url, (res) => {
             let body = "";
 
-            res.on("data", chunk => {
+            res.on("data", (chunk) => {
               body += chunk;
             });
 
@@ -129,7 +126,7 @@ const CypressBackend = {
             });
           });
 
-          req.on("error", e => {
+          req.on("error", (e) => {
             reject(e);
           });
         });

@@ -24,7 +24,7 @@ export const useCommandPaletteBasicActions = ({
   ...props
 }: WithRouterProps & { isLoggedIn: boolean }) => {
   const dispatch = useDispatch();
-  const collectionId = useSelector(state =>
+  const collectionId = useSelector((state) =>
     Collections.selectors.getInitialCollectionId(state, props),
   );
 

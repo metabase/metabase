@@ -1,10 +1,14 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
+import { mockScrollIntoView, render, screen } from "__support__/ui";
+import type { ColumnFormattingSetting } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
-import { ChartSettingsTableFormatting } from "./ChartSettingsTableFormatting";
+import {
+  ChartSettingsTableFormatting,
+  type ChartSettingsTableFormattingProps,
+} from "./ChartSettingsTableFormatting";
 
 const STRING_COLUMN = createMockColumn({
   base_type: "type/Text",
@@ -30,11 +34,27 @@ const NUMBER_COLUMN = createMockColumn({
   name: "NUMBER_COLUMN",
 });
 
+const PRIMARY_KEY_COLUMN = createMockColumn({
+  base_type: "type/Integer",
+  semantic_type: "type/PK",
+  display_name: "Primary Key Column",
+  name: "PK_COLUMN",
+});
+
+const FOREIGN_KEY_COLUMN = createMockColumn({
+  base_type: "type/Integer",
+  semantic_type: "type/FK",
+  display_name: "Foreign Key Column",
+  name: "FK_COLUMN",
+});
+
 const COLUMNS = [
   STRING_COLUMN,
   STRING_COLUMN_TWO,
   BOOLEAN_COLUMN,
   NUMBER_COLUMN,
+  PRIMARY_KEY_COLUMN,
+  FOREIGN_KEY_COLUMN,
 ];
 
 const STRING_OPERATORS = [
@@ -61,8 +81,8 @@ const NUMBER_OPERATORS = [
 
 const BOOLEAN_OPERATORS = ["is null", "is not null", "is true", "is false"];
 
-const Wrapper = props => {
-  const [value, setValue] = useState([]);
+const Wrapper = (props: Partial<ChartSettingsTableFormattingProps> = {}) => {
+  const [value, setValue] = useState<ColumnFormattingSetting[]>([]);
 
   return (
     <ChartSettingsTableFormatting
@@ -74,9 +94,11 @@ const Wrapper = props => {
   );
 };
 
-const setup = props => {
+const setup = (props = {}) => {
   render(<Wrapper {...props} />);
 };
+
+mockScrollIntoView();
 
 describe("ChartSettingsTableFormatting", () => {
   it("should allow you to add a rule", async () => {
@@ -89,8 +111,9 @@ describe("ChartSettingsTableFormatting", () => {
       await screen.findByText("Which columns should be affected?"),
     );
 
-    expect(await screen.findByText("is equal to")).toBeInTheDocument();
-
+    expect(
+      await screen.findByTestId("conditional-formatting-value-operator-button"),
+    ).toHaveValue("is equal to");
     await userEvent.type(
       await screen.findByTestId("conditional-formatting-value-input"),
       "toucan",
@@ -98,7 +121,7 @@ describe("ChartSettingsTableFormatting", () => {
     await userEvent.click(await screen.findByText("Add rule"));
 
     expect(await screen.findByText("String Column")).toBeInTheDocument();
-    expect(await screen.findByText(/is equal to toucan/g)).toBeInTheDocument();
+    expect(await screen.findByText(/is equal to toucan/)).toBeInTheDocument();
   });
 
   it("should only let you choose columns of the same type for a rule", async () => {
@@ -137,7 +160,43 @@ describe("ChartSettingsTableFormatting", () => {
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
-      STRING_OPERATORS.forEach(operator => {
+      STRING_OPERATORS.forEach((operator) => {
+        expect(
+          screen.getByRole("option", { name: operator }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("number primary key (metabase#17448)(VIZ-379)", async () => {
+      await userEvent.click(screen.getByText("Primary Key Column"));
+      //Dismiss Popup
+      await userEvent.click(
+        screen.getByText("Which columns should be affected?"),
+      );
+
+      await userEvent.click(
+        screen.getByTestId("conditional-formatting-value-operator-button"),
+      );
+
+      STRING_OPERATORS.forEach((operator) => {
+        expect(
+          screen.getByRole("option", { name: operator }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("number foreign key (metabase#17448)(VIZ-379)", async () => {
+      await userEvent.click(screen.getByText("Foreign Key Column"));
+      //Dismiss Popup
+      await userEvent.click(
+        screen.getByText("Which columns should be affected?"),
+      );
+
+      await userEvent.click(
+        screen.getByTestId("conditional-formatting-value-operator-button"),
+      );
+
+      STRING_OPERATORS.forEach((operator) => {
         expect(
           screen.getByRole("option", { name: operator }),
         ).toBeInTheDocument();
@@ -155,7 +214,7 @@ describe("ChartSettingsTableFormatting", () => {
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
-      NUMBER_OPERATORS.forEach(operator => {
+      NUMBER_OPERATORS.forEach((operator) => {
         expect(
           screen.getByRole("option", { name: operator }),
         ).toBeInTheDocument();
@@ -182,7 +241,7 @@ describe("ChartSettingsTableFormatting", () => {
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
-      BOOLEAN_OPERATORS.forEach(operator => {
+      BOOLEAN_OPERATORS.forEach((operator) => {
         expect(
           screen.getByRole("option", { name: operator }),
         ).toBeInTheDocument();
