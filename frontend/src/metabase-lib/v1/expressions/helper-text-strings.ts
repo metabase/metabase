@@ -785,7 +785,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "doesNotContain",
     category: "string",
     description: () =>
-      t`Returns true if \`$string1\` does not contain \`$string2\` within it (and \`$string3\`, etc. if specified).`,
+      t`Returns \`true\` if \`$string1\` does not contain \`$string2\` within it (and \`$string3\`, etc. if specified).`,
     args: [
       {
         name: t`string1`,
