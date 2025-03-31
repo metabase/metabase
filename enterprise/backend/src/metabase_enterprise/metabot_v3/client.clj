@@ -192,12 +192,12 @@
             [:instructions :string]
             [:tables [:sequential [:map
                                    [:name :string]
-                                   [:schema [:maybe :string]]
-                                   [:description [:maybe :string]]
+                                   [:schema {:optional true} [:maybe :string]]
+                                   [:description {:optional true} [:maybe :string]]
                                    [:columns [:sequential [:map
                                                            [:name :string]
                                                            [:data_type :string]
-                                                           [:description [:maybe :string]]]]]]]]]]
+                                                           [:description {:optional true} [:maybe :string]]]]]]]]]]
   (let [url (generate-sql-endpoint)
         options (build-request-options body)
         response (post! url options)]
