@@ -805,7 +805,7 @@ export const getSeriesClickData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
-): ClickObject | undefined => {
+): ClickObject | null => {
   const { seriesId, dataIndex: echartsDataIndex } = event;
   const dataIndex = getDataIndex(
     chartModel.transformedDataset,
@@ -819,7 +819,7 @@ export const getSeriesClickData = (
     dataIndex == null ||
     seriesModel?.dataKey === OTHER_DATA_KEY
   ) {
-    return;
+    return null;
   }
 
   const datum = chartModel.dataset[dataIndex];

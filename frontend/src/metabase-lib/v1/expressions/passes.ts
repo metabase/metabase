@@ -1,8 +1,4 @@
-import type {
-  CallExpression,
-  CaseOptions,
-  Expression,
-} from "metabase-types/api";
+import type { CallExpression, Expression } from "metabase-types/api";
 
 import { MBQL_CLAUSES } from "./config";
 import {
@@ -53,11 +49,10 @@ export const adjustCaseOrIf: CompilerPass = (tree) =>
         pairs.push([tst, val]);
       }
       if (operands.length > 2 * pairCount) {
-        const defaultValue = operands[operands.length - 1];
-        let options: CaseOptions = defaultValue as CaseOptions;
-        if (!isOptionsObject(defaultValue)) {
-          options = { default: defaultValue };
-        }
+        const lastOperand = operands[operands.length - 1];
+        const options = isOptionsObject(lastOperand)
+          ? lastOperand
+          : { default: lastOperand };
         return withAST([operator, pairs, options], node);
       }
       return withAST([operator, pairs], node);
@@ -270,9 +265,9 @@ function withAST(
 const DEFAULT_PASSES = [
   adjustOptions,
   adjustOffset,
-  adjustCaseOrIf,
   adjustMultiArgOptions,
   adjustBigIntLiteral,
   adjustTopLevelLiteral,
+  adjustCaseOrIf,
   adjustBooleans,
 ];

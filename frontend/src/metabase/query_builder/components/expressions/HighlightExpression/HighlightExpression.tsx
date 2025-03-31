@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { type HTMLAttributes, useMemo } from "react";
 import { useAsync } from "react-use";
 
@@ -21,6 +22,7 @@ export function HighlightExpression({
   stageIndex: number;
   expressionIndex?: number;
   printWidth?: number;
+  inline?: boolean;
 } & HTMLAttributes<HTMLPreElement>) {
   const { value: formattedExpression } = useAsync(
     () =>
@@ -42,6 +44,7 @@ export function HighlightExampleExpression({
   ...props
 }: {
   expression: Expression;
+  inline?: boolean;
   printWidth?: number;
 } & HTMLAttributes<HTMLPreElement>) {
   const { value: formattedExpression } = useAsync(
@@ -59,17 +62,19 @@ export function HighlightExampleExpression({
 
 export function HighlightExpressionSource({
   expression,
+  inline = false,
   ...props
 }: {
+  inline?: boolean;
   expression: string;
 } & HTMLAttributes<HTMLPreElement>) {
   const __html = useMemo(() => highlight(expression), [expression]);
 
   return (
-    <pre
-      {...props}
-      className={S.highlight}
+    <code
+      className={cx(S.highlight, inline ? S.inline : S.block)}
       dangerouslySetInnerHTML={{ __html }}
+      {...props}
     />
   );
 }
