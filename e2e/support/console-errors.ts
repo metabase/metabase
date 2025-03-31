@@ -9,7 +9,6 @@ const UNRECOGNIZED_PROP_REGEX =
 // const NON_BOOLEAN_ATTR_REGEX = /Warning: Received `.*?` for a non-boolean attribute/;
 // const INVALID_DOM_PROPS_REGEX = /Warning: Invalid values for props .* on <.*?> tag/;
 
-// Types for pattern handling
 type TestFunction = (message: string) => boolean;
 interface ErrorPattern {
   name: string;
@@ -17,11 +16,9 @@ interface ErrorPattern {
   testFn: TestFunction;
 }
 
-// Store for error patterns and their counts
 const errorPatterns: ErrorPattern[] = [];
 const errorCounts = new Map<string, number>();
 
-// Add a new error pattern
 export function addConsoleErrorPattern(
   name: string,
   description: string,
