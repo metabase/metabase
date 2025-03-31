@@ -7,6 +7,10 @@
    [i18n.create-artifacts.frontend :as frontend]
    [metabuild-common.core :as u]))
 
+;; Set INTERACTIVE=false in CI to reduce verbosity
+(when (env/env :ci)
+  (System/setProperty "INTERACTIVE" "false"))
+
 (defn- locales-dot-edn []
   {:locales  (conj (i18n/locales) "en")
    :packages ["metabase"]
