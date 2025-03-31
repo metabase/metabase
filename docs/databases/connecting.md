@@ -25,6 +25,7 @@ The databases listed below have official drivers maintained by the Metabase team
 
 - [Amazon Athena](./connections/athena.md)
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
+- [ClickHouse](./connections/clickhouse.md)
 - [Databricks](./connections/databricks.md)
 - [Druid](./connections/druid.md)
 - [MongoDB (recommend version 4.2 or higher)](./connections/mongodb.md)
@@ -38,6 +39,7 @@ The databases listed below have official drivers maintained by the Metabase team
 - [SparkSQL](./connections/sparksql.md)
 - [SQL Server](./connections/sql-server.md)
 - [SQLite](./connections/sqlite.md)
+- [Starburst](./connections/starburst.md)]
 - [Vertica](./connections/vertica.md)
 
 If you don't see your database listed here, see [partner and community drivers](../developers-guide/partner-and-community-drivers.md#partner-drivers).

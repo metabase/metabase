@@ -1,16 +1,25 @@
 ---
-title: Presto
+title: Starburst
+description: Learn how to connect Metabase to your Starburst or Trino database, including connection settings, SSL configuration, and database sync options.
 ---
 
-# Presto
+# Starburst
+
+> This driver also works for connections to a Trino database.
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
-Fill out the fields for that database, and click **Save changes** at the bottom.
+You can edit these settings at any time. Just remember to save your changes.
+
+## Connection and Sync
+
+After connecting to a database, you'll see the "Connection and sync" section that displays the current connection status and options to manage your database connection.
+
+Here you can [sync the database schema and rescan field values](../sync-scan.md), and edit connection details.
 
 ## Edit connection details
 
-You can edit these settings at any time. Just remember to save your changes.
+To access or modify your database connection settings, click the **Edit connection details** button.
 
 ### Display name
 
@@ -18,19 +27,19 @@ The display name for the database in the Metabase interface.
 
 ### Host
 
-Your database's IP address, or its domain name (e.g., esc.mydatabase.com).
+Your database's IP address (e.g., `98.137.149.56`) or its domain name (e.g., `name.database.com`).
 
 ### Port
 
-The database port. E.g., 8080.
+The database port (e.g., `8080`).
 
 ### Catalog
 
-Presto catalogs contain schemas and reference data sources via a connector.
+Starburt catalogs contain schemas and reference data sources via a connector.
 
 ### Schema (optional)
 
-Only add tables to Metabase that come from a specific schema.
+Only add tables that come from a specific schema.
 
 ### Username
 
@@ -42,35 +51,23 @@ The password for the username that you use to connect to the database.
 
 ### Use a secure connection (SSL)
 
-Metabase automatically tries to connect to databases with SSL first, then without if that doesn't work. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we highly recommend keeping SSL turned on to keep your data secure.
+See [SSL certificates](../ssl-certificates.md).
 
-### Use SSL certificate?
+### Role (optional)
 
-Metabase supports both keystores and truststores.
+Specify a role to override the database user's default role.
 
-#### Keystore
+### Optimize prepared statements
 
-You can specify a local file path, or upload a keystore. You'll also need to input your keystore password.
-
-#### Truststore
-
-You can specify a local file path, or upload a truststore. You'll also need to input your truststore password.
-
-### Authenticate with Kerberos
-
-Kerberos settings include:
-
-- Kerberos principal (e.g., `service/instance@REALM`)
-- Kerberos coordinator service (e.g., `presto`)
-- You can use a canonical hostname.
-- Kerberos credential cache file (e.g., `/tmp/kerbo-credential-cache`)
-- Kerberos keytab file (e.g., `/path/to/kerberos.keytab`)
-- Kerberos configuration file (e.g., `/etc/krb5.conf`)
-- Presto coordinator Kerberos service principal pattern (e.g., `${SERVICE}@${HOST}.${SERVICE}`
+Requires Starburst Galaxy, Starburst Enterprise (version 420-e or higher), or Trino (version 418 or higher).
 
 ### Additional JDBC connection string options
 
-You can append options to the connection string that Metabase uses to connect to your database.
+You can append options to the JDBC connection string. Separate options with `&`, like so:
+
+```
+connection_timeout=1000&socket_timeout=300000
+```
 
 ### Re-run queries for simple explorations
 
@@ -90,13 +87,10 @@ Turn this option **ON** to scan a sample of values every time Metabase runs a [s
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
+## Model features
+
+There aren't (yet) any model features for ClickHouse.
+
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).
-
-## Further reading
-
-- [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
-- [Setting data access permissions](../../permissions/data.md)
