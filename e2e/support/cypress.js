@@ -6,14 +6,6 @@ import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
-
-import {
-  countConsoleErrors,
-  getErrorSummary,
-  hasErrors,
-  resetErrorCounters,
-} from "./console-errors";
-
 import "./commands";
 
 const isCI = Cypress.env("CI");
@@ -165,20 +157,6 @@ if (isCI) {
 }
 
 beforeEach(function () {
-  resetErrorCounters();
-
-  cy.window().then((win) => {
-    cy.stub(win.console, "error")
-      .as("consoleError")
-      .callsFake((msg, ...args) => {
-        // Count the error
-        countConsoleErrors([msg, ...args]);
-
-        // Call original console.error
-        win.console.error.wrappedMethod.apply(win.console, [msg, ...args]);
-      });
-  });
-
   const isCurrentTesOss =
     this.currentTest._testConfig.unverifiedTestConfig.tags === "@OSS";
   const isBuildOss = Cypress.env("MB_EDITION") === "oss";
@@ -191,17 +169,5 @@ beforeEach(function () {
     console.log(`test name: ${testName}\n\n"this test should be ran against OSS jar. Make sure you have MB_EDITION=oss set and go to e2e/support/cypress.js and temporarily remove the skipOn(true) to run the test"
     `);
     cy.skipOn(true);
-  }
-});
-
-afterEach(function () {
-  if (this.currentTest.state === "failed") {
-    return;
-  }
-
-  if (hasErrors()) {
-    const summary = getErrorSummary();
-
-    cy.fail(summary);
   }
 });

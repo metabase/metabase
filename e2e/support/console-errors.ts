@@ -22,7 +22,7 @@ const errorPatterns: ErrorPattern[] = [];
 const errorCounts = new Map<string, number>();
 
 // Add a new error pattern
-function addErrorPattern(
+export function addConsoleErrorPattern(
   name: string,
   description: string,
   testFn: TestFunction,
@@ -31,14 +31,13 @@ function addErrorPattern(
   errorCounts.set(name, 0);
 }
 
-// Reset all counters
-function resetErrorCounters(): void {
+export function resetConsoleErrorCounters(): void {
   errorCounts.forEach((_, key) => {
     errorCounts.set(key, 0);
   });
 }
 
-function countConsoleErrors(args: any[]): void {
+export function countConsoleErrors(args: any[]): void {
   if (!args || !args.length) {
     return;
   }
@@ -53,7 +52,7 @@ function countConsoleErrors(args: any[]): void {
   }
 }
 
-function getErrorSummary(): string {
+export function getErrorSummary(): string {
   const summaryParts: string[] = [];
 
   for (const pattern of errorPatterns) {
@@ -70,34 +69,26 @@ function getErrorSummary(): string {
   return "Console errors found:\n" + summaryParts.join("\n");
 }
 
-function hasErrors(): boolean {
+export function hasConsoleErrors(): boolean {
   return Array.from(errorCounts.values()).some((count) => count > 0);
 }
 
-addErrorPattern(
+addConsoleErrorPattern(
   "unrecognizedProps",
   "React does not recognize prop on DOM element",
   (message) => UNRECOGNIZED_PROP_REGEX.test(message),
 );
-addErrorPattern(
+addConsoleErrorPattern(
   "unsafeVisualization",
   "UNSAFE component in Visualization",
   (message) =>
     UNSAFE_COMPONENT_ERROR_REGEX.test(message) &&
     VISUALIZATION_ERROR_REGEX.test(message),
 );
-addErrorPattern(
+addConsoleErrorPattern(
   "unsafeDashboardGrid",
   "UNSAFE component in DashboardGrid",
   (message) =>
     UNSAFE_COMPONENT_ERROR_REGEX.test(message) &&
     DASHBOARD_GRID_ERROR_REGEX.test(message),
 );
-
-export {
-  addErrorPattern,
-  resetErrorCounters,
-  countConsoleErrors,
-  getErrorSummary,
-  hasErrors,
-};
