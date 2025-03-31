@@ -1551,10 +1551,7 @@ describe("issue #55984", () => {
     H.popover().findByText("Custom Expression").click();
     H.CustomExpressionEditor.type("[lo");
     H.CustomExpressionEditor.completions().should(($el) => {
-      const scrollWidth = $el[0].scrollWidth;
-      const offsetWidth = $el[0].offsetWidth;
-      // there should be no scroll bars
-      expect(scrollWidth).to.be.lt(offsetWidth);
+      expect(H.isScrollableHorizontally($el[0])).to.be.false;
     });
   });
 
