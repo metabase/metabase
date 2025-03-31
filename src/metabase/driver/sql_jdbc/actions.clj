@@ -278,13 +278,11 @@
    action
    database
    {database-id :database :keys [create-row] :as query} :- ::mbql.s/Query]
-  (let [raw-hsql    (mbql-query->raw-hsql driver query)
-        create-hsql (-> raw-hsql
-                        (assoc :insert-into (first (:from raw-hsql)))
-                        (assoc :values [(cast-values driver create-row database-id (get-in query [:query :source-table]))])
-                        (dissoc :select :from :limit)
-                        (prepare-query driver action))
-        sql-args    (sql.qp/format-honeysql driver create-hsql)]
+  (let [{:keys [from]} (mbql-query->raw-hsql driver query)
+        create-hsql    (-> {:insert-into (first from)
+                            :values      [(cast-values driver create-row database-id (get-in query [:query :source-table]))]}
+                           (prepare-query driver action))
+        sql-args       (sql.qp/format-honeysql driver create-hsql)]
     (log/tracef ":row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
     (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
     (with-jdbc-transaction [conn database-id]
