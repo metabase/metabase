@@ -1,7 +1,7 @@
 import { Autocomplete, type MantineThemeOverride } from "@mantine/core";
 
 import { selectOverrides } from "../Select";
-import { SelectItem } from "../Select/SelectItem";
+import { DefaultSelectItem } from "../Select/SelectItem";
 
 export const autocompleteOverrides: MantineThemeOverride["components"] = {
   Autocomplete: Autocomplete.extend({
@@ -10,7 +10,7 @@ export const autocompleteOverrides: MantineThemeOverride["components"] = {
       comboboxProps: {
         withinPortal: true,
       },
-      renderOption: item => <SelectItem {...item.option} />,
+      renderOption: (item) => <DefaultSelectItem {...item.option} />,
       maxDropdownHeight: 512,
       withScrollArea: false,
     },

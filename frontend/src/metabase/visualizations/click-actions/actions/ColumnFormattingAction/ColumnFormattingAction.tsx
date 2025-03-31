@@ -51,7 +51,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
     );
 
     const columnSettingsWidget = widgets.find(
-      widget => widget.id === "column_settings",
+      (widget) => widget.id === "column_settings",
     );
 
     const extraProps = {

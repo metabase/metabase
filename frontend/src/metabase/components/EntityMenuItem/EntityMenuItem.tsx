@@ -24,6 +24,7 @@ export interface EntityMenuItemProps {
   hoverBgColor?: ColorName;
   disabled?: boolean;
   onClose?: () => void;
+  htmlId?: string;
 }
 
 const EntityMenuItem = ({
@@ -38,6 +39,7 @@ const EntityMenuItem = ({
   hoverColor,
   hoverBgColor,
   onClose,
+  htmlId,
 }: EntityMenuItemProps): JSX.Element | null => {
   if (link && action) {
     // You cannot specify both action and link props!
@@ -51,8 +53,8 @@ const EntityMenuItem = ({
       hoverColor={hoverColor}
       hoverBgColor={hoverBgColor}
     >
-      {icon && <MenuItemIcon name={icon} size={16} />}
-      <MenuItemTitle>{title}</MenuItemTitle>
+      {icon && <MenuItemIcon name={icon} size={16} aria-hidden />}
+      <MenuItemTitle id={htmlId}>{title}</MenuItemTitle>
     </MenuItemContent>
   );
 
@@ -117,7 +119,7 @@ const LinkMenuItem = ({
   children,
   onClose,
 }: LinkMenuItemProps): JSX.Element => (
-  <Tooltip label={tooltip} position="right">
+  <Tooltip label={tooltip} disabled={tooltip == null} position="right">
     {externalLink ? (
       <MenuExternalLink
         href={link}

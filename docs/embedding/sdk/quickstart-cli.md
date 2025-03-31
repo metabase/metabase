@@ -92,8 +92,8 @@ You can delete these files once you've played around with the tool, and are read
 
 You'll need to add the Metabase/React components to your app. Add an import to your client app, like so:
 
-```sh
-import { AnalyticsPage } from "./components/metabase/analytics-page";
+```jsx
+{% include_file "{{ dirname }}/snippets/quickstart-cli/example.tsx" snippet="imports" %}
 ```
 
 Make sure the `from` path is valid (depending on your app, you may need to move the components to a new directory).
@@ -101,15 +101,7 @@ Make sure the `from` path is valid (depending on your app, you may need to move 
 Then you'll need to add the `<AnalyticsPage />` component to a page in your app. Something like:
 
 ```jsx
-function App() {
-  return (
-    <div className="App" style={{ width: "1200px", height: "800px" }}>
-      <AnalyticsPage/>
-    </div>
-  );
-}
-
-export default App;
+{% include_file "{{ dirname }}/snippets/quickstart-cli/example.tsx" snippet="example" %}
 ```
 
 ## Behold: Metabase is embedded in your app

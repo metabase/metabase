@@ -93,7 +93,7 @@ This can be useful for [auditing](../../usage-and-performance-tools/usage-analyt
 
 ### Alternate hostname
 
-If you want to use a different hostname to connect to BigQuery. Format: `https://<hostname>:<port>`.
+If you want to use a different hostname to connect to BigQuery. Format: `https://<hostname>:<port>`. If you're using a proxy service to connect to BigQuery (e.g. a privacy proxy that anonymizes PII), you should configure this field to the proxy hostname or IP. Remember to set the complete URI with protocol and port number.
 
 ### Re-run queries for simple explorations
 

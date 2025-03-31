@@ -70,6 +70,7 @@
                               :schemas                                false
                               :uploads                                true
                               :identifiers-with-spaces                true
+                              :cast                                   true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
@@ -373,6 +374,10 @@
                         (sql.qp/json-query :mysql % stored-field)
                         %)
                      honeysql-expr))))
+
+(defmethod sql.qp/->honeysql [:mysql :integer]
+  [driver [_ value]]
+  (h2x/maybe-cast "SIGNED" (sql.qp/->honeysql driver value)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an

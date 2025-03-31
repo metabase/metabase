@@ -100,7 +100,7 @@ const propTypes = {
   onSubmit: PropTypes.func.isRequired,
 };
 
-const SegmentFieldDetail = props => {
+const SegmentFieldDetail = (props) => {
   const {
     style,
     entity,
@@ -124,10 +124,11 @@ const SegmentFieldDetail = props => {
     handleReset,
   } = useFormik({
     initialValues: {},
-    onSubmit: fields => onSubmit(fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields) =>
+      onSubmit(fields, { ...props, resetForm: handleReset }),
   });
 
-  const getFormField = name => ({
+  const getFormField = (name) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
@@ -139,7 +140,7 @@ const SegmentFieldDetail = props => {
           hasRevisionHistory={false}
           onSubmit={handleSubmit}
           endEditing={endEditing}
-          reinitializeForm={handleReset()}
+          reinitializeForm={handleReset}
           submitting={isSubmitting}
           revisionMessageFormField={getFormField("revision_message")}
         />
@@ -220,6 +221,7 @@ const SegmentFieldDetail = props => {
                 )}
                 <li className={CS.relative}>
                   <FieldTypeDetail
+                    databaseId={table.db_id}
                     field={entity}
                     foreignKeys={foreignKeys}
                     fieldTypeFormField={getFormField("semantic_type")}

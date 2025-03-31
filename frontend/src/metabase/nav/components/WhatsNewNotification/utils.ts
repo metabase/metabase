@@ -11,16 +11,16 @@ export const getLatestEligibleReleaseNotes = ({
   versionInfo,
   currentVersion,
   lastAcknowledgedVersion,
-  isEmbedded = false,
+  isEmbeddingIframe = false,
   isWhiteLabeling = false,
 }: {
   versionInfo: VersionInfo | null;
   currentVersion: string | undefined;
   lastAcknowledgedVersion: string | null;
-  isEmbedded: boolean;
+  isEmbeddingIframe: boolean;
   isWhiteLabeling: boolean;
 }): VersionInfoRecord | undefined => {
-  if (isWhiteLabeling || isEmbedded || currentVersion === undefined) {
+  if (isWhiteLabeling || isEmbeddingIframe || currentVersion === undefined) {
     return undefined;
   }
 
@@ -28,7 +28,9 @@ export const getLatestEligibleReleaseNotes = ({
     .concat(versionInfo?.older)
     .filter(isNotFalsy);
 
-  const versionInVersionInfo = versions.find(v => v.version === currentVersion);
+  const versionInVersionInfo = versions.find(
+    (v) => v.version === currentVersion,
+  );
   if (!versionInVersionInfo) {
     return undefined;
   }

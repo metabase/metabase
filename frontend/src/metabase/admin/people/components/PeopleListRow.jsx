@@ -43,7 +43,7 @@ const PeopleListRow = ({
 
   const isLoadingGroups = !groups;
 
-  const isPasswordLoginEnabled = useSelector(state =>
+  const isPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, enablePasswordLoginKey),
   );
 
@@ -117,7 +117,7 @@ const PeopleListRow = ({
                     title: t`Reset password`,
                     link: Urls.resetPassword(user.id),
                   },
-                  ...PLUGIN_ADMIN_USER_MENU_ITEMS.flatMap(getItems =>
+                  ...PLUGIN_ADMIN_USER_MENU_ITEMS.flatMap((getItems) =>
                     getItems(user),
                   ),
                   !isCurrentUser && {

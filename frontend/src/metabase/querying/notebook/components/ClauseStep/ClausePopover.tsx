@@ -2,6 +2,7 @@ import { useDndContext } from "@dnd-kit/core";
 import { useCallback, useLayoutEffect, useState } from "react";
 
 import { Popover } from "metabase/ui";
+import { PreventPopoverExitProvider } from "metabase/ui/components/utils/PreventPopoverExit";
 
 interface ClausePopoverProps {
   isInitiallyOpen?: boolean;
@@ -26,7 +27,7 @@ export function ClausePopover({
   }, []);
 
   const handleChange = useCallback(() => {
-    setIsOpen(value => !value);
+    setIsOpen((value) => !value);
   }, []);
 
   useLayoutEffect(() => {
@@ -36,17 +37,19 @@ export function ClausePopover({
   }, [active]);
 
   return (
-    <Popover
-      opened={isOpen}
-      position="bottom-start"
-      offset={{ mainAxis: 4 }}
-      trapFocus
-      onChange={handleChange}
-    >
-      <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
-      <Popover.Dropdown data-testid="clause-popover">
-        {renderPopover(handleClose)}
-      </Popover.Dropdown>
-    </Popover>
+    <PreventPopoverExitProvider>
+      <Popover
+        opened={isOpen}
+        position="bottom-start"
+        offset={{ mainAxis: 4 }}
+        trapFocus
+        onChange={handleChange}
+      >
+        <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
+        <Popover.Dropdown data-testid="clause-popover">
+          {renderPopover(handleClose)}
+        </Popover.Dropdown>
+      </Popover>
+    </PreventPopoverExitProvider>
   );
 }

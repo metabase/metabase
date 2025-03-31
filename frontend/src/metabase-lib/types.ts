@@ -95,6 +95,11 @@ export type ClauseType =
   | "order-by"
   | "limit";
 
+export type Expressionable =
+  | ExpressionClause
+  | FilterClause
+  | AggregationClause;
+
 export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;
@@ -626,7 +631,7 @@ export interface ClickObject {
   settings?: Record<string, unknown>;
   columnShortcuts?: boolean;
   origin?: {
-    row: RowValue;
+    row: RowValue[];
     cols: DatasetColumn[];
   };
   extraData?: Record<string, unknown>;

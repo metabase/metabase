@@ -47,7 +47,7 @@ describe("browse > models", () => {
   });
 
   it("can browse to a model in a new tab by meta-clicking", () => {
-    cy.on("window:before:load", win => {
+    cy.on("window:before:load", (win) => {
       // prevent Cypress opening in a new window/tab and spy on this method
       cy.stub(win, "open").as("open");
     });
@@ -140,7 +140,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
 
   it("The Browse models page shows an error message if the search endpoint throws an error", () => {
     cy.visit("/");
-    cy.intercept("GET", "/api/search*", req => {
+    cy.intercept("GET", "/api/search*", (req) => {
       req.reply({ statusCode: 400 });
     });
     H.navigationSidebar().findByLabelText("Browse models").click();
@@ -151,7 +151,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
 
   it("The Browse metrics page shows an error message if the search endpoint throws an error", () => {
     cy.visit("/");
-    cy.intercept("GET", "/api/search*", req => {
+    cy.intercept("GET", "/api/search*", (req) => {
       req.reply({ statusCode: 400 });
     });
     H.navigationSidebar().findByLabelText("Browse metrics").click();

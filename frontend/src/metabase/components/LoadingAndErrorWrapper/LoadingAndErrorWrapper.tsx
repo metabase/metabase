@@ -53,7 +53,9 @@ export const LoadingAndErrorWrapper = forwardRef<
 
   const loadingInterval = () => {
     if (loading) {
-      setMessageIndex(oldIndex => (oldIndex + 1) % getLoadingMessages().length);
+      setMessageIndex(
+        (oldIndex) => (oldIndex + 1) % getLoadingMessages().length,
+      );
     }
   };
   const interval = useInterval(loadingInterval, messageInterval);

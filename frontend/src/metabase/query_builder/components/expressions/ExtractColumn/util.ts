@@ -24,6 +24,8 @@ export function getExample(info: Lib.ColumnExtractionInfo) {
       return "example.com, online.com";
     case "subdomain":
       return "www, maps";
+    case "path":
+      return "/en/docs/feature";
   }
 
   return undefined;
@@ -43,7 +45,7 @@ export function getName(
   info: Lib.ColumnExtractionInfo,
 ) {
   const columnNames = Lib.returnedColumns(query, stageIndex).map(
-    column => Lib.displayInfo(query, stageIndex, column).displayName,
+    (column) => Lib.displayInfo(query, stageIndex, column).displayName,
   );
 
   return getNextName(columnNames, info.displayName, 0);

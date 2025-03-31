@@ -15,7 +15,7 @@ import type {
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Query from "metabase-lib/v1/queries/Query";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   Dashboard,
@@ -128,18 +128,25 @@ export interface VisualizationProps {
   isNightMode: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
+  isRawTable?: boolean;
+  scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
   clicked?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];
+  queryBuilderMode?: QueryBuilderMode;
+  uuid?: string;
+  token?: string;
 
   gridSize?: VisualizationGridSize;
   width: number;
   height: number;
 
-  visualizationIsClickable: (clickObject?: ClickObject) => boolean;
-  getExtraDataForClick?: (clickObject?: ClickObject) => Record<string, unknown>;
+  visualizationIsClickable: (clickObject: ClickObject | null) => boolean;
+  getExtraDataForClick?: (
+    clickObject: ClickObject | null,
+  ) => Record<string, unknown>;
 
   onRender: ({
     yAxisSplit,
@@ -152,7 +159,7 @@ export interface VisualizationProps {
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
-  onVisualizationClick: (clickObject?: ClickObject) => void;
+  onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
     settings: VisualizationSettings,
     question?: Question,
@@ -321,7 +328,7 @@ export type VisualizationDefinition = {
   checkRenderable: (
     series: Series,
     settings: VisualizationSettings,
-    query?: Query | null,
+    query?: NativeQuery | null,
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;

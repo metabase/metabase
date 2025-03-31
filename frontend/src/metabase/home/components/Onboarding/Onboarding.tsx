@@ -93,7 +93,7 @@ export const Onboarding = () => {
     cardType: "question",
   });
 
-  const lastUsedDatabaseId = useSelector(state =>
+  const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
   );
 
@@ -155,40 +155,40 @@ export const Onboarding = () => {
     utm_content: "getting-started",
   };
 
-  const docsLink = useSelector(state =>
+  const docsLink = useSelector((state) =>
     getDocsUrl(state, {
       utm: utmTags,
     }),
   );
 
-  const sqlParamsDocsLink = useSelector(state =>
+  const sqlParamsDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/native-editor/sql-parameters",
       utm: utmTags,
     }),
   );
-  const dashboardTabsDocsLink = useSelector(state =>
+  const dashboardTabsDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "dashboards/introduction",
       anchor: "dashboard-tabs",
       utm: utmTags,
     }),
   );
-  const goalLineAlertDocsLink = useSelector(state =>
+  const goalLineAlertDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "goal-line-alerts",
       utm: utmTags,
     }),
   );
-  const progressBarAlertDocsLink = useSelector(state =>
+  const progressBarAlertDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "progress-bar-alerts",
       utm: utmTags,
     }),
   );
-  const resultAlertDocsLink = useSelector(state =>
+  const resultAlertDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "results-alerts",

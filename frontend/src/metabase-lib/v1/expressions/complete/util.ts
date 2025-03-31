@@ -1,20 +1,13 @@
 import { snippetCompletion } from "@codemirror/autocomplete";
 import Fuse from "fuse.js";
 
-import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { getHelpText } from "../helper-text-strings";
 import { TOKEN, tokenize } from "../tokenizer";
 import type { HelpText, MBQLClauseFunctionConfig, Token } from "../types";
 
 import type { Completion } from "./types";
-
-export function getDatabase(query: Lib.Query, metadata: Metadata) {
-  const databaseId = Lib.databaseID(query);
-  return metadata.database(databaseId);
-}
 
 export function expressionClauseCompletion(
   clause: MBQLClauseFunctionConfig,
@@ -62,8 +55,8 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
 
 function getSnippet(helpText: HelpText) {
   const args = helpText.args
-    ?.filter(arg => arg.name !== "…")
-    ?.map(arg => "${" + arg.name + "}")
+    ?.filter((arg) => arg.name !== "…")
+    ?.map((arg) => "${" + arg.name + "}")
     .join(", ");
 
   if (!args || args.length < 1) {
@@ -87,9 +80,9 @@ export function fuzzyMatcher(options: Completion[]) {
         .search(word)
         // .filter(result => (result.score ?? 0) <= 1)
         .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
-        .map(result => {
+        .map((result) => {
           result.item.matches =
-            result.matches?.flatMap(match => match.indices) ?? [];
+            result.matches?.flatMap((match) => match.indices) ?? [];
           return result.item;
         })
     );
@@ -99,7 +92,9 @@ export function fuzzyMatcher(options: Completion[]) {
 export function tokenAtPos(source: string, pos: number): Token | null {
   const { tokens } = tokenize(source);
 
-  const idx = tokens.findIndex(token => token.start <= pos && token.end >= pos);
+  const idx = tokens.findIndex(
+    (token) => token.start <= pos && token.end >= pos,
+  );
   if (idx === -1) {
     return null;
   }
@@ -125,6 +120,10 @@ export function content(source: string, token: Token): string {
 
 export function isIdentifier(token: Token | null) {
   return token != null && token.type === TOKEN.Identifier;
+}
+
+export function isOperator(token: Token | null) {
+  return token != null && token.type === TOKEN.Operator;
 }
 
 export function isFieldReference(token: Token | null) {

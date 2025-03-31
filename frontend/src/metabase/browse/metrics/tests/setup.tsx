@@ -238,7 +238,7 @@ export function setup({
   }
 
   const mockMetricResults = mockMetrics.map(createMockMetricResult);
-  const mockRecentMetrics = mockMetrics.map(metric =>
+  const mockRecentMetrics = mockMetrics.map((metric) =>
     createMockRecentMetric(metric as RecentMetric),
   );
 

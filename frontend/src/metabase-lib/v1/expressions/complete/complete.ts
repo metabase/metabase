@@ -1,12 +1,19 @@
 import { autocompletion } from "@codemirror/autocomplete";
 
 import { isNotNull } from "metabase/lib/types";
-import type { SuggestArgs } from "metabase-lib/v1/expressions/suggest";
+import type * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-export type SuggestOptions = Omit<
-  SuggestArgs,
-  "source" | "targetOffset" | "getColumnIcon"
->;
+import type { StartRule } from "../types";
+
+export type SuggestOptions = {
+  query: Lib.Query;
+  stageIndex: number;
+  metadata: Metadata;
+  reportTimezone?: string;
+  startRule: StartRule;
+  expressionIndex: number | undefined;
+};
 
 import { suggestAggregations } from "./aggregations";
 import { suggestFields } from "./fields";

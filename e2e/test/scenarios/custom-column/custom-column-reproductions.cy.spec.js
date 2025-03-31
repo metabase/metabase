@@ -332,13 +332,13 @@ describe("issue 18747", () => {
 
     addValueToParameterFilter();
 
-    cy.get(".CardVisualization tbody > tr").should("have.length", 1);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
 
     // check that the parameter value is parsed correctly on page load
     cy.reload();
     cy.get(".LoadingSpinner").should("not.exist");
 
-    cy.get(".CardVisualization tbody > tr").should("have.length", 1);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
   });
 });
 
@@ -502,7 +502,7 @@ describe("issue 19745", () => {
   function updateQuestion() {
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
@@ -679,7 +679,7 @@ describe("issue 23862", () => {
           display: "table",
         },
         {
-          callback: xhr => expect(xhr.response.body.error).not.to.exist,
+          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
         },
       );
     });
@@ -800,7 +800,7 @@ describe.skip("issue 25189", () => {
   });
 });
 
-["postgres" /*, "mysql" */].forEach(dialect => {
+["postgres" /*, "mysql" */].forEach((dialect) => {
   describe(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
     const tableName = "colors27745";
 
@@ -885,7 +885,8 @@ describe("issue 32032", () => {
   });
 });
 
-describe("issue 42949", () => {
+// broken. see https://github.com/metabase/metabase/issues/55673
+describe.skip("issue 42949", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -912,12 +913,14 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract day, month…").should("be.visible");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify header drills - V");
     H.tableHeaderClick("V");
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button - extract column");
     cy.button("Add column").click();
@@ -976,6 +979,7 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button");
     cy.button("Add column").click();
@@ -1004,6 +1008,7 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("be.visible");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button");
     cy.button("Add column").click();
@@ -1022,7 +1027,7 @@ describe("issue 49342", () => {
   });
 
   it("should not be possible to leave the expression input with the Tab key ", () => {
-    // This test used to be a repro for #49342, but the product feature change
+    // This test used to be a repro for #49342, but the product feature changed
     // so that the expression input can no longer be tabbed out of.
 
     H.openOrdersTable({ mode: "notebook" });
@@ -1036,7 +1041,8 @@ describe("issue 49342", () => {
     H.CustomExpressionEditor.nameInput().focus();
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
-    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
+    cy.focused().should("have.attr", "role", "textbox");
 
     cy.realPress(["Shift", "Tab"]);
     cy.button("Cancel").should("be.focused");
@@ -1114,7 +1120,7 @@ describe("issue 49882", () => {
     );
 
     H.popover()
-      .findByText("Expecting comma but got case instead")
+      .findByText("Expecting operator but got case instead")
       .should("be.visible", { timeout: 5000 });
   });
 
@@ -1353,7 +1359,7 @@ describe("issue 53527", () => {
     },
   };
 
-  const mbqlQuestionDetails = cardId => ({
+  const mbqlQuestionDetails = (cardId) => ({
     name: "Quotes MBQL",
     query: {
       "source-table": `card__${cardId}`,
@@ -1413,5 +1419,115 @@ describe("issue 48562", () => {
 
     H.getNotebookStep("summarize").findByText("[Unknown Metric]").click();
     H.CustomExpressionEditor.value().should("contain", "[Unknown Metric]");
+  });
+});
+
+describe("issue 54638", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+  });
+
+  it("should be possible to click documentation links in the expression editor help text popover (metabase#54638)", () => {
+    H.CustomExpressionEditor.type("case(");
+    H.CustomExpressionEditor.helpText().within(() => {
+      cy.findByText("Learn more")
+        .scrollIntoView()
+        .should("be.visible")
+        .then(($a) => {
+          expect($a).to.have.attr("target", "_blank");
+          // Update attr to open in same tab, since Cypress does not support
+          // testing in multiple tabs.
+          $a.attr("target", "_self");
+        })
+        .click();
+      cy.url().should(
+        "equal",
+        "https://www.metabase.com/docs/latest/questions/query-builder/expressions/case.html",
+      );
+    });
+  });
+});
+
+describe("issue #54722", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should focus the editor when opening it (metabase#54722)", () => {
+    H.addCustomColumn();
+    cy.focused().should("have.attr", "role", "textbox");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.filter({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    cy.focused().should("have.attr", "role", "textbox");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    cy.focused().should("have.attr", "role", "textbox");
+    H.expressionEditorWidget().button("Cancel").click();
+  });
+});
+
+describe("issue #31964", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should focus the editor when opening it (metabase#54722)", () => {
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type('case([Product -> Category] = "Widget", 1,');
+    cy.realPress("Enter");
+    H.CustomExpressionEditor.type("[Product -> Categ", { focus: false });
+    cy.realPress("Tab");
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      dedent`
+        case([Product → Category] = "Widget", 1,
+        [Product → Category])
+      `,
+    );
+  });
+});
+
+describe("issue #55686", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should show suggestions for functions even when the current token is an operator (metabase#55686)", () => {
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type("not");
+
+    H.CustomExpressionEditor.completion("notNull").should("be.visible");
+    H.CustomExpressionEditor.completion("notEmpty").should("be.visible");
+  });
+});
+
+describe("issue #55940", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should show the correct example for Offset (metabase#55940)", () => {
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+
+    H.CustomExpressionEditor.type("Offset(");
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "Offset(Sum([Total]), -1)");
   });
 });

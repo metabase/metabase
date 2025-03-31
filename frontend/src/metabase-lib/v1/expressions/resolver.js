@@ -1,8 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { ResolverError } from "metabase-lib/v1/expressions/pratt/types";
-
 import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { ResolverError } from "./errors";
 import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
 import { OPERATOR as OP } from "./tokenizer";
 
@@ -40,38 +39,6 @@ function findMBQL(op) {
   return clause;
 }
 
-const isCompatible = (expectedType, inferredType) => {
-  if (expectedType === "any" || inferredType === "any") {
-    return true;
-  }
-  if (expectedType === inferredType) {
-    return true;
-  }
-  // if b is a string, then it can be an arg to a function that expects a datetime argument.
-  // This allows datetime string literals to work as args for functions that expect datetime types.
-  // FIXME: By doing this we are allowing string columns to be arguments to functions, which isn’t valid MBQL.
-  if (expectedType === "datetime" && inferredType === "string") {
-    return true;
-  }
-  if (
-    expectedType === "expression" &&
-    ["datetime", "number", "string", "boolean"].includes(inferredType)
-  ) {
-    return true;
-  }
-  if (expectedType === "aggregation" && inferredType === "number") {
-    return true;
-  }
-  if (expectedType === "number" && inferredType === "aggregation") {
-    return true;
-  }
-  if (expectedType === "expression" && inferredType === "aggregation") {
-    return true;
-  }
-
-  return false;
-};
-
 /**
  * @param {{
  *   expression: import("./pratt").Expr
@@ -89,7 +56,9 @@ export function resolve({
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
 
-    if (FIELD_MARKERS.includes(op)) {
+    if (op === "value") {
+      return expression;
+    } else if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;
       if (fn) {
@@ -155,7 +124,7 @@ export function resolve({
     if (operandType) {
       return [
         op,
-        ...operands.map(operand =>
+        ...operands.map((operand) =>
           resolve({ expression: operand, type: operandType, fn, database }),
         ),
       ];
@@ -175,12 +144,6 @@ export function resolve({
     }
 
     const { displayName, args, multiple, hasOptions, validator } = clause;
-    if (!isCompatible(type, clause.type)) {
-      throw new ResolverError(
-        t`Expecting ${type} but found function ${displayName} returning ${clause.type}`,
-        expression.node,
-      );
-    }
     if (validator) {
       const validationError = validator(...operands);
       if (validationError) {
@@ -188,7 +151,7 @@ export function resolve({
       }
     }
     if (multiple) {
-      const argCount = operands.filter(arg => !isOptionsObject(arg)).length;
+      const argCount = operands.filter((arg) => !isOptionsObject(arg)).length;
       const minArgCount = args.length;
 
       if (argCount < minArgCount) {
@@ -228,16 +191,6 @@ export function resolve({
       return resolve({ expression: operand, type: args[i], fn, database });
     });
     return [op, ...resolvedOperands];
-  } else if (
-    !isCompatible(
-      type,
-      typeof expression === "boolean" ? "expression" : typeof expression,
-    )
-  ) {
-    throw new ResolverError(
-      t`Expecting ${type} but found ${JSON.stringify(expression)}`,
-      expression.node,
-    );
   }
   return expression;
 }

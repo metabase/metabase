@@ -52,7 +52,7 @@ describe.skip("issue 12496", () => {
       .eq(picker)
       .find("input")
       .eq(input);
-  const setup = unit => {
+  const setup = (unit) => {
     H.createQuestion(
       {
         name: `Orders by Created At: ${unit}`,
@@ -201,39 +201,37 @@ describe("issue 18770", { tags: "@flaky" }, () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
-  it(
-    "post-aggregation filter shouldn't affect the drill-through options (metabase#18770)",
-    { tags: "@flaky" },
-    () => {
-      H.openNotebook();
-      // It is important to manually trigger "visualize" in order to generate the `result_metadata`
-      // Otherwise, we might get false negative even when this issue gets resolved.
-      // In order to do that, we have to change the breakout field first or it will never generate and send POST /api/dataset request.
-      cy.findAllByTestId("notebook-cell-item")
-        .contains(/Products? → Title/)
-        .click();
-      H.popover().findByText("Category").click();
-      cy.findAllByTestId("notebook-cell-item").contains(/Products? → Category/);
+  it("post-aggregation filter shouldn't affect the drill-through options (metabase#18770)", () => {
+    H.openNotebook();
+    // It is important to manually trigger "visualize" in order to generate the `result_metadata`
+    // Otherwise, we might get false negative even when this issue gets resolved.
+    // In order to do that, we have to change the breakout field first or it will never generate and send POST /api/dataset request.
+    cy.findAllByTestId("notebook-cell-item")
+      .contains(/Products? → Title/)
+      .click();
+    H.popover().findByText("Category").click();
+    cy.findAllByTestId("notebook-cell-item").contains(/Products? → Category/);
 
-      H.visualize();
+    H.visualize();
 
-      cy.findAllByTestId("cell-data")
-        .filter(":contains(4,784)")
-        .should("have.length", 1)
-        .click();
-      H.popover().within(() => {
-        cy.findByText("Filter by this value").should("be.visible");
-        cy.findAllByRole("button")
-          .should("have.length", 6)
-          .and("contain", "See these Orders")
-          .and("contain", "Break out by")
-          .and("contain", "<")
-          .and("contain", ">")
-          .and("contain", "=")
-          .and("contain", "≠");
-      });
-    },
-  );
+    cy.findAllByTestId("cell-data")
+      .filter(":contains(4,784)")
+      .should("have.length", 1);
+
+    // Querying the cell again to ensure the dom node stability
+    H.tableInteractiveBody().findByText("4,784").click();
+    H.popover().within(() => {
+      cy.findByText("Filter by this value").should("be.visible");
+      cy.findAllByRole("button")
+        .should("have.length", 6)
+        .and("contain", "See these Orders")
+        .and("contain", "Break out by")
+        .and("contain", "<")
+        .and("contain", ">")
+        .and("contain", "=")
+        .and("contain", "≠");
+    });
+  });
 });
 
 describe("issue 20551", () => {
@@ -586,7 +584,7 @@ describe("issue 25378", () => {
       cy.button("Add filter").click();
     });
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
   });
@@ -680,12 +678,14 @@ describe("issue 25990", () => {
       .button(/Filter/)
       .click();
 
-    H.modal().within(() => {
+    H.popover().within(() => {
       cy.findByText("People").click();
+      cy.findByText("ID").click();
       cy.findByPlaceholderText("Enter an ID").type("10").blur();
-      cy.button("Apply filters").click();
+      cy.button("Add filter").click();
     });
 
+    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel")
@@ -727,7 +727,7 @@ describe("issue 25994", () => {
       cy.button("Add filter").click();
     });
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
   });
@@ -815,8 +815,7 @@ describe("issue 27123", () => {
   });
 });
 
-// TODO: Unskip this test when we bring back expression type checking. See #31877.
-describe.skip("issue 29094", () => {
+describe("issue 29094", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -986,20 +985,19 @@ describe("issue 36508", () => {
       .button(/Filter/)
       .click();
 
-    H.modal().within(() => {
-      cy.findByText("Summaries").click();
-
-      cy.findByTestId("filter-column-Distinct values of Email")
-        .findByText("between")
-        .should("exist")
-        .click();
-    });
-
     H.popover().within(() => {
-      cy.findByText("Equal to").should("exist");
-      cy.findByText("Greater than").should("exist");
-      cy.findByText("Less than").should("exist");
+      cy.findByText("Summaries").click();
+      cy.findByText("Distinct values of Email").click();
+      cy.findByText("Between").click();
     });
+
+    H.popover()
+      .eq(1)
+      .within(() => {
+        cy.findByText("Equal to").should("exist");
+        cy.findByText("Greater than").should("exist");
+        cy.findByText("Less than").should("exist");
+      });
   });
 });
 
@@ -1156,91 +1154,7 @@ describe("issue 35043", () => {
   });
 });
 
-describe("issue 40622", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should display the Filter modal correctly with long column names (metabase#40622)", () => {
-    const LONG_COLUMN_NAME =
-      "Reviews, but with a very very veeeeeery long name!";
-    cy.request("PUT", `/api/table/${REVIEWS_ID}`, {
-      display_name: LONG_COLUMN_NAME,
-    });
-
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": REVIEWS_ID,
-          joins: [
-            {
-              fields: "all",
-              strategy: "left-join",
-              alias: "Orders - Product",
-              condition: [
-                "=",
-                ["field", REVIEWS.PRODUCT_ID, { "base-type": "type/Integer" }],
-                [
-                  "field",
-                  ORDERS.PRODUCT_ID,
-                  {
-                    "base-type": "type/Integer",
-                    "join-alias": "Orders - Product",
-                  },
-                ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-          ],
-        },
-        parameters: [],
-      },
-    });
-
-    H.filter();
-    assertTablesAreEquallyLeftRightPositioned();
-
-    cy.log("Resize and make sure the filter sidebar is intact");
-    cy.viewport(800, 300);
-    assertTablesAreEquallyLeftRightPositioned();
-
-    cy.log("Make sure sidebar is scrollable");
-    filterSidebar().within(() => {
-      cy.findByRole("tab", { name: LONG_COLUMN_NAME }).should("be.visible");
-      cy.findByRole("tab", { name: "User" }).should("not.be.visible");
-    });
-
-    filterSidebar().scrollTo("bottom");
-    filterSidebar().within(() => {
-      cy.findByRole("tab", { name: LONG_COLUMN_NAME }).should("not.be.visible");
-      cy.findByRole("tab", { name: "User" }).should("be.visible");
-    });
-  });
-
-  function filterSidebar() {
-    return cy.findByRole("tablist");
-  }
-
-  function assertTablesAreEquallyLeftRightPositioned() {
-    filterSidebar().within(() => {
-      cy.findAllByRole("tab").each((_el, index, $list) => {
-        if (index === $list.length - 1) {
-          return;
-        }
-
-        const currentTab = $list[index].getBoundingClientRect();
-        const nextTab = $list[index + 1].getBoundingClientRect();
-        expect(currentTab.left).to.eq(nextTab.left);
-        expect(currentTab.right).to.eq(nextTab.right);
-      });
-    });
-  }
-});
-
-describe("45252", { tags: "@external" }, () => {
+describe("issue 45252", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_data_types" });
@@ -1282,34 +1196,34 @@ describe("45252", { tags: "@external" }, () => {
       .should("be.visible");
     H.assertQueryBuilderRowCount(2);
 
-    cy.log("filter modal - existing filter");
+    cy.log("filter picker - existing filter");
     H.queryBuilderHeader()
       .button(/Filter/)
       .click();
-    H.modal().within(() => {
-      cy.findByTestId("filter-column-Binary")
-        .findByLabelText("Is empty")
-        .click();
-      cy.button("Apply filters").click();
-      cy.wait("@dataset");
+    H.popover().within(() => {
+      cy.findByText("Binary").click();
+      cy.findByLabelText("Is empty").click();
+      cy.button("Add filter").click();
     });
+    H.runButtonOverlay().click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(0);
 
-    cy.log("filter modal - json column");
+    cy.log("filter picker - json column");
+    H.queryBuilderFiltersPanel()
+      .findByText("Binary is empty")
+      .icon("close")
+      .click();
+    cy.wait("@dataset");
     H.queryBuilderHeader()
       .button(/Filter/)
       .click();
-    H.modal().within(() => {
-      cy.findByTestId("filter-column-Binary")
-        .findByLabelText("Not empty")
-        .click();
-      cy.findByTestId("filter-column-Jsonb")
-        .findByLabelText("Not empty")
-        .click();
-      cy.button("Apply filters").click();
-      cy.wait("@dataset");
+    H.popover().within(() => {
+      cy.findByText("Jsonb").click();
+      cy.findByLabelText("Not empty").click();
+      cy.button("Add filter").click();
     });
+    H.runButtonOverlay().click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(2);
   });
@@ -1346,7 +1260,7 @@ describe("issue 44435", () => {
       },
     });
 
-    cy.findByTestId("filter-pill").then($pill => {
+    cy.findByTestId("filter-pill").then(($pill) => {
       const pillWidth = $pill[0].getBoundingClientRect().width;
       cy.window().its("innerWidth").should("be.gt", pillWidth);
     });
@@ -1524,7 +1438,7 @@ describe("issue 49321", () => {
     // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Contains").click();
 
-    H.popover().then($popover => {
+    H.popover().then(($popover) => {
       const { width } = $popover[0].getBoundingClientRect();
       cy.wrap(width).as("initialWidth");
     });
@@ -1533,8 +1447,8 @@ describe("issue 49321", () => {
       .findByPlaceholderText("Enter some text")
       .type("aaaaaaaaaa, bbbbbbbbbbb,");
 
-    cy.get("@initialWidth").then(initialWidth => {
-      H.popover().should($popover => {
+    cy.get("@initialWidth").then((initialWidth) => {
+      H.popover().should(($popover) => {
         const { width } = $popover[0].getBoundingClientRect();
         expect(width).to.eq(initialWidth);
       });
@@ -1667,11 +1581,11 @@ describe("issue 50731", () => {
 
     H.popover()
       .should("be.visible")
-      .and($element => {
+      .and(($element) => {
         const [container] = $element;
         const descendants = container.querySelectorAll("*");
 
-        descendants.forEach(descendant => {
+        descendants.forEach((descendant) => {
           H.assertDescendantNotOverflowsContainer(descendant, container);
         });
       });

@@ -6,19 +6,53 @@ title: Embedded analytics SDK - quickstart with sample app
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
-{% include youtube.html id='AtMn-G-Al80' %}
+This guide sets up the embedded analytics SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable), but you can follow along with your own application.
 
-This guide sets up the embedded analytics SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample), but you can follow along with your own application.
+{% include youtube.html id='AtMn-G-Al80' %}
 
 ## Prerequisites
 
 - [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).
 - [Metabase version v1.52 or higher](https://www.metabase.com/docs/latest/releases).
-- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md))
+- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md) that lacks the paid JWT SSO setup)
+- (Optional): [Docker](https://www.docker.com/) 
 
-## Overview of the quickstart
+## Two ways to set up the sample app with Metabase
 
-We're going to do some setup in Metabase, and in the sample application.
+- [Quick setup with Docker](#quick-setup-with-docker) (includes a sample Metabase)
+- [Walkthrough setup](#walkthrough-setup) (bring your own Metabase, or spin up a new one)
+
+## Quick setup with Docker
+
+This quick setup will run a Docker container with the sample app and a sample Metabase.
+
+1. Copy `.env.docker.example` to `.env.docker`.
+2. In the `.env.docker` file, replace `<your_enterprise_token>` with your premium embedding token.
+3. In the top-level directory, run: 
+    ```bash
+    yarn start
+    ```
+
+This script will:
+
+- Pull a Metabase Docker image and run it in a container.
+- Set up JWT SSO in Metabase.
+- Build and run the sample application with an embedded interactive question.
+
+The app will start on [http://localhost:4400](http://localhost:4400).
+
+That's it! You should be [up and running](#at-this-point-you-should-be-up-and-running).
+
+If you want to log in to the sample Metabase this command set up, visit [http://localhost:4300](http://localhost:4300). You can log in with email and password as Rene Descartes:
+
+- email: rene@example.com
+- password: foobarbaz
+
+## Walkthrough setup
+
+We're going to do some setup in Metabase, and then in the sample application. You can also bring your own Metabase, in which case you can skip the installation step.
+
+Here's a quick overview of what you'll be doing:
 
 ### Set up Metabase for embedding
 
@@ -31,7 +65,7 @@ We're going to do some setup in Metabase, and in the sample application.
 
 5. [Get the sample application](#set-up-the-sample-application).
 6. [Set up the application environment](#set-up-the-application-environment).
-7. [Run the app server](#set-up-the-application-server) to handle authentication with JWT and server the embedded Metabase components.
+7. [Run the app server](#set-up-the-application-server) to handle authentication with JWT and serve the embedded Metabase components.
 8. [Run the client application](#set-up-the-client-application) that will contain Metabase components built with the SDK.
 
 And then fiddle around with styling.
@@ -40,7 +74,7 @@ Let's go.
 
 ## Install Metabase Enterprise Edition
 
-You can run Metabase Pro on a Cloud plan with a [free trial](https://www.metabase.com/pricing).
+You can run Metabase Pro on a Cloud plan with a [free trial](https://www.metabase.com/pricing/).
 
 Or run it locally. Here's a docker one-liner:
 
@@ -87,7 +121,7 @@ In **JWT IDENTITY PROVIDER URI** field, paste
 localhost:9090/sso/metabase
 ```
 
-Or substitute your Cloud URL for `/localhost`.
+Or substitute your Cloud URL for `localhost`.
 
 ### String used by the JWT signing key
 
@@ -103,10 +137,22 @@ Be sure to hit the **Save and enable** button, or all is void.
 
 ## Set up the sample application
 
-Clone the [Metabase Node JS React SDK embedding sample app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample).
+Clone the [Metabase Node JS React SDK embedding sample app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable).
 
 ```sh
 git clone git@github.com:metabase/metabase-nodejs-react-sdk-embedding-sample.git
+```
+
+### Check out the branch that corresponds to your Metabase version
+
+Check out the branch in the [metabase-nodejs-react-sdk-embedding-sample](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable) repo that corresponds to your Metabase version.
+
+E.g., if you're running Metabase 1.53, make sure the sample app repo is on the `53-stable` branch. You can find your Metabase version in the Metabase UI by clicking on the gears icon in the upper right and selecting **About Metabase**.
+
+To switch to another branch, run `git checkout <branch-name>`, e.g.:
+
+```
+git checkout 52-stable
 ```
 
 ## Set up the application environment
@@ -184,11 +230,11 @@ Your browser should automatically open the app. By default, the app runs on [htt
 In your app, you'll see an embedded `InteractiveQuestion` component.
 
 ```javascript
-<MetabaseProvider authConfig={authConfig} theme={theme}>
-  <InteractiveQuestion questionId={questionId} />
-</MetabaseProvider>
+{% include_file "{{ dirname }}/snippets/quickstart-with-sample-app/example.tsx" snippet="example" %}
 ```
 
 ![Embedded Metabase components](../images/interactive-question-sample-app.png)
 
-Try changing some of the `theme` options in the [client app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/blob/main/client/src/App.jsx) to style the components.
+## Next steps
+
+To style the components, try changing some of the `theme` options in the client app at `client/src/App.jsx`. For more on theming, check out [Appearance](./appearance.md).

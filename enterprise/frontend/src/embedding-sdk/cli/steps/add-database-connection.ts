@@ -9,7 +9,7 @@ import { addDatabaseConnection } from "../utils/add-database-connection";
 import { askForDatabaseConnectionInfo } from "../utils/ask-for-db-connection-info";
 import { fetchInstanceSettings } from "../utils/fetch-instance-settings";
 
-export const addDatabaseConnectionStep: CliStepMethod = async state => {
+export const addDatabaseConnectionStep: CliStepMethod = async (state) => {
   const settings = await fetchInstanceSettings({
     instanceUrl: state.instanceUrl ?? "",
   });
@@ -31,7 +31,7 @@ export const addDatabaseConnectionStep: CliStepMethod = async state => {
       message: "What database are you connecting to?",
       source(term) {
         return term
-          ? engineChoices.filter(choice =>
+          ? engineChoices.filter((choice) =>
               choice.name.toLowerCase().includes(term.toLowerCase()),
             )
           : engineChoices;
@@ -74,4 +74,4 @@ export const addDatabaseConnectionStep: CliStepMethod = async state => {
 const getEngineChoices = (settings: Settings) =>
   Object.entries(settings.engines)
     .map(([key, engine]) => ({ name: engine["driver-name"], value: key }))
-    .filter(engine => CLI_SHOWN_DB_ENGINES.includes(engine.value));
+    .filter((engine) => CLI_SHOWN_DB_ENGINES.includes(engine.value));

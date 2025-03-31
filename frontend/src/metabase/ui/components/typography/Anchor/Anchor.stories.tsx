@@ -35,7 +35,7 @@ const DefaultTemplate = (args: AnchorProps) => (
 
 const SizeTemplate = (args: AnchorProps) => (
   <Grid align="center" maw="18rem">
-    {argTypes.size.options.map(size => (
+    {argTypes.size.options.map((size) => (
       <Fragment key={size}>
         <Grid.Col span={2}>
           <Text fw="bold">{size}</Text>

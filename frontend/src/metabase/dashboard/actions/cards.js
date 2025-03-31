@@ -8,7 +8,7 @@ import { addDashCardToDashboard } from "./cards-typed";
 
 export const addActionToDashboard =
   ({ dashId, tabId, action, displayType }) =>
-  dispatch => {
+  (dispatch) => {
     trackCardCreated("action", dashId);
 
     const virtualActionsCard = {

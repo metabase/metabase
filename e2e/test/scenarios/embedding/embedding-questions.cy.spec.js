@@ -257,7 +257,8 @@ describe("scenarios [EE] > embedding > questions", () => {
     cy.wait("@deLocale");
 
     H.main().findByText("Februar 11, 2025, 9:40 PM");
-    H.main().findByText("Zeilen", { exact: false });
+    cy.findByTestId("download-button").realHover();
+    H.tooltip().findByText("Lade alle Ergebnisse herunter", { exact: false });
 
     cy.url().should("include", "locale=de");
   });
@@ -320,7 +321,7 @@ describe("scenarios > embedding > questions > downloads", () => {
 
   context("without token", () => {
     it("should not be possible to disable downloads", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
         H.openStaticEmbeddingModal({ activeTab: "lookAndFeel" });
@@ -353,7 +354,7 @@ describe("scenarios > embedding > questions > downloads", () => {
           setFilters: { text: "Foo" },
         });
 
-        cy.get("[data-testid=cell-data]").should("have.text", "Foo");
+        cy.findByRole("gridcell").should("have.text", "Foo");
         cy.findByRole("contentinfo").icon("download").click();
 
         H.popover().within(() => {
@@ -366,11 +367,11 @@ describe("scenarios > embedding > questions > downloads", () => {
         cy.log(
           "Trying to prevent downloads via query params doesn't have any effect",
         );
-        cy.url().then(url => {
+        cy.url().then((url) => {
           cy.visit(url + "&downloads=false");
         });
 
-        cy.get("[data-testid=cell-data]").should("have.text", "Foo");
+        cy.findByRole("gridcell").should("have.text", "Foo");
         cy.findByRole("contentinfo").icon("download");
       });
     });
@@ -380,7 +381,7 @@ describe("scenarios > embedding > questions > downloads", () => {
     beforeEach(() => H.setTokenFeatures("all"));
 
     it("should be possible to disable downloads", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
         H.openStaticEmbeddingModal({
@@ -407,7 +408,7 @@ describe("scenarios > embedding > questions > downloads", () => {
         H.visitIframe();
 
         H.filterWidget().type("Foo{enter}");
-        cy.get("[data-testid=cell-data]").should("have.text", "Foo");
+        cy.findByRole("gridcell").should("have.text", "Foo");
 
         cy.location("search").should("eq", "?text=Foo");
         cy.location("hash").should("match", /&downloads=false$/);

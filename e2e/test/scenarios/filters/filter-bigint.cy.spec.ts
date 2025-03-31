@@ -211,7 +211,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
           cy.findByPlaceholderText("Min").type(minValue);
           cy.findByPlaceholderText("Max").type(maxValue);
         },
-        filterDisplayName: `NUMBER is ${minValue} – ${maxValue}`,
+        filterDisplayName: `NUMBER is between ${minValue} and ${maxValue}`,
         filteredRowCount: 3,
       });
     }
@@ -277,8 +277,8 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         target: ["dimension", ["field", fieldId, { "base-type": baseType }]],
       });
 
-      getTableId(tableName).then(tableId => {
-        getFieldId(tableId, "id").then(fieldId => {
+      getTableId(tableName).then((tableId) => {
+        getFieldId(tableId, "id").then((fieldId) => {
           H.createQuestion(getTargetQuestionDetails(tableId)).then(
             ({ body: card }) => {
               H.createDashboard(dashboardDetails).then(
@@ -428,7 +428,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         parameters,
         enable_embedding: true,
         embedding_params: Object.fromEntries(
-          parameters.map(parameter => [parameter.slug, "enabled"]),
+          parameters.map((parameter) => [parameter.slug, "enabled"]),
         ),
       };
 
@@ -463,7 +463,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
                     dashboard_id: dashboard.id,
                     card_id: targetCard.id,
                     card: {
-                      parameter_mappings: parameters.map(parameter =>
+                      parameter_mappings: parameters.map((parameter) =>
                         getParameterMapping(parameter.id, targetCard.id),
                       ),
                     },
@@ -615,7 +615,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
           cy.findAllByPlaceholderText("Enter a number").eq(0).type(minValue);
           cy.findAllByPlaceholderText("Enter a number").eq(1).type(maxValue);
         },
-        filterDisplayName: `NUMBER is ${minValue} – ${maxValue}`,
+        filterDisplayName: `NUMBER is between ${minValue} and ${maxValue}`,
         filterArgsDisplayName: "2 selections",
         filteredRowCount: 3,
         withDrillThru,
@@ -937,8 +937,8 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         tableName: string;
         baseType: string;
       }) {
-        getTableId(tableName).then(tableId => {
-          getFieldId(tableId, "id").then(fieldId => {
+        getTableId(tableName).then((tableId) => {
+          getFieldId(tableId, "id").then((fieldId) => {
             const parameterDetails: Parameter = {
               id: "0dcd2f82-2e7d-4989-9362-5c94744a6585",
               name: "ID",
@@ -1047,7 +1047,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         },
       });
 
-      getTableId(tableName).then(tableId => {
+      getTableId(tableName).then((tableId) => {
         H.createQuestion(getQuestionDetails(tableId), { visitQuestion: true });
       });
     }
@@ -1058,7 +1058,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       H.openNotebook();
       H.getNotebookStep("data").button("Filter").click();
       H.popover().findByText("Custom Expression").click();
-      H.enterCustomColumnDetails({ formula: `[ID] = "${value}"` });
+      H.enterCustomColumnDetails({ formula: `[ID] = ${value}` });
       cy.button("Done").click();
       H.visualize();
       H.assertQueryBuilderRowCount(1);
@@ -1069,7 +1069,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         cy.findByLabelText("Back").click();
         cy.findByText("Custom Expression").click();
       });
-      H.enterCustomColumnDetails({ formula: `[ID] != "${value}"` });
+      H.enterCustomColumnDetails({ formula: `[ID] != ${value}` });
       cy.button("Update").click();
       H.visualize();
       H.assertQueryBuilderRowCount(2);
@@ -1089,7 +1089,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
 
   it("query builder + object detail", { tags: "@external" }, () => {
     function setupQuestion({ tableName }: { tableName: string }) {
-      getTableId(tableName).then(tableId =>
+      getTableId(tableName).then((tableId) =>
         H.createQuestion(
           {
             database: WRITABLE_DB_ID,
@@ -1199,7 +1199,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         display: "table",
       });
 
-      getTableId(tableName).then(tableId => {
+      getTableId(tableName).then((tableId) => {
         H.createQuestion(getTargetQuestionDetails(tableId), {
           wrapId: true,
           visitQuestion: true,
@@ -1239,7 +1239,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       formattedMinValue: string;
       formattedMaxValue: string;
     }) {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.downloadAndAssert(
           {
             fileType: "csv",
@@ -1416,7 +1416,7 @@ function getTableId(tableName: string) {
   return cy
     .request("GET", "/api/table")
     .then(({ body: tables }: { body: Table[] }) => {
-      const table = tables.find(table => table.name === tableName);
+      const table = tables.find((table) => table.name === tableName);
       if (!table) {
         throw new TypeError(`Table with name ${tableName} cannot be found`);
       }
@@ -1429,7 +1429,7 @@ function getFieldId(tableId: TableId, fieldName: string) {
     .request("GET", `/api/table/${tableId}/query_metadata`)
     .then(({ body: table }: { body: Table }) => {
       const fields = table.fields ?? [];
-      const field = fields.find(field => field.name === fieldName);
+      const field = fields.find((field) => field.name === fieldName);
       if (!field) {
         throw new TypeError(`Field with name ${fieldName} cannot be found`);
       }
@@ -1442,13 +1442,13 @@ function getFieldId(tableId: TableId, fieldName: string) {
 
 function visitPublicQuestion() {
   cy.signInAsAdmin();
-  cy.get("@questionId").then(questionId => {
+  cy.get("@questionId").then((questionId) => {
     H.visitPublicQuestion(Number(questionId));
   });
 }
 
 function visitEmbeddedQuestion() {
-  cy.get("@questionId").then(questionId => {
+  cy.get("@questionId").then((questionId) => {
     const payload = {
       resource: { question: Number(questionId) },
       params: {},
@@ -1459,13 +1459,13 @@ function visitEmbeddedQuestion() {
 
 function visitPublicDashboard() {
   cy.signInAsAdmin();
-  cy.get("@dashboardId").then(dashboardId => {
+  cy.get("@dashboardId").then((dashboardId) => {
     H.visitPublicDashboard(Number(dashboardId));
   });
 }
 
 function visitEmbeddedDashboard() {
-  cy.get("@dashboardId").then(dashboardId => {
+  cy.get("@dashboardId").then((dashboardId) => {
     const payload = {
       resource: { dashboard: Number(dashboardId) },
       params: {},

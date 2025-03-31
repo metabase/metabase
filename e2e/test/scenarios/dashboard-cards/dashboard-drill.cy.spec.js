@@ -24,7 +24,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should handle URL click through on a table", () => {
-    createDashboardWithQuestion({}, dashboardId => {
+    createDashboardWithQuestion({}, (dashboardId) => {
       H.visitDashboard(dashboardId);
 
       cy.findByTestId("dashboard-header").icon("pencil").click();
@@ -140,20 +140,26 @@ describe("scenarios > dashboard > dashboard drill", () => {
     };
     createQuestion(
       { query, visualization_settings: questionSettings },
-      questionId => {
+      (questionId) => {
         createDashboard(
           { questionId, visualization_settings: dashCardSettings },
-          dashboardIdA => H.visitDashboard(dashboardIdA),
+          (dashboardIdA) => H.visitDashboard(dashboardIdA),
         );
       },
     );
 
-    cy.findAllByText("18").first().click();
+    H.tableInteractiveBody()
+      .findAllByRole("row")
+      .eq(5)
+      .findByText("18")
+      .as("targetCell");
+    // querying the element before clicking to ensure its stability
+    cy.get("@targetCell").click({ force: true });
     cy.location("pathname").should("eq", "/test/18/CO/Organic");
   });
 
   it("should handle question click through on a table", () => {
-    createDashboardWithQuestion({}, dashboardId =>
+    createDashboardWithQuestion({}, (dashboardId) =>
       H.visitDashboard(dashboardId),
     );
 
@@ -200,13 +206,13 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should handle dashboard click through on a table", () => {
-    createQuestion({}, questionId => {
+    createQuestion({}, (questionId) => {
       createDashboard(
         { dashboardName: "start dash", questionId },
-        dashboardIdA => {
+        (dashboardIdA) => {
           createDashboardWithQuestion(
             { dashboardName: "end dash" },
-            dashboardIdB => {
+            (dashboardIdB) => {
               H.visitDashboard(dashboardIdA);
             },
           );
@@ -268,7 +274,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
-    createDashboardWithQuestion({}, dashboardId => {
+    createDashboardWithQuestion({}, (dashboardId) => {
       H.visitDashboard(dashboardId);
       H.editDashboard();
       H.showDashboardCardActions();
@@ -304,7 +310,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
   // This was flaking. Example: https://dashboard.cypress.io/projects/a394u1/runs/2109/test-results/91a15b66-4b80-40bf-b569-de28abe21f42
   it.skip("should handle cross-filter on a table", () => {
-    createDashboardWithQuestion({}, dashboardId =>
+    createDashboardWithQuestion({}, (dashboardId) =>
       H.visitDashboard(dashboardId),
     );
     cy.icon("pencil").click();
@@ -480,7 +486,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.findAllByTestId("column-header").contains("ID").click().click();
+    H.tableHeaderClick("ID");
 
     cy.get(".test-Table-ID").contains(PK_VALUE).first().click();
 
@@ -549,7 +555,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("View details").click();
 
     cy.log("Reported on v0.29.3");
-    cy.wait("@dataset").then(xhr => {
+    cy.wait("@dataset").then((xhr) => {
       expect(xhr.response.body.error).not.to.exist;
     });
     cy.findByTestId("object-detail").findByText("Fantastic Wool Shirt");
@@ -697,12 +703,15 @@ describe("scenarios > dashboard > dashboard drill", () => {
       },
     };
 
-    createQuestion({ visualization_settings: questionSettings }, questionId => {
-      createDashboard(
-        { questionId, visualization_settings: dashCardSettings },
-        dashboardIdA => H.visitDashboard(dashboardIdA),
-      );
-    });
+    createQuestion(
+      { visualization_settings: questionSettings },
+      (questionId) => {
+        createDashboard(
+          { questionId, visualization_settings: dashCardSettings },
+          (dashboardIdA) => H.visitDashboard(dashboardIdA),
+        );
+      },
+    );
 
     // formatting works, so we see "USD" in the table
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -819,14 +828,14 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.visit(`/dashboard/${DASHBOARD_ID}?date_filter=past30years`);
       });
     });
-    cy.findByTextEnsureVisible("Quantity");
+    H.tableHeaderColumn("Quantity");
     cy.get(".test-Table-ID")
       .first()
       // Mid-point check that this cell actually contains ID = 1
       .contains("1")
       .click();
 
-    cy.wait("@dataset").then(xhr => {
+    cy.wait("@dataset").then((xhr) => {
       expect(xhr.response.body.error).to.not.exist;
     });
     cy.findByTestId("object-detail").within(() => {
@@ -991,7 +1000,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     function postDrillAssertion(filterName) {
       cy.findByTestId("qb-filters-panel").findByText(filterName).click();
-      H.popover("filter-picker-dropdown").within(() => {
+      H.popover({ testId: "filter-picker-dropdown" }).within(() => {
         // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByRole("combobox")
           .last()
@@ -1008,7 +1017,7 @@ function createDashboardWithQuestion(
   { dashboardName = "dashboard" } = {},
   callback,
 ) {
-  createQuestion({}, questionId => {
+  createQuestion({}, (questionId) => {
     createDashboard({ dashboardName, questionId }, callback);
   });
 }

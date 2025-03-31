@@ -76,7 +76,7 @@ describe("actions > containers > ActionCreator > QueryActionContextProvider > ut
         parameters,
       );
 
-      newParams.forEach(param => expect(param.type).toEqual("string/="));
+      newParams.forEach((param) => expect(param.type).toEqual("string/="));
     });
 
     it("should set number parameter types", () => {
@@ -100,7 +100,7 @@ describe("actions > containers > ActionCreator > QueryActionContextProvider > ut
         parameters,
       );
 
-      newParams.forEach(param => expect(param.type).toEqual("number/="));
+      newParams.forEach((param) => expect(param.type).toEqual("number/="));
     });
 
     it("should set date parameter types", () => {
@@ -124,7 +124,7 @@ describe("actions > containers > ActionCreator > QueryActionContextProvider > ut
         parameters,
       );
 
-      newParams.forEach(param => expect(param.type).toEqual("date/single"));
+      newParams.forEach((param) => expect(param.type).toEqual("date/single"));
     });
   });
 

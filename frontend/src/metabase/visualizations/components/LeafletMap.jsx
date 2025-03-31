@@ -145,7 +145,7 @@ export default class LeafletMap extends Component {
     this._filter && this._filter.disable();
     this.props.onFiltering(false);
   }
-  onFilter = e => {
+  onFilter = (e) => {
     const bounds = e.layer.getBounds();
 
     const {
@@ -218,11 +218,11 @@ export default class LeafletMap extends Component {
     return {
       latitudeIndex: _.findIndex(
         cols,
-        col => col.name === settings["map.latitude_column"],
+        (col) => col.name === settings["map.latitude_column"],
       ),
       longitudeIndex: _.findIndex(
         cols,
-        col => col.name === settings["map.longitude_column"],
+        (col) => col.name === settings["map.longitude_column"],
       ),
     };
   }

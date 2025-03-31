@@ -61,7 +61,7 @@ export const TableColumnPanel = ({
   const handleDragColumn = useCallback(
     ({ id, newIndex }: DragEndEvent) => {
       const oldIndex = columnItems.findIndex(
-        columnItem => getId(columnItem) === id,
+        (columnItem) => getId(columnItem) === id,
       );
 
       onChange(moveColumnInSettings(columnItems, oldIndex, newIndex));

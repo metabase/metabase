@@ -43,7 +43,12 @@ import {
 import { language } from "./language";
 import { getReferencedCardIds } from "./util";
 
-export function useExtensions(query: Lib.Query): Extension[] {
+type Options = {
+  query: Lib.Query;
+  onRunQuery?: () => void;
+};
+
+export function useExtensions({ query, onRunQuery }: Options): Extension[] {
   const { databaseId, engine, referencedCardIds } = useMemo(
     () => ({
       databaseId: Lib.databaseID(query),
@@ -89,7 +94,7 @@ export function useExtensions(query: Lib.Query): Extension[] {
       highlighting(),
       tagDecorator(),
       folds(),
-      disableCmdEnter(),
+      keyboardShortcuts({ onRunQuery }),
     ]
       .flat()
       .filter(isNotNull);
@@ -101,17 +106,25 @@ export function useExtensions(query: Lib.Query): Extension[] {
     referencedCardCompletion,
     localsCompletion,
     keywordsCompletion,
+    onRunQuery,
   ]);
 }
 
-function disableCmdEnter() {
+type KeyboardShortcutOptions = {
+  onRunQuery?: () => void;
+};
+
+function keyboardShortcuts({ onRunQuery }: KeyboardShortcutOptions) {
   // Stop Cmd+Enter in CodeMirror from inserting a newline
   // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
   return Prec.highest(
     keymap.of([
       {
         key: "Mod-Enter",
-        run: () => true,
+        run: () => {
+          onRunQuery?.();
+          return true;
+        },
       },
       {
         key: "Tab",
@@ -248,14 +261,14 @@ function tagDecorator() {
   });
 
   return ViewPlugin.define(
-    view => ({
+    (view) => ({
       tags: decorator.createDeco(view),
       update(state) {
         this.tags = decorator.updateDeco(state, this.tags);
       },
     }),
     {
-      decorations: instance => instance.tags,
+      decorations: (instance) => instance.tags,
     },
   );
 }
@@ -267,7 +280,7 @@ export function insertIndent({
   state: EditorState;
   dispatch: (tr: Transaction) => void;
 }) {
-  if (state.selection.ranges.some(r => !r.empty)) {
+  if (state.selection.ranges.some((r) => !r.empty)) {
     return indentMore({ state, dispatch });
   }
 
