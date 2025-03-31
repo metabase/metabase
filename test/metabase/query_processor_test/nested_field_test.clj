@@ -171,4 +171,5 @@
                 (mt/run-mbql-query tips
                   {:expressions {:incremented_count ["+" [:field "count" {:base-type "type/Integer"}] 1]}
                    :source-query {:aggregation [[:count]]
-                                  :breakout    [$tips.source.service]}}))))))))
+                                  :breakout    [$tips.source.service]
+                                  :source-table $$tips}}))))))))
