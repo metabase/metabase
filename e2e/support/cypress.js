@@ -6,6 +6,14 @@ import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
+
+import {
+  countConsoleErrors,
+  getErrorSummary,
+  hasErrors,
+  resetErrorCounters,
+} from "./console-errors";
+
 import "./commands";
 
 const VISUALIZATION_ERROR_REGEX = /Visualization/;
@@ -26,9 +34,9 @@ const knownErrorPatterns = [
   [UNSAFE_COMPONENT_ERROR_REGEX, DASHBOARD_GRID_ERROR_REGEX],
 ];
 
-export const hasKnownError = message =>
-  knownErrorPatterns.some(patterns =>
-    patterns.every(regex => regex.test(message)),
+export const hasKnownError = (message) =>
+  knownErrorPatterns.some((patterns) =>
+    patterns.every((regex) => regex.test(message)),
   );
 
 const isCI = Cypress.env("CI");
@@ -180,8 +188,18 @@ if (isCI) {
 }
 
 beforeEach(function () {
-  cy.window().then(win => {
-    cy.stub(win.console, "error").as("consoleError").callThrough();
+  resetErrorCounters();
+
+  cy.window().then((win) => {
+    cy.stub(win.console, "error")
+      .as("consoleError")
+      .callsFake((msg, ...args) => {
+        // Count the error
+        countConsoleErrors([msg, ...args]);
+
+        // Call original console.error
+        win.console.error.wrappedMethod.apply(win.console, [msg, ...args]);
+      });
   });
 
   const isCurrentTesOss =
@@ -200,24 +218,13 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-  // Skip this check if the test is already failed to avoid extra noise
   if (this.currentTest.state === "failed") {
     return;
   }
 
-  cy.get("@consoleError").then($console => {
-    if (!$console || !$console.args) {
-      return;
-    }
+  if (hasErrors()) {
+    const summary = getErrorSummary();
 
-    const lifecycleErrors = $console.args.filter(args => {
-      const message = args.join(" ");
-      return hasKnownError(message);
-    });
-
-    expect(lifecycleErrors.length).to.equal(
-      0,
-      "there must be no unsafe lifecycle warnings in components",
-    );
-  });
+    cy.fail(summary);
+  }
 });
