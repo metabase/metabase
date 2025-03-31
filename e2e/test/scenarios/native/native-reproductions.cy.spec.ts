@@ -439,10 +439,10 @@ describe("issue 55951", () => {
           }));
 
           if (isFirstGetDatabasesCall) {
-            // No reason to delay the first call on index page
+            // No reason to delay the first call on the index page
             isFirstGetDatabasesCall = false;
           } else {
-            // Setting this to be arbitrarly long so that H.repeatAssertion is guarenteed to detect the issue
+            // Setting this to be arbitrarly long so that H.repeatAssertion is guaranteed to detect the issue
             return new Promise((resolve) => setTimeout(resolve, 5000));
           }
         });
