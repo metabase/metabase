@@ -56,7 +56,7 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
 function getSnippet(helpText: HelpText) {
   const args = helpText.args
     ?.filter((arg) => arg.name !== "…")
-    ?.map((arg) => "${" + arg.name + "}")
+    ?.map((arg) => "${" + (arg.template ?? arg.name) + "}")
     .join(", ");
 
   if (!args || args.length < 1) {
