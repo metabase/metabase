@@ -421,6 +421,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         Boolean(columnSettings["text_wrapping"]);
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
+      const isImage = columnSettings["view_as"] === "image";
       const headerVariant = mode != null || isDashboard ? "light" : "outline";
       const getBackgroundColor = memoize(
         (value: RowValue, rowIndex: number) =>
@@ -454,6 +455,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         getCellClassName: (value) =>
           cx("test-TableInteractive-cellWrapper", {
             [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
+            [S.bodyCellWithImage]: isImage,
             "test-Table-ID": value != null && isID(col),
             "test-Table-FK": value != null && isFK(col),
             "test-TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
