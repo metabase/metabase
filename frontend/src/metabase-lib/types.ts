@@ -284,6 +284,7 @@ export type ExpressionArg =
   | null
   | boolean
   | number
+  | bigint
   | string
   | ColumnMetadata
   | SegmentMetadata
@@ -298,6 +299,7 @@ export type ExpressionParts = {
 export type ExpressionOptions = {
   "case-sensitive"?: boolean;
   "include-current"?: boolean;
+  "base-type"?: string;
 };
 
 declare const FilterOperator: unique symbol;

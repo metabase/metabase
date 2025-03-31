@@ -85,6 +85,9 @@ describe("format", () => {
         expression`
           1 + 2 + 3 * 4 * 5 + 6
         `,
+        expression`
+          90071992547409901
+        `,
       ]);
     });
 

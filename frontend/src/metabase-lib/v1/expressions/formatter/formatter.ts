@@ -172,8 +172,8 @@ function recurse<T, R>(
   }
 }
 
-function formatNumberLiteral(node: number): Doc {
-  return JSON.stringify(node);
+function formatNumberLiteral(node: number | bigint): Doc {
+  return String(node);
 }
 
 function formatBooleanLiteral(node: boolean): Doc {
@@ -402,8 +402,26 @@ function formatValueExpression(
   print: Print,
 ): Doc {
   const { node } = path;
-  if (!isValueOperator(node.operator)) {
+  const {
+    operator,
+    args: [value],
+    options,
+  } = node;
+
+  if (!isValueOperator(operator)) {
     throw new Error("Expected value");
+  }
+
+  const baseType = options?.["base-type"];
+  if (
+    typeof value === "string" &&
+    typeof baseType === "string" &&
+    isa(baseType, "type/BigInteger")
+  ) {
+    const number = parseNumber(value);
+    if (number != null) {
+      return recurse(path, print, number);
+    }
   }
   return recurse(path, print, node.args[0]);
 }

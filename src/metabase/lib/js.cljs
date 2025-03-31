@@ -1018,7 +1018,8 @@
        (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
          (let [{:keys [operator options args]} node]
            #js {:operator (name operator)
-                :options (clj->js (select-keys options [:case-sensitive :include-current]))
+                :options (fix-namespaced-values
+                          (clj->js (select-keys options [:case-sensitive :include-current :base-type]) :keyword-fn u/qualified-name))
                 :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
          node))
      parts)))
