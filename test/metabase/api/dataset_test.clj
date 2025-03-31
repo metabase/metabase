@@ -133,15 +133,16 @@
         (is (=? {:context :dashboard-ad-hoc}
                 (format-response (most-recent-query-execution-for-query query)))))))
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (testing "POST /api/dataset/pivot"
-      (let [query  (api.pivots/pivot-query)
-            result (mt/user-http-request :crowberto :post 202 "dataset/pivot" {:query query :dashboard_id 1})
-            rows   (mt/rows result)]
-        (testing "should return correct query results"
-          (is (= 1144 (count rows))))
-        (testing "should set `:context` to `:dashboard-ad-hoc` when `:dashboard_id` is passed"
-          (is (=? {:context :dashboard-ad-hoc}
-                  (format-response (most-recent-query-execution-for-query query)))))))))
+    (mt/dataset test-data
+      (testing "POST /api/dataset/pivot"
+        (let [query  (api.pivots/pivot-query)
+              result (mt/user-http-request :crowberto :post 202 "dataset/pivot" {:query query :dashboard_id 1})
+              rows   (mt/rows result)]
+          (testing "should return correct query results"
+            (is (= 1144 (count rows))))
+          (testing "should set `:context` to `:dashboard-ad-hoc` when `:dashboard_id` is passed"
+            (is (=? {:context :dashboard-ad-hoc}
+                    (format-response (most-recent-query-execution-for-query query))))))))))
 
 (deftest failure-test
   ;; clear out recent query executions!
