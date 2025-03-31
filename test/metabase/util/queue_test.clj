@@ -133,7 +133,7 @@
           items-handled (atom 0)
           last-batch (atom nil)
           queue (queue/delay-queue)
-          thread-name "queue-test-listener-1"]
+          thread-name "queue-test-listener-0"]
       (is (not (thread-name-running? thread-name)))
       (is (not (queue/listener-exists? listener-name)))
 
@@ -202,9 +202,9 @@
           batches-handled (atom 0)
           handlers-used (atom #{})
           queue (queue/delay-queue)]
+      (is (not (thread-name-running? (str "queue-" listener-name "-0"))))
       (is (not (thread-name-running? (str "queue-" listener-name "-1"))))
       (is (not (thread-name-running? (str "queue-" listener-name "-2"))))
-      (is (not (thread-name-running? (str "queue-" listener-name "-3"))))
 
       (queue/listen! listener-name
                      queue
@@ -213,9 +213,9 @@
                       :pool-size          3
                       :max-batch-messages 10
                       :max-next-ms        5})
+      (is (thread-name-running? (str "queue-" listener-name "-0")))
       (is (thread-name-running? (str "queue-" listener-name "-1")))
       (is (thread-name-running? (str "queue-" listener-name "-2")))
-      (is (thread-name-running? (str "queue-" listener-name "-3")))
 
       (dotimes [i 100]
         (queue/put-with-delay! queue 0 i))
@@ -225,6 +225,6 @@
       (is (contains? @handlers-used listener-name))
 
       (queue/stop-listening! listener-name)
+      (is (not (thread-name-running? (str "queue-" listener-name "-0"))))
       (is (not (thread-name-running? (str "queue-" listener-name "-1"))))
-      (is (not (thread-name-running? (str "queue-" listener-name "-2"))))
-      (is (not (thread-name-running? (str "queue-" listener-name "-3")))))))
+      (is (not (thread-name-running? (str "queue-" listener-name "-2ˇ")))))))

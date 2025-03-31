@@ -1,5 +1,15 @@
 (ns metabase.util.queue
+  "
+  Functionality for working with queues. There are two main blocks of functionality: a custom BoundedTransferQueue and a queue listener.
+
+  The BoundedTransferQueue allows for callers to decide whether to block the previous synchronous put to complete before adding another message, or attempt to add it to a fixed-sized async queue if there is space.
+  See `bounded-transfer-queue` for more details.
+
+  The queue listener allows the creation and management of (possibly) multithreaded queue listeners that can process messages off the queue in batches.
+  Listeners should generally be managed with `init-listener! which calls `listen!`.
+  "
   (:require
+   [com.climate.claypoole :as cp]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -7,8 +17,7 @@
    [metabase.util.malli.schema :as ms])
   (:import
    (java.time Duration Instant)
-   (java.util.concurrent ArrayBlockingQueue BlockingQueue DelayQueue Delayed ExecutorService Executors SynchronousQueue TimeUnit)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
+   (java.util.concurrent ArrayBlockingQueue BlockingQueue DelayQueue Delayed ScheduledExecutorService SynchronousQueue TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -100,7 +109,7 @@
                                   :max-batch-messages {:optional true} number?
                                   :max-next-ms {:optional true} number?]])
 
-(defonce ^:private ^{:malli/schema [:map-of :string (ms/InstanceOfClass ExecutorService)]} listeners (atom {}))
+(defonce ^:private ^{:malli/schema [:map-of :string (ms/InstanceOfClass ScheduledExecutorService)]} listeners (atom {}))
 
 (defn listener-exists?
   "Returns true if there is a running listener with the given name"
@@ -135,7 +144,7 @@
   (log/infof "Listener %s stopped" listener-name))
 
 (mu/defn listen!
-  "Starts an async listener on the given queue.
+  "Starts an async listener on the given queue. This should generally be called from `init-listener!` in a task namespace.
 
   Arguments:
   - listener-name: A unique string. Calls to register another listener with the same name will be a no-op
@@ -164,19 +173,14 @@
   (if (listener-exists? listener-name)
     (log/errorf "Listener %s already exists" listener-name)
 
-    (let [executor (Executors/newFixedThreadPool
-                    pool-size
-                    (.build
-                     (doto (BasicThreadFactory$Builder.)
-                       (.namingPattern (str "queue-" listener-name "-%d"))
-                       (.daemon true))))]
+    (let [executor (cp/threadpool pool-size {:name (str "queue-" listener-name)})]
       (log/infof "Starting listener %s with %d threads %s" (u/format-color 'green listener-name) pool-size (u/emoji "\uD83C\uDFA7"))
       (dotimes [_ pool-size]
-        (.submit ^ExecutorService executor ^Callable #(listener-thread listener-name queue handler
-                                                                       {:success-handler    success-handler
-                                                                        :err-handler        err-handler
-                                                                        :max-batch-messages max-batch-messages
-                                                                        :max-next-ms        max-next-ms})))
+        (cp/future executor (listener-thread listener-name queue handler
+                                             {:success-handler    success-handler
+                                              :err-handler        err-handler
+                                              :max-batch-messages max-batch-messages
+                                              :max-next-ms        max-next-ms})))
 
       (swap! listeners assoc listener-name executor))))
 
@@ -187,8 +191,7 @@
   (if-let [executor (get @listeners listener-name)]
     (do
       (log/infof "Stopping listener %s..." listener-name)
-      (.shutdownNow ^ExecutorService executor)
-      (.awaitTermination ^ExecutorService executor 30 TimeUnit/SECONDS)
+      (cp/shutdown! executor)
 
       (swap! listeners dissoc listener-name)
       (log/infof "Stopping listener %s...done" listener-name))
@@ -203,8 +206,8 @@
   the name of the listener being initialized; for sake of consistency with the listener name itself, the keyword should be left
   CamelCased.
 
-    (defmethod qeueue/listener-init! ::ExampleListener [_]
-      (queue/listen! (queue/listen! \"example-listener\" queue handler))"
+    (defmethod queue/init-listener! ::ExampleListener [_]
+      (queue/listen! \"example-listener\" queue handler)"
   {:arglists '([job-name-string])}
   keyword)
 
