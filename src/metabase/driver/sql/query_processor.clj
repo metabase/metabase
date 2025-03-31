@@ -647,7 +647,7 @@
                (cast-temporal-byte driver coercion-strategy honeysql-form)
 
                [:type/Text (:isa? :Coercion/String->Float)]
-               (h2x/cast :float8  honeysql-form)
+               (->float driver honeysql-form)
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
