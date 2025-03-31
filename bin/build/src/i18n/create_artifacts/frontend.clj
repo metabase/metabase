@@ -4,9 +4,9 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [environ.core :as env]
    [i18n.common :as i18n]
-   [metabuild-common.core :as u]
-   [metabuild-common.env :as env])
+   [metabuild-common.core :as u])
   (:import
    (java.io FileOutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))

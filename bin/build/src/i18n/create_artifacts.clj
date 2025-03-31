@@ -1,11 +1,11 @@
 (ns i18n.create-artifacts
   (:require
    [clojure.pprint :as pprint]
+   [environ.core :as env]
    [i18n.common :as i18n]
    [i18n.create-artifacts.backend :as backend]
    [i18n.create-artifacts.frontend :as frontend]
-   [metabuild-common.core :as u]
-   [metabuild-common.env :as env]))
+   [metabuild-common.core :as u]))
 
 (defn- locales-dot-edn []
   {:locales  (conj (i18n/locales) "en")
