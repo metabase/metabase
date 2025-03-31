@@ -1,6 +1,6 @@
 ---
 title: Danger zone
-summary: The Danger Zone section of database connections is where you can discard field values or remove database connections and all of their related content.
+description: The Danger Zone section of database connections is where you can discard field values or remove database connections and all of their related content.
 ---
 
 # Danger Zone

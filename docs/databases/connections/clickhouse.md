@@ -1,5 +1,6 @@
 ---
 title: ClickHouse
+description: Learn how to connect Metabase to your ClickHouse database, including connection settings, database selection, and SSL configuration.
 ---
 
 # ClickHouse
@@ -16,7 +17,7 @@ Here you can [sync the database schema and rescan field values](../sync-scan.md)
 
 ## Edit connection details
 
-To access or modify your database connection settings, click the **Edit connection details** button. This opens a form with the following settings:
+To access or modify your database connection settings, click the **Edit connection details** button.
 
 ### Display name
 
