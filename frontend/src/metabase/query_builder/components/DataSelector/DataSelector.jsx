@@ -435,7 +435,6 @@ export class UnconnectedDataSelector extends Component {
 
   isLoading = () => {
     const { models, metrics, loading } = this.props;
-
     return models == null || metrics == null || loading;
   };
 
