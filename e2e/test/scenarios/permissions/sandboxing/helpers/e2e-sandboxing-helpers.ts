@@ -100,69 +100,69 @@ const model: StructuredQuestionDetails = {
   type: "model",
 };
 
-// const ordersJoinedToProducts: StructuredQuestionDetails = {
-//   name: "Question with Orders joined to Products",
-//   query: {
-//     ...baseQuery,
-//     joins: [
-//       {
-//         strategy: "left-join",
-//         alias: "Products",
-//         condition: [
-//           "=",
-//           ["field", ORDERS.PRODUCT_ID, null],
-//           ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-//         ],
-//         "source-table": PRODUCTS_ID,
-//         fields: "all",
-//       },
-//     ],
-//     aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-//     breakout: [["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }]],
-//     "source-table": ORDERS_ID,
-//   } as StructuredQuery,
-// };
+const ordersJoinedToProducts: StructuredQuestionDetails = {
+  name: "Question with Orders joined to Products",
+  query: {
+    ...baseQuery,
+    joins: [
+      {
+        strategy: "left-join",
+        alias: "Products",
+        condition: [
+          "=",
+          ["field", ORDERS.PRODUCT_ID, null],
+          ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+        ],
+        "source-table": PRODUCTS_ID,
+        fields: "all",
+      },
+    ],
+    aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+    breakout: [["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }]],
+    "source-table": ORDERS_ID,
+  } as StructuredQuery,
+};
 
-// const ordersImplicitlyJoinedToProducts: StructuredQuestionDetails = {
-//   name: "Question with Orders implicitly joined to Products",
-//   query: {
-//     "source-table": ORDERS_ID,
-//     fields: [
-//       [
-//         "field",
-//         PRODUCTS.CATEGORY,
-//         { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-//       ],
-//       ["field", ORDERS.ID, null],
-//       ["field", ORDERS.TOTAL, null],
-//       ["field", ORDERS.PRODUCT_ID, null],
-//     ],
-//   },
-// };
+const ordersImplicitlyJoinedToProducts: StructuredQuestionDetails = {
+  name: "Question with Orders implicitly joined to Products",
+  query: {
+    "source-table": ORDERS_ID,
+    fields: [
+      [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+      ],
+      ["field", ORDERS.ID, null],
+      ["field", ORDERS.TOTAL, null],
+      ["field", ORDERS.PRODUCT_ID, null],
+    ],
+  },
+};
 
-// const multiStageQuestion: StructuredQuestionDetails = {
-//   name: "Multi-stage question",
-//   query: {
-//     "source-query": {
-//       "source-query": {
-//         "source-table": PRODUCTS_ID,
-//         aggregation: [["count"]],
-//         breakout: [["field", PRODUCTS.CATEGORY, null]],
-//       },
-//       aggregation: [["count"]],
-//       breakout: [["field", PRODUCTS.CATEGORY, null]],
-//     },
-//     aggregation: [["count"]],
-//     breakout: [["field", PRODUCTS.CATEGORY, null]],
-//   },
-// };
+const multiStageQuestion: StructuredQuestionDetails = {
+  name: "Multi-stage question",
+  query: {
+    "source-query": {
+      "source-query": {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+      aggregation: [["count"]],
+      breakout: [["field", PRODUCTS.CATEGORY, null]],
+    },
+    aggregation: [["count"]],
+    breakout: [["field", PRODUCTS.CATEGORY, null]],
+  },
+};
 
 const questionData: StructuredQuestionDetails[] = [
   savedQuestion,
   model,
-  // ordersJoinedToProducts,
-  // ordersImplicitlyJoinedToProducts,
-  // multiStageQuestion,
+  ordersJoinedToProducts,
+  ordersImplicitlyJoinedToProducts,
+  multiStageQuestion,
 ];
 
 export const adhocQuestionData = {
