@@ -163,12 +163,9 @@ describe("getPieChartModel", () => {
     );
 
     expect(
-      chartModel.sliceTree
-        .entries()
-        .toArray()
-        .map(([key, value]) => {
-          return [key, value.legendHoverIndex];
-        }),
+      Array.from(chartModel.sliceTree.entries()).map(([key, value]) => {
+        return [key, value.legendHoverIndex];
+      }),
     ).toEqual([
       ["2000", 0],
       ["1990", 1],
