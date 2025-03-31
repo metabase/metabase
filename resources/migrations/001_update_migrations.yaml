@@ -11147,6 +11147,64 @@ databaseChangeLog:
               UPDATE permissions_group SET magic_group_type='all-internal-users' WHERE name='All Users';
               UPDATE permissions_group SET magic_group_type='admin' WHERE name='Administrators';
 
+
+  - changeSet:
+      id: v55.2025-04-26T11:00:00
+      author: rafpaf
+      comment: Create content translation table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: content_translation
+      changes:
+        - createTable:
+            tableName: content_translation
+            remarks: Content translations
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: locale
+                  remarks: Locale
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: msgid
+                  remarks: The raw string
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: msgstr
+                  remarks: The translation
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v55.2025-04-28T16:00:00
+      author: rafpaf
+      comment: Make the 'msgstr' column in the content_translation table non-nullable
+      changes:
+      changes:
+        - addNotNullConstraint:
+            tableName: content_translation
+            columnName: msgstr
+            columnDataType: varchar(255)
+      rollback:
+        - dropNotNullConstraint:
+            tableName: content_translation
+            columnName: msgstr
+            columnDataType: varchar(255)
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

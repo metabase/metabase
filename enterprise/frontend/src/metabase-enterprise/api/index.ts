@@ -1,5 +1,6 @@
 export * from "./audit-info";
 export * from "./billing-info";
+export * from "./content-translation";
 export * from "./gdrive";
 export * from "./db-routing";
 export * from "./query-validation";

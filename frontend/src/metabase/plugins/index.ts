@@ -617,6 +617,11 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   }) => ({ pdf: true, results: true }),
 };
 
+export const PLUGIN_CONTENT_TRANSLATION = {
+  isEnabled: false,
+  ContentTranslationConfiguration: PluginPlaceholder,
+};
+
 export const PLUGIN_DB_ROUTING = {
   DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
