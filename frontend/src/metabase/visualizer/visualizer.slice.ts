@@ -263,6 +263,8 @@ const visualizerHistoryItemSlice = createSlice({
         addColumnToFunnel(state, column, columnRef, dataSource, dataset, card);
         return;
       }
+      state.columns.push(column);
+      state.columnValuesMapping[column.name] = [columnRef];
       if (isCartesianChart(state.display)) {
         addColumnToCartesianChart(state, column, columnRef, dataSource, card);
 
