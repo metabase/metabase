@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { cardApi } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import { getVisualizerPrimaryColumn } from "metabase/visualizer/selectors";
 import { parseDataSourceId } from "metabase/visualizer/utils";
 import { isNumber, isString } from "metabase-lib/v1/types/utils/isa";
@@ -108,11 +108,7 @@ const Result = (props: ResultProps) => {
       py="sm"
       mb="xs"
       onClick={() => {
-        if (mode === "swap") {
-          onSwap?.(item);
-        } else if (mode === "add") {
-          onAdd?.(item);
-        }
+        onSwap?.(item);
       }}
     >
       <Icon
@@ -126,38 +122,23 @@ const Result = (props: ResultProps) => {
         {item.name}
       </Text>
       {mode === "both" && (
-        <>
-          <Icon
-            name="refresh"
-            onClick={e => {
-              e.stopPropagation();
-              onSwap?.(item);
-            }}
-            ml="auto"
-            style={{
-              flexShrink: 0,
-            }}
-          />
-          {/* spacer */}
-          <Box
-            style={{
-              width: 8,
-              flexShrink: 0,
-            }}
-          />
-          <Icon
-            name="add"
+        <div className={S.resultItemActions}>
+          <Icon name="refresh" />
+
+          <Button
+            variant={selected ? "filled" : "inverse"}
+            size="xs"
+            rightSection={<Icon name="add" />}
             onClick={e => {
               e.stopPropagation();
               onAdd?.(item);
             }}
-            ml="auto"
             style={{
-              flexShrink: 0,
-              opacity: isCompatible ? 1 : 0.3,
+              opacity: selected ? 0 : isCompatible ? 1 : 0.5,
+              pointerEvents: isCompatible ? "auto" : "none",
             }}
           />
-        </>
+        </div>
       )}
     </Flex>
   );
