@@ -2,7 +2,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { IconName } from "metabase/ui";
-import type { ListDatabasesResponse } from "metabase-types/api";
+import type { Database, ListDatabasesResponse } from "metabase-types/api";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
 const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
@@ -426,25 +426,12 @@ describe("issue 55951", () => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
 
-    let isFirstGetDatabasesCall = true;
-
     cy.intercept<unknown, ListDatabasesResponse>(
       "GET",
       "/api/database",
       (request) => {
         request.continue((response) => {
-          response.body.data = response.body.data.map((database) => ({
-            ...database,
-            initial_sync_status: "incomplete",
-          }));
-
-          if (isFirstGetDatabasesCall) {
-            // No reason to delay the first call on the index page
-            isFirstGetDatabasesCall = false;
-          } else {
-            // Setting this to be arbitrarly long so that H.repeatAssertion is guaranteed to detect the issue
-            return new Promise((resolve) => setTimeout(resolve, 5000));
-          }
+          response.body.data = mockResponseData(response.body.data);
         });
       },
     ).as("getDatabases");
@@ -453,6 +440,20 @@ describe("issue 55951", () => {
   it("should not show loading state in database picker when databases are being reloaded (metabase#55951)", () => {
     cy.visit("/");
     cy.wait("@getDatabases");
+
+    cy.intercept<unknown, ListDatabasesResponse>(
+      "GET",
+      "/api/database",
+      (request) => {
+        request.continue((response) => {
+          response.body.data = mockResponseData(response.body.data);
+
+          // Setting this to be arbitrarly long so that H.repeatAssertion is guaranteed to detect the issue
+          return new Promise((resolve) => setTimeout(resolve, 5000));
+        });
+      },
+    );
+
     H.newButton("SQL query").click();
     H.popover()
       .should("be.visible")
@@ -465,4 +466,11 @@ describe("issue 55951", () => {
         });
       });
   });
+
+  function mockResponseData(databases: Database[]) {
+    return databases.map((database) => ({
+      ...database,
+      initial_sync_status: "incomplete" as const,
+    }));
+  }
 });
