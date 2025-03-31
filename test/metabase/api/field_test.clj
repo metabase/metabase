@@ -804,6 +804,22 @@
                                       "Red"
                                       nil))))))
 
+(deftest ^:parallel search-values-test-everything
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "must supply a limit if value is omitted"
+      (is (mt/user-http-request :crowberto :get 400 (format "field/%d/search/%d"
+                                                            (mt/id :venues :id)
+                                                            (mt/id :venues :name)))))
+    (testing "return the first N results if value is omitted"
+      (is (= [[1 "Red Medicine"]
+              [2 "Stout Burgers & Beers"]
+              [3 "The Apple Pan"]]
+             (mt/format-rows-by
+              [int str]
+              (mt/user-http-request :crowberto :get 200 (format "field/%d/search/%d?limit=3"
+                                                                (mt/id :venues :id)
+                                                                (mt/id :venues :name)))))))))
+
 (deftest search-values-with-field-and-search-field-is-fk-test
   (testing "searching on a PK field should work (#32985)"
     ;; normally PKs are ids so it's not possible to do search, because search are for text fields only
