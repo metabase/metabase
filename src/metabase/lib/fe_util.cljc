@@ -193,7 +193,7 @@
 
   ([query :- ::lib.schema/query
     stage-index :- :int
-    expression-clause :- ::lib.schema.expression/expression]
+    expression-clause :- [:or ::lib.schema.expression/expression ExpressionArg ExpressionParts]]
    (expression-parts-method query stage-index expression-clause)))
 
 (defn- case-or-if-pairs
