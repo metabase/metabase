@@ -194,6 +194,16 @@
   [driver [_ value]]
   (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :split-part]
+  [driver [_ text divider position]]
+  [:coalesce
+   [:at
+    [:split
+     (sql.qp/->honeysql driver text)
+     (sql.qp/->honeysql driver divider)]
+    [:safe_ordinal (sql.qp/->honeysql driver position)]]
+   ""])
+
 ;; TODO -- all this [[temporal-type]] stuff below can be replaced with the more generalized
 ;; [[h2x/with-database-type-info]] stuff we've added. [[h2x/with-database-type-info]] was inspired by this BigQuery code
 ;; but uses a new record type rather than attaching metadata to everything
