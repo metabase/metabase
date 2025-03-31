@@ -6,7 +6,10 @@ global.window.matchMedia = () => ({
   removeEventListener: () => {},
 });
 
-// used under the hood in Mantine's Select component
+/**
+ * jsdom doesn't have scrollIntoView, so we need to mock it.
+ * Used e.g. under the hood in Mantine's Select component.
+ */
 global.window.HTMLElement.prototype.scrollIntoView = jest.fn();
 
 global.window.ResizeObserver = class ResizeObserver {

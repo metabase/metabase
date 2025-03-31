@@ -1,7 +1,7 @@
 import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { mockScrollIntoView, screen } from "__support__/ui";
+import { screen } from "__support__/ui";
 import { setup } from "metabase/components/Schedule/test-utils";
 
 const getInputValues = () => {
@@ -11,10 +11,6 @@ const getInputValues = () => {
 };
 
 describe("Schedule", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   it("shows time when schedule is daily", () => {
     setup({ cronString: "0 0 8 * * ? *" });
     expect(getInputValues()).toEqual(["daily", "8:00"]);

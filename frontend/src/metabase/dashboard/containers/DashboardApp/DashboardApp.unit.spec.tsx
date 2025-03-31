@@ -19,7 +19,6 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
-  mockScrollIntoView,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -59,8 +58,6 @@ const TestHome = () => <div />;
 interface Options {
   dashboard?: Partial<Dashboard>;
 }
-
-mockScrollIntoView();
 
 async function setup({ dashboard }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);

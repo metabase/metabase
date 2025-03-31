@@ -387,17 +387,10 @@ export const mockScrollBy = () => {
 };
 
 /**
- * jsdom doesn't have scrollBy, so we need to mock it
+ * jsdom doesn't have scrollTo, so we need to mock it
  */
 export const mockScrollTo = () => {
   window.Element.prototype.scrollTo = jest.fn();
-};
-
-/**
- * jsdom doesn't have scrollBy, so we need to mock it
- */
-export const mockScrollIntoView = () => {
-  window.Element.prototype.scrollIntoView = jest.fn();
 };
 
 /**
