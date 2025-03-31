@@ -380,20 +380,6 @@ export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
 };
 
 /**
- * jsdom doesn't have scrollBy, so we need to mock it
- */
-export const mockScrollBy = () => {
-  window.Element.prototype.scrollBy = jest.fn();
-};
-
-/**
- * jsdom doesn't have scrollTo, so we need to mock it
- */
-export const mockScrollTo = () => {
-  window.Element.prototype.scrollTo = jest.fn();
-};
-
-/**
  * jsdom doesn't have DataTransfer
  */
 export function createMockClipboardData(

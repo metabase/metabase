@@ -7,6 +7,11 @@ global.window.matchMedia = () => ({
 });
 
 /**
+ * jsdom doesn't have scrollBy, so we need to mock it.
+ */
+global.window.HTMLElement.prototype.scrollBy = jest.fn();
+
+/**
  * jsdom doesn't have scrollIntoView, so we need to mock it.
  * Used e.g. under the hood in Mantine's Select component.
  */
