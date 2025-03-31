@@ -89,7 +89,7 @@ const BaseRadio = forwardRef(function Radio<
       variant={variant}
       vertical={vertical}
     >
-      {options.map(option => {
+      {options.map((option) => {
         const optionKey = optionKeyFn(option);
         const optionName = optionNameFn(option);
         const optionValue = optionValueFn(option);

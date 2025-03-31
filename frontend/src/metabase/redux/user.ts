@@ -31,11 +31,11 @@ export const clearCurrentUser = createAction(
   "metabase/user/CLEAR_CURRENT_USER",
 );
 
-export const currentUser = createReducer<User | null>(null, builder => {
+export const currentUser = createReducer<User | null>(null, (builder) => {
   builder
     .addCase(clearCurrentUser, () => null)
     .addCase(refreshCurrentUser.fulfilled, (state, action) => action.payload)
-    .addCase(CLOSE_QB_NEWB_MODAL, state => {
+    .addCase(CLOSE_QB_NEWB_MODAL, (state) => {
       if (state) {
         state.is_qbnewb = false;
         return state;

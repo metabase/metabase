@@ -54,7 +54,7 @@ function ActionForm({
     });
 
   const editableFields = useMemo(
-    () => form.fields.filter(field => !hiddenFields.includes(field.name)),
+    () => form.fields.filter((field) => !hiddenFields.includes(field.name)),
     [form, hiddenFields],
   );
 
@@ -82,7 +82,7 @@ function ActionForm({
       enableReinitialize
     >
       <Form role="form" data-testid="action-form">
-        {editableFields.map(field => (
+        {editableFields.map((field) => (
           <ActionFormFieldWidget key={field.name} formField={field} />
         ))}
 

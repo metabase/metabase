@@ -17,7 +17,7 @@ export const IconContainer = styled.div<{ color: string }>`
   width: 20px;
   height: 20px;
   color: var(--mb-color-text-white);
-  background-color: ${props => color(props.color)};
+  background-color: ${(props) => color(props.color)};
   flex-shrink: 0;
 `;
 

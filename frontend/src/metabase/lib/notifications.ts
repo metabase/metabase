@@ -74,7 +74,7 @@ const getRecipientIdentity = (recipient: NotificationRecipient) => {
 };
 
 export const canArchive = (item: Notification, user: User) => {
-  const recipients = item.handlers.flatMap(channel => {
+  const recipients = item.handlers.flatMap((channel) => {
     if (channel.recipients) {
       return channel.recipients.map(getRecipientIdentity);
     } else {
@@ -151,8 +151,8 @@ export function alertIsValid(
   return (
     channelSpec?.channels &&
     handlers.length > 0 &&
-    handlers.every(handlers => channelIsValid(handlers)) &&
-    handlers.every(c => {
+    handlers.every((handlers) => channelIsValid(handlers)) &&
+    handlers.every((c) => {
       const handlerChannelType =
         notificationHandlerTypeToChannelMap[c.channel_type];
 
@@ -207,7 +207,7 @@ export const getNotificationEnabledChannelsMap = (
 ): NotificationEnabledChannelsMap => {
   const result: NotificationEnabledChannelsMap = {};
 
-  notification.handlers.forEach(handler => {
+  notification.handlers.forEach((handler) => {
     result[handler.channel_type] = true;
   });
 
@@ -221,7 +221,7 @@ export const getNotificationHandlersGroupedByTypes = (
   let slackHandler: NotificationHandlerSlack | undefined;
   let hookHandlers: NotificationHandlerHttp[] | undefined;
 
-  notificationHandlers.forEach(handler => {
+  notificationHandlers.forEach((handler) => {
     if (handler.channel_type === "channel/email") {
       emailHandler = handler;
       return;

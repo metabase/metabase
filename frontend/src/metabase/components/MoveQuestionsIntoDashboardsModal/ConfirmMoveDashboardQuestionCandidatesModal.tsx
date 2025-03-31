@@ -33,7 +33,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
       return [];
     }
 
-    return candidates.map(candidate => ({
+    return candidates.map((candidate) => ({
       id: candidate.id,
       questionName: candidate.name,
       dashboardName: candidate.sole_dashboard_info.name,
@@ -118,7 +118,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
             </Flex>
           ))
           .otherwise(() =>
-            rows.map(row => (
+            rows.map((row) => (
               <div key={row.id} className={S.tableRow}>
                 <div className={S.cell}>{row.questionName}</div>
                 <div className={S.cell}>{row.dashboardName}</div>

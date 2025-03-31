@@ -72,7 +72,7 @@ export function FunctionBrowser({
         {isEmpty && (
           <EmptyState message={t`Didn't find any results`} icon="search" />
         )}
-        {filteredClauses.map(group => (
+        {filteredClauses.map((group) => (
           <>
             <Text
               size="sm"
@@ -83,7 +83,7 @@ export function FunctionBrowser({
             >
               {group.displayName}
             </Text>
-            {group.clauses.map(clause => (
+            {group.clauses.map((clause) => (
               <FunctionBrowserItem
                 key={clause.name}
                 onClauseClick={onClauseClick}

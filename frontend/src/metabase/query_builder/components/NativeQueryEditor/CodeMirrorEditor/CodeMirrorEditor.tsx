@@ -117,7 +117,7 @@ export const CodeMirrorEditor = forwardRef<
         document.querySelectorAll(".cm-selectionBackground"),
       );
 
-      if (selections.some(selection => isEventOverElement(evt, selection))) {
+      if (selections.some((selection) => isEventOverElement(evt, selection))) {
         evt.preventDefault();
         onRightClickSelection?.();
       }

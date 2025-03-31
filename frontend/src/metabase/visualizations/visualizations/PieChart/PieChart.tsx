@@ -124,8 +124,8 @@ export function PieChart(props: VisualizationProps) {
   const legendTitles = useMemo(
     () =>
       slices
-        .filter(s => s.includeInLegend)
-        .map(s => {
+        .filter((s) => s.includeInLegend)
+        .map((s) => {
           const label = s.name;
 
           // Hidden slices don't have a percentage
@@ -147,11 +147,13 @@ export function PieChart(props: VisualizationProps) {
   );
 
   const hiddenSlicesLegendIndices = slices
-    .filter(s => s.includeInLegend)
+    .filter((s) => s.includeInLegend)
     .map((s, index) => (hiddenSlices.has(s.key) ? index : null))
     .filter(isNotNull);
 
-  const legendColors = slices.filter(s => s.includeInLegend).map(s => s.color);
+  const legendColors = slices
+    .filter((s) => s.includeInLegend)
+    .map((s) => s.color);
 
   const showLegend = settings["pie.show_legend"];
 

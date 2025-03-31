@@ -1,6 +1,7 @@
 import type { Operator } from "semver";
 import { t } from "ttag";
 
+import { parseNumber } from "metabase/lib/number";
 import type { Expression } from "metabase-types/api";
 
 import { getMBQLName as defaultGetMBQLName } from "../config";
@@ -138,7 +139,7 @@ function compileFunctionCall(node: Node, opts: Options): Expression {
 
 function compileArgList(node: Node, opts: Options): Expression[] {
   assert(node.type === ARG_LIST, "Invalid Node Type");
-  return node.children.map(child => {
+  return node.children.map((child) => {
     const func = getCompileFunction(child);
     if (!func) {
       throw new CompileError(t`Invalid node type`, { node: child });
@@ -153,9 +154,10 @@ function compileArgList(node: Node, opts: Options): Expression[] {
 function compileNumber(node: Node): Expression {
   assert(node.type === NUMBER, "Invalid Node Type");
   assert(typeof node.token?.text === "string", "No token text");
-  try {
-    return parseFloat(node.token.text);
-  } catch (err) {
+  const number = parseNumber(node.token.text);
+  if (number != null) {
+    return number;
+  } else {
     throw new CompileError(t`Invalid number format`, {
       node,
       token: node.token,

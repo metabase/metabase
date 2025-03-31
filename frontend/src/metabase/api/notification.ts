@@ -20,12 +20,12 @@ import {
 } from "./tags";
 
 export const notificationApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listNotifications: builder.query<
       Notification[],
       ListNotificationsRequest | void
     >({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/notification",
         params,
@@ -34,18 +34,18 @@ export const notificationApi = Api.injectEndpoints({
         provideNotificationListTags(notifications),
     }),
     getNotification: builder.query<Notification, NotificationId>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/notification/${id}`,
       }),
-      providesTags: notification =>
+      providesTags: (notification) =>
         notification ? provideNotificationTags(notification) : [],
     }),
     createNotification: builder.mutation<
       Notification,
       CreateNotificationRequest
     >({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/notification",
         body,
@@ -57,7 +57,7 @@ export const notificationApi = Api.injectEndpoints({
       Notification,
       UpdateNotificationRequest
     >({
-      query: body => ({
+      query: (body) => ({
         method: "PUT",
         url: `/api/notification/${body.id}`,
         body,
@@ -70,7 +70,7 @@ export const notificationApi = Api.injectEndpoints({
     }),
     unsubscribeFromNotification: builder.mutation<Notification, NotificationId>(
       {
-        query: id => ({
+        query: (id) => ({
           method: "POST",
           url: `/api/notification/${id}/unsubscribe`,
         }),
@@ -85,7 +85,7 @@ export const notificationApi = Api.injectEndpoints({
       void,
       CreateNotificationRequest | UpdateNotificationRequest
     >({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: `/api/notification/send`,
         body,

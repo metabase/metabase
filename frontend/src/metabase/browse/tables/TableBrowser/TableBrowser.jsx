@@ -55,7 +55,7 @@ export const TableBrowser = ({
         />
       </BrowseHeaderContent>
       <TableGrid>
-        {tables.map(table => (
+        {tables.map((table) => (
           <TableGridItem key={table.id}>
             <TableCard hoverable={!isSyncInProgress(table)}>
               <TableLink

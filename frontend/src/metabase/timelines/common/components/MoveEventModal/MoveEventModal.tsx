@@ -34,7 +34,7 @@ const MoveEventModal = ({
   onCancel,
   onClose,
 }: MoveEventModalProps): JSX.Element => {
-  const oldTimeline = timelines.find(t => t.id === event.timeline_id);
+  const oldTimeline = timelines.find((t) => t.id === event.timeline_id);
   const [newTimeline, setNewTimeline] = useState(oldTimeline);
   const isEnabled = newTimeline?.id !== oldTimeline?.id;
 

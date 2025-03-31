@@ -49,7 +49,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
   });
 
   it("should render dashboard content", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
     });
 
@@ -68,7 +68,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
   });
 
   it("should show fullscreen mode control by default", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
     });
 
@@ -110,7 +110,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
 
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
-        cy.get(dashboardIdAlias).then(dashboardId => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
           mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
         });
 

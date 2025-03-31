@@ -51,9 +51,9 @@ function QuestionPickerInner({
   const collection = collectionsById[currentCollectionId];
   const crumbs = getCrumbs(collection, collectionsById, setCurrentCollectionId);
 
-  const handleSearchTextChange: React.ChangeEventHandler<
-    HTMLInputElement
-  > = e => setSearchText(e.target.value);
+  const handleSearchTextChange: React.ChangeEventHandler<HTMLInputElement> = (
+    e,
+  ) => setSearchText(e.target.value);
 
   const allCollections = (collection && collection.children) || [];
   const showOnlyPublicCollections = isPublicCollection(dashboardCollection);
@@ -142,7 +142,7 @@ function QuestionPickerInner({
 
           {collections.length > 0 && (
             <SelectList>
-              {collections.map(collection => {
+              {collections.map((collection) => {
                 const icon = getCollectionIcon(collection);
                 const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
                   collection,
@@ -159,7 +159,7 @@ function QuestionPickerInner({
                       color: iconColor,
                     }}
                     rightIcon="chevronright"
-                    onSelect={collectionId =>
+                    onSelect={(collectionId) =>
                       setCurrentCollectionId(collectionId as CollectionId)
                     }
                   />

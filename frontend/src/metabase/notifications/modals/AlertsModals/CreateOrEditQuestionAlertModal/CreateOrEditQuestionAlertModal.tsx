@@ -135,7 +135,7 @@ export const CreateOrEditQuestionAlertModal = ({
       getAlertTriggerOptions({
         question,
         visualizationSettings,
-      }).map(trigger => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
+      }).map((trigger) => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
     [question, visualizationSettings],
   );
 
@@ -299,7 +299,7 @@ export const CreateOrEditQuestionAlertModal = ({
                 data={triggerOptions}
                 value={notification.payload.send_condition}
                 w={276}
-                onChange={value =>
+                onChange={(value) =>
                   setNotification({
                     ...notification,
                     payload: {
@@ -337,7 +337,7 @@ export const CreateOrEditQuestionAlertModal = ({
               });
             }}
             emailRecipientText={t`Email alerts to:`}
-            getInvalidRecipientText={domains =>
+            getInvalidRecipientText={(domains) =>
               t`You're only allowed to email alerts to addresses ending in ${domains}`
             }
           />
@@ -353,7 +353,7 @@ export const CreateOrEditQuestionAlertModal = ({
             labelPosition="right"
             size="sm"
             checked={notification.payload.send_once}
-            onChange={e =>
+            onChange={(e) =>
               setNotification({
                 ...notification,
                 payload: {

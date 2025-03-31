@@ -96,7 +96,7 @@ function CopyDashboardForm({
 
   const hasDashboardQuestions = useMemo(() => {
     return !!originalDashboard?.dashcards.some(
-      dc => !isVirtualDashCard(dc) && dc.card.dashboard_id !== null,
+      (dc) => !isVirtualDashCard(dc) && dc.card.dashboard_id !== null,
     );
   }, [originalDashboard]);
 

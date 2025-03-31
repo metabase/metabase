@@ -93,15 +93,30 @@
                   0
                   (locking-active-user-count))))
 
+(defenterprise embedding-settings
+  "Boolean values that report on the state of different embedding configurations."
+  metabase-enterprise.embedding-data
+  [_embedded-dashboard-count _embedded-question-count]
+  {:enabled-embedding-static      false
+   :enabled-embedding-interactive false
+   :enabled-embedding-sdk         false})
+
 (defn- stats-for-token-request
   []
   (let [users (active-users-count)
-        ext-users (internal-stats/external-users-count)]
-    (merge (internal-stats/query-execution-last-utc-day)
-           {:users users
-            :external-users ext-users
-            :interal-users (- users ext-users)
-            :domains (internal-stats/email-domain-count)})))
+        ext-users (internal-stats/external-users-count)
+        embedding-dashboard-count (internal-stats/embedding-dashboard-count)
+        embedding-question-count (internal-stats/embedding-question-count)
+        stats (merge (internal-stats/query-execution-last-utc-day)
+                     (embedding-settings embedding-dashboard-count embedding-question-count)
+                     {:users users
+                      :embedding-dashboard-count embedding-dashboard-count
+                      :embedding-question-count embedding-question-count
+                      :external-users ext-users
+                      :interal-users (- users ext-users)
+                      :domains (internal-stats/email-domain-count)})]
+    (log/info "Reporting embedding stats:" stats)
+    stats))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
