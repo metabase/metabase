@@ -190,10 +190,14 @@
   [body :- [:map
             [:dialect :keyword]
             [:instructions :string]
-            [:tables [:sequential [:map [:name :string]
+            [:tables [:sequential [:map
+                                   [:name :string]
+                                   [:schema [:maybe :string]]
+                                   [:description [:maybe :string]]
                                    [:columns [:sequential [:map
                                                            [:name :string]
-                                                           [:data_type :string]]]]]]]]]
+                                                           [:data_type :string]
+                                                           [:description [:maybe :string]]]]]]]]]]
   (let [url (generate-sql-endpoint)
         options (build-request-options body)
         response (post! url options)]
