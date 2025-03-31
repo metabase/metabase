@@ -193,7 +193,7 @@
 
 (defn- jetty-stats->map
   [^StatisticsHandler stats-handler]
-  {:requests_total (.getRequests stats-handler)
+  {:requests_total (.getRequestTotal stats-handler)
    :requests_active (.getRequestsActive stats-handler)
    :requests_active_max (.getRequestsActiveMax stats-handler)
    :request_time_max_seconds (.getRequestTimeMax stats-handler)
