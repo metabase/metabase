@@ -33,7 +33,8 @@
               (is (= (-> main-string
                          (str/split (re-pattern delimiter))
                          (get (dec index) ""))
-                     split-string)))))))))
+                     split-string)
+                  (str "Full field: " (pr-str main-string) ", Delimiter: " (pr-str delimiter) ", position: " index)))))))))
 
 (deftest ^:parallel split-part-test-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :split-part)

@@ -318,7 +318,23 @@
 
 (defmethod sql.qp/->honeysql [:mysql :split-part]
   [driver [_ text divider position]]
-  [:substring_index (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
+  (let [text (sql.qp/->honeysql driver text)
+        div  (sql.qp/->honeysql driver divider)
+        pos  (sql.qp/->honeysql driver position)]
+    [:case
+     [:> pos
+      [:+ 1
+       [:floor
+        [:/
+         [:- [:length text]
+          [:length [:replace text div ""]]]
+         [:length div]]]]]
+     ""
+
+     :else
+     [:substring_index
+      [:substring_index text div pos]
+      div -1]]))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
