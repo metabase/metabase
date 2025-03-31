@@ -442,8 +442,15 @@ export class UnconnectedDataSelector extends Component {
   }
 
   isSearchLoading = () => {
-    const { models, metrics, allLoading } = this.props;
-    return models == null || metrics == null || allLoading;
+    const { models, metrics, allLoading, allFetched } = this.props;
+
+    if (this.showTableSearch()) {
+      // If search is enabled, use allLoading to get the state of the most-recent API call
+      return models == null || metrics == null || !allLoading;
+    }
+
+    // If search is disabled, use allFetched to prevent showing loading state when things are just being reloaded
+    return models == null || metrics == null || !allFetched;
   };
 
   getCardType() {
