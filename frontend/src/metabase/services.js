@@ -37,9 +37,14 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   const question = new Question(card, metadata);
 
   function wrap(api) {
-    return (params, ...rest) => {
+    return ({ query, ...params }, ...rest) => {
       const { pivot_rows, pivot_cols } = getPivotOptions(question);
-      return api({ ...params, pivot_rows, pivot_cols }, ...rest);
+      return api(
+        query
+          ? { ...params, query: { ...query, pivot_rows, pivot_cols } }
+          : params,
+        ...rest,
+      );
     };
   }
 

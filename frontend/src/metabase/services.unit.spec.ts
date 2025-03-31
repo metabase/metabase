@@ -175,8 +175,11 @@ describe("metabase/services > runQuestionQuery", () => {
 
       const call = fetchMock.lastCall("path:/api/dataset");
       expect(await call?.request?.json()).toEqual({
-        ...question.datasetQuery(),
-        parameters: [],
+        query: {
+          ...question.datasetQuery(),
+          parameters: [],
+        },
+        dashboard_id: null,
       });
     });
 
@@ -187,10 +190,13 @@ describe("metabase/services > runQuestionQuery", () => {
 
       const call = fetchMock.lastCall("path:/api/dataset/pivot");
       expect(await call?.request?.json()).toEqual({
-        ...question.datasetQuery(),
-        parameters: [],
-        pivot_cols: [],
-        pivot_rows: [],
+        query: {
+          ...question.datasetQuery(),
+          parameters: [],
+          pivot_cols: [],
+          pivot_rows: [],
+        },
+        dashboard_id: null,
       });
     });
 
