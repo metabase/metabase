@@ -245,6 +245,17 @@ describe("text_wrapping", () => {
       expect(isHidden).toBe(true);
     });
 
+    it("should be not valid when view_as is not null or auto (metabase#55881)", () => {
+      const stringColumn = createMockStringColumn();
+      const settings = Table.columnSettings(stringColumn);
+
+      const isValid = settings["text_wrapping"].isValid(stringColumn, {
+        view_as: "link",
+      });
+
+      expect(isValid).toBe(false);
+    });
+
     it("should be visible when view_as is null", () => {
       const stringColumn = createMockStringColumn();
       const settings = Table.columnSettings(stringColumn);
