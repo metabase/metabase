@@ -65,11 +65,11 @@
         (throw (IllegalArgumentException. error-text))))))
 
 (defmethod notification.send/do-after-notification-sent :notification/card
-  [{:keys [id creator_id handlers payload] :as notification-info} _notification-payload]
+  [{:keys [id creator_id handlers] :as notification-info} notification-payload]
   (when (-> notification-info :payload :send_once)
     (t2/update! :model/Notification (:id notification-info) {:active false}))
   (try
-    (let [rows (-> payload :result :data_rows)]
+    (let [rows (-> notification-payload :payload :card_part :result :data :rows)]
       (when (and rows (notification.payload/is-cleanable? rows))
         (notification.payload/cleanup! rows)))
     (catch Exception e
