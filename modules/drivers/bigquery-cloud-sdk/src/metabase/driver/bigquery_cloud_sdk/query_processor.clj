@@ -679,12 +679,11 @@
             result       (cond-> result
                            (not (temporal-type result))
                            (with-temporal-type (temporal-type field-clause)))]
-        result
-        #_(if (and (lib.field/json-field? stored-field)
-                   (or (::sql.qp/forced-alias opts)
-                       (= source-table ::add/source)))
-            (keyword source-alias)
-            result)))))
+        (if (and (lib.field/json-field? stored-field)
+                 (or (::sql.qp/forced-alias opts)
+                     (= source-table ::add/source)))
+          (keyword source-alias)
+          result)))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
   [driver clause]
