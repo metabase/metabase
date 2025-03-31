@@ -35,6 +35,7 @@ interface HelpTextArg {
   name: string;
   description: string;
   example: Expression | ["args", Expression[]];
+  template?: string;
 }
 
 export type StartRule = "expression" | "boolean" | "aggregation";

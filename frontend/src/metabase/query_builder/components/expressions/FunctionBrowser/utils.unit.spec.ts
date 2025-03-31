@@ -118,13 +118,13 @@ describe("getFilteredClauses", () => {
     expect(results[0].clauses[0]).toEqual({
       args: [
         {
-          description: "Something that should evaluate to true or false.",
+          description: "Something that should evaluate to `true` or `false`.",
           example: [">", ["dimension", "Weight"], 200],
           name: "condition",
         },
         {
           description:
-            "The value that will be returned if the preceding condition is true.",
+            "The value that will be returned if the preceding condition is `true`.",
           example: "Large",
           name: "output",
         },
@@ -139,7 +139,7 @@ describe("getFilteredClauses", () => {
       ],
       category: "logical",
       description:
-        "Alias for if(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.",
+        "Alias for `if()`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.",
       docsPage: "case",
       example: [
         "case",
