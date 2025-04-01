@@ -101,8 +101,9 @@ dataset_query:
 result_metadata:
 - base_type: type/Text
   coercion_strategy: null
+  database_type: text
   description: null
-  display_name: People - User → Full Name
+  display_name: User ID
   effective_type: type/Text
   field_ref:
   - field
@@ -119,12 +120,42 @@ result_metadata:
   - v_users
   - full_name
   name: full_name
+  remapped_from: user_id
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  database_type: text
+  description: null
+  display_name: User ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - full_name
+  - source-field:
+    - Internal Metabase Database
+    - public
+    - v_view_log
+    - user_id
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - full_name
+  name: full_name_2
+  remapped_from: user_id
   semantic_type: type/Name
   settings: null
   visibility_type: normal
 - base_type: type/Integer
   coercion_strategy: null
-  description: null
+  database_type: int4
+  description: Who viewed the content
   display_name: User ID
   effective_type: type/Integer
   field_ref:
@@ -135,19 +166,22 @@ result_metadata:
     - user_id
   - base-type: type/Integer
   fk_target_field_id:
-  - null
-  - null
-  - null
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
   id:
   - Internal Metabase Database
   - public
   - v_view_log
   - user_id
   name: user_id
+  remapped_to: full_name
   semantic_type: type/FK
   settings: null
   visibility_type: normal
 - base_type: type/BigInteger
+  database_type: int8
   display_name: Count
   effective_type: type/BigInteger
   field_ref:
@@ -160,23 +194,11 @@ visualization_settings:
     '["name","count"]':
       column_title: Question views
       show_mini_bar: true
-    '["name","full_name"]':
+    '["name","user_id"]':
       column_title: Person Name
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
-    : column_title: User
   table.cell_column: model_id
   table.columns:
   - enabled: true
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - full_name
-    - base-type: type/Text
-      join-alias: People - User
-    name: full_name
-  - enabled: false
     fieldRef:
     - field
     - - Internal Metabase Database
