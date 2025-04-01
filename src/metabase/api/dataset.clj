@@ -83,7 +83,7 @@
             (qp/process-query (update query :info merge info) rff)))))))
 
 (mr/def ::dataset-context
-  (into [:enum {:decode/json keyword}] [:ad-hoc :dashboard-ad-hoc]))
+  [:enum {:decode/json keyword} :ad-hoc :dashboard-ad-hoc])
 
 (api.macros/defendpoint :post "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
