@@ -27,8 +27,8 @@
 
 (mbql-clause/define-tuple-mbql-clause :replace :- :type/Text
   #_str [:schema [:ref ::expression/string]]
-  #_find [:schema [:ref ::expression/string]]
-  #_replace [:schema [:ref ::expression/string]])
+  #_find [:schema :string]
+  #_replace [:schema :string])
 
 (mbql-clause/define-catn-mbql-clause :substring :- :type/Text
   [:str [:schema [:ref ::expression/string]]]
