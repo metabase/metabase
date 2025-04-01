@@ -72,7 +72,7 @@ export const getQuestion = ({
     }
 
     if (fieldId) {
-      query = breakoutWithDefaultTemporalBucket(query, metadata, fieldId);
+      query = breakoutWithDefaultTemporalBucket(query, fieldId);
     }
 
     if (segmentId) {
@@ -89,21 +89,15 @@ export const getQuestion = ({
   return question.card();
 };
 
-function breakoutWithDefaultTemporalBucket(query, metadata, fieldId) {
+function breakoutWithDefaultTemporalBucket(query, fieldId) {
   const stageIndex = -1;
-  const field = metadata.field(fieldId);
+  const field = Lib.fieldMetadata(query, fieldId);
 
   if (!field) {
     return query;
   }
 
-  const column = Lib.fromLegacyColumn(query, stageIndex, field);
-
-  if (!column) {
-    return query;
-  }
-
-  const newColumn = Lib.withDefaultBucket(query, stageIndex, column);
+  const newColumn = Lib.withDefaultBucket(query, stageIndex, field);
   return Lib.replaceBreakouts(query, -1, newColumn);
 }
 

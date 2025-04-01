@@ -6,6 +6,7 @@ import type {
   ConcreteTableId,
   DatabaseId,
   DatasetColumn,
+  FieldId,
   TableId,
 } from "metabase-types/api";
 
@@ -176,6 +177,13 @@ export function tableMetadata(
   tableId: ConcreteTableId,
 ): TableMetadata | null {
   return ML.table_metadata(queryOrMetadataProvider, tableId);
+}
+
+export function fieldMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+  fieldId: FieldId,
+): ColumnMetadata | null {
+  return ML.field_metadata(queryOrMetadataProvider, fieldId);
 }
 
 export function cardMetadata(
