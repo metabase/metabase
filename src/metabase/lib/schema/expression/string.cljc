@@ -38,8 +38,8 @@
 
 (mbql-clause/define-tuple-mbql-clause :split-part :- :type/Text
   [:schema [:ref ::expression/string]]
-  [:schema [:ref ::common/non-blank-string]]
-  [:schema [:ref ::expression/integer]])
+  [:schema [:ref ::common/non-blank-string]] ;; literal string
+  [:schema [:ref ::expression/positive-integer]])
 
 (mbql-clause/define-catn-mbql-clause :concat :- :type/Text
   [:args [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
