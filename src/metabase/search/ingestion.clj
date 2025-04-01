@@ -104,7 +104,7 @@
 (defn populate-index!
   "Go over all searchable items and populate the index with them."
   [engine]
-  (search.engine/consume! engine (query->documents (search-items-reducible))))
+  (search.engine/consume! engine (query->documents (search-items-reducible)) true))
 
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
@@ -116,24 +116,24 @@
 
 (defn consume!
   "Update all active engines' indexes with the given documents"
-  [documents-reducible]
+  [documents-reducible re-indexing?]
   (when-let [engines (seq (search.engine/active-engines))]
     (if (= 1 (count engines))
-      (search.engine/consume! (first engines) documents-reducible)
+      (search.engine/consume! (first engines) documents-reducible re-indexing?)
       ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
       (doseq [batch (eduction (partition-all 150) documents-reducible)
               e     engines]
-        (search.engine/consume! e batch)))))
+        (search.engine/consume! e batch re-indexing?)))))
 
 (defn bulk-ingest!
   "Process the given search model updates. Returns the number of search index entries that get updated as a result."
-  [updates]
+  [updates re-indexing?]
   (->> (for [[search-model where-clauses] (u/group-by first second updates)]
          (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
        ;; init collection is only for clj-kondo, as we know that the list is non-empty
        (reduce u/rconcat [])
        query->documents
-       consume!))
+       (#(consume! % re-indexing?))))
 
 (defn- track-queue-size! []
   (analytics/set! :metabase-search/queue-size (.size queue)))
@@ -145,12 +145,12 @@
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
   Can also be forced to run synchronously for testing."
-  ([updates]
-   (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
-  ([updates sync?]
+  ([updates re-indexing?]
+   (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?))) re-indexing?))
+  ([updates sync? re-indexing?]
    (when-not *disable-updates*
      (if sync?
-       (bulk-ingest! updates)
+       (bulk-ingest! updates re-indexing?)
        (do
          (doseq [update updates]
            (log/trace "Queuing update" update)

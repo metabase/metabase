@@ -242,8 +242,8 @@
           (throw e))))))
 
 (defn- batch-update!
-  "Create the given search index entries in bulk"
-  [documents]
+  "Create the given search index entries in bulk. Set re-indexing?=true when this is called from a process that is doing a full re-index"
+  [documents re-indexing?]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
     (when-let [table (active-table)]
@@ -256,18 +256,16 @@
         (swap! *indexes* assoc :pending nil))))
 
   (let [entries          (map document->entry documents)
-        ;; Optimization idea: if the updates are coming from the re-indexing worker, skip updating the active table.
-        ;;                    this should give a close to 2x speed-up as insertion is the bottleneck, and most of the
-        ;;                    updates will be no-ops in any case.
-        active-updated?  (safe-batch-upsert! (active-table) entries)
+        ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
+        active-updated?  (if re-indexing? false (safe-batch-upsert! (active-table) entries))
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
         (log/trace "indexed documents" <>)))))
 
-(defmethod search.engine/consume! :search.engine/appdb [_engine document-reducible]
+(defmethod search.engine/consume! :search.engine/appdb [_engine document-reducible re-indexing?]
   (transduce (comp (partition-all insert-batch-size)
-                   (map batch-update!))
+                   (map #(batch-update! % re-indexing?)))
              (partial merge-with +)
              document-reducible))
 

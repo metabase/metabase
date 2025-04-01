@@ -100,7 +100,7 @@
                             (remove (comp search.util/impossible-condition? second))
                             seq)]
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
-      (search.ingestion/ingest-maybe-async! updates))))
+      (search.ingestion/ingest-maybe-async! updates false))))
 
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."

@@ -31,8 +31,8 @@
 
 (defmulti consume!
   "Updates the search index by consuming the documents from the given reducible."
-  {:arglists '([search-engine document-reducible])}
-  (fn [search-engine _document-reducible]
+  {:arglists '([search-engine document-reducible re-indexing?])}
+  (fn [search-engine _document-reducible _re-indexing?]
     search-engine))
 
 (defmulti delete!
