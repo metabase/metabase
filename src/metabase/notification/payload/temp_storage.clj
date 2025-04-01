@@ -47,6 +47,11 @@
 (defprotocol Cleanable
   (cleanup! [this] "Cleanup any resources associated with this object"))
 
+;; Add a default implementation that does nothing
+(extend-protocol Cleanable
+  Object
+  (cleanup! [_] nil))
+
 (deftype TempFileStorage [^File file]
   Cleanable
   (cleanup! [_]
@@ -74,6 +79,11 @@
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Public APIs                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
+
+(defn is-cleanable?
+  "Returns true if x implements the Cleanable protocol"
+  [x]
+  (satisfies? Cleanable x))
 
 (defn to-temp-file!
   "Write data to a temporary file. Returns a TempFileStorage type that:
