@@ -500,8 +500,8 @@
                  table  (try
                           (get-tables metadata (:table_schem schema) (:table_catalog schema))
                           (catch Throwable e
-                            (log/errorf e "Error retreiving tables for DB %s" (:table_schem schema))
-                            []))]
+                            (log/errorf e "Error retreiving tables for catalog '%s' and schema '%s'" (:table_catalog schema) (:table_schem schema))
+                            {}))]
              (let [remarks (:remarks table)]
                {:name        (:table_name table)
                 :schema      (:table_schem schema)
