@@ -69,7 +69,7 @@ export function parseMetric(
 ) {
   const metrics = Lib.availableMetrics(query, stageIndex);
 
-  const metric = metrics.find(metric => {
+  const metric = metrics.find((metric) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, metric);
 
     return displayInfo.displayName.toLowerCase() === metricName.toLowerCase();
@@ -92,7 +92,7 @@ export function parseSegment(
   segmentName: string,
   { query, stageIndex }: { query: Lib.Query; stageIndex: number },
 ) {
-  const segment = Lib.availableSegments(query, stageIndex).find(segment => {
+  const segment = Lib.availableSegments(query, stageIndex).find((segment) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, segment);
 
     return displayInfo.displayName.toLowerCase() === segmentName.toLowerCase();
@@ -102,7 +102,7 @@ export function parseSegment(
     return segment;
   }
 
-  const column = Lib.fieldableColumns(query, stageIndex).find(field => {
+  const column = Lib.fieldableColumns(query, stageIndex).find((field) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, field);
     return displayInfo.name.toLowerCase() === segmentName.toLowerCase();
   });
@@ -134,7 +134,7 @@ export function parseDimension(
   },
 ) {
   return getAvailableDimensions(options).find(({ info }) => {
-    return EDITOR_FK_SYMBOLS.symbols.some(separator => {
+    return EDITOR_FK_SYMBOLS.symbols.some((separator) => {
       const displayName = getDisplayNameWithSeparator(
         info.longDisplayName,
         separator,
@@ -160,7 +160,7 @@ function getAvailableDimensions({
     query,
     stageIndex,
     expressionIndex,
-  ).map(dimension => {
+  ).map((dimension) => {
     return {
       dimension,
       info: Lib.displayInfo(query, stageIndex, dimension),
@@ -170,7 +170,7 @@ function getAvailableDimensions({
   if (startRule === "aggregation") {
     return [
       ...results,
-      ...Lib.availableMetrics(query, stageIndex).map(dimension => {
+      ...Lib.availableMetrics(query, stageIndex).map((dimension) => {
         return {
           dimension,
           info: Lib.displayInfo(query, stageIndex, dimension),
@@ -308,7 +308,7 @@ export function isOperator(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     OPERATORS.has(expr[0]) &&
-    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
+    expr.slice(1).every((arg) => isExpression(arg) || isOptionsObject(arg))
   );
 }
 
@@ -320,7 +320,7 @@ export function isFunction(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     FUNCTIONS.has(expr[0]) &&
-    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
+    expr.slice(1).every((arg) => isExpression(arg) || isOptionsObject(arg))
   );
 }
 

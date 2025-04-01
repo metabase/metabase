@@ -73,8 +73,8 @@ export const TableHeaderCellContent = styled.button<{
   align-items: center;
   justify-content: flex-start;
   width: 100%;
-  flex-direction: ${props => (props.isRightAligned ? "row-reverse" : "row")};
-  color: ${props =>
+  flex-direction: ${(props) => (props.isRightAligned ? "row-reverse" : "row")};
+  color: ${(props) =>
     props.isSorted
       ? "var(--mb-color-brand)"
       : "var(--mb-color-text-secondary)"};
@@ -82,7 +82,7 @@ export const TableHeaderCellContent = styled.button<{
   cursor: pointer;
 
   ${SortIcon} {
-    opacity: ${props => (props.isSorted ? 1 : 0.5)};
+    opacity: ${(props) => (props.isSorted ? 1 : 0.5)};
   }
 
   &:hover {
@@ -104,7 +104,7 @@ export const PaginationMessage = styled.span`
 export const PaginationButton = styled.button<{
   direction: "next" | "previous";
 }>`
-  padding-left: ${props =>
+  padding-left: ${(props) =>
     props.direction === "previous" ? "0.5rem" : "unset"};
   padding-right: 0.5rem;
   cursor: pointer;
@@ -113,7 +113,7 @@ export const PaginationButton = styled.button<{
     color: var(--mb-color-brand);
   }
 
-  ${props =>
+  ${(props) =>
     props.disabled &&
     css`
       pointer-events: none;

@@ -6,9 +6,9 @@ import type {
 import { EnterpriseApi } from "./api";
 
 export const queryValidationAPI = EnterpriseApi.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getInvalidCards: builder.query<InvalidCardResponse, InvalidCardRequest>({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/ee/query-reference-validation/invalid-cards",
         params,

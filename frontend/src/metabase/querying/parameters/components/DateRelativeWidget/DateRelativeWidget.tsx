@@ -32,6 +32,6 @@ function getPickerValue(
 ): RelativeDatePickerValue | undefined {
   return match(normalizeDateParameterValue(value))
     .returnType<RelativeDatePickerValue | undefined>()
-    .with({ type: "relative" }, value => value)
+    .with({ type: "relative" }, (value) => value)
     .otherwise(() => undefined);
 }

@@ -65,7 +65,7 @@ export const AlertListPopoverContent = ({
   return (
     <div style={{ minWidth: 410 }} data-testid="alert-list-popover">
       <ul>
-        {Object.values(sortedQuestionAlerts).map(alert => (
+        {Object.values(sortedQuestionAlerts).map((alert) => (
           <AlertListItem
             key={alert.id}
             alert={alert}

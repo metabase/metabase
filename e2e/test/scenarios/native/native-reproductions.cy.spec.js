@@ -405,7 +405,7 @@ describe("issue 21550", () => {
       cy.icon("chevrondown").click({ force: true });
     });
 
-    cy.get("pre").then($pre => {
+    cy.get("pre").then(($pre) => {
       const preWidth = $pre[0].getBoundingClientRect().width;
       const clientWidth = $pre[0].clientWidth;
       const BORDERS = 2; // 1px left and right
@@ -442,7 +442,7 @@ describe("issue 21597", { tags: "@external" }, () => {
   it("display the relevant error message in save question modal (metabase#21597)", () => {
     const message =
       'Invalid Field Filter: Field 164574 "PRODUCTS"."CATEGORY" belongs to Database 2276 "sample-dataset", but the query is against Database 2275 "test-data"';
-    cy.intercept({ method: "POST", url: "/api/card" }, request => {
+    cy.intercept({ method: "POST", url: "/api/card" }, (request) => {
       request.reply({
         body: {
           message: message,
@@ -464,7 +464,7 @@ describe("issue 21597", { tags: "@external" }, () => {
 
     // Try to save the native query
     cy.findByTestId("qb-header-action-panel").findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByPlaceholderText("What is the name of your question?").type(
         "The question name",
       );
@@ -666,7 +666,7 @@ describe("issue 35785", () => {
 
     cy.findByTestId("qb-header").findByRole("button", { name: "Save" }).click();
 
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
 
@@ -713,7 +713,7 @@ describe("issue 22991", () => {
     cy.signInAsNormalUser();
 
     H.startNewNativeQuestion();
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       // can't use cy.type because it does not simulate the bug
       cy.realType(`select * from ${DOUBLE_LEFT_BRACKET}#${questionId}`);
     });

@@ -3,9 +3,9 @@ import type { SettingKey, SettingValue } from "metabase-types/api";
 import { Api } from "./api";
 
 export const settingApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getSetting: builder.query<SettingValue, SettingKey>({
-      query: settingName => ({
+      query: (settingName) => ({
         method: "GET",
         url: `/api/setting/${settingName}`,
       }),

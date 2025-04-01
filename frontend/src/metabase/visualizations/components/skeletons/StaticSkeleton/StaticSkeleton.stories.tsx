@@ -7,7 +7,7 @@ export default {
   component: StaticSkeleton,
 };
 
-const Template: StoryFn<typeof StaticSkeleton> = args => {
+const Template: StoryFn<typeof StaticSkeleton> = (args) => {
   return (
     <div style={{ padding: 8, height: 250, backgroundColor: "white" }}>
       <StaticSkeleton {...args} />

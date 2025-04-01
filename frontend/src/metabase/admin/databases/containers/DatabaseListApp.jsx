@@ -24,7 +24,7 @@ import {
 const RELOAD_INTERVAL = 2000;
 
 const getReloadInterval = (_state, _props, databases = []) => {
-  return databases.some(d => isSyncInProgress(d)) ? RELOAD_INTERVAL : 0;
+  return databases.some((d) => isSyncInProgress(d)) ? RELOAD_INTERVAL : 0;
 };
 
 const query = {

@@ -76,7 +76,7 @@ export function TypeSelector({
   moveToNextPage,
 }: TypeSelectorProps) {
   const options = useMemo(() => {
-    return clickBehaviorOptions.filter(option => option.value !== "action");
+    return clickBehaviorOptions.filter((option) => option.value !== "action");
   }, []);
 
   const handleSelect = useCallback(

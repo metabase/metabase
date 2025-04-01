@@ -11,7 +11,7 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
       withinPortal: true,
     },
     classNames: { dropdown: ZIndex.Overlay },
-    styles: theme => ({
+    styles: (theme) => ({
       dropdown: {
         padding: "0.75rem !important",
         minWidth: "11.5rem",

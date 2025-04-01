@@ -8,8 +8,8 @@ import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
 
 import { RawDataAlertTip } from "./RawDataAlertTip";
 
-export const getSchedulePickerSendTimeText = alert => {
-  const channels = alert.channels.filter(channel => channel.enabled);
+export const getSchedulePickerSendTimeText = (alert) => {
+  const channels = alert.channels.filter((channel) => channel.enabled);
   const [channel] = channels;
   if (channels.length === 0) {
     return;

@@ -13,7 +13,7 @@ export function getTrendLinesOption(
   chartModel: BaseCartesianChartModel,
 ): LineSeriesOption[] {
   return (
-    chartModel.trendLinesModel?.seriesModels.map(trendSeries => ({
+    chartModel.trendLinesModel?.seriesModels.map((trendSeries) => ({
       type: "line",
       datasetIndex: 1,
       yAxisIndex: getSeriesYAxisIndex(trendSeries.sourceDataKey, chartModel),

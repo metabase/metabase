@@ -67,7 +67,7 @@ export const ChartSettingFieldPicker = ({
 
   let seriesKey;
   if (series && columnKey && showColorPicker) {
-    const seriesForColumn = series.find(single => {
+    const seriesForColumn = series.find((single) => {
       const metricColumn = single.data.cols[1];
       return getColumnKey(metricColumn) === columnKey;
     });
@@ -107,7 +107,7 @@ export const ChartSettingFieldPicker = ({
                 <GrabberHandle
                   name="grabber"
                   noMargin
-                  onClick={e => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                   c="text-medium"
                   className={CS.pointerEventsAll}
                 />
@@ -116,7 +116,7 @@ export const ChartSettingFieldPicker = ({
                 <ChartSettingColorPicker
                   pillSize="small"
                   value={colors[seriesKey]}
-                  onChange={value => {
+                  onChange={(value) => {
                     onChangeSeriesColor(seriesKey, value);
                   }}
                   className={CS.pointerEventsAll}
@@ -140,7 +140,7 @@ export const ChartSettingFieldPicker = ({
               <ChartSettingActionIcon
                 icon="ellipsis"
                 data-testid={`settings-${value}`}
-                onClick={e => onShowWidget(menuWidgetInfo, e.currentTarget)}
+                onClick={(e) => onShowWidget(menuWidgetInfo, e.currentTarget)}
               />
             )}
             {onRemove && (

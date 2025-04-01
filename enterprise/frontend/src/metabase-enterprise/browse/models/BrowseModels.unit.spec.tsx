@@ -26,7 +26,7 @@ const setup = (modelCount: number, recentModelCount = 5) => {
 
   const mockRecentModels = mockModels
     .slice(0, recentModelCount)
-    .map(model =>
+    .map((model) =>
       createMockRecentModel(model as unknown as RecentCollectionItem),
     );
   setupRecentViewsEndpoints(mockRecentModels);

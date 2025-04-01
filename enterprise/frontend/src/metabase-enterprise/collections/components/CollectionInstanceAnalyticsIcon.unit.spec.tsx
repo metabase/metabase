@@ -51,7 +51,7 @@ describe("CollectionInstanceAnalyticsIcon", () => {
       return screen.getByLabelText("audit icon");
     }
 
-    ["collection", "dashboard", "model", "question"].forEach(entity => {
+    ["collection", "dashboard", "model", "question"].forEach((entity) => {
       it(`displays the correct tooltip for ${entity}`, async () => {
         renderInstanceAnalyticsCollection({
           entity: entity,

@@ -110,33 +110,33 @@ export const getMetadata: (
     const metadata = new Metadata({ settings });
 
     metadata.databases = Object.fromEntries(
-      Object.values(databases).map(d => [d.id, createDatabase(d, metadata)]),
+      Object.values(databases).map((d) => [d.id, createDatabase(d, metadata)]),
     );
     metadata.schemas = Object.fromEntries(
-      Object.values(schemas).map(s => [s.id, createSchema(s, metadata)]),
+      Object.values(schemas).map((s) => [s.id, createSchema(s, metadata)]),
     );
     metadata.tables = Object.fromEntries(
-      Object.values(tables).map(t => [t.id, createTable(t, metadata)]),
+      Object.values(tables).map((t) => [t.id, createTable(t, metadata)]),
     );
     metadata.fields = Object.fromEntries(
       Object.values(fields)
-        .filter(f => f.uniqueId != null) // remove stub field instances created for field values without field properties
-        .map(f => [f.uniqueId, createField(f, metadata)]),
+        .filter((f) => f.uniqueId != null) // remove stub field instances created for field values without field properties
+        .map((f) => [f.uniqueId, createField(f, metadata)]),
     );
     metadata.segments = Object.fromEntries(
-      Object.values(segments).map(s => [s.id, createSegment(s, metadata)]),
+      Object.values(segments).map((s) => [s.id, createSegment(s, metadata)]),
     );
     metadata.questions = Object.fromEntries(
-      Object.values(questions).map(c => [c.id, createQuestion(c, metadata)]),
+      Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
     );
 
-    Object.values(metadata.databases).forEach(database => {
+    Object.values(metadata.databases).forEach((database) => {
       database.tables = hydrateDatabaseTables(database, metadata);
     });
-    Object.values(metadata.schemas).forEach(schema => {
+    Object.values(metadata.schemas).forEach((schema) => {
       schema.database = hydrateSchemaDatabase(schema, metadata);
     });
-    Object.values(metadata.tables).forEach(table => {
+    Object.values(metadata.tables).forEach((table) => {
       table.db = hydrateTableDatabase(table, metadata);
       table.schema = hydrateTableSchema(table, metadata);
       table.fields = hydrateTableFields(table, metadata);
@@ -144,20 +144,20 @@ export const getMetadata: (
       table.segments = hydrateTableSegments(table, metadata);
       table.metrics = hydrateTableMetrics(table, metadata);
     });
-    Object.values(metadata.databases).forEach(database => {
+    Object.values(metadata.databases).forEach((database) => {
       database.schemas = hydrateDatabaseSchemas(database, metadata);
     });
-    Object.values(metadata.schemas).forEach(schema => {
+    Object.values(metadata.schemas).forEach((schema) => {
       schema.tables = hydrateSchemaTables(schema, metadata);
     });
-    Object.values(metadata.segments).forEach(segment => {
+    Object.values(metadata.segments).forEach((segment) => {
       segment.table = hydrateSegmentTable(segment, metadata);
     });
-    Object.values(metadata.fields).forEach(field => {
+    Object.values(metadata.fields).forEach((field) => {
       hydrateField(field, metadata);
     });
-    Object.values(metadata.tables).forEach(table => {
-      table.fields?.forEach(field => hydrateField(field, metadata));
+    Object.values(metadata.tables).forEach((table) => {
+      table.fields?.forEach((field) => hydrateField(field, metadata));
     });
 
     return metadata;
@@ -244,11 +244,11 @@ function hydrateDatabaseTables(
 ): Table[] {
   const tableIds = database.getPlainObject().tables ?? [];
   if (tableIds.length > 0) {
-    return tableIds.map(tableId => metadata.table(tableId)).filter(isNotNull);
+    return tableIds.map((tableId) => metadata.table(tableId)).filter(isNotNull);
   }
 
   return Object.values(metadata.tables).filter(
-    table =>
+    (table) =>
       !isVirtualCardId(table.id) && table.schema && table.db_id === database.id,
   );
 }
@@ -259,11 +259,11 @@ function hydrateDatabaseSchemas(
 ): Schema[] {
   const schemaIds = database.getPlainObject().schemas;
   if (schemaIds) {
-    return schemaIds.map(s => metadata.schema(s)).filter(isNotNull);
+    return schemaIds.map((s) => metadata.schema(s)).filter(isNotNull);
   }
 
   return Object.values(metadata.schemas).filter(
-    s => s.database && s.database.id === database.id,
+    (s) => s.database && s.database.id === database.id,
   );
 }
 
@@ -278,14 +278,14 @@ function hydrateSchemaDatabase(
 function hydrateSchemaTables(schema: Schema, metadata: Metadata): Table[] {
   const tableIds = schema.getPlainObject().tables;
   if (tableIds) {
-    return tableIds.map(table => metadata.table(table)).filter(isNotNull);
+    return tableIds.map((table) => metadata.table(table)).filter(isNotNull);
   } else if (schema.database && schema.database.getTables().length > 0) {
     return schema.database
       .getTables()
-      .filter(table => table.schema_name === schema.name);
+      .filter((table) => table.schema_name === schema.name);
   } else {
     return Object.values(metadata.tables).filter(
-      table => table.schema && table.schema.id === schema.id,
+      (table) => table.schema && table.schema.id === schema.id,
     );
   }
 }
@@ -311,10 +311,10 @@ function hydrateTableFields(entityTable: Table, metadata: Metadata): Field[] {
 
   if (!apiTable.original_fields) {
     const fieldIds = apiTable.fields ?? [];
-    return fieldIds.map(id => metadata.field(id)).filter(isNotNull);
+    return fieldIds.map((id) => metadata.field(id)).filter(isNotNull);
   }
 
-  return apiTable.original_fields.map(apiField => {
+  return apiTable.original_fields.map((apiField) => {
     const { entities, result } = normalize(apiField, FieldSchema);
     const normalizedField = entities.fields?.[result];
     return createField(normalizedField, metadata);
@@ -333,7 +333,7 @@ function hydrateTableForeignKeys(
   table: Table,
   metadata: Metadata,
 ): ForeignKey[] | undefined {
-  return table.getPlainObject().fks?.map(fk => {
+  return table.getPlainObject().fks?.map((fk) => {
     const instance = createForeignKey(fk, metadata);
     instance.origin = metadata.field(fk.origin_id) ?? undefined;
     instance.destination = metadata.field(fk.destination_id) ?? undefined;
@@ -343,12 +343,12 @@ function hydrateTableForeignKeys(
 
 function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
   const segmentIds = table.getPlainObject().segments ?? [];
-  return segmentIds.map(id => metadata.segment(id)).filter(isNotNull);
+  return segmentIds.map((id) => metadata.segment(id)).filter(isNotNull);
 }
 
 function hydrateTableMetrics(table: Table, metadata: Metadata): Question[] {
   const metricIds = table.getPlainObject().metrics ?? [];
-  return metricIds.map(id => metadata.question(id)).filter(isNotNull);
+  return metricIds.map((id) => metadata.question(id)).filter(isNotNull);
 }
 
 function hydrateFieldTable(

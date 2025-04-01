@@ -277,7 +277,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
 
           cy.log("public dashboard");
-          QSHelpers.getDashboardId().then(dashboardId =>
+          QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
@@ -292,7 +292,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("be.visible");
 
           cy.log("embedded dashboard");
-          QSHelpers.getDashboardId().then(dashboardId => {
+          QSHelpers.getDashboardId().then((dashboardId) => {
             H.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},
@@ -440,7 +440,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
 
           cy.log("public dashboard");
-          QSHelpers.getDashboardId().then(dashboardId =>
+          QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
@@ -455,7 +455,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("be.visible");
 
           cy.log("embedded dashboard");
-          QSHelpers.getDashboardId().then(dashboardId => {
+          QSHelpers.getDashboardId().then((dashboardId) => {
             H.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},
@@ -509,7 +509,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
 
           cy.log("public dashboard");
-          QSHelpers.getDashboardId().then(dashboardId =>
+          QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
@@ -530,7 +530,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("be.visible");
 
           cy.log("embedded dashboard");
-          QSHelpers.getDashboardId().then(dashboardId => {
+          QSHelpers.getDashboardId().then((dashboardId) => {
             H.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},
@@ -590,7 +590,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
 
           cy.log("public dashboard");
-          QSHelpers.getDashboardId().then(dashboardId =>
+          QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
@@ -617,7 +617,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("be.visible");
 
           cy.log("embedded dashboard");
-          QSHelpers.getDashboardId().then(dashboardId => {
+          QSHelpers.getDashboardId().then((dashboardId) => {
             H.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},

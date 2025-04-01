@@ -31,7 +31,7 @@ export const ChartSettingRadio = ({
     <Radio.Group
       value={value}
       className={className}
-      onChange={value => onChange(value === NULL_VALUE ? null : value)}
+      onChange={(value) => onChange(value === NULL_VALUE ? null : value)}
     >
       <Stack spacing="xs">
         {options.map(({ name, value: optionValue }) => (

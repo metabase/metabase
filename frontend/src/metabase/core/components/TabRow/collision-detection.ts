@@ -32,7 +32,7 @@ export const tabsCollisionDetection: CollisionDetection = ({
     return rectB.left - rectA.left;
   });
 
-  const filteredContainers = sortedContainers.filter(container => {
+  const filteredContainers = sortedContainers.filter((container) => {
     if (container.id === active.id) {
       return false;
     }

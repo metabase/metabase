@@ -61,7 +61,7 @@ export default class Revision extends Component {
     if (revision.is_creation) {
       // these are included in the
       message = revision.diff.description.after;
-      diffKeys = diffKeys.filter(k => k !== "name" && k !== "description");
+      diffKeys = diffKeys.filter((k) => k !== "name" && k !== "description");
     }
 
     return (
@@ -85,7 +85,7 @@ export default class Revision extends Component {
             </span>
           </div>
           {message && <p>&quot;{message}&quot;</p>}
-          {diffKeys.map(key => (
+          {diffKeys.map((key) => (
             <RevisionDiff
               key={key}
               property={key}

@@ -245,7 +245,7 @@ function prattCompiler({
       adjustOffset,
       adjustCaseOrIf,
       adjustMultiArgOptions,
-      expression =>
+      (expression) =>
         resolve({
           expression,
           type: startRule,

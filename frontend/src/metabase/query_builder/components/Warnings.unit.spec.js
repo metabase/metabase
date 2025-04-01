@@ -20,7 +20,7 @@ describe("Warnings", () => {
     render(<Warnings warnings={warningMessages} />);
     await userEvent.hover(screen.getByLabelText("warning icon"));
 
-    warningMessages.forEach(message => {
+    warningMessages.forEach((message) => {
       expect(screen.getByText(message)).toBeInTheDocument();
     });
   });

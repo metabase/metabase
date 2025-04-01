@@ -25,10 +25,7 @@ describe("scenarios > models metadata", () => {
         type: "model",
       };
 
-      H.createQuestion(modelDetails).then(({ body: { id } }) => {
-        cy.visit(`/model/${id}`);
-        cy.wait("@dataset");
-      });
+      H.createQuestion(modelDetails, { visitQuestion: true, wrapId: true });
     });
 
     it("should edit GUI model metadata", () => {
@@ -64,9 +61,8 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Subtotal");
     });
 
-    it("allows for canceling changes", () => {
-      H.openQuestionActions();
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
+    it("allows for canceling changes, back navigation (metabase#55162)", () => {
+      H.openQuestionActions("Edit metadata");
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
@@ -78,6 +74,13 @@ describe("scenarios > models metadata", () => {
       cy.findAllByTestId("header-cell")
         .should("contain", "Subtotal")
         .and("not.contain", "Pre-tax");
+
+      // Ensure back navigation works correctly metabase#55162
+      H.openQuestionActions("Edit metadata");
+      cy.go("back");
+      cy.get("@questionId").then((id) => {
+        cy.location("pathname").should("equal", `/model/${id}-gui-model`);
+      });
     });
 
     it("clears custom metadata when a model is turned back into a question", () => {
@@ -320,8 +323,8 @@ describe("scenarios > models metadata", () => {
         { wrapId: true, idAlias: "modelId" },
       );
 
-      cy.get("@modelId").then(modelId => {
-        H.setModelMetadata(modelId, field => {
+      cy.get("@modelId").then((modelId) => {
+        H.setModelMetadata(modelId, (field) => {
           if (field.display_name === "USER_ID") {
             return {
               ...field,
@@ -345,7 +348,7 @@ describe("scenarios > models metadata", () => {
     });
 
     it("should allow drills on FK columns", () => {
-      cy.get("@modelId").then(modelId => {
+      cy.get("@modelId").then((modelId) => {
         cy.visit(`/model/${modelId}`);
         cy.wait("@dataset");
 
@@ -376,7 +379,7 @@ describe("scenarios > models metadata", () => {
     });
 
     it("should show implicit joins on FK columns with real DB columns (#37067)", () => {
-      cy.get("@modelId").then(modelId => {
+      cy.get("@modelId").then((modelId) => {
         cy.visit(`/model/${modelId}`);
         cy.wait("@dataset");
 
@@ -412,8 +415,8 @@ describe("scenarios > models metadata", () => {
     });
 
     it("should allow drills on FK columns from dashboards (metabase#42130)", () => {
-      cy.get("@modelId").then(modelId => {
-        H.createDashboard().then(response => {
+      cy.get("@modelId").then((modelId) => {
+        H.createDashboard().then((response) => {
           const dashboardId = response.body.id;
           H.addOrUpdateDashboardCard({
             dashboard_id: dashboardId,
@@ -485,7 +488,7 @@ describe("scenarios > models metadata", () => {
       { idAlias: "modelId", wrapId: true },
     );
 
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.setModelMetadata(modelId, (field, index) => ({
         ...field,
         id: ORDERS.ID,

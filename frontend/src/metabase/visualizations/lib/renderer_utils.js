@@ -88,17 +88,17 @@ export function getXValues({ settings, series }) {
   if (isDescending) {
     // JavaScript's .sort() sorts lexicographically by default (e.x. 1, 10, 2)
     // We could implement a comparator but _.sortBy handles strings, numbers, and dates correctly
-    xValues = _.sortBy(xValues, x => x).reverse();
+    xValues = _.sortBy(xValues, (x) => x).reverse();
   } else if (isAscending) {
     // default line/area charts to ascending since otherwise lines could be wonky
-    xValues = _.sortBy(xValues, x => x);
+    xValues = _.sortBy(xValues, (x) => x);
   }
   return xValues;
 }
 
 function getColumnIndex({ settings, data: { cols } }) {
   const [dim] = settings["graph.dimensions"] || [];
-  const i = cols.findIndex(c => c.name === dim);
+  const i = cols.findIndex((c) => c.name === dim);
   return i === -1 ? 0 : i;
 }
 
@@ -123,14 +123,14 @@ function parseTimestampAndWarn(value, unit) {
 
 /************************************************************ PROPERTIES ************************************************************/
 
-export const isTimeseries = settings =>
+export const isTimeseries = (settings) =>
   settings["graph.x_axis.scale"] === "timeseries";
-export const isQuantitative = settings =>
+export const isQuantitative = (settings) =>
   ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
-export const isHistogram = settings =>
+export const isHistogram = (settings) =>
   settings["graph.x_axis._scale_original"] === "histogram" ||
   settings["graph.x_axis.scale"] === "histogram";
-export const isOrdinal = settings =>
+export const isOrdinal = (settings) =>
   settings["graph.x_axis.scale"] === "ordinal";
 
 export const isStacked = (settings, datas) => settings["stackable.stack_type"];
@@ -138,8 +138,8 @@ export const isNormalized = (settings, datas) =>
   settings["stackable.stack_type"] === "normalized";
 
 // find the first nonempty single series
-export const getFirstNonEmptySeries = series =>
-  _.find(series, s => !datasetContainsNoResults(s.data));
+export const getFirstNonEmptySeries = (series) =>
+  _.find(series, (s) => !datasetContainsNoResults(s.data));
 
 function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
   const column = cols[i];
@@ -153,9 +153,9 @@ function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
   }
 }
 
-export const isRemappedToString = series =>
+export const isRemappedToString = (series) =>
   hasRemappingAndValuesAreStrings(getFirstNonEmptySeries(series).data);
 
-export const hasClickBehavior = series =>
+export const hasClickBehavior = (series) =>
   getIn(series, [0, "card", "visualization_settings", "click_behavior"]) !=
   null;

@@ -24,7 +24,7 @@ export function useDashboardUrlQuery(
   router: InjectedRouter,
   location: Location,
 ) {
-  const dashboardId = useSelector(state => getDashboard(state)?.id);
+  const dashboardId = useSelector((state) => getDashboard(state)?.id);
   const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);
   const parameters = useSelector(getValuePopulatedParameters);
@@ -104,7 +104,7 @@ export function useDashboardUrlQuery(
 
   useEffect(() => {
     // @ts-expect-error missing type declaration
-    const unsubscribe = router.listen(nextLocation => {
+    const unsubscribe = router.listen((nextLocation) => {
       const isSamePath = nextLocation.pathname === location.pathname;
       if (!isSamePath) {
         return;
@@ -134,5 +134,5 @@ function parseTabId(location: Location) {
 }
 
 function toLocationQuery(object: Record<string, any>) {
-  return _.mapObject(object, value => (value == null ? "" : value));
+  return _.mapObject(object, (value) => (value == null ? "" : value));
 }

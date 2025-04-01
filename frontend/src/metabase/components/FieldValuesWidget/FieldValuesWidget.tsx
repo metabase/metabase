@@ -61,7 +61,7 @@ const MAX_SEARCH_RESULTS = 100;
 function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
   return {
     fields: fields.map(
-      field =>
+      (field) =>
         Fields.selectors.getObject(state, { entityId: field.id }) || field,
     ),
   };
@@ -226,7 +226,7 @@ export const FieldValuesWidgetInner = forwardRef<
       const nonVirtualFields = getNonVirtualFields(fields);
 
       const results = await Promise.all(
-        nonVirtualFields.map(field =>
+        nonVirtualFields.map((field) =>
           dispatch(Fields.objectActions.fetchFieldValues(field)),
         ),
       );
@@ -367,7 +367,7 @@ export const FieldValuesWidgetInner = forwardRef<
 
   if (!valueRenderer) {
     valueRenderer = (value: string | number) => {
-      const option = options.find(option => getValue(option) === value);
+      const option = options.find((option) => getValue(option) === value);
       return renderValue({
         fields,
         formatOptions,
@@ -475,7 +475,7 @@ export const FieldValuesWidgetInner = forwardRef<
           <SingleSelectListField
             isDashboardFilter={!!parameter}
             placeholder={tokenFieldPlaceholder}
-            value={value.filter(v => v != null)}
+            value={value.filter((v) => v != null)}
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
@@ -484,7 +484,7 @@ export const FieldValuesWidgetInner = forwardRef<
         ) : (
           <TokenField
             prefix={prefix}
-            value={value.filter(v => v != null)}
+            value={value.filter((v) => v != null)}
             onChange={onChange}
             placeholder={tokenFieldPlaceholder}
             updateOnInputChange
@@ -506,7 +506,7 @@ export const FieldValuesWidgetInner = forwardRef<
             filterOption={(option, filterString) => {
               const lowerCaseFilterString = filterString.toLowerCase();
               return option?.some?.(
-                value =>
+                (value) =>
                   value != null &&
                   String(value).toLowerCase().includes(lowerCaseFilterString),
               );
@@ -619,7 +619,7 @@ function renderOptions({
         return (
           <NoMatchState
             fields={fields.map(
-              field =>
+              (field) =>
                 field.searchField(disablePKRemappingForSearch) as Field | null,
             )}
           />

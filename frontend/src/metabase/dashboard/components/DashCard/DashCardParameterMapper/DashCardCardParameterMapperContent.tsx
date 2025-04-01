@@ -172,7 +172,7 @@ function AutoConnectedAnimatedIcon() {
 
   return (
     <Transition transition="fade" mounted={mounted} exitDuration={0}>
-      {styles => {
+      {(styles) => {
         return (
           <Box component="span" style={styles} pos="absolute" right={-20}>
             <Tooltip label={t`Auto-connected`}>

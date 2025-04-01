@@ -107,7 +107,7 @@ export async function runQuestionQuery(
     ];
   }
 
-  const getDatasetQueryResult = datasetQuery => {
+  const getDatasetQueryResult = (datasetQuery) => {
     const datasetQueryWithParameters = { ...datasetQuery, parameters };
     return maybeUsePivotEndpoint(
       MetabaseApi.dataset,
@@ -132,7 +132,7 @@ export const CardApi = {
   list: GET("/api/card", (cards, { data }) =>
     // HACK: support for the "q" query param until backend implements it
     cards.filter(
-      card =>
+      (card) =>
         !data.q || card.name.toLowerCase().indexOf(data.q.toLowerCase()) >= 0,
     ),
   ),

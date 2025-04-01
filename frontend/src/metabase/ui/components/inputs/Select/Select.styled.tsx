@@ -45,7 +45,7 @@ export const getSelectInputOverrides = (
   return {
     root: {
       [["label", "description", "error"]
-        .map(name => `&:has(.${getStylesRef(name)})`)
+        .map((name) => `&:has(.${getStylesRef(name)})`)
         .join(",")]: {
         [`.${getStylesRef("wrapper")}`]: {
           marginTop: theme.spacing.xs,

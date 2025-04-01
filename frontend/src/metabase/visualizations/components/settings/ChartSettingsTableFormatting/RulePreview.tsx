@@ -45,14 +45,14 @@ export const RulePreview = ({
       <Text className={CS.flex1} fw="bold" fz="md">
         {rule.columns.length > 0 ? (
           rule.columns
-            .map(name => _.findWhere(cols, { name })?.display_name ?? name)
+            .map((name) => _.findWhere(cols, { name })?.display_name ?? name)
             .join(", ")
         ) : (
           <Text fs="oblique">{t`No columns selected`}</Text>
         )}
       </Text>
       <ActionIcon
-        onClick={e => {
+        onClick={(e) => {
           e.stopPropagation();
           onRemove();
         }}
