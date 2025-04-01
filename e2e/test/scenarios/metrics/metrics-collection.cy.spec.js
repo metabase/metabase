@@ -103,17 +103,21 @@ describe("scenarios > metrics > collection", () => {
         ...ORDERS_TIMESERIES_METRIC,
         collection_position: null,
       });
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
       cy.visit("/collection/root");
 
+      cy.wait("@cardQuery");
       H.getPinnedSection().should("contain", "18,760");
       H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+
       H.popover().findByText("Bookmark").click();
       H.navigationSidebar()
         .findByText(ORDERS_SCALAR_METRIC.name)
         .should("be.visible");
 
       cy.log("pinned card should 'blink' to load and later show the data");
-      H.getPinnedSection().should("not.contain", "18,760");
+      cy.wait("@cardQuery");
       H.getPinnedSection().should("contain", "18,760");
 
       H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
