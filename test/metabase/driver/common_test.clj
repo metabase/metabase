@@ -1,4 +1,4 @@
-(ns metabase.driver.common-test
+(ns ^:mb/driver-tests metabase.driver.common-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
