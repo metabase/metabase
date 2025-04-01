@@ -56,7 +56,7 @@ describe("CollectionBrowser", () => {
 
     within(screen.getByTestId("items-table-head"))
       .getAllByRole("button")
-      .forEach(el => {
+      .forEach((el) => {
         columnNames.push(el.textContent);
       });
 

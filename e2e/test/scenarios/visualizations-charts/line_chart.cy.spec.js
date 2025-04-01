@@ -32,7 +32,7 @@ describe("scenarios > visualizations > line chart", () => {
 
     H.echartsContainer()
       .findByText("Count")
-      .then(label => {
+      .then((label) => {
         const { x, y } = H.getXYTransform(label);
         cy.wrap({ x, y }).as("leftAxisLabelPosition");
       });
@@ -41,7 +41,7 @@ describe("scenarios > visualizations > line chart", () => {
     cy.findByText("Right").click();
     H.echartsContainer()
       .findByText("Count")
-      .then(label => {
+      .then((label) => {
         const { x: xRight, y: yRight } = H.getXYTransform(label);
         cy.get("@leftAxisLabelPosition").then(({ x: xLeft, y: yLeft }) => {
           expect(yRight).to.be.eq(yLeft);
@@ -680,7 +680,7 @@ describe("scenarios > visualizations > line chart", () => {
       cy.icon("pencil").click();
       cy.findByTestId("dashcard").realHover();
       cy.icon("palette").click();
-      series.forEach(serie => {
+      series.forEach((serie) => {
         const [old_name, new_name] = serie;
 
         cy.findByDisplayValue(old_name).clear().type(new_name).blur();

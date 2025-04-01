@@ -146,7 +146,7 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
             </span>
           ))}
         </section>
-        {Object.keys(RELATIVE_SHORTCUTS).map(sectionName => (
+        {Object.keys(RELATIVE_SHORTCUTS).map((sectionName) => (
           <section key={sectionName}>
             <fieldset
               className={cx(
@@ -215,9 +215,9 @@ export class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
               ? DATE_MBQL_FILTER_MAPPING[value].mapping
               : [null, null]
           }
-          onFilterChange={filter => {
+          onFilterChange={(filter) => {
             setValue(
-              _.findKey(DATE_MBQL_FILTER_MAPPING, f =>
+              _.findKey(DATE_MBQL_FILTER_MAPPING, (f) =>
                 _.isEqual(f.mapping, filter),
               ),
             );

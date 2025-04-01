@@ -474,13 +474,13 @@ describe("scenarios > filters > filter types", () => {
           H.popover().findByText(columnName).click();
           H.selectFilterOperator(operator);
           H.popover().within(() => {
-            values.forEach(value => {
+            values.forEach((value) => {
               cy.findByLabelText("Filter value")
                 .focus()
                 .type(`${value},`, { delay: 50 })
                 .blur();
             });
-            options.forEach(option => cy.findByText(option).click());
+            options.forEach((option) => cy.findByText(option).click());
             cy.button("Add filter").click();
           });
 
@@ -511,7 +511,7 @@ describe("scenarios > filters > filter types", () => {
           H.popover()
             .first()
             .within(() => {
-              values.forEach(value => {
+              values.forEach((value) => {
                 cy.findByLabelText("Filter value")
                   .focus()
                   .type(`${value},`, { delay: 50 })
@@ -603,7 +603,7 @@ describe("scenarios > filters > filter types", () => {
               cy.findByText("Exclude…").click();
               cy.findByText(label).click();
               if (options) {
-                options.forEach(option => cy.findByText(option).click());
+                options.forEach((option) => cy.findByText(option).click());
                 cy.button("Add filter").click();
               }
             });

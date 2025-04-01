@@ -24,7 +24,7 @@ function getEventMapping({ events, scale, xInterval }) {
   let group = [];
   let groupPoint = 0;
 
-  events.forEach(event => {
+  events.forEach((event) => {
     const eventDate = event.timestamp.clone().startOf(xInterval.interval);
     const eventPoint = scale(eventDate);
     const groupDistance = eventPoint - groupPoint;
@@ -55,7 +55,7 @@ function getEventGroups(eventMapping) {
 }
 
 function isSelected(events, selectedEventIds) {
-  return events.some(event => selectedEventIds.includes(event.id));
+  return events.some((event) => selectedEventIds.includes(event.id));
 }
 
 function getIcon(events) {
@@ -114,7 +114,7 @@ function renderEventLines({
     .enter()
     .append("line")
     .attr("class", "event-line")
-    .classed("hover", d => isSelected(d, selectedEventIds))
+    .classed("hover", (d) => isSelected(d, selectedEventIds))
     .attr("x1", (d, i) => eventPoints[i])
     .attr("x2", (d, i) => eventPoints[i])
     .attr("y1", "0")
@@ -145,13 +145,13 @@ function renderEventTicks({
     .enter()
     .append("g")
     .attr("class", "event-tick")
-    .classed("hover", d => isSelected(d, selectedEventIds))
+    .classed("hover", (d) => isSelected(d, selectedEventIds))
     .attr("transform", (d, i) => `translate(${eventPoints[i]}, 0)`);
 
   eventTicks
     .append("g")
     .attr("transform", getIconTransform())
-    .html(d => {
+    .html((d) => {
       const icon = getIcon(d);
       return Icons[icon].source;
     })
@@ -159,7 +159,7 @@ function renderEventTicks({
     .attr("width", RECT_SIZE)
     .attr("height", RECT_SIZE)
     .attr("class", "event-icon")
-    .attr("aria-label", d => `${getIcon(d)} icon`);
+    .attr("aria-label", (d) => `${getIcon(d)} icon`);
 
   eventTicks
     .append("rect")
@@ -173,13 +173,13 @@ function renderEventTicks({
     .append("text")
     .attr("class", "event-text")
     .attr("transform", `translate(${TEXT_X},${TEXT_Y})`)
-    .text(d => d.length);
+    .text((d) => d.length);
 
   eventTicks
     .on("mousemove", function (d) {
       const eventTick = d3.select(this);
-      const eventIcon = eventTicks.filter(data => d === data);
-      const eventLine = eventLines.filter(data => d === data);
+      const eventIcon = eventTicks.filter((data) => d === data);
+      const eventLine = eventLines.filter((data) => d === data);
 
       onHoverChange({ element: eventIcon.node(), timelineEvents: d });
       eventTick.classed("hover", true);
@@ -187,7 +187,7 @@ function renderEventTicks({
     })
     .on("mouseleave", function (d) {
       const eventTick = d3.select(this);
-      const eventLine = eventLines.filter(data => d === data);
+      const eventLine = eventLines.filter((data) => d === data);
 
       onHoverChange(null);
       eventTick.classed("hover", isSelected(d, selectedEventIds));

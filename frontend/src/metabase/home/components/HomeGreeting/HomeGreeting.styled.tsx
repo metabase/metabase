@@ -12,7 +12,7 @@ export const GreetingLogo = styled(MetabotLogo)<{ isCool: boolean }>`
   height: 2.5rem;
   position: absolute;
   top: 0;
-  opacity: ${props => (props.isCool ? 1 : 0)};
+  opacity: ${(props) => (props.isCool ? 1 : 0)};
 
   ${breakpointMinExtraLarge} {
     height: 3rem;
@@ -25,12 +25,12 @@ export interface GreetingMessageProps {
 
 export const GreetingMessage = styled.span<GreetingMessageProps>`
   color: var(--mb-color-text-dark);
-  font-size: ${props => (props.showLogo ? "1.125rem" : "1.25rem")};
+  font-size: ${(props) => (props.showLogo ? "1.125rem" : "1.25rem")};
   font-weight: bold;
   line-height: 1.5rem;
-  margin-left: ${props => props.showLogo && "0.5rem"};
+  margin-left: ${(props) => props.showLogo && "0.5rem"};
 
   ${breakpointMinExtraLarge} {
-    font-size: ${props => (props.showLogo ? "1.25rem" : "1.5rem")};
+    font-size: ${(props) => (props.showLogo ? "1.25rem" : "1.5rem")};
   }
 `;

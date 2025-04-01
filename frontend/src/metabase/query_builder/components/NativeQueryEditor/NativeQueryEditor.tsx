@@ -239,7 +239,7 @@ export class NativeQueryEditor extends Component<
       this.props.nativeEditorSelectedText &&
       // For some reason the click doesn't target the selection element directly.
       // We check if it falls in the selections bounding rectangle to know if the selected text was clicked.
-      selections.some(selection => isEventOverElement(event, selection))
+      selections.some((selection) => isEventOverElement(event, selection))
     ) {
       event.preventDefault();
       this.setState({ isSelectedTextPopoverOpen: true });
@@ -324,7 +324,7 @@ export class NativeQueryEditor extends Component<
     const matches = Array.from(line.matchAll(CARD_TAG_REGEX));
 
     const match = matches.find(
-      m =>
+      (m) =>
         typeof m.index === "number" &&
         column > m.index &&
         column < m.index + m[0].length,
@@ -513,7 +513,7 @@ export class NativeQueryEditor extends Component<
               this.props.query.referencedQuestionIds();
             // The results of the API call are cached by ID
             const referencedCards = await Promise.all(
-              referencedQuestionIds.map(id => this.props.fetchQuestion(id)),
+              referencedQuestionIds.map((id) => this.props.fetchQuestion(id)),
             );
 
             // Get columns from referenced questions that match the prefix
@@ -522,13 +522,13 @@ export class NativeQueryEditor extends Component<
               name.toLowerCase().includes(lowerCasePrefix);
             const questionColumns: AutocompleteItem[] = referencedCards
               .filter(Boolean)
-              .flatMap(card =>
+              .flatMap((card) =>
                 card.result_metadata
-                  .filter(columnMetadata =>
+                  .filter((columnMetadata) =>
                     isMatchForPrefix(columnMetadata.name),
                   )
                   .map(
-                    columnMetadata =>
+                    (columnMetadata) =>
                       [
                         columnMetadata.name,
                         `${card.name} :${columnMetadata.base_type}`,
@@ -555,7 +555,7 @@ export class NativeQueryEditor extends Component<
     // the completers when the editor mounts are the standard ones
     const standardCompleters = [...this._editor.completers];
 
-    this.nextCompleters = pos => {
+    this.nextCompleters = (pos) => {
       if (this.getSnippetNameAtCursor(pos)) {
         return [{ getCompletions: this.getSnippetCompletions }];
       } else if (this.getCardTagNameAtCursor(pos)) {
@@ -600,7 +600,7 @@ export class NativeQueryEditor extends Component<
       return;
     }
 
-    const snippets = (this.props.snippets || []).filter(snippet =>
+    const snippets = (this.props.snippets || []).filter((snippet) =>
       snippet.name.toLowerCase().includes(name.toLowerCase()),
     );
 
@@ -727,7 +727,7 @@ export class NativeQueryEditor extends Component<
   };
 
   togglePromptVisibility = () => {
-    this.setState(prev => ({
+    this.setState((prev) => ({
       isPromptInputVisible: !prev.isPromptInputVisible,
     }));
   };
@@ -783,7 +783,7 @@ export class NativeQueryEditor extends Component<
     ) : null;
 
     const canSaveSnippets = snippetCollections.some(
-      collection => collection.can_write,
+      (collection) => collection.can_write,
     );
 
     return (

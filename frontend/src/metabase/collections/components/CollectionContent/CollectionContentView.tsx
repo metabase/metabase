@@ -122,7 +122,7 @@ export const CollectionContentView = ({
 
   useEffect(() => {
     const shouldBeBookmarked = !!bookmarks?.some(
-      bookmark =>
+      (bookmark) =>
         bookmark.type === "collection" && bookmark.item_id === collectionId,
     );
     setIsBookmarked(shouldBeBookmarked);

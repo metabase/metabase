@@ -21,7 +21,7 @@ export interface CaptionDescriptionProps {
 export const CaptionDescription = styled(
   EditableDescription,
 )<CaptionDescriptionProps>`
-  opacity: ${props => (props.isVisible ? 1 : 0)};
+  opacity: ${(props) => (props.isVisible ? 1 : 0)};
   max-width: 25rem;
   transition: opacity 400ms ease 1s;
 

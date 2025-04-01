@@ -17,7 +17,7 @@ const DEFAULT_PORT = 4000;
 const getHost = (port = null) =>
   `http://localhost:${port ?? process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
 
-const getSampleAppE2eConfig = suite => ({
+const getSampleAppE2eConfig = (suite) => ({
   [suite]: async () => {
     const { appName, env } = SAMPLE_APP_SETUP_CONFIGS[suite];
     const { CLIENT_PORT } = env;
@@ -46,7 +46,7 @@ const getSampleAppE2eConfig = suite => ({
   },
 });
 
-const getSourceFolder = folder => {
+const getSourceFolder = (folder) => {
   return `./e2e/test/scenarios/${folder}/**/*.cy.spec.{js,ts}`;
 };
 

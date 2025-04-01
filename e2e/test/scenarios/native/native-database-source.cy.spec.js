@@ -69,7 +69,7 @@ describe(
       selectDatabase(additionalPG);
 
       cy.log("Delete previously persisted database.");
-      cy.get("@postgresID").then(databaseId => {
+      cy.get("@postgresID").then((databaseId) => {
         cy.request("DELETE", `/api/database/${databaseId}`);
       });
 
@@ -355,7 +355,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
 
     cy.findByTextEnsureVisible("Save new question");
 
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByLabelText("Name").clear().should("be.empty").type("mongo count");
 
       cy.findByText("Save").should("not.be.disabled").click();

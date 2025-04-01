@@ -30,8 +30,8 @@ export const CardRoot = styled(Link)<CardRootProps>`
   position: relative;
   display: block;
   overflow: hidden;
-  height: ${props => props.isPreview && "15.625rem"};
-  padding: ${props => (props.isPreview ? "0" : "0.5rem 0")};
+  height: ${(props) => props.isPreview && "15.625rem"};
+  padding: ${(props) => (props.isPreview ? "0" : "0.5rem 0")};
   border: 1px solid var(--mb-color-border);
   border-radius: 0.375rem;
   background-color: var(--mb-color-bg-white);

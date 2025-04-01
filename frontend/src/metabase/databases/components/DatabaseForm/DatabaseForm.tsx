@@ -145,7 +145,7 @@ const DatabaseFormBody = ({
         onChange={onEngineChange}
       />
       {engine && <DatabaseNameField engine={engine} />}
-      {fields.map(field => (
+      {fields.map((field) => (
         <DatabaseDetailField
           key={field.name}
           field={field}

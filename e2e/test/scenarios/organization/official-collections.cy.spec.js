@@ -40,7 +40,7 @@ H.describeEE("official collections", () => {
       cy.visit("/collection/root");
 
       H.openNewCollectionItemFlowFor("collection");
-      cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByTestId("new-collection-modal").then((modal) => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
       });
@@ -85,7 +85,7 @@ H.describeEE("official collections", () => {
       openCollection("First collection");
 
       H.openNewCollectionItemFlowFor("collection");
-      cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByTestId("new-collection-modal").then((modal) => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
       });
@@ -108,7 +108,7 @@ H.describeEE("official collections", () => {
       H.popover().findByText("Make collection official").should("exist");
 
       H.openNewCollectionItemFlowFor("collection");
-      cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByTestId("new-collection-modal").then((modal) => {
         assertHasCollectionTypeInput();
         cy.findByPlaceholderText("My new fantastic collection").type(
           "Personal collection child",
@@ -125,7 +125,7 @@ H.describeEE("official collections", () => {
       H.popover().findByText("Make collection official").should("exist");
 
       H.openNewCollectionItemFlowFor("collection");
-      cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByTestId("new-collection-modal").then((modal) => {
         assertHasCollectionTypeInput();
         cy.findByLabelText("Close").click();
       });
@@ -149,7 +149,7 @@ function testOfficialBadgePresence(expectBadge = true) {
   cy.createCollection({
     name: COLLECTION_NAME,
     authority_level: "official",
-  }).then(response => {
+  }).then((response) => {
     const { id: collectionId } = response.body;
     cy.createQuestion({
       name: "Official Question",
@@ -209,7 +209,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
   cy.createCollection({
     name: COLLECTION_NAME,
     authority_level: "official",
-  }).then(response => {
+  }).then((response) => {
     const { id: collectionId } = response.body;
     cy.createQuestionAndDashboard({
       questionDetails: {
@@ -237,7 +237,7 @@ function openCollection(collectionName) {
 
 function createAndOpenOfficialCollection({ name }) {
   H.openNewCollectionItemFlowFor("collection");
-  cy.findByTestId("new-collection-modal").then(modal => {
+  cy.findByTestId("new-collection-modal").then((modal) => {
     cy.findByPlaceholderText("My new fantastic collection").type(name);
     cy.findByText("Official").click();
     cy.findByText("Create").click();

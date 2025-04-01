@@ -54,7 +54,7 @@ export const ToggleIcon = styled(
     return <Icon name={name as IconName} size={size} {...props} />;
   },
 )`
-  ${props => css`
+  ${(props) => css`
     margin-${props.position === "left" ? "right" : "left"}: 0.5rem;
   `};
 `;

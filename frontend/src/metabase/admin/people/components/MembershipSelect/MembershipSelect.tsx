@@ -28,7 +28,7 @@ const getGroupSections = (groups: GroupListQuery[]) => {
   const adminGroup = groups.find(isAdminGroup);
   const pinnedGroups = [defaultGroup, adminGroup].filter(isNotNull);
   const regularGroups = groups.filter(
-    group => !isAdminGroup(group) && !isDefaultGroup(group),
+    (group) => !isAdminGroup(group) && !isDefaultGroup(group),
   );
 
   if (pinnedGroups.length > 0) {
@@ -109,7 +109,7 @@ export const MembershipSelect = ({
             {section.header && (
               <MembershipSelectHeader>{section.header}</MembershipSelectHeader>
             )}
-            {section.groups.map(group => {
+            {section.groups.map((group) => {
               const isDisabled =
                 (isAdminGroup(group) && isCurrentUser) || isDefaultGroup(group);
               const isMember = memberships.has(group.id);

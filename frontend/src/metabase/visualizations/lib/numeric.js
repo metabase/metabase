@@ -5,9 +5,9 @@ export function dimensionIsNumeric({ cols, rows }, i = 0) {
     return true;
   }
 
-  const hasAtLeastOneNumber = rows.some(row => typeof row[i] === "number");
+  const hasAtLeastOneNumber = rows.some((row) => typeof row[i] === "number");
   const hasNumbersOrNullsOnly = rows.every(
-    row => typeof row[i] === "number" || row[i] === null,
+    (row) => typeof row[i] === "number" || row[i] === null,
   );
 
   return hasNumbersOrNullsOnly && hasAtLeastOneNumber;

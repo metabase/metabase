@@ -42,7 +42,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
   const Y = ["dimension", "Y"];
 
   describe("for filters", () => {
-    const filter = e => collect(e, "boolean");
+    const filter = (e) => collect(e, "boolean");
 
     it("should resolve segments correctly", () => {
       expect(filter(A).segments).toEqual(["A"]);
@@ -119,7 +119,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
   });
 
   describe("for expressions (for custom columns)", () => {
-    const expr = e => collect(e, "expression");
+    const expr = (e) => collect(e, "expression");
 
     it("should resolve segments correctly", () => {
       expect(expr(["trim", A]).segments).toEqual([]);
@@ -233,7 +233,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
   });
 
   describe("for aggregations", () => {
-    const aggregation = e => collect(e, "aggregation");
+    const aggregation = (e) => collect(e, "aggregation");
 
     it("should resolve dimensions correctly", () => {
       expect(aggregation(A).dimensions).toEqual([]);
@@ -267,7 +267,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
   });
 
   describe("for CASE expressions", () => {
-    const expr = e => collect(e, "expression");
+    const expr = (e) => collect(e, "expression");
 
     it("should handle CASE with two arguments", () => {
       // CASE(A,B)

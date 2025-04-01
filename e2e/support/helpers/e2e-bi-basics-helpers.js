@@ -32,7 +32,7 @@ export function filterField(
 
   if (value) {
     const values = Array.isArray(value) ? value : [value];
-    values.forEach(value => {
+    values.forEach((value) => {
       changeValue(getFilterField(fieldName, order), value, placeholder);
     });
   }
@@ -47,7 +47,7 @@ export function filterSelectField(fieldName, { operator, value, order } = {}) {
 
   if (value) {
     const values = Array.isArray(value) ? value : [value];
-    values.forEach(value => {
+    values.forEach((value) => {
       getFilterField(fieldName, order)
         .findByLabelText("Filter value")
         .focus()

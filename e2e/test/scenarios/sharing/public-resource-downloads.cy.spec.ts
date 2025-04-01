@@ -33,7 +33,7 @@ H.describeWithSnowplowEE(
           .findByTestId("public-link-input")
           .should("contain.value", "/public/")
           .invoke("val")
-          .then(url => {
+          .then((url) => {
             publicLink = url as string;
           });
 
@@ -114,7 +114,7 @@ H.describeWithSnowplowEE(
           .findByTestId("public-link-input")
           .should("contain.value", "/public/")
           .invoke("val")
-          .then(url => {
+          .then((url) => {
             publicLink = url as string;
           });
 

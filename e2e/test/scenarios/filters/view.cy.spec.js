@@ -51,8 +51,8 @@ describe("scenarios > question > view", () => {
         { wrapId: true },
       );
 
-      cy.get("@questionId").then(questionId => {
-        cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@questionId").then((questionId) => {
+        cy.get("@dashboardId").then((dashboardId) => {
           H.addOrUpdateDashboardCard({
             dashboard_id: dashboardId,
             card_id: questionId,

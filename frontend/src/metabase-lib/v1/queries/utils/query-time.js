@@ -132,7 +132,7 @@ export function generateTimeFilterValuesDescriptions(filter) {
     const suffix = formatStartingFrom(bucketing, -n);
     return [t`${prefix}, starting ${Math.abs(n)} ${suffix}`];
   } else {
-    return values.map(value =>
+    return values.map((value) =>
       generateTimeValueDescription(value, bucketing, operator === "!="),
     );
   }
@@ -419,7 +419,7 @@ export function setRelativeDatetimeValue(filter, value) {
 export const DATE_FORMAT = "YYYY-MM-DD";
 export const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
-export const getTimeComponent = value => {
+export const getTimeComponent = (value) => {
   let hours = null;
   let minutes = null;
   let date = null;
@@ -456,7 +456,7 @@ export const setTimeComponent = (value, hours, minutes) => {
   }
 };
 
-const getMomentDateForSerialization = date => {
+const getMomentDateForSerialization = (date) => {
   return date.clone().locale("en");
 };
 
@@ -474,7 +474,7 @@ export const EXCLUDE_OPTIONS = {
   [EXCLUDE_UNITS["days"]]: () => {
     const now = moment().utc().hours(0).minutes(0).seconds(0).milliseconds(0);
     return [
-      _.range(0, 7).map(day => {
+      _.range(0, 7).map((day) => {
         const date = now.day(day + 1);
         const displayName = date.format("dddd");
         const value = date.format("YYYY-MM-DD");
@@ -482,7 +482,7 @@ export const EXCLUDE_OPTIONS = {
           displayName,
           value,
           serialized: getMomentDateForSerialization(date).format("ddd"),
-          test: val => value === val,
+          test: (val) => value === val,
         };
       }),
     ];
@@ -495,7 +495,7 @@ export const EXCLUDE_OPTIONS = {
       .minutes(0)
       .seconds(0)
       .milliseconds(0);
-    const func = month => {
+    const func = (month) => {
       const date = now.month(month);
       const displayName = date.format("MMMM");
       const value = date.format("YYYY-MM-DD");
@@ -503,7 +503,7 @@ export const EXCLUDE_OPTIONS = {
         displayName,
         value,
         serialized: getMomentDateForSerialization(date).format("MMM"),
-        test: value => moment(value).format("MMMM") === displayName,
+        test: (value) => moment(value).format("MMMM") === displayName,
       };
     };
     return [_.range(0, 6).map(func), _.range(6, 12).map(func)];
@@ -512,7 +512,7 @@ export const EXCLUDE_OPTIONS = {
     const now = moment().utc().hours(0).minutes(0).seconds(0).milliseconds(0);
     const suffix = " " + t`quarter`;
     return [
-      _.range(1, 5).map(quarter => {
+      _.range(1, 5).map((quarter) => {
         const date = now.quarter(quarter);
         const displayName = date.format("Qo");
         const value = date.format("YYYY-MM-DD");
@@ -520,21 +520,21 @@ export const EXCLUDE_OPTIONS = {
           displayName: displayName + suffix,
           value,
           serialized: getMomentDateForSerialization(date).format("Q"),
-          test: value => moment(value).format("Qo") === displayName,
+          test: (value) => moment(value).format("Qo") === displayName,
         };
       }),
     ];
   },
   [EXCLUDE_UNITS["hours"]]: () => {
     const now = moment().utc().minutes(0).seconds(0).milliseconds(0);
-    const func = hour => {
+    const func = (hour) => {
       const date = now.hour(hour);
       const displayName = date.format("h A");
       return {
         displayName,
         value: hour,
         serialized: hour.toString(),
-        test: value => value === hour,
+        test: (value) => value === hour,
       };
     };
     return [_.range(0, 12).map(func), _.range(12, 24).map(func)];

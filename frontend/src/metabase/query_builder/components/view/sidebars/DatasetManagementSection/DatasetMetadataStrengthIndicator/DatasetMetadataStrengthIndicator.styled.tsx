@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 export const PercentageLabel = styled.span`
-  color: ${props => props.color};
+  color: ${(props) => props.color};
   font-size: 0.8rem;
   font-weight: bold;
   user-select: none;

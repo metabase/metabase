@@ -1076,7 +1076,7 @@ export const getHelpText = (
   database: Database,
   reportTimezone?: string,
 ): HelpText | undefined => {
-  const helperTextConfig = HELPER_TEXT_STRINGS.find(h => h.name === name);
+  const helperTextConfig = HELPER_TEXT_STRINGS.find((h) => h.name === name);
 
   if (!helperTextConfig) {
     return;

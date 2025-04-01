@@ -22,7 +22,7 @@ export const LLMSuggestQuestionInfo = ({
   const questionWithCollectionId: Question =
     initialQuestion.setCollectionId(collectionId);
 
-  const question = useSelector(state =>
+  const question = useSelector((state) =>
     getSubmittableQuestion(state, questionWithCollectionId),
   );
 

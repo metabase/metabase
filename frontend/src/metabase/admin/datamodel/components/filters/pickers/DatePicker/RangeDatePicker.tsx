@@ -48,7 +48,7 @@ export const BetweenPicker = ({
       } else {
         onFilterChange(setDateRangeFilterValue(filter, [startValue, newValue]));
       }
-      setIsStartDateActive(isActive => !isActive);
+      setIsStartDateActive((isActive) => !isActive);
     },
     [filter, startValue, isStartDateActive, onFilterChange],
   );
@@ -56,7 +56,7 @@ export const BetweenPicker = ({
   const handleStartDateChange = useCallback(
     (newValue: string | null) => {
       onFilterChange(setDateRangeFilterValue(filter, [newValue, endValue]));
-      setIsStartDateActive(isActive => !isActive);
+      setIsStartDateActive((isActive) => !isActive);
     },
     [filter, endValue, onFilterChange],
   );
@@ -64,7 +64,7 @@ export const BetweenPicker = ({
   const handleEndDateChange = useCallback(
     (newValue: string | null) => {
       onFilterChange(setDateRangeFilterValue(filter, [startValue, newValue]));
-      setIsStartDateActive(isActive => !isActive);
+      setIsStartDateActive((isActive) => !isActive);
     },
     [filter, startValue, onFilterChange],
   );

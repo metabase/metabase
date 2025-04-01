@@ -8,7 +8,7 @@ export default {
   component: DateMonthYearWidget,
 };
 
-const Template: StoryFn<typeof DateMonthYearWidget> = args => {
+const Template: StoryFn<typeof DateMonthYearWidget> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleSetValue = (v: string) => {

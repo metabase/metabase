@@ -65,7 +65,7 @@ describe("ActionMenu", () => {
   describe("preview", () => {
     it.each<CollectionItemModel>(["card", "metric"])(
       "should show an option to hide preview for a pinned %s",
-      async model => {
+      async (model) => {
         const item = createMockCollectionItem({
           model,
           collection_position: 1,
@@ -86,7 +86,7 @@ describe("ActionMenu", () => {
 
     it.each<CollectionItemModel>(["card", "metric"])(
       "should show an option to show preview for a pinned %s",
-      async model => {
+      async (model) => {
         const item = createMockCollectionItem({
           model,
           collection_position: 1,

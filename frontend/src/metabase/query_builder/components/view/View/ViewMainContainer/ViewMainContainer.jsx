@@ -13,7 +13,7 @@ import {
   StyledSyncedParametersList,
 } from "./ViewMainContainer.styled";
 
-export const ViewMainContainer = props => {
+export const ViewMainContainer = (props) => {
   const {
     queryBuilderMode,
     mode,

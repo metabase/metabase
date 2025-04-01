@@ -211,7 +211,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
 
 const getSubmitError = (error: DatabaseEditErrorType) => {
   if (_.isObject(error?.data?.errors)) {
-    return updateIn(error, ["data", "errors"], errors => ({
+    return updateIn(error, ["data", "errors"], (errors) => ({
       details: errors,
     }));
   }

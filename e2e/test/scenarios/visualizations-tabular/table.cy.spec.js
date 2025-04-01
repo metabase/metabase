@@ -317,7 +317,7 @@ describe("scenarios > visualizations > table", () => {
       cy.findByPlaceholderText("Search by Password").blur();
     });
 
-    H.popover().then($popover => {
+    H.popover().then(($popover) => {
       expect(H.isScrollableHorizontally($popover[0])).to.be.false;
     });
   });
@@ -325,8 +325,8 @@ describe("scenarios > visualizations > table", () => {
   it("should show the slow loading text when the query is taking too long", () => {
     H.openOrdersTable({ mode: "notebook" });
 
-    cy.intercept("POST", "/api/dataset", req => {
-      req.on("response", res => {
+    cy.intercept("POST", "/api/dataset", (req) => {
+      req.on("response", (res) => {
         res.setDelay(10000);
       });
     });
@@ -450,9 +450,9 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
 
       H.getTable({ name: "many_data_types" }).then(
         ({ id: tableId, fields }) => {
-          const booleanField = fields.find(field => field.name === "boolean");
-          const stringField = fields.find(field => field.name === "string");
-          const idField = fields.find(field => field.name === "id");
+          const booleanField = fields.find((field) => field.name === "boolean");
+          const stringField = fields.find((field) => field.name === "string");
+          const idField = fields.find((field) => field.name === "id");
 
           H.visitQuestionAdhoc({
             dataset_query: {

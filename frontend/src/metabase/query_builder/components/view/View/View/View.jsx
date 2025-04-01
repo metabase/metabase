@@ -121,15 +121,15 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
             isResultDirty={isResultDirty}
             isRunning={isRunning}
             onChange={updateQuestion}
-            onCreate={async question => {
+            onCreate={async (question) => {
               await onCreate(question);
               setQueryBuilderMode("view");
             }}
-            onSave={async question => {
+            onSave={async (question) => {
               await onSave(question);
               setQueryBuilderMode("view");
             }}
-            onCancel={question => {
+            onCancel={(question) => {
               if (question.isSaved()) {
                 cancelQuestionChanges();
                 runDirtyQuestionQuery();
@@ -278,9 +278,9 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
   );
 });
 
-const mapDispatchToProps = dispatch => ({
-  onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
-  onUnarchive: async question => {
+const mapDispatchToProps = (dispatch) => ({
+  onSetDatabaseId: (id) => dispatch(rememberLastUsedDatabase(id)),
+  onUnarchive: async (question) => {
     await dispatch(setArchivedQuestion(question, false));
     await dispatch(Bookmarks.actions.invalidateLists());
   },
@@ -290,7 +290,7 @@ const mapDispatchToProps = dispatch => ({
         notify: { undo: false },
       }),
     ),
-  onDeletePermanently: id => {
+  onDeletePermanently: (id) => {
     const deleteAction = Questions.actions.delete({ id });
     dispatch(deletePermanently(deleteAction));
   },

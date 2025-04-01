@@ -62,7 +62,7 @@ export default createEntity({
         return {
           ...rest,
           data: data
-            ? data.map(item => ({
+            ? data.map((item) => ({
                 collection_id: canonicalCollectionId(collection),
                 archived: archived || false,
                 ...item,
@@ -79,7 +79,7 @@ export default createEntity({
         return {
           ...rest,
           data: data
-            ? data.map(item => {
+            ? data.map((item) => {
                 const collectionKey = item.collection
                   ? { collection_id: item.collection.id }
                   : {};
@@ -109,7 +109,7 @@ export default createEntity({
 
   objectActions: {
     setArchived: (object, archived) => {
-      return dispatch => {
+      return (dispatch) => {
         const entity = entityForObject(object);
         return entity
           ? dispatch(entity.actions.setArchived(object, archived))
@@ -117,8 +117,8 @@ export default createEntity({
       };
     },
 
-    delete: object => {
-      return dispatch => {
+    delete: (object) => {
+      return (dispatch) => {
         const entity = entityForObject(object);
         return entity
           ? dispatch(entity.actions.delete(object))
@@ -128,7 +128,7 @@ export default createEntity({
   },
 
   objectSelectors: {
-    getCollection: object => {
+    getCollection: (object) => {
       const entity = entityForObject(object);
       return entity
         ? (entity?.objectSelectors?.getCollection?.(object) ??
@@ -137,21 +137,21 @@ export default createEntity({
         : warnEntityAndReturnObject(object);
     },
 
-    getName: object => {
+    getName: (object) => {
       const entity = entityForObject(object);
       return entity
         ? (entity?.objectSelectors?.getName?.(object) ?? object?.name)
         : warnEntityAndReturnObject(object);
     },
 
-    getColor: object => {
+    getColor: (object) => {
       const entity = entityForObject(object);
       return entity
         ? (entity?.objectSelectors?.getColor?.(object) ?? null)
         : warnEntityAndReturnObject(object);
     },
 
-    getIcon: object => {
+    getIcon: (object) => {
       const entity = entityForObject(object);
       return entity
         ? (entity?.objectSelectors?.getIcon?.(object) ?? null)

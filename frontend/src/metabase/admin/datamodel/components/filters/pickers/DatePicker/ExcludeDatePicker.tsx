@@ -45,29 +45,29 @@ export const EXCLUDE_OPERATORS: Group[] = [
   {
     name: "days",
     displayName: t`Days of the week...`,
-    test: filter => isDayOfWeekDateFilter(filter),
-    init: filter => getInitialDayOfWeekFilter(filter),
+    test: (filter) => isDayOfWeekDateFilter(filter),
+    init: (filter) => getInitialDayOfWeekFilter(filter),
     getOptionGroups: EXCLUDE_OPTIONS["day-of-week"],
   },
   {
     name: "months",
     displayName: t`Months of the year...`,
-    test: filter => isMonthOfYearDateFilter(filter),
-    init: filter => getInitialMonthOfYearFilter(filter),
+    test: (filter) => isMonthOfYearDateFilter(filter),
+    init: (filter) => getInitialMonthOfYearFilter(filter),
     getOptionGroups: EXCLUDE_OPTIONS["month-of-year"],
   },
   {
     name: "quarters",
     displayName: t`Quarters of the year...`,
-    test: filter => isQuarterofYearDateFilter(filter),
-    init: filter => getInitialQuarterOfYearFilter(filter),
+    test: (filter) => isQuarterofYearDateFilter(filter),
+    init: (filter) => getInitialQuarterOfYearFilter(filter),
     getOptionGroups: EXCLUDE_OPTIONS["quarter-of-year"],
   },
   {
     name: "hours",
     displayName: t`Hours of the day...`,
-    test: filter => isHourOfDayDateFilter(filter),
-    init: filter => getInitialHourOfDayFilter(filter),
+    test: (filter) => isHourOfDayDateFilter(filter),
+    init: (filter) => getInitialHourOfDayFilter(filter),
     getOptionGroups: EXCLUDE_OPTIONS["hour-of-day"],
   },
 ];
@@ -165,7 +165,8 @@ export default function ExcludeDatePicker({
         {optionGroups.map((inner, index) => (
           <ExcludeColumn key={index}>
             {inner.map(({ displayName, value, test }) => {
-              const isValueExcluded = values.find(value => test(value)) != null;
+              const isValueExcluded =
+                values.find((value) => test(value)) != null;
               return (
                 <ExcludeCheckBox
                   key={value}
@@ -176,7 +177,7 @@ export default function ExcludeDatePicker({
                     if (!isValueExcluded) {
                       update([...values, value]);
                     } else {
-                      update(values.filter(value => !test(value)));
+                      update(values.filter((value) => !test(value)));
                     }
                   }}
                 />

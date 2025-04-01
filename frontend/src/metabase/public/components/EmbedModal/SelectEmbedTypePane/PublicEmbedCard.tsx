@@ -53,7 +53,7 @@ export const PublicEmbedCard = ({
           <Button
             variant="subtle"
             p={0}
-            onClick={() => setIsOpen(value => !value)}
+            onClick={() => setIsOpen((value) => !value)}
           >{t`Get embedding code`}</Button>
         </Popover.Target>
         <Popover.Dropdown>
@@ -65,7 +65,7 @@ export const PublicEmbedCard = ({
             ) : (
               <PublicLinkCopyPanel
                 url={publicEmbedCode}
-                onRemoveLink={e => {
+                onRemoveLink={(e) => {
                   setIsOpen(false);
                   deletePublicLink(e);
                 }}

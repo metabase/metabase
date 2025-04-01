@@ -29,7 +29,7 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
   });
 
   it("Should not open sidesheet when clicking last edit info (metabase#48354)", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
     });
 
@@ -75,7 +75,7 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
 
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
-        cy.get(dashboardIdAlias).then(dashboardId => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
           mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
         });
 

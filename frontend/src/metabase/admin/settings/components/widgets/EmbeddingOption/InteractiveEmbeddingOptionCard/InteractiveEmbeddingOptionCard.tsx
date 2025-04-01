@@ -27,13 +27,13 @@ export const InteractiveEmbeddingOptionCard = ({
   onToggle,
 }: EmbeddingOptionCardProps) => {
   const isEE = PLUGIN_EMBEDDING.isEnabled();
-  const plan = useSelector(state =>
+  const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
   const isInteractiveEmbeddingEnabled = useSetting(
     "enable-embedding-interactive",
   );
-  const quickStartUrl = useSelector(state =>
+  const quickStartUrl = useSelector((state) =>
     getDocsUrl(state, {
       page: "embedding/interactive-embedding-quick-start-guide",
       utm: interactiveEmbeddingUtmTags,

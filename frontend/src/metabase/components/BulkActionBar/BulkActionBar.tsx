@@ -43,7 +43,7 @@ export const BulkActionBar = ({
       duration={400}
       timingFunction="ease"
     >
-      {styles => (
+      {(styles) => (
         <BulkActionsToast
           style={styles}
           isNavbarOpen={isNavbarOpen}

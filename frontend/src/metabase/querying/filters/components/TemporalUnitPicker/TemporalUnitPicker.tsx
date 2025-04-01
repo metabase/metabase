@@ -36,7 +36,7 @@ export function TemporalUnitPicker({
 
   return (
     <Box p="sm" miw={MIN_WIDTH}>
-      {visibleItems.map(item => (
+      {visibleItems.map((item) => (
         <SelectItem
           key={item.value}
           value={item.value}
@@ -66,7 +66,7 @@ function isInitiallyExpanded(
   return (
     availableItems.length <= INITIAL_VISIBLE_ITEMS_COUNT ||
     (value != null &&
-      availableItems.findIndex(item => item.value === value) >=
+      availableItems.findIndex((item) => item.value === value) >=
         INITIAL_VISIBLE_ITEMS_COUNT)
   );
 }

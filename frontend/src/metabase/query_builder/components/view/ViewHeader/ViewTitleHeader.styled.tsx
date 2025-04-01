@@ -66,7 +66,7 @@ export const SaveButton = styled(MantineButton)<ButtonProps>`
 export const SavedQuestionHeaderButtonContainer = styled.div<{
   isModelOrMetric: boolean;
 }>`
-  right: ${props => (props.isModelOrMetric ? "0px" : "0.38rem")};
+  right: ${(props) => (props.isModelOrMetric ? "0px" : "0.38rem")};
 `;
 
 export const HeaderButton = styled(Button)<{
@@ -132,11 +132,11 @@ export const SavedQuestionLeftSideRoot = styled.div<{
   ${SavedQuestionHeaderButtonContainer} {
     transition: all 400ms ease;
     position: relative;
-    top: ${props => (props.showSubHeader ? "0" : "0.5rem")};
+    top: ${(props) => (props.showSubHeader ? "0" : "0.5rem")};
   }
 
   ${ViewHeaderLeftSubHeading} {
-    opacity: ${props => (props.showSubHeader ? "1" : "0")};
+    opacity: ${(props) => (props.showSubHeader ? "1" : "0")};
     transition: all 400ms ease;
   }
 
@@ -212,6 +212,6 @@ export const ViewRunButtonWithTooltip = styled(
   color: var(--mb-color-text-dark);
 
   &:hover {
-    color: ${props => (props.isDirty ? color("text-white") : color("brand"))};
+    color: ${(props) => (props.isDirty ? color("text-white") : color("brand"))};
   }
 `;

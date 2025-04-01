@@ -7,7 +7,7 @@ import { connect } from "metabase/lib/redux";
 /**
  * @deprecated HOCs are deprecated
  */
-export default () => ComposedComponent => {
+export default () => (ComposedComponent) => {
   const mapStateToProps = (state, props) => ({
     entityDef:
       // dynamic require due to dependency load order issues

@@ -6,7 +6,7 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 /**
  * @deprecated HOCs are deprecated
  */
-export default ComposedComponent => {
+export default (ComposedComponent) => {
   class TableMetadataLoader extends Component {
     componentDidMount() {
       const { table } = this.props;

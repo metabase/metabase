@@ -51,9 +51,9 @@ const setup = ({ display, visualization_settings = {} }) => {
       ),
     );
 
-    const handleChange = update => {
+    const handleChange = (update) => {
       onChange(update);
-      setQuestion(q => {
+      setQuestion((q) => {
         const newQuestion = q.updateSettings(update);
         return new Question(thaw(newQuestion.card()), metadata);
       });
@@ -67,7 +67,7 @@ const setup = ({ display, visualization_settings = {} }) => {
             card: question.card(),
             data: {
               rows: [],
-              cols: ordersTable.fields.map(f => f.column()),
+              cols: ordersTable.fields.map((f) => f.column()),
             },
           },
         ]}
@@ -84,7 +84,7 @@ const setup = ({ display, visualization_settings = {} }) => {
 };
 
 // these visualizations share column settings, so all the tests should work for both
-["table", "object"].forEach(display => {
+["table", "object"].forEach((display) => {
   describe(`${display} column settings`, () => {
     it("should show you related columns in structured queries", async () => {
       setup({ display });
@@ -158,12 +158,12 @@ const setup = ({ display, visualization_settings = {} }) => {
 
 describe("table.pivot", () => {
   describe("getHidden", () => {
-    const createMockSeriesWithCols = cols => [
+    const createMockSeriesWithCols = (cols) => [
       createMockSingleSeries(
         createMockCard(),
         createMockDataset({
           data: createMockDatasetData({
-            cols: cols.map(name => createMockColumn({ name })),
+            cols: cols.map((name) => createMockColumn({ name })),
           }),
         }),
       ),

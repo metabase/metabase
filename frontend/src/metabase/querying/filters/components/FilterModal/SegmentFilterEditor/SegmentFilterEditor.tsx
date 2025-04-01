@@ -19,12 +19,14 @@ export function SegmentFilterEditor({
   }));
 
   const data = options.map(({ value, label }) => ({ value, label }));
-  const value = options.filter(item => item.isSelected).map(item => item.value);
+  const value = options
+    .filter((item) => item.isSelected)
+    .map((item) => item.value);
 
   const handleChange = (newValue: string[]) => {
     const newSegments = newValue
-      .map(segmentIndex => Number(segmentIndex))
-      .map(segmentIndex => segmentItems[segmentIndex]);
+      .map((segmentIndex) => Number(segmentIndex))
+      .map((segmentIndex) => segmentItems[segmentIndex]);
     onChange(newSegments);
   };
 

@@ -63,7 +63,7 @@ export function getListParameterStaticValues(
     }
 
     return parameter.values_source_config.values
-      .map(v => (Array.isArray(v) ? v[0]?.toString() : v))
+      .map((v) => (Array.isArray(v) ? v[0]?.toString() : v))
       .filter((v): v is string => v !== undefined);
   }
   return null;
@@ -71,7 +71,7 @@ export function getListParameterStaticValues(
 
 // TODO Change this (metabase#40226)
 export function getFlattenedStrings(values: unknown[][] | unknown[]): string[] {
-  return values.flat(1).map(value => String(value));
+  return values.flat(1).map((value) => String(value));
 }
 
 export function shouldEnableSearch(

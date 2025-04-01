@@ -21,7 +21,7 @@ export function initializeEmbedding(store) {
         sendMessage({
           type: "location",
           // extract just the string properties from window.location
-          location: _.pick(location, v => typeof v === "string"),
+          location: _.pick(location, (v) => typeof v === "string"),
         });
         currentHref = location.href;
       }
@@ -34,7 +34,7 @@ export function initializeEmbedding(store) {
         currentFrame = frame;
       }
     }, 100);
-    window.addEventListener("message", e => {
+    window.addEventListener("message", (e) => {
       if (e.source === window.parent && e.data.metabase) {
         if (e.data.metabase.type === "location") {
           store.dispatch(push(e.data.metabase.location));

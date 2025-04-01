@@ -1,8 +1,8 @@
-export const getSchemaName = id => {
+export const getSchemaName = (id) => {
   return parseSchemaId(id)[1];
 };
 
-export const parseSchemaId = id => {
+export const parseSchemaId = (id) => {
   const schemaId = String(id || "");
   const [databaseId, schemaName, encodedPayload] = schemaId.split(":");
   const result = [databaseId, decodeURIComponent(schemaName)];

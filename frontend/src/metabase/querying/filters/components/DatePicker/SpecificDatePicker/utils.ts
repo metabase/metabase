@@ -20,7 +20,7 @@ export function isSpecificValue(
 export function getTabs(
   availableOperators: ReadonlyArray<DatePickerOperator>,
 ): Tab[] {
-  return TABS.filter(tab => availableOperators.includes(tab.operator));
+  return TABS.filter((tab) => availableOperators.includes(tab.operator));
 }
 
 export function getDefaultValue() {
