@@ -155,6 +155,7 @@ export function QuestionList({
               <ActionIcon
                 className={S.VisualizerButton}
                 size="41px"
+                aria-label={t`Visualize another way`}
                 onClick={() => setVisualizerModalCardId(Number(item.id))}
               >
                 <Icon name="add_data" />

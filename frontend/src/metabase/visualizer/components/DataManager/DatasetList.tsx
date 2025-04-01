@@ -57,7 +57,7 @@ export const DatasetList = () => {
         const isExpanded = expandedDataSources[source.id];
 
         return (
-          <Box key={source.id} mb={4}>
+          <Box key={source.id} mb={4} data-testid="data-source-list-item">
             <Flex align="center" px={8} py={4} className={S.parent}>
               {!isLoading ? (
                 <Icon
@@ -82,7 +82,7 @@ export const DatasetList = () => {
                   name="close"
                   ml="auto"
                   size={12}
-                  aria-label={t`Remove the dataset ${source.name} from the list`}
+                  aria-label={t`Remove`}
                   cursor="pointer"
                   onClick={() => dispatch(removeDataSource(source))}
                 />
@@ -151,6 +151,8 @@ function DraggableColumnListItem({
       bg={isSelected ? "var(--mb-color-brand-lighter)" : undefined}
       column={column}
       style={{ visibility: isDragging ? "hidden" : "visible" }}
+      aria-selected={isSelected}
+      data-testid="column-list-item"
       ref={setNodeRef}
     />
   );

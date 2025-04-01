@@ -56,7 +56,12 @@ function PieMetricWell() {
   return (
     <Box mt="lg">
       <Text>{t`Metric`}</Text>
-      <WellBox isHighlighted={isHighlighted} isOver={isOver} ref={setNodeRef}>
+      <WellBox
+        isHighlighted={isHighlighted}
+        isOver={isOver}
+        ref={setNodeRef}
+        data-testid="pie-metric-well"
+      >
         <Stack>
           {metric && (
             <WellItem onRemove={metric && handleRemoveMetric}>
@@ -99,7 +104,12 @@ function PieDimensionWell() {
   return (
     <Box mt="lg">
       <Text>{t`Dimensions`}</Text>
-      <WellBox isHighlighted={isHighlighted} isOver={isOver} ref={setNodeRef}>
+      <WellBox
+        isHighlighted={isHighlighted}
+        isOver={isOver}
+        ref={setNodeRef}
+        data-testid="pie-dimension-well"
+      >
         <Stack>
           {dimensions.map(dimension => (
             <WellItem
