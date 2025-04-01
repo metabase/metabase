@@ -1,17 +1,20 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useGetFieldValuesQuery } from "metabase/api";
+import { useSearchFieldValuesQuery } from "metabase/api";
 import { getFieldOptions } from "metabase/querying/filters/components/FilterValuePicker/utils";
 import {
   Box,
   Combobox,
   Icon,
   Input,
+  Loader,
   type SelectOption,
   TextInput,
   useCombobox,
 } from "metabase/ui";
+import type { FieldValue } from "metabase-types/api";
 
 import type { EditingBodyPrimitiveProps } from "./types";
 
@@ -23,6 +26,9 @@ type EditingBodyCellCategorySelectProps = EditingBodyPrimitiveProps & {
 
 const DefaultItemLabelTextGetter = (item: SelectOption) => item.label;
 const DefaultSelectedLabelTextGetter = (item: SelectOption) => item.value;
+
+const SEARCH_LIMIT_DEFAULT = 20;
+const SEARCH_DEBOUNCE = 500;
 
 export const EditingBodyCellCategorySelect = ({
   autoFocus,
@@ -37,10 +43,6 @@ export const EditingBodyCellCategorySelect = ({
   onChangeValue,
   onCancel,
 }: EditingBodyCellCategorySelectProps) => {
-  const { data: fieldData, isLoading } = useGetFieldValuesQuery(
-    datasetColumn.id ?? skipToken,
-  );
-
   const [value, setValue] = useState(initialValue?.toString() ?? "");
   const [search, setSearch] = useState("");
   const combobox = useCombobox({
@@ -48,17 +50,65 @@ export const EditingBodyCellCategorySelect = ({
     onDropdownClose: onCancel,
   });
 
-  const options = useMemo(
-    () =>
-      fieldData
-        ? getFieldOptions(fieldData.values).filter(item =>
-            getDropdownLabelText(item)
-              .toLowerCase()
-              .includes(search.toLowerCase().trim()),
-          )
-        : [],
-    [fieldData, getDropdownLabelText, search],
+  // `searchToFetch` is detached from `search` for two reasons:
+  // - to be debounced to avoid requests on every keystroke
+  // - to perform local filtering if the full list is less then `SEARCH_LIMIT_DEFAULT`
+  const [searchToFetch, setSearchToFetch] = useState("");
+  const [initialFieldValues, setInitialFieldValues] = useState<
+    FieldValue[] | undefined
+  >(undefined);
+
+  const shouldPerformLocalSearch =
+    initialFieldValues && initialFieldValues.length < SEARCH_LIMIT_DEFAULT;
+
+  useDebounce(
+    () => {
+      if (!shouldPerformLocalSearch) {
+        setSearchToFetch(search);
+      }
+    },
+    SEARCH_DEBOUNCE,
+    [search, shouldPerformLocalSearch],
   );
+
+  const {
+    data: fieldValues,
+    isLoading,
+    isFetching,
+  } = useSearchFieldValuesQuery(
+    {
+      fieldId: datasetColumn.id ?? -1,
+      searchFieldId:
+        datasetColumn.remapped_to_column?.id ?? datasetColumn.id ?? -1,
+      value: searchToFetch || undefined,
+      limit: SEARCH_LIMIT_DEFAULT,
+    },
+    { skip: datasetColumn.id === undefined },
+  );
+
+  useEffect(() => {
+    if (!initialFieldValues && fieldValues) {
+      setInitialFieldValues(fieldValues);
+    }
+  }, [initialFieldValues, fieldValues]);
+
+  const options = useMemo(() => {
+    if (fieldValues) {
+      const options = getFieldOptions(fieldValues);
+
+      if (shouldPerformLocalSearch) {
+        return options.filter((item) =>
+          getDropdownLabelText(item)
+            .toLowerCase()
+            .includes(search.toLowerCase().trim()),
+        );
+      }
+
+      return options;
+    }
+
+    return [];
+  }, [shouldPerformLocalSearch, fieldValues, search, getDropdownLabelText]);
 
   const handleOptionSubmit = useCallback(
     (value: string) => {
@@ -72,8 +122,8 @@ export const EditingBodyCellCategorySelect = ({
 
   const optionValueSelectOptionMap = useMemo(
     () =>
-      fieldData
-        ? getFieldOptions(fieldData.values).reduce(
+      fieldValues
+        ? getFieldOptions(fieldValues).reduce(
             (map, item) => ({
               ...map,
               [item.value]: item,
@@ -81,15 +131,13 @@ export const EditingBodyCellCategorySelect = ({
             {} as Record<string, SelectOption>,
           )
         : null,
-    [fieldData],
+    [fieldValues],
   );
 
   const inputLabel = useMemo(() => {
     if (isLoading || !optionValueSelectOptionMap) {
       return (
-        <Input.Placeholder c="text-light">
-          {t`Loading...`}
-        </Input.Placeholder>
+        <Input.Placeholder c="text-light">{t`Loading...`}</Input.Placeholder>
       );
     }
 
@@ -144,16 +192,17 @@ export const EditingBodyCellCategorySelect = ({
         <Box p="0.5rem" pb="0" bg="white" pos="sticky" top={0}>
           <TextInput
             value={search}
-            onChange={event => setSearch(event.currentTarget.value)}
+            onChange={(event) => setSearch(event.currentTarget.value)}
             placeholder={t`Search the list`}
             leftSection={<Icon name="search" />}
+            rightSection={isFetching ? <Loader size="xs" /> : undefined}
             autoFocus
           />
         </Box>
 
         <Combobox.Options p="0.5rem">
           {options.length > 0 ? (
-            options.map(item => (
+            options.map((item) => (
               <Combobox.Option
                 selected={value === item.value}
                 value={item.value}

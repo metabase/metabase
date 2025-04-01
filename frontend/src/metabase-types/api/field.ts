@@ -163,7 +163,8 @@ export interface GetFieldValuesResponse {
 export interface SearchFieldValuesRequest {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  value: string;
+  // If value is not provided, the endpoint will return all values with limit
+  value?: string;
   limit: number;
 }
 
