@@ -72,21 +72,25 @@ runs:
 
           return extraDrivers;
     - name: Download Firebolt driver
+      if: ${{ fromJson(steps.drivers_registry.outputs.result).firebolt != 'noop' }}
       run: |
         curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).firebolt }}
       working-directory: modules
       shell: bash
     - name: Download Starburst driver
+      if: ${{ fromJson(steps.drivers_registry.outputs.result).starburst != 'noop' }}
       run: |
         curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).starburst }}
       shell: bash
       working-directory: modules
     - name: Download Clickhouse driver
+      if: ${{ fromJson(steps.drivers_registry.outputs.result).clickhouse != 'noop' }}
       run: |
         curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).clickhouse }}
       shell: bash
       working-directory: modules
     - name: Download Materialize driver
+      if: ${{ fromJson(steps.drivers_registry.outputs.result).materialize != 'noop' }}
       run: |
         curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).materialize }}
       shell: bash
