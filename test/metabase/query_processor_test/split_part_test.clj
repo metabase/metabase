@@ -51,7 +51,6 @@
         (testing "split part"
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                           (lib/with-fields [main-string])
-                          (lib/expression "DELIMITER" delimiter)
                           (lib/expression "INDEX" (index))
                           (lib/expression "SPLITPART" (lib/split-part main-string delimiter (index)))
                           (lib/limit 100))
@@ -59,7 +58,7 @@
                 cols (mt/cols result)
                 rows (mt/rows result)]
             (is (= :type/Text (-> cols last :base_type)))
-            (doseq [[main-string delimiter index split-string] rows]
+            (doseq [[main-string index split-string] rows]
               (is (string? split-string))
               (is (= (-> main-string
                          (str/split (re-pattern delimiter))
