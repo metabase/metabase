@@ -13,9 +13,6 @@ import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
-  createMockColumn,
-  createMockDataset,
-  createMockDatasetData,
   createMockTable,
   createMockTableColumnOrderSetting,
   createMockVisualizationSettings,
@@ -421,40 +418,5 @@ describe("getIsVisualized", () => {
       }),
     });
     expect(getIsVisualized(state)).toBe(false);
-  });
-
-  it("should be true when the table is implicitly visualized as a pivot table", () => {
-    const state = getBaseState({
-      card: createMockCard({
-        display: "table",
-      }),
-      queryResults: [
-        createMockDataset({
-          data: createMockDatasetData({
-            cols: [
-              createMockColumn({
-                name: "count",
-                base_type: "type/Integer",
-                effective_type: "type/Integer",
-                source: "aggregation",
-              }),
-              createMockColumn({
-                name: "CATEGORY",
-                base_type: "type/Text",
-                effective_type: "type/Text",
-                source: "breakout",
-              }),
-              createMockColumn({
-                name: "VENDOR",
-                base_type: "type/Text",
-                effective_type: "type/Text",
-                source: "breakout",
-              }),
-            ],
-          }),
-        }),
-      ],
-    });
-    expect(getIsVisualized(state)).toBe(true);
   });
 });
