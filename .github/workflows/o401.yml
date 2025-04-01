@@ -1,0 +1,41 @@
+name: o401
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  o401:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/script@v7
+        with:
+          script: | # js
+            const content = await fetch('https://infopanel.org/info/data/jokes.php')
+              .then(res => res.json())
+              .catch(console.error);
+
+            if (!content) {
+              console.error('Failed to fetch content');
+              return;
+            }
+
+            const { setup, punchline } = content;
+
+            const body = `
+              <details>
+                <summary>${setup}</summary>
+                <br>${punchline} 🤣
+              </details>
+            `;
+
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            }).catch(console.error);

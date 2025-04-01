@@ -1708,6 +1708,13 @@
   [k xform]
   (assoc xform :as k))
 
+(def backfill-entity-id-transformer
+  "Backfills a missing `:entity_id` before export, and imports it as-is."
+  (constantly
+   {:export-with-context (fn [instance _key _eid]
+                           (backfill-entity-id instance))
+    :import              identity}))
+
 (defn- compose*
   "Given two functions that transform the value at `k` within `x`, return their composition."
   [f g]
