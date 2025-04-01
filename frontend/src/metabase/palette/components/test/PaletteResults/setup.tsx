@@ -10,11 +10,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import {
-  mockScrollIntoView,
-  mockScrollTo,
-  renderWithProviders,
-} from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
 import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
 import type { RecentItem, Settings } from "metabase-types/api";
@@ -96,9 +92,6 @@ const recents_2 = createMockRecentCollectionItem({
     name: dashboard.collection?.name as string,
   },
 });
-
-mockScrollTo();
-mockScrollIntoView();
 
 const TOKEN_FEATURES = createMockTokenFeatures({ content_verification: true });
 

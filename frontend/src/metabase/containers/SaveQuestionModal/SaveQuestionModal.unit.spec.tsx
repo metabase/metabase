@@ -13,7 +13,6 @@ import {
 import { mockSettings } from "__support__/settings";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
@@ -889,7 +888,6 @@ describe("SaveQuestionModal", () => {
 
     beforeEach(async () => {
       mockGetBoundingClientRect();
-      mockScrollBy();
 
       setupCollectionItemsEndpoint({
         collection: COLLECTION.ROOT,
