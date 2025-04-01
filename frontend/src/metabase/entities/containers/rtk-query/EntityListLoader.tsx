@@ -45,6 +45,7 @@ interface ChildrenProps<Entity, EntityWrapper> {
    */
   list: EntityWrapper[] | Entity[] | undefined;
   metadata: ListMetadata | undefined;
+  rawData: unknown;
   reload: () => void;
   total: number | undefined;
 }
@@ -324,6 +325,7 @@ export function EntityListLoader<Entity, EntityWrapper>({
       loaded={loaded}
       loading={loading || isFetching}
       metadata={metadata}
+      rawData={data}
       reload={refetch}
       total={total}
     />

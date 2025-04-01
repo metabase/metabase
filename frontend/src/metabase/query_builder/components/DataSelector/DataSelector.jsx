@@ -176,8 +176,6 @@ export class UnconnectedDataSelector extends Component {
     delete: PropTypes.func,
     reload: PropTypes.func,
     list: PropTypes.arrayOf(PropTypes.object),
-    models: PropTypes.arrayOf(PropTypes.object),
-    metrics: PropTypes.arrayOf(PropTypes.object),
     allDatabases: PropTypes.arrayOf(PropTypes.object),
   };
 
@@ -434,8 +432,8 @@ export class UnconnectedDataSelector extends Component {
   }
 
   isSearchLoading = () => {
-    const { models, metrics, loading } = this.props;
-    return models == null || metrics == null || loading;
+    // indicates status of API request triggered by Search.loadList
+    return this.props.loading;
   };
 
   getCardType() {
@@ -453,8 +451,13 @@ export class UnconnectedDataSelector extends Component {
   }
 
   hasModels = () => {
-    const { models, loaded, canSelectModel } = this.props;
-    return loaded && models && models.length > 0 && canSelectModel;
+    const {
+      canSelectModel,
+      loaded,
+      rawData: searchLoadListResponse,
+    } = this.props;
+    const availableModels = searchLoadListResponse.available_models ?? [];
+    return loaded && canSelectModel && availableModels.includes("dataset");
   };
 
   hasUsableModels = () => {
@@ -463,8 +466,13 @@ export class UnconnectedDataSelector extends Component {
   };
 
   hasMetrics = () => {
-    const { metrics, loaded, canSelectMetric } = this.props;
-    return loaded && metrics && metrics.length > 0 && canSelectMetric;
+    const {
+      canSelectMetric,
+      loaded,
+      rawData: searchLoadListResponse,
+    } = this.props;
+    const availableModels = searchLoadListResponse.available_models ?? [];
+    return loaded && canSelectMetric && availableModels.includes("metric");
   };
 
   hasUsableMetrics = () => {
@@ -1052,18 +1060,10 @@ const DataSelector = _.compose(
   // (see DATA_BUCKET step)
   Search.loadList({
     query: {
-      models: ["dataset"],
-      limit: 1,
+      calculate_available_models: true,
+      limit: 0,
+      models: ["dataset", "metric"],
     },
-    listName: "models",
-    loadingAndErrorWrapper: false,
-  }),
-  Search.loadList({
-    query: {
-      models: ["metric"],
-      limit: 1,
-    },
-    listName: "metrics",
     loadingAndErrorWrapper: false,
   }),
   connect(
