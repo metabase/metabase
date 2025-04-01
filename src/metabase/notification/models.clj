@@ -574,14 +574,15 @@
                                   :multi-row?   true}
                   :handlers      {:model        :model/NotificationHandler
                                   :fk-column    :notification_id
-                                  :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
+                                  :compare-cols [:notification_id :channel_type :channel_id :active]
                                   :multi-row?   true
                                   :nested-specs {:recipients {:model        :model/NotificationRecipient
                                                               :fk-column    :notification_handler_id
                                                               :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
                                                               :multi-row?   true}
-                                                 :template   {:model        :model/ChannelTemplate
-                                                              :compare-cols [:channel_type :name :details]}}}}})
+                                                 :template   {:model         :model/ChannelTemplate
+                                                              :compare-cols  [:channel_type :name :details]
+                                                              :ref-in-parent :template_id}}}}})
 
 (defn update-notification!
   "Update an existing notification with `new-notification`."

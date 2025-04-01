@@ -220,6 +220,29 @@
       true
       (notification/send-notification! :notification/sync? true))))
 
+(defn with-template
+  [notification]
+  (let [[handler] (:handlers notification)]
+    (assoc notification :handlers [(assoc handler :template {:name "Email template",
+                                                             :channel_type :channel/email,
+                                                             :details
+                                                             {:type :email/handlebars-text,
+                                                              :subject
+                                                              "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}",
+                                                              :body
+                                                              "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}})])))
+
+(ngoc/with-tc
+  (metabase.notification.test-util/with-card-notification
+    [notification {:handlers [{:channel_type :channel/email,
+                               :recipients [{:type :notification-recipient/user, :user_id 1}]}]}]
+    (models.notification/update-notification! notification (with-template notification))
+    (-> (t2/select-one :model/Notification (:id notification))
+        models.notification/hydrate-notification
+        :handlers
+        first
+        :template_id)))
+
 (defn- promote-to-t2-instance
   [notification]
   (->  (t2/instance :model/Notification notification)
