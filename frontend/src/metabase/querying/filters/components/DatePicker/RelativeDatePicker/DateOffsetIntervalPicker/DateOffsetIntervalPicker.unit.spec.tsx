@@ -1,10 +1,6 @@
 import _userEvent from "@testing-library/user-event";
 
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
 import type {
   DatePickerUnit,
@@ -35,8 +31,6 @@ interface SetupOpts {
   availableUnits?: DatePickerUnit[];
   submitButtonLabel?: string;
 }
-
-mockScrollIntoView();
 
 function setup({
   value,

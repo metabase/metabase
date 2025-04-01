@@ -14,7 +14,6 @@ import {
 } from "__support__/server-mocks";
 import {
   act,
-  mockScrollIntoView,
   renderWithProviders,
   screen,
   waitFor,
@@ -66,8 +65,6 @@ const uploadedModel2 = createMockCollectionItem({
   model: "dataset",
   based_on_upload: 124,
 });
-
-mockScrollIntoView();
 
 async function setupCollectionContent(overrides = {}) {
   setupDatabasesEndpoints([createMockDatabase({ can_upload: true })]);

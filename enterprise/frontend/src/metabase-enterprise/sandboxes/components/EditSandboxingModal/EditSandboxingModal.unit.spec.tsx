@@ -11,7 +11,6 @@ import {
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
@@ -66,7 +65,6 @@ const setup = ({
   policy?: GroupTableAccessPolicy;
 } = {}) => {
   mockGetBoundingClientRect();
-  mockScrollBy();
   const database = createSampleDatabase();
 
   setupDatabasesEndpoints([database]);

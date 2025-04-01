@@ -1,11 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 
 import type { StringSetting } from "./IllustrationWidget";
@@ -37,7 +32,6 @@ function setup({
 }: SetupOpts) {
   const onChange = jest.fn();
   const onChangeSetting = jest.fn();
-  mockScrollIntoView();
   renderWithProviders(
     <IllustrationWidget
       setting={setting}
