@@ -128,11 +128,11 @@ export const QuestionAlertListModal = ({
             setActiveModal("create-edit-modal");
           }}
           onClose={onClose}
-          onDelete={notification => {
+          onDelete={(notification) => {
             setEditingItem(notification);
             setActiveModal("delete-confirm-modal");
           }}
-          onUnsubscribe={notification => {
+          onUnsubscribe={(notification) => {
             setEditingItem(notification);
             setActiveModal("unsubscribe-confirm-modal");
           }}

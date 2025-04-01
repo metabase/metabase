@@ -15,9 +15,9 @@ export default {
   component: TableNotificationsListModal,
 };
 
-const Template: StoryFn<
-  ComponentProps<typeof TableNotificationsListModal>
-> = args => {
+const Template: StoryFn<ComponentProps<typeof TableNotificationsListModal>> = (
+  args,
+) => {
   const [isOpen, setIsOpen] = useState(true);
 
   return (

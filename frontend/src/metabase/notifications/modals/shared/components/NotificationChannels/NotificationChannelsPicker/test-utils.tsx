@@ -5,7 +5,6 @@ import {
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannelsPicker/NotificationChannelsPicker";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
   ChannelApiResponse,
@@ -16,6 +15,8 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import { NotificationChannelsPicker } from "./NotificationChannelsPicker";
 
 export interface SetupOpts {
   userCanAccessSettings?: boolean;
@@ -97,8 +98,7 @@ export const setup = ({
         },
       }}
       onChange={onChange}
-      emailRecipientText="Email notifications to:"
-      getInvalidRecipientText={domains =>
+      getInvalidRecipientText={(domains) =>
         `You're only allowed to email notifications to addresses ending in ${domains}`
       }
     />,
