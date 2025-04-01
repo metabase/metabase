@@ -380,6 +380,13 @@ export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
 };
 
 /**
+ * Mocked globally in frontend/test/__support__/mocks.js
+ */
+export const getScrollIntoViewMock = () => {
+  return window.Element.prototype.scrollIntoView;
+};
+
+/**
  * jsdom doesn't have DataTransfer
  */
 export function createMockClipboardData(

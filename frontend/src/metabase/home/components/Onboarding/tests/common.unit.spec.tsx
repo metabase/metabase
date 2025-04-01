@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within } from "__support__/ui";
+import { getScrollIntoViewMock, screen, within } from "__support__/ui";
 
 import type { ChecklistItemValue } from "../types";
 
@@ -19,8 +19,7 @@ const getItemControl = (label: string) => {
 };
 
 describe("Onboarding", () => {
-  // globally mocked in frontend/test/__support__/mocks.js
-  const scrollIntoViewMock = window.HTMLElement.prototype.scrollIntoView;
+  const scrollIntoViewMock = getScrollIntoViewMock();
 
   beforeEach(() => {
     jest.clearAllMocks();
