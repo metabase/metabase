@@ -175,15 +175,9 @@ export function AutocompletePicker({
 
   return (
     <MultiAutocomplete
-      data={options}
-      value={selectedValues}
-      placeholder={placeholder}
-      shouldCreate={shouldCreate}
-      autoFocus={autoFocus}
-      aria-label={t`Filter value`}
+      values={selectedValues}
+      options={[]}
       onChange={onChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
     />
   );
 }

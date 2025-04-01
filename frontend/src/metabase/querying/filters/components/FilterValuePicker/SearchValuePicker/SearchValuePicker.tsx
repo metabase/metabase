@@ -92,23 +92,9 @@ export function SearchValuePicker({
 
   return (
     <MultiAutocomplete
-      data={visibleOptions}
-      value={selectedValues}
-      searchValue={searchValue}
-      placeholder={t`Search by ${columnDisplayName}`}
-      autoFocus={autoFocus}
-      aria-label={t`Filter value`}
-      shouldCreate={shouldCreate}
-      rightSection={isSearching ? <Loader size="xs" /> : undefined}
-      nothingFoundMessage={notFoundMessage}
+      values={selectedValues}
+      options={[]}
       onChange={onChange}
-      onSearchChange={handleSearchChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      comboboxProps={{
-        withinPortal: false,
-        floatingStrategy: "fixed",
-      }}
     />
   );
 }

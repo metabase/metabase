@@ -8,12 +8,17 @@ import {
 } from "@mantine/core";
 
 export type MultiAutocompleteProps = {
-  value: ComboboxItem[];
+  values: string[];
+  options: ComboboxItem[];
   placeholder?: string;
-  onChange: (newValue: string[]) => void;
+  onChange: (newValues: string[]) => void;
 };
 
-export function MultiAutocomplete({ placeholder }: MultiAutocompleteProps) {
+export function MultiAutocomplete({
+  values,
+  options,
+  placeholder,
+}: MultiAutocompleteProps) {
   const combobox = useCombobox();
 
   return (
@@ -21,6 +26,11 @@ export function MultiAutocomplete({ placeholder }: MultiAutocompleteProps) {
       <Combobox.DropdownTarget>
         <PillsInput>
           <Pill.Group>
+            {values.map((value, valueIndex) => (
+              <Pill key={valueIndex} withRemoveButton>
+                {value}
+              </Pill>
+            ))}
             <Combobox.EventsTarget>
               <PillsInput.Field placeholder={placeholder} />
             </Combobox.EventsTarget>
@@ -28,7 +38,7 @@ export function MultiAutocomplete({ placeholder }: MultiAutocompleteProps) {
         </PillsInput>
       </Combobox.DropdownTarget>
       <OptionsDropdown
-        data={[]}
+        data={options}
         filter={undefined}
         search={undefined}
         limit={undefined}
