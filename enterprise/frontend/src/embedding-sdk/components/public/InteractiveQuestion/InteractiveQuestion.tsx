@@ -33,6 +33,8 @@ import {
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkQuestionId } from "embedding-sdk/types/question";
 
+import type { FlexibleSizeProps } from "../FlexibleSizeComponent";
+
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId: SdkQuestionId;
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
@@ -46,6 +48,7 @@ export type InteractiveQuestionProps = PropsWithChildren<{
     | "isSaveEnabled"
     | "initialSqlParameters"
     | "withDownloads"
+    | "saveToCollection"
     | "targetCollection"
   >;
 
