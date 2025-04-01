@@ -322,6 +322,9 @@
         div  (sql.qp/->honeysql driver divider)
         pos  (sql.qp/->honeysql driver position)]
     [:case
+     [:< pos 1]
+     ""
+
      [:> pos
       [:+ 1
        [:floor
