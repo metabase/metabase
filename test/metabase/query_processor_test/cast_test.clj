@@ -12,6 +12,11 @@
 
 ;; integer()
 
+;; we test that it's a :type/Number because some databases return:
+;;  * :type/BigInteger
+;;  * :type/Integer
+;;  * :type/Number
+
 (deftest ^:parallel integer-cast-table-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :cast)
     (mt/dataset test-data
@@ -27,7 +32,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Integer (last cols)))
+              (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[uncasted-value casted-value] rows]
                 (is (= (Long/parseLong uncasted-value)
                        casted-value))))))))))
@@ -51,7 +56,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Integer (last cols)))
+              (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[_ uncasted-value casted-value] rows]
                 (is (= (Long/parseLong uncasted-value)
                        casted-value))))))))))
@@ -77,7 +82,7 @@
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (types/field-is-type? :type/Integer (last cols)))
+                  (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
                     (is (= (Long/parseLong uncasted-value)
                            casted-value))))))))))))
@@ -103,7 +108,7 @@
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (types/field-is-type? :type/Integer (last cols)))
+                  (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[uncasted-value casted-value] rows]
                     (is (= (Long/parseLong uncasted-value)
                            casted-value))))))))))))
@@ -136,7 +141,7 @@
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (types/field-is-type? :type/Integer (last cols)))
+                  (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
                     (is (= (Long/parseLong uncasted-value)
                            casted-value))))))))))))
@@ -158,7 +163,7 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Integer (last cols)))
+            (is (types/field-is-type? :type/Number (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
               (is (= (Long/parseLong uncasted-value)
                      casted-value)))))))))
@@ -177,7 +182,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Integer (last cols)))
+              (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[uncasted-value casted-value] rows]
                 (is (= (Long/parseLong uncasted-value)
                        casted-value))))))))))
@@ -202,7 +207,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Integer (last cols)))
+              (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[_id casted-value] rows]
                 (is (= value casted-value)
                     msg)))))))))
