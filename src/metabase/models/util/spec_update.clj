@@ -252,7 +252,7 @@
         parent-id)
 
       ;; delete and create when id changes
-      (and existing-id #_(contains? new-data id-col) (not= (id-col new-data) existing-id))
+      (and existing-id (contains? new-data id-col) (not= (id-col new-data) existing-id))
       (do
         (log/debugf "%s ID changed from %s to %s - deleting and recreating"
                     (format-path path) existing-id (id-col new-data))
