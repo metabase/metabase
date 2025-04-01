@@ -63,9 +63,10 @@ function addQADatabase({
   const OPTIONS = engine === "mysql" ? "allowPublicKeyRetrieval=true" : null;
 
   const db_name =
-    (dbName ?? enable_actions)
+    dbName ??
+    (enable_actions
       ? WRITABLE_DB_CONFIG[engine].connection.database
-      : QA_DB_CREDENTIALS.database;
+      : QA_DB_CREDENTIALS.database);
 
   const credentials = enable_actions
     ? WRITABLE_DB_CONFIG[engine].connection
