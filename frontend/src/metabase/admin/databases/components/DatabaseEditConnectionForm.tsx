@@ -16,7 +16,11 @@ import {
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
-import type { DatabaseData, DatabaseId } from "metabase-types/api";
+import type {
+  DatabaseData,
+  DatabaseEditErrorType,
+  DatabaseId,
+} from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 import { saveDatabase } from "../database";
@@ -103,15 +107,6 @@ export const DatabaseEditConnectionForm = withRouter(
     );
   },
 );
-
-export type DatabaseEditErrorType = {
-  data: {
-    message: string;
-    errors: { [key: string]: string };
-  };
-  statusText: string;
-  message: string;
-};
 
 const getSubmitError = (error: DatabaseEditErrorType) => {
   if (_.isObject(error?.data?.errors)) {
