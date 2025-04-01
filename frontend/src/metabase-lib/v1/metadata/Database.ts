@@ -1,9 +1,7 @@
 import _ from "underscore";
 
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
-import type { NativeQuery, NormalizedDatabase } from "metabase-types/api";
-
-import Question from "../Question";
+import type { NormalizedDatabase } from "metabase-types/api";
 
 import type Metadata from "./Metadata";
 import type Schema from "./Schema";
@@ -91,10 +89,6 @@ class Database {
     return this.hasFeature("expressions") && this.hasFeature("left-join");
   }
 
-  supportsExpressions() {
-    return this.hasFeature("expressions");
-  }
-
   canWrite() {
     return this.native_permissions === "write";
   }
@@ -117,25 +111,6 @@ class Database {
 
   hasActionsEnabled() {
     return Boolean(this.settings?.["database-enable-actions"]);
-  }
-
-  nativeQuestion(native: Partial<NativeQuery> = {}) {
-    return Question.create({
-      metadata: this.metadata,
-      dataset_query: {
-        database: this.id,
-        type: "native",
-        native: {
-          query: "",
-          "template-tags": {},
-          ...native,
-        },
-      },
-    });
-  }
-
-  nativeQuery(native: Partial<NativeQuery>) {
-    return this.nativeQuestion(native).legacyNativeQuery();
   }
 
   savedQuestionsDatabase() {

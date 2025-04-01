@@ -1,4 +1,4 @@
-import type { Filter, NormalizedSegment } from "metabase-types/api";
+import type { NormalizedSegment } from "metabase-types/api";
 
 import type Metadata from "./Metadata";
 import type Table from "./Table";
@@ -25,10 +25,6 @@ class Segment {
 
   displayName() {
     return this.name;
-  }
-
-  filterClause(): Filter {
-    return ["segment", this.id];
   }
 
   isActive() {

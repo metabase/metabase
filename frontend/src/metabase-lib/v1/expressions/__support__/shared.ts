@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
 import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import type {
   Expression,
@@ -78,9 +77,7 @@ export const name = ref(PEOPLE.NAME);
 export const category = ref(PRODUCTS.CATEGORY);
 export const email = ref(PEOPLE.EMAIL);
 export const bool = ["expression", "bool", { "base-type": "type/Boolean" }];
-export const segment = checkNotNull(
-  metadata.segment(SEGMENT_ID),
-).filterClause();
+export const segment = ["segment", SEGMENT_ID];
 
 export const query = createQueryWithClauses({
   query: createQuery({ metadata }),
