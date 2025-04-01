@@ -123,7 +123,7 @@ const Result = (props: ResultProps) => {
       </Text>
       {mode === "both" && (
         <div className={S.resultItemActions}>
-          <Icon name="refresh" />
+          <Icon name="refresh" className={S.refreshIcon} />
 
           <Button
             variant={selected ? "filled" : "inverse"}

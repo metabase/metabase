@@ -3,9 +3,17 @@
   border-radius: 4px;
 }
 
+.refreshIcon {
+  opacity: 0;
+}
+
 .resultItem:hover {
   color: var(--mb-color-brand);
   background-color: var(--mb-color-bg-medium);
+
+  .refreshIcon {
+    opacity: 1;
+  }
 }
 
 .resultItemSelected,
@@ -18,4 +26,5 @@
   display: flex;
   align-items: center;
   gap: var(--mantine-spacing-xs);
+  padding-left: var(--mantine-spacing-xs);
 }
