@@ -175,7 +175,7 @@ describe("metabase/services > runQuestionQuery", () => {
           ...question.datasetQuery(),
           parameters: [],
         },
-        is_dashboard: false,
+        context: "ad-hoc",
       });
     });
 
@@ -192,7 +192,7 @@ describe("metabase/services > runQuestionQuery", () => {
           pivot_cols: [],
           pivot_rows: [],
         },
-        is_dashboard: false,
+        context: "ad-hoc",
       });
     });
 
