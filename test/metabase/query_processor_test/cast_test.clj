@@ -34,8 +34,8 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[uncasted-value casted-value] rows]
-                (is (= (Long/parseLong uncasted-value)
-                       casted-value))))))))))
+                (is (= (biginteger (Long/parseLong uncasted-value))
+                       (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-custom-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :cast)
@@ -58,8 +58,8 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[_ uncasted-value casted-value] rows]
-                (is (= (Long/parseLong uncasted-value)
-                       casted-value))))))))))
+                (is (= (biginteger (Long/parseLong uncasted-value))
+                       (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-nested-native-query
   (mt/test-drivers (mt/normal-drivers-with-feature :cast)
@@ -84,8 +84,8 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
-                    (is (= (Long/parseLong uncasted-value)
-                           casted-value))))))))))))
+                    (is (= (biginteger (Long/parseLong uncasted-value))
+                           (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query
   (mt/test-drivers (mt/normal-drivers-with-feature :cast)
@@ -110,8 +110,8 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[uncasted-value casted-value] rows]
-                    (is (= (Long/parseLong uncasted-value)
-                           casted-value))))))))))))
+                    (is (= (biginteger (Long/parseLong uncasted-value))
+                           (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query-custom-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :cast)
@@ -143,8 +143,8 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
-                    (is (= (Long/parseLong uncasted-value)
-                           casted-value))))))))))))
+                    (is (= (biginteger (Long/parseLong uncasted-value))
+                           (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-custom-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :cast)
@@ -165,8 +165,8 @@
                 rows (mt/rows result)]
             (is (types/field-is-type? :type/Number (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
-              (is (= (Long/parseLong uncasted-value)
-                     casted-value)))))))))
+              (is (= (biginteger (Long/parseLong uncasted-value))
+                     (biginteger casted-value))))))))))
 
 (deftest ^:parallel integer-cast-aggregations
   (mt/test-drivers (mt/normal-drivers-with-feature :cast)
@@ -184,8 +184,8 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[uncasted-value casted-value] rows]
-                (is (= (Long/parseLong uncasted-value)
-                       casted-value))))))))))
+                (is (= (biginteger (Long/parseLong uncasted-value))
+                       (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-examples
   (mt/test-drivers (mt/normal-drivers-with-feature :cast)
@@ -209,5 +209,6 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[_id casted-value] rows]
-                (is (= value casted-value)
+                (is (= (biginteger value)
+                       (biginteger casted-value))
                     msg)))))))))
