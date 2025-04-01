@@ -137,6 +137,13 @@ export interface ErrorEmbedDataset {
   status: string;
 }
 
+export type DatasetContext = "ad-hoc" | "dashboard-ad-hoc";
+
+export type DatasetRequest = {
+  query: DatasetQuery;
+  context?: DatasetContext;
+};
+
 export interface NativeDatasetRequest {
   query: DatasetQuery;
   pretty?: boolean;
