@@ -451,12 +451,7 @@ export class UnconnectedDataSelector extends Component {
   }
 
   hasModels = () => {
-    const {
-      canSelectModel,
-      loaded,
-      rawData: searchLoadListResponse,
-    } = this.props;
-    const availableModels = searchLoadListResponse.available_models ?? [];
+    const { availableModels, canSelectModel, loaded } = this.props;
     return loaded && canSelectModel && availableModels.includes("dataset");
   };
 
@@ -466,12 +461,7 @@ export class UnconnectedDataSelector extends Component {
   };
 
   hasMetrics = () => {
-    const {
-      canSelectMetric,
-      loaded,
-      rawData: searchLoadListResponse,
-    } = this.props;
-    const availableModels = searchLoadListResponse.available_models ?? [];
+    const { availableModels, canSelectMetric, loaded } = this.props;
     return loaded && canSelectMetric && availableModels.includes("metric");
   };
 
@@ -1068,6 +1058,7 @@ const DataSelector = _.compose(
   }),
   connect(
     (state, ownProps) => ({
+      availableModels: ownProps.metadata?.available_models ?? [],
       metadata: getMetadata(state),
       databases:
         ownProps.databases ||
