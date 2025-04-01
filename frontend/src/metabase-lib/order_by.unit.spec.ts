@@ -160,9 +160,10 @@ describe("order by", () => {
       const orderBys = Lib.orderBys(nextQuery, 0);
 
       expect(orderBys).toHaveLength(1);
-      expect(Lib.displayInfo(nextQuery, 0, orderBys[0]).displayName).toBe(
-        "Title ascending",
-      );
+      expect(Lib.displayInfo(nextQuery, 0, orderBys[0])).toMatchObject({
+        displayName: "Title",
+        direction: "asc",
+      });
     });
   });
 
@@ -188,9 +189,10 @@ describe("order by", () => {
         Lib.orderByClause(productCategory, "desc"),
       );
       const nextOrderBys = Lib.orderBys(nextQuery, 0);
-      expect(Lib.displayInfo(nextQuery, 0, nextOrderBys[0]).displayName).toBe(
-        "Category descending",
-      );
+      expect(Lib.displayInfo(nextQuery, 0, nextOrderBys[0])).toMatchObject({
+        displayName: "Category",
+        direction: "desc",
+      });
       expect(orderBys[0]).not.toEqual(nextOrderBys[0]);
     });
   });
