@@ -205,12 +205,11 @@
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/delete]
   [driver action database {database-id :database, :as query}]
-  (let [raw-hsql    (mbql-query->raw-hsql driver query)
-        delete-hsql (-> raw-hsql
-                        (dissoc :select :limit)
-                        (assoc :delete [])
-                        (prepare-query driver action))
-        sql-args    (sql.qp/format-honeysql driver delete-hsql)]
+  (let [{:keys [from where]} (mbql-query->raw-hsql driver query)
+        delete-hsql       (-> {:delete-from (first from)
+                               :where       where}
+                              (prepare-query driver action))
+        sql-args             (sql.qp/format-honeysql driver delete-hsql)]
     (with-jdbc-transaction [conn database-id]
       ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
       (let [rows-deleted (with-auto-parse-sql-exception driver database action
