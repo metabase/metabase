@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
    [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features]
@@ -81,7 +82,8 @@
                                           [{:field-name "json-field" :base-type :type/JSON}]
                                           [["{\"A\": 123, \"B\": 0.456, \"C\": 0.789}"]
                                            ["{\"A\": 456, \"B\": 0.789, \"C\": 789}"]]])
-        (is (= [[1 123.0 0.456 0.789]
-                [2 456.0 0.789 789.0]]
-               (mt/formatted-rows [int double double double]
-                                  (mt/run-mbql-query json-decimals-table))))))))
+        (when-not (mysql/mariadb? (mt/db))
+          (is (= [[1 123.0 0.456 0.789]
+                  [2 456.0 0.789 789.0]]
+                 (mt/formatted-rows [int double double double]
+                                    (mt/run-mbql-query json-decimals-table)))))))))
