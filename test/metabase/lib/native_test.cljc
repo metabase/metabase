@@ -234,8 +234,7 @@
              (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
 
 (defn ^:private metadata-provider-requiring-collection []
-  (meta.graph-provider/->SimpleGraphMetadataProvider (-> meta/metadata
-                                                         (update :features conj :native-requires-specified-collection))))
+  (meta/updated-metadata-provider update :features conj :native-requires-specified-collection))
 
 (deftest ^:parallel native-query+collection-test
   (testing "building when collection is not required"
