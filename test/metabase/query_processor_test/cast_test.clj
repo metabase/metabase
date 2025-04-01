@@ -180,3 +180,27 @@
               (doseq [[uncasted-value casted-value] rows]
                 (is (= (Long/parseLong uncasted-value)
                        casted-value))))))))))
+
+(deftest ^:parallel integer-cast-examples
+  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)
+            examples [{:original "123" :value 123 :msg "Easy case."}
+                      {:original "+123" :value 123 :msg "Initial + sign."}
+                      {:original "-123" :value -123 :msg "Negative sign."}
+                      {:original (pr-str Long/MAX_VALUE) :value Long/MAX_VALUE :msg "Big number."}
+                      {:original (pr-str Long/MIN_VALUE) :value Long/MIN_VALUE :msg "Big number."}]]
+        (doseq [{:keys [original value msg]} examples]
+          (testing (str "integer cast: " msg)
+            (let [field-md (lib.metadata/field mp (mt/id :people :id))
+                  query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                            (lib/with-fields [field-md])
+                            (lib/expression "INTCAST" (lib/integer original))
+                            (lib/limit 1))
+                  result (-> query qp/process-query)
+                  cols (mt/cols result)
+                  rows (mt/rows result)]
+              (is (= :type/BigInteger (-> cols last :base_type)))
+              (doseq [[_id casted-value] rows]
+                (is (= value casted-value)
+                    msg)))))))))
