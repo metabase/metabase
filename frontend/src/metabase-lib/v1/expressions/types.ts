@@ -1,8 +1,6 @@
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseFeature, Expression } from "metabase-types/api";
 
-import type { OPERATOR, TOKEN } from "./tokenizer";
-
 export type MBQLClauseCategory =
   | "logical"
   | "math"
@@ -62,34 +60,3 @@ export type MBQLClauseFunctionConfig = {
   validator?: (...args: any) => string | undefined;
 };
 export type MBQLClauseMap = Record<string, MBQLClauseFunctionConfig>;
-
-export type Token =
-  | {
-      type: TOKEN.Operator;
-      start: number;
-      end: number;
-      op: OPERATOR;
-    }
-  | {
-      type: TOKEN.Number;
-      start: number;
-      end: number;
-    }
-  | {
-      type: TOKEN.String;
-      start: number;
-      end: number;
-      value: string;
-    }
-  | {
-      type: TOKEN.Identifier;
-      start: number;
-      end: number;
-      isReference: boolean;
-    }
-  | {
-      type: TOKEN.Boolean;
-      start: number;
-      end: number;
-      op: "true" | "false";
-    };
