@@ -55,8 +55,9 @@
                               :connection-impersonation-requires-role true
                               :convert-timezone                       true
                               :datetime-diff                          true
-                              :identifiers-with-spaces                true
                               :describe-fields                        true
+                              :expression-literals                    true
+                              :identifiers-with-spaces                true
                               :cast                                   true
                               :split-part                             true
                               :now                                    true}]
