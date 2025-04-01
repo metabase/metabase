@@ -60,7 +60,7 @@
   start-maildev
   {:doc      "Start Maildev"
    :requires [[mage.start-maildev :as start-maildev]]
-   :task     (mage.start-maildev/start-maildev!)}
+   :task     (do (cli/parse! (current-task)) (start-maildev/start-maildev!))}
 
   start-db
   {:doc        "Start a db on a default port in docker"
