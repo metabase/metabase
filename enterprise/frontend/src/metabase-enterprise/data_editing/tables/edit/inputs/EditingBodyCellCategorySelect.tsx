@@ -68,20 +68,18 @@ export const EditingBodyCellCategorySelect = ({
 
   const optionValueToOptionMap = useMemo(
     () =>
-      options
-        ? options.reduce(
-            (map, item) => ({
-              ...map,
-              [item.value]: item,
-            }),
-            {} as Record<string, SelectOption>,
-          )
-        : null,
+      options.reduce(
+        (map, item) => ({
+          ...map,
+          [item.value]: item,
+        }),
+        {} as Record<string, SelectOption>,
+      ),
     [options],
   );
 
   const inputLabel = useMemo(() => {
-    if (isLoading || !optionValueToOptionMap) {
+    if (isLoading) {
       return (
         <Input.Placeholder c="text-light">{t`Loading...`}</Input.Placeholder>
       );
