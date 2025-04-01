@@ -43,7 +43,7 @@
                         (lib.metadata/field mp (mt/id :people :zip))
                         (lib.metadata/field mp (mt/id :people :password))
                         (lib.metadata/field mp (mt/id :people :address))]
-          delimiters [(fn [] (lib/concat " " ""))]
+          delimiters [" "]
           indexes [(fn [] (lib/+ 0 1))]]
       (doseq [main-string main-strings
               delimiter delimiters
