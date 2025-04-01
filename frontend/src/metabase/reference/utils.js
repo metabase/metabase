@@ -90,15 +90,14 @@ export const getQuestion = ({
 };
 
 function breakoutWithDefaultTemporalBucket(query, fieldId) {
-  const stageIndex = -1;
   const field = Lib.fieldMetadata(query, fieldId);
-
   if (!field) {
     return query;
   }
 
+  const stageIndex = -1;
   const newColumn = Lib.withDefaultBucket(query, stageIndex, field);
-  return Lib.replaceBreakouts(query, -1, newColumn);
+  return Lib.replaceBreakouts(query, stageIndex, newColumn);
 }
 
 function filterBySegmentId(query, segmentId) {
