@@ -280,3 +280,57 @@ describe("issue 51952", () => {
     H.echartsContainer().findByText("Jan 2024");
   });
 });
+
+describe("issue 55880", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render scatter plot with native query data", () => {
+    H.visitQuestionAdhoc({
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+      },
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select * from (
+  select 1415 x, 1 y
+  union all select 20, 2
+  union all select 900, 3
+  union all select 115, 4
+) as subquery
+where x < {{param}}`,
+          "template-tags": {
+            param: {
+              type: "number",
+              name: "param",
+              id: "144103a1-ebd4-4477-a7fa-f08cfd808d5e",
+              "display-name": "Param",
+              required: true,
+              default: "30",
+            },
+          },
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "scatter",
+    });
+
+    // Renders a scatter chart with numeric x-axis
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 1);
+    H.echartsContainer().findByText("20");
+
+    H.saveQuestion("55880");
+
+    // Change filter value so values include numbers that can be parsed as valid dates
+    cy.findByPlaceholderText("Param").clear().type("1500");
+    H.runNativeQuery();
+
+    // Still renders a scatter chart with numeric x-axis
+    H.echartsContainer().findByText("1,500");
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+  });
+});

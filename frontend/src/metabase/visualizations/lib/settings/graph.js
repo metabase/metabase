@@ -552,6 +552,7 @@ export const GRAPH_AXIS_SETTINGS = {
     title: t`Scale`,
     index: 4,
     widget: "select",
+    persistDefault: true,
     readDependencies: [
       "graph.x_axis._is_timeseries",
       "graph.x_axis._is_numeric",
