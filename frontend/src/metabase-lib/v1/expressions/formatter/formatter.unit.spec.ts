@@ -196,6 +196,31 @@ describe("format", () => {
       ]);
     });
   });
+
+  describe("formats unknown references", () => {
+    const stageIndex = -1;
+
+    const references = {
+      field: "[Unknown Field]",
+      metric: "[Unknown Metric]",
+      segment: "[Unknown Segment]",
+    };
+
+    it.each(Object.entries(references))(
+      "should format an unknown %s as %s",
+      async (type, result) => {
+        const expression = [type, 10000];
+        const clause = Lib.expressionClauseForLegacyExpression(
+          query,
+          stageIndex,
+          expression,
+        );
+
+        const formatted = await format(clause, { query, stageIndex });
+        expect(formatted).toBe(result);
+      },
+    );
+  });
 });
 
 describe("if printWidth = Infinity, it should return the same results as the single-line formatter", () => {
