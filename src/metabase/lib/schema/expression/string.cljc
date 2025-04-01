@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.expression.string
   (:require
+   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]))
 
@@ -37,7 +38,7 @@
 
 (mbql-clause/define-tuple-mbql-clause :split-part :- :type/Text
   [:schema [:ref ::expression/string]]
-  [:schema [:string {:min 1}]]
+  [:schema [:ref ::common/non-blank-string]]
   [:schema [:ref ::expression/integer]])
 
 (mbql-clause/define-catn-mbql-clause :concat :- :type/Text
