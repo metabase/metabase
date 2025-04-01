@@ -300,12 +300,15 @@ describe("MetadataEditor", () => {
       await setup();
 
       await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(await screen.findByLabelText("Edit column order"));
       await userEvent.click(await screen.findByLabelText("Sort"));
 
-      expect(await screen.findByText("Database")).toBeInTheDocument();
-      expect(screen.getByText("Alphabetical")).toBeInTheDocument();
-      expect(screen.getByText("Custom")).toBeInTheDocument();
-      expect(screen.getByText("Smart")).toBeInTheDocument();
+      const popover = await screen.findByRole("listbox");
+
+      expect(within(popover).getByText("Database")).toBeInTheDocument();
+      expect(within(popover).getByText("Alphabetical")).toBeInTheDocument();
+      expect(within(popover).getByText("Custom")).toBeInTheDocument();
+      expect(within(popover).getByText("Smart")).toBeInTheDocument();
     });
 
     it("should display field visibility options", async () => {
