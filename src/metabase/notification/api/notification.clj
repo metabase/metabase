@@ -206,6 +206,16 @@
                                                          :previous-object existing-notification
                                                          :user-id         api/*current-user-id*}))))
 
+(ngoc/with-tc
+  (metabase.notification.test-util/with-card-notification
+    [notification {:handlers [{:channel_type :channel/email,
+                               :recipients [{:type :notification-recipient/user, :user_id 1}]}]}]
+    (models.notification/update-notification! notification (with-template notification))
+    (-> (models.notification/hydrate-notification (t2/select-one :model/Notification (:id notification)))
+        :handlers
+        first
+        :template_id)))
+
 (api.macros/defendpoint :post "/:id/send"
   "Send a notification by id."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]

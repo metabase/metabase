@@ -404,3 +404,145 @@
                     (assoc-in [:bars 0 :name] "Updated Bar 1")
                     (update-in [:bars 0 :quxes] conj {:name "qux1"}))
                 nested-multi-row-spec)))))))
+
+(spec-update/define-spec ref-in-parent-spec
+  "A spec with ref-in-parent references"
+  {:model :parent
+   :compare-cols [:name]
+   :nested-specs {:child {:model :child
+                          :compare-cols [:name]
+                          :ref-in-parent :child_id}}})
+
+(deftest ref-in-parent-create-test
+  (testing "Creating parent with referenced child (ref-in-parent)"
+    (let [new-data {:name "Parent"
+                    :child {:name "Child"}}]
+      (is (= [[:insert-returning-pk! :child {:name "Child"}]
+              [:insert-returning-pk! :parent {:name "Parent" :child_id 2}]]
+             (with-tracked-operations!
+               (spec-update/do-update! nil new-data ref-in-parent-spec)))))))
+
+(deftest ref-in-parent-update-test
+  (testing "Updating referenced child model"
+    (let [existing-data {:id 1
+                         :name "Parent"
+                         :child_id 2
+                         :child {:id 2
+                                 :name "Child"}}
+          new-data (assoc-in existing-data [:child :name] "Updated Child")]
+      (is (= [[:update! :child 2 {:name "Updated Child"}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
+
+(deftest ref-in-parent-delete-test
+  (testing "Deleting referenced child model"
+    (let [existing-data {:id 1
+                         :name "Parent"
+                         :child_id 2
+                         :child {:id 2
+                                 :name "Child"}}
+          new-data (assoc existing-data :child nil)]
+      (is (= [[:delete! :child 2]
+              [:update! :parent 1 {:name "Parent", :child_id nil}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
+
+(deftest ref-in-parent-replace-test
+  (testing "Replacing referenced child with new child"
+    (let [existing-data {:id 1
+                         :name "Parent"
+                         :child_id 1
+                         :child {:id 1
+                                 :name "Child"}}
+          new-data (assoc existing-data :child {:name "New Child"})]
+      (is (= [[:delete! :child 1]
+              [:insert-returning-pk! :child {:name "New Child"}]
+              [:update! :parent 1 {:name "Parent", :child_id 2}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
+
+(deftest ref-in-parent-set-nil-test
+  (testing "Setting referenced child to nil"
+    (let [existing-data {:id 1
+                         :name "Parent"
+                         :child_id 2
+                         :child {:id 2
+                                 :name "Child"}}
+          new-data (assoc existing-data :child nil)]
+      (is (= [[:update! :parent 1 {:child_id nil}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
+
+(deftest ref-in-parent-new-child-test
+  (testing "Setting referenced child to nil"
+    (let [existing-data {:id 1
+                         :name "Parent"}
+          new-data (assoc existing-data :child {:name "Child"})]
+      (is (= [[:insert-returning-pk! :child {:name "Child"}]
+              [:update! :parent 1 {:name "Parent", :child_id 2}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
+
+(spec-update/define-spec complex-ref-in-parent-spec
+  "A spec with multiple ref-in-parent references"
+  {:model :order
+   :compare-cols [:number]
+   :nested-specs {:customer {:model :customer
+                             :compare-cols [:name]
+                             :ref-in-parent :customer_id}
+                  :items {:model        :item
+                          :multi-row?   true
+                          :fk-column    :order_id
+                          :compare-cols [:product_name :quantity]}
+                  :payment {:model         :payment
+                            :compare-cols  [:amount]
+                            :ref-in-parent :payment_id
+                            :nested-specs  {:processor {:model         :payment_processor
+                                                        :compare-cols  [:name]
+                                                        :ref-in-parent :processor_id}}}}})
+
+(deftest complex-ref-in-parent-test
+  (testing "Complex flow with multiple ref-in-parent relationships"
+    (let [existing-data {:id 1
+                         :number "ORD-123"
+                         :customer_id 10
+                         :payment_id 20
+                         :customer {:id 10
+                                    :name "Existing Customer"}
+                         :items [{:id 101
+                                  :order_id 1
+                                  :product_name "Item 1"
+                                  :quantity 2}]
+                         :payment {:id 20
+                                   :amount 100.00
+                                   :processor_id 30
+                                   :processor {:id 30
+                                               :name "PayCo"}}}
+          new-data (-> existing-data
+                       (assoc-in [:customer :name] "Updated Customer")
+                       (assoc-in [:payment :processor :name] "Updated PayCo")
+                       (update :items conj {:product_name "Item 2" :quantity 1}))]
+      (is (= [[:update! :customer 10 {:name "Updated Customer"}]
+              [:update! :payment_processor 30 {:name "Updated PayCo"}]
+              [:insert! :item [{:product_name "Item 2" :quantity 1 :order_id 1}]]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data complex-ref-in-parent-spec)))))))
+
+(deftest complex-ref-in-parent-change-test
+  (testing "Changing processor reference with ref-in-parent"
+    (let [existing-data {:id 1
+                         :number "ORD-123"
+                         :customer_id 10
+                         :payment_id 20
+                         :customer {:id 10
+                                    :name "Customer"}
+                         :payment {:id 20
+                                   :amount 100.00
+                                   :processor_id 30
+                                   :processor {:id 30
+                                               :name "PayCo"}}}
+          new-data (assoc-in existing-data [:payment :processor] {:name "New Processor"})]
+      (is (= [[:insert-returning-pk! :payment_processor {:name "New Processor"}]
+              [:update! :payment 20 {:processor_id 2}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data complex-ref-in-parent-spec)))))))
