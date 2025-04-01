@@ -105,7 +105,7 @@
 (deftest ^:parallel split-part-test-corner-cases
   (mt/test-drivers (mt/normal-drivers-with-feature :split-part)
     (let [mp (mt/metadata-provider)]
-      (testing "split part: empty delimiter should be empty string"
+      (testing "split part: negative position should be empty string"
         (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                         (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))])
                         (lib/expression "SPLITPART" (lib/split-part "ABC-123-XYZ" "-" (lib/- 0 1)))
