@@ -18,7 +18,7 @@ import { canSavePng } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
-type QueryDownloadPopoverProps = {
+type QuestionDownloadWidgetProps = {
   question: Question;
   result: Dataset;
   onDownload: (opts: {
@@ -33,13 +33,13 @@ const canPivotResults = (format: string, display: string) =>
   display === "pivot" && format !== "json";
 const canConfigureFormatting = (format: string) => format !== "png";
 
-export const QueryDownloadPopover = ({
+export const QuestionDownloadWidget = ({
   question,
   result,
   onDownload,
   disabled = false,
   ...stackProps
-}: QueryDownloadPopoverProps) => {
+}: QuestionDownloadWidgetProps) => {
   const canDownloadPng = canSavePng(question.display());
   const formats = canDownloadPng
     ? [...exportFormats, exportFormatPng]
