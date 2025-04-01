@@ -88,9 +88,11 @@ export const BrowseModels = () => {
           <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
               <Stack gap="lg" align="center" data-testid="empty-state">
-                <Box maw="45rem" w="100%">
-                  <ModelsVideo autoplay={0} />
-                </Box>
+                {showMetabaseLinks && (
+                  <Box maw="45rem" w="100%">
+                    <ModelsVideo autoplay={0} />
+                  </Box>
+                )}
                 <Stack gap="xs" maw="28rem">
                   <Title
                     order={2}
