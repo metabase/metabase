@@ -1,4 +1,5 @@
-import { useLayoutEffect, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { useLayoutEffect } from "react";
 import { Link } from "react-router";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
@@ -53,8 +54,8 @@ const MetadataHeader = ({
   selectedTableId,
   onSelectDatabase,
 }: MetadataHeaderProps) => {
-  const [isFieldOrderSidesheetOpen, setIsFieldOrderSidesheetOpen] =
-    useState(false);
+  const [isSidesheetOpen, { close: closeSidesheet, toggle: toggleSidesheet }] =
+    useDisclosure();
 
   useLayoutEffect(() => {
     if (databases.length > 0 && selectedDatabaseId == null) {
@@ -90,7 +91,7 @@ const MetadataHeader = ({
           <Button
             aria-label={t`Edit column order`}
             leftSection={<Icon name="sort_arrows" />}
-            onClick={() => setIsFieldOrderSidesheetOpen((isOpen) => !isOpen)}
+            onClick={toggleSidesheet}
           >{t`Edit column order`}</Button>
 
           <Button
@@ -108,9 +109,9 @@ const MetadataHeader = ({
 
       {selectedTableId && (
         <FieldOrderSidesheet
-          isOpen={isFieldOrderSidesheetOpen}
+          isOpen={isSidesheetOpen}
           tableId={selectedTableId}
-          onClose={() => setIsFieldOrderSidesheetOpen(false)}
+          onClose={closeSidesheet}
         />
       )}
     </Flex>
