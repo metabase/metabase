@@ -95,7 +95,7 @@ describe("TokenField", () => {
   const assertWithinValues = (collection) =>
     expect(values()).toHaveTextContent(collection.join(""));
 
-  const assertWithinOptions =(collection) =>
+  const assertWithinOptions = (collection) =>
     expect(options()).toHaveTextContent(collection.join(""));
 
   it("should render with no options or values", () => {
