@@ -7,6 +7,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type {
   DashCardId,
   Dashboard,
@@ -220,7 +221,7 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    if (supportsSeries) {
+    if (supportsSeries && !isVisualizerDashboardCard(dashcard)) {
       buttons.push(
         <AddSeriesButton
           key="add-series-button"
