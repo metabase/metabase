@@ -182,7 +182,7 @@ export function removeColumnFromFunnel(
   columnName: string,
 ) {
   if (isScalarFunnel(state)) {
-    if (columnName === "METRIC") {
+    if (columnName === "METRIC" || columnName === "DIMENSION") {
       state.columns = [];
       state.columnValuesMapping = {};
       state.settings = {};
