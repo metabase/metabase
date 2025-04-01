@@ -1532,6 +1532,49 @@ describe("issue #55940", () => {
   });
 });
 
+describe("issue #55984", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should not overflow the suggestion tooltip when a suggestion name is too long (metabase#55984)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "[Total]",
+      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt",
+    });
+    cy.button("Done").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("[lo");
+    H.CustomExpressionEditor.completions().should(($el) => {
+      expect(H.isScrollableHorizontally($el[0])).to.be.false;
+    });
+  });
+
+  it("should not overflow the suggestion tooltip when a suggestion name is too long and has no spaces (metabase#55984)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "[Total]",
+      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt".replaceAll(
+        " ",
+        "_",
+      ),
+    });
+    cy.button("Done").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("[lo");
+    H.CustomExpressionEditor.completions().should(($el) => {
+      expect(H.isScrollableHorizontally($el[0])).to.be.false;
+    });
+  });
+});
+
 describe("issue 55622", () => {
   beforeEach(() => {
     H.restore();
