@@ -351,7 +351,7 @@ export class UnconnectedDataSelector extends Component {
       selectedTableId: sourceId,
     } = this.props;
 
-    if (!this.isLoading() && !activeStep) {
+    if (!this.isSearchLoading() && !activeStep) {
       await this.hydrateActiveStep();
     }
 
@@ -433,7 +433,7 @@ export class UnconnectedDataSelector extends Component {
     }
   }
 
-  isLoading = () => {
+  isSearchLoading = () => {
     const { models, metrics, loading } = this.props;
     return models == null || metrics == null || loading;
   };
@@ -570,7 +570,7 @@ export class UnconnectedDataSelector extends Component {
   getPreviousStep() {
     const { steps } = this.props;
     const { activeStep } = this.state;
-    if (this.isLoading() || activeStep === null) {
+    if (this.isSearchLoading() || activeStep === null) {
       return null;
     }
 
@@ -977,7 +977,7 @@ export class UnconnectedDataSelector extends Component {
     const isPickerOpen =
       isSavedEntityPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
 
-    if (this.isLoading()) {
+    if (this.isSearchLoading()) {
       return <LoadingAndErrorWrapper loading />;
     }
 
