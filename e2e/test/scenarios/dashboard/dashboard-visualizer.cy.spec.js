@@ -212,11 +212,6 @@ describe("scenarios > dashboard > visualizer", () => {
   });
 
   it("should handle drill through", () => {
-    function goBackToDashboard() {
-      H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
-      cy.wait("@dashcardQuery");
-    }
-
     createDashboardWithVisualizerDashcards();
 
     const ORDERS_SERIES_COLOR = "#88BF4D";
@@ -239,7 +234,7 @@ describe("scenarios > dashboard > visualizer", () => {
     H.assertQueryBuilderRowCount(9);
     H.tableInteractiveHeader().findByText("Price"); // ensure we're on the Products table
 
-    goBackToDashboard();
+    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     H.getDashboardCard(0).within(() => {
       // eslint-disable-next-line no-unsafe-element-filtering
@@ -262,7 +257,7 @@ describe("scenarios > dashboard > visualizer", () => {
       cy.findByText("Twitter").should("exist");
     });
 
-    goBackToDashboard();
+    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     H.getDashboardCard(0).within(() => chartLegendItem("Count").click());
     cy.wait("@cardQuery");
@@ -271,7 +266,7 @@ describe("scenarios > dashboard > visualizer", () => {
       .should("exist");
     H.assertQueryBuilderRowCount(49);
 
-    goBackToDashboard();
+    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     H.getDashboardCard(0).within(() =>
       chartLegendItem(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).click(),
@@ -282,7 +277,7 @@ describe("scenarios > dashboard > visualizer", () => {
       .should("exist");
     H.assertQueryBuilderRowCount(37);
 
-    goBackToDashboard();
+    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     // 2. Cartesian chart, category breakout
     H.getDashboardCard(1).within(() =>
@@ -295,7 +290,7 @@ describe("scenarios > dashboard > visualizer", () => {
     H.queryBuilderFiltersPanel().findByText("Product → Category is Gadget");
     H.tableInteractiveHeader().findByText("Subtotal"); // ensure we're on the Orders table
 
-    goBackToDashboard();
+    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     H.getDashboardCard(1).within(() =>
       H.chartPathWithFillColor(PRODUCTS_SERIES_COLOR).eq(0).click(),
@@ -307,7 +302,7 @@ describe("scenarios > dashboard > visualizer", () => {
     H.queryBuilderFiltersPanel().findByText("Count is greater than 42");
     H.assertQueryBuilderRowCount(3);
 
-    goBackToDashboard();
+    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     // 3. Pie chart
     H.getDashboardCard(2).within(() =>
@@ -321,7 +316,7 @@ describe("scenarios > dashboard > visualizer", () => {
     H.tableInteractiveHeader().findByText("Price"); // ensure we're on the Products table
     H.assertQueryBuilderRowCount(54);
 
-    goBackToDashboard();
+    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     // 4. Funnel (regular)
     H.getDashboardCard(4).get("polygon").first().click();
@@ -334,7 +329,7 @@ describe("scenarios > dashboard > visualizer", () => {
     H.tableInteractiveHeader().findByText("Views").should("exist");
     H.assertQueryBuilderRowCount(1);
 
-    goBackToDashboard();
+    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     // 5. Funnel (scalar)
     H.getDashboardCard(5).get("polygon").first().click();
