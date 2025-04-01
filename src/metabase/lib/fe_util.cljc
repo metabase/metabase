@@ -104,12 +104,21 @@
                                 (conj clauses fallback))]
     (into [op options] clauses-with-fallback)))
 
+;; HACK: This is a hack to make sure that the display name of an unknown field
+;; is "Unknown Field" instead of it's id.
+(defn- set-display-name-for-unknown-field
+  [metadata]
+  (if (and (nil? (:id metadata)) (nil? (:lib/expression-name metadata)))
+    (assoc metadata :display-name (i18n/tru "Unknown Field"))
+    metadata))
+
 (defn- column-metadata-from-ref
   [query stage-number a-ref]
   (as->
    (lib.metadata.calculation/metadata query stage-number a-ref) metadata
     (lib.field/extend-column-metadata-from-ref query stage-number metadata a-ref)
-    (lib.filter/add-column-operators metadata)))
+    (lib.filter/add-column-operators metadata)
+    (set-display-name-for-unknown-field metadata)))
 
 (defn- segment-metadata-from-ref
   [query segment-ref]
