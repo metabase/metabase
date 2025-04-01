@@ -123,7 +123,7 @@ export function EmbeddingDataPicker({
   );
 }
 
-function getLegacyTableId(pickerInfo: Lib.PickerInfo | undefined) {
+function getLegacyTableId(pickerInfo: Lib.PickerInfo | undefined | null) {
   if (pickerInfo == null) {
     return undefined;
   }
