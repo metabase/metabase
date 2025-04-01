@@ -158,12 +158,8 @@ describe("scenarios > custom column > literals", () => {
           ["expression", "MinPrice"],
         ],
         expressions: {
-          Rustic: [
-            "value",
-            "Rustic Paper Wallet",
-            { "base-type": "type/Text" },
-          ],
-          MinPrice: ["value", 20.0, { "base-type": "type/Float" }],
+          Rustic: ["value", "Rustic Paper Wallet", { base_type: "type/Text" }],
+          MinPrice: ["value", 20.0, { base_type: "type/Float" }],
         },
       },
     };
