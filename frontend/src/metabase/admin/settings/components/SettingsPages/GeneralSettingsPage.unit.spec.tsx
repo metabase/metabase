@@ -77,7 +77,7 @@ describe("GeneralSettingsPage", () => {
       "Friendly Table and Field Names",
       "Enable X-Ray Features",
       "Allowed domains for iframes in dashboards",
-    ].forEach(text => {
+    ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
   });
@@ -87,11 +87,11 @@ describe("GeneralSettingsPage", () => {
 
     await waitFor(() => {
       const calls = fetchMock.calls();
-      const urls = calls.map(call => call[0]);
+      const urls = calls.map((call) => call[0]);
       expect(urls).toHaveLength(4);
     });
     const calls = fetchMock.calls();
-    const urls = calls.map(call => call[0]);
+    const urls = calls.map((call) => call[0]);
     expect(urls).toContain("https://mysite.biz/api/health");
     expect(urls).toContainEqual(expect.stringContaining("/api/dashboard/4242"));
     expect(urls).toContainEqual(expect.stringContaining("/api/setting"));
@@ -151,7 +151,7 @@ describe("GeneralSettingsPage", () => {
 
 async function findPuts() {
   const calls = fetchMock.calls();
-  const data = calls.filter(call => call[1]?.method === "PUT") ?? [];
+  const data = calls.filter((call) => call[1]?.method === "PUT") ?? [];
 
   const puts = data.map(async ([putUrl, putDetails]) => {
     const body = ((await putDetails?.body) as string) ?? "{}";

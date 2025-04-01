@@ -167,7 +167,7 @@ describe("CustomHomepageDashboardSetting", () => {
 
     await waitFor(() => {
       const calls = fetchMock.calls();
-      const userCall = calls.find(call =>
+      const userCall = calls.find((call) =>
         call[0].includes("/api/user/current"),
       );
       expect(userCall).toBeDefined();
@@ -177,7 +177,7 @@ describe("CustomHomepageDashboardSetting", () => {
 
 async function findPuts() {
   const calls = fetchMock.calls();
-  const data = calls.filter(call => call[1]?.method === "PUT") ?? [];
+  const data = calls.filter((call) => call[1]?.method === "PUT") ?? [];
 
   const puts = data.map(async ([putUrl, putDetails]) => {
     const body = ((await putDetails?.body) as string) ?? "{}";
