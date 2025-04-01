@@ -23,27 +23,36 @@ export function MultiAutocomplete({
 }: MultiAutocompleteProps) {
   const combobox = useCombobox();
   const [isFocused, setIsFocused] = useState(false);
+  const [fieldValue, setFieldValue] = useState("");
   const [focusedValues, setFocusedValues] = useState<string[]>([]);
   const visibleValues = isFocused ? focusedValues : effectiveValues;
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.value;
+    setFieldValue(newValue);
+
     const newValues = [...focusedValues, newValue];
     onChange(newValues);
   };
 
   const handleFieldFocus = () => {
     setIsFocused(true);
+    setFieldValue("");
     setFocusedValues(effectiveValues);
   };
 
   const handleFieldBlur = () => {
     setIsFocused(false);
+    setFieldValue("");
     setFocusedValues([]);
   };
 
-  const handlePillDoubleClick = (valueIndex: number) => {
-    setEditValueIndex(valueIndex);
+  const handlePillRemove = (valueIndex: number) => {
+    const newValues = [...effectiveValues];
+    newValues.splice(valueIndex, 1);
+    onChange(newValues);
+    setFieldValue("");
+    setFocusedValues(newValues);
   };
 
   return (
@@ -55,13 +64,14 @@ export function MultiAutocomplete({
               <Pill
                 key={valueIndex}
                 withRemoveButton
-                onDoubleClick={() => handlePillDoubleClick(valueIndex)}
+                onRemove={() => handlePillRemove(valueIndex)}
               >
                 {value}
               </Pill>
             ))}
             <Combobox.EventsTarget>
               <PillsInput.Field
+                value={fieldValue}
                 placeholder={placeholder}
                 onChange={handleFieldChange}
                 onFocus={handleFieldFocus}
