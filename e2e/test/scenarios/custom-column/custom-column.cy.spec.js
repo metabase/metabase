@@ -1617,12 +1617,12 @@ describe("scenarios > question > custom column > function browser", () => {
     H.CustomExpressionEditor.functionBrowser().within(() => {
       cy.findByPlaceholderText("Search functions…").type("con");
 
-      cy.findByText("dayName").should("not.exist");
+      cy.findByText("datetimeAdd").should("not.exist");
       cy.findByText("concat").should("be.visible");
       cy.findByText("second").should("be.visible");
       //
       cy.findByPlaceholderText("Search functions…").clear();
-      cy.findByText("dayName").should("be.visible");
+      cy.findByText("datetimeAdd").should("be.visible");
     });
   });
 
