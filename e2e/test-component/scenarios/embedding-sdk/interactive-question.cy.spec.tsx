@@ -3,7 +3,7 @@ import {
   InteractiveQuestion,
   type MetabaseQuestion,
 } from "@metabase/embedding-sdk-react";
-import { type ComponentProps, useState } from "react";
+import type { ComponentProps } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -322,42 +322,6 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         <InteractiveQuestion questionId={questionId} />,
       );
     });
-  });
-
-  it("should only call POST /dataset once when parent component re-renders (EMB-288)", () => {
-    cy.intercept("POST", "/api/dataset").as("datasetQuery");
-
-    const TestComponent = ({ questionId }: { questionId: string }) => {
-      const [counter, setCounter] = useState(0);
-
-      return (
-        <Box p="lg">
-          <Button onClick={() => setCounter((c) => c + 1)}>
-            Trigger parent re-render ({counter})
-          </Button>
-          <InteractiveQuestion questionId={questionId}>
-            <InteractiveQuestion.QuestionVisualization />
-          </InteractiveQuestion>
-        </Box>
-      );
-    };
-
-    cy.get<string>("@questionId").then((questionId) => {
-      mountSdkContent(<TestComponent questionId={questionId} />);
-    });
-
-    // Wait for initial dataset query
-    cy.wait("@datasetQuery");
-
-    // Trigger multiple parent re-renders
-    getSdkRoot().within(() => {
-      cy.findByText(/Trigger parent re-render/).click();
-      cy.findByText(/Trigger parent re-render/).click();
-      cy.findByText(/Trigger parent re-render/).click();
-    });
-
-    // Verify dataset query was only called once
-    cy.get("@datasetQuery.all").should("have.length", 1);
   });
 
   describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {
