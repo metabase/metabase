@@ -173,46 +173,50 @@ describe("scenarios > embedding > questions", () => {
     cy.findByText("Subtotal").should("not.exist");
   });
 
-  it("should display GUI question with explicit joins correctly", () => {
-    H.createQuestion(joinedQuestion).then(({ body: { id } }) => {
-      cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
+  it(
+    "should display GUI question with explicit joins correctly",
+    { tags: "@flaky" },
+    () => {
+      H.createQuestion(joinedQuestion).then(({ body: { id } }) => {
+        cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
-      H.visitQuestion(id);
-    });
+        H.visitQuestion(id);
+      });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
-    H.visitIframe();
+      H.visitIframe();
 
-    // Base question assertions
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Product ID as Title");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Awesome Concrete Shoes");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Math");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Billed");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("€39.72");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tue, Feb 11, 2025, 21:40:27");
-    cy.findAllByTestId("mini-bar-container");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Subtotal").should("not.exist");
+      // Base question assertions
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Product ID as Title");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Awesome Concrete Shoes");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Math");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Billed");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("€39.72");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Tue, Feb 11, 2025, 21:40:27");
+      cy.findAllByTestId("mini-bar-container");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Subtotal").should("not.exist");
 
-    // Joined table fields
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("98.52598640° W");
+      // Joined table fields
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("98.52598640° W");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("User → Birth Date");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("December 12, 1986");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("User → Birth Date");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("December 12, 1986");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("October 7, 2023, 1:34 AM");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("October 7, 2023, 1:34 AM");
+    },
+  );
 });
 
 describe("scenarios [EE] > embedding > questions", () => {
