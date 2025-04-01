@@ -319,7 +319,7 @@ describe("old recursive-parser tests", () => {
       expression: ["relative-time-interval", created, -1, "days", -5, "years"],
     },
   ])("should handle function options: $source", ({ source, expression }) => {
-    expect(filter(source)).toEqual(expression);
+    expect(expr(source)).toEqual(expression);
   });
 
   it("should use MBQL negative shorthands", () => {
