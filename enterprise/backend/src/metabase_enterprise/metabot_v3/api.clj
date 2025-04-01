@@ -23,10 +23,12 @@
 
 (defn request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [message context history conversation_id state]
+  [{:keys [metabot_id message context history conversation_id state]
+    :or {metabot_id 1}}]
   (let [initial-message (metabot-v3.envelope/user-message message)
         history (conj (vec history) initial-message)
         env (-> {:context (metabot-v3.context/create-context context)
+                 :metabot-id metabot_id
                  :conversation-id conversation_id
                  :messages history
                  :state state}
@@ -40,16 +42,16 @@
   "Send a chat message to the LLM via the AI Proxy."
   [_route-params
    _query-params
-   {:keys [message context conversation_id history state] :as body}
-   :- [:map
-       [:message ms/NonBlankString]
-       [:context ::metabot-v3.context/context]
-       [:conversation_id ms/UUIDString]
-       [:history [:maybe ::metabot-v3.client.schema/messages]]
-       [:state :map]]]
+   {:keys [conversation_id] :as body} :- [:map
+                                          [:metabot_id {:optional true} :int]
+                                          [:message ms/NonBlankString]
+                                          [:context ::metabot-v3.context/context]
+                                          [:conversation_id ms/UUIDString]
+                                          [:history [:maybe ::metabot-v3.client.schema/messages]]
+                                          [:state :map]]]
   (metabot-v3.context/log body :llm.log/fe->be)
   (doto (assoc
-         (request message context history conversation_id state)
+         (request body)
          :conversation_id conversation_id)
     (metabot-v3.context/log :llm.log/be->fe)))
 

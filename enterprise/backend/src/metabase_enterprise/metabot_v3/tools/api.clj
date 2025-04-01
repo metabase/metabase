@@ -25,7 +25,7 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.request.core :as request]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -254,7 +254,9 @@
    [:map
     [:output :string]]])
 
-(mr/def ::tool-request [:map [:conversation_id ms/UUIDString]])
+(mr/def ::tool-request [:map
+                        [:metabot_id {:optional true} :int]
+                        [:conversation_id ms/UUIDString]])
 
 (mr/def ::subscription-schedule
   (let [days ["sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
@@ -453,21 +455,27 @@
                          [:models  [:sequential ::full-table]]]]]
    [:map [:output :string]]])
 
-(def metabot-collection-name
+(def metabot-config
   "The name of the collection exposed by the answer-sources tool."
-  "__METABOT__")
+  {1 {:collection-name "__METABOT__"}
+   2 {:collection-name "__METABOT_EMBEDDING__"}})
 
 (api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]
   "Create a dashboard subscription."
   [_route-params
    _query-params
-   {:keys [conversation_id] :as body} :- ::tool-request]
+   {:keys [metabot_id conversation_id]
+    :as body
+    :or {metabot_id 1}} :- ::tool-request]
   (metabot-v3.context/log (assoc body :api :answer-sources) :llm.log/llm->be)
-  (doto (-> (mc/decode ::answer-sources-result
-                       (metabot-v3.dummy-tools/answer-sources metabot-collection-name)
-                       (mtx/transformer {:name :tool-api-response}))
-            (assoc :conversation_id conversation_id))
-    (metabot-v3.context/log :llm.log/be->llm)))
+  (if-let [collection-name (get-in metabot-config [metabot_id :collection-name])]
+    (doto (-> (mc/decode ::answer-sources-result
+                         (metabot-v3.dummy-tools/answer-sources collection-name)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))
+    (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot_id)
+                    {:metabot_id metabot_id, :status-code 400}))))
 
 (api.macros/defendpoint :post "/create-dashboard-subscription" :- [:merge
                                                                    [:map [:output :string]]

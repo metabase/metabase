@@ -85,8 +85,9 @@
 
 (mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response-v2
   "Make a V2 request to the AI Proxy."
-  [{:keys [context messages conversation-id session-id state]}
+  [{:keys [metabot-id context messages conversation-id session-id state]}
    :- [:map
+       [:metabot-id :int]
        [:context :map]
        [:messages ::metabot-v3.client.schema/messages]
        [:conversation-id :string]
@@ -99,6 +100,7 @@
                         :context  context}
                        (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en)
                        (assoc :conversation_id conversation-id
+                              :metabot_id      metabot-id
                               :state           state
                               :user_id         api/*current-user-id*))
           _        (metabot-v3.context/log body :llm.log/be->llm)
