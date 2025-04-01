@@ -61,6 +61,12 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
     dispatch(Tables.actions.updateProperty(table, "field_order", value));
   };
 
+  /**
+   * Right after performing drag and drop the items would shortly flicker back to the original order,
+   * and then back to the new one. These deep compare effects help avoid this flicker.
+   *
+   * Fields are mapped to items because using a field as a dep here results in an infinite loop.
+   */
   useDeepCompareEffect(() => {
     setOrder(initialOrder);
   }, [initialOrder]);
