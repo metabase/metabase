@@ -13,8 +13,7 @@ import {
 } from "metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsAddMenu";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import {
-  Accordion, // Import Accordion
-  Box,
+  Accordion,
   Flex,
   Icon,
   Popover,
@@ -113,24 +112,6 @@ const templateTypeMap = {
   },
 };
 
-// Determine if a handler should be updated with template content
-const shouldUpdateHandler = (
-  handler: NotificationHandler,
-  channelKey: SupportedChannelKey | null,
-): boolean => {
-  if (!channelKey) {
-    return false;
-  }
-  const handlerChannelType =
-    handler.channel_type as keyof typeof templateTypeMap;
-  const handlerStateKey = templateTypeMap[handlerChannelType]?.stateKey;
-
-  if (!handlerStateKey) {
-    return false;
-  }
-  return channelKey === handlerStateKey;
-};
-
 // Get template content for a handler
 const getTemplateContent = (
   handler: NotificationHandler,
@@ -203,8 +184,8 @@ const TemplateHelperTooltip = ({
             Handlebars
           </a>
         )} templates.`}</Text>
-        <Text>{t`Use "{{ }}" to reference payload fields, "@key" and "@value" when iterating over objects, and "@index" for arrays.`}</Text>
-        <Text>{t`Alert event payload example:`}</Text>
+        <Text>{t`Use "{{ }}" to reference payload fields, "@key" and "@value" when iterating over objects, or "@index" for arrays.`}</Text>
+        <Text>{t`Example payload for selected alert:`}</Text>
         <br />
         <pre
           style={{
@@ -609,7 +590,7 @@ export const NotificationChannelsPicker = ({
       {hasSlackChannel && (
         <ChannelSettingsBlock
           title={t`Slack`}
-          iconName="slack"
+          iconName="int"
           onRemoveChannel={() => onRemoveChannel(slackHandler)}
         >
           <SlackChannelFieldNew
@@ -674,11 +655,7 @@ export const NotificationChannelsPicker = ({
             iconName="webhook"
             onRemoveChannel={() => onRemoveChannel(channel)}
           >
-            {/* Webhooks might have specific fields later, but none for now */}
-            <Box
-              p="sm"
-              c="text-medium"
-            >{t`Webhook settings are managed in Admin Panel.`}</Box>
+            <Text>{t`Webhooks are managed in Admin Settings.`}</Text>
             {/* NOTE: Templates are not currently supported for webhooks in this setup */}
           </ChannelSettingsBlock>
         ))}

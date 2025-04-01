@@ -51,7 +51,7 @@ export const EditingBodyCellCategorySelect = ({
   const options = useMemo(
     () =>
       fieldData
-        ? getFieldOptions(fieldData.values).filter(item =>
+        ? getFieldOptions(fieldData.values).filter((item) =>
             getDropdownLabelText(item)
               .toLowerCase()
               .includes(search.toLowerCase().trim()),
@@ -87,9 +87,7 @@ export const EditingBodyCellCategorySelect = ({
   const inputLabel = useMemo(() => {
     if (isLoading || !optionValueSelectOptionMap) {
       return (
-        <Input.Placeholder c="text-light">
-          {t`Loading...`}
-        </Input.Placeholder>
+        <Input.Placeholder c="text-light">{t`Loading...`}</Input.Placeholder>
       );
     }
 
@@ -144,7 +142,7 @@ export const EditingBodyCellCategorySelect = ({
         <Box p="0.5rem" pb="0" bg="white" pos="sticky" top={0}>
           <TextInput
             value={search}
-            onChange={event => setSearch(event.currentTarget.value)}
+            onChange={(event) => setSearch(event.currentTarget.value)}
             placeholder={t`Search the list`}
             leftSection={<Icon name="search" />}
             autoFocus
@@ -153,7 +151,7 @@ export const EditingBodyCellCategorySelect = ({
 
         <Combobox.Options p="0.5rem">
           {options.length > 0 ? (
-            options.map(item => (
+            options.map((item) => (
               <Combobox.Option
                 selected={value === item.value}
                 value={item.value}

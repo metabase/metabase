@@ -69,7 +69,7 @@ export function EditingBaseRowModal({
     (values: EditingFormValues) => {
       const errors: Record<string, string> = {};
 
-      datasetColumns.forEach(column => {
+      datasetColumns.forEach((column) => {
         const field = fieldMetadataMap?.[column.name];
         const isRequired = field?.database_required;
         if (isRequired && !values[column.name]) {

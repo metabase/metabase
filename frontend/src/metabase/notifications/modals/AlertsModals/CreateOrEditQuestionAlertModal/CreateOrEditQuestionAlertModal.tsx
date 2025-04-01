@@ -336,7 +336,6 @@ export const CreateOrEditQuestionAlertModal = ({
                 handlers: newHandlers,
               });
             }}
-            emailRecipientText={t`Email alerts to:`}
             getInvalidRecipientText={(domains) =>
               t`You're only allowed to email alerts to addresses ending in ${domains}`
             }

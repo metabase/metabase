@@ -66,7 +66,7 @@ export const TableNotificationsListModal = ({
       {...modalProps}
     >
       <Stack gap="lg" mb="lg" mt="1rem">
-        {sortedNotifications.map(notification => {
+        {sortedNotifications.map((notification) => {
           const canEditNotification =
             isAdmin ||
             (canManageSubscriptions && isCreatedByCurrentUser(notification));

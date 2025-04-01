@@ -56,7 +56,7 @@ describe("CreateOrEditTableNotificationModal", () => {
 
   it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
     "should display first available channel by default - Slack %p",
-    async setupConfig => {
+    async (setupConfig) => {
       setup({
         isEmailSetup: false,
         isSlackSetup: true,
@@ -76,7 +76,7 @@ describe("CreateOrEditTableNotificationModal", () => {
 
   it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
     "should display first available channel by default - Webhook %p",
-    async setupConfig => {
+    async (setupConfig) => {
       const mockWebhook = createMockChannel();
       setup({
         isEmailSetup: false,
@@ -143,12 +143,12 @@ describe("CreateOrEditTableNotificationModal", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("New notification")).toBeInTheDocument();
+      expect(screen.getByText("New alert")).toBeInTheDocument();
     });
 
     // Check that the correct option is selected (UI displays the label, not the value)
     const triggerSelect = screen.getByTestId("notification-event-select");
-    expect(triggerSelect).toHaveValue("When new table record is created");
+    expect(triggerSelect).toHaveValue("When new records are created");
   });
 
   it("should show the correct event options for table notifications", async () => {
@@ -158,7 +158,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("New notification")).toBeInTheDocument();
+      expect(screen.getByText("New alert")).toBeInTheDocument();
     });
 
     // Click on the event select to open the dropdown
@@ -167,13 +167,13 @@ describe("CreateOrEditTableNotificationModal", () => {
 
     // Verify all event options are available
     expect(
-      screen.getByRole("option", { name: /When new table record is created/i }),
+      screen.getByRole("option", { name: /When new records are created/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: /When table record is updated/i }),
+      screen.getByRole("option", { name: /When any cell changes it's value/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: /When table record is deleted/i }),
+      screen.getByRole("option", { name: /When a record is deleted/i }),
     ).toBeInTheDocument();
   });
 
@@ -190,13 +190,13 @@ describe("CreateOrEditTableNotificationModal", () => {
     });
 
     await waitFor(() => {
-      // Should show "Edit notification" instead of "New notification"
-      expect(screen.getByText("Edit notification")).toBeInTheDocument();
+      // Should show "Edit alert" instead of "New alert"
+      expect(screen.getByText("Edit alert")).toBeInTheDocument();
     });
 
     // Verify the correct event is selected (UI displays the label, not the value)
     const triggerSelect = screen.getByTestId("notification-event-select");
-    expect(triggerSelect).toHaveValue("When table record is updated");
+    expect(triggerSelect).toHaveValue("When any cell changes it's value");
   });
 
   it("should create a new notification with default settings", async () => {
@@ -211,7 +211,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("New notification")).toBeInTheDocument();
+      expect(screen.getByText("New alert")).toBeInTheDocument();
     });
 
     // Click save button without changing anything
@@ -256,7 +256,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("New notification")).toBeInTheDocument();
+      expect(screen.getByText("New alert")).toBeInTheDocument();
     });
 
     // Change event from default 'row created' to 'row deleted'
@@ -264,7 +264,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     await userEvent.click(triggerSelect);
 
     const deleteOption = screen.getByRole("option", {
-      name: /When table record is deleted/i,
+      name: /When a record is deleted/i,
     });
     await userEvent.click(deleteOption);
 
@@ -280,7 +280,7 @@ describe("CreateOrEditTableNotificationModal", () => {
       const requestBody = await calls[0][1]?.body;
       const parsedBody = JSON.parse(requestBody as string);
       return parsedBody; // Return the parsed body for later assertions
-    }).then(parsedBody => {
+    }).then((parsedBody) => {
       // Verify the event has been changed to 'row deleted'
       expect(parsedBody.subscriptions[0].event_name).toBe(
         "event/data-editing-row-delete",
@@ -313,7 +313,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Edit notification")).toBeInTheDocument();
+      expect(screen.getByText("Edit alert")).toBeInTheDocument();
     });
 
     // Change event from 'row created' to 'row updated'
@@ -321,7 +321,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     await userEvent.click(triggerSelect);
 
     const updateOption = screen.getByRole("option", {
-      name: /When table record is updated/i,
+      name: /When any cell changes it's value/i,
     });
     await userEvent.click(updateOption);
 
@@ -337,7 +337,7 @@ describe("CreateOrEditTableNotificationModal", () => {
       const requestBody = await calls[0][1]?.body;
       const parsedBody = JSON.parse(requestBody as string);
       return parsedBody; // Return the parsed body for later assertions
-    }).then(parsedBody => {
+    }).then((parsedBody) => {
       // Verify the event has been changed to 'row updated'
       expect(parsedBody.subscriptions[0].event_name).toBe(
         "event/data-editing-row-update",

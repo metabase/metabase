@@ -12,7 +12,7 @@ import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { EnterpriseApi } from "./api";
 
 export const tableDataEditApi = EnterpriseApi.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     insertTableRows: builder.mutation<
       TableInsertRowsResponse,
       TableInsertRowsRequest
@@ -107,14 +107,16 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
               "getTableData",
               { tableId },
               ({ data }) => {
-                const deletedKeys = rows.map(row => row[primaryKeyColumnName]);
+                const deletedKeys = rows.map(
+                  (row) => row[primaryKeyColumnName],
+                );
                 const primaryKeyIndex = pkColumnNameToPkColumnIndex(
                   primaryKeyColumnName,
                   data.cols,
                 );
 
                 data.rows = data.rows.filter(
-                  row => !deletedKeys.includes(row[primaryKeyIndex]),
+                  (row) => !deletedKeys.includes(row[primaryKeyIndex]),
                 );
               },
             ),
@@ -129,14 +131,14 @@ function mapRowObjectsToRowValuesArray(
   rows: Record<string, RowValue>[],
   columns: DatasetColumn[],
 ) {
-  return rows.map(row => columns.map(column => row[column.name]));
+  return rows.map((row) => columns.map((column) => row[column.name]));
 }
 
 function pkColumnNameToPkColumnIndex(
   primaryKeyColumnName: string,
   columns: DatasetColumn[],
 ) {
-  return columns.findIndex(column => column.name === primaryKeyColumnName);
+  return columns.findIndex((column) => column.name === primaryKeyColumnName);
 }
 
 export const {

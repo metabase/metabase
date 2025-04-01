@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import { TableNotificationsTrigger } from "metabase/notifications/modals";
 import { Button, Flex, Group, Icon, Title } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 import { EditTableDataBackButton } from "./EditTableDataBackButton";
-import { TableNotificationsTrigger } from "metabase/notifications/modals";
 
 interface EditTableDataHeaderProps {
   table: Table;
