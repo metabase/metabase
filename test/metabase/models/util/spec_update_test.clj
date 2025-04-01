@@ -613,7 +613,7 @@
           new-data (assoc-in existing-data [:tasks 0 :assignee] {:name "New Assignee"})]
       (is (= [[:delete! :user 100]
               [:insert-returning-pk! :user {:name "New Assignee"}]
-              [:update! :task 10 {:assignee_id 2}]]
+              [:update! :task 10 {:description "Task 1", :project_id 1, :assignee_id 2}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data multi-row-with-ref-spec)))))))
 
@@ -626,7 +626,7 @@
                                   :project_id 1}]}
           new-data (assoc-in existing-data [:tasks 0 :assignee] {:name "New Assignee"})]
       (is (= [[:insert-returning-pk! :user {:name "New Assignee"}]
-              [:update! :task 10 {:assignee_id 2}]]
+              [:update! :task 10 {:description "Task 1", :project_id 1, :assignee_id 2}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data multi-row-with-ref-spec)))))))
 
@@ -642,6 +642,6 @@
                                              :name "User A"}}]}
           new-data (update-in existing-data [:tasks 0] dissoc :assignee)]
       (is (= [[:delete! :user 100]
-              [:update! :task 10 {:assignee_id nil}]]
+              [:update! :task 10 {:description "Task 1", :project_id 1, :assignee_id nil}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data multi-row-with-ref-spec)))))))

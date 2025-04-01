@@ -122,16 +122,36 @@
                                    nested-specs))]
     #(select-keys % (filter some? (concat compare-cols extra-cols [fk-column] ref-in-parent-cols)))))
 
-(defn- handle-row-nested-updates!
-  [row existing-rows {:keys [nested-specs id-col] :as _spec} path]
-  (when nested-specs
-    (log/tracef "%s nested models detected, updating nested models" (format-path path))
-    (let [existing-row (m/find-first #(= (id-col row) (id-col %)) existing-rows)]
-      (handle-nested-updates!
-       existing-row
-       (with-parent-id row nested-specs (id-col row))
-       nested-specs
-       (conj path (id-col row))))))
+(defn- handle-rows-update!
+  "Process updates for a single row, handling both parent refs and nested models.
+   Returns true if any changes were made."
+  [row existing-rows {:keys [model nested-specs id-col] :as spec} path & {:keys [force-update?] :or {force-update? true}}]
+  (let [existing-row (m/find-first #(= (id-col row) (id-col %)) existing-rows)
+        update-path (if force-update? (conj path (id-col row)) path)
+        _ (when force-update? (log/debugf "%s Updating" (format-path update-path)))
+        ;; Process any ref-in-parent models first
+        parent-updates (handle-refs-in-parent! existing-row row nested-specs update-path)
+        row-with-refs (merge row parent-updates)
+        sanitize-row (sanitize-row-fn spec)
+        updates-needed? (and parent-updates
+                             (not= (sanitize-row (merge existing-row parent-updates))
+                                   (sanitize-row row)))]
+
+    ;; Update the parent row if needed
+    (when (or force-update? updates-needed?)
+      (t2/update! model (id-col row) (sanitize-row row-with-refs)))
+
+    ;; Handle non-ref nested models
+    (when nested-specs
+      (let [nested-without-refs (non-ref-nested-models nested-specs row)]
+        (when (seq nested-without-refs)
+          (handle-nested-updates!
+           existing-row
+           (with-parent-id row-with-refs nested-without-refs (id-col row))
+           nested-without-refs
+           update-path))))
+
+    (or force-update? updates-needed?)))
 
 (defn- handle-sequential-updates!
   [existing-rows new-rows {:keys [model nested-specs id-col] :as spec} path]
@@ -172,45 +192,14 @@
     (when (seq to-update)
       (log/tracef "%s Attempt updating %s rows of %s" (format-path path) (count to-update) model)
       (doseq [row to-update]
-        (let [path (conj path (id-col row))
-              existing-row (m/find-first #(= (id-col row) (id-col %)) existing-rows)]
-          (log/debugf "%s Updating" (format-path path))
-          ;; Process any ref-in-parent models first
-          (let [parent-updates (handle-refs-in-parent! existing-row row nested-specs path)
-                row-with-refs  (merge row parent-updates)]
-            (t2/update! model (id-col row) (sanitize-row row-with-refs))
-            ;; Only process non-ref nested models
-            (when nested-specs
-              (let [nested-without-refs (non-ref-nested-models nested-specs row)]
-                (when (seq nested-without-refs)
-                  (handle-nested-updates!
-                   existing-row
-                   (with-parent-id row-with-refs nested-without-refs (id-col row))
-                   nested-without-refs
-                   path))))))))
+        (handle-rows-update! row existing-rows spec path)))
 
     ;; the row might not change, but the nested models might
     (when (and (seq to-skip) nested-specs)
       (log/tracef "%s nested models detected, updating unchanged nested models for %s %s"
                   (format-path path) model (id-col (first to-skip)))
       (doseq [row to-skip]
-        (let [existing-row (m/find-first #(= (id-col row) (id-col %)) existing-rows)
-              ;; Process any ref-in-parent models first
-              parent-updates (handle-refs-in-parent! existing-row row nested-specs path)
-              row-with-refs  (merge row parent-updates)]
-          (log/tracef "%s updating nested models for %s %s" (format-path path) model (id-col row))
-          ;; Only process non-ref nested models
-          (when (and parent-updates
-                     (not= (sanitize-row (merge existing-row parent-updates))
-                           (sanitize-row row)))
-            (t2/update! model (id-col row) parent-updates))
-          (let [nested-without-refs (non-ref-nested-models nested-specs row)]
-            (when (seq nested-without-refs)
-              (handle-nested-updates!
-               existing-row
-               (with-parent-id row-with-refs nested-without-refs (id-col row))
-               nested-without-refs
-               (conj path (id-col row))))))))))
+        (handle-rows-update! row existing-rows spec path :force-update? false)))))
 
 (defn- handle-map-update!
   [existing-data new-data {:keys [model nested-specs id-col] :as spec} path]
