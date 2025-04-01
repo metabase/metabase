@@ -20,11 +20,6 @@ const selectOption = async (optionText) => {
 };
 
 describe("ChartSettingSelect", () => {
-  beforeAll(() => {
-    // Mock scrollIntoView since it's not implemented in JSDOM
-    Element.prototype.scrollIntoView = jest.fn();
-  });
-
   it("should render all options", async () => {
     render(
       <ChartSettingSelect

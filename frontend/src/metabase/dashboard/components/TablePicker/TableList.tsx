@@ -17,7 +17,7 @@ export const TableList = ({ onSelect }: TableListProps) => {
 
   return (
     <SelectList>
-      {tables.map(item => (
+      {tables.map((item) => (
         <SelectList.Item
           key={item.id}
           id={item.id}

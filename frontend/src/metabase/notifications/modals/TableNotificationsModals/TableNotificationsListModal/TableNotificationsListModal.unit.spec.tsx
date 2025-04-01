@@ -1,15 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { mockScrollIntoView, screen } from "__support__/ui";
+import { screen } from "__support__/ui";
 
 import { createNotificationForUser, setup } from "./test-utils";
 
 describe("TableNotificationsListModal", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   beforeEach(() => {
     fetchMock.reset();
   });
@@ -28,7 +24,7 @@ describe("TableNotificationsListModal", () => {
     setup({ notifications, currentUserId });
 
     expect(screen.getByTestId("alert-list-modal")).toBeInTheDocument();
-    expect(screen.getByText("Edit notifications")).toBeInTheDocument();
+    expect(screen.getByText("Edit alerts")).toBeInTheDocument();
     // The Box component in TableNotificationsListItem doesn't have a data-testid
     // Use getAllByText since we'll have multiple elements with the same text
     const notificationTitles = screen.getAllByText(
@@ -129,12 +125,12 @@ describe("TableNotificationsListModal", () => {
     expect(screen.queryAllByLabelText("pencil icon")).toHaveLength(0);
   });
 
-  it("should call onCreate when 'New notification' button is clicked", async () => {
+  it("should call onCreate when 'New alert' button is clicked", async () => {
     const onCreate = jest.fn();
 
     setup({ onCreate });
 
-    const createButton = screen.getByText("New notification");
+    const createButton = screen.getByText("New alert");
     await userEvent.click(createButton);
 
     expect(onCreate).toHaveBeenCalledTimes(1);
@@ -185,9 +181,7 @@ describe("TableNotificationsListModal", () => {
     await userEvent.hover(notificationTitle);
 
     // Now find and click the delete button (trash icon)
-    const deleteButton = await screen.findByLabelText(
-      "Delete this notification",
-    );
+    const deleteButton = await screen.findByLabelText("Delete this alert");
     await userEvent.click(deleteButton);
 
     // Verify onDelete was called with the notification
@@ -244,7 +238,7 @@ describe("TableNotificationsListModal", () => {
 
     // There should be no notification titles when the list is empty
     expect(screen.queryAllByText(/Notify when/)).toHaveLength(0);
-    expect(screen.getByText("New notification")).toBeInTheDocument();
+    expect(screen.getByText("New alert")).toBeInTheDocument();
   });
 
   it("should render null if notifications is undefined", () => {

@@ -113,7 +113,7 @@ export const TableNotificationsListItem = ({
         <div className={S.actionButtonContainer}>
           {canEdit ? (
             <NotificationActionButton
-              label={t`Delete this notification`}
+              label={t`Delete this alert`}
               iconName="trash"
               onClick={handleDelete}
             />

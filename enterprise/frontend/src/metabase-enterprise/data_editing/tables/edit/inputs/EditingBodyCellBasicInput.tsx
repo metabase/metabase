@@ -15,18 +15,18 @@ export const EditingBodyCellBasicInput = ({
     <Input
       defaultValue={(initialValue ?? "").toString()}
       autoFocus={autoFocus}
-      onKeyUp={event => {
+      onKeyUp={(event) => {
         if (event.key === "Escape") {
           onCancel();
         } else if (event.key === "Enter") {
           onSubmit(event.currentTarget.value);
         }
       }}
-      onChange={event => {
+      onChange={(event) => {
         // Convert empty string to null
         onChangeValue?.(event.currentTarget.value || null);
       }}
-      onBlur={event => {
+      onBlur={(event) => {
         onSubmit(event.currentTarget.value || null);
       }}
       classNames={{
