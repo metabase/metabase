@@ -19,7 +19,10 @@ import { Sortable } from "metabase/core/components/Sortable";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, type FlexProps, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
-import { getVisualizerComputedSettings } from "metabase/visualizer/selectors";
+import {
+  getVisualizerComputedSettings,
+  getVisualizerDatasetColumns,
+} from "metabase/visualizer/selectors";
 import {
   removeColumn,
   updateSettings,
@@ -29,6 +32,7 @@ import { WellItem, type WellItemProps } from "../WellItem";
 
 export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
   const settings = useSelector(getVisualizerComputedSettings);
+  const columns = useSelector(getVisualizerDatasetColumns);
   const dispatch = useDispatch();
 
   const { active, setNodeRef, isOver } = useDroppable({
@@ -38,6 +42,10 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
   const sensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 10 },
   });
+
+  const dimension = columns.find(
+    column => column.name === settings["funnel.dimension"],
+  );
 
   const rows = settings?.["funnel.rows"] ?? [];
   const rowKeys = rows.map(row => row.key);
@@ -90,9 +98,9 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
         sensors={[sensor]}
         onDragEnd={handleDragEnd}
       >
-        {settings["funnel.dimension"] && (
+        {dimension && (
           <FunnelWellItem mr="md" id="dimension" onRemove={handleRemove}>
-            <Text truncate>{settings["funnel.dimension"]}</Text>
+            <Text truncate>{dimension.display_name}</Text>
           </FunnelWellItem>
         )}
         <SortableContext
