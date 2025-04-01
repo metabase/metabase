@@ -61,7 +61,7 @@ result_metadata:
   - public
   - v_view_log
   - entity_qualified_id
-  ident: field__Internal Metabase Database__public__v_view_log__entity_qualified_id
+  ident: field__audit_development_app_db__public__v_view_log__entity_qualified_id
   name: entity_qualified_id
   position: 5
   semantic_type: type/FK

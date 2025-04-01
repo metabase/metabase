@@ -402,10 +402,9 @@ result_metadata:
     - creator_id
   - null
   fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - active
+  - null
+  - null
+  - null
   id:
   - Internal Metabase Database
   - public
