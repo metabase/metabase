@@ -53,7 +53,7 @@ export const EditTableDataGrid = ({
         id: column.name,
         name: column.display_name,
         accessorFn: (row: RowValues) => row[columnIndex],
-        formatter: value => formatValue(value, { column }),
+        formatter: (value) => formatValue(value, { column }),
         wrap: false,
         header: function EditingHeader() {
           return (
@@ -62,7 +62,7 @@ export const EditTableDataGrid = ({
             </Box>
           );
         },
-        editingCell: cellContext => (
+        editingCell: (cellContext) => (
           <EditingBodyCellWrapper
             cellContext={cellContext}
             column={column}

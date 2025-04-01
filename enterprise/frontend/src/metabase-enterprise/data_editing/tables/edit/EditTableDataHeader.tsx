@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { TableNotificationsTrigger } from "metabase/notifications/modals";
 import { Button, Flex, Group, Icon, Title } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
@@ -32,6 +33,7 @@ export const EditTableDataHeader = ({
           variant="filled"
           onClick={onCreate}
         >{t`New record`}</Button>
+        <TableNotificationsTrigger tableId={table.id} />
       </Group>
     </Flex>
   );
