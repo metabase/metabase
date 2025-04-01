@@ -926,11 +926,9 @@ export const getSnippetCollectionId = createSelector(
 
 export const getIsVisualized = createSelector(
   [getQuestion, getVisualizationSettings],
-  (question, settings) =>
-    question &&
+  (question) =>
     // table is the default
-    ((question.display() !== "table" && question.display() !== "pivot") ||
-      (settings != null && settings["table.pivot"])),
+    question?.display() !== "table" && question?.display() !== "pivot",
 );
 
 export const getIsLiveResizable = createSelector(
