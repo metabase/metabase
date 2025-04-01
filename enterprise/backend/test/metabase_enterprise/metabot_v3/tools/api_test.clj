@@ -203,6 +203,28 @@
                   :conversation_id conversation-id}
                  response)))))))
 
+(deftest query-model-empty-fields-and-no-summary-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [tool-requests (atom [])
+          conversation-id (str (random-uuid))
+          output (str (random-uuid))
+          ai-token (ai-session-token)]
+      (with-redefs [metabot-v3.tools.filters/query-model
+                    (fn [arguments]
+                      (swap! tool-requests conj arguments)
+                      {:structured-output output})]
+        (let [fields []
+              filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}]
+              response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-model"
+                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                             {:arguments       {:model_id     1
+                                                                :fields       fields
+                                                                :filters      filters}
+                                              :conversation_id conversation-id})]
+          (is (= {:structured_output output
+                  :conversation_id conversation-id}
+                 response)))))))
+
 (defn- int-sequence?
   [coll]
   (boolean (and (seqable? coll) (seq coll) (every? int? coll))))

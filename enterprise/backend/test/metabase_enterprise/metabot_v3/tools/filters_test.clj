@@ -261,7 +261,22 @@
                              {:field_id (->field-id "Total")}]
                     :filters [{:field_id (->field-id "User ID")
                                :operation "not-equals"
-                               :values [3 42]}]})))))
+                               :values [3 42]}]}))))
+        (testing "With empty or missing fields and no summary, all fields are returned"
+          (let [expected-query {:structured-output
+                                {:type :query,
+                                 :query_id string?
+                                 :query (mt/mbql-query orders
+                                          {:source-table model-card-id
+                                           :filter [:!= [:field "USER_ID" {}] 3 42]})}}
+                input {:model-id model-id
+                       :filters [{:field_id (->field-id "User ID")
+                                  :operation "not-equals"
+                                  :values [3 42]}]}]
+            (are [input] (=? expected-query (metabot-v3.tools.filters/query-model input))
+              input
+              (assoc input :fields nil)
+              (assoc input :fields [])))))
       (testing "Missing model results in an error."
         (is (= {:output (str "No model found with model_id " Integer/MAX_VALUE)}
                (metabot-v3.tools.filters/query-model {:model-id Integer/MAX_VALUE}))))
