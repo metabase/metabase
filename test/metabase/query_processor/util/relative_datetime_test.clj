@@ -101,3 +101,27 @@
                                     [:< $last_login [:relative-datetime 0 :week]]]
                            :order-by [[:asc $last_login]]})
                         (mt/formatted-rows [int str str]))))))))))
+
+(deftest text-to-date-coercion-relative-time-filter-test
+  (testing "text fields that have been casted to dates can be filtered by relative time"
+    (mt/with-clock #t "2025-01-30T12:00:00-00:00[UTC]"
+      (mt/test-drivers (mt/normal-drivers-with-feature ::server-side-relative-datetime)
+        (mt/dataset (mt/dataset-definition
+                     "coerced-date-times-db"
+                     ["coerced-date-times-table"
+                      [{:field-name "text_date_time", :base-type :type/Text, :coercion-strategy :Coercion/ISO8601->DateTime, :effective-type :type/DateTime}
+                       {:field-name "text_date", :base-type :type/Text, :coercion-strategy :Coercion/ISO8601->Date, :effective-type :type/Date}]
+                      [["2025-01-30T12:00" "2025-01-30"]
+                       ["2025-01-20T12:00" "2025-01-20"]
+                       ["2025-01-10T12:00" "2025-01-10"]]])
+          (is (= [[1 "2025-01-30T12:00:00Z" "2025-01-30T00:00:00Z"]
+                  [2 "2025-01-20T12:00:00Z" "2025-01-20T00:00:00Z"]]
+                 (-> (mt/run-mbql-query coerced-date-times-table
+                       {:filter [:and
+                                 [:time-interval
+                                  [:field (mt/id :coerced-date-times-table :text_date_time) {:base-type :type/Text}]
+                                  -15 :day {:include-current true}]
+                                 [:time-interval
+                                  [:field (mt/id :coerced-date-times-table :text_date) {:base-type :type/Text}]
+                                  -15 :day {:include-current true}]]})
+                     mt/rows))))))))

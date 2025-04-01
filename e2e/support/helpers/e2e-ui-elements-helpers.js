@@ -365,6 +365,10 @@ export function tableInteractiveHeader() {
   return cy.findByTestId("table-header");
 }
 
+export function tableInteractiveFooter() {
+  return cy.findByTestId("table-footer");
+}
+
 export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
   // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId(`resize-handle-${columnId}`)

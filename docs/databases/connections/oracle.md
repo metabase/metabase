@@ -12,7 +12,7 @@ To add a database connection, click on the **gear** icon in the top right, and n
 
 Metabase supports the oldest supported version through the latest stable version. See [Oracle's Release Schedule of Current Database Releases](https://support.oracle.com/knowledge/Oracle%20Database%20Products/742060_1.html).
 
-## Settings
+## Edit connection details
 
 You can edit these settings at any time. Just remember to save your changes.
 
@@ -97,7 +97,7 @@ If you need to connect to other databases using SSL, instead of creating a new t
 ## Supported Oracle database and Oracle driver versions
 
 - **Driver version**: the minimum Oracle driver version should be 19c, regardless of which Java version or Oracle database version you have.
-- **Database version**: the minimum database version should be version 19c, as Oracle [no longer supports database versions prior to 19](https://endoflife.date/oracle-database).
+- **Database version**: the minimum database version should be version 19c, as Oracle [no longer supports database versions before 19](https://endoflife.date/oracle-database).
 
 ## Downloading the Oracle JDBC Driver JAR
 
@@ -126,6 +126,10 @@ For example, if you're running Metabase from a directory called `/app/`, you sho
 ### When running from Docker
 
 The process for adding plugins when running via Docker is similar, but you'll need to mount the `plugins` directory. Refer to instructions [here](../../installation-and-operation/running-metabase-on-docker.md#adding-external-dependencies-or-plugins) for more details.
+
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
 
 ## Further reading
 
