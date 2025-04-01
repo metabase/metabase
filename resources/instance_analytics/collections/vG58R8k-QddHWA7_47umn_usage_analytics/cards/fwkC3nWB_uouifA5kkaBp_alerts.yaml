@@ -171,10 +171,6 @@ result_metadata:
     - v_alerts
     - creator_id
   - null
-  fk_target_field_id:
-  - null
-  - null
-  - null
   id:
   - Internal Metabase Database
   - public
