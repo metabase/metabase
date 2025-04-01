@@ -45,11 +45,11 @@ describe("dashboard card fetching", () => {
     });
   });
 
-  it("should pass `is_dashboard` for ad-hoc queries within a dashboard", () => {
+  it("should pass `dashboard-ad-hoc` context for ad-hoc queries within a dashboard", () => {
     cy.log("regular ad-hoc query - no dashboard_id");
     H.openProductsTable();
     cy.wait("@dataset").then(({ request }) => {
-      expect(request.body.is_dashboard).to.be.false;
+      expect(request.body.context).to.eq("ad-hoc");
     });
 
     cy.log("drill - with dashboard_id");
@@ -57,7 +57,7 @@ describe("dashboard card fetching", () => {
     H.getDashboardCard().findByText("2.9").click();
     H.popover().findByText("=").click();
     cy.wait("@dataset").then(({ request }) => {
-      expect(request.body.is_dashboard).to.be.true;
+      expect(request.body.context).to.eq("dashboard-ad-hoc");
     });
 
     cy.log("subsequent query change - with dashboard_id");
@@ -70,7 +70,7 @@ describe("dashboard card fetching", () => {
     });
     H.runButtonOverlay().click();
     cy.wait("@dataset").then(({ request }) => {
-      expect(request.body.is_dashboard).to.be.true;
+      expect(request.body.context).to.eq("dashboard-ad-hoc");
     });
   });
 });

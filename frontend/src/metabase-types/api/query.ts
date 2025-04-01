@@ -32,9 +32,11 @@ export interface NativeDatasetQuery {
   parameters?: UiParameter[];
 }
 
+export type DatasetContext = "ad-hoc" | "dashboard-ad-hoc";
+
 export type DatasetRequest = {
   query: DatasetQuery;
-  is_dashboard?: boolean;
+  context?: DatasetContext;
 };
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;

@@ -27,6 +27,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -81,19 +82,22 @@
                                       rff)
             (qp/process-query (update query :info merge info) rff)))))))
 
+(mr/def ::dataset-context
+  (into [:enum {:decode/json keyword}] :ad-hoc :dashboard-ad-hoc))
+
 (api.macros/defendpoint :post "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   {:keys [query is_dashboard]} :- [:map
-                                    [:query [:map
-                                             [:database {:optional true} [:maybe :int]]]]
-                                    [:is_dashboard {:default false} :boolean]]]
+   {:keys [query context]} :- [:map
+                               [:query [:map
+                                        [:database {:optional true} [:maybe :int]]]]
+                               [:context {:default :ad-hoc} ::dataset-context]]]
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)
-   {:context (if is_dashboard :dashboard-ad-hoc :ad-hoc)}))
+   {:context context}))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
@@ -202,15 +206,15 @@
   [_route-params
    _query-params
    {{:keys [database] :as query} :query
-    is_dashboard                 :is_dashboard} :- [:map
-                                                    [:query [:map
-                                                             [:database {:optional true} [:maybe ms/PositiveInt]]]]
-                                                    [:is_dashboard {:default false} :boolean]]]
+    context                      :context} :- [:map
+                                               [:query [:map
+                                                        [:database {:optional true} [:maybe ms/PositiveInt]]]]
+                                               [:context {:default :ad-hoc} ::dataset-context]]]
   (when-not database
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
-              :context     (if is_dashboard :dashboard-ad-hoc :ad-hoc)}]
+              :context     context}]
     (qp.streaming/streaming-response [rff :api]
       (qp.pivot/run-pivot-query (assoc query
                                        :constraints (qp.constraints/default-query-constraints)

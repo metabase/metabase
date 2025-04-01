@@ -120,7 +120,10 @@ export async function runQuestionQuery(
       card,
       question.metadata(),
     )(
-      { query: datasetQueryWithParameters, is_dashboard: isDashboard },
+      {
+        query: datasetQueryWithParameters,
+        context: isDashboard ? "dashboard-ad-hoc" : "ad-hoc",
+      },
       cancelDeferred
         ? {
             cancelled: cancelDeferred.promise,
