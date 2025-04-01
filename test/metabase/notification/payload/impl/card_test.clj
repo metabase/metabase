@@ -7,6 +7,7 @@
    [metabase.channel.core :as channel]
    [metabase.notification.core :as notification]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -15,6 +16,8 @@
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures
   :each
@@ -134,6 +137,80 @@
                                   :title "Card notification test card"}]
                    :channel-id "#general"}
                   (notification.tu/slack-message->boolean message))))}))))
+
+(deftest card-with-rows-saved-to-disk-test
+  (testing "whether the rows of a card saved to disk or in memory, all channels should work\n"
+    (doseq [limit [1 10]]
+      (with-redefs [notification.payload.execute/rows-to-disk-threadhold 5]
+        (testing (if (> limit @#'notification.payload.execute/rows-to-disk-threadhold)
+                   "card has rows saved to disk"
+                   "card has rows saved in memory")
+          (notification.tu/with-notification-testing-setup!
+            (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
+                                                                 :details {:url         "https://metabase.com/testhttp"
+                                                                           :auth-method "none"}}]
+              (notification.tu/with-card-notification
+                [notification {:card     {:name notification.tu/default-card-name
+                                          :dataset_query (mt/mbql-query orders {:limit limit})}
+                               :handlers [@notification.tu/default-email-handler
+                                          notification.tu/default-slack-handler
+                                          {:channel_type :channel/http
+                                           :channel_id   http-channel-id}]}]
+                (notification.tu/test-send-notification!
+                 notification
+                 {:channel/email
+                  (fn [[email]]
+                    (is (= (construct-email
+                            {:message [{notification.tu/default-card-name true
+                                        "Manage your subscriptions"       true}
+                                      ;; icon
+                                       notification.tu/png-attachment
+                                       notification.tu/csv-attachment]})
+                           (mt/summarize-multipart-single-email
+                            email
+                            card-name-regex
+                            #"Manage your subscriptions"))))
+                  :channel/slack
+                  (fn [[message]]
+                    (is (=? {:attachments [{:blocks [{:text {:emoji true
+                                                             :text "🔔 Card notification test card"
+                                                             :type "plain_text"}
+                                                      :type "header"}]}
+                                           {:attachment-name "image.png"
+                                            :fallback "Card notification test card"
+                                            :rendered-info {:attachments false :content true}
+                                            :title "Card notification test card"}]
+                             :channel-id "#general"}
+                            (notification.tu/slack-message->boolean message))))
+                  :channel/http
+                  (fn [[req]]
+                    (is (=? {:body {:type               "alert"
+                                    :alert_id           (-> notification :payload :id)
+                                    :alert_creator_id   (-> notification :creator_id)
+                                    :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
+                                    :data               (mt/malli=? :map)
+                                    :sent_at            (mt/malli=? :any)}}
+                            req)))})))))))))
+
+(deftest cards-with-rows-saved-to-disk-will-cleanup-the-files
+  (let [f               (atom nil)
+        orig-execute-fn @#'notification.payload.execute/execute-card]
+    (with-redefs [notification.payload.execute/rows-to-disk-threadhold 1
+                  notification.payload.execute/execute-card
+                  (fn [& args]
+                    (let [result (apply orig-execute-fn args)]
+                      (reset! f (-> result :result :data :rows))
+                      result))]
+      (notification.tu/with-notification-testing-setup!
+        (notification.tu/with-card-notification
+          [notification {:card     {:name notification.tu/default-card-name
+                                    :dataset_query (mt/mbql-query orders {:limit 2})}
+                         :handlers [@notification.tu/default-email-handler]}]
+          (notification/send-notification! notification)
+          (testing "sanity check that the file exists in the first place"
+            (is (notification.payload/is-cleanable? @f)))
+          (testing "the files are cleaned up"
+            (is (not (.exists (.file @f))))))))))
 
 (deftest ensure-constraints-test
   (testing "Validate card queries are limited by `default-query-constraints`"
