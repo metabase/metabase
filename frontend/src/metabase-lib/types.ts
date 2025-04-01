@@ -1,12 +1,12 @@
 import type {
   CardId,
+  ConcreteTableId,
   DatabaseId,
   DatasetColumn,
   FieldId,
   FieldValuesType,
   RowValue,
   SchemaId,
-  TableId,
   TableVisibilityType,
   TemporalUnit,
 } from "metabase-types/api";
@@ -649,24 +649,34 @@ export type QueryDisplayInfo = {
   isEditable: boolean;
 };
 
-export type DatabaseItem = {
+export type DatabaseDependentItem = {
   type: "database";
   id: DatabaseId;
 };
 
-export type SchemaItem = {
+export type SchemaDependentItem = {
   type: "schema";
   id: SchemaId;
 };
 
-export type TableItem = {
+export type TableDependentItem = {
   type: "table";
-  id: TableId;
+  id: ConcreteTableId;
 };
 
-export type FieldItem = {
+export type FieldDependentItem = {
   type: "field";
   id: FieldId;
 };
 
-export type DependentItem = DatabaseItem | SchemaItem | TableItem | FieldItem;
+export type CardDependentItem = {
+  type: "card";
+  id: CardId;
+};
+
+export type DependentItem =
+  | DatabaseDependentItem
+  | SchemaDependentItem
+  | TableDependentItem
+  | FieldDependentItem
+  | CardDependentItem;

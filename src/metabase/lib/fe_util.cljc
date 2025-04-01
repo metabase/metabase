@@ -679,7 +679,7 @@
      (when-let [card-id (:source-card base-stage)]
        (let [card (lib.metadata/card metadata-providerable card-id)
              definition (:dataset-query card)]
-         (concat [{:type :table, :id (str "card__" card-id)}]
+         (concat [{:type :card, :id card-id}]
                  (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
                    (query-dependents-foreign-keys metadata-providerable card-columns))
                  (when (and (= (:type card) :metric) definition)
@@ -701,8 +701,9 @@
    [:multi {:dispatch :type}
     [:database [:map [:id ::lib.schema.id/database]]]
     [:schema   [:map [:id ::lib.schema.id/database]]]
-    [:table    [:map [:id [:or ::lib.schema.id/table :string]]]]
-    [:field    [:map [:id ::lib.schema.id/field]]]]])
+    [:table    [:map [:id ::lib.schema.id/table]]]
+    [:field    [:map [:id ::lib.schema.id/field]]]
+    [:card     [:map [:id ::lib.schema.id/card]]]]])
 
 (mu/defn dependent-metadata :- [:sequential DependentItem]
   "Return the IDs and types of entities the metadata about is required
@@ -719,6 +720,6 @@
          (query-dependents query query)
          (when (and (some? card-id)
                     (#{:model :metric} card-type))
-           (cons {:type :table, :id (str "card__" card-id)}
+           (cons {:type :card, :id card-id}
                  (when-let [card (lib.metadata/card query card-id)]
                    (query-dependents query (lib.query/query query card))))))))
