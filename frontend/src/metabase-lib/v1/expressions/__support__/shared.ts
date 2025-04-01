@@ -4,17 +4,21 @@ import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import type {
   Expression,
   LocalFieldReference,
+  MetricAgg,
   ReferenceOptions,
 } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
+  createMockCard,
   createMockSegment,
+  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
   PEOPLE,
   PRODUCTS,
+  SAMPLE_DB_ID,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
@@ -25,6 +29,7 @@ import {
 import type { FormatClauseOptions } from "../formatter";
 
 const SEGMENT_ID = 1;
+const METRIC_ID = 2;
 
 const metadata = createMockMetadata({
   databases: [
@@ -49,6 +54,20 @@ const metadata = createMockMetadata({
                 filter: [">", ["field", ORDERS.TOTAL, null], 30],
                 "source-table": ORDERS_ID,
               },
+            }),
+          ],
+          metrics: [
+            createMockCard({
+              id: METRIC_ID,
+              name: "FOO",
+              type: "metric",
+              dataset_query: createMockStructuredDatasetQuery({
+                database: SAMPLE_DB_ID,
+                query: {
+                  "source-table": ORDERS_ID,
+                  aggregation: [["sum", ["field", 11, {}]]],
+                },
+              }),
             }),
           ],
         }),
@@ -88,6 +107,7 @@ export const bool = ["expression", "bool", { "base-type": "type/Boolean" }];
 export const segment = checkNotNull(
   metadata.segment(SEGMENT_ID),
 ).filterClause();
+export const metric: MetricAgg = ["metric", METRIC_ID];
 
 export const query = createQueryWithClauses({
   query: createQuery({ metadata }),
@@ -372,6 +392,7 @@ const filter: TestCase[] = [
     ["not", ["does-not-contain", tax, "John"]],
     "not does not contain",
   ],
+  ["[FOO]", metric, "Metric reference"],
 ];
 
 type TestCase = [string, Expression | undefined, string];
