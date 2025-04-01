@@ -234,23 +234,23 @@ describe("text_wrapping", () => {
       expect(settings["text_wrapping"]).toBeUndefined();
     });
 
-    it("should be hidden when view_as is not null or auto", () => {
+    it("should be hidden when view_as is image", () => {
       const stringColumn = createMockStringColumn();
       const settings = Table.columnSettings(stringColumn);
 
       const isHidden = settings["text_wrapping"].getHidden(stringColumn, {
-        view_as: "link",
+        view_as: "image",
       });
 
       expect(isHidden).toBe(true);
     });
 
-    it("should be not valid when view_as is not null or auto (metabase#55881)", () => {
+    it("should be not valid when view_as is image", () => {
       const stringColumn = createMockStringColumn();
       const settings = Table.columnSettings(stringColumn);
 
       const isValid = settings["text_wrapping"].isValid(stringColumn, {
-        view_as: "link",
+        view_as: "image",
       });
 
       expect(isValid).toBe(false);
@@ -276,6 +276,28 @@ describe("text_wrapping", () => {
       });
 
       expect(isHidden).toBe(false);
+    });
+
+    it("should be visible when view_as is link", () => {
+      const stringColumn = createMockStringColumn();
+      const settings = Table.columnSettings(stringColumn);
+
+      const isHidden = settings["text_wrapping"].getHidden(stringColumn, {
+        view_as: "link",
+      });
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should be valid when view_as is link", () => {
+      const stringColumn = createMockStringColumn();
+      const settings = Table.columnSettings(stringColumn);
+
+      const isValid = settings["text_wrapping"].isValid(stringColumn, {
+        view_as: "link",
+      });
+
+      expect(isValid).toBe(true);
     });
 
     it("should default to false", () => {

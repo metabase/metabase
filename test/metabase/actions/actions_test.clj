@@ -72,7 +72,7 @@
   (testing "row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
-        (is (= {:rows-updated [1]}
+        (is (= {:rows-updated 1}
                (actions/perform-action! :row/update
                                         (assoc (mt/mbql-query categories {:filter [:= $id 50]})
                                                :update_row {(format-field-name :name) "updated_row"})))
@@ -85,7 +85,7 @@
   (testing "row/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
-        (is (= {:rows-deleted [1]}
+        (is (= {:rows-deleted 1}
                (actions/perform-action! :row/delete
                                         (mt/mbql-query categories {:filter [:= $id 50]})))
             "Delete should return the right shape")
@@ -113,7 +113,7 @@
     :expected     {:rows-updated [1]}}
    {:action       :row/delete
     :request-body (mt/mbql-query categories {:filter [:= $id 1]})
-    :expected     {:rows-deleted [1]}}
+    :expected     {:rows-deleted 1}}
    {:action       :row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
                          :update_row {(format-field-name :name) "new-category-name"})
@@ -582,7 +582,7 @@
   (testing "row/update with uuids"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions :uuid-type)
       (with-uuids-test-data-and-actions-permissively-enabled!
-        (is (= {:rows-updated [1]}
+        (is (= {:rows-updated 1}
                (actions/perform-action!
                 :row/update
                 (assoc (mt/mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})
@@ -619,7 +619,7 @@
   (testing "row/delete with uuids"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions :uuid-type)
       (with-uuids-test-data-and-actions-permissively-enabled!
-        (is (= {:rows-deleted [1]}
+        (is (= {:rows-deleted 1}
                (actions/perform-action!
                 :row/delete
                 (mt/mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})))

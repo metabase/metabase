@@ -324,7 +324,7 @@
   [:channel/email :notification/system-event]
   [_channel-type
    notification-payload #_:- #_notification/NotificationPayload
-   template             :- ::models.channel/ChannelTemplate
+   template             :- [:maybe ::models.channel/ChannelTemplate]
    recipients           :- [:sequential ::models.notification/NotificationRecipient]]
   (let [event-topic (get-in notification-payload [:payload :event_topic])
         template    (or
