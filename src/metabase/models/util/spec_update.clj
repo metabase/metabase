@@ -16,6 +16,22 @@
   [path]
   (str (str/join #" / " (map #(if (keyword? %) (name %) %) path)) ":"))
 
+(defn- ref-nested-models
+  "Return a map of nested models that have a ref-in-parent."
+  [nested-specs]
+  (into {} (filter (comp :ref-in-parent second) nested-specs)))
+
+(defn- non-ref-nested-models
+  "Return a map of nested models that don't have a ref-in-parent.
+   When row is provided, only return models that are present in the row."
+  ([nested-specs]
+   (into {} (filter (comp not :ref-in-parent second) nested-specs)))
+  ([nested-specs row]
+   (into {} (for [[k spec] nested-specs
+                  :when (and (not (:ref-in-parent spec))
+                             (contains? row k))]
+              [k spec]))))
+
 (mr/def ::Spec
   [:schema {:registry {::spec [:map {:closed true}
                                [:model                         :keyword]
@@ -78,7 +94,7 @@
 (defn- handle-refs-in-parent!
   "Process nested models with ref-in-parent, returning a map with updated parent foreign keys."
   [existing-row new-row nested-specs path]
-  (let [ref-specs (into {} (filter (comp :ref-in-parent second) nested-specs))]
+  (let [ref-specs (ref-nested-models nested-specs)]
     (when (seq ref-specs)
       (reduce (fn [parent-updates [k {:keys [ref-in-parent] :as spec}]]
                 (let [existing-nested (get existing-row k)
@@ -107,7 +123,7 @@
     #(select-keys % (filter some? (concat compare-cols extra-cols [fk-column] ref-in-parent-cols)))))
 
 (defn- handle-row-nested-updates!
-  [row existing-rows {:keys [nested-specs id-col] :as spec} path]
+  [row existing-rows {:keys [nested-specs id-col] :as _spec} path]
   (when nested-specs
     (log/tracef "%s nested models detected, updating nested models" (format-path path))
     (let [existing-row (m/find-first #(= (id-col row) (id-col %)) existing-rows)]
@@ -136,10 +152,7 @@
                   parent-id (t2/insert-returning-pk! model (sanitize-row row-with-refs))]
               (log/debugf "%s created a new entity %s %s" (format-path path) model parent-id)
               ;; Only process non-ref nested models
-              (let [nested-without-refs (into {} (for [[k {:keys [ref-in-parent]}] nested-specs
-                                                       :when (and (not ref-in-parent)
-                                                                  (contains? row k))]
-                                                   [k (nested-specs k)]))]
+              (let [nested-without-refs (non-ref-nested-models nested-specs row)]
                 (when (seq nested-without-refs)
                   (handle-nested-updates!
                    nil
@@ -168,10 +181,7 @@
             (t2/update! model (id-col row) (sanitize-row row-with-refs))
             ;; Only process non-ref nested models
             (when nested-specs
-              (let [nested-without-refs (into {} (for [[k {:keys [ref-in-parent]}] nested-specs
-                                                       :when (and (not ref-in-parent)
-                                                                  (contains? row k))]
-                                                   [k (nested-specs k)]))]
+              (let [nested-without-refs (non-ref-nested-models nested-specs row)]
                 (when (seq nested-without-refs)
                   (handle-nested-updates!
                    existing-row
@@ -190,12 +200,11 @@
               row-with-refs  (merge row parent-updates)]
           (log/tracef "%s updating nested models for %s %s" (format-path path) model (id-col row))
           ;; Only process non-ref nested models
-          (let [nested-without-refs (into {} (for [[k {:keys [ref-in-parent]}] nested-specs
-                                                   :when (and (not ref-in-parent)
-                                                              (contains? row k))]
-                                               [k (nested-specs k)]))]
-            (when parent-updates
-              (t2/update! model (id-col row) parent-updates))
+          (when (and parent-updates
+                     (not= (sanitize-row (merge existing-row parent-updates))
+                           (sanitize-row row)))
+            (t2/update! model (id-col row) parent-updates))
+          (let [nested-without-refs (non-ref-nested-models nested-specs row)]
             (when (seq nested-without-refs)
               (handle-nested-updates!
                existing-row
@@ -215,11 +224,8 @@
         new-data-sanitized      (when new-data-with-refs (sanitize-row new-data-with-refs))
         existing-data-sanitized (when existing-data (sanitize-row existing-data))
         handle-nested!          (fn [existing-data new-data parent-id]
-                                  (when (and nested-specs new-data)
-                                    (let [nested-without-refs (into {} (for [[k {:keys [ref-in-parent]}] nested-specs
-                                                                             :when (and (not ref-in-parent)
-                                                                                        (contains? new-data k))]
-                                                                         [k (nested-specs k)]))]
+                                  (when nested-specs
+                                    (let [nested-without-refs (non-ref-nested-models nested-specs)]
                                       (when (seq nested-without-refs)
                                         (log/tracef "%s standard nested models detected, updating nested models %s %s"
                                                     (format-path path) model parent-id)
@@ -234,6 +240,7 @@
       (do
         (log/debugf "%s Deleting" (format-path (conj path existing-id)))
         (t2/delete! model existing-id)
+        (handle-nested! existing-data new-data existing-id)
         nil)
 
       ;; create
