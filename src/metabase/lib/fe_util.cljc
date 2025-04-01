@@ -188,6 +188,10 @@
   [_query _stage-number metric]
   metric)
 
+(defmethod expression-parts-method :expression
+  [query stage-number expression-ref]
+  (column-metadata-from-ref query stage-number expression-ref))
+
 (mu/defn expression-parts :- [:or ExpressionArg ExpressionParts]
   "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
   ([query value]
