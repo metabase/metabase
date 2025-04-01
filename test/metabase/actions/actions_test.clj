@@ -110,14 +110,14 @@
    {:action       :row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
                          :update_row {(format-field-name :name) "updated_row"})
-    :expected     {:rows-updated [1]}}
+    :expected     {:rows-updated 1}}
    {:action       :row/delete
     :request-body (mt/mbql-query categories {:filter [:= $id 1]})
     :expected     {:rows-deleted 1}}
    {:action       :row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
                          :update_row {(format-field-name :name) "new-category-name"})
-    :expected     {:rows-updated [1]}}])
+    :expected     {:rows-updated 1}}])
 
 (deftest feature-flags-test
   (doseq [{:keys [action request-body]} (mock-requests)]
