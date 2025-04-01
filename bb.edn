@@ -57,6 +57,11 @@
    :requires [[mage.kondo :as kondo]]
    :task     (kondo/kondo-updated (:arguments (cli/parse! (current-task))))}
 
+  start-maildev
+  {:doc      "Start Maildev"
+   :requires [[mage.start-maildev :as start-maildev]]
+   :task     (do (cli/parse! (current-task)) (start-maildev/start-maildev!))}
+
   start-db
   {:doc        "Start a db on a default port in docker"
    :examples   [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
