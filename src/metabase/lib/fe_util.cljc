@@ -226,7 +226,7 @@
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
   [operator :- :keyword
-   args     :- [:sequential [:or ExpressionArg ExpressionParts]]
+   args     :- [:sequential [:or ExpressionArg ExpressionParts ::lib.schema.expression/expression]]
    options  :- [:maybe :map]]
   (lib.normalize/normalize
    (fix-expression-clause
