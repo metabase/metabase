@@ -51,9 +51,9 @@
         (testing "split part"
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                           (lib/with-fields [main-string])
-                          (lib/expression "DELIMITER" (delimiter))
+                          (lib/expression "DELIMITER" delimiter)
                           (lib/expression "INDEX" (index))
-                          (lib/expression "SPLITPART" (lib/split-part main-string (delimiter) (index)))
+                          (lib/expression "SPLITPART" (lib/split-part main-string delimiter (index)))
                           (lib/limit 100))
                 result (-> query qp/process-query)
                 cols (mt/cols result)
@@ -71,14 +71,15 @@
     (let [mp (mt/metadata-provider)
           examples [{:text "ABC-123" :delimiter "-" :position 1 :expected "ABC" :msg "Easy case."}
                     {:text "ABC-123" :delimiter "-" :position 2 :expected "123" :msg "Easy case."}
-                    ;;{:text "ABC-123" :delimiter "-" :position 0 :expected ""    :msg "Position too low."}
                     {:text "ABC-123" :delimiter "-" :position 3 :expected ""    :msg "Position too high."}
 
-                    {:text "/ABC/123/" :delimiter "/" :position 1 :expected "" :msg "Empty part when delimiter is first char."}
+                    {:text "John Doe" :delimiter " " :position 1 :expected "John" :msg "Single space delimiter."}
+
+                    {:text "/ABC/123/" :delimiter "/" :position 1 :expected ""    :msg "Empty part when delimiter is first char."}
                     {:text "/ABC/123/" :delimiter "/" :position 2 :expected "ABC" :msg "First part of path."}
                     {:text "/ABC/123/" :delimiter "/" :position 3 :expected "123" :msg "Second part of path."}
-                    {:text "/ABC/123/" :delimiter "/" :position 4 :expected "" :msg "Empty part when delimiter is last char."}
-                    {:text "/ABC/123/" :delimiter "/" :position 40 :expected "" :msg "Empty part when position out of bounds."}
+                    {:text "/ABC/123/" :delimiter "/" :position 4 :expected ""    :msg "Empty part when delimiter is last char."}
+                    {:text "/ABC/123/" :delimiter "/" :position 9 :expected ""    :msg "Empty part when position out of bounds."}
 
                     {:text "ABC-123" :delimiter "," :position 1 :expected "ABC-123"    :msg "Delimiter doesn't exist."}
 
@@ -116,3 +117,21 @@
           (doseq [[_id split-string] rows]
             (is (string? split-string))
             (is (= "" split-string))))))))
+
+(deftest ^:parallel split-part-test-illegal
+  (mt/test-drivers (mt/normal-drivers-with-feature :split-part)
+    (let [mp (mt/metadata-provider)
+          examples [{:text "" :delimiter "" :position 1 :msg "Empty delimiter"}
+                    {:text "" :delimiter (lib/concat "" "j") :position 1 :msg "expression delimiter"}
+                    {:text "" :delimiter (lib.metadata/field mp (mt/id :people :id)) :position 1 :msg "field delimiter"}
+
+                    {:text "John Doe" :delimiter " " :position 0 :msg "Zero position."}
+                    {:text "John Doe" :delimiter " " :position -1 :msg "Negative position."}]]
+      (doseq [{:keys [text delimiter position msg]} examples]
+        (testing (str "split part: " msg)
+          (is (thrown? Exception
+                       (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                           (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))])
+                           (lib/expression "SPLITPART" (lib/split-part text delimiter position))
+                           (lib/limit 1)))
+              msg))))))
