@@ -47,6 +47,7 @@ export type InteractiveQuestionProps = PropsWithChildren<{
     | "isSaveEnabled"
     | "initialSqlParameters"
     | "withDownloads"
+    | "saveToCollection"
     | "targetCollection"
   >;
 

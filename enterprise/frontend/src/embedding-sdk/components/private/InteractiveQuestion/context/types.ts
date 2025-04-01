@@ -37,6 +37,10 @@ type InteractiveQuestionConfig = {
   initialSqlParameters?: ParameterValues;
   withDownloads?: boolean;
 
+  /**
+   * @deprecated Use `targetCollection` instead
+   */
+  saveToCollection?: SdkCollectionId;
   targetCollection?: SdkCollectionId;
 };
 
