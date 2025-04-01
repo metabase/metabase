@@ -5,6 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.types :as types]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -26,7 +27,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols last :base_type)))
+              (is (types/field-is-type? :type/Integer (last cols)))
               (doseq [[uncasted-value casted-value] rows]
                 (is (= (Long/parseLong uncasted-value)
                        casted-value))))))))))
@@ -50,7 +51,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols last :base_type)))
+              (is (types/field-is-type? :type/Integer (last cols)))
               (doseq [[_ uncasted-value casted-value] rows]
                 (is (= (Long/parseLong uncasted-value)
                        casted-value))))))))))
@@ -76,7 +77,7 @@
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols last :base_type)))
+                  (is (types/field-is-type? :type/Integer (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
                     (is (= (Long/parseLong uncasted-value)
                            casted-value))))))))))))
@@ -102,7 +103,7 @@
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols last :base_type)))
+                  (is (types/field-is-type? :type/Integer (last cols)))
                   (doseq [[uncasted-value casted-value] rows]
                     (is (= (Long/parseLong uncasted-value)
                            casted-value))))))))))))
@@ -135,7 +136,7 @@
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols last :base_type)))
+                  (is (types/field-is-type? :type/Integer (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
                     (is (= (Long/parseLong uncasted-value)
                            casted-value))))))))))))
@@ -157,7 +158,7 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (= :type/BigInteger (-> cols last :base_type)))
+            (is (types/field-is-type? :type/Integer (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
               (is (= (Long/parseLong uncasted-value)
                      casted-value)))))))))
@@ -176,7 +177,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols last :base_type)))
+              (is (types/field-is-type? :type/Integer (last cols)))
               (doseq [[uncasted-value casted-value] rows]
                 (is (= (Long/parseLong uncasted-value)
                        casted-value))))))))))
@@ -187,6 +188,7 @@
       (let [mp (mt/metadata-provider)
             examples [{:original "123" :value 123 :msg "Easy case."}
                       {:original "+123" :value 123 :msg "Initial + sign."}
+                      {:original "00123" :value 123 :msg "Initial zeros."}
                       {:original "-123" :value -123 :msg "Negative sign."}
                       {:original (pr-str Long/MAX_VALUE) :value Long/MAX_VALUE :msg "Big number."}
                       {:original (pr-str Long/MIN_VALUE) :value Long/MIN_VALUE :msg "Big number."}]]
@@ -200,7 +202,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols last :base_type)))
+              (is (types/field-is-type? :type/Integer (last cols)))
               (doseq [[_id casted-value] rows]
                 (is (= value casted-value)
                     msg)))))))))
