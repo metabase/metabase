@@ -16,7 +16,7 @@ describe("pratt/parser", () => {
 
   function parseExpression(source: string, throwOnError: boolean = true) {
     return cleanupAST(
-      parse(lexify(source), {
+      parse(lexify(source).tokens, {
         throwOnError,
       }).root,
     );

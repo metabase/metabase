@@ -4,7 +4,7 @@ import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { EXPRESSION_FUNCTIONS, MBQL_CLAUSES } from "../config";
-import { TOKEN } from "../tokenizer";
+import { GROUP } from "../pratt";
 import { getDatabase } from "../utils";
 
 import {
@@ -70,10 +70,7 @@ export function suggestFunctions({
     const next = tokenAtPos(source, token.end + 1);
     const options = matcher(content(source, token)).map((option) => ({
       ...option,
-      apply:
-        next?.type === TOKEN.Operator && next.op === "("
-          ? undefined
-          : option.apply,
+      apply: next?.type === GROUP ? undefined : option.apply,
     }));
 
     return {

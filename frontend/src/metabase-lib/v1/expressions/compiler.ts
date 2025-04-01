@@ -45,7 +45,7 @@ export function compileExpression({
   resolve?: boolean;
 }): CompileResult {
   try {
-    const tokens = lexify(source);
+    const { tokens } = lexify(source);
     const { root } = parse(tokens, { throwOnError: true });
     const compiled = compile(root);
     const expression = applyPasses(compiled, [
