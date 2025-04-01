@@ -4,7 +4,6 @@ import fetchMock from "fetch-mock";
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   within,
@@ -99,7 +98,6 @@ const setup = ({
   ...rest
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
-  mockScrollBy();
   setupRecentViewsAndSelectionsEndpoints(recentItems, ["selections", "views"], {
     delay: recentsDelay,
   });
