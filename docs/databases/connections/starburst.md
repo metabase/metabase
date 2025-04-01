@@ -1,15 +1,17 @@
 ---
-title: Amazon Redshift
-description: Connect Metabase to Amazon Redshift data warehouses to run queries and create dashboards.
-redirect_from:
-  - /docs/latest/administration-guide/databases/redshift
+title: Starburst
+description: Learn how to connect Metabase to your Starburst or Trino database, including connection settings, SSL configuration, and database sync options.
 ---
 
-# Amazon Redshift
+# Starburst
+
+> This driver also works for connections to a Trino database.
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
-## Connection and sync
+You can edit these settings at any time. Just remember to save your changes.
+
+## Connection and Sync
 
 After connecting to a database, you'll see the "Connection and sync" section that displays the current connection status and options to manage your database connection.
 
@@ -25,42 +27,21 @@ The display name for the database in the Metabase interface.
 
 ### Host
 
-Your database's IP address, or its domain name (e.g., esc.mydatabase.com).
+Your database's IP address (e.g., `98.137.149.56`) or its domain name (e.g., `name.database.com`).
 
 ### Port
 
-The database port. E.g., 3306.
+The database port (e.g., `8080`).
 
-### Database name
+### Catalog
 
-The name of the database you want to connect to.
+Starburt catalogs contain schemas and reference data sources via a connector.
 
-### Schemas
+### Schema (optional)
 
-Here you can specify which schemas you want to sync and scan. Options are:
-
-- All
-- Only these...
-- All except...
-
-For the **Only these** and **All except** options, you can input a comma-separated list of values to tell Metabase which schemas you want to include (or exclude). For example:
-
-```
-foo,bar,baz
-```
-
-You can use the `*` wildcard to match multiple schemas.
-
-Let's say you have three schemas: foo, bar, and baz.
-
-- If you have **Only these...** set, and enter the string `b*`, you'll sync with bar and baz.
-- If you have **All except...** set, and enter the string `b*`, you'll just sync foo.
-
-Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
+Only add tables that come from a specific schema.
 
 ### Username
-
-> In order for sync and scan to work, make sure this database user account has access to the `information_schema`.
 
 The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
 
@@ -68,13 +49,25 @@ The database username for the account that you want to use to connect to your da
 
 The password for the username that you use to connect to the database.
 
-### Use an SSH tunnel
+### Use a secure connection (SSL)
 
-See our [guide to SSH tunneling](../ssh-tunnel.md).
+See [SSL certificates](../ssl-certificates.md).
+
+### Role (optional)
+
+Specify a role to override the database user's default role.
+
+### Optimize prepared statements
+
+Requires Starburst Galaxy, Starburst Enterprise (version 420-e or higher), or Trino (version 418 or higher).
 
 ### Additional JDBC connection string options
 
-You can append options to the connection string that Metabase uses to connect to your database.
+You can append options to the JDBC connection string. Separate options with `&`, like so:
+
+```
+connection_timeout=1000&socket_timeout=300000
+```
 
 ### Re-run queries for simple explorations
 
@@ -96,21 +89,8 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Model features
 
-Choose whether to enable features related to Metabase models. These will often require a write connection.
-
-### Model persistence
-
-You can enable model persistence to allow Metabase to create tables with model data and refresh them on a schedule. This requires write permissions to a designated schema. 
-
-Check out [Model persistence](../../data-modeling/model-persistence.md).
+There aren't (yet) any model features for ClickHouse.
 
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).
-
-## Further reading
-
-- [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
-- [Setting data access permissions](../../permissions/data.md)

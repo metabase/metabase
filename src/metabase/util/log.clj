@@ -10,7 +10,9 @@
    [clojure.tools.logging.impl]
    [metabase.config :as config]
    [metabase.util.log.capture]
-   [net.cgrand.macrovich :as macros]))
+   [net.cgrand.macrovich :as macros])
+  (:import
+   (org.apache.logging.log4j ThreadContext)))
 
 ;;; --------------------------------------------- CLJ-side macro helpers ---------------------------------------------
 (defn- glogi-logp
