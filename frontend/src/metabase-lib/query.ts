@@ -127,9 +127,6 @@ export function sourceCardId(query: Query): CardId | null {
   return ML.source_card_id(query);
 }
 
-/**
- * @deprecated: use `sourceTableOrCardMetadata`
- */
 export function sourceTableOrCardId(query: Query): TableId | null {
   const tableId = sourceTableId(query);
   if (tableId != null) {
