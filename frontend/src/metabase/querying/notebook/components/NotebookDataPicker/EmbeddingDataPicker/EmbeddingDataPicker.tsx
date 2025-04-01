@@ -7,6 +7,7 @@ import { DataSourceSelector } from "metabase/query_builder/components/DataSelect
 import { getEmbedOptions } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { TableId } from "metabase-types/api";
 
 import { DataPickerTarget } from "../DataPickerTarget";
@@ -75,7 +76,7 @@ export function EmbeddingDataPicker({
     return (
       <PLUGIN_EMBEDDING_SDK.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
-        selectedEntity={pickerInfo?.tableId}
+        selectedEntity={getLegacyTableId(pickerInfo)}
         isInitiallyOpen={!table}
         triggerElement={
           <DataPickerTarget
@@ -98,12 +99,12 @@ export function EmbeddingDataPicker({
 
   return (
     <DataSourceSelector
-      key={pickerInfo?.tableId}
+      key={getLegacyTableId(pickerInfo)}
       isInitiallyOpen={!table}
       databases={databases}
       canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
-      selectedTableId={pickerInfo?.tableId}
+      selectedTableId={getLegacyTableId(pickerInfo)}
       selectedCollectionId={card?.collection_id}
       databaseQuery={{ saved: true }}
       canSelectModel={entityTypes.includes("model")}
@@ -120,4 +121,14 @@ export function EmbeddingDataPicker({
       setSourceTableFn={onChange}
     />
   );
+}
+
+function getLegacyTableId(pickerInfo: Lib.PickerInfo | undefined) {
+  if (pickerInfo == null) {
+    return undefined;
+  }
+  if (pickerInfo.cardId != null) {
+    return getQuestionVirtualTableId(pickerInfo.cardId);
+  }
+  return pickerInfo.tableId;
 }
