@@ -466,6 +466,13 @@
                :router_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 
+(defmethod serdes/extract-query "Database"
+  [model-name {:keys [where]}]
+  (t2/reducible-select (keyword "model" model-name) {:where
+                                                     [:and
+                                                      (or where true)
+                                                      [:= :router_database_id nil]]}))
+
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
   name)
