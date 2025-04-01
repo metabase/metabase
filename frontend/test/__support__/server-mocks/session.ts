@@ -1,8 +1,11 @@
 import fetchMock from "fetch-mock";
 
+import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type { PasswordResetTokenStatus, Settings } from "metabase-types/api";
 
-export function setupPropertiesEndpoints(settings: Settings) {
+export function setupPropertiesEndpoints(
+  settings: Settings | EnterpriseSettings,
+) {
   fetchMock.get("path:/api/session/properties", settings, {
     overwriteRoutes: true,
   });

@@ -14,7 +14,7 @@ export function fetchWithTimeout(
     ...options,
     signal: controller.signal,
   })
-    .then(res => {
+    .then((res) => {
       clearTimeout(timeout);
       return res;
     })

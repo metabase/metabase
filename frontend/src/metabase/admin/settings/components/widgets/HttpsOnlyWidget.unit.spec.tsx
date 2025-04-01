@@ -94,7 +94,7 @@ describe("HttpsOnlyWidget", () => {
 
     const calls = fetchMock.calls();
 
-    const urls = calls.map(call => call[0]);
+    const urls = calls.map((call) => call[0]);
     expect(urls).not.toContain("http://myinsecuresite.guru/api/health");
     expect(urls).not.toContain("https://myinsecuresite.guru/api/health");
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
@@ -113,7 +113,7 @@ describe("HttpsOnlyWidget", () => {
 
     const calls = fetchMock.calls();
 
-    const urls = calls.map(call => call[0]);
+    const urls = calls.map((call) => call[0]);
     expect(urls).not.toContain("https://mysite.biz/api/health");
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(screen.queryByText(/HTTPS/i)).not.toBeInTheDocument();
@@ -156,7 +156,7 @@ describe("HttpsOnlyWidget", () => {
 async function findPut() {
   const calls = fetchMock.calls();
   const [putUrl, putDetails] =
-    calls.find(call => call[1]?.method === "PUT") ?? [];
+    calls.find((call) => call[1]?.method === "PUT") ?? [];
 
   const body = ((await putDetails?.body) as string) ?? "{}";
 
