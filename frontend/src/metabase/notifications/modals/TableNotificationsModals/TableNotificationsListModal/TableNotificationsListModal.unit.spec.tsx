@@ -1,15 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { mockScrollIntoView, screen } from "__support__/ui";
+import { screen } from "__support__/ui";
 
 import { createNotificationForUser, setup } from "./test-utils";
 
 describe("TableNotificationsListModal", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   beforeEach(() => {
     fetchMock.reset();
   });
