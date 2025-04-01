@@ -580,8 +580,9 @@
                                                               :fk-column    :notification_handler_id
                                                               :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
                                                               :multi-row?   true}
-                                                 :template   {:model        :model/ChannelTemplate
-                                                              :compare-cols [:channel_type :name :details]}}}}})
+                                                 :template   {:model         :model/ChannelTemplate
+                                                              :ref-in-parent :template_id
+                                                              :compare-cols  [:channel_type :name :details]}}}}})
 
 (defn update-notification!
   "Update an existing notification with `new-notification`."
