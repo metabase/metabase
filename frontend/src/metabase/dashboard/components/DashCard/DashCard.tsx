@@ -28,6 +28,7 @@ import {
   getInitialStateForCardDataSource,
   isVisualizerDashboardCard,
 } from "metabase/visualizer/utils";
+import { getInitialStateForMultipleSeries } from "metabase/visualizer/utils/get-initial-state-for-multiple-series";
 import type {
   Card,
   CardId,
@@ -321,6 +322,8 @@ function DashCardInner({
     if (isVisualizerDashboardCard(dashcard)) {
       initialState = dashcard.visualization_settings
         ?.visualization as Partial<VisualizerHistoryItem>;
+    } else if (series.length > 1) {
+      initialState = getInitialStateForMultipleSeries(series);
     } else {
       initialState = getInitialStateForCardDataSource(
         series[0].card,
