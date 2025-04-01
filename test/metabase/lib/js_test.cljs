@@ -387,17 +387,31 @@
           (is (=? [:metric {} metric-id] metric-expr))
           (is (= ["metric" metric-id] (js->clj (lib.js/legacy-expression-for-expression-clause query -1 metric-expr)))))))))
 
-(deftest ^:parallel source-table-or-card-id-test
+(deftest ^:parallel source-table-id-test
   (testing "returns the table-id as a number"
-    (are [query] (= (meta/id :venues) (lib.js/source-table-or-card-id query))
+    (are [query] (= (meta/id :venues) (lib.js/source-table-id query))
       (lib.tu/venues-query)
       (lib/append-stage (lib.tu/venues-query))))
-  (testing "returns the card-id in the legacy string form"
-    (are [query] (= "card__1" (lib.js/source-table-or-card-id query))
+  (testing "returns nil for questions starting from a card"
+    (are [query] (nil? (lib.js/source-table-id query))
       (lib.tu/query-with-source-card)
       (lib/append-stage (lib.tu/query-with-source-card))))
   (testing "returns nil for questions starting from a native query"
-    (are [query] (nil? (lib.js/source-table-or-card-id query))
+    (are [query] (nil? (lib.js/source-table-id query))
+      (lib.tu/native-query)
+      (lib/append-stage (lib.tu/native-query)))))
+
+(deftest ^:parallel source-card-id-test
+  (testing "returns the card-id as a number"
+    (are [query] (= 1 (lib.js/source-card-id query))
+      (lib.tu/query-with-source-card)
+      (lib/append-stage (lib.tu/query-with-source-card))))
+  (testing "returns nil for questions starting from a table"
+    (are [query] (nil? (lib.js/source-card-id query))
+      (lib.tu/venues-query)
+      (lib/append-stage (lib.tu/venues-query))))
+  (testing "returns nil for questions starting from a native query"
+    (are [query] (nil? (lib.js/source-card-id query))
       (lib.tu/native-query)
       (lib/append-stage (lib.tu/native-query)))))
 
