@@ -1797,7 +1797,6 @@
     :metadata/table #js {:databaseId (:database a-query)
                          :tableId (:id metadata)}
     :metadata/card  #js {:databaseId (:database a-query)
-                         :tableId (str "card__" (:id metadata))
                          :cardId (:id metadata)
                          :isModel (= (keyword (:type metadata)) :model)}
     (do
@@ -2239,12 +2238,9 @@
   (to-array (lib.core/pivot-columns-for-type a-drill-thru (keyword pivot-type))))
 
 (defn ^:export with-different-table
-  "Changes an existing `a-query` to use a different source table or card.
+  "Changes an existing `a-query` to use a different source table.
 
-  Can be passed an integer table id or a legacy `\"card__<id>\"` string.
-
-  > **Code health:** Smelly. This leaks the `card__<id>` format and how sources work. Should be refactored into a new
-  system for handling data sources."
+  > **Code health:** Healthy."
   [a-query table-id]
   (lib.core/with-different-table a-query table-id))
 

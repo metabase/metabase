@@ -29,13 +29,15 @@ export function DataStep({
   onChange,
 }: DataStepProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const tableId = query ? Lib.sourceTableOrCardId(query) : undefined;
-  const table =
-    query && tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
-  const tableInfo =
-    query && table ? Lib.displayInfo(query, stageIndex, table) : undefined;
-  const tableValue =
-    query && table ? getDataPickerValue(query, stageIndex, table) : undefined;
+  const dataSource = query ? Lib.sourceTableOrCardMetadata(query) : null;
+  const dataSourceInfo =
+    query != null && dataSource != null
+      ? Lib.displayInfo(query, stageIndex, dataSource)
+      : undefined;
+  const pickerValue =
+    query != null && dataSource != null
+      ? getDataPickerValue(query, stageIndex, dataSource)
+      : undefined;
   const store = useStore();
   const dispatch = useDispatch();
 
@@ -62,18 +64,18 @@ export function DataStep({
           rightSection={<Icon name="chevrondown" />}
           onClick={() => setIsOpened(true)}
         >
-          {tableInfo ? tableInfo.displayName : t`Select a table`}
+          {dataSourceInfo ? dataSourceInfo.displayName : t`Select a table`}
         </Button>
       ) : (
         <Text c="text-dark" fw="bold">
-          {tableInfo?.displayName}
+          {dataSourceInfo?.displayName}
         </Text>
       )}
       {isOpened && (
         <DataPickerModal
           title={t`Select a table`}
           models={["table"]}
-          value={tableValue}
+          value={pickerValue}
           onChange={handleChange}
           onClose={() => setIsOpened(false)}
         />
