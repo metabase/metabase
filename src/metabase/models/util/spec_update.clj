@@ -91,44 +91,45 @@
 (defn- process-reverse-references
   [nested-specs parent-entity path]
   (when (and nested-specs parent-entity)
-    (let [field-updates (atom {})]
-      (doseq [[k spec] nested-specs]
-        (when-let [ref-col (:ref-in-parent spec)]
-          (log/debugf "%s Processing reverse reference: %s with ref-in-parent column %s"
-                      (format-path path) k ref-col)
-          (let [child-entity (get parent-entity k)
-                model (:model spec)
-                id-col (:id-col spec :id)
-                child-id (cond
-                          ;; Create or update if we have child data
-                           child-entity
-                           (let [id (get child-entity id-col)
-                                 existing-child (when id (t2/select-one model id))
-                                 child-path (conj path k)]
-                             (process-single-entity! model existing-child child-entity spec child-path))
+    (into {}
+          (for [[k spec] nested-specs
+                :let [ref-col      (:ref-in-parent spec)]
+                :when ref-col
+                :let [child-entity (get parent-entity k)
+                      model (:model spec)
+                      id-col (:id-col spec :id)
+                      child-id (cond
+                                 ;; If child entity exists with ID, check if we need to update it first
+                                 (and child-entity (get child-entity id-col))
+                                 (let [id (get child-entity id-col)
+                                       existing-child (when id (t2/select-one model id))
+                                       child-path (conj path k)]
+                                   ;; Update the child if needed, then return its ID
+                                   (if existing-child
+                                     (process-single-entity! model existing-child child-entity spec child-path)
+                                     id))
 
-                          ;; Handle explicit nil case
-                           (contains? parent-entity k)
-                           nil)]
-            (when (or child-id (contains? parent-entity k))
-              (swap! field-updates assoc ref-col child-id)))))
-      @field-updates)))
+                                 ;; Create a new child if needed and get its ID
+                                 child-entity
+                                 (let [child-path (conj path k)]
+                                   (process-single-entity! model nil child-entity spec child-path))
+
+                                 ;; Handle explicit nil case
+                                 (contains? parent-entity k)
+                                 nil)]
+                :when (or child-id (contains? parent-entity k))]
+            [ref-col child-id]))))
 
 (defn- with-processed-refs
-  "Process reverse references for an entity and return the updated entity with reference IDs.
-   If update-db? is true, also updates the entity in the database with the new reference IDs."
-  [entity spec path & {:keys [update-db?]}]
+  "Process reverse references for an entity and return the updated entity with reference IDs."
+  [entity spec path]
   (if-let [nested-specs (:nested-specs spec)]
     (let [reverse-ref-fields (process-reverse-references nested-specs entity path)]
       (if (seq reverse-ref-fields)
-        (let [entity-with-refs (merge entity reverse-ref-fields)
-              id-col (:id-col spec :id)]
-          ;; Update the database if requested and we have an ID
-          (when (and update-db? (id-col entity))
-            (log/debugf "%s Updating with reverse references: %s"
-                        (format-path path)
-                        reverse-ref-fields)
-            (t2/update! (:model spec) (id-col entity) reverse-ref-fields))
+        (let [entity-with-refs (merge entity reverse-ref-fields)]
+          (log/debugf "%s Collected reverse references: %s"
+                      (format-path path)
+                      reverse-ref-fields)
           entity-with-refs)
         entity))
     entity))
@@ -140,12 +141,7 @@
   (let [sanitize (get-sanitizer-fn spec)
         compare-fn (get-comparison-fn spec)
         id-col (:id-col spec)
-        existing-id (when existing-entity (id-col existing-entity))
-        ;; Process any nested ref-in-parent relationships first
-        new-entity-with-refs (when new-entity
-                               (with-processed-refs new-entity spec path))
-        new-entity-sanitized (when new-entity-with-refs
-                               (sanitize new-entity-with-refs))]
+        existing-id (when existing-entity (id-col existing-entity))]
     (cond
       ;; delete
       (nil? new-entity)
@@ -156,7 +152,10 @@
 
       ;; create
       (nil? existing-entity)
-      (let [entity-id (t2/insert-returning-pk! model new-entity-sanitized)]
+      (let [;; Process any ref-in-parent relationships FIRST
+            new-entity-with-refs (with-processed-refs new-entity spec path)
+            new-entity-sanitized (sanitize new-entity-with-refs)
+            entity-id (t2/insert-returning-pk! model new-entity-sanitized)]
         (log/debugf "%s Created a new entity %s %s" (format-path path) model entity-id)
         entity-id)
 
@@ -166,38 +165,57 @@
         (log/debugf "%s ID changed from %s to %s - deleting and recreating"
                     (format-path path) existing-id (id-col new-entity))
         (t2/delete! model existing-id)
-        (let [entity-id (t2/insert-returning-pk! model new-entity-sanitized)]
+        (let [;; Process any ref-in-parent relationships FIRST
+              new-entity-with-refs (with-processed-refs new-entity spec path)
+              new-entity-sanitized (sanitize new-entity-with-refs)
+              entity-id (t2/insert-returning-pk! model new-entity-sanitized)]
           (log/debugf "%s Created a new entity %s %s" (format-path path) model entity-id)
           entity-id))
 
-      ;; update
-      (not= (compare-fn new-entity-sanitized) (compare-fn (sanitize existing-entity)))
-      (do
-        (log/debugf "%s Updating %s %s" (format-path path) model existing-id)
-        (t2/update! model existing-id new-entity-sanitized)
-        existing-id)
-
-      ;; no change
+      ;; update - process refs first, then compare if changes are needed
       :else
-      (do
-        (log/debugf "%s No change detected for %s %s" (format-path path) model existing-id)
-        existing-id))))
+      (let [;; Process any ref-in-parent relationships FIRST
+            new-entity-with-refs (with-processed-refs new-entity spec path)
+            new-entity-sanitized (sanitize new-entity-with-refs)]
+        (if (not= (compare-fn new-entity-sanitized) (compare-fn (sanitize existing-entity)))
+          (do
+            (log/debugf "%s Updating %s %s" (format-path path) model existing-id)
+            (t2/update! model existing-id new-entity-sanitized)
+            existing-id)
+          (do
+            (log/debugf "%s No change detected for %s %s" (format-path path) model existing-id)
+            existing-id))))))
 
 (defn- process-entity-with-nested!
-  [entity existing-entities {:keys [nested-specs id-col] :as spec} path]
+  [entity existing-entities {:keys [nested-specs id-col model] :as spec} path]
   (when nested-specs
     (log/tracef "%s Nested models detected, updating nested models" (format-path path))
     (let [existing-entity (m/find-first #(= (id-col entity) (id-col %)) existing-entities)
           entity-id (id-col entity)
-          ;; Process nested refs and update entity in database if needed
-          entity-with-refs (with-processed-refs entity spec (conj path entity-id) :update-db? true)]
+          ;; Process nested refs to get updated references
+          entity-with-refs (with-processed-refs entity spec (conj path entity-id))
 
-      ;; Continue with regular nested updates
-      (process-nested-entities!
-       existing-entity
-       (attach-parent-id entity-with-refs nested-specs entity-id)
-       nested-specs
-       (conj path entity-id)))))
+          ;; Extract just the reference fields to update in the database
+          reference-updates (select-keys entity-with-refs
+                                         (for [[k spec] nested-specs
+                                               :when (:ref-in-parent spec)]
+                                           (:ref-in-parent spec)))]
+
+      ;; Update the parent entity with new references if there are any
+      (when (seq reference-updates)
+        (log/debugf "%s Updating parent with references: %s"
+                    (format-path (conj path entity-id))
+                    reference-updates)
+        (t2/update! model entity-id reference-updates))
+
+      ;; Now attach parent ID to nested models
+      (let [entity-with-parent-refs (attach-parent-id entity-with-refs nested-specs entity-id)]
+        ;; Process nested entities with updated references
+        (process-nested-entities!
+         existing-entity
+         entity-with-parent-refs
+         nested-specs
+         (conj path entity-id))))))
 
 (defn- process-multi-row!
   [existing-entities new-entities {:keys [model nested-specs id-col] :as spec} path]
@@ -212,18 +230,23 @@
         (do
           (log/tracef "%s Nested spec found, creating entities one by one" (format-path path))
           (doseq [entity to-create]
+            ;; Process references first
             (let [entity-with-refs (with-processed-refs entity spec path)
-                  parent-id (t2/insert-returning-pk! model (sanitize entity-with-refs))]
-              (log/debugf "%s Created a new entity %s %s" (format-path path) model parent-id)
+                  ;; Then create with references properly set
+                  sanitized-entity (sanitize entity-with-refs)
+                  parent-id (t2/insert-returning-pk! model sanitized-entity)]
+              (log/debugf "%s Created a new entity %s %s with references"
+                          (format-path path) model parent-id)
               (process-nested-entities!
                nil
-               (attach-parent-id entity nested-specs parent-id)
+               (attach-parent-id entity-with-refs nested-specs parent-id)
                nested-specs
                (conj path parent-id)))))
         (do
           (log/tracef "%s No nested spec found, batch creating %d new entities of %s"
                       (format-path path) (count to-create) model)
-          (t2/insert! model (map sanitize to-create)))))
+          ;; Still process any references that might exist
+          (t2/insert! model (map #(sanitize (with-processed-refs % spec path)) to-create)))))
 
     ;; Delete entities
     (when (seq to-delete)
@@ -235,10 +258,14 @@
     (when (seq to-update)
       (log/tracef "%s Updating %d entities of %s" (format-path path) (count to-update) model)
       (doseq [entity to-update]
-        (let [entity-path (conj path (id-col entity))]
-          (log/debugf "%s Updating" (format-path entity-path))
-          (t2/update! model (id-col entity) (sanitize entity))
-          (process-entity-with-nested! entity existing-entities spec path))))
+        (let [entity-path (conj path (id-col entity))
+              ;; Process references first
+              entity-with-refs (with-processed-refs entity spec entity-path)
+              ;; Update with all fields including references
+              sanitized-entity (sanitize entity-with-refs)]
+          (log/debugf "%s Updating with references" (format-path entity-path))
+          (t2/update! model (id-col entity) sanitized-entity)
+          (process-entity-with-nested! entity-with-refs existing-entities spec path))))
 
     ;; Process nested entities for unchanged entities
     (when (and (seq to-skip) nested-specs)
