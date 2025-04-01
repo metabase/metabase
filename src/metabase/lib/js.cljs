@@ -1479,17 +1479,19 @@
         #_{:clj-kondo/ignore [:discouraged-var]}
         (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack))))))
 
-(defn ^:export source-table-or-card-id
-  "Returns the ID of the source table (as a number) or the ID of the source card (as a string prefixed
-  with \"card__\") of `a-query`. If `a-query` has none of these, nil is returned.
+(defn ^:export source-table-id
+  "Returns the ID of the source table (as a number). If `a-query` is based on a card, nil is returned.
 
-  > **Code health:** Legacy. This is exposing too much about cards and sources. Its callers will likely have to be
-  updated to handle Metrics v2."
-  ;; TODO: Figure out what the callers of this function really need it for, and consider an alternative design.
-  ;; [[with-different-table]] should be included in that refactor.
+  > **Code health:** Healthy."
   [a-query]
-  (or (lib.util/source-table-id a-query)
-      (some->> (lib.util/source-card-id a-query) (str "card__"))))
+  (lib.util/source-table-id a-query))
+
+(defn ^:export source-card-id
+  "Returns the ID of the source card (as a number). If `a-query` is based on a table, nil is returned.
+
+  > **Code health:** Healthy."
+  [a-query]
+  (lib.util/source-card-id a-query))
 
 ;; # Joins
 ;; Joins are a relatively complex component of a query. They specify a table (or model, in theory), 1 or more conditions
@@ -1988,20 +1990,23 @@
   ;; is not supported by the lib.cache system.
   (to-array (lib.core/joinable-columns a-query stage-number join-or-joinable)))
 
-;; TODO: table-or-card-metadata is too specific and leaks details of how sources are stored. We need a higher-level API
-;; for the sources of queries, especially with Metrics v2.
-
-(defn ^:export table-or-card-metadata
-  "Given an integer `table-id`, returns the table's metadata. Given a legacy `\"card__123\"` string, returns the card's
-  metadata.
+(defn ^:export table-metadata
+  "Given an integer `table-id`, returns the table's metadata.
 
   Returns `nil` (JS `null`) if no matching metadata is found.
 
-  > **Code health:** Legacy. Avoid new calls - this leaks too much of how sources are stored, and with Metrics v2 the
-  way sources are stored will be evolving. A more general API for checking the sources of a query (or join) should be
-  added, and then this function deprecated and removed."
+  > **Code health:** Healthy."
   [query-or-metadata-provider table-id]
-  (lib.metadata/table-or-card query-or-metadata-provider table-id))
+  (lib.metadata/table query-or-metadata-provider table-id))
+
+(defn ^:export card-metadata
+  "Given an integer `card-id`, returns the card's metadata.
+
+  Returns `nil` (JS `null`) if no matching metadata is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider table-id]
+  (lib.metadata/card query-or-metadata-provider table-id))
 
 ;; TODO: "LHS" is a confusing name here. This is really the display name for the joined thing, usually a table.
 ;; It's an internal detail that this is often based on the LHS of the first join condition, ie. the FK's name.
@@ -2466,15 +2471,6 @@
   > **Code health:** Healthy"
   [a-query card-id card-type]
   (to-array (map clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type)))))
-
-(defn ^:export table-or-card-dependent-metadata
-  "Return a JS array of entities which are needed upfront to create a new query based on a table/card.
-
-  Each entity is returned as a JS map `{type: \"database\"|\"schema\"|\"table\"|\"field\", id: number}`.
-
-  > **Code health:** Healthy"
-  [metadata-providerable table-id]
-  (to-array (map clj->js (lib.core/table-or-card-dependent-metadata metadata-providerable table-id))))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.

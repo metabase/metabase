@@ -732,14 +732,6 @@
         query
         (lib/append-stage query)))))
 
-(deftest ^:parallel table-or-card-dependent-metadata-test
-  (testing "start from table"
-    (is (= [{:type :table, :id (meta/id :checkins)}]
-           (lib/table-or-card-dependent-metadata meta/metadata-provider (meta/id :checkins)))))
-  (testing "start from card"
-    (is (= [{:type :table, :id "card__1"}]
-           (lib/table-or-card-dependent-metadata lib.tu/metadata-provider-with-card "card__1")))))
-
 (deftest ^:parallel maybe-expand-temporal-expression-test
   (let [update-temporal-unit (fn [expr temporal-type] (update-in expr [2 1] assoc :temporal-unit temporal-type))
         expr [:=

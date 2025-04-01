@@ -309,6 +309,9 @@ export const getJoinQueryHelpers = (
   tableId: TableId,
 ) => {
   const table = Lib.tableOrCardMetadata(query, tableId);
+  if (table == null) {
+    throw new Error("Table or card not found.");
+  }
 
   const findLHSColumn = columnFinder(
     query,

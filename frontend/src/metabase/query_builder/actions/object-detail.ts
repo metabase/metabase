@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { createThunkAction } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
@@ -88,7 +89,9 @@ export const followForeignKey = createThunkAction(
 
       const tableId = fk.origin.table.id;
       const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-      const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+      const table = checkNotNull(
+        Lib.tableOrCardMetadata(metadataProvider, tableId),
+      );
       const baseQuery = Lib.queryFromTableOrCardMetadata(
         metadataProvider,
         table,
@@ -138,7 +141,9 @@ export const loadObjectDetailFKReferences = createThunkAction(
           return;
         }
         const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-        const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+        const table = checkNotNull(
+          Lib.tableOrCardMetadata(metadataProvider, tableId),
+        );
         const baseQuery = Lib.queryFromTableOrCardMetadata(
           metadataProvider,
           table,

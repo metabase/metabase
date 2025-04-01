@@ -1,10 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import type {
-  CardId,
-  ConcreteTableId,
-  DatabaseId,
-  VirtualTableId,
-} from "metabase-types/api";
+import type { CardId, ConcreteTableId, DatabaseId } from "metabase-types/api";
 
 import { expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
@@ -246,7 +241,7 @@ export function joinedThing(query: Query, join: Join): Joinable {
 
 type CardPickerInfo = {
   databaseId: DatabaseId;
-  tableId: VirtualTableId;
+  tableId?: never;
   cardId: CardId;
   isModel: boolean;
 };

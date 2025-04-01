@@ -23,16 +23,14 @@ export const getUrl = ({
     return;
   }
 
-  const { isModel, cardId, tableId, databaseId } = pickerInfo;
-
-  if (cardId) {
+  if (pickerInfo.cardId != null) {
     const payload = {
-      id: cardId,
+      id: pickerInfo.cardId,
       name: tableInfo.displayName,
     };
 
-    return isModel ? Urls.model(payload) : Urls.question(payload);
+    return pickerInfo.isModel ? Urls.model(payload) : Urls.question(payload);
   } else {
-    return Urls.tableRowsQuery(databaseId, tableId);
+    return Urls.tableRowsQuery(pickerInfo.databaseId, pickerInfo.tableId);
   }
 };

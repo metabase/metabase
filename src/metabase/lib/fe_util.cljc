@@ -722,9 +722,3 @@
            (cons {:type :table, :id (str "card__" card-id)}
                  (when-let [card (lib.metadata/card query card-id)]
                    (query-dependents query (lib.query/query query card))))))))
-
-(mu/defn table-or-card-dependent-metadata :- [:sequential DependentItem]
-  "Return the IDs and types of entities which are needed upfront to create a new query based on a table/card."
-  [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   table-id               :- [:or ::lib.schema.id/table :string]]
-  [{:type :table, :id table-id}])

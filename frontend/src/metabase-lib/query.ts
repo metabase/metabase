@@ -1,12 +1,15 @@
 import * as ML from "cljs/metabase.lib.js";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   CardId,
   CardType,
+  ConcreteTableId,
   DatabaseId,
   DatasetQuery,
   TableId,
 } from "metabase-types/api";
 
+import { cardMetadata, tableMetadata } from "./metadata";
 import type {
   CardMetadata,
   Clause,
@@ -48,7 +51,10 @@ export function toLegacyQuery(query: Query): DatasetQuery {
   return ML.legacy_query(query);
 }
 
-export function withDifferentTable(query: Query, tableId: TableId): Query {
+export function withDifferentTable(
+  query: Query,
+  tableId: ConcreteTableId,
+): Query {
   return ML.with_different_table(query, tableId);
 }
 
@@ -113,8 +119,45 @@ export function swapClauses(
   return ML.swap_clauses(query, stageIndex, sourceClause, targetClause);
 }
 
+export function sourceTableId(query: Query): ConcreteTableId | null {
+  return ML.source_table_id(query);
+}
+
+export function sourceCardId(query: Query): CardId | null {
+  return ML.source_card_id(query);
+}
+
+/**
+ * @deprecated: use `sourceTableOrCardMetadata`
+ */
 export function sourceTableOrCardId(query: Query): TableId | null {
-  return ML.source_table_or_card_id(query);
+  const tableId = sourceTableId(query);
+  if (tableId != null) {
+    return tableId;
+  }
+
+  const cardId = sourceCardId(query);
+  if (cardId != null) {
+    return getQuestionVirtualTableId(cardId);
+  }
+
+  return null;
+}
+
+export function sourceTableOrCardMetadata(
+  query: Query,
+): TableMetadata | CardMetadata | null {
+  const tableId = sourceTableId(query);
+  if (tableId != null) {
+    return tableMetadata(query, tableId);
+  }
+
+  const cardId = sourceCardId(query);
+  if (cardId != null) {
+    return cardMetadata(query, cardId);
+  }
+
+  return null;
 }
 
 export function canRun(query: Query, cardType: CardType): boolean {

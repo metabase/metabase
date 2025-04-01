@@ -46,9 +46,10 @@ export function DataStep({
     const metadata = getMetadata(store.getState());
     const databaseId = checkNotNull(metadata.table(tableId)).db_id;
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-    const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
-    const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-    onChange(newQuery);
+    const table = checkNotNull(
+      Lib.tableOrCardMetadata(metadataProvider, tableId),
+    );
+    onChange(Lib.queryFromTableOrCardMetadata(metadataProvider, table));
   };
 
   return (

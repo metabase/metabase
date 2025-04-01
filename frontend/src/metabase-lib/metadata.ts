@@ -1,8 +1,9 @@
 import * as ML from "cljs/metabase.lib.js";
-import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   CardId,
   CardType,
+  ConcreteTableId,
   DatabaseId,
   DatasetColumn,
   TableId,
@@ -56,13 +57,6 @@ export function metadataProvider(
   metadata: Metadata,
 ): MetadataProvider {
   return ML.metadataProvider(databaseId, metadata);
-}
-
-/**
- * @deprecated use displayInfo instead
- */
-export function displayName(query: Query, clause: Clause): string {
-  return ML_MetadataCalculation.display_name(query, clause);
 }
 
 declare function DisplayInfoFn(
@@ -177,11 +171,37 @@ export function describeTemporalUnit(
   return ML.describe_temporal_unit(n, unit);
 }
 
+export function tableMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+  tableId: ConcreteTableId,
+): TableMetadata | null {
+  return ML.table_metadata(queryOrMetadataProvider, tableId);
+}
+
+export function cardMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+  cardId: CardId,
+): CardMetadata | null {
+  return ML.table_metadata(queryOrMetadataProvider, cardId);
+}
+
+/**
+ * @deprecated: use `Lib.sourceTableOrCardMetadata`
+ */
 export function tableOrCardMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
-  tableID: TableId,
-): CardMetadata | TableMetadata {
-  return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
+  tableOrCardId: TableId,
+): TableMetadata | CardMetadata | null {
+  if (typeof tableOrCardId === "number") {
+    return tableMetadata(queryOrMetadataProvider, tableOrCardId);
+  }
+
+  const cardId = getQuestionIdFromVirtualTableId(tableOrCardId);
+  if (cardId != null) {
+    return cardMetadata(queryOrMetadataProvider, cardId);
+  }
+
+  return null;
 }
 
 export function visibleColumns(
@@ -223,13 +243,6 @@ export function dependentMetadata(
   cardType: CardType,
 ): DependentItem[] {
   return ML.dependent_metadata(query, cardId, cardType);
-}
-
-export function tableOrCardDependentMetadata(
-  metadataProvider: MetadataProvider,
-  tableId: TableId,
-): DependentItem[] {
-  return ML.table_or_card_dependent_metadata(metadataProvider, tableId);
 }
 
 export function columnKey(column: ColumnMetadata): string {
