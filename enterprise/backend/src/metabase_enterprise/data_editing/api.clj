@@ -128,7 +128,7 @@
           (vswap! updated-rows conj after-row)
           (when (pos-int? result)
             (events/publish-event! :event/action.success
-                                   {:action   :row/updated
+                                   {:action   :row/update
                                     :invocation_id (nano-id/nano-id)
                                     :actor_id api/*current-user-id*
                                     :table_id table-id
