@@ -17,9 +17,10 @@ describe("admin > database > database routing", () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
 
-    cy.intercept("POST", "/api/ee/database-routing/mirror-database").as(
-      "createDestinationDatabase",
-    );
+    cy.intercept(
+      "POST",
+      "/api/ee/database-routing/mirror-database?check_connection_details=true",
+    ).as("createDestinationDatabase");
     cy.intercept("PUT", "/api/database/*").as("databaseUpdate");
     cy.intercept("DELETE", "/api/database/*").as("deleteDatabase");
   });
@@ -88,23 +89,36 @@ describe("admin > database > database routing", () => {
       });
       H.tooltip().should("contain.text", "Connected");
 
-      // TODO: implement once BE is ready
-      // cy.log("should prevent adding a db with the same name");
-      // cy.findByRole("link", { name: /Add/ }).click();
-      //
-      // H.modal().within(() => {
-      //   H.typeAndBlurUsingLabel(/Slug/, "Destination DB 1");
-      //   H.typeAndBlurUsingLabel(/Host/, "localhost");
-      //   H.typeAndBlurUsingLabel(/Port/, QA_POSTGRES_PORT);
-      //   H.typeAndBlurUsingLabel(/Database name/, "sample");
-      //   H.typeAndBlurUsingLabel(/Username/, "metabase");
-      //   H.typeAndBlurUsingLabel(/Password/, "metasample123");
-      //
-      //   cy.button("Save").click();
-      //   cy.wait("@createDestinationDatabase");
-      //   // TODO: add check for error message once implemented on BE
-      //   cy.findByText("TODO")
-      // });
+      cy.log("should validate destination db creation");
+      cy.findByRole("link", { name: /Add/ }).click();
+
+      H.modal().within(() => {
+        cy.log("should prevent adding a db with the same name");
+        H.typeAndBlurUsingLabel(/Slug/, "Destination DB 1");
+        H.typeAndBlurUsingLabel(/Host/, "localhost");
+        H.typeAndBlurUsingLabel(/Port/, QA_POSTGRES_PORT);
+        H.typeAndBlurUsingLabel(/Database name/, "sample");
+        H.typeAndBlurUsingLabel(/Username/, "metabase");
+        H.typeAndBlurUsingLabel(/Password/, "metasample123");
+
+        cy.button("Save").click();
+        cy.wait("@createDestinationDatabase");
+        cy.findByText("A destination database with that name already exists.");
+
+        cy.log("should prevent adding with incorrect connection info");
+        H.typeAndBlurUsingLabel(/Slug/, "Unique Destination DB Name");
+        H.typeAndBlurUsingLabel(/Password/, "metasample124");
+        cy.button(/(Failed|Save)/).click();
+        cy.wait("@createDestinationDatabase");
+        cy.findByText("Looks like your Password is incorrect.");
+
+        cy.button("Cancel").click();
+      });
+      cy.findByTestId("leave-confirmation")
+        .should("exist")
+        .findByRole("button", { name: "Discard changes" })
+        .click();
+      H.modal().should("not.exist");
 
       // bulk creation via api (this is how we expect most users to create destination dbs)
       cy.log("should be able to bulk create destination dbs via API");
@@ -179,15 +193,14 @@ describe("admin > database > database routing", () => {
         cy.icon("close").click();
       });
 
-      // TODO: enable once the BE implements this
-      // cy.log(
-      //   "should not remove destination databases when turning the feature off",
-      // );
-      // expandDbRouting();
-      // dbRoutingSection().within(() => {
-      //   cy.findByText("Destination DB 2").should("exist");
-      //   cy.findByText("No destination databases added yet").should("not.exist");
-      // });
+      cy.log(
+        "should not remove destination databases when turning the feature off",
+      );
+      expandDbRouting();
+      dbRoutingSection().within(() => {
+        cy.findByText("Destination DB 2").should("exist");
+        cy.findByText("No destination databases added yet").should("not.exist");
+      });
     });
 
     it("should not leak destinations databases in the application", () => {
@@ -224,12 +237,11 @@ describe("admin > database > database routing", () => {
         .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
         .should("not.exist");
 
-      // TODO: uncomment once BE no longer returns the results
-      // cy.log("should not see destination databases in search");
-      // H.commandPaletteSearch(BASE_POSTGRES_MIRROR_DB_INFO.name, false);
-      // H.commandPalette()
-      //   .findByText("No results for “Destination DB”")
-      //   .should("exist");
+      cy.log("should not see destination databases in search");
+      H.commandPaletteSearch(BASE_POSTGRES_MIRROR_DB_INFO.name, false);
+      H.commandPalette()
+        .findByText("No results for “Destination DB”")
+        .should("exist");
 
       cy.log("should not see database in table metadata db list");
       cy.visit("/admin/datamodel");
@@ -345,10 +357,7 @@ describe("admin > database > database routing", () => {
       });
 
       cy.log("should not allow enabling database for uploads");
-      // TODO: replace next two lines of code w/ cy.visit("/admin/settings/uploads") once BE returns values correctly,
-      // for now we'll rely on hacky entity store stuffs having the data we need
-      cy.get("nav").findByText("Settings").click();
-      cy.findByTestId("admin-layout-sidebar").findByText("Uploads").click();
+      cy.visit("/admin/settings/uploads");
       cy.findByLabelText("Upload Settings Form")
         .findByText("Select a database")
         .click();
