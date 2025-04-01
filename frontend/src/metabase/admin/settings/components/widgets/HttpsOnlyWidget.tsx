@@ -17,14 +17,14 @@ enum Status {
 export function HttpsOnlyWidget() {
   const isHosted = useHasTokenFeature("hosting");
   const [status, setStatus] = useState<Status>(Status.NOT_CHECKED);
-  const { value: siteUrl } = useAdminSetting("site-url");
+  const { value: siteUrl, description } = useAdminSetting("site-url");
 
   const isHttps = siteUrl?.startsWith("https://");
 
   const checkHttps = useCallback(() => {
     setStatus(Status.CHECKING);
     fetchWithTimeout(siteUrl + "/api/health", { timeout: 10000 })
-      .then(response => {
+      .then((response) => {
         response.ok ? setStatus(Status.VERIFIED) : setStatus(Status.FAILED);
       })
       .catch(() => {
@@ -47,7 +47,7 @@ export function HttpsOnlyWidget() {
       <AdminSettingInput
         name="redirect-all-requests-to-https"
         title={t`Redirect to HTTPS`}
-        description={t`Redirect all HTTP traffic to HTTPS`}
+        description={description}
         inputType="boolean"
       />
     );

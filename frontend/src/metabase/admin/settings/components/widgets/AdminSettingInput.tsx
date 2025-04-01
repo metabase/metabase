@@ -68,6 +68,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
     value: initialValue,
     updateSetting,
     isLoading,
+    description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
 
@@ -93,7 +94,11 @@ export function AdminSettingInput<SettingName extends SettingKey>({
 
   return (
     <Box {...boxProps}>
-      <SettingHeader id={name} title={title} description={description} />
+      <SettingHeader
+        id={name}
+        title={title}
+        description={description ?? settingDescription}
+      />
       {settingDetails?.is_env_setting && settingDetails?.env_name ? (
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (

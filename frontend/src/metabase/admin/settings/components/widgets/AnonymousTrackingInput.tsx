@@ -11,7 +11,9 @@ import { SettingHeader } from "../SettingHeader";
 import { BasicAdminSettingInput } from "./AdminSettingInput";
 
 export function AnonymousTrackingInput() {
-  const { value, updateSetting } = useAdminSetting("anon-tracking-enabled");
+  const { value, updateSetting, description } = useAdminSetting(
+    "anon-tracking-enabled",
+  );
   const [sendToast] = useToast();
 
   const handleChange = async (newValue: boolean) => {
@@ -21,7 +23,7 @@ export function AnonymousTrackingInput() {
     await updateSetting({
       key: "anon-tracking-enabled",
       value: newValue,
-    }).then(response => {
+    }).then((response) => {
       if (response?.error) {
         const message =
           (response.error as GenericErrorResponse)?.message ||
@@ -41,13 +43,13 @@ export function AnonymousTrackingInput() {
       <SettingHeader
         id="anon-tracking-enabled"
         title={t`Anonymous Tracking`}
-        description={t`Enable the collection of anonymous usage data in order to help Metabase improve.`}
+        description={description}
       />
       <BasicAdminSettingInput
         name="anon-tracking-enabled"
         inputType="boolean"
         value={value}
-        onChange={newValue => handleChange(Boolean(newValue))}
+        onChange={(newValue) => handleChange(Boolean(newValue))}
       />
     </Stack>
   );

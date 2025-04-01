@@ -10,7 +10,7 @@ import { getRelativeLandingPageUrl } from "./utils";
 
 export function LandingPageWidget() {
   const [error, setError] = useState<string | null>(null);
-  const { value, updateSetting } = useAdminSetting("landing-page");
+  const { value, updateSetting, description } = useAdminSetting("landing-page");
   const [inputValue, setInputValue] = useState<string>(value ?? "");
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export function LandingPageWidget() {
       <SettingHeader
         id="landing-page"
         title={t`Landing Page`}
-        description={t`Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.`}
+        description={description}
       />
       <TextInput
         id="landing-page"
