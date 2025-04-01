@@ -113,11 +113,19 @@
 
 (defn- segment-metadata-from-ref
   [query segment-ref]
-  (lib.metadata/segment query (last segment-ref)))
+  (if-let [segment (lib.metadata/segment query (last segment-ref))]
+    segment
+    {:lib/type :metadata/segment
+     :id (last segment-ref)
+     :display-name (i18n/tru "Unknown Segment")}))
 
 (defn- metric-metadata-from-ref
   [query metric-ref]
-  (lib.metadata/metric query (last metric-ref)))
+  (if-let [metric (lib.metadata/metric query (last metric-ref))]
+    metric
+    {:lib/type :metadata/metric
+     :id (last metric-ref)
+     :display-name (i18n/tru "Unknown Metric")}))
 
 (defmulti expression-parts-method
   "Builds the expression parts by dispatching on the type of the argument."
