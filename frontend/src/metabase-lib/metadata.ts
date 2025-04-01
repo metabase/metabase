@@ -190,7 +190,7 @@ export function cardMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
   cardId: CardId,
 ): CardMetadata | null {
-  return ML.table_metadata(queryOrMetadataProvider, cardId);
+  return ML.card_metadata(queryOrMetadataProvider, cardId);
 }
 
 /**
