@@ -102,7 +102,9 @@ What happens to related items when you delete a collection?
 
 | Related item                                   | In Trash | Permanently deleted | Restored |
 | ---------------------------------------------- | -------- | ------------------- | -------- |
-| All items and subcollections in the collection | In Trash | Permanently deleted | Restored |
+| All items and subcollections in the collection | In Trash | N/A                 | Restored |
+
+> You can't permanently delete collections
 
 ## Permanently deleting items
 
@@ -112,8 +114,10 @@ To permanently delete an item:
 
 1. Go to Trash;
 2. Find the item you'd like to delete;
-3. Click on the checkbox next to the collection to select it;
+3. Click on the checkbox next to the item to select it;
 4. Select "Permanently delete". If you click this button, you won't be able to recover the item. It'll be lost to the void.
+
+> You can't permanently delete collections
 
 ## Deleting and restoring events and timelines
 
