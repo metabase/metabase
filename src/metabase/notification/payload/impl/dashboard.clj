@@ -55,8 +55,7 @@
   [{:keys [id creator_id handlers] :as notification-info} notification-payload]
   ;; clean up all the temp files that we created for this notification
   (try
-    (run! #(when-let [rows (get-in % [:result :data :rows])] (notification.payload/cleanup! rows))
-          (->> notification-payload :payload :dashboard_parts))
+    (run! #(some-> % :result :data :rows notification.payload/cleanup!) (->> notification-payload :payload :dashboard_parts))
     (catch Exception e
       (log/warn e "Error cleaning up temp files for notification" id)))
   (events/publish-event! :event/subscription-send

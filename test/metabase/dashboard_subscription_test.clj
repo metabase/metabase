@@ -1170,11 +1170,12 @@
   (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"
                                                           :description "How are the birds doing today?"}
                  :model/Card          {card-id :id} {:name pulse.test-util/card-name
-                                                     :dataset_query (mt/mbql-query orders {:limit 1})}]
+                                                     :dataset_query (mt/mbql-query orders {:limit 2})}]
     (with-redefs [notification.temp-storage/temp-dir (delay (let [dir (io/file (System/getProperty "java.io.tmpdir")
                                                                                (str "metabase-test" (random/random-name)))]
                                                               (.mkdirs dir)
                                                               dir))
+                  notification.payload.execute/rows-to-disk-threadhold 1
                   channel/send!                      (fn [& _args]
                                                        (testing "sanity check that there are files there to cleanup"
                                                          (is (not-empty (.listFiles ^java.io.File @@#'notification.temp-storage/temp-dir)))))]
