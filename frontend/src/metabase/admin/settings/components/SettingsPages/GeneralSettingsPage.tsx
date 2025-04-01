@@ -21,7 +21,6 @@ export function GeneralSettingsPage() {
       <AdminSettingInput
         name="site-name"
         title={t`Site Name`}
-        description={t`The name used for this instance of Metabase.`}
         inputType="text"
       />
 
@@ -36,7 +35,6 @@ export function GeneralSettingsPage() {
       <AdminSettingInput
         name="admin-email"
         title={t`Email Address for Help Requests`}
-        description={t`The email address users should be referred to if they encounter a problem.`}
         inputType="text"
       />
 
@@ -45,7 +43,6 @@ export function GeneralSettingsPage() {
       <AdminSettingInput
         name="humanization-strategy"
         title={t`Friendly Table and Field Names`}
-        description={t`To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’.`}
         options={[
           {
             value: "simple",
@@ -59,7 +56,6 @@ export function GeneralSettingsPage() {
       <AdminSettingInput
         name="enable-xrays"
         title={t`Enable X-Ray Features`}
-        description={t`Allow users to explore data using X-rays`}
         inputType="boolean"
       />
 

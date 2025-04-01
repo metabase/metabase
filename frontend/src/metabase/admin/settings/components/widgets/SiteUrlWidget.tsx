@@ -10,7 +10,7 @@ import { Box } from "metabase/ui";
 import { SettingHeader } from "../SettingHeader";
 
 export function SiteUrlWidget() {
-  const { value, updateSetting } = useAdminSetting("site-url");
+  const { value, updateSetting, description } = useAdminSetting("site-url");
   const isHosted = useHasTokenFeature("hosting");
   const [sendToast] = useToast();
 
@@ -18,7 +18,7 @@ export function SiteUrlWidget() {
     if (newValue === value) {
       return;
     }
-    updateSetting({ key: "site-url", value: newValue }).then(response => {
+    updateSetting({ key: "site-url", value: newValue }).then((response) => {
       if (response?.error) {
         const message =
           (response.error as GenericErrorResponse)?.message ||
@@ -42,7 +42,7 @@ export function SiteUrlWidget() {
         description={
           <>
             <strong>{t`Only change this if you know what you're doing!`}</strong>{" "}
-            {t`This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance.`}
+            {description}
           </>
         }
       />

@@ -14,8 +14,11 @@ import { SettingHeader } from "../SettingHeader";
 import { BasicAdminSettingInput } from "./AdminSettingInput";
 
 export function CustomHomepageDashboardSetting() {
-  const { value: customHomepage, updateSetting } =
-    useAdminSetting("custom-homepage");
+  const {
+    value: customHomepage,
+    updateSetting,
+    description,
+  } = useAdminSetting("custom-homepage");
   const { value: customHomepageDashboardId } = useAdminSetting(
     "custom-homepage-dashboard",
   );
@@ -63,13 +66,13 @@ export function CustomHomepageDashboardSetting() {
       <SettingHeader
         id="custom-homepage"
         title={t`Custom Homepage`}
-        description={t`Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.`}
+        description={description}
       />
       <BasicAdminSettingInput
         name="custom-homepage"
         inputType="boolean"
         value={customHomepage}
-        onChange={newValue => handleToggleChange(Boolean(newValue))}
+        onChange={(newValue) => handleToggleChange(Boolean(newValue))}
       />
       {customHomepage && (
         <DashboardSelector
