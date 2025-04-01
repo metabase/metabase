@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.util.string :as u.str]))
 
+(set! *warn-on-reflection* true)
+
 (deftest mask-test
   (testing "mask"
     (testing "works correctly in general case"
@@ -37,3 +39,20 @@
   (is 10 (count (u.str/random-string 10)))
   (is 20 (count (u.str/random-string 20)))
   (is (not= (u.str/random-string 10) (u.str/random-string 10))))
+
+(deftest ^:parallel limit-bytes
+  (is (nil? (u.str/limit-bytes nil 5)))
+  (is (= "abc" (u.str/limit-bytes "abc" 3)))
+  (is (= 3 (count (.getBytes (u.str/limit-bytes "abc" 3)))))
+  (is (= "abc" (u.str/limit-bytes "abc" 5)))
+  (is (= "ab" (u.str/limit-bytes "abc" 2)))
+  (is (= 2 (count (.getBytes (u.str/limit-bytes "abc" 2)))))
+  (is (= "" (u.str/limit-bytes "abc" 0)))
+  (testing "A multi-byte char that gets split will not end up as a different 1-byte char"
+    (is (= 2 (count (.getBytes (u.str/limit-bytes "abÆ" 3)))))
+    (is (= "ab" (u.str/limit-bytes "abÆ" 3))))
+  (testing "Multi-byte that don't get split are fine"
+    (is (= "¼Üß" (u.str/limit-bytes "¼Üß" 6)))
+    (is (= 6 (count (.getBytes (u.str/limit-bytes "¼Üß" 6)))))
+    (is (= "¼Ü" (u.str/limit-bytes "¼Üß" 4)))
+    (is (= 4 (count (.getBytes (u.str/limit-bytes "¼Üß" 4)))))))

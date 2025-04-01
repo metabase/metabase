@@ -61,7 +61,7 @@ describe("suggestAggregations", () => {
       options: [
         {
           apply: expect.any(Function),
-          detail: "Only counts rows where the condition is true.",
+          detail: "Only counts rows where the condition is `true`.",
           displayLabel: "CountIf",
           icon: "function",
           label: "CountIf",

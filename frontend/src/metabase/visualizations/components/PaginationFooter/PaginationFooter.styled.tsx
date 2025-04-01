@@ -3,12 +3,11 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-export const ObjectDetailFooterRoot = styled.div`
+export const PaginationFooterRoot = styled.div`
   display: flex;
   flex-shrink: 0;
-  padding: 0.5rem;
+  align-items: center;
   margin-left: auto;
-  margin-top: 0.5rem;
   text-align: right;
 `;
 

@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
-   [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -22,7 +21,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.number :as u.number]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
@@ -324,6 +324,14 @@
 (lib.common/defop text [x])
 (lib.common/defop integer [x])
 
+(mu/defn value :- ::lib.schema.expression/expression
+  "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
+  [literal :- [:or :string number? :boolean [:fn u.number/bigint?]]]
+  (let [base-type (lib.schema.expression/type-of literal)]
+    (lib.options/ensure-uuid [:value
+                              {:base-type base-type, :effective-type base-type}
+                              (cond-> literal (u.number/bigint? literal) str)])))
+
 (mu/defn- expression-metadata :- ::lib.schema.metadata/column
   [query                 :- ::lib.schema/query
    stage-number          :- :int
@@ -452,20 +460,11 @@
              (assoc :lib/expression-name new-name))
          (assoc opts :name new-name :display-name new-name))))))
 
-(def ^:private expression-explainer
-  (mr/explainer ::lib.schema.expression/expression))
-
 (def ^:private aggregation-validator
   (mr/validator ::lib.schema.aggregation/aggregation))
 
-(def ^:private aggregation-explainer
-  (mr/explainer ::lib.schema.aggregation/aggregation))
-
 (def ^:private filter-validator
   (mr/validator ::lib.schema/filterable))
-
-(def ^:private filter-explainer
-  (mr/explainer ::lib.schema/filterable))
 
 (defn- expression->name
   [expr]
@@ -507,33 +506,33 @@
    expression-mode     :- [:enum :expression :aggregation :filter]
    expr                :- :any
    expression-position :- [:maybe :int]]
-  (let [[validator explainer] (clojure.core/case expression-mode
-                                :expression [expression-validator expression-explainer]
-                                :aggregation [aggregation-validator aggregation-explainer]
-                                :filter [filter-validator filter-explainer])]
-    (or (when-not (validator expr)
-          (let [error (explainer expr)
-                humanized (str/join ", " (me/humanize error))]
-            {:message (i18n/tru "Type error: {0}" humanized)}))
-        (when-let [dependency-path (and (= expression-mode :expression)
-                                        expression-position
-                                        (let [exprs (expressions query stage-number)
-                                              edited-expr (nth exprs expression-position)
-                                              edited-name (expression->name edited-expr)
-                                              deps (-> (m/index-by expression->name exprs)
-                                                       (assoc edited-name expr)
-                                                       (update-vals referred-expressions))]
-                                          (cyclic-definition deps)))]
-          {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " dependency-path))
-           :friendly true})
-        (when (and (= expression-mode :expression)
-                   (lib.util.match/match-one expr :offset))
-          {:message  (i18n/tru "OFFSET is not supported in custom columns")
-           :friendly true})
-        (when (and (= expression-mode :filter)
-                   (lib.util.match/match-one expr :offset))
-          {:message  (i18n/tru "OFFSET is not supported in custom filters")
-           :friendly true})
-        (when (= (first expr) :value)
-          {:message  (i18n/tru "Standalone constants are not supported.")
-           :friendly true}))))
+  (binding [lib.schema.expression/*suppress-expression-type-check?* false]
+    (let [validator (clojure.core/case expression-mode
+                      :expression expression-validator
+                      :aggregation aggregation-validator
+                      :filter filter-validator)]
+      (or (when-not (validator expr)
+            {:message  (i18n/tru "Types are incompatible.")
+             :friendly true})
+          (when-let [dependency-path (and (= expression-mode :expression)
+                                          expression-position
+                                          (let [exprs (expressions query stage-number)
+                                                edited-expr (nth exprs expression-position)
+                                                edited-name (expression->name edited-expr)
+                                                deps (-> (m/index-by expression->name exprs)
+                                                         (assoc edited-name expr)
+                                                         (update-vals referred-expressions))]
+                                            (cyclic-definition deps)))]
+            {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " dependency-path))
+             :friendly true})
+          (when (and (= expression-mode :expression)
+                     (lib.util.match/match-one expr :offset))
+            {:message  (i18n/tru "OFFSET is not supported in custom columns")
+             :friendly true})
+          (when (and (= expression-mode :filter)
+                     (lib.util.match/match-one expr :offset))
+            {:message  (i18n/tru "OFFSET is not supported in custom filters")
+             :friendly true})
+          (when (= (first expr) :value)
+            {:message  (i18n/tru "Standalone constants are not supported.")
+             :friendly true})))))

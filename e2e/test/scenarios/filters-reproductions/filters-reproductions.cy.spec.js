@@ -815,8 +815,7 @@ describe("issue 27123", () => {
   });
 });
 
-// TODO: Unskip this test when we bring back expression type checking. See #31877.
-describe.skip("issue 29094", () => {
+describe("issue 29094", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -839,7 +838,7 @@ describe.skip("issue 29094", () => {
       H.enterCustomColumnDetails({ formula: "[Tax] * 22" });
       cy.realPress("Tab");
       cy.button("Done").should("be.disabled");
-      cy.findByText("Invalid expression").should("exist");
+      cy.findByText("Types are incompatible.").should("exist");
     });
   });
 });
