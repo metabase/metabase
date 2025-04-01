@@ -12,6 +12,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -227,10 +228,11 @@
   [operator :- :keyword
    args     :- [:sequential [:or ExpressionArg ExpressionParts]]
    options  :- [:maybe :map]]
-  (fix-expression-clause
-   (into [operator options]
-         (map lib.common/->op-arg)
-         args)))
+  (lib.normalize/normalize
+   (fix-expression-clause
+    (into [operator options]
+          (map lib.common/->op-arg)
+          args))))
 
 (defmethod lib.common/->op-arg :mbql/expression-parts
   [{:keys [operator options args] :or {options {}}}]
