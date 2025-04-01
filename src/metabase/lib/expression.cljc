@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
-   [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -461,20 +460,11 @@
              (assoc :lib/expression-name new-name))
          (assoc opts :name new-name :display-name new-name))))))
 
-(def ^:private expression-explainer
-  (mr/explainer ::lib.schema.expression/expression))
-
 (def ^:private aggregation-validator
   (mr/validator ::lib.schema.aggregation/aggregation))
 
-(def ^:private aggregation-explainer
-  (mr/explainer ::lib.schema.aggregation/aggregation))
-
 (def ^:private filter-validator
   (mr/validator ::lib.schema/filterable))
-
-(def ^:private filter-explainer
-  (mr/explainer ::lib.schema/filterable))
 
 (defn- expression->name
   [expr]
@@ -517,14 +507,13 @@
    expr                :- :any
    expression-position :- [:maybe :int]]
   (binding [lib.schema.expression/*suppress-expression-type-check?* false]
-    (let [[validator explainer] (clojure.core/case expression-mode
-                                  :expression [expression-validator expression-explainer]
-                                  :aggregation [aggregation-validator aggregation-explainer]
-                                  :filter [filter-validator filter-explainer])]
+    (let [validator (clojure.core/case expression-mode
+                      :expression expression-validator
+                      :aggregation aggregation-validator
+                      :filter filter-validator)]
       (or (when-not (validator expr)
-            (let [error (explainer expr)
-                  humanized (str/join ", " (me/humanize error))]
-              {:message (i18n/tru "Type error: {0}" humanized)}))
+            {:message  (i18n/tru "Types are incompatible.")
+             :friendly true})
           (when-let [dependency-path (and (= expression-mode :expression)
                                           expression-position
                                           (let [exprs (expressions query stage-number)

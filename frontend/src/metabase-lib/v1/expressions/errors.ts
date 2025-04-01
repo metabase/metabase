@@ -79,6 +79,30 @@ export class DiagnosticError extends ExpressionError {
   }
 }
 
+export class ParseError extends ExpressionError {
+  pos: number | null;
+  len: number | null;
+
+  constructor(
+    message: string,
+    {
+      pos = null,
+      len = null,
+    }: {
+      pos?: number | null;
+      len?: number | null;
+    } = {},
+  ) {
+    super(message);
+    this.pos = pos;
+    this.len = len;
+  }
+
+  get friendly(): boolean {
+    return true;
+  }
+}
+
 export function isExpressionError(err: unknown): err is ExpressionError {
   return err !== null && err instanceof ExpressionError;
 }
