@@ -5,7 +5,9 @@ import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { CopyButton } from "metabase/components/CopyButton";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch } from "metabase/lib/redux";
+import { getUserName } from "metabase/lib/user";
 import {
   Box,
   Button,
@@ -63,12 +65,10 @@ const ModalWrapper = ({
   title,
   children,
   onClose,
-  title,
 }: {
   title?: string;
   children: React.ReactNode;
   onClose: () => void;
-  title?: string;
 }) => (
   <Modal opened onClose={onClose} padding="xl" title={title}>
     <Flex gap="md" pt="lg" direction="column">
@@ -102,9 +102,7 @@ function GoogleSheetsConnectModal({
 
     const validationRegex = /(https|http)\:\/\/(drive|docs)\.google\.com\/.+/;
 
-    if (
-      !validationRegex.test(folderLink.trim())
-    ) {
+    if (!validationRegex.test(folderLink.trim())) {
       setErrorMessage(t`Invalid Google link`);
       return;
     }
