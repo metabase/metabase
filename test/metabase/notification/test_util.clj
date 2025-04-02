@@ -161,10 +161,11 @@
   `(do-with-card-notification ~props (fn [~bindings] ~@body)))
 
 (defn do-with-system-event-notification!
-  [{:keys [notification subscriptions handlers]} thunk]
+  [{:keys [notification subscriptions handlers notification-system-event]} thunk]
   (do-with-temp-notification
    {:notification  (merge {:payload_type :notification/system-event
-                           :creator_id   (mt/user->id :crowberto)}
+                           :creator_id   (mt/user->id :crowberto)
+                           :payload      notification-system-event}
                           notification)
     :subscriptions (map #(merge {:type :notification-subscription/system-event} %) subscriptions)
     :handlers      handlers}
@@ -174,6 +175,7 @@
   "Macro that sets up a system event notification for testing.
     (with-system-event-notification!
       [notification {:notification  {:creator_id 1}
+                     :notification-system-event {:event_name :event/notification-create}
                      :subscriptions []
                      :handlers      []}]"
   [[notification-binding props] & body]

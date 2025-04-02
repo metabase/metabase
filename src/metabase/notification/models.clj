@@ -26,12 +26,14 @@
 (methodical/defmethod t2/table-name :model/NotificationHandler      [_model] :notification_handler)
 (methodical/defmethod t2/table-name :model/NotificationRecipient    [_model] :notification_recipient)
 (methodical/defmethod t2/table-name :model/NotificationCard         [_model] :notification_card)
+(methodical/defmethod t2/table-name :model/NotificationSystemEvent  [_model] :notification_system_event)
 
 (doseq [model [:model/Notification
                :model/NotificationSubscription
                :model/NotificationHandler
                :model/NotificationRecipient
-               :model/NotificationCard]]
+               :model/NotificationCard
+               :model/NotificationSystemEvent]]
   (doto model
     (derive :metabase/model)
     (derive (if (= model :model/NotificationSubscription)
@@ -84,6 +86,11 @@
                                                                      :card)]
                                              (into {} (for [nc notification-cards]
                                                         [[:notification/card (:id nc)] nc])))
+                                           :notification/system-event
+                                           (let [system-events (t2/select :model/NotificationSystemEvent
+                                                                          :id [:in payload-ids])]
+                                             (into {} (for [se system-events]
+                                                        [[:notification/system-event (:id se)] se])))
                                            {[payload-type nil] nil})))]
 
     (for [notification notifications]
@@ -108,7 +115,7 @@
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/system-event
      [:map
-      [:payload_id {:optional true} nil?]]]
+      [:payload_id {:optional true} [:or nil? int?]]]]
     [:notification/card
      [:map
       ;; optional during creation
@@ -159,7 +166,9 @@
   (when-let [payload-id (:payload_id instance)]
     (t2/delete! (case (:payload_type instance)
                   :notification/card
-                  :model/NotificationCard)
+                  :model/NotificationCard
+                  :notification/system-event
+                  :model/NotificationSystemEvent)
                 payload-id))
   instance)
 
@@ -179,8 +188,9 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (def ^:private subscription-types
-  #{:notification-subscription/system-event
-    :notification-subscription/cron})
+  #{:notification-subscription/cron
+    ;; legacy, shouldn't be used
+    :notification-subscription/system-event})
 
 (def ^:private subscription-ui-display-types
   #{:cron/raw
@@ -189,8 +199,6 @@
 
 (t2/deftransforms :model/NotificationSubscription
   {:type            (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
-   :action          mi/transform-keyword
-   :event_name      (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))
    :ui_display_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-ui-display-types))})
 
 (mr/def ::NotificationSubscription
@@ -199,14 +207,9 @@
            [:type (ms/enum-decode-keyword subscription-types)]]
 
    [:multi {:dispatch (comp keyword :type)}
-    [:notification-subscription/system-event
-     [:map
-      [:event_name                     [:or :keyword :string]]
-      [:cron_schedule {:optional true} nil?]]]
     [:notification-subscription/cron
      [:map
       [:cron_schedule                    :string]
-      [:event_name      {:optional true} nil?]
       ;; enum values can change depending on UI
       [:ui_display_type {:optional true} [:maybe (into [:enum] subscription-ui-display-types)]]]]]])
 
@@ -413,7 +416,15 @@
           :send_once      false}
          instance))
 
-;; ------------------------------------------------------------------------------------------------;;
+;;--------------------------------------------------------------------------------------------------;;
+;;                                 :model/NotificationSystemEvent                                   ;;
+;;--------------------------------------------------------------------------------------------------;;
+
+(t2/deftransforms :model/NotificationSystemEvent
+  {:event_name (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))
+   :action     mi/transform-keyword})
+
+;;------------------------------------------------------------------------------------------------;;
 ;;                                         Permissions                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
@@ -522,11 +533,11 @@
   (t2/select :model/Notification
              {:select    [:n.*]
               :from      [[:notification :n]]
-              :left-join [[:notification_subscription :ns] [:= :n.id :ns.notification_id]]
+              :left-join [[:notification_system_event :nse] [:and [:= :n.payload_id :nse.id] [:= :n.payload_type (u/qualified-name :notification/system-event)]]]
               :where     (->> (conj
                                [[:= :n.active true]
-                                [:= :ns.event_name (u/qualified-name event-name)]
-                                [:= :ns.type (u/qualified-name :notification-subscription/system-event)]]
+                                [:= :n.payload_type (u/qualified-name :notification/system-event)]
+                                [:= :nse.event_name (u/qualified-name event-name)]]
                                additional-filters)
                               (filter some?)
                               (into [:and]))}))
@@ -537,10 +548,12 @@
   [notification subscriptions handlers+recipients]
   (t2/with-transaction [_conn]
     (let [payload-id      (case (:payload_type notification)
-                            (:notification/system-event :notification/testing)
+                            (:notification/testing)
                             nil
                             :notification/card
-                            (t2/insert-returning-pk! :model/NotificationCard (:payload notification)))
+                            (t2/insert-returning-pk! :model/NotificationCard (:payload notification))
+                            :notification/system-event
+                            (t2/insert-returning-pk! :model/NotificationSystemEvent (:payload notification)))
           notification    (-> notification
                               (assoc :payload_id payload-id)
                               (dissoc :payload))
@@ -561,17 +574,15 @@
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
 
-(models.u.spec-update/define-spec notification-update-spec
-  "Spec for updating a notification."
+(defn- base-spec
+  [payload-spec]
   {:model        :model/Notification
    :compare-cols [:active :condition]
    :extra-cols   [:payload_type :internal_id :payload_id]
-   :nested-specs {:payload       {:model        :model/NotificationCard
-                                  :compare-cols [:send_condition :send_once]
-                                  :extra-cols   [:card_id]}
+   :nested-specs {:payload       payload-spec
                   :subscriptions {:model        :model/NotificationSubscription
                                   :fk-column    :notification_id
-                                  :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type :table_id]
+                                  :compare-cols [:notification_id :type :cron_schedule :ui_display_type :table_id]
                                   :multi-row?   true}
                   :handlers      {:model        :model/NotificationHandler
                                   :fk-column    :notification_id
@@ -585,10 +596,29 @@
                                                               :ref-in-parent :template_id
                                                               :compare-cols  [:channel_type :name :details]}}}}})
 
+(models.u.spec-update/define-spec notification-card-update-spec
+  "Spec for updating card notifications."
+  (base-spec {:model        :model/NotificationCard
+              :compare-cols [:send_condition :send_once]
+              :extra-cols   [:card_id]}))
+
+(models.u.spec-update/define-spec notification-system-event-update-spec
+  "Spec for updating system event notifications."
+  (base-spec {:model        :model/NotificationSystemEvent
+              :compare-cols [:event_name :table_id :action]}))
+
+(models.u.spec-update/define-spec notification-testing-update-spec
+  "Spec for updating testing notifications."
+  (base-spec {:model :model/NotificationCard}))
+
 (defn update-notification!
   "Update an existing notification with `new-notification`."
   [existing-notification new-notification]
-  (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
+  (let [spec (case (:payload_type existing-notification)
+               :notification/card notification-card-update-spec
+               :notification/system-event notification-system-event-update-spec
+               notification-testing-update-spec)]
+    (models.u.spec-update/do-update! existing-notification new-notification spec)))
 
 (defn unsubscribe-user!
   "Unsubscribe a user from a notification."

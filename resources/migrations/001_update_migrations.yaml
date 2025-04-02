@@ -11122,6 +11122,134 @@ databaseChangeLog:
                   name: card_schema
             indexName: idx_report_card_card_schema
 
+  - changeSet:
+      id: v54.2025-04-02T08:00:00
+      author: qnkhuat
+      comment: create the notification_system_event table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_system_event
+      changes:
+        - createTable:
+            tableName: notification_system_event
+            remarks: System event notification property
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: event_name
+                  remarks: the event name of subscriptions with type :notification-subscription/system-event
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: The table id of the subscription, used for filtering system events
+                  constraints:
+                    nullable: true
+              - column:
+                  name: action
+                  type: varchar(64)
+                  remarks: the action of the event
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v54.2025-04-02T08:01:00
+      author: qnkhuat
+      comment: add fk constraint to notification_system_event.table_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_system_event_table_id
+              foreignKeyTableName: notification_system_event
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: notification_system_event
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_notification_system_event_table_id
+            onDelete: CASCADE
+            nullable: true
+
+  - changeSet:
+      id: v54.2025-04-02T08:02:00
+      author: qnkhuat
+      comment: Index notification_system_event.table_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification_system_event
+                indexName: idx_notification_system_event_table_id
+      rollback: #cannot rollback an index on a fk in mysql
+      changes:
+        - createIndex:
+            tableName: notification_system_event
+            columns:
+              - column:
+                  name: table_id
+            indexName: idx_notification_system_event_table_id
+
+  - changeSet:
+      id: v54.2025-04-02T08:03:00
+      author: qnkhuat
+      comment: Index notification_system_event.action
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification_system_event
+                indexName: idx_notification_system_event_action
+      rollback: #cannot rollback an index on a fk in mysql
+      changes:
+        - createIndex:
+            tableName: notification_system_event
+            columns:
+              - column:
+                  name: action
+            indexName: idx_notification_system_event_action
+
+  - changeSet:
+      id: v54.2025-04-02T08:04:00
+      author: qnkhuat
+      comment: Drop notification_subscription.event_name
+      changes:
+        - dropColumn:
+            tableName: notification_subscription
+            columnName: event_name
+      rollback:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: event_name
+                  remarks: the event name of subscriptions with type :notification-subscription/system-event
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
