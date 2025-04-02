@@ -107,7 +107,7 @@ You can display the text on the left, right, or in the middle (i.e., centered) o
 
 ## Wrap text
 
-You can toggle text wrapping, which is useful for long text columns.
+You can toggle text wrapping, which is useful for columns with long text values like comments.
 
 ### Display as
 
