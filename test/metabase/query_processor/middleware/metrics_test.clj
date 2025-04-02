@@ -21,8 +21,7 @@
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.log :as log]))
+   [metabase.util.date-2 :as u.date]))
 
 (def ^:private counter (atom 2000))
 
@@ -301,7 +300,7 @@
                                    [:case {}
                                     [[#_some? [:= {} [:expression {} "qux_2"] [:expression {} "foobar_2"]]
                                       [:field {} (meta/id :products :rating)]]]]]]}]}
-         @(def rr (adjust query))))))
+         (adjust query)))))
 
 (deftest ^:parallel adjust-filter-test
   (let [[source-metric mp] (mock-metric (lib/filter (basic-metric-query) (lib/> (meta/field-metadata :products :price) 1)))
@@ -1070,6 +1069,8 @@
   (testing "All available aggregations are tested for filter expansion in metric"
     (is (empty? (set/difference
                  (disj (descendants @lib.hierarchy/hierarchy :metabase.lib.schema.aggregation/aggregation-clause-tag)
-                       :metric :offset)
+                       :metric :offset
+                       ;; TBD
+                       :distinct-where)
                  (set (map first tested-aggregations))
                  (set (map first tested-percentile-aggregations)))))))

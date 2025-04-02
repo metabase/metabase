@@ -148,8 +148,7 @@
                                           (lib/ref col)
                                           ;; This is probably due to a field-id where it shouldn't be
                                           &match))]
-                      (update (-> replacement
-                                  lib.util/fresh-uuids)
+                      (update (lib.util/fresh-uuids replacement)
                               1
                               #(merge
                                 %
@@ -209,8 +208,6 @@
           (lib/with-expression-name expression new-name))))
      metric-query
      original+new-name-pairs)))
-
-(comment)
 
 (defn- temp-query-at-stage-path
   [query stage-path]
