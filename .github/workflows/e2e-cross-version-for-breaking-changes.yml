@@ -13,6 +13,16 @@ on:
         type: string
         required: true
         default: "master"
+  workflow_call:
+    inputs:
+      fe-ref:
+        description: "Frontend git ref to use"
+        type: string
+        required: true
+      be-ref:
+        description: "Backend git ref to use"
+        type: string
+        required: true
 
 jobs:
   cross-version-for-breaking-changes:
