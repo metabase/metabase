@@ -545,7 +545,7 @@
   s StringExpressionArg, start IntGreaterThanZeroOrNumericExpression, length (optional NumericExpressionArg))
 
 (defclause ^{:requires-features #{:expressions :split-part}} split-part
-  text StringExpressionArg, delimiter ExpressionArg, position IntGreaterThanZeroOrNumericExpression)
+  text StringExpressionArg, delimiter [:string {:min 1}], position IntGreaterThanZeroOrNumericExpression)
 
 (defclause ^{:requires-features #{:expressions}} length
   s StringExpressionArg)

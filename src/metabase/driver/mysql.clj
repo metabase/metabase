@@ -320,7 +320,31 @@
 
 (defmethod sql.qp/->honeysql [:mysql :split-part]
   [driver [_ text divider position]]
-  [:substring_index (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
+  (let [text (sql.qp/->honeysql driver text)
+        div  (sql.qp/->honeysql driver divider)
+        pos  (sql.qp/->honeysql driver position)]
+    [:case
+     ;; non-positive position
+     [:< pos 1]
+     ""
+
+     ;; position greater than number of parts
+     [:> pos
+      [:+ 1
+       [:floor
+        [:/
+         [:- [:length text]
+          [:length [:replace text div ""]]]
+         [:length div]]]]]
+     ""
+
+     ;; This needs some explanation.
+     ;; The inner substring_index returns the string up to the `pos` instance of `div`
+     ;; The outer substring_index returns the string from the last instance of `div` to the end
+     :else
+     [:substring_index
+      [:substring_index text div pos]
+      div -1]]))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
