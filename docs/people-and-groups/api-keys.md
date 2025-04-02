@@ -29,7 +29,7 @@ To create an API key:
 
 ### Creating API keys from the config file
 
-If you're on a [Pro or Enterprise self-hosted plan](https://www.metabase.com/pricing/), you can [create API keys via the configuration file](../configuring-metabase/config-file#api-keys).
+If you're on a [Pro or Enterprise self-hosted plan](https://www.metabase.com/pricing/), you can [create API keys via the configuration file](../configuring-metabase/config-file.md#api-keys).
 
 ## Managing API Keys
 
