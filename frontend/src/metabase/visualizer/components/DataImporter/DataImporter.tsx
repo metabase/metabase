@@ -22,7 +22,7 @@ import { DatasetList } from "../DatasetList/DatasetList";
 import S from "./DataImporter.module.css";
 import { ResultsList } from "./ResultsList";
 
-export const DataImporter = () => {
+export const DataImporter = ({ className }: { className?: string }) => {
   const [search, setSearch] = useState("");
   const [activeTab] = useState<string | null>("explore");
   const [showDatasets, handlers] = useDisclosure(false);
@@ -38,7 +38,7 @@ export const DataImporter = () => {
 
   return (
     <Box
-      className={S.DataImporter}
+      className={`${className} ${S.DataImporter}`}
       bg="var(--mb-color-bg)"
       style={{ height: "100%" }}
       data-testid="visualizer-data-importer"
