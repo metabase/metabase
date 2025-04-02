@@ -184,7 +184,7 @@
 ;; date()
 
 (deftest ^:parallel date-parse-table-fields
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
     (let [mp (mt/metadata-provider)]
       (doseq [[table fields] [[:people [{:field :birth_date}]]]
               {:keys [field]} fields]
@@ -204,7 +204,7 @@
                 (is (= ud cd))))))))))
 
 (deftest ^:parallel date-parse-custom-expressions
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
     (let [mp (mt/metadata-provider)]
       (doseq [[table exprs] [[:people [(fn [] (lib/concat "2010" "-" "10" "-" "02"))]]]
               ef exprs]
@@ -228,7 +228,7 @@
                 (is (= ud cd))))))))))
 
 (deftest ^:parallel date-parse-table-fields-aggregation
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
     (let [mp (mt/metadata-provider)]
       (doseq [[table fields] [[:people [{:field :birth_date}]]]
               {:keys [field]} fields]
