@@ -31,20 +31,14 @@ export const showClickBehaviorSidebar =
     }
   };
 
-export const toggleConfigureEditableTableSidebar =
-  (dashcardId: DashCardId) => (dispatch: Dispatch, getState: GetState) => {
-    const currentSidebarName = getSidebar(getState()).name;
-
-    if (currentSidebarName === SIDEBAR_NAME.configureEditableTable) {
-      dispatch(closeSidebar());
-    } else {
-      dispatch(
-        setSidebar({
-          name: SIDEBAR_NAME.configureEditableTable,
-          props: { dashcardId },
-        }),
-      );
-    }
+export const showConfigureEditableTableSidebar =
+  (dashcardId: DashCardId) => (dispatch: Dispatch) => {
+    dispatch(
+      setSidebar({
+        name: SIDEBAR_NAME.configureEditableTable,
+        props: { dashcardId },
+      }),
+    );
   };
 
 export const toggleSidebar =

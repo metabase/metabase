@@ -140,8 +140,13 @@ function DashCardActionsPanelInner({
   }
 
   if (additionalDashcardActionButtons) {
-    additionalDashcardActionButtons.forEach((Button) => {
-      buttons.push(<Button key={Button.name} dashcard={dashcard} />);
+    additionalDashcardActionButtons.forEach((AdditionalButtonComponent) => {
+      buttons.push(
+        <AdditionalButtonComponent
+          key={AdditionalButtonComponent.name}
+          dashcard={dashcard}
+        />,
+      );
     });
   }
 

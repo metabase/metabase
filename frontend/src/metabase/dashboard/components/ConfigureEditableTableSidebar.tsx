@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useSelector } from "metabase/lib/redux";
 import { ActionIcon, Box, Flex, Icon, Tabs } from "metabase/ui";
@@ -17,9 +19,9 @@ export function ConfigureEditableTableSidebar({
     <Sidebar data-testid="add-table-sidebar">
       <Tabs defaultValue="columns">
         <Tabs.List px="md" pt="sm">
-          <Tabs.Tab value="columns">Columns</Tabs.Tab>
-          <Tabs.Tab value="filters">Filters</Tabs.Tab>
-          <Tabs.Tab value="actions">Actions</Tabs.Tab>
+          <Tabs.Tab value="columns">{t`Columns`}</Tabs.Tab>
+          <Tabs.Tab value="filters">{t`Filters`}</Tabs.Tab>
+          <Tabs.Tab value="actions">{t`Actions`}</Tabs.Tab>
 
           <Flex flex="1" justify="flex-end" align="center">
             <ActionIcon onClick={onClose}>

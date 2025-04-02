@@ -4,7 +4,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import {
   fetchCardData,
-  toggleConfigureEditableTableSidebar,
+  showConfigureEditableTableSidebar,
 } from "metabase/dashboard/actions";
 import { DashCardActionButton } from "metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionButton";
 import { useDispatch } from "metabase/lib/redux";
@@ -146,7 +146,7 @@ function ActionButtonConfigureEditableTable({
       key="configure-editable-table"
       aria-label={t`Configure`}
       tooltip={t`Configure`}
-      onClick={() => dispatch(toggleConfigureEditableTableSidebar(dashcard.id))}
+      onClick={() => dispatch(showConfigureEditableTableSidebar(dashcard.id))}
     >
       <Icon name="gear" />
     </DashCardActionButton>
