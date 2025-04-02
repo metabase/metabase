@@ -13,7 +13,6 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -134,5 +133,5 @@
     (testing "cluster locking test error if lock is released"
       (let [fin-chan (a/chan)]
         (future (#'qp.update-used-cards/do-with-cluster-lock ::test-lock #(a/<!! fin-chan)))
-        (future (do (Thread/sleep 1000) (a/>!! fin-chan :done)))
+        (future (Thread/sleep 1000) (a/>!! fin-chan :done))
         (is (nil? (#'qp.update-used-cards/do-with-cluster-lock ::test-lock #(Thread/sleep 1))))))))
