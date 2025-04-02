@@ -4,7 +4,7 @@ import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
 import type { IconProps } from "metabase/ui";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Loader } from "metabase/ui";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import type {
@@ -13,8 +13,6 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import { VisualizationSlowSpinner } from "../Visualization.styled";
 
 interface VisualizationHeaderProps {
   series: Series | null;
@@ -57,13 +55,19 @@ export const VisualizationHeader = ({
   error,
   noResults,
 }: VisualizationHeaderProps) => {
+  const isUsuallySlow = isSlow === "usually-slow";
+
   const actionButtonsContent = actionButtons && (
     <Flex align="center">
       {isSlow && !loading && (
-        <VisualizationSlowSpinner
+        <Loader
           className={DashboardS.VisualizationSlowSpinner}
           size={18}
-          isUsuallySlow={isSlow === "usually-slow"}
+          color={
+            isUsuallySlow
+              ? "var(--mb-color-warning)"
+              : "var(--mb-color-text-medium)"
+          }
         />
       )}
       {actionButtons}
