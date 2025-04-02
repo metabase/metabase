@@ -2,8 +2,9 @@ import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { cardApi } from "metabase/api";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Button, Flex, Icon, Text } from "metabase/ui";
+import { Button, Flex, Icon } from "metabase/ui";
 import { getVisualizerPrimaryColumn } from "metabase/visualizer/selectors";
 import { parseDataSourceId } from "metabase/visualizer/utils";
 import { isNumber, isString } from "metabase-lib/v1/types/utils/isa";
@@ -87,9 +88,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
           flexShrink: 0,
         }}
       />
-      <Text size="md" truncate c="inherit" style={{ flexGrow: 1 }}>
-        {item.name}
-      </Text>
+      <Ellipsified style={{ flexGrow: 1 }}>{item.name}</Ellipsified>
       {mode === "both" && (
         <div className={S.DatasetsListItemActions}>
           <Icon name="refresh" className={S.refreshIcon} />
