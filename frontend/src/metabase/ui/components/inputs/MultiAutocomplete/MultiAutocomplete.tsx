@@ -29,7 +29,7 @@ export function MultiAutocomplete({
   const {
     visibleValues,
     fieldValue,
-    editValueIndex,
+    fieldValueIndex,
     handleFieldChange,
     handleFieldFocus,
     handleFieldBlur,
@@ -42,7 +42,7 @@ export function MultiAutocomplete({
       <PillsInput.Field
         value={fieldValue}
         placeholder={placeholder}
-        autoFocus={autoFocus || editValueIndex != null}
+        autoFocus={autoFocus || fieldValueIndex != null}
         onChange={handleFieldChange}
         onFocus={handleFieldFocus}
         onBlur={handleFieldBlur}
@@ -56,7 +56,7 @@ export function MultiAutocomplete({
         <PillsInput>
           <Pill.Group>
             {visibleValues.map((value, valueIndex) =>
-              editValueIndex === valueIndex ? (
+              fieldValueIndex === valueIndex ? (
                 field
               ) : (
                 <Pill
@@ -69,7 +69,7 @@ export function MultiAutocomplete({
                 </Pill>
               ),
             )}
-            {editValueIndex == null && field}
+            {fieldValueIndex == null && field}
           </Pill.Group>
         </PillsInput>
       </Combobox.DropdownTarget>
@@ -103,7 +103,7 @@ function useMultiAutocomplete({
   const [isFocused, setIsFocused] = useState(false);
   const [pillValues, setPillValues] = useState<string[]>([]);
   const [fieldValue, setFieldValue] = useState("");
-  const [editValueIndex, setEditValueIndex] = useState<number>();
+  const [fieldValueIndex, setFieldValueIndex] = useState<number>();
   const visibleValues = isFocused ? pillValues : effectiveValues;
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -112,11 +112,11 @@ function useMultiAutocomplete({
 
     const isValid = shouldCreate(newValue);
     const newValues = [...pillValues];
-    if (editValueIndex != null) {
+    if (fieldValueIndex != null) {
       if (isValid) {
-        newValues[editValueIndex] = newValue;
+        newValues[fieldValueIndex] = newValue;
       } else {
-        newValues.splice(editValueIndex, 1);
+        newValues.splice(fieldValueIndex, 1);
       }
     } else if (isValid) {
       newValues.push(newValue);
@@ -133,19 +133,19 @@ function useMultiAutocomplete({
     setIsFocused(false);
     setPillValues([]);
     setFieldValue("");
-    setEditValueIndex(undefined);
+    setFieldValueIndex(undefined);
   };
 
   const handlePillDoubleClick = (valueIndex: number) => {
     setFieldValue(visibleValues[valueIndex]);
-    setEditValueIndex(valueIndex);
+    setFieldValueIndex(valueIndex);
   };
 
   const handlePillRemoveClick = (valueIndex: number) => {
     const newValues = [...effectiveValues];
     const removeValueIndex =
-      editValueIndex != null &&
-      valueIndex > editValueIndex &&
+      fieldValueIndex != null &&
+      valueIndex > fieldValueIndex &&
       !shouldCreate(fieldValue)
         ? valueIndex - 1
         : valueIndex;
@@ -153,13 +153,13 @@ function useMultiAutocomplete({
     onChange(newValues);
     setPillValues(newValues);
     setFieldValue("");
-    setEditValueIndex(undefined);
+    setFieldValueIndex(undefined);
   };
 
   return {
     visibleValues,
     fieldValue,
-    editValueIndex,
+    fieldValueIndex,
     handleFieldChange,
     handleFieldFocus,
     handleFieldBlur,
