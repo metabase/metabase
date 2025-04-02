@@ -1413,7 +1413,6 @@ describe("issue 48562", () => {
     H.expressionEditorWidget().button("Cancel").click();
 
     H.getNotebookStep("filter").findByText("[Unknown Segment]").click();
-    H.popover().findByText("Custom Expression").click();
     H.CustomExpressionEditor.value().should("contain", "[Unknown Segment]");
     H.expressionEditorWidget().button("Cancel").click();
 
