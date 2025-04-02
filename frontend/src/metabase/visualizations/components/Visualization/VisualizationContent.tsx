@@ -4,7 +4,11 @@ import type { ReactNode } from "react";
 import { SmallGenericError } from "metabase/components/ErrorPages";
 import CS from "metabase/css/core/index.css";
 import { getCardKey } from "metabase/visualizations/lib/utils";
-import type { Visualization as VisualizationType } from "metabase/visualizations/types";
+import type {
+  VisualizationProps as VisualizationPropsType,
+  Visualization as VisualizationType,
+} from "metabase/visualizations/types";
+import type { DatasetData } from "metabase-types/api";
 
 import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
@@ -24,7 +28,14 @@ type VisualizationContentProps = {
   small: boolean;
   errorMessageOverride: string | undefined;
   errorIcon: VisualizationProps["errorIcon"];
-  visualizationProps: any;
+  visualizationProps: Omit<
+    VisualizationPropsType,
+    "data" | "width" | "height"
+  > & {
+    data: DatasetData | undefined;
+    width: number | null | undefined;
+    height: number | null | undefined;
+  };
   clicked: VisualizationState["clicked"];
   hovered: VisualizationState["hovered"];
   settings: Record<string, string>;

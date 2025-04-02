@@ -614,6 +614,13 @@ class Visualization extends PureComponent<
       onUpdateWarnings,
       visualizationIsClickable: this.visualizationIsClickable,
       onHeaderColumnReorder,
+      series: series || [],
+      card: rawSeries[0]?.card,
+      data: series?.[0]?.data,
+      settings: settings || {},
+      visualization: visualization,
+      onHoverChange: this.handleHoverChange,
+      onVisualizationClick: this.handleVisualizationClick,
     };
 
     return (
