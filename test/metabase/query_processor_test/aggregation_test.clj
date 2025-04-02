@@ -274,6 +274,17 @@
                       {:breakout     [[:field %liked {:base-type :type/Boolean}]]
                        :aggregation  [["count"]]}))))))))
 
+(deftest ^:parallel aggregation-with-between-is-consistent-test
+  (testing "an aggregation with a between clause should return consistent results #55302"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset daily-bird-counts
+        (is (= [[39]]
+               (->> {:aggregation [[:sum [:case
+                                          [[[:between [:field (mt/id :bird-count :date)] "2018-09-01" "2018-09-30"]
+                                            [:field (mt/id :bird-count :count)]]]]]]}
+                    (mt/run-mbql-query bird-count)
+                    (mt/formatted-rows [int]))))))))
+
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !
 ;; !                    tests for named aggregations can be found in `expression-aggregations-test`                    !
