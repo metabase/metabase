@@ -15,6 +15,7 @@ import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeModelCard } from "../HomeModelCard";
 
 import { SectionBody } from "./HomeRecentSection.styled";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export const HomeRecentSection = () => {
   const { data: recentItems = [], isLoading, error } = useListRecentsQuery();
@@ -22,6 +23,7 @@ export const HomeRecentSection = () => {
   const hasHelpCard =
     user != null && user.is_installer && isWithinWeeks(user.first_login, 2);
 
+  const tc = useTranslateContent2();
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -33,7 +35,7 @@ export const HomeRecentSection = () => {
         {recentsFilter(recentItems).map((item, index) => (
           <HomeModelCard
             key={index}
-            title={getName(item)}
+            title={tc(getName(item))}
             icon={getIcon(item)}
             url={Urls.modelToUrl(item) ?? ""}
           />

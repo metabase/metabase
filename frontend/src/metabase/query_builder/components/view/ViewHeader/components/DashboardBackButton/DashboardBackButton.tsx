@@ -2,7 +2,7 @@ import type { HTMLAttributes } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { getLocalized } from "metabase/i18n/utils";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
@@ -31,11 +31,13 @@ export function DashboardBackButton({
     onClick?.();
   };
 
+  const tc = useTranslateContent2();
+
   if (!dashboard) {
     return null;
   }
 
-  const label = t`Back to ${getLocalized(dashboard, "name")}`;
+  const label = t`Back to ${tc(dashboard.name)}`;
 
   return (
     <Tooltip label={label}>
