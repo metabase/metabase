@@ -95,7 +95,7 @@
 
 (defenterprise embedding-settings
   "Boolean values that report on the state of different embedding configurations."
-  metabase-enterprise.embedding-data
+  metabase-enterprise.internal-stats
   [_embedded-dashboard-count _embedded-question-count]
   {:enabled-embedding-static      false
    :enabled-embedding-interactive false
@@ -113,7 +113,7 @@
                       :embedding-dashboard-count embedding-dashboard-count
                       :embedding-question-count embedding-question-count
                       :external-users ext-users
-                      :interal-users (- users ext-users)
+                      :internal-users (- users ext-users)
                       :domains (internal-stats/email-domain-count)})]
     (log/info "Reporting embedding stats:" stats)
     stats))

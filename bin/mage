@@ -3,11 +3,10 @@
 set -euo pipefail
 
 _REL_BINDIR=$(dirname "$0")
-BINDIR=$(cd "${_REL_BINDIR}" && pwd)
+BINDIR=$(cd -- "${_REL_BINDIR}" > /dev/null 2>&1 && pwd)
 # echo "BINDIR" "${BINDIR}"
 MB="$BINDIR/.."
 
-# using relative path ./bin/bb
 BB_BIN_DIR="${BINDIR}"
 BB_EXEC="${BB_BIN_DIR}/bb"
 
@@ -134,7 +133,7 @@ install_babashka() {
   log_info "Download URL: ${download_url}"
 
   # Download the file first
-  curl -L "${download_url}" -o "${tmp_dir}/babashka.tar.gz"
+  curl -#L "${download_url}" -o "${tmp_dir}/babashka.tar.gz"
 
   if [ ! -f "${tmp_dir}/babashka.tar.gz" ]; then
     log_error "Download failed! Could not find downloaded file"
@@ -142,31 +141,28 @@ install_babashka() {
   fi
 
   log_info "Download complete. Extracting archive..."
-  tar -xzf "${tmp_dir}/babashka.tar.gz" -C "${tmp_dir}"
+  tar xf "${tmp_dir}/babashka.tar.gz" -C "${tmp_dir}" "bb"
 
-  # List the temp directory contents to see if extraction worked
-  dbg_info "Files in temp directory after extraction:"
-  ls -la "${tmp_dir}"
-
-  if [ -f "${tmp_dir}/bb" ]; then
-    dbg_info "Moving bb to ${BB_EXEC}"
-    mv "${tmp_dir}/bb" "${BB_EXEC}"
-    chmod +x "${BB_EXEC}"
-
-    # Verify installation
-    if [ -x "${BB_EXEC}" ]; then
-      dbg_info "Testing installed binary..."
-      "${BB_EXEC}" --version
-      log_success "Babashka ${min_bb_version} successfully installed at ${BB_EXEC}"
-    else
-      log_error "Installation failed! ${BB_EXEC} is not executable"
-      exit 1
-    fi
-  else
-    log_error "Extraction failed! Could not find bb executable in extracted files - are you sure the version is correct?"
+  if [ ! -f "${tmp_dir}/bb" ]; then
+    log_error "Extraction failed! Could not find bb executable!"
     exit 1
   fi
 
+  dbg_info "Moving bb to ${BB_EXEC}"
+  mv -f "${tmp_dir}/bb" "${BB_EXEC}"
+  chmod +x "${BB_EXEC}"
+
+  # Verify installation
+  if [ ! -x "${BB_EXEC}" ]; then
+    log_error "Installation failed! ${BB_EXEC} is not executable"
+    exit 1
+  fi
+
+  dbg_info "Testing installed binary..."
+  "${BB_EXEC}" --version
+  log_success "Babashka ${min_bb_version} successfully installed at ${BB_EXEC}"
+
+  dbg_info "Cleanup"
   rm -rf "${tmp_dir}"
 }
 

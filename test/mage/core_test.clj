@@ -2,7 +2,7 @@
   (:require
    [babashka.tasks :as bt]
    [clojure.string :as str]
-   [mage.start-db-test :as start-db-test]
+   [clojure.test :refer [deftest is testing]]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -13,37 +13,36 @@
                      [" -h"] [" --help"]
                      ["  -h"] ["  --help"]]
           :let [cmd (str "./bin/mage " (str/join " " help-cmds))]]
-    (println (str "Testing that bin/mage has help with '" (pr-str cmd) "'"))
-    (let [out (u/sh cmd)]
-      (when-not (str/includes? out "The following tasks are available:")
-        (System/exit 1)))))
+    (testing (format "'%s'" (pr-str cmd))
+      (let [out (u/sh cmd)]
+        (when-not (str/includes? out "The following tasks are available:")
+          (System/exit 1))))))
 
 (defn- bb-task-has-example? [task-name]
   (doseq [cmd [(str "./bin/mage " task-name " -h")
                (str "./bin/mage " task-name " --help")]]
-    (println (str "Testing that task has examples with '" cmd "'"))
-    (when-not (str/includes? (u/sh cmd) "Examples:")
-      (System/exit 1))))
+    (testing (format "'%s'" cmd)
+      (is (str/includes? (u/sh cmd) "Examples:")))))
 
 (defn invalid-task-names-print-help-test []
   (doseq [task-name ["foo" "bar" "baz"]]
     (let [cmd (str "./bin/mage " task-name)]
-      (print "testing that" cmd "prints help")
-      (let [result (try (bt/shell {:err :string :out :string} "./bin/mage foo")
-                        (catch Exception e (:out (:proc (ex-data e)))))]
-        (if (str/includes? result "The following tasks are available:")
-          (println " OK")
-          (System/exit 1))))))
+      (testing (format "'%s'" cmd)
+        (let [result (try (bt/shell {:err :string :out :string} "./bin/mage foo")
+                          (catch Exception e (:out (:proc (ex-data e)))))]
+          (is (str/includes? result "The following tasks are available:")))))))
 
-(defn run-tests [& _args]
-  (mapv bb-task-has-example? (u/public-bb-tasks-list))
-  (bin-mage-has-help?)
-  (invalid-task-names-print-help-test)
-  (start-db-test/run-tests)
-  (println "Examples tests passed"))
+(deftest mage-tests
+  (println "Running mage tests")
 
-;; To call run-tests directly, use:
-;; bb ./test/mage/core_test.clj
-(when (= *file* (System/getProperty "babashka.file"))
-  (run-tests)
-  :ok)
+  (println "  bb tasks have examples")
+  (testing "bb tasks have examples"
+    (mapv bb-task-has-example? (u/public-bb-tasks-list)))
+
+  (println "  bb tasks have help")
+  (testing "mage has help"
+    (bin-mage-has-help?))
+
+  (println "  invalid task names print help")
+  (testing "Invalid task name prints help"
+    (invalid-task-names-print-help-test)))

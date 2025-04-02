@@ -1,5 +1,5 @@
 import { FIELD_SEMANTIC_TYPES } from "metabase/lib/core";
-import { TYPE } from "metabase-lib/v1/types/constants";
+import { LEVEL_ONE_TYPES, TYPE } from "metabase-lib/v1/types/constants";
 import { isTypeFK, isTypePK, isa } from "metabase-lib/v1/types/utils/isa";
 import type { Field } from "metabase-types/api";
 
@@ -9,7 +9,7 @@ export function getCompatibleSemanticTypes(
 ) {
   const fieldType = field.effective_type ?? field.base_type;
   const isFieldText = isa(fieldType, TYPE.Text);
-  const fieldLevelOneTypes = getLevelOneDataTypes().filter((levelOneType) => {
+  const fieldLevelOneTypes = LEVEL_ONE_TYPES.filter((levelOneType) => {
     return isa(fieldType, levelOneType);
   });
 
@@ -59,17 +59,4 @@ export function getCompatibleSemanticTypes(
     // Limit the choice to types derived from level-one data type of Field’s effective_type
     return isDerivedFromAnyLevelOneType;
   });
-}
-
-// TODO: https://linear.app/metabase/issue/SEM-184
-function getLevelOneDataTypes(): string[] {
-  return [
-    TYPE.Text,
-    TYPE.TextLike,
-    TYPE.Number,
-    TYPE.Temporal,
-    TYPE.Boolean,
-    TYPE.Collection,
-    TYPE.Structured,
-  ];
 }

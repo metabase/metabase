@@ -8,8 +8,17 @@ import { type CompileResult, compileExpression } from "./compiler";
 import { MBQL_CLAUSES, getMBQLName } from "./config";
 import { DiagnosticError, type ExpressionError, renderError } from "./errors";
 import { isExpression } from "./matchers";
-import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
-import type { StartRule, Token } from "./types";
+import {
+  CALL,
+  FIELD,
+  GROUP,
+  GROUP_CLOSE,
+  IDENTIFIER,
+  OPERATORS,
+  type Token,
+  lexify,
+} from "./pratt";
+import type { StartRule } from "./types";
 import { getDatabase, getExpressionMode } from "./utils";
 
 export function diagnose(options: {
@@ -47,7 +56,7 @@ export function diagnoseAndCompile({
       throw new DiagnosticError(t`Expression is empty`);
     }
 
-    const { tokens, errors } = tokenize(source);
+    const { tokens, errors } = lexify(source);
     if (errors && errors.length > 0) {
       throw errors[0];
     }
@@ -108,16 +117,13 @@ function checkOpenParenthesisAfterFunction(
 ): ExpressionError | null {
   for (let i = 0; i < tokens.length - 1; ++i) {
     const token = tokens[i];
-    if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
+    if (token.type === IDENTIFIER && source[token.start] !== "[") {
       const functionName = source.slice(token.start, token.end);
       const fn = getMBQLName(functionName);
       const clause = fn ? MBQL_CLAUSES[fn] : null;
       if (clause && clause.args.length > 0) {
         const next = tokens[i + 1];
-        if (
-          next.type !== TOKEN.Operator ||
-          next.op !== OPERATOR.OpenParenthesis
-        ) {
+        if (next.type !== GROUP) {
           return new DiagnosticError(
             t`Expecting an opening parenthesis after function ${functionName}`,
             {
@@ -153,10 +159,8 @@ function checkMatchingParentheses(tokens: Token[]): ExpressionError | null {
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
 export function countMatchingParentheses(tokens: Token[]) {
-  const isOpen = (t: Token) =>
-    t.type === TOKEN.Operator && t.op === OPERATOR.OpenParenthesis;
-  const isClose = (t: Token) =>
-    t.type === TOKEN.Operator && t.op === OPERATOR.CloseParenthesis;
+  const isOpen = (t: Token) => t.type === GROUP;
+  const isClose = (t: Token) => t.type === GROUP_CLOSE;
   const count = (c: number, token: Token) =>
     isOpen(token) ? c + 1 : isClose(token) ? c - 1 : c;
   return tokens.reduce(count, 0);
@@ -195,45 +199,42 @@ function checkMissingCommasInArgumentList(
   tokens: Token[],
   source: string,
 ): ExpressionError | null {
-  const CALL = 1;
-  const GROUP = 2;
+  const call = 1;
+  const group = 2;
   const stack = [];
 
   for (let index = 0; index < tokens.length; index++) {
     const token = tokens[index];
     const prevToken = tokens[index - 1];
-    if (token.type === TOKEN.Operator && token.op === "(") {
+    if (token?.type === GROUP) {
       if (!prevToken) {
         continue;
       }
-      if (prevToken.type === TOKEN.Identifier) {
-        stack.push(CALL);
+      if (prevToken.type === CALL) {
+        stack.push(call);
         continue;
       } else {
-        stack.push(GROUP);
+        stack.push(group);
         continue;
       }
     }
-    if (token.type === TOKEN.Operator && token.op === ")") {
+    if (token.type === GROUP_CLOSE) {
       stack.pop();
       continue;
     }
 
-    const isCall = stack.at(-1) === CALL;
+    const isCall = stack.at(-1) === call;
     if (!isCall) {
       continue;
     }
 
     const nextToken = tokens[index + 1];
-    if (token.type === TOKEN.Identifier) {
-      if (nextToken && nextToken.type !== TOKEN.Operator) {
+    if (token.type === IDENTIFIER || token.type === FIELD) {
+      if (nextToken && !OPERATORS.has(nextToken.type)) {
         const text = source.slice(nextToken.start, nextToken.end);
         return new DiagnosticError(
           `Expecting operator but got ${text} instead`,
-          {
-            pos: nextToken.start,
-            len: nextToken.end - nextToken.start,
-          },
+          nextToken,
         );
       }
     }
