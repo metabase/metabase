@@ -57,6 +57,19 @@
       (testing (str "literal " literal)
         (is (=? literal (lib/expression-parts query literal)))))))
 
+(deftest ^:parallel bigint-value-expression-parts-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
+        uid  (str (random-uuid))]
+    (is (=? {:lib/type :mbql/expression-parts
+             :operator :value
+             :options {:base-type :type/BigInteger
+                       :effective-type :type/BigInteger
+                       :lib/uuid uid}
+             :args ["12345"]}
+            (lib/expression-parts query [:value {:base-type :type/BigInteger
+                                                 :effective-type :type/BigInteger
+                                                 :lib/uuid uid} "12345"])))))
+
 (deftest ^:parallel filter-parts-field-properties-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
