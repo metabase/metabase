@@ -18,7 +18,7 @@
 ;;  * :type/Number
 
 (deftest ^:parallel integer-cast-table-fields
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
@@ -38,7 +38,7 @@
                        (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-custom-expressions
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table expressions] [[:people [{:expression (lib/concat
@@ -62,7 +62,7 @@
                        (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-nested-native-query
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [{:keys [expression db-type]} [{:expression "'123'"  :db-type "TEXT"}
@@ -88,7 +88,7 @@
                            (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
@@ -114,7 +114,7 @@
                            (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query-custom-expressions
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table expressions] [[:people [{:expression (lib/concat
@@ -147,7 +147,7 @@
                            (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-custom-expressions
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table expressions] [[:people [{:expression (fn []
@@ -169,7 +169,7 @@
                      (biginteger casted-value))))))))))
 
 (deftest ^:parallel integer-cast-aggregations
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table fields] [[:people [{:field :zip}]]]
@@ -188,7 +188,7 @@
                        (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-examples
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)
             examples [{:original "123" :value 123 :msg "Easy case."}
