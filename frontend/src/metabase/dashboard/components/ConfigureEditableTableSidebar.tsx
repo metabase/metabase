@@ -1,19 +1,38 @@
+import { useDisclosure } from "@mantine/hooks";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { isQuestionCard } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
-import { ActionIcon, Box, Flex, Icon, Tabs } from "metabase/ui";
+import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
+import { getMetadata } from "metabase/selectors/metadata";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Popover,
+  Tabs,
+} from "metabase/ui";
+import type * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { Card, DashCardId, DashboardCard } from "metabase-types/api";
 
-import { getSidebar } from "../selectors";
+import { getDashCardById, getSidebar } from "../selectors";
 
 interface ConfigureEditableTableSidebarProps {
+  onUpdateDashCard: (dashcardId: DashCardId, card: Card) => void;
   onClose: () => void;
 }
 
 export function ConfigureEditableTableSidebar({
+  onUpdateDashCard,
   onClose,
 }: ConfigureEditableTableSidebarProps) {
   const dashcardId = useSelector(getSidebar).props.dashcardId;
+  const dashcard = useSelector((state) => getDashCardById(state, dashcardId));
 
   return (
     <Sidebar data-testid="add-table-sidebar">
@@ -37,7 +56,10 @@ export function ConfigureEditableTableSidebar({
           </Tabs.Panel>
           <Tabs.Panel value="filters">
             <div>DashcardID: {dashcardId}</div>
-            <ConfigureEditableTableFilters />
+            <ConfigureEditableTableFilters
+              dashcard={dashcard}
+              onUpdateDashCard={onUpdateDashCard}
+            />
           </Tabs.Panel>
           <Tabs.Panel value="actions">
             <div>Not implemented</div>
@@ -52,6 +74,61 @@ function ConfigureEditableTableColumns() {
   return <div>Columns Content</div>;
 }
 
-function ConfigureEditableTableFilters() {
-  return <div>Filters Content</div>;
+function ConfigureEditableTableFilters({
+  dashcard,
+  onUpdateDashCard,
+}: {
+  dashcard: DashboardCard;
+  onUpdateDashCard: (dashcardId: DashCardId, card: Card) => void;
+}) {
+  const [isOpened, { close, toggle }] = useDisclosure();
+
+  const metadata = useSelector(getMetadata);
+  const initialQuery = useMemo(() => {
+    const question = isQuestionCard(dashcard?.card)
+      ? new Question(dashcard.card, metadata)
+      : null;
+
+    return question?.query();
+  }, [dashcard?.card, metadata]);
+
+  const [query, setQuery] = useState(initialQuery);
+
+  const handleQueryChange = (newQuery: Lib.Query) => {
+    // const legacyQuery = Lib.toLegacyQuery(newQuery);
+    //
+    // const newCard = { ...dashcard.card, dataset_query: legacyQuery };
+    //
+    // onUpdateDashCard(dashcard.id, newCard);
+
+    setQuery(query);
+  };
+
+  if (!query) {
+    return <div>ERROR: no query</div>;
+  }
+
+  return (
+    <div>
+      <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
+        <Popover.Target>
+          <Button
+            leftSection={<Icon name="add" />}
+            onClick={toggle}
+            data-testid="question-filter-header"
+          >
+            {t`Add a filter`}
+          </Button>
+        </Popover.Target>
+        <Popover.Dropdown>
+          <MultiStageFilterPicker
+            query={query}
+            canAppendStage={false}
+            onChange={handleQueryChange}
+            onClose={close}
+          />
+        </Popover.Dropdown>
+      </Popover>
+    </div>
+  );
 }

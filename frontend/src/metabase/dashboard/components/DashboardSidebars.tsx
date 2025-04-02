@@ -1,7 +1,10 @@
 import { useCallback } from "react";
 import _ from "underscore";
 
-import { addEditableTableDashCardToDashboard } from "metabase/dashboard/actions";
+import {
+  addEditableTableDashCardToDashboard,
+  updateCard,
+} from "metabase/dashboard/actions";
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
@@ -13,6 +16,7 @@ import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubsc
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import type {
+  Card,
   CardId,
   DashCardId,
   DashCardVisualizationSettings,
@@ -88,6 +92,7 @@ interface DashboardSidebarsProps {
     temporalUnits: TemporalUnit[],
   ) => void;
   isFullscreen: boolean;
+  onUpdateDashCard: (dashcardId: DashCardId, card: Card) => void;
 
   onCancel: () => void;
   sidebar: State["dashboard"]["sidebar"];
@@ -115,6 +120,7 @@ export function DashboardSidebars({
   setParameterRequired,
   setParameterTemporalUnits,
   isFullscreen,
+  onUpdateDashCard,
   onCancel,
   sidebar,
   closeSidebar,
@@ -258,7 +264,12 @@ export function DashboardSidebars({
       );
 
     case SIDEBAR_NAME.configureEditableTable:
-      return <ConfigureEditableTableSidebar onClose={closeSidebar} />;
+      return (
+        <ConfigureEditableTableSidebar
+          onUpdateDashCard={onUpdateDashCard}
+          onClose={closeSidebar}
+        />
+      );
 
     default:
       return null;

@@ -12,6 +12,7 @@ import {
   type SetDashboardAttributesOpts,
   moveDashboardToCollection,
   setArchivedDashboard,
+  updateCard,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
@@ -532,6 +533,9 @@ function Dashboard(props: DashboardProps) {
                 setParameterRequired={props.setParameterRequired}
                 setParameterTemporalUnits={props.setParameterTemporalUnits}
                 isFullscreen={props.isFullscreen}
+                onUpdateDashCard={(dashcardId, card) =>
+                  dispatch(updateCard({ dashcardId, card }))
+                }
                 sidebar={props.sidebar}
                 closeSidebar={props.closeSidebar}
                 selectedTabId={selectedTabId}
