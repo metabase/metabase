@@ -62,29 +62,29 @@
                        (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-nested-native-query
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [{:keys [expression db-type]} [{:expression "'123'"  :db-type "TEXT"}
-                                              {:expression "'-123'" :db-type "TEXT"}]]
-          (testing (str "Casting " db-type " to integer from native query")
-            (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
-              (mt/with-temp
-                [:model/Card
-                 {card-id :id}
-                 (mt/card-with-source-metadata-for-query native-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
-                                (lib/with-fields [])
-                                (as-> q
-                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))
-                                (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))))
-                      result (-> query qp/process-query)
-                      cols (mt/cols result)
-                      rows (mt/rows result)]
-                  (is (types/field-is-type? :type/Number (last cols)))
-                  (doseq [[_ uncasted-value casted-value] rows]
-                    (is (= (biginteger (Long/parseLong uncasted-value))
-                           (biginteger casted-value)))))))))))))
+  (mt/dataset test-data
+    (let [mp (mt/metadata-provider)]
+      (doseq [{:keys [expression db-type]} [{:expression "'123'"  :db-type "TEXT"}
+                                            {:expression "'-123'" :db-type "TEXT"}]]
+        (testing (str "Casting " db-type " to integer from native query")
+          (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
+            (mt/with-temp
+              [:model/Card
+               {card-id :id}
+               (mt/card-with-source-metadata-for-query native-query)]
+              (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                              (lib/with-fields [])
+                              (as-> q
+                                    (lib/expression q "UNCAST" (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))
+                              (as-> q
+                                    (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))))
+                    result (-> query qp/process-query)
+                    cols (mt/cols result)
+                    rows (mt/rows result)]
+                (is (types/field-is-type? :type/Number (last cols)))
+                (doseq [[_ uncasted-value casted-value] rows]
+                  (is (= (biginteger (Long/parseLong uncasted-value))
+                         (biginteger casted-value))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
