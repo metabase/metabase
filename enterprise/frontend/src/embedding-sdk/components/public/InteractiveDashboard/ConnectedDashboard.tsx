@@ -105,6 +105,7 @@ const ConnectedDashboardInner = ({
   onLoad,
   onLoadWithoutCards,
   onNavigateToNewCardFromDashboard,
+  downloadsEnabled = false,
   ...restProps
 }: ConnectedDashboardProps & ReduxProps) => {
   useDashboardLoadHandlers({ dashboard, onLoad, onLoadWithoutCards });
@@ -119,6 +120,7 @@ const ConnectedDashboardInner = ({
       navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
       autoScrollToDashcardId={undefined}
       reportAutoScrolledToDashcard={_.noop}
+      downloadsEnabled={{ pdf: downloadsEnabled, cardResult: downloadsEnabled }}
     />
   );
 };
