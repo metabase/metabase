@@ -29,7 +29,12 @@ const SEGMENT_ID = 1;
 const metadata = createMockMetadata({
   databases: [
     createSampleDatabase({
-      features: [...COMMON_DATABASE_FEATURES, "cast"],
+      features: [
+        ...COMMON_DATABASE_FEATURES,
+        "expressions/date",
+        "expressions/integer",
+        "expressions/date",
+      ],
       tables: [
         createPeopleTable(),
         createProductsTable(),

@@ -568,7 +568,7 @@
 (defclause ^{:requires-features #{:expressions}} replace
   s StringExpressionArg, match :string, replacement :string)
 
-(defclause ^{:requires-features #{:expressions :cast}} text
+(defclause ^{:requires-features #{:expressions :expressions/text}} text
   x :any)
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
@@ -634,7 +634,7 @@
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
 
-(defclause ^{:requires-features #{:expressions :cast}} integer
+(defclause ^{:requires-features #{:expressions :expressions/integer}} integer
   x [:or NumericExpressionArg
      StringExpressionArg])
 
@@ -708,7 +708,7 @@
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
-(defclause ^{:requires-features #{:expressions :cast}} date
+(defclause ^{:requires-features #{:expressions :expressions/date}} date
   string StringExpressionArg)
 
 (mr/def ::DatetimeExpression
