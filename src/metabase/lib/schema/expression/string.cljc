@@ -36,9 +36,9 @@
   [:length [:? [:schema [:ref ::expression/integer]]]])
 
 (mbql-clause/define-tuple-mbql-clause :split-part :- :type/Text
-  [:schema [:ref ::expression/string]]
-  [:schema [:string {:min 1}]] ;; literal string
-  [:schema [:ref ::expression/positive-integer-or-numeric-expression]])
+  #_text      [:schema [:ref ::expression/string]]
+  #_delimiter [:schema [:string {:min 1}]] ;; literal string
+  #_position  [:schema [:ref ::expression/positive-integer-or-numeric-expression]])
 
 (mbql-clause/define-catn-mbql-clause :concat :- :type/Text
   [:args [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
