@@ -11025,7 +11025,6 @@ databaseChangeLog:
               - column:
                   name: query_execution_id
             indexName: idx_field_usage_query_execution_id
-
   - changeSet:
       id: v54.2025-03-27T17:52:01
       author: luizarakaki
@@ -11121,6 +11120,98 @@ databaseChangeLog:
               - column:
                   name: card_schema
             indexName: idx_report_card_card_schema
+
+  - changeSet:
+      id: v55.2025-03-31T11:01:55
+      author: wotbrew
+      comment: Add table webhook token
+      preConditions:
+      rollback:
+        dropTable:
+            tableName: table_webhook_token
+      changes:
+        - createTable:
+            tableName: table_webhook_token
+            remarks: Table containing webhook tokens, that permit writing or modifying tables without a metabase admin session
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The table the token permits edits for
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_table_webhook_token_table_id
+                    deleteCascade: true
+              - column:
+                  remarks: The token value
+                  name: token
+                  type: varchar(254)
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the token was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The user that created the token
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_table_webhook_token_creator_id
+                    deleteCascade: true
+  - changeSet:
+      id: v55.2025-04-02T10:52:01
+      author: wotbrew
+      comment: Add an index for `table_webhook_token.table_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: table_webhook_token
+                indexName: idx_table_webhook_token_table_id
+      changes:
+        - createIndex:
+            indexName: idx_table_webhook_token_table_id
+            tableName: table_webhook_token
+            columns:
+              - column:
+                  name: table_id
+  - changeSet:
+      id: v55.2025-04-02T10:52:02
+      author: wotbrew
+      comment: Add an index for `table_webhook_token.creator_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: table_webhook_token
+                indexName: idx_table_webhook_token_creator_id
+      changes:
+        - createIndex:
+            indexName: idx_table_webhook_token_creator_id
+            tableName: table_webhook_token
+            columns:
+              - column:
+                  name: creator_id
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -763,6 +763,10 @@
   {:api #{}
    :uses #{api actions driver events lib query-processor upload util}}
 
+  enterprise/data-editing-public
+  {:api #{}
+   :uses #{api actions enterprise/data-editing driver events lib query-processor upload util}}
+
   enterprise/task
   {:api  #{metabase-enterprise.task.truncate-audit-tables}
    :uses #{premium-features query-processor task util enterprise/cache}}
