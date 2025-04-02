@@ -96,7 +96,7 @@ runs:
       shell: bash
       working-directory: modules
     - name: Bundle additional drivers into the Uberjar
-      run:  test -n "$(find modules -maxdepth 1 -name '*.jar' -print -quit)" && jar uf bin/docker/metabase.jar modules/*.jar
+      run:  if test -n "$(find modules -maxdepth 1 -name '*.jar' -print -quit)"; then jar uf bin/docker/metabase.jar modules/*.jar; fi
       shell: bash
     - name: Launch uberjar
       run: >-
