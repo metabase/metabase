@@ -401,11 +401,6 @@ result_metadata:
     - v_subscriptions
     - creator_id
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - active
   id:
   - Internal Metabase Database
   - public
@@ -653,6 +648,7 @@ serdes/meta:
   label: active_dashboard_subscriptions
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: Zf1jknwhPhazxIIJ2X6mX
 metabase_version: vUNKNOWN (5c1ab5e)
 source_card_id: 5ojUtU9iE-DCggHdFPIll
