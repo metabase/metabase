@@ -462,7 +462,7 @@
      ""
 
      :else
-     [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider)]]))
+     [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
