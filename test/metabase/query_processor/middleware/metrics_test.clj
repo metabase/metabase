@@ -167,7 +167,6 @@
                     :aggregation [[:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
          (adjust query)))))
 
-;; DONE
 (deftest ^:parallel metric-with-implicit-join-test
   (testing "Metrics with filters on implicitly joined columns should work #43943"
     (let [[source-metric mp] (mock-metric (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) $q
@@ -212,7 +211,6 @@
                                              "foobar"))
                        (lib/aggregate $q (lib.options/ensure-uuid [:metric {} (:id source-metric)]))))))))))
 
-;; DONE
 (deftest ^:parallel multiple-source-metrics-with-implicit-join-test
   (let [[first-metric mp] (mock-metric (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) $q
                                          (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :category)} :id)
@@ -281,7 +279,6 @@
                     :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
          (adjust query)))))
 
-;; TODO: case stmt should reflect deduplicated expression
 (deftest ^:parallel adjust-expression-name-collision-test
   (let [[source-metric mp] (mock-metric (-> (basic-metric-query)
                                             (lib/expression "foobar" (lib/+ 1 1))
@@ -306,7 +303,6 @@
                                       [:field {} (meta/id :products :rating)]]]]]]}]}
          @(def rr (adjust query))))))
 
-;; DONE
 (deftest ^:parallel adjust-filter-test
   (let [[source-metric mp] (mock-metric (lib/filter (basic-metric-query) (lib/> (meta/field-metadata :products :price) 1)))
         query (-> (lib/query mp source-metric)
@@ -320,7 +316,6 @@
                     :filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
          (adjust query)))))
 
-;; TODO: Should be merging nested case statements?
 (deftest ^:parallel adjust-mixed-multi-source-test
   (let [mp                (lib.tu/metadata-provider-with-mock-cards)
         [first-metric mp] (mock-metric mp
@@ -607,7 +602,6 @@
                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))
                      (add-aggregation-options {:display-name "My cooler metric" :name "Better Named Metric"})))))))
 
-;; DONE
 (deftest ^:parallel metric-with-nested-segments-test
   (let [mp (lib.tu/mock-metadata-provider
             meta/metadata-provider
@@ -636,7 +630,6 @@
           (-> (lib/query mp (meta/table-metadata :products))
               (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
 
-;; DONE
 (deftest ^:parallel expand-macros-in-nested-queries-test
   (testing "expand-macros should expand things in the correct nested level (#12507)"
     (let [[source-metric mp] (mock-metric (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -690,7 +683,6 @@
                                                  [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
                                                    :source-query before}]}}))))))))
 
-;; DONE
 (deftest ^:parallel model-based-metric-use-test
   (let [model {:lib/type :metadata/card
                :id (fresh-card-id meta/metadata-provider)
