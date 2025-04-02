@@ -1,4 +1,4 @@
-.resultItem {
+.DatasetsListItem {
   cursor: pointer;
   border-radius: 4px;
 }
@@ -7,7 +7,7 @@
   opacity: 0;
 }
 
-.resultItem:hover {
+.DatasetsListItem:hover {
   color: var(--mb-color-brand);
   background-color: var(--mb-color-bg-medium);
 
@@ -16,13 +16,13 @@
   }
 }
 
-.resultItemSelected,
-.resultItemSelected:hover {
+.DatasetsListItemSelected,
+.DatasetsListItemSelected:hover {
   color: var(--mb-color-text-white);
   background-color: var(--mb-color-brand);
 }
 
-.resultItemActions {
+.DatasetsListItemActions {
   display: flex;
   align-items: center;
   gap: var(--mantine-spacing-xs);

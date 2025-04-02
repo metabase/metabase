@@ -13,9 +13,9 @@ import type {
   VisualizerDataSourceId,
 } from "metabase-types/store/visualizer";
 
-import S from "./Result.module.css";
+import S from "./DatasetsListItem.module.css";
 
-interface ResultProps {
+interface DatasetsListItemProps {
   item: VisualizerDataSource;
   onSwap?: (item: VisualizerDataSource) => void;
   onAdd?: (item: VisualizerDataSource) => void;
@@ -23,7 +23,7 @@ interface ResultProps {
   mode: "swap" | "add" | "both";
 }
 
-export const Result = (props: ResultProps) => {
+export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const { selected, item, onSwap, onAdd, mode } = props;
 
   const primaryColumn = useSelector(getVisualizerPrimaryColumn);
@@ -68,8 +68,8 @@ export const Result = (props: ResultProps) => {
 
   return (
     <Flex
-      className={cx(S.resultItem, {
-        [S.resultItemSelected]: selected,
+      className={cx(S.DatasetsListItem, {
+        [S.DatasetsListItemSelected]: selected,
       })}
       align="center"
       component="li"
@@ -91,7 +91,7 @@ export const Result = (props: ResultProps) => {
         {item.name}
       </Text>
       {mode === "both" && (
-        <div className={S.resultItemActions}>
+        <div className={S.DatasetsListItemActions}>
           <Icon name="refresh" className={S.refreshIcon} />
 
           <Button

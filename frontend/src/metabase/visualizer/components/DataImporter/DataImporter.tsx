@@ -17,10 +17,9 @@ import {
 } from "metabase/ui";
 import { getDataSources } from "metabase/visualizer/selectors";
 
-import { DatasetList } from "../DatasetList/DatasetList";
-
+import { ColumnsList } from "./ColumnsList/ColumnsList";
 import S from "./DataImporter.module.css";
-import { ResultsList } from "./ResultsList";
+import { DatasetsList } from "./DatasetsList/DatasetsList";
 
 export const DataImporter = ({ className }: { className?: string }) => {
   const [search, setSearch] = useState("");
@@ -83,7 +82,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
               overflowY: "auto",
             }}
           >
-            <ResultsList
+            <DatasetsList
               search={debouncedSearch}
               mode={activeTab === "explore" ? "both" : "add"}
             />
@@ -101,7 +100,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
           }}
         >
           {dataSources.length > 0 ? (
-            <DatasetList />
+            <ColumnsList />
           ) : (
             <Center h="100%" w="100%" mx="auto">
               <Text>{t`Pick a dataset first`}</Text>
