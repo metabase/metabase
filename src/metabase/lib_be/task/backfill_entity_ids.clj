@@ -152,7 +152,7 @@
       (when-let [new-model (next-model model)]
         (start-job! new-model)))))
 
-(jobs/defjob  ^{:doc "Adds entity-ids to databases/tables/fields that are missing them."}
+(task/defjob  ^{:doc "Adds entity-ids to databases/tables/fields that are missing them."}
   BackfillEntityIds [ctx]
   (backfill-entity-ids! ctx))
 

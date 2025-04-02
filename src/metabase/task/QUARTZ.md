@@ -36,7 +36,7 @@ These tasks execute once when Metabase starts up. They're useful for initializat
 (def startup-job-key     (jobs/key "my.startup.task.job"))
 (def startup-trigger-key (triggers/key "my.startup.task.trigger"))
 
-(jobs/defjob StartupTask [_]
+(task/defjob StartupTask [_]
   (println "Running startup initialization task"))
 
 (defmethod task/init! ::StartupTask [_]  
@@ -59,7 +59,7 @@ These tasks run on a recurring schedule defined by a cron expression.
 (def daily-job-key     (jobs/key "my.scheduled.daily.task.job"))
 (def daily-trigger-key (triggers/key "my.scheduled.daily.task.trigger"))
 
-(jobs/defjob DailyTask [_]
+(task/defjob DailyTask [_]
   (println "Running daily scheduled task"))
 
 (defmethod task/init! ::DailyTask [_]
@@ -105,7 +105,7 @@ You can pass data to jobs using the job data map:
 Inside the job, you can access this data:
 
 ```clojure
-(jobs/defjob MyJob [job-context]
+(task/defjob MyJob [job-context]
   (let [data-map (qc/from-job-data job-context)
         db-id (get data-map "db-id")]
     ;; Use the data...
@@ -129,7 +129,7 @@ Choose the appropriate misfire handling based on your task's requirements.
 By default, Quartz allows multiple instances of the same job to run concurrently. To prevent concurrent execution of a job, use the `DisallowConcurrentExecution` annotation:
 
 ```clojure
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} MyNonConcurrentJob [job-context]
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true} MyNonConcurrentJob [job-context]
   (println "This job will not run concurrently with itself"))
 ```
 
@@ -143,7 +143,7 @@ This is particularly important for long-running tasks that:
 Metabase provides a `rerun-on-error` macro to automatically retry a job if it fails with an exception:
 
 ```clojure
-(jobs/defjob MyJob [job-context]
+(task/defjob MyJob [job-context]
   (task/rerun-on-error job-context
     ;; Your job code here
     (do-something-that-might-fail)))
