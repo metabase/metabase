@@ -1161,3 +1161,28 @@
                     (and private-key-path private-key-id))
             (is (= :private-key-id (m/find-first #{:private-key-path :private-key-value :private-key-id} (reverse result)))
                 [idxs result])))))))
+
+(deftest ^:parallel split-part-test
+  (mt/test-driver :snowflake
+    (let [mp (mt/metadata-provider)
+          main-strings [(lib.metadata/field mp (mt/id :people :name))
+                        (lib.metadata/field mp (mt/id :people :zip))
+                        (lib.metadata/field mp (mt/id :people :password))
+                        (lib.metadata/field mp (mt/id :people :address))]
+          delimiters [" "
+                      "7"
+                      (lib/concat "-" "")]
+          indexes [1 (lib/+ 0 2)]]
+      (doseq [main-string main-strings
+              delimiter delimiters
+              index indexes]
+        (testing "split part"
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                          (lib/expression "SPLITPART" (lib/split-part main-string delimiter index))
+                          (lib/limit 100))
+                result (-> query qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Text (-> cols last :base_type)))
+            (doseq [row rows]
+              (is (string? (last row))))))))))

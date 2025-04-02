@@ -83,10 +83,6 @@ const setup = async ({
 };
 
 describe("SearchResults", () => {
-  beforeAll(() => {
-    window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
   it("should display the empty state when no results are found", async () => {
     await setup({ searchResults: [] });
 

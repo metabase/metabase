@@ -1722,8 +1722,7 @@
                 rows (mt/rows result)]
             (is (= :type/Text (-> cols last :base_type)))
             (doseq [row rows]
-              (is (string? (last row)))
-              #_(is equals? (str "Not equal for: " casted-value)))))))))
+              (is (string? (last row))))))))))
 
 (defn- check-query
   ([query db-type uncasted-field]

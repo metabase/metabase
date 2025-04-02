@@ -567,7 +567,7 @@ describe("scenarios > question > filter", () => {
     H.enterCustomColumnDetails({ formula: "3.14159" });
     H.popover().within(() => {
       cy.button("Done").should("be.disabled");
-      cy.findByText("Invalid expression").should("be.visible");
+      cy.findByText("Types are incompatible.").should("be.visible");
     });
   });
 
@@ -578,7 +578,7 @@ describe("scenarios > question > filter", () => {
     H.enterCustomColumnDetails({ formula: '"TheAnswer"' });
     H.popover().within(() => {
       cy.button("Done").should("be.disabled");
-      cy.findByText("Invalid expression").should("be.visible");
+      cy.findByText("Types are incompatible.").should("be.visible");
     });
   });
 

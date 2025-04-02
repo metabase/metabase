@@ -244,6 +244,9 @@
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
 
+      (isa? coercion :Coercion/String->Float)
+      {"$toDouble" field-name}
+
       :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
@@ -417,7 +420,7 @@
     (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
 
-    (= base-type :type/*)
+    (isa? base-type :type/MongoBinData)
     (try
       (-> (str value)
           java.util.UUID/fromString

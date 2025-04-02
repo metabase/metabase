@@ -12,7 +12,6 @@ import {
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -228,7 +227,6 @@ const setup = async ({
   searchResults = [],
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
-  mockScrollBy();
   const dashboards = Array.from(
     new Set([...DASHBOARDS, mostRecentlyViewedDashboard].filter(isNotNull)),
   );
