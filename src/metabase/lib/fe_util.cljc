@@ -7,7 +7,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
@@ -87,10 +86,6 @@
                     fmt.date/date->iso-string)]
     (into [:between options column-arg] (map formatter) interval)))
 
-(defn- case-or-if-expression?
-  [clause]
-  (and (vector? clause)
-       (boolean (#{:case :if} (first clause)))))
 
 ;; HACK: This is a hack to make sure that the display name of an unknown field
 ;; is "Unknown Field" instead of it's id.
@@ -183,6 +178,11 @@
     stage-index :- :int
     expression-clause :- [:or ::lib.schema.expression/expression ExpressionArg ExpressionParts]]
    (expression-parts-method query stage-index expression-clause)))
+
+(defn- case-or-if-expression?
+  [clause]
+  (and (vector? clause)
+       (boolean (#{:case :if} (first clause)))))
 
 (defn- case-or-if-pairs
   [args]
