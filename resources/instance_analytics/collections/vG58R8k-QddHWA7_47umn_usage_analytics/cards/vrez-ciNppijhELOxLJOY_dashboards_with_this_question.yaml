@@ -225,6 +225,7 @@ serdes/meta:
   label: dashboards_with_this_question
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
 metabase_version: vUNKNOWN (13e6090)
 source_card_id: pKdvc0pwu1zDi8NqnyJkt
