@@ -113,11 +113,9 @@
 
 (defn- column-metadata-from-ref
   [query stage-number a-ref]
-  (as->
-   (lib.metadata.calculation/metadata query stage-number a-ref) metadata
-    (lib.field/extend-column-metadata-from-ref query stage-number metadata a-ref)
-    (lib.filter/add-column-operators metadata)
-    (set-display-name-for-unknown-field metadata)))
+  (-> (lib.metadata.calculation/metadata query stage-number a-ref)
+      lib.filter/add-column-operators
+      set-display-name-for-unknown-field))
 
 (defn- segment-metadata-from-ref
   [query segment-ref]
