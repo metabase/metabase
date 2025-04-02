@@ -8,13 +8,17 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 
-export const idsToObjectMap = (ids, objects) =>
-  ids
-    .map((id) => objects[id])
-    .reduce((map, object) => ({ ...map, [object.id]: object }), {});
-// recursive freezing done by assoc here is too expensive
-// hangs browser for large databases
-// .reduce((map, object) => assoc(map, object.id, object), {});
+export const idsToObjectMap = (ids, objects) => {
+  return ids.reduce((map, id) => {
+    const object = objects[id];
+
+    if (object) {
+      map[object.id] = object;
+    }
+
+    return map;
+  }, {});
+};
 
 export const filterUntouchedFields = (fields, entity = {}) =>
   Object.keys(fields)
