@@ -62,7 +62,6 @@
                        (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-nested-native-query
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [{:keys [expression db-type]} [{:expression "'123'"  :db-type "TEXT"}
@@ -212,3 +211,70 @@
                 (is (= (biginteger value)
                        (biginteger casted-value))
                     msg)))))))))
+
+;; date()
+
+(deftest ^:parallel date-parse-table-fields
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :birth_date}]]]
+              {:keys [field]} fields]
+        (testing (str "casting " table "." field " to date")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/expression "DATECAST" (lib/date (lib/text field-md)))
+                          (lib/limit 100))
+                result (-> query qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Date (-> cols last :base_type)))
+            (doseq [[uncasted-value casted-value] rows]
+              (let [cd (-> casted-value java.time.Instant/parse)
+                    ud (-> uncasted-value java.time.Instant/parse)]
+                (is (= ud cd))))))))))
+
+(deftest ^:parallel date-parse-custom-expressions
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table exprs] [[:people [(fn [] (lib/concat "2010" "-" "10" "-" "02"))]]]
+              ef exprs]
+        (testing "casting custom expression to date"
+          (let [field-md (lib.metadata/field mp (mt/id table :id))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/expression "CUSTOMEXPR" (ef))
+                          (lib/expression "DATECAST" (lib/date (ef)))
+                          (lib/limit 100))
+                result (-> query qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Date (-> cols last :base_type)))
+            (doseq [[_ uncasted-value casted-value] rows]
+              (let [cd (-> casted-value java.time.Instant/parse)
+                    ud (-> uncasted-value
+                           java.time.LocalDate/parse
+                           (.atStartOfDay (java.time.ZoneId/of "UTC"))
+                           .toInstant)]
+                (is (= ud cd))))))))))
+
+(deftest ^:parallel date-parse-table-fields-aggregation
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :birth_date}]]]
+              {:keys [field]} fields]
+        (testing (str "casting " table "." field " to date in aggregation")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/aggregate (lib/max field-md))
+                          (lib/aggregate (lib/max (lib/date (lib/text field-md))))
+                          (lib/limit 100))
+                result (-> query qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Date (-> cols last :base_type)))
+            (doseq [[uncasted-value casted-value] rows]
+              (let [cd (-> casted-value java.time.Instant/parse)
+                    ud (-> uncasted-value java.time.Instant/parse)]
+                (is (= ud cd))))))))))
