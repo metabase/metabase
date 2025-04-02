@@ -86,18 +86,10 @@
                     fmt.date/date->iso-string)]
     (into [:between options column-arg] (map formatter) interval)))
 
-;; HACK: This is a hack to make sure that the display name of an unknown field
-;; is "Unknown Field" instead of it's id.
-(defn- set-display-name-for-unknown-field
-  [{:keys [id lib/expression-name] :as metadata}]
-  (cond-> metadata
-    (not (or id expression-name)) (assoc :display-name (i18n/tru "Unknown Field"))))
-
 (defn- column-metadata-from-ref
   [query stage-number a-ref]
   (-> (lib.metadata.calculation/metadata query stage-number a-ref)
-      lib.filter/add-column-operators
-      set-display-name-for-unknown-field))
+      lib.filter/add-column-operators))
 
 (defmulti expression-parts-method
   "Builds the expression parts by dispatching on the type of the argument."
@@ -150,19 +142,15 @@
 
 (defmethod expression-parts-method :segment
   [query _stage-number segment-ref]
-  (if-let [segment (lib.metadata/segment query (last segment-ref))]
-    segment
-    {:lib/type :metadata/segment
-     :id (last segment-ref)
-     :display-name (i18n/tru "Unknown Segment")}))
+  (or
+   (lib.metadata/segment query (last segment-ref))
+   {:lib/type :metadata/segment
+    :id (last segment-ref)
+    :display-name (i18n/tru "Unknown Segment")}))
 
 (defmethod expression-parts-method :metric
-  [query _stage-number metric-ref]
-  (if-let [metric (lib.metadata/metric query (last metric-ref))]
-    metric
-    {:lib/type :metadata/metric
-     :id (last metric-ref)
-     :display-name (i18n/tru "Unknown Metric")}))
+  [query stage-number metric-ref]
+  (lib.metadata.calculation/metadata query stage-number metric-ref))
 
 (defmethod expression-parts-method :expression
   [query stage-number expression-ref]
