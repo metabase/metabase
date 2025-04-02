@@ -179,6 +179,7 @@
     [:metric _ (id :guard pos-int?)]
     id))
 
+;; either edit this to update aggregation right away
 (defn- fetch-referenced-metrics
   [query stage]
   (let [metric-ids (find-metric-ids stage)]
@@ -212,6 +213,7 @@
 
 (defn- update-metric-query-expression-names
   [metric-query unique-name-fn]
+  (def aaa2 [metric-query unique-name-fn])
   (let [original+new-name-pairs (into []
                                       (keep (fn [[_ {:lib/keys [expression-name]}]]
                                               (let [new-name (unique-name-fn expression-name)]
@@ -227,6 +229,8 @@
           (lib/with-expression-name expression new-name))))
      metric-query
      original+new-name-pairs)))
+
+(comment)
 
 (defn- temp-query-at-stage-path
   [query stage-path]
@@ -260,6 +264,7 @@
 (defn- splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
   [query path expanded-stages]
+  (println "ahoj")
   (let [agg-stage-index (aggregation-stage-index expanded-stages)]
     (if-let [lookup (->> expanded-stages
                          (drop agg-stage-index)
@@ -277,7 +282,10 @@
                                   (or (= (lib/stage-count metric-query) 1)
                                       (= (:qp/stage-had-source-card (last (:stages metric-query)))
                                          (:qp/stage-had-source-card (lib.util/query-stage query agg-stage-index)))))
-                           (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)]
+                           (let [metric-query @(def mqe (update-metric-query-expression-names metric-query unique-name-fn))
+                                 ;; TODO: Move transform into fetching code!
+                                 lookup (assoc-in lookup [_metric-id :query] metric-query)
+                                 lookup (assoc-in lookup [_metric-id :filters] (lib/filters metric-query))]
                              (as-> query $q
                                (reduce #(expression-with-name-from-source %1 agg-stage-index %2)
                                        $q (lib/expressions metric-query -1))
@@ -291,6 +299,12 @@
                        lookup)]
         (:stages new-query))
       expanded-stages)))
+
+(comment
+
+  (metabase.test/with-metadata-provider (-> aaa first :lib/metadata lib.metadata/->metadata-provider)
+    (apply splice-compatible-metrics aaa))
+  mqe)
 
 (defn- find-metric-transition
   "Finds an unadjusted transition between a metric source-card and the next stage."
