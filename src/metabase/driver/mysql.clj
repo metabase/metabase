@@ -322,9 +322,11 @@
         div  (sql.qp/->honeysql driver divider)
         pos  (sql.qp/->honeysql driver position)]
     [:case
+     ;; non-positive position
      [:< pos 1]
      ""
 
+     ;; position greater than number of parts
      [:> pos
       [:+ 1
        [:floor
@@ -334,6 +336,9 @@
          [:length div]]]]]
      ""
 
+     ;; This needs some explanation.
+     ;; The inner substring_index returns the string up to the `pos` instance of `div`
+     ;; The outer substring_index returns the string from the last instance of `div` to the end
      :else
      [:substring_index
       [:substring_index text div pos]
