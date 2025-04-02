@@ -1,53 +1,24 @@
 ---
-title: Partner and community drivers
+title: Community drivers
 redirect_from:
   - /docs/latest/developers-guide-drivers
+  - /docs/latest/developers-guide/partner-and-community-drivers
 ---
 
-# Partner and community drivers
+# Community drivers
+
+> Community drivers are not supported on [Metabase Cloud](https://www.metabase.com/cloud/).
 
 In addition to our [Officially supported drivers](../databases/connecting.md#connecting-to-supported-databases), many people build and maintain drivers for database integrations.
 
-We have two types of third-party drivers:
+## How to use a Community driver
 
-- [Partner drivers](#partner-drivers)
-- [Community drivers](#community-drivers)
-
-## How to use a third-party driver
-
-### Self-hosted
-
-To use a Partner or Community driver on a self-hosted Metabase:
+To use a Community driver on a self-hosted Metabase:
 
 1. Download the latest jar file from the driver's repository (see the repo's Releases section for the JAR files).
 2. Copy the JAR file into the plugins directory in your Metabase directory (the directory where you run the Metabase JAR).
 
 You can change the location of the plugins directory by setting the environment variable `MB_PLUGINS_DIR`.
-
-### Metabase Cloud
-
-Partner drivers, like officially supported drivers, are available out-of-the-box on Metabase cloud. No action needed.
-
-Community drivers are not supported on Metabase Cloud.
-
-## Partner drivers
-
-Partner drivers are available both on Metabase Cloud and on self-hosted Metabases.
-
-To qualify as a partner driver, the driver must:
-
-- Have a sponsor (usually the database's vendor) who has committed to maintaining the driver for future releases.
-- Pass the Metabase test suite and a code review by our team.
-- Have a permissive license.
-
-Current partner drivers:
-
-- [DuckDB](https://github.com/MotherDuck-Open-Source/metabase_duckdb_driver) (for now, only available for self-hosted Metabases)
-- [Materialize](https://github.com/MaterializeInc/metabase-materialize-driver)
-
-Partner drivers are available to Cloud customers out-of-the-box.
-
-If you have interest in becoming a partner, please fill the [partner form](https://www.metabase.com/partners/join) and we will get in touch.
 
 ## Community drivers
 
@@ -72,9 +43,7 @@ Anyone can build a community driver. These are the currently known third-party d
 
 If you don't see a driver for your database, try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more drivers by searching on GitHub for "Metabase driver".
 
-If you are having problems installing or using a community driver, your best bet is to contact the author of the driver.
-
-[Metabase Cloud](https://www.metabase.com/cloud/) doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported drivers](../databases/connecting.md#connecting-to-supported-databases), and the partner drivers listed above.
+If you're having problems installing or using a community driver, your best bet is to contact the author of the driver.
 
 ## Write your own driver
 
