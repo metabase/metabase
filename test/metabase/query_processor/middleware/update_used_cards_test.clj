@@ -125,13 +125,13 @@
   (when (= (mdb/db-type) #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres)
     (testing "cluster locking test error if lock is not released"
       (let [fin-chan (a/chan)]
-        (future (#'qp.update-used-cards/do-with-cluster-lock ::test-lock #(a/<!! fin-chan)))
+        (future (#'qp.update-used-cards/do-with-pg-cluster-lock ::test-lock #(a/<!! fin-chan)))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Failed to run statement with cluster lock"
-             (#'qp.update-used-cards/do-with-cluster-lock ::test-lock #(Thread/sleep 1))))
+             (#'qp.update-used-cards/do-with-pg-cluster-lock ::test-lock #(Thread/sleep 1))))
         (a/>!! fin-chan :done)))
     (testing "cluster locking test error if lock is released"
       (let [fin-chan (a/chan)]
-        (future (#'qp.update-used-cards/do-with-cluster-lock ::test-lock #(a/<!! fin-chan)))
+        (future (#'qp.update-used-cards/do-with-pg-cluster-lock ::test-lock #(a/<!! fin-chan)))
         (future (Thread/sleep 1000) (a/>!! fin-chan :done))
-        (is (nil? (#'qp.update-used-cards/do-with-cluster-lock ::test-lock #(Thread/sleep 1))))))))
+        (is (nil? (#'qp.update-used-cards/do-with-pg-cluster-lock ::test-lock #(Thread/sleep 1))))))))

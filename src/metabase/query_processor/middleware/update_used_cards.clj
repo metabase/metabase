@@ -26,7 +26,7 @@
 (mu/defn- do-with-pg-cluster-lock
   "TODO: Make this more reusable"
   ([lock-name thunk]
-   (do-with-cluster-lock lock-name {} thunk))
+   (do-with-pg-cluster-lock lock-name {} thunk))
   ([lock-name :- :keyword {:keys [timeout max-retries]
                            :or {timeout cluster-lock-timeout-seconds
                                 max-retries max-update-retries}} thunk]
@@ -71,15 +71,15 @@
                                         (fn [xs] (apply t/max (map :timestamp xs))))]
     (log/debugf "Update last_used_at of %d cards" (count card-id->timestamp))
     (try
-      (do-with-cluster-lock ::used-at-update
-                            (fn []
-                              (t2/update! :model/Card :id [:in (keys card-id->timestamp)]
-                                          {:last_used_at (into [:case]
-                                                               (mapcat (fn [[id timestamp]]
-                                                                         [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
-                                                                       card-id->timestamp))
+      (do-with-pg-cluster-lock ::used-at-update
+                               (fn []
+                                 (t2/update! :model/Card :id [:in (keys card-id->timestamp)]
+                                             {:last_used_at (into [:case]
+                                                                  (mapcat (fn [[id timestamp]]
+                                                                            [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
+                                                                          card-id->timestamp))
                                            ;; Set updated_at to its current value to prevent it from updating automatically
-                                           :updated_at :updated_at})))
+                                              :updated_at :updated_at})))
       (catch Throwable e
         (log/error e "Error updating used cards")))))
 
