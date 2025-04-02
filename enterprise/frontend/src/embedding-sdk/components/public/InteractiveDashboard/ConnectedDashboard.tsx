@@ -120,7 +120,7 @@ const ConnectedDashboardInner = ({
       navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
       autoScrollToDashcardId={undefined}
       reportAutoScrolledToDashcard={_.noop}
-      downloadsEnabled={{ pdf: downloadsEnabled, cardResult: downloadsEnabled }}
+      downloadsEnabled={downloadsEnabled}
     />
   );
 };
