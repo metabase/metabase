@@ -18,12 +18,15 @@ if (hasPremiumFeature("whitelabel")) {
       // `downloads` has priority over `hide_download_button`
       .with({ downloads: true }, () => ({ pdf: true, cardResult: true }))
       .with({ downloads: false }, () => ({ pdf: false, cardResult: false }))
-      .with({ downloads: P.string }, () => {
-        // console.log("Parsed:", { downloads });
+      // supports `downloads=pdf`, `downloads=results` and `downloads=pdf,results`
+      .with({ downloads: P.string }, ({ downloads }: { downloads: string }) => {
+        const downloadTypes = downloads
+          .split(",")
+          .map((type: string) => type.trim());
 
         return {
-          pdf: true,
-          cardResult: true,
+          pdf: downloadTypes.includes("pdf"),
+          cardResult: downloadTypes.includes("results"),
         };
       })
       // but we still support the old `hide_download_button` option
@@ -33,8 +36,6 @@ if (hasPremiumFeature("whitelabel")) {
       }))
       // by default downloads are enabled
       .otherwise(() => ({ pdf: true, cardResult: true }));
-
-    // console.log("Match result:", matchResult);
 
     return matchResult;
   };
