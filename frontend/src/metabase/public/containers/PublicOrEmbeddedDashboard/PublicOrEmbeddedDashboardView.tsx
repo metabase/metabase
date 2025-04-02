@@ -70,7 +70,7 @@ interface InnerPublicOrEmbeddedDashboardViewProps {
   ) => void;
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
-  downloadsEnabled: boolean;
+  downloadsEnabled: { pdf: boolean; cardResult: boolean };
 }
 
 export type PublicOrEmbeddedDashboardViewProps =
@@ -182,7 +182,7 @@ export function PublicOrEmbeddedDashboardView({
       titled={titled}
       theme={normalizedTheme}
       hide_parameters={hideParameters}
-      downloadsEnabled={downloadsEnabled}
+      pdfDownloadsEnabled={downloadsEnabled.pdf}
       withFooter={withFooter}
     >
       <LoadingAndErrorWrapper

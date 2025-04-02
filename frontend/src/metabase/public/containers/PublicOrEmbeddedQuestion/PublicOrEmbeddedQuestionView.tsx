@@ -38,7 +38,7 @@ export interface PublicOrEmbeddedQuestionViewProps {
   theme: DisplayTheme | undefined;
   titled: boolean;
   setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
-  downloadsEnabled: boolean;
+  downloadsEnabled: { pdf: boolean; cardResult: boolean };
 }
 
 export function PublicOrEmbeddedQuestionView({
@@ -87,7 +87,7 @@ export function PublicOrEmbeddedQuestionView({
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}
-      downloadsEnabled={downloadsEnabled}
+      pdfDownloadsEnabled={downloadsEnabled.pdf}
     >
       <LoadingAndErrorWrapper
         className={CS.flexFull}

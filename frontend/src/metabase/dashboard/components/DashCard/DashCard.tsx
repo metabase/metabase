@@ -88,7 +88,7 @@ export interface DashCardProps {
   showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 
-  downloadsEnabled: boolean;
+  downloadsEnabled: { pdf: boolean; cardResult: boolean };
 
   /** Auto-scroll to this card on mount */
   autoScroll: boolean;

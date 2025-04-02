@@ -1,4 +1,4 @@
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 
 import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -12,17 +12,30 @@ if (hasPremiumFeature("whitelabel")) {
     downloads,
   }: {
     hide_download_button?: boolean | null;
-    downloads?: boolean | null;
-  }) => {
-    return (
-      match({ hide_download_button, downloads })
-        // `downloads` has priority over `hide_download_button`
-        .with({ downloads: true }, () => true)
-        .with({ downloads: false }, () => false)
-        // but we still support the old `hide_download_button` option
-        .with({ hide_download_button: true }, () => false)
-        // by default downloads are enabled
-        .otherwise(() => true)
-    );
+    downloads?: string | boolean | null;
+  }): { pdf: boolean; cardResult: boolean } => {
+    const matchResult = match({ hide_download_button, downloads })
+      // `downloads` has priority over `hide_download_button`
+      .with({ downloads: true }, () => ({ pdf: true, cardResult: true }))
+      .with({ downloads: false }, () => ({ pdf: false, cardResult: false }))
+      .with({ downloads: P.string }, () => {
+        // console.log("Parsed:", { downloads });
+
+        return {
+          pdf: true,
+          cardResult: true,
+        };
+      })
+      // but we still support the old `hide_download_button` option
+      .with({ hide_download_button: true }, () => ({
+        pdf: false,
+        cardResult: false,
+      }))
+      // by default downloads are enabled
+      .otherwise(() => ({ pdf: true, cardResult: true }));
+
+    // console.log("Match result:", matchResult);
+
+    return matchResult;
   };
 }
