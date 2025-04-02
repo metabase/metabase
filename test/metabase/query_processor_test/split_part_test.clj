@@ -110,7 +110,7 @@
         (testing (str "split part: " msg)
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                           (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))])
-                          (lib/expression "SPLITPART" (lib/split-part "ABC-123-XYZ" "-") position)
+                          (lib/expression "SPLITPART" (lib/split-part "ABC-123-XYZ" "-" position))
                           (lib/limit 1))
                 result (-> query qp/process-query)
                 cols (mt/cols result)
