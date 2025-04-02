@@ -103,19 +103,22 @@
 
 (deftest ^:parallel split-part-test-corner-cases
   (mt/test-drivers (mt/normal-drivers-with-feature :split-part)
-    (let [mp (mt/metadata-provider)]
-      (testing "split part: negative position should be empty string"
-        (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
-                        (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))])
-                        (lib/expression "SPLITPART" (lib/split-part "ABC-123-XYZ" "-" (lib/- 0 1)))
-                        (lib/limit 1))
-              result (-> query qp/process-query)
-              cols (mt/cols result)
-              rows (mt/rows result)]
-          (is (= :type/Text (-> cols last :base_type)))
-          (doseq [[_id split-string] rows]
-            (is (string? split-string))
-            (is (= "" split-string))))))))
+    (let [mp (mt/metadata-provider)
+          examples [{:position (lib/- 0 1) :msg "negative position should be empty string"}
+                    {:position (lib/- 0 0) :msg "zero position should be empty string"}]]
+      (doseq [{:keys [position msg]} examples]
+        (testing (str "split part: " msg)
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                          (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))])
+                          (lib/expression "SPLITPART" (lib/split-part "ABC-123-XYZ" "-") position)
+                          (lib/limit 1))
+                result (-> query qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Text (-> cols last :base_type)))
+            (doseq [[_id split-string] rows]
+              (is (string? split-string))
+              (is (= "" split-string)))))))))
 
 (deftest ^:parallel split-part-test-illegal
   (mt/test-drivers (mt/normal-drivers-with-feature :split-part)
