@@ -265,8 +265,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    ;; WIP
-    aggregable :- :any #_Aggregable]
+    aggregable   :- Aggregable]
    ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
    (if (= (lib.dispatch/dispatch-value aggregable) :metadata/metric)
      (recur query stage-number (lib.ref/ref aggregable))
