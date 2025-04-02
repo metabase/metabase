@@ -2,16 +2,17 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { useAdminSetting } from "metabase/api";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { TextInput } from "metabase/ui";
+import { useEnterpriseAdminSetting } from "metabase-enterprise/api/utils/settings";
 
 import { getRelativeLandingPageUrl } from "./utils";
 
 export function LandingPageWidget() {
   const [error, setError] = useState<string | null>(null);
-  const { value, updateSetting, description } = useAdminSetting("landing-page");
-  const [inputValue, setInputValue] = useState<string>(value ?? "");
+  const { value, updateSetting, description } =
+    useEnterpriseAdminSetting("landing-page");
+  const [inputValue, setInputValue] = useState(value ?? "");
 
   useEffect(() => {
     if (value) {
@@ -55,7 +56,7 @@ export function LandingPageWidget() {
         aria-label={t`Landing page custom destination`}
         placeholder="/"
         error={error}
-        value={inputValue ?? ""}
+        value={String(inputValue ?? "")}
         onChange={(e) => {
           setError(null);
           setInputValue(e.target.value);
