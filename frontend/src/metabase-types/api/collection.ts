@@ -100,6 +100,7 @@ export type CollectionItemId = number;
 
 export interface CollectionItem {
   id: CollectionItemId;
+  entity_id?: BaseEntityId;
   model: CollectionItemModel;
   name: string;
   description: string | null;
