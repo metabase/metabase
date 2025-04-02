@@ -229,7 +229,7 @@ const Dashboards = createEntity({
     getUrl: (dashboard) => dashboard && Urls.dashboard(dashboard),
     getCollection: (dashboard) =>
       dashboard && normalizedCollection(dashboard.collection),
-    getIcon: () => ({ name: "dashboard" }),
+    getIcon: () => ({ name: "folder" }),
     getColor: () => color("dashboard"),
   },
 

@@ -330,8 +330,8 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
     )} ${wrappedSearchResult.model_name}`;
   } else if (wrappedSearchResult.model === "table") {
     return wrappedSearchResult.table_schema
-      ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
-      : wrappedSearchResult.database_name;
+      ? `${wrappedSearchResult.database_name} → ${wrappedSearchResult.table_schema} → ${wrappedSearchResult.name}`
+      : `${wrappedSearchResult.database_name} → ${wrappedSearchResult.name}`;
   } else if (
     wrappedSearchResult.model === "card" &&
     wrappedSearchResult.dashboard
@@ -356,8 +356,8 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
 export const getRecentItemSubtext = (item: RecentItem) => {
   if (isRecentTableItem(item)) {
     return item.table_schema
-      ? `${item.database.name} (${item.table_schema})`
-      : item.database.name;
+      ? `${item.database.name} → ${item.table_schema} → ${item.name}`
+      : `${item.database.name} → ${item.name}`;
   } else if (item.dashboard) {
     return (
       <>
