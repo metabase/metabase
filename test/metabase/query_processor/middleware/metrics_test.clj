@@ -333,7 +333,7 @@
                       {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]
                        :aggregation [[:avg {}
                                       [:case {}
-                                       [[[:< {} [:field {} (meta/id :products :price)] [:value {} 100]]
+                                       [[[:< {} [:field {} "PRICE"] [:value {} 100]]
                                          [:case {}
                                           [[[:> {} [:field {} "PRICE"] [:value {} 1]]
                                             [:field {} "RATING"]]]]]]]]]}]}
