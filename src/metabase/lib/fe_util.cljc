@@ -213,12 +213,10 @@
   [operator :- :keyword
    args     :- [:sequential [:or ExpressionArg ExpressionParts ::lib.schema.expression/expression]]
    options  :- [:maybe :map]]
-  (lib.normalize/normalize
-   (fix-expression-clause
-    (lib.options/ensure-uuid
-     (into [operator options]
-           (map lib.common/->op-arg)
-           args)))))
+  (-> (into [operator options] (map lib.common/->op-arg) args)
+      lib.normalize/normalize
+      lib.options/ensure-uuid
+      fix-expression-clause))
 
 (defmethod lib.common/->op-arg :mbql/expression-parts
   [{:keys [operator options args] :or {options {}}}]
