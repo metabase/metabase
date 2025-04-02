@@ -260,6 +260,16 @@ When you add a new rule, you'll first need to pick which column(s) should be aff
 
 You can set as many rules on a table as you want, and change the order in which those rules are applied. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
 
+## Table pagination on dashboard cards
+
+When you add a table to dashboard, the table will be scrollable by default. You can paginate the rows by:
+
+1. Clicking on the **Pencil** icon to edit the dashboard.
+2. Hovering over the dashcard containing the table, and clicking the **Visualization** icon.
+3. In the **Columns** tab, toggle on **Paginate results**.
+
+![Paginate table results on dashboard card](../images/paginate-table-on-dashboard-card.png)
+
 ### Pivoted tables
 
 > This auto-pivoting is distinct from the [pivot table](./pivot-table.md) visualization.
