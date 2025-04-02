@@ -10542,7 +10542,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: metabase_cluster_lock
-            remarks: A table qo allow metabase instances to take locks across a cluster
+            remarks: A table to allow metabase instances to take locks across a cluster
             columns:
               - column:
                   name: lock_name
