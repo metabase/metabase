@@ -62,37 +62,37 @@ export const colors = {
 export const originalColors = { ...colors };
 
 export const aliases: Record<string, (palette: ColorPalette) => string> = {
-  dashboard: palette => color("brand", palette),
-  nav: palette => color("bg-white", palette),
-  content: palette => color("bg-light", palette),
-  database: palette => color("accent2", palette),
-  pulse: palette => color("accent4", palette),
-  "text-primary": palette => color("text-dark", palette),
-  "text-secondary": palette => color("text-medium", palette),
-  "text-tertiary": palette => color("text-light", palette),
-  background: palette => color("white", palette),
-  "background-disbaled": palette => color("accent-gray", palette),
-  "brand-light": palette => lighten(color("brand", palette), 0.532), // #DDECFA
-  "brand-lighter": palette => lighten(color("brand", palette), 0.598), // #EEF6FC for brand
-  focus: palette => getFocusColor("brand", palette),
+  dashboard: (palette) => color("brand", palette),
+  nav: (palette) => color("bg-white", palette),
+  content: (palette) => color("bg-light", palette),
+  database: (palette) => color("accent2", palette),
+  pulse: (palette) => color("accent4", palette),
+  "text-primary": (palette) => color("text-dark", palette),
+  "text-secondary": (palette) => color("text-medium", palette),
+  "text-tertiary": (palette) => color("text-light", palette),
+  background: (palette) => color("white", palette),
+  "background-disbaled": (palette) => color("accent-gray", palette),
+  "brand-light": (palette) => lighten(color("brand", palette), 0.532), // #DDECFA
+  "brand-lighter": (palette) => lighten(color("brand", palette), 0.598), // #EEF6FC for brand
+  focus: (palette) => getFocusColor("brand", palette),
 
-  "accent0-light": palette => tint(color(`accent0`, palette)),
-  "accent1-light": palette => tint(color(`accent1`, palette)),
-  "accent2-light": palette => tint(color(`accent2`, palette)),
-  "accent3-light": palette => tint(color(`accent3`, palette)),
-  "accent4-light": palette => tint(color(`accent4`, palette)),
-  "accent5-light": palette => tint(color(`accent5`, palette)),
-  "accent6-light": palette => tint(color(`accent6`, palette)),
-  "accent7-light": palette => tint(color(`accent7`, palette)),
+  "accent0-light": (palette) => tint(color(`accent0`, palette)),
+  "accent1-light": (palette) => tint(color(`accent1`, palette)),
+  "accent2-light": (palette) => tint(color(`accent2`, palette)),
+  "accent3-light": (palette) => tint(color(`accent3`, palette)),
+  "accent4-light": (palette) => tint(color(`accent4`, palette)),
+  "accent5-light": (palette) => tint(color(`accent5`, palette)),
+  "accent6-light": (palette) => tint(color(`accent6`, palette)),
+  "accent7-light": (palette) => tint(color(`accent7`, palette)),
 
-  "accent0-dark": palette => shade(color(`accent0`, palette)),
-  "accent1-dark": palette => shade(color(`accent1`, palette)),
-  "accent2-dark": palette => shade(color(`accent2`, palette)),
-  "accent3-dark": palette => shade(color(`accent3`, palette)),
-  "accent4-dark": palette => shade(color(`accent4`, palette)),
-  "accent5-dark": palette => shade(color(`accent5`, palette)),
-  "accent6-dark": palette => shade(color(`accent6`, palette)),
-  "accent7-dark": palette => shade(color(`accent7`, palette)),
+  "accent0-dark": (palette) => shade(color(`accent0`, palette)),
+  "accent1-dark": (palette) => shade(color(`accent1`, palette)),
+  "accent2-dark": (palette) => shade(color(`accent2`, palette)),
+  "accent3-dark": (palette) => shade(color(`accent3`, palette)),
+  "accent4-dark": (palette) => shade(color(`accent4`, palette)),
+  "accent5-dark": (palette) => shade(color(`accent5`, palette)),
+  "accent6-dark": (palette) => shade(color(`accent6`, palette)),
+  "accent7-dark": (palette) => shade(color(`accent7`, palette)),
 };
 
 /**

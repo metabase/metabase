@@ -9,12 +9,7 @@ import {
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
@@ -37,10 +32,6 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
 describe("CreateOrEditQuestionAlertModal", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   beforeEach(() => {
     fetchMock.reset();
   });
@@ -63,7 +54,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
   it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
     "should display first available channel by default - Slack %p",
-    async setupConfig => {
+    async (setupConfig) => {
       setup({
         isEmailSetup: false,
         isSlackSetup: true,
@@ -81,7 +72,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
   it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
     "should display first available channel by default - Webhook %p",
-    async setupConfig => {
+    async (setupConfig) => {
       const mockWebhook = createMockChannel();
       setup({
         isEmailSetup: false,

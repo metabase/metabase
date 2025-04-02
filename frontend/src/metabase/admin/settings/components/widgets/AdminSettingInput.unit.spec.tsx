@@ -8,7 +8,6 @@ import {
 } from "__support__/server-mocks";
 import {
   fireEvent,
-  mockScrollIntoView,
   renderWithProviders,
   screen,
   waitFor,
@@ -57,10 +56,6 @@ const setup = (props: AdminSettingInputProps<SettingKey>) => {
 };
 
 describe("AdminSettingInput", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   it("should not allow invalid settings", async () => {
     setup({
       title: "Fake Setting",
@@ -412,7 +407,7 @@ describe("AdminSettingInput", () => {
 async function findPut() {
   const calls = fetchMock.calls();
   const [putUrl, putDetails] =
-    calls.find(call => call[1]?.method === "PUT") ?? [];
+    calls.find((call) => call[1]?.method === "PUT") ?? [];
 
   const body = ((await putDetails?.body) as string) ?? "{}";
 

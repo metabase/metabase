@@ -9,7 +9,7 @@ const exec = promisify(execCallback);
 /**
  * Check if the Docker daemon is running.
  */
-export const checkIsDockerRunning: CliStepMethod = async state => {
+export const checkIsDockerRunning: CliStepMethod = async (state) => {
   const spinner = ora("Checking if Docker is running…").start();
 
   const errorResponse: CliError = {

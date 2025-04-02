@@ -33,7 +33,7 @@ export function SimpleDataPicker({
     }
 
     return sortEntities(
-      data.data.map(entity => {
+      data.data.map((entity) => {
         return {
           ...entity,
           id:
@@ -50,7 +50,7 @@ export function SimpleDataPicker({
     <Popover
       opened={isDataPickerOpened}
       position="bottom-start"
-      onChange={isOpen => {
+      onChange={(isOpen) => {
         if (!isOpen) {
           close();
         }
@@ -64,7 +64,7 @@ export function SimpleDataPicker({
         <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
           <SimpleDataPickerView
             selectedEntity={selectedEntity}
-            onClick={tableId => {
+            onClick={(tableId) => {
               close();
               setSourceTableFn(tableId);
             }}

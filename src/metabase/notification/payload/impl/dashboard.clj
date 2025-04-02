@@ -5,7 +5,6 @@
    [metabase.models.params.shared :as shared.params]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
-   [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.notification.send :as notification.send]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
@@ -45,20 +44,18 @@
        :parameters             parameters
        :dashboard_subscription dashboard_subscription})))
 
-(mu/defmethod notification.payload/should-send-notification? :notification/dashboard
+(mu/defmethod notification.payload/skip-reason :notification/dashboard
   [{:keys [payload] :as _noti-payload}]
   (let [{:keys [dashboard_parts dashboard_subscription]} payload]
-    (if (:skip_if_empty dashboard_subscription)
-      (not (every? notification.execute/is-card-empty? dashboard_parts))
-      true)))
+    (when (and (:skip_if_empty dashboard_subscription)
+               (every? notification.execute/is-card-empty? dashboard_parts))
+      :empty)))
 
 (defmethod notification.send/do-after-notification-sent :notification/dashboard
   [{:keys [id creator_id handlers] :as notification-info} notification-payload]
   ;; clean up all the temp files that we created for this notification
   (try
-    (run! #(when-let [rows (get-in % [:result :data :rows])]
-             (notification.temp-storage/cleanup! rows))
-          (->> notification-payload :payload :dashboard_parts))
+    (run! #(some-> % :result :data :rows notification.payload/cleanup!) (->> notification-payload :payload :dashboard_parts))
     (catch Exception e
       (log/warn e "Error cleaning up temp files for notification" id)))
   (events/publish-event! :event/subscription-send

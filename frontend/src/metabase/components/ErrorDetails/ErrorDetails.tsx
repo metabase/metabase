@@ -20,7 +20,7 @@ export default function ErrorDetails({
   }
 
   function toggleShowError() {
-    setShowError(showError => !showError);
+    setShowError((showError) => !showError);
   }
 
   return (

@@ -11027,6 +11027,40 @@ databaseChangeLog:
             indexName: idx_field_usage_query_execution_id
 
   - changeSet:
+      id: v55.2025-03-24T16:28:41
+      author: bshepherdson
+      comment: Add report_card.card_schema
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: card_schema
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: card_schema
+                  type: int
+                  remarks: Arbitrary revision number for how we store queries in report_card
+                  defaultValue: 20
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-03-24T16:36:19
+      author: bshepherdson
+      comment: Creating index on the card_schema
+      preConditions:
+      changes:
+        - createIndex:
+            tableName: report_card
+            columns:
+              - column:
+                  name: card_schema
+            indexName: idx_report_card_card_schema
+
+  - changeSet:
       id: v54.2025-03-28T16:01:00
       author: crisptrutksi
       comment: Add `notification_subscription.action` column
@@ -11041,6 +11075,7 @@ databaseChangeLog:
                   remarks: The action associated with a given lifecycle system event, used for filtering system events
                   constraints:
                     nullable: true
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -28,7 +28,7 @@ const TextEditorMock = ({
   code: string;
   highlightRanges?: { start: number; end: number }[];
 }) => {
-  const highlightedTexts = highlightRanges?.map(range =>
+  const highlightedTexts = highlightRanges?.map((range) =>
     code.slice(range.start, range.end),
   );
   return (

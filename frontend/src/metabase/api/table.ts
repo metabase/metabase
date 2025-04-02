@@ -28,9 +28,9 @@ interface TableWithFieldMetadata extends Table {
 }
 
 export const tableApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listTables: builder.query<Table[], TableListQuery | void>({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/table",
         params,
@@ -42,7 +42,7 @@ export const tableApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/table/${id}`,
       }),
-      providesTags: table => (table ? provideTableTags(table) : []),
+      providesTags: (table) => (table ? provideTableTags(table) : []),
     }),
     getTableQueryMetadata: builder.query<
       TableWithFieldMetadata,
@@ -53,10 +53,10 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/query_metadata`,
         params,
       }),
-      providesTags: table => (table ? provideTableTags(table) : []),
+      providesTags: (table) => (table ? provideTableTags(table) : []),
     }),
     listTableForeignKeys: builder.query<Field[], TableId>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/table/${id}/fks`,
       }),
@@ -82,7 +82,7 @@ export const tableApi = Api.injectEndpoints({
         ]),
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "PUT",
         url: "/api/table",
         body,
@@ -108,7 +108,7 @@ export const tableApi = Api.injectEndpoints({
         ]),
     }),
     rescanTableFieldValues: builder.mutation<void, TableId>({
-      query: id => ({
+      query: (id) => ({
         method: "POST",
         url: `/api/table/${id}/rescan_values`,
       }),
@@ -116,7 +116,7 @@ export const tableApi = Api.injectEndpoints({
         invalidateTags(error, [tag("field-values")]),
     }),
     discardTableFieldValues: builder.mutation<void, TableId>({
-      query: id => ({
+      query: (id) => ({
         method: "POST",
         url: `/api/table/${id}/discard_values`,
       }),

@@ -23,7 +23,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ChannelSetupModal } from "metabase/notifications/modals/shared/ChannelSetupModal";
 import { AlertModalSettingsBlock } from "metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "metabase/notifications/modals/shared/components/AlertTriggerIcon";
-import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannelsPicker/NotificationChannelsPicker";
+import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
 import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
 import { updateUrl } from "metabase/query_builder/actions";
 import {
@@ -135,7 +135,7 @@ export const CreateOrEditQuestionAlertModal = ({
       getAlertTriggerOptions({
         question,
         visualizationSettings,
-      }).map(trigger => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
+      }).map((trigger) => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
     [question, visualizationSettings],
   );
 
@@ -299,7 +299,7 @@ export const CreateOrEditQuestionAlertModal = ({
                 data={triggerOptions}
                 value={notification.payload.send_condition}
                 w={276}
-                onChange={value =>
+                onChange={(value) =>
                   setNotification({
                     ...notification,
                     payload: {
@@ -336,8 +336,7 @@ export const CreateOrEditQuestionAlertModal = ({
                 handlers: newHandlers,
               });
             }}
-            emailRecipientText={t`Email alerts to:`}
-            getInvalidRecipientText={domains =>
+            getInvalidRecipientText={(domains) =>
               t`You're only allowed to email alerts to addresses ending in ${domains}`
             }
           />
@@ -353,7 +352,7 @@ export const CreateOrEditQuestionAlertModal = ({
             labelPosition="right"
             size="sm"
             checked={notification.payload.send_once}
-            onChange={e =>
+            onChange={(e) =>
               setNotification({
                 ...notification,
                 payload: {

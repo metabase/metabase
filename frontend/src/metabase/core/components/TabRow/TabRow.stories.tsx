@@ -27,7 +27,7 @@ const sampleStyle = {
   backgroundColor: "white",
 };
 
-const Template: StoryFn<typeof TabRow> = args => {
+const Template: StoryFn<typeof TabRow> = (args) => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
   const [message, setMessage] = useState("");
@@ -55,7 +55,7 @@ const Template: StoryFn<typeof TabRow> = args => {
           label="Tab 3 (Renameable)"
           value={3}
           menuItems={menuItems}
-          onRename={newLabel => setMessage(`Renamed to "${newLabel}"`)}
+          onRename={(newLabel) => setMessage(`Renamed to "${newLabel}"`)}
           renameMenuIndex={2}
           renameMenuLabel="Edit name"
         />
@@ -87,7 +87,7 @@ export const Default = {
   },
 };
 
-const DraggableTemplate: StoryFn<typeof TabRow> = args => {
+const DraggableTemplate: StoryFn<typeof TabRow> = (args) => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
 
@@ -104,7 +104,7 @@ const DraggableTemplate: StoryFn<typeof TabRow> = args => {
           setIds(arrayMove(ids, ids.indexOf(activeId), ids.indexOf(overId)))
         }
       >
-        {ids.map(num => (
+        {ids.map((num) => (
           <Sortable id={num} key={num}>
             <TabButton value={num} label={`Tab ${num}`} />
           </Sortable>

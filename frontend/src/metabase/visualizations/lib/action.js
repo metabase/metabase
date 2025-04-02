@@ -28,7 +28,7 @@ export function performAction(
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
       open(url, {
-        openInSameOrigin: location => {
+        openInSameOrigin: (location) => {
           dispatch(push(location));
           dispatch(setParameterValuesFromQueryParams(location.query));
         },
@@ -71,7 +71,7 @@ export function performDefaultAction(actions, props) {
   }
 
   // "defaultAlways" action even if there's more than one
-  const action = _.find(actions, action => action.defaultAlways === true);
+  const action = _.find(actions, (action) => action.defaultAlways === true);
   if (action) {
     return performAction(action, props);
   }

@@ -249,14 +249,14 @@
           (is (false? (t2/exists? :model/ChannelTemplate (:id created-template)))))
 
         ;; TODO: currently can't do this due to how we structure the model spec
-        #_(testing "and re-create it again"
-            (let [notification       (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
-                                                           (update notification :handlers (fn [[handler]]
-                                                                                            [(assoc handler
-                                                                                                    :template template
-                                                                                                    :template_id nil)])))
-                  recreated-template (-> notification :handlers first :template)]
-              (is (=? template recreated-template))))))))
+        (testing "and re-create it again"
+          (let [notification       (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                         (update notification :handlers (fn [[handler]]
+                                                                                          [(assoc handler
+                                                                                                  :template template
+                                                                                                  :template_id nil)])))
+                recreated-template (-> notification :handlers first :template)]
+            (is (=? template recreated-template))))))))
 
 (defn- update-cron-subscription
   [{:keys [subscriptions] :as notification} new-schedule ui-display-type]

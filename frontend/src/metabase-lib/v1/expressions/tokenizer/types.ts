@@ -1,11 +1,3 @@
-export enum TOKEN {
-  Operator = 1,
-  Number = 2,
-  String = 3,
-  Identifier = 4,
-  Boolean = 5,
-}
-
 export enum OPERATOR {
   Comma = ",",
   OpenParenthesis = "(",
@@ -26,7 +18,3 @@ export enum OPERATOR {
   True = "true",
   False = "false",
 }
-
-export type Optional<T, K extends keyof T> = Omit<T, K> & {
-  [P in keyof T]?: T[P] | undefined;
-};

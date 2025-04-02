@@ -144,7 +144,7 @@ const _TabButton = forwardRef(function TabButton(
           disabled={!isRenaming}
           onChange={onRename}
           onKeyPress={handleInputKeyPress}
-          onFocus={e => e.currentTarget.select()}
+          onFocus={(e) => e.currentTarget.select()}
           onBlur={onFinishRenaming}
           aria-labelledby={getTabId(idPrefix, value)}
           id={getTabButtonInputId(idPrefix, value)}
@@ -200,9 +200,9 @@ export const RenameableTabButtonStyled = styled(_TabButton)<{
   canRename: boolean;
 }>`
   ${TabButtonInputWrapper} {
-    ${props => props.isRenaming && getBorderStyle(props.theme)}
+    ${(props) => props.isRenaming && getBorderStyle(props.theme)}
     :hover {
-      ${props =>
+      ${(props) =>
         props.canRename && props.isSelected && getBorderStyle(props.theme)}
     }
   }
@@ -268,7 +268,7 @@ export function RenameableTabButton({
       isSelected={isSelected}
       isRenaming={canRename && isRenaming}
       canRename={canRename}
-      onRename={e => setLabel(e.target.value)}
+      onRename={(e) => setLabel(e.target.value)}
       onFinishRenaming={onFinishEditing}
       onInputDoubleClick={() => setIsRenaming(canRename)}
       menuItems={

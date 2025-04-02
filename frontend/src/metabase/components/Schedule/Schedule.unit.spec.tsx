@@ -1,20 +1,16 @@
 import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { mockScrollIntoView, screen } from "__support__/ui";
+import { screen } from "__support__/ui";
 import { setup } from "metabase/components/Schedule/test-utils";
 
 const getInputValues = () => {
   const inputs = screen.getAllByRole("textbox");
-  const values = inputs.map(input => input.getAttribute("value"));
+  const values = inputs.map((input) => input.getAttribute("value"));
   return values;
 };
 
 describe("Schedule", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   it("shows time when schedule is daily", () => {
     setup({ cronString: "0 0 8 * * ? *" });
     expect(getInputValues()).toEqual(["daily", "8:00"]);
@@ -78,10 +74,29 @@ describe("Schedule", () => {
     expect(listbox).toBeInTheDocument();
 
     const options = within(listbox).getAllByRole("option");
-    const optionValues = options.map(option => option.getAttribute("value"));
+    const optionValues = options.map((option) => option.getAttribute("value"));
 
     expect(optionValues).not.toContain("0");
     expect(Math.min(...optionValues.map(Number))).toBe(1);
+  });
+
+  it("presents 0,1,2,3,4,5,6,10,15,20,30 for every_n_minutes schedule", async () => {
+    setup({
+      cronString: "0 0/10 * * * ? *",
+    });
+
+    const minuteInput = screen.getByTestId("select-minute");
+    expect(minuteInput).toBeInTheDocument();
+
+    await userEvent.click(minuteInput);
+
+    const listbox = await screen.findByRole("listbox");
+    expect(listbox).toBeInTheDocument();
+
+    const options = within(listbox).getAllByRole("option");
+    const optionValues = options.map((option) => option.getAttribute("value"));
+
+    expect(optionValues.join(",")).toEqual("1,2,3,4,5,6,10,15,20,30");
   });
 
   it("shows custom cron input", () => {

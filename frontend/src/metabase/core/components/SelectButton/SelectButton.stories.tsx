@@ -7,7 +7,7 @@ export default {
   component: SelectButton,
 };
 
-const Template: StoryFn<SelectButtonProps> = args => {
+const Template: StoryFn<SelectButtonProps> = (args) => {
   return <SelectButton {...args} />;
 };
 

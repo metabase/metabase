@@ -44,28 +44,35 @@
              (goal-comparison (comparison-col-rowfn row) goal-val))
            (get-in card_part [:result :data :rows])))))
 
-(mu/defmethod notification.payload/should-send-notification? :notification/card
+(mu/defmethod notification.payload/skip-reason :notification/card
   [{:keys [payload]}]
   (let [{:keys [notification_card card_part]} payload
         send-condition                        (:send_condition notification_card)]
     (cond
       (-> notification_card :card :archived true?)
-      false
+      :archived
 
       (= :has_result send-condition)
-      (not (notification.execute/is-card-empty? card_part))
+      (when (notification.execute/is-card-empty? card_part)
+        :empty)
 
       (#{:goal_above :goal_below} send-condition)
-      (goal-met? notification_card card_part)
+      (when (not (goal-met? notification_card card_part))
+        :goal-not-met)
 
       :else
       (let [^String error-text (format "Unrecognized alert with condition '%s'" send-condition)]
         (throw (IllegalArgumentException. error-text))))))
 
 (defmethod notification.send/do-after-notification-sent :notification/card
-  [{:keys [id creator_id handlers] :as notification-info} _notification-payload]
+  [{:keys [id creator_id handlers] :as notification-info} notification-payload]
   (when (-> notification-info :payload :send_once)
     (t2/update! :model/Notification (:id notification-info) {:active false}))
+  (try
+    (when-let [rows (-> notification-payload :payload :card_part :result :data :rows)]
+      (notification.payload/cleanup! rows))
+    (catch Exception e
+      (log/warn e "Error cleaning up temp files for notification" id)))
   (events/publish-event! :event/alert-send
                          {:id      id
                           :user-id creator_id

@@ -853,7 +853,7 @@
   [dashboard-id dashcard table-id]
   (let [tab-id  (:dashboard_tab_id dashcard)
         table   (t2/select-one [:model/Table :db_id :name] table-id)
-        card    (some->> dashcard :card_id (t2/select-one [:model/Card :id :dataset_query :display]))
+        card    (some->> dashcard :card_id (t2/select-one [:model/Card :id :dataset_query :display :card_schema]))
         ;; If the currently attached card is not editing the expected the table, then create a new one.
         keep?    (and (= :table-editable (:display card))
                       (= table-id (get-in card [:dataset_query :query :source-table])))

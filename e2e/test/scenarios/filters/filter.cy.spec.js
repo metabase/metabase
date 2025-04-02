@@ -32,7 +32,7 @@ describe("scenarios > question > filter", () => {
       .findByText("Products → Category is not Gizmo")
       .should("be.visible");
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -401,7 +401,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("isempty([Reviewer])");
+    cy.contains("isEmpty([Reviewer])");
     H.CustomExpressionEditor.clear().type("NOT IsEmpty([Reviewer])").blur();
 
     cy.button("Update").click();
@@ -429,7 +429,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("isnull([Rating])");
+    cy.contains("isNull([Rating])");
     H.CustomExpressionEditor.clear()
       .type("NOT IsNull([Rating])", { delay: 50 })
       .blur();
@@ -553,7 +553,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('contains([Reviewer], "MULLER", "case-insensitive")');
     cy.button("Update").click();
-    cy.wait("@dataset").then(xhr => {
+    cy.wait("@dataset").then((xhr) => {
       expect(xhr.response.body.data.rows).to.have.lengthOf(1);
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -567,7 +567,7 @@ describe("scenarios > question > filter", () => {
     H.enterCustomColumnDetails({ formula: "3.14159" });
     H.popover().within(() => {
       cy.button("Done").should("be.disabled");
-      cy.findByText("Expecting boolean but found 3.14159");
+      cy.findByText("Types are incompatible.").should("be.visible");
     });
   });
 
@@ -578,7 +578,7 @@ describe("scenarios > question > filter", () => {
     H.enterCustomColumnDetails({ formula: '"TheAnswer"' });
     H.popover().within(() => {
       cy.button("Done").should("be.disabled");
-      cy.findByText('Expecting boolean but found "TheAnswer"');
+      cy.findByText("Types are incompatible.").should("be.visible");
     });
   });
 
@@ -904,7 +904,7 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  ["True", "False"].forEach(condition => {
+  ["True", "False"].forEach((condition) => {
     const regexCondition = new RegExp(`${condition}`, "i");
     // We must use and return strings instead of boolean and numbers
     const integerAssociatedWithCondition = condition === "True" ? "0" : "1";

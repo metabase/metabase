@@ -94,7 +94,7 @@ export function DimensionsWidget({
   const updateDimensions = (newDimensions: (string | undefined)[]) => {
     setDimensions(newDimensions);
     onChangeSettings({
-      "pie.dimension": newDimensions.filter(d => d != null) as string[],
+      "pie.dimension": newDimensions.filter((d) => d != null) as string[],
     });
   };
 
@@ -119,7 +119,8 @@ export function DimensionsWidget({
 
   const getFilteredOptions = (index: number) =>
     dimensionOptions.filter(
-      opt => opt.value === dimensions[index] || !dimensions.includes(opt.value),
+      (opt) =>
+        opt.value === dimensions[index] || !dimensions.includes(opt.value),
     );
 
   // Drag and drop
@@ -132,7 +133,7 @@ export function DimensionsWidget({
     document.body.classList.add(GrabberS.grabbing);
 
     setDraggedDimensionIndex(
-      dimensions.findIndex(d => d === String(event.active.id)),
+      dimensions.findIndex((d) => d === String(event.active.id)),
     );
   };
 
@@ -145,8 +146,8 @@ export function DimensionsWidget({
     if (over == null) {
       return;
     }
-    const sourceIndex = dimensions.findIndex(d => d === event.active.id);
-    const destIndex = dimensions.findIndex(d => d === over.id);
+    const sourceIndex = dimensions.findIndex((d) => d === event.active.id);
+    const destIndex = dimensions.findIndex((d) => d === over.id);
 
     if (sourceIndex === -1 || destIndex === -1) {
       return;
@@ -163,7 +164,7 @@ export function DimensionsWidget({
         sensors={[pointerSensor]}
       >
         <SortableContext
-          items={(dimensions.filter(d => d != null) as string[]).map(d => ({
+          items={(dimensions.filter((d) => d != null) as string[]).map((d) => ({
             id: d,
           }))}
           strategy={verticalListSortingStrategy}
@@ -194,7 +195,7 @@ export function DimensionsWidget({
                   settings={settings}
                   onChangeSettings={onChangeSettings}
                   onShowWidget={onShowWidget}
-                  numRings={dimensions.filter(d => d != null).length}
+                  numRings={dimensions.filter((d) => d != null).length}
                 />
               )}
             </>

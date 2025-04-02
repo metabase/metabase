@@ -1,4 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import {
+  SAMPLE_METADATA,
+  createQueryWithClauses,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
@@ -83,7 +88,7 @@ describe("parameters/utils/mapping-options", () => {
         // add instances to the `metadata` instance
         metadata.questions[dataset.id()] = dataset;
         metadata.tables[virtualCardTable.id] = virtualCardTable;
-        virtualCardTable.fields.forEach(f => {
+        virtualCardTable.fields.forEach((f) => {
           metadata.fields[f.uniqueId] = f;
         });
       });
@@ -127,7 +132,7 @@ describe("parameters/utils/mapping-options", () => {
           tables: [
             createMockTable({
               id: `card__${card.id}`,
-              fields: (table.fields ?? []).map(field => ({
+              fields: (table.fields ?? []).map((field) => ({
                 ...field,
                 table_id: `card__${card.id}`,
               })),
@@ -375,7 +380,7 @@ describe("parameters/utils/mapping-options", () => {
   });
 
   describe("iframe dashcard", () => {
-    const createIframeDashcard = iframeContent =>
+    const createIframeDashcard = (iframeContent) =>
       createMockDashboardCard({
         visualization_settings: {
           virtual_card: {
@@ -385,7 +390,7 @@ describe("parameters/utils/mapping-options", () => {
         },
       });
 
-    const getIframeOptions = iframeContent =>
+    const getIframeOptions = (iframeContent) =>
       getParameterMappingOptions(
         undefined,
         null,
@@ -393,8 +398,8 @@ describe("parameters/utils/mapping-options", () => {
         createIframeDashcard(iframeContent),
       );
 
-    const expectedTagOptions = tags =>
-      tags.map(tag => ({
+    const expectedTagOptions = (tags) =>
+      tags.map((tag) => ({
         name: tag,
         icon: "string",
         isForeign: false,
@@ -434,7 +439,7 @@ describe("parameters/utils/mapping-options", () => {
   });
 
   describe("link dashcard", () => {
-    const createLinkDashcard = linkUrl =>
+    const createLinkDashcard = (linkUrl) =>
       createMockDashboardCard({
         visualization_settings: {
           virtual_card: {
@@ -446,7 +451,7 @@ describe("parameters/utils/mapping-options", () => {
         },
       });
 
-    const getLinkOptions = linkUrl =>
+    const getLinkOptions = (linkUrl) =>
       getParameterMappingOptions(
         undefined,
         null,
@@ -454,8 +459,8 @@ describe("parameters/utils/mapping-options", () => {
         createLinkDashcard(linkUrl),
       );
 
-    const expectedTagOptions = tags =>
-      tags.map(tag => ({
+    const expectedTagOptions = (tags) =>
+      tags.map((tag) => ({
         name: tag,
         icon: "string",
         isForeign: false,
@@ -588,6 +593,81 @@ describe("getMappingOptionByTarget", () => {
       expect(getMappingOptionByTarget([mappingOption], target, question)).toBe(
         mappingOption,
       );
+    });
+
+    it("should not confuse columns from different stages", () => {
+      const query = Lib.appendStage(
+        createQueryWithClauses({
+          breakouts: [
+            {
+              columnName: "CREATED_AT",
+              tableName: "ORDERS",
+              temporalBucketName: "Month",
+            },
+          ],
+        }),
+      );
+      const question = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
+        query,
+      );
+
+      const mappingOptions = [
+        {
+          sectionName: "Order",
+          name: "Created At",
+          icon: "calendar",
+          target: [
+            "dimension",
+            ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+            { "stage-number": 0 },
+          ],
+        },
+        {
+          sectionName: "Order",
+          name: "Created At",
+          icon: "calendar",
+          target: [
+            "dimension",
+            ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+            { "stage-number": 1 },
+          ],
+        },
+      ];
+
+      const target = [
+        "dimension",
+        ["field", "CREATED_AT", { "base-type": "type/Text" }],
+        { "stage-number": 1 },
+      ];
+
+      expect(getMappingOptionByTarget(mappingOptions, target, question)).toBe(
+        mappingOptions[1],
+      );
+    });
+
+    it("should ignore targets with invalid stage index", () => {
+      const mappingOptions = [
+        {
+          sectionName: "Order",
+          name: "Created At",
+          icon: "calendar",
+          target: [
+            "dimension",
+            ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+            { "stage-number": 0 },
+          ],
+        },
+      ];
+
+      const target = [
+        "dimension",
+        ["field", "CREATED_AT", { "base-type": "type/Text" }],
+        { "stage-number": 1 },
+      ];
+
+      expect(
+        getMappingOptionByTarget(mappingOptions, target, question),
+      ).toBeUndefined();
     });
 
     it("should return undefined if option is not found", () => {

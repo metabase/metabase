@@ -22,7 +22,7 @@ import {
   format,
 } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
-import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
+import { COMMA, GROUP } from "metabase-lib/v1/expressions/pratt";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { FunctionBrowser } from "../FunctionBrowser";
@@ -102,7 +102,7 @@ export function Editor(props: EditorProps) {
 
   const [customTooltip, portal] = useCustomTooltip({
     getPosition: getTooltipPosition,
-    render: props => (
+    render: (props) => (
       <Tooltip
         query={query}
         stageIndex={stageIndex}
@@ -142,7 +142,7 @@ export function Editor(props: EditorProps) {
 
     view?.focus();
     view?.dispatch(
-      view.state.changeByRange(range => ({
+      view.state.changeByRange((range) => ({
         range: EditorSelection.cursor(range.from + len),
         changes: [{ from: range.from, to: range.to, insert: text }],
       })),
@@ -265,7 +265,7 @@ function useExpression({
         printWidth: 55, // 60 is the width of the editor
       })
         .catch(() => "")
-        .then(source => {
+        .then((source) => {
           setIsFormatting(false);
           setSource(source);
           if (initial) {
@@ -365,12 +365,7 @@ function getTooltipPosition(state: EditorState) {
   const pos = state.selection.main.head;
   const source = state.doc.toString();
   let token = tokenAtPos(source, pos);
-  if (
-    pos > 0 &&
-    token &&
-    token.type === TOKEN.Operator &&
-    (token.op === "," || token.op === "(")
-  ) {
+  if (pos > 0 && token && (token.type === COMMA || token.type === GROUP)) {
     // when we're `,` or `(`, return the previous token instead
     token = tokenAtPos(source, pos - 1);
   }

@@ -37,7 +37,7 @@ export function CurrentDatePicker({
     <Stack>
       {unitGroups.map((group, groupIndex) => (
         <Group key={groupIndex}>
-          {group.map(unit => (
+          {group.map((unit) => (
             <Tooltip
               key={unit}
               label={t`Right now, this is ${getTooltipLabel(unit)}`}

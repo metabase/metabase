@@ -31,7 +31,7 @@ export const BrowseTableDataGrid = ({ data }: BrowseTableDataGridProps) => {
         id: column.name,
         name: column.display_name,
         accessorFn: (row: RowValues) => row[columnIndex],
-        formatter: value => formatValue(value, { column }),
+        formatter: (value) => formatValue(value, { column }),
         wrap: false,
       };
 

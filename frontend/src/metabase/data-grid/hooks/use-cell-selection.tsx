@@ -83,12 +83,12 @@ export const useCellSelection = ({
     const row = table.getRow(rowId);
     const rowIndex = table
       .getRowModel()
-      .rows.findIndex(row => row.id === rowId);
+      .rows.findIndex((row) => row.id === rowId);
 
     const column = table.getColumn(columnId);
     const columnIndex = table
       .getAllFlatColumns()
-      .findIndex(column => column.id === columnId);
+      .findIndex((column) => column.id === columnId);
 
     return {
       row,
@@ -109,7 +109,7 @@ export const useCellSelection = ({
     const previousRow = table.getRowModel().rows[previousRowIndex];
     const previousRowCell = previousRow
       ?.getAllCells()
-      .find(c => c.column.id === selectedCell.columnId);
+      .find((c) => c.column.id === selectedCell.columnId);
     if (previousRowCell && canSelectCell(previousRowCell)) {
       const newSelection = [getCellSelectionData(previousRowCell)];
       scrollTo?.({ rowIndex: previousRowIndex });
@@ -126,7 +126,7 @@ export const useCellSelection = ({
     const nextRow = table.getRowModel().rows[nextRowIndex];
     const nextRowCell = nextRow
       ?.getAllCells()
-      .find(c => c.column.id === selectedCell.columnId);
+      .find((c) => c.column.id === selectedCell.columnId);
     if (nextRowCell && canSelectCell(nextRowCell)) {
       const newSelection = [getCellSelectionData(nextRowCell)];
       scrollTo?.({ rowIndex: nextRowIndex });
@@ -218,7 +218,7 @@ export const useCellSelection = ({
       if (!isEnabled) {
         return false;
       }
-      return selectedCells.find(c => c.rowId === rowId) !== undefined;
+      return selectedCells.find((c) => c.rowId === rowId) !== undefined;
     },
     [selectedCells, isEnabled],
   );
@@ -228,7 +228,7 @@ export const useCellSelection = ({
       if (!isEnabled) {
         return false;
       }
-      return selectedCells.find(c => c.cellId === cell.id) !== undefined;
+      return selectedCells.find((c) => c.cellId === cell.id) !== undefined;
     },
     [selectedCells, isEnabled],
   );
@@ -245,13 +245,13 @@ export const useCellSelection = ({
         getCellSelectionData(cell),
       ) as SelectedCell[];
 
-      setSelectedCells(prev => {
+      setSelectedCells((prev) => {
         const startIndex = prev.findIndex(
-          c => c.cellId === selectedStartCell.cellId,
+          (c) => c.cellId === selectedStartCell.cellId,
         );
         const prevSelectedCells = prev.slice(0, startIndex);
         const newCellSelection = selectedCellsInRange.filter(
-          c => c.cellId !== selectedStartCell.cellId,
+          (c) => c.cellId !== selectedStartCell.cellId,
         );
 
         return [...prevSelectedCells, selectedStartCell, ...newCellSelection];
@@ -276,8 +276,8 @@ export const useCellSelection = ({
       }
 
       if (e.ctrlKey || e.metaKey) {
-        setSelectedCells(prev =>
-          prev.find(c => c.cellId === cell.id) !== undefined
+        setSelectedCells((prev) =>
+          prev.find((c) => c.cellId === cell.id) !== undefined
             ? prev.filter(({ cellId }) => cellId !== cell.id)
             : [...prev, getCellSelectionData(cell)],
         );
@@ -358,13 +358,13 @@ const getCellValues = (table: Table<unknown>, cells: SelectedCell[]) => {
   );
 
   return Object.keys(rows)
-    .map(rowId => {
+    .map((rowId) => {
       const selectedCells = rows[rowId]!;
       const row = table.getRow(rowId);
 
       const cellValues = [];
       for (const cell of row.getAllCells()) {
-        if (selectedCells.find(c => c.cellId === cell.id)) {
+        if (selectedCells.find((c) => c.cellId === cell.id)) {
           cellValues.push(cell?.getValue());
         }
       }
@@ -385,7 +385,7 @@ const getSelectedCellTableData = (
   cell: SelectedCell,
 ) => {
   const row = table.getRow(cell.rowId);
-  return row.getAllCells().find(c => c.id === cell.cellId);
+  return row.getAllCells().find((c) => c.id === cell.cellId);
 };
 
 const getCellsBetween = (
@@ -419,11 +419,11 @@ const getCellsBetween = (
       Math.max(cell1ColumnIndex, cell2ColumnIndex) + 1,
     );
 
-  return selectedRows.flatMap(row =>
-    columns.map(column => {
+  return selectedRows.flatMap((row) =>
+    columns.map((column) => {
       const tableCell = row
         .getAllCells()
-        .find(cell => cell.column.id === column.id);
+        .find((cell) => cell.column.id === column.id);
       if (!tableCell) {
         return null;
       }

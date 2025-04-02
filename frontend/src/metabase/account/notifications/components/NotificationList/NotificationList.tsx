@@ -50,7 +50,7 @@ export const NotificationList = ({
           {t`Not seeing one here?`}
         </TextButton>
       </NotificationHeader>
-      {listItems.map(listItem => {
+      {listItems.map((listItem) => {
         switch (listItem.type) {
           case "pulse":
             return (

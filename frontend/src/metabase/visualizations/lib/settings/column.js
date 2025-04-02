@@ -51,7 +51,7 @@ function getCurrency(currency, currencyStyle) {
 }
 
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
-  [].concat(...series.map(s => (s.data && s.data.cols) || []));
+  [].concat(...series.map((s) => (s.data && s.data.cols) || []));
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
@@ -115,7 +115,7 @@ function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
     dateStyleOption("YYYY/M/D", unit, abbreviate, separator),
   ];
   const seen = new Set();
-  return options.filter(option => {
+  return options.filter((option) => {
     const format = getDateFormatFromStyle(option.value, unit);
     if (seen.has(format)) {
       return false;
@@ -329,7 +329,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "radio",
     getProps: (_series, _vizSettings, onChange) => {
       return {
-        onChange: value => onChange(value === true),
+        onChange: (value) => onChange(value === true),
         options: [
           { name: t`In the column heading`, value: true },
           { name: t`In every table cell`, value: false },
@@ -434,7 +434,7 @@ const COMMON_COLUMN_SETTINGS = {
   //   },
   // },
   column: {
-    getValue: column => column,
+    getValue: (column) => column,
   },
   _column_title_full: {
     getValue: (column, settings) => {
@@ -486,11 +486,11 @@ export function isPivoted(series, settings) {
 
   const pivotIndex = _.findIndex(
     data.cols,
-    col => col.name === settings["table.pivot_column"],
+    (col) => col.name === settings["table.pivot_column"],
   );
   const cellIndex = _.findIndex(
     data.cols,
-    col => col.name === settings["table.cell_column"],
+    (col) => col.name === settings["table.cell_column"],
   );
   const normalIndex = _.findIndex(
     data.cols,
@@ -535,7 +535,7 @@ export const tableColumnSettings = {
         // add columns that do not have matching settings to the end
         ...cols
           .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
-          .map(column => ({
+          .map((column) => ({
             name: column.name,
             enabled: true,
           })),
@@ -550,7 +550,7 @@ export const tableColumnSettings = {
 
       return {
         columns: cols,
-        getColumnName: column => getTitleForColumn(column, series, settings),
+        getColumnName: (column) => getTitleForColumn(column, series, settings),
       };
     },
   },
