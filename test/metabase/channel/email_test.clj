@@ -198,6 +198,7 @@
 
 (defn summarize-multipart-single-email
   [email & regexes]
+  (testing (format "email content: \n%s\n" email))
   (let [email-body->regex-boolean (create-email-body->regex-fn regexes)
         body-or-content           (fn [email-body-seq]
                                     (doall
