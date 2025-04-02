@@ -5,14 +5,20 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.types :as types]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
 ;; integer()
 
+;; we test that it's a :type/Number because some databases return:
+;;  * :type/BigInteger
+;;  * :type/Integer
+;;  * :type/Number
+
 (deftest ^:parallel integer-cast-table-fields
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
@@ -26,13 +32,13 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols last :base_type)))
+              (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[uncasted-value casted-value] rows]
-                (is (= (Long/parseLong uncasted-value)
-                       casted-value))))))))))
+                (is (= (biginteger (Long/parseLong uncasted-value))
+                       (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-custom-expressions
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table expressions] [[:people [{:expression (lib/concat
@@ -50,13 +56,12 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols last :base_type)))
+              (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[_ uncasted-value casted-value] rows]
-                (is (= (Long/parseLong uncasted-value)
-                       casted-value))))))))))
+                (is (= (biginteger (Long/parseLong uncasted-value))
+                       (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-nested-native-query
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [{:keys [expression db-type]} [{:expression "'123'"  :db-type "TEXT"}
@@ -76,13 +81,13 @@
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols last :base_type)))
+                  (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
-                    (is (= (Long/parseLong uncasted-value)
-                           casted-value))))))))))))
+                    (is (= (biginteger (Long/parseLong uncasted-value))
+                           (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
@@ -102,13 +107,13 @@
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols last :base_type)))
+                  (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[uncasted-value casted-value] rows]
-                    (is (= (Long/parseLong uncasted-value)
-                           casted-value))))))))))))
+                    (is (= (biginteger (Long/parseLong uncasted-value))
+                           (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query-custom-expressions
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table expressions] [[:people [{:expression (lib/concat
@@ -135,13 +140,13 @@
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols last :base_type)))
+                  (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
-                    (is (= (Long/parseLong uncasted-value)
-                           casted-value))))))))))))
+                    (is (= (biginteger (Long/parseLong uncasted-value))
+                           (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-custom-expressions
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table expressions] [[:people [{:expression (fn []
@@ -157,13 +162,13 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (= :type/BigInteger (-> cols last :base_type)))
+            (is (types/field-is-type? :type/Number (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
-              (is (= (Long/parseLong uncasted-value)
-                     casted-value)))))))))
+              (is (= (biginteger (Long/parseLong uncasted-value))
+                     (biginteger casted-value))))))))))
 
 (deftest ^:parallel integer-cast-aggregations
-  (mt/test-drivers (mt/normal-drivers-with-feature :cast)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table fields] [[:people [{:field :zip}]]]
@@ -176,10 +181,36 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols last :base_type)))
+              (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[uncasted-value casted-value] rows]
-                (is (= (Long/parseLong uncasted-value)
-                       casted-value))))))))))
+                (is (= (biginteger (Long/parseLong uncasted-value))
+                       (biginteger casted-value)))))))))))
+
+(deftest ^:parallel integer-cast-examples
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)
+            examples [{:original "123" :value 123 :msg "Easy case."}
+                      {:original "+123" :value 123 :msg "Initial + sign."}
+                      {:original "00123" :value 123 :msg "Initial zeros."}
+                      {:original "-123" :value -123 :msg "Negative sign."}
+                      {:original (pr-str Long/MAX_VALUE) :value Long/MAX_VALUE :msg "Big number."}
+                      {:original (pr-str Long/MIN_VALUE) :value Long/MIN_VALUE :msg "Big number."}]]
+        (doseq [{:keys [original value msg]} examples]
+          (testing (str "integer cast: " msg)
+            (let [field-md (lib.metadata/field mp (mt/id :people :id))
+                  query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                            (lib/with-fields [field-md])
+                            (lib/expression "INTCAST" (lib/integer original))
+                            (lib/limit 1))
+                  result (-> query qp/process-query)
+                  cols (mt/cols result)
+                  rows (mt/rows result)]
+              (is (types/field-is-type? :type/Number (last cols)))
+              (doseq [[_id casted-value] rows]
+                (is (= (biginteger value)
+                       (biginteger casted-value))
+                    msg)))))))))
 
 ;; date()
 
