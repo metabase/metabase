@@ -3617,7 +3617,7 @@
                                   (get-in result [:data :rows]))]
                (first totals)))))))
 
-(deftest dashboard-internal-card-creation
+(deftest dashboard-internal-card-creation-test
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Collection {other-coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
