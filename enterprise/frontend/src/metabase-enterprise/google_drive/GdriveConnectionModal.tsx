@@ -1,11 +1,12 @@
 import { type FormEvent, useState } from "react";
-import { c, jt, t } from "ttag";
+import { c, t } from "ttag";
 
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { CopyButton } from "metabase/components/CopyButton";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import Markdown from "metabase/core/components/Markdown";
 import { useDispatch } from "metabase/lib/redux";
 import { getUserName } from "metabase/lib/user";
 import {
@@ -26,6 +27,7 @@ import {
 } from "metabase-enterprise/api";
 
 import Styles from "./Gdrive.module.css";
+import { getStrings } from "./GdriveConnectionModal.strings";
 import { trackSheetImportClick } from "./analytics";
 
 export function GdriveConnectionModal({
@@ -52,7 +54,7 @@ export function GdriveConnectionModal({
     (status === "not-connected" ? (
       <GoogleSheetsConnectModal
         onClose={onClose}
-        serviceAccountEmail={serviceAccountEmail ?? t`email not found`}
+        serviceAccountEmail={serviceAccountEmail ?? t`Email not found`}
         folderUrl={folder_url}
       />
     ) : (
@@ -122,7 +124,8 @@ function GoogleSheetsConnectModal({
       });
   };
 
-  const linkTypeLabel = linkType === "file" ? t`file` : t`folder`;
+  const { clickInstruction, pasteInstruction, importText, copyInstruction } =
+    getStrings(linkType);
 
   return (
     <ModalWrapper onClose={onClose} title={t`Import Google Sheets`}>
@@ -148,29 +151,30 @@ function GoogleSheetsConnectModal({
         gap="md"
       >
         <Box>
-          <Text>
-            1.{" "}
-            {t`In Google Drive, right-click on the ${linkTypeLabel} and click Share`}
-          </Text>
+          <Text>1.{" " + clickInstruction}</Text>
         </Box>
         <Flex align="center" justify="space-between">
           <Text>
             2.{" "}
-            {jt`Enter: ${(<strong key="bold">{serviceAccountEmail ?? t`Error fetching service account email`}</strong>)}`}
+            {c("{0} is an email address")
+              .jt`Enter: ${(<strong key="bold">{serviceAccountEmail ?? t`Error fetching service account email`}</strong>)}`}
           </Text>
           <CopyButton value={serviceAccountEmail}></CopyButton>
         </Flex>
         <Box>
           <Text>
-            3.{" "}
-            {jt`Select ${(<strong key="bold">{t`Viewer`}</strong>)} permissions, and click on ${(<strong key="bold2">{t`Send`}</strong>)}`}
+            <span>{"3. "}</span>
+            <Markdown className={Styles.inline}>
+              {t`Select **Viewer** permissions, and click on **Send**`}
+            </Markdown>
           </Text>
         </Box>
       </Flex>
       <form onSubmit={onSave}>
         <Box>
-          <Text size="lg" fw="bold">{c("{0} is either a file or a folder")
-            .t`Paste the sharing link for the ${linkTypeLabel}`}</Text>
+          <Text size="lg" fw="bold">
+            {pasteInstruction}
+          </Text>
           <TextInput
             my="sm"
             disabled={isSavingFolderLink}
@@ -182,10 +186,9 @@ function GoogleSheetsConnectModal({
                 : "https://docs.google.com/spreadsheets/d/abc123-xyz456"
             }
           />
-          <Text size="sm" color="secondary">{c(
-            "{0} is either a file or a folder",
-          )
-            .t`In Google Drive, right-click on the ${linkTypeLabel} → Share → Copy link`}</Text>
+          <Text size="sm" color="secondary">
+            {copyInstruction}
+          </Text>
         </Box>
         <Flex justify="space-between" align="center" mt="sm" gap="md">
           <Text c="error" lh="1.2rem">
@@ -198,7 +201,7 @@ function GoogleSheetsConnectModal({
             disabled={folderLink.length < 3}
             style={{ flexShrink: 0 }}
           >
-            {c("{0} is either a file or a folder").t`Import ${linkTypeLabel}`}
+            {importText}
           </Button>
         </Flex>
       </form>
