@@ -10,6 +10,7 @@ import {
 
 /**
  * One hook to get setting values and mutators for a given setting
+ * generic version, should not be used directly
  */
 export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
   settingName: SettingName,
@@ -39,3 +40,8 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     ...apiProps,
   };
 };
+
+/**
+ * One hook to get setting values and mutators for a given OSS setting
+ */
+export const useAdminSetting = _useAdminSetting<SettingKey>;
