@@ -92,18 +92,6 @@
   (and (vector? clause)
        (boolean (#{:case :if} (first clause)))))
 
-(defn- flatten-case-or-if-expression
-  "case and if expressions expect a vector of pairs of if-then clause as
-   the first argument, but ExpressionParts can only represent a flat list of clauses.
-
-   This helper ungroups the pairs into a flat list of arguments for expression-parts."
-  [[op options clause-pairs fallback]]
-  (let [clauses (into [] cat clause-pairs)
-        clauses-with-fallback (if (nil? fallback)
-                                clauses
-                                (conj clauses fallback))]
-    (into [op options] clauses-with-fallback)))
-
 ;; HACK: This is a hack to make sure that the display name of an unknown field
 ;; is "Unknown Field" instead of it's id.
 (defn- set-display-name-for-unknown-field
@@ -127,12 +115,22 @@
 (defmethod expression-parts-method :default
   [query stage-number value]
   (let [[op options & args] (cond-> value
-                              (expandable-temporal-expression? value) expand-temporal-expression
-                              (case-or-if-expression? value) flatten-case-or-if-expression)]
+                              (expandable-temporal-expression? value) expand-temporal-expression)]
     {:lib/type :mbql/expression-parts
      :operator op
      :options  options
      :args     (mapv #(expression-parts-method query stage-number %) args)}))
+
+(doseq [dispatch-value [:if :case]]
+  (defmethod expression-parts-method dispatch-value
+    ; case and if expressions expect a vector of pairs of if-then clause as
+    ; the first argument, but ExpressionParts can only represent a flat list of clauses.
+    ; This multimethod flattens the arguments into a flat list.
+    [query stage-number [op options clause-pairs fallback]]
+    ((get-method expression-parts-method :default)
+     query stage-number (cond->
+                         (into [op options] cat clause-pairs)
+                          (some? fallback) (conj fallback)))))
 
 (doseq [dispatch-value [:dispatch-type/expression-parts
                         :dispatch-type/string
