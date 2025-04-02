@@ -1,5 +1,4 @@
 // @ts-check
-
 const esmPackages = [
   "ccount",
   "character-entities-html4",
@@ -27,7 +26,7 @@ const esmPackages = [
 ];
 
 /** @type {import('jest').Config} */
-const config = {
+const baseConfig = {
   moduleNameMapper: {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
@@ -103,6 +102,31 @@ const config = {
     "jest-watch-typeahead/testname",
   ],
   testTimeout: 30000,
+};
+
+/** @type {import('jest').Config} */
+const config = {
+  projects: [
+    {
+      ...baseConfig,
+      displayName: "main",
+      testPathIgnorePatterns: [
+        ...(baseConfig.testPathIgnorePatterns || []),
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/",
+      ],
+    },
+    {
+      ...baseConfig,
+      displayName: "sdk",
+      testMatch: [
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/**/*.unit.spec.{js,jsx,ts,tsx}",
+      ],
+      setupFiles: [
+        ...(baseConfig.setupFiles || []),
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest.sdk.config.js",
+      ],
+    },
+  ],
 };
 
 // eslint-disable-next-line import/no-commonjs
