@@ -59,7 +59,7 @@ jobs:
       - name: bb task list
         run: bb tasks
       - name: Run mage tests
-        run: bb ./test/mage/core_test.clj
+        run: bb ./test/mage/runtests.clj
 
   be-tests:
     if: ${{ !inputs.skip }}
