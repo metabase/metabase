@@ -71,7 +71,7 @@ export function parseSegment(
     expressionIndex,
   ).find((field) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, field);
-    return displayInfo.name.toLowerCase() === segmentName.toLowerCase();
+    return displayInfo.displayName.toLowerCase() === segmentName.toLowerCase();
   });
 
   if (column && Lib.isBoolean(column)) {
