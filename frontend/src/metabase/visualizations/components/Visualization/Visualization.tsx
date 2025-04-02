@@ -71,7 +71,7 @@ import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
-import { VisualizationHeader } from "./VisualizationHeader/VisualizationHeader";
+import { VisualizationHeader } from "./VisualizationHeader";
 
 type StateDispatchProps = {
   dispatch: Dispatch;
