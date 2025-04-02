@@ -6,6 +6,7 @@ import {
   PillsInput,
   useCombobox,
 } from "@mantine/core";
+import { parse } from "csv-parse/browser/esm/sync";
 import { type ChangeEvent, useState } from "react";
 
 export type MultiAutocompleteProps = {
@@ -108,20 +109,17 @@ function useMultiAutocomplete({
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.value;
-    setFieldValue(newValue);
+    const parsedValues = parseValues(newValue).filter(shouldCreate);
 
-    const isValid = shouldCreate(newValue);
-    const newValues = [...pillValues];
-    if (fieldValueIndex != null) {
-      if (isValid) {
-        newValues[fieldValueIndex] = newValue;
-      } else {
-        newValues.splice(fieldValueIndex, 1);
-      }
-    } else if (isValid) {
-      newValues.push(newValue);
-    }
+    const newValues = pillValues.concat(parsedValues);
+    const newPillValues =
+      parsedValues.length > 1 ? newValues.slice(-1) : pillValues;
+    const newFieldValue =
+      parsedValues.length > 1 ? newValues[newValues.length - 1] : newValue;
+
     onChange(newValues);
+    setPillValues(newPillValues);
+    setFieldValue(newFieldValue);
   };
 
   const handleFieldFocus = () => {
@@ -166,6 +164,22 @@ function useMultiAutocomplete({
     handlePillDoubleClick,
     handlePillRemoveClick,
   };
+}
+
+function parseValues(str: string): string[] {
+  try {
+    return parse(str, {
+      delimiter: [",", "\t", "\n"],
+      skip_empty_lines: true,
+      relax_column_count: true,
+      relax_quotes: true,
+      trim: true,
+      quote: '"',
+      escape: "\\",
+    }).flat();
+  } catch (err) {
+    return [];
+  }
 }
 
 function defaultShouldCreate(value: string) {
