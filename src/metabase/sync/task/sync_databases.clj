@@ -107,7 +107,7 @@
           ;; if a previous run is already running, this is a noop
           (task/init! :metabase.lib-be.task.backfill-entity-ids/BackfillEntityIds)))))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Sync and analyze the database"}
   SyncAndAnalyzeDatabase [job-context]
   (sync-and-analyze-database! job-context))
@@ -125,7 +125,7 @@
         (sync.field-values/update-field-values! database)
         (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Update field values"}
   UpdateFieldValues [job-context]
   (update-field-values! job-context))
