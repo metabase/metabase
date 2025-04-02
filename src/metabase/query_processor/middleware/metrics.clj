@@ -20,37 +20,25 @@
        (cond (= fc 1) (first filters)
              (> fc 1) (apply lib/and filters))))))
 
-(def aggregations-pred-1st-arg->fn
-  {:count-where lib/count-where
-   ;; TODO: is it pred col?
-   :sum-where lib/sum-where})
-
 (def aggregations-pred-1st-arg
-  (set (keys aggregations-pred-1st-arg->fn)))
-
-(def nullary-aggregations->fn
-  {:count     lib/count
-   :cum-count lib/cum-count})
+  #{:count-where
+    :sum-where})
 
 (def nullary-aggregations
-  (set (keys nullary-aggregations->fn)))
-
-(def aggregations-col-1st-arg->fn
-  {:avg lib/avg
-   :cum-sum lib/cum-sum
-   :distinct lib/distinct
-   :max lib/max
-   :median lib/median
-   :min lib/min
-   ;; TODO: What to do?
-   #_#_:offset lib/offset
-   :percentile lib/percentile
-   :stddev lib/stddev
-   :sum lib/sum
-   :var lib/var})
+  #{:count
+    :cum-count})
 
 (def aggregations-col-1st-arg
-  (set (keys aggregations-col-1st-arg->fn)))
+  #{:avg
+    :cum-sum
+    :distinct
+    :max
+    :median
+    :min
+    :percentile
+    :stddev
+    :sum
+    :var})
 
 (defn- merge-conditions
   [c1 c2]
@@ -66,27 +54,15 @@
         (apply lib/and c1 c2-maybe-unwrapped)
         (lib/and c1 c2-maybe-unwrapped)))))
 
-;; TODO: to `merge-conditions`
 (defn- transform-aggregation-with-predicate
   [condition aggregation]
   (assert (vector? aggregation))
-  ;; Following is probably too convoluted. How to untangle nested if?
-  (let [condition-operator (first condition)
-        condition-unwrapped (cond-> condition
-                              (= :and condition-operator) (subvec 2))
-        original-predicate (aggregation 3)
-        predicate-operator (first original-predicate)
-        adjusted-predicate (if (= :and predicate-operator)
-                             (if (= :and condition-operator)
-                               (into original-predicate condition-unwrapped)
-                               (conj original-predicate condition-unwrapped))
-                             (if (= :and condition-operator)
-                               (apply lib/and (cons original-predicate condition-unwrapped))
-                               (lib/and original-predicate condition-unwrapped)))]
-    (assoc aggregation 3 (lib.util/fresh-uuids adjusted-predicate))))
+  (let [predicate-arg-index (dec (count aggregation))
+        original-predicate (aggregation predicate-arg-index)
+        adjusted-predicate (merge-conditions original-predicate condition)]
+    (assoc aggregation predicate-arg-index (lib.util/fresh-uuids adjusted-predicate))))
 
 (defn- transform-0-arity-aggregation
-  "Transform zero arity aggregating functions (count and cum-count) into"
   [condition aggregation]
   (if (or (not (vector? aggregation))
           (not (contains? nullary-aggregations (first aggregation)))
@@ -100,13 +76,9 @@
                            :cum-count lib/cum-sum)]
       (-> (aggregating-fn (lib/case [[condition 1]]))
           ;; explicit overwrite of new options with options of original clause
-          ;; TODO: Maybe this will needs some more of special casing
           (lib.options/with-options opts)
-          ;; I believe the following is redundant (or isn't it?)
           (with-meta clause-meta)))))
 
-;; TODO: Preconditions.
-;; TODO: Ensure proper rendering of percentage (ie. how to propagate semantic type)
 (defn- transform-share-aggregation
   [condition aggregation]
   (let [opts (lib.options/options aggregation)
@@ -114,17 +86,15 @@
         aggregation-meta (meta aggregation)]
     (-> (lib// (lib/count-where (merge-conditions predicate condition))
                (lib/count-where condition))
+        (lib.util/fresh-uuids)
         (lib.options/with-options opts)
         (with-meta aggregation-meta))))
 
-;; TODO: Implementation should consider that aggregation clauses can not be used inside aggregation clauses
-;;       but only inside of other expressions.
 (defn- case-wrap-metric-aggregation
   [aggregation condition]
   (cond->> aggregation
     (seq condition)
     (walk/postwalk
-     ;; TODO: extend to other types
      (fn [form]
        (if-not (and (vector? form)
                     (not (map-entry? form)))
@@ -135,11 +105,9 @@
              (= :share operator)
              (transform-share-aggregation condition form)
 
-             ;; TODO: Special case!!! (no. 1)
              (contains? aggregations-pred-1st-arg operator)
              (transform-aggregation-with-predicate condition form)
 
-             ;; TODO: Should be structured differently!!! -- named, documented
              (contains? nullary-aggregations operator)
              (transform-0-arity-aggregation condition form)
 
@@ -147,7 +115,8 @@
                  (= :percentile operator))
              (assoc form 2 (lib/case [[condition (nth form 2)]]))
 
-             :else form #_(throw (Exception. "nope")))))))))
+             :else
+             form)))))))
 
 (defn- metric-query-filters->aggregation
   "Entrypoint into the marvelous world of transforming metric aggregation into one that hase case wrapped column arg."
@@ -287,15 +256,15 @@
                              (comp :lib/expression-name second)
                              (lib/expressions temp-query)))
             new-query (reduce
-                       (fn [query [_metric-id {metric-query :query}]]
+                       (fn [query [metric-id {metric-query :query}]]
                          (if (and (= (lib.util/source-table-id query) (lib.util/source-table-id metric-query))
                                   (or (= (lib/stage-count metric-query) 1)
                                       (= (:qp/stage-had-source-card (last (:stages metric-query)))
                                          (:qp/stage-had-source-card (lib.util/query-stage query agg-stage-index)))))
                            (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)
                                  lookup (-> lookup
-                                            (assoc-in [_metric-id :query] metric-query)
-                                            (assoc-in [_metric-id :aggregation] (first (lib/aggregations metric-query))))]
+                                            (assoc-in [metric-id :query] metric-query)
+                                            (assoc-in [metric-id :aggregation] (first (lib/aggregations metric-query))))]
                              (as-> query $q
                                (reduce #(expression-with-name-from-source %1 agg-stage-index %2)
                                        $q (lib/expressions metric-query -1))
@@ -356,7 +325,6 @@
                         (lib/fieldable-columns stage-query last-metric-stage-number))
           new-metric-stage (lib.util/query-stage stage-query last-metric-stage-number)
           lookup {(:id metric-metadata)
-                  ;; TODO: this is missing query requried for update, or not?
                   {:name metric-name :aggregation metric-aggregation}}
           stage-query (replace-metric-aggregation-refs
                        stage-query
