@@ -17,6 +17,7 @@ import {
   canSearchFieldValues,
   isKeyColumn,
 } from "./utils";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 interface FilterValuePickerProps<T> {
   query: Lib.Query;
@@ -49,6 +50,8 @@ function FilterValuePicker({
     [query, column],
   );
 
+  const tc = useTranslateContent2();
+
   const { data: fieldData, isLoading } = useGetFieldValuesQuery(
     fieldInfo.fieldId ?? skipToken,
     { skip: !canLoadFieldValues(fieldInfo) },
@@ -76,14 +79,15 @@ function FilterValuePicker({
 
   if (canSearchFieldValues(fieldInfo, fieldData)) {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
-
+    const localizedDisplayName = tc(columnInfo.displayName);
     return (
       <SearchValuePicker
         fieldId={checkNotNull(fieldInfo.fieldId)}
         searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
-        columnDisplayName={columnInfo.displayName}
+        columnDisplayName={localizedDisplayName}
+        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         comboboxProps={comboboxProps}
         onCreate={onCreate}

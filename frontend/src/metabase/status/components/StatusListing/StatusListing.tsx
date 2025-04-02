@@ -25,6 +25,9 @@ const StatusListing = () => {
 
   useCheckActiveDownloadsBeforeUnload();
 
+  // FIXME: temporary work around for silly problem
+  return null;
+
   return (
     <StatusListingRoot data-testid="status-root-container">
       {isAdmin && <DatabaseStatus />}
