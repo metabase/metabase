@@ -882,7 +882,7 @@
                   :display                "table-editable"
                   :name                   (:name table)
                   :result_metadata        nil
-                  :type                   "question"
+                  :type                   "model"
                   ;; Redundant with :display, but just in case it's useful. Revisit once FE is built.
                   :visualization_settings {:editable? true}}
         card-id (if keep?
