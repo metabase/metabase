@@ -6,6 +6,7 @@
 .parent {
   border: 1px solid transparent;
   border-radius: var(--default-border-radius);
+  min-height: 38px;
 }
 
 .parent:hover .grabber {
