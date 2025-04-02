@@ -482,10 +482,16 @@
                  (str/replace "-" "_")
                  u/upper-case-en)))
 
+(def ^:private env-var-translation-cache
+  "A simple cache for remembering the translation of setting name `:foo-bar?` to Environ-style key `:mb-foo-bar`."
+  (atom {}))
+
 (defn setting-env-map-name
   "Correctly translate a setting to the keyword it will be found at in [[env/env]]."
   [setting-definition-or-name]
-  (keyword (str "mb-" (munge-setting-name (setting-name setting-definition-or-name)))))
+  (let [sname (setting-name setting-definition-or-name)]
+    (or (@env-var-translation-cache sname)
+        ((swap! env-var-translation-cache assoc sname (keyword (str "mb-" (munge-setting-name sname)))) sname))))
 
 (defn env-var-value
   "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
@@ -519,9 +525,12 @@
 (defn- db-value [setting-definition-or-name]
   (t2/select-one-fn :value :model/Setting :key (setting-name setting-definition-or-name)))
 
+(def ^:private db-is-set-up-var (atom nil))
+
 (defn- db-is-set-up? []
   ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
-  (let [f (requiring-resolve 'metabase.db/db-is-set-up?)]
+  (let [f (or @db-is-set-up-var
+              (reset! db-is-set-up-var (requiring-resolve 'metabase.db/db-is-set-up?)))]
     (if f (f) false)))
 
 (defn- db-or-cache-value
@@ -575,6 +584,13 @@
   (let [{:keys [default]} (resolve-setting setting-definition-or-name)]
     default))
 
+(defmacro ^:private or-some [& clauses]
+  ;; Like `clojure.core/or` but for the first non-nil value.
+  (let [[x & rst] clauses]
+    (if (empty? rst)
+      x
+      `(if-some [x# ~x] x# (or-some ~@rst)))))
+
 (defn get-raw-value
   "Get the raw value of a Setting from wherever it may be specified. Value is fetched by trying the following sources in
   order:
@@ -594,20 +610,14 @@
   Three-arity version can be used to specify how to parse non-empty String values (`parse-fn`) and under what
   conditions values can be returned directly (`pred`) -- see [[get-value-of-type]] for `:boolean` for example usage."
   ([setting-definition-or-name]
-   (let [setting    (resolve-setting setting-definition-or-name)
-         source-fns [user-local-value
-                     database-local-value
-                     env-var-value
-                     db-or-cache-value
-                     (cond
-                       (some? (:default setting)) default-value
-                       (:init setting)            (when-not *disable-init*
-                                                    init!))]]
-     (loop [[f & more] source-fns]
-       (let [v (when f (f setting))]
-         (cond
-           (some? v)  v
-           (seq more) (recur more))))))
+   (let [setting (resolve-setting setting-definition-or-name)]
+     (or-some (user-local-value setting)
+              (database-local-value setting)
+              (env-var-value setting)
+              (db-or-cache-value setting)
+              (:default setting)
+              (when (and (:init setting) (not *disable-init*))
+                (init! setting)))))
 
   ([setting-definition-or-name pred parse-fn]
    (let [parse     (fn [v]
@@ -713,8 +723,10 @@
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?))))
       default
-      (binding [config/*disable-setting-cache* disable-cache?]
-        (getter)))))
+      (if (= config/*disable-setting-cache* disable-cache?) ;; Optimization: only bind dynvar if necessary.
+        (getter)
+        (binding [config/*disable-setting-cache* disable-cache?]
+          (getter))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      set!                                                      |
