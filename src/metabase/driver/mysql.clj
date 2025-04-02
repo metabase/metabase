@@ -70,7 +70,9 @@
                               :schemas                                false
                               :uploads                                true
                               :identifiers-with-spaces                true
-                              :cast                                   true
+                              :expressions/text                       true
+                              :expressions/integer                    true
+                              :expressions/date                       true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
