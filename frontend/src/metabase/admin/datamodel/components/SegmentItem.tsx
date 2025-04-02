@@ -31,6 +31,18 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
       </Box>
 
       <Box component="td" className={S.cell} p="sm">
+        Database
+      </Box>
+
+      <Box component="td" className={S.cell} p="sm">
+        Schema
+      </Box>
+
+      <Box component="td" className={S.cell} p="sm">
+        Table
+      </Box>
+
+      <Box component="td" className={S.cell} p="sm">
         {segment.definition_description}
       </Box>
 
