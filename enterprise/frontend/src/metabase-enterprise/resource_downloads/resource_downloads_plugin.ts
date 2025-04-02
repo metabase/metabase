@@ -14,29 +14,32 @@ if (hasPremiumFeature("whitelabel")) {
     hide_download_button?: boolean | null;
     downloads?: string | boolean | null;
   }): { pdf: boolean; cardResult: boolean } => {
-    const matchResult = match({ hide_download_button, downloads })
-      // `downloads` has priority over `hide_download_button`
-      .with({ downloads: true }, () => ({ pdf: true, cardResult: true }))
-      .with({ downloads: false }, () => ({ pdf: false, cardResult: false }))
-      // supports `downloads=pdf`, `downloads=results` and `downloads=pdf,results`
-      .with({ downloads: P.string }, ({ downloads }: { downloads: string }) => {
-        const downloadTypes = downloads
-          .split(",")
-          .map((type: string) => type.trim());
+    return (
+      match({ hide_download_button, downloads })
+        // `downloads` has priority over `hide_download_button`
+        .with({ downloads: true }, () => ({ pdf: true, cardResult: true }))
+        .with({ downloads: false }, () => ({ pdf: false, cardResult: false }))
+        // supports `downloads=pdf`, `downloads=results` and `downloads=pdf,results`
+        .with(
+          { downloads: P.string },
+          ({ downloads }: { downloads: string }) => {
+            const downloadTypes = downloads
+              .split(",")
+              .map((type: string) => type.trim());
 
-        return {
-          pdf: downloadTypes.includes("pdf"),
-          cardResult: downloadTypes.includes("results"),
-        };
-      })
-      // but we still support the old `hide_download_button` option
-      .with({ hide_download_button: true }, () => ({
-        pdf: false,
-        cardResult: false,
-      }))
-      // by default downloads are enabled
-      .otherwise(() => ({ pdf: true, cardResult: true }));
-
-    return matchResult;
+            return {
+              pdf: downloadTypes.includes("pdf"),
+              cardResult: downloadTypes.includes("results"),
+            };
+          },
+        )
+        // but we still support the old `hide_download_button` option
+        .with({ hide_download_button: true }, () => ({
+          pdf: false,
+          cardResult: false,
+        }))
+        // by default downloads are enabled
+        .otherwise(() => ({ pdf: true, cardResult: true }))
+    );
   };
 }
