@@ -105,6 +105,7 @@ serdes/meta:
   label: dashboards_with_more_questions_in_the_same_tab
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: Glqmoytsnu0n6rfLUjock
 metabase_version: vUNKNOWN (901f705)
 source_card_id: pKdvc0pwu1zDi8NqnyJkt

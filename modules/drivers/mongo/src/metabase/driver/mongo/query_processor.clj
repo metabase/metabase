@@ -244,6 +244,9 @@
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
 
+      (isa? coercion :Coercion/String->Float)
+      {"$toDouble" field-name}
+
       :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
@@ -839,7 +842,7 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod compile-cond :between [[_ field min-val max-val]]
-  (compile-cond [:and [:>= field min-val] [:< field max-val]]))
+  (compile-cond [:and [:>= field min-val] [:<= field max-val]]))
 
 (defn- index-of-code-point
   "See https://docs.mongodb.com/manual/reference/operator/aggregation/indexOfCP/"
