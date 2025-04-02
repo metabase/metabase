@@ -95,7 +95,7 @@
 
 (defenterprise embedding-settings
   "Boolean values that report on the state of different embedding configurations."
-  metabase-enterprise.embedding-data
+  metabase-enterprise.internal-stats
   [_embedded-dashboard-count _embedded-question-count]
   {:enabled-embedding-static      false
    :enabled-embedding-interactive false

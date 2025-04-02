@@ -103,19 +103,19 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: "text",
     type: "string",
     args: ["expression"],
-    requiresFeature: "cast",
+    requiresFeature: "expressions/text",
   },
   integer: {
     displayName: "integer",
     type: "number",
     args: ["expression"],
-    requiresFeature: "cast",
+    requiresFeature: "expressions/integer",
   },
   date: {
     displayName: "date",
     type: "datetime",
     args: ["expression"],
-    requiresFeature: "cast",
+    requiresFeature: "expressions/date",
   },
   // string functions
   lower: { displayName: `lower`, type: "string", args: ["string"] },
