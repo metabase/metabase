@@ -27,6 +27,6 @@ export type EmbedDisplayParams = {
   font: EmbedFont;
   theme: DisplayTheme;
   getClickActionMode?: ClickActionModeGetter;
-  downloadsEnabled: string | boolean;
+  downloadsEnabled: boolean;
   withFooter: boolean;
 };
