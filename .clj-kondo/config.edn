@@ -275,6 +275,7 @@
    compojure.core/context                             {:message "Use metabase.api.util.handlers/route-map-handler instead of compojure.core/context, it is much faster and supports OpenAPI spec generation"}
    compojure.core/defroutes                           {:message "Use metabase.api.util.handlers/defroutes instead of compojure.core/routes, it supports OpenAPI spec generation."}
    compojure.core/routes                              {:message "Use metabase.api.util.handlers/routes instead of compojure.core/routes, it supports OpenAPI spec generation."}
+   clojurewerkz.quartzite.jobs/defjob                 {:message "Use metabase.task/defjob instead of clojurewerkz.quartzite.jobs/defjob"}
    fipp.edn/pprint                                    {:message "Use metabase.util.log instead of fipp.edn/pprint"}
    honeysql.core/call                                 {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw                                  {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
@@ -300,7 +301,7 @@
    honeysql.types         {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}}
 
-  :discouraged-tag {p {:message "You can use it, but don't commit it." }}
+  :discouraged-tag {p {:message "You can use it, but don't commit it."}}
 
   :unresolved-var
   {:exclude
@@ -570,6 +571,7 @@
   metabase.sso.ldap/with-ldap-connection                                                clojure.core/fn
   metabase.sync.util/sum-for                                                            clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                            clojure.core/let
+  metabase.task/defjob                                                                  clojure.core/defn
   metabase.test.data.interface/defdataset                                               clojure.core/def
   metabase.test.data.interface/defdataset-edn                                           clojure.core/def
   metabase.test/defdataset                                                              clojure.core/def
