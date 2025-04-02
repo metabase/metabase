@@ -1,4 +1,0 @@
-{
-  "subject": "Enable PDF and card result downloads individually in static and public embedding",
-  "body": "Closes EMB-289\n\n### Description\n\nDescribe the overall approach and the problem being solved.\n\n### How to verify\n\nDescribe the steps to verify that the changes are working as expected.\n\n1. New question -\u003e Sample Dataset -\u003e ...\n2. ...\n\n### Demo\n\n_Upload a demo video or before/after screenshots if sensible or remove the section_\n\n### Checklist\n\n- [ ] Tests have been added/updated to cover changes in this PR\n\n"
-}
