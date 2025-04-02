@@ -44,7 +44,9 @@ export const FieldVisibilityPicker = ({
       placeholder={t`Select a field visibility`}
       renderOption={(item) => {
         const selected = item.option.value === value;
-        const option = DATA.find((option) => option.value === value);
+        const option = DATA.find(
+          (option) => option.value === item.option.value,
+        );
 
         return (
           <SelectItem selected={selected}>
