@@ -33,6 +33,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
       - name: Build jar with different frontend and backend version
         run: |
           bash bin/embedding-sdk/backward-compatibility-test.sh \
