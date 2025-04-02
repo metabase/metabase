@@ -59,6 +59,7 @@
 
   start-maildev
   {:doc      "Start Maildev"
+   :examples [["John" "will write one soon"]]
    :requires [[mage.start-maildev :as start-maildev]]
    :task     (do (cli/parse! (current-task)) (start-maildev/start-maildev!))}
 
