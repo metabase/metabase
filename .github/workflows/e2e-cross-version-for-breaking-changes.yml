@@ -35,7 +35,7 @@ jobs:
 
       - name: Build jar with different frontend and backend version
         run: |
-          sh bin/embedding-sdk/backward-compatibility-test.sh \
+          bash bin/embedding-sdk/backward-compatibility-test.sh \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
             build
 
@@ -45,12 +45,12 @@ jobs:
 
       - name: Start the jar
         run: |
-          sh bin/embedding-sdk/backward-compatibility-test.sh \
+          bash bin/embedding-sdk/backward-compatibility-test.sh \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
             run
 
       - name: Run the cypress tests
         run: |
-          sh bin/embedding-sdk/backward-compatibility-test.sh \
+          bash bin/embedding-sdk/backward-compatibility-test.sh \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
             test

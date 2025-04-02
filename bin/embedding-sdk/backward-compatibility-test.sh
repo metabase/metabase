@@ -1,6 +1,6 @@
 set -euo pipefail # exit the script if anything fails
 
-INSTRUCTIONS="Usage: sh bin/embedding-sdk/backward-compatibility-test.sh \$FE_GIT_REF \$BE_GIT_REF <build|run|test>"
+INSTRUCTIONS="Usage: bash bin/embedding-sdk/backward-compatibility-test.sh \$FE_GIT_REF \$BE_GIT_REF <build|run|test>"
 
 FE_GIT_REF=$1
 BE_GIT_REF=$2
