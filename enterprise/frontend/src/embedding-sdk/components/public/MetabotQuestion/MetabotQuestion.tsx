@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { MetabotChat } from "metabase-enterprise/metabot/components/MetabotChat";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
-import "metabase-enterprise/metabot";
 
 interface Props {
   visible: boolean;
