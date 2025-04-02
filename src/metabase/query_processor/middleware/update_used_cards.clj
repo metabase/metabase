@@ -23,7 +23,7 @@
 
 (def ^:private pause-before-update-retry-seconds 1)
 
-(mu/defn- do-with-cluster-lock
+(mu/defn- do-with-pg-cluster-lock
   "TODO: Make this more reusable"
   ([lock-name thunk]
    (do-with-cluster-lock lock-name {} thunk))
