@@ -14,7 +14,7 @@ import {
 import type { DashboardId, SearchResult } from "metabase-types/api";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
-import { Result } from "./Result";
+import { DatasetsListItem } from "./DatasetsListItem";
 
 function shouldIncludeDashboardQuestion(
   searchItem: SearchResult,
@@ -23,14 +23,13 @@ function shouldIncludeDashboardQuestion(
   return searchItem.dashboard ? searchItem.dashboard.id === dashboardId : true;
 }
 
-interface ResultsListProps {
+interface DatasetsListProps {
   search: string;
   mode: "swap" | "add" | "both";
 }
 
-export function ResultsList({ search, mode }: ResultsListProps) {
+export function DatasetsList({ search, mode }: DatasetsListProps) {
   const dashboardId = useSelector(getDashboard)?.id;
-
   const dispatch = useDispatch();
   const dataSources = useSelector(getDataSources);
   const dataSourceIds = useMemo(
@@ -109,9 +108,9 @@ export function ResultsList({ search, mode }: ResultsListProps) {
   }
 
   return (
-    <Box component="ul" data-testid="results-list">
+    <Box component="ul" data-testid="datasets-list">
       {items.map((item, index) => (
-        <Result
+        <DatasetsListItem
           key={index}
           item={item}
           onSwap={onSwap}

@@ -13,16 +13,16 @@ import {
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type { DatasetColumn } from "metabase-types/api";
 
-import S from "./ColumnListItem.module.css";
+import S from "./ColumnsListItem.module.css";
 
-export interface ColumnListItemProps extends FlexProps {
+export interface ColumnsListItemProps extends FlexProps {
   column: DatasetColumn;
   onRemove?: () => void;
   highlightedForDrag?: boolean;
 }
 
-export const ColumnListItem = forwardRef<HTMLDivElement, ColumnListItemProps>(
-  function ColumnListItem(
+export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
+  function ColumnsListItem(
     { column, onRemove, highlightedForDrag, ...props },
     ref,
   ) {
