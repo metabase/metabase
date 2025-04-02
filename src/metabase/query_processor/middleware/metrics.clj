@@ -20,25 +20,37 @@
        (cond (= fc 1) (first filters)
              (> fc 1) (apply lib/and filters))))))
 
-(def aggregation-operators-with-predicate
-  #{:count-where
-    :sum-where})
+(def aggregations-pred-1st-arg->fn
+  {:count-where lib/count-where
+   ;; TODO: is it pred col?
+   :sum-where lib/sum-where})
 
-(def aggregation-operators-0-arity
-  #{:count
-    :cum-count})
+(def aggregations-pred-1st-arg
+  (set (keys aggregations-pred-1st-arg->fn)))
 
-(def aggregation-operators-1-arity
-  #{:avg
-    :cum-sum
-    :distinct
-    :max
-    :median
-    :min
-    :offset
-    :stddev
-    :sum
-    :var})
+(def nullary-aggregations->fn
+  {:count     lib/count
+   :cum-count lib/cum-count})
+
+(def nullary-aggregations
+  (set (keys nullary-aggregations->fn)))
+
+(def aggregations-col-1st-arg->fn
+  {:avg lib/avg
+   :cum-sum lib/cum-sum
+   :distinct lib/distinct
+   :max lib/max
+   :median lib/median
+   :min lib/min
+   ;; TODO: What to do?
+   #_#_:offset lib/offset
+   :percentile lib/percentile
+   :stddev lib/stddev
+   :sum lib/sum
+   :var lib/var})
+
+(def aggregations-col-1st-arg
+  (set (keys aggregations-col-1st-arg->fn)))
 
 (defn- merge-conditions
   [c1 c2]
@@ -77,7 +89,7 @@
   "Transform zero arity aggregating functions (count and cum-count) into"
   [condition aggregation]
   (if (or (not (vector? aggregation))
-          (not (contains? aggregation-operators-0-arity (first aggregation)))
+          (not (contains? nullary-aggregations (first aggregation)))
           (empty? condition))
     aggregation
     (let [operator (first aggregation)
@@ -124,14 +136,14 @@
              (transform-share-aggregation condition form)
 
              ;; TODO: Special case!!! (no. 1)
-             (contains? aggregation-operators-with-predicate operator)
+             (contains? aggregations-pred-1st-arg operator)
              (transform-aggregation-with-predicate condition form)
 
              ;; TODO: Should be structured differently!!! -- named, documented
-             (contains? aggregation-operators-0-arity operator)
+             (contains? nullary-aggregations operator)
              (transform-0-arity-aggregation condition form)
 
-             (or (contains? aggregation-operators-1-arity operator)
+             (or (contains? aggregations-col-1st-arg operator)
                  (= :percentile operator))
              (assoc form 2 (lib/case [[condition (nth form 2)]]))
 
