@@ -15,8 +15,8 @@ import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import {
   getDraggedItem,
+  getIsDataSidebarOpen,
   getIsDirty,
-  getIsFullscreenModeEnabled,
   getIsVizSettingsSidebarOpen,
 } from "metabase/visualizer/selectors";
 import {
@@ -24,11 +24,11 @@ import {
   isValidDraggedItem,
 } from "metabase/visualizer/utils";
 import {
+  closeDataSidebar,
   closeVizSettingsSidebar,
   handleDrop,
   resetVisualizer,
   setDraggedItem,
-  turnOffFullscreenMode,
 } from "metabase/visualizer/visualizer.slice";
 import type {
   DraggedItem,
@@ -79,7 +79,7 @@ export const Visualizer = (props: VisualizerProps) => {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const draggedItem = useSelector(getDraggedItem);
-  const isFullscreen = useSelector(getIsFullscreenModeEnabled);
+  const isDataSidebarOpen = useSelector(getIsDataSidebarOpen);
   const isVizSettingsSidebarOpen = useSelector(getIsVizSettingsSidebarOpen);
 
   const isDirty = useSelector(getIsDirty);
@@ -94,7 +94,7 @@ export const Visualizer = (props: VisualizerProps) => {
   useEffect(() => {
     if (wasDirty && !isDirty) {
       dispatch(closeVizSettingsSidebar());
-      dispatch(turnOffFullscreenMode());
+      dispatch(closeDataSidebar());
     }
   }, [isDirty, wasDirty, dispatch]);
 
@@ -152,7 +152,7 @@ export const Visualizer = (props: VisualizerProps) => {
 
   const classNames = [
     S.Container,
-    isFullscreen ? S.fullscreen : undefined,
+    isDataSidebarOpen ? S.dataSidebarOpen : undefined,
     isVizSettingsSidebarOpen ? S.vizSettingsOpen : undefined,
     className,
   ]
@@ -176,7 +176,7 @@ export const Visualizer = (props: VisualizerProps) => {
       <Box className={classNames}>
         {/* left side bar */}
         <Box className={S.dataSidebar}>
-          <DataImporter />
+          <DataImporter className={S.dataSidebarContent} />
         </Box>
 
         {/* top header bar */}

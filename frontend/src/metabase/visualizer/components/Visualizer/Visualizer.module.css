@@ -2,7 +2,8 @@
   display: grid;
 
   --sidebar-width: 320px;
-  --left: var(--sidebar-width);
+  --transition-duration: 200ms;
+  --left: 0;
   --right: 0;
 
   grid-template-columns: var(--left) 1fr var(--right);
@@ -12,11 +13,15 @@
     "dataSidebar Header settingsSidebar"
     "dataSidebar Canvas settingsSidebar"
     "dataSidebar Footer settingsSidebar";
-  transition: 100ms;
+  transition: var(--transition-duration);
 }
 
-.Container.fullscreen {
-  --left: 0px;
+.Container.dataSidebarOpen {
+  --left: var(--sidebar-width);
+}
+
+.Container.dataSidebarOpen .dataSidebar {
+  left: 0;
 }
 
 .Container.vizSettingsOpen {
@@ -24,10 +29,16 @@
 }
 
 .dataSidebar {
+  position: relative;
+  left: calc(-1 * var(--sidebar-width));
+  transition: var(--transition-duration);
   grid-area: dataSidebar;
-  overflow: hidden;
   min-width: 0;
   background-color: var(--mb-color-bg-light);
+}
+
+.dataSidebarContent {
+  min-width: var(--sidebar-width);
 }
 
 .Header {

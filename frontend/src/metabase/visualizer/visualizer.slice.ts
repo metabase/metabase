@@ -71,7 +71,7 @@ const initialCommonState: VisualizerCommonState = {
   loadingDataSources: {},
   loadingDatasets: {},
   expandedDataSources: {},
-  isFullscreen: false,
+  isDataSidebarOpen: true,
   isVizSettingsSidebarOpen: false,
   error: null,
   draggedItem: null,
@@ -401,18 +401,17 @@ const visualizerSlice = createSlice({
       state.expandedDataSources[action.payload] =
         !state.expandedDataSources[action.payload];
     },
-    toggleFullscreenMode: state => {
-      state.isFullscreen = !state.isFullscreen;
-    },
-    turnOffFullscreenMode: state => {
-      state.isFullscreen = false;
-      state.isVizSettingsSidebarOpen = false;
+    toggleDataSideBar: state => {
+      state.isDataSidebarOpen = !state.isDataSidebarOpen;
     },
     toggleVizSettingsSidebar: state => {
       state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
     },
     closeVizSettingsSidebar: state => {
       state.isVizSettingsSidebarOpen = false;
+    },
+    closeDataSidebar: state => {
+      state.isDataSidebarOpen = false;
     },
     undo: state => {
       const canUndo = state.past.length > 0;
@@ -738,10 +737,10 @@ export const { setTitle, updateSettings, removeColumn, setDisplay } =
 export const {
   setDraggedItem,
   toggleDataSourceExpanded,
-  toggleFullscreenMode,
-  turnOffFullscreenMode,
+  toggleDataSideBar,
   toggleVizSettingsSidebar,
   closeVizSettingsSidebar,
+  closeDataSidebar,
   undo,
   redo,
   resetVisualizer,
