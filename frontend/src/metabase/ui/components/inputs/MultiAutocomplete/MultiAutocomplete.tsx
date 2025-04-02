@@ -1,4 +1,9 @@
-import { type ComboboxItem, type TagsInputProps, Tooltip } from "@mantine/core";
+import {
+  type ComboboxItem,
+  type TagsInputProps,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
 import type React from "react";
@@ -108,11 +113,9 @@ export function MultiAutocomplete({
   const infoIcon = isFocused ? (
     <Tooltip
       label={
-        <>
-          {t`Separate values with commas, tabs or newlines.`}
-          <br />
-          {t` Use double quotes for values containing commas.`}
-        </>
+        <Text c="inherit" maw="20rem">
+          {t`Separate values with commas, tabs, or newlines. Use double quotes if what you’re searching for has commas — and if it itself includes quotes, use backslashes like this: “searching, you see, is a \\“simple\\” thing.”`}
+        </Text>
       }
     >
       <Icon name="info_filled" fill={color("text-light")} />

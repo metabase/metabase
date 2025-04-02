@@ -73,6 +73,7 @@ function newNativeCardHash(
     query = "",
     collection_id = null,
     display = "scalar",
+    visualization_settings = {},
   } = {},
 ) {
   const card = {
@@ -84,7 +85,7 @@ function newNativeCardHash(
     },
     display,
     parameters: [],
-    visualization_settings: {},
+    visualization_settings,
     type,
   };
 

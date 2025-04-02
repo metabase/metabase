@@ -8,7 +8,7 @@ export const ACCENT_COUNT = 8;
 
 /* eslint-disable no-color-literals */
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
-// NOTE: KEEP SYNCRONIZED WITH:
+// NOTE: KEEP SYNCHRONIZED WITH:
 // frontend/src/metabase/css/core/colors.module.css
 // frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
 // frontend/src/metabase/styled-components/theme/css-variables.ts

@@ -1,13 +1,11 @@
 import type {
-  Card,
-  DashboardCard,
-  DatasetQuery,
-  QuestionDashboardCard,
+  BaseDashboardCard,
+  VisualizerDashboardCard,
 } from "metabase-types/api";
 
 export function isVisualizerDashboardCard(
-  dashcard: DashboardCard | Card<DatasetQuery> | undefined,
-): dashcard is QuestionDashboardCard {
+  dashcard?: BaseDashboardCard,
+): dashcard is VisualizerDashboardCard {
   if (!dashcard?.visualization_settings) {
     return false;
   }

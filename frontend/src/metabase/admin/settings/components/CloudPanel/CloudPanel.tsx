@@ -62,7 +62,7 @@ export const CloudPanel = ({
   useEffect(
     function syncSiteSettings() {
       if (migrationState) {
-        dispatch(refreshSiteSettings({}));
+        dispatch(refreshSiteSettings());
       }
     },
     [dispatch, migrationState],
@@ -81,7 +81,7 @@ export const CloudPanel = ({
 
   const handleCreateMigration = async () => {
     const newMigration = await createCloudMigration().unwrap();
-    await dispatch(refreshSiteSettings({}));
+    await dispatch(refreshSiteSettings());
     onMigrationStart(storeUrl, newMigration);
   };
 

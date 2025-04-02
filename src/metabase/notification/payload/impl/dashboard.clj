@@ -28,21 +28,22 @@
 
 (mu/defmethod notification.payload/payload :notification/dashboard
   [{:keys [creator_id dashboard_subscription] :as _notification-info} :- ::notification.payload/Notification]
-  (let [dashboard-id (:dashboard_id dashboard_subscription)
-        dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
-        parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))]
-    {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
-                               (:skip_if_empty dashboard_subscription)
-                               (remove (fn [{part-type :type :as part}]
-                                         (and
-                                          (= part-type :card)
-                                          (zero? (get-in part [:result :row_count] 0))))))
-     :dashboard              dashboard
-     :style                  {:color_text_dark   channel.render/color-text-dark
-                              :color_text_light  channel.render/color-text-light
-                              :color_text_medium channel.render/color-text-medium}
-     :parameters             parameters
-     :dashboard_subscription dashboard_subscription}))
+  (log/with-context {:dashboard_id (:dashboard_id dashboard_subscription)}
+    (let [dashboard-id (:dashboard_id dashboard_subscription)
+          dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
+          parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))]
+      {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
+                                 (:skip_if_empty dashboard_subscription)
+                                 (remove (fn [{part-type :type :as part}]
+                                           (and
+                                            (= part-type :card)
+                                            (zero? (get-in part [:result :row_count] 0))))))
+       :dashboard              dashboard
+       :style                  {:color_text_dark   channel.render/color-text-dark
+                                :color_text_light  channel.render/color-text-light
+                                :color_text_medium channel.render/color-text-medium}
+       :parameters             parameters
+       :dashboard_subscription dashboard_subscription})))
 
 (mu/defmethod notification.payload/should-send-notification? :notification/dashboard
   [{:keys [payload] :as _noti-payload}]
@@ -55,7 +56,8 @@
   [{:keys [id creator_id handlers] :as notification-info} notification-payload]
   ;; clean up all the temp files that we created for this notification
   (try
-    (run! #(notification.temp-storage/cleanup! (get-in % [:result :data :rows]))
+    (run! #(when-let [rows (get-in % [:result :data :rows])]
+             (notification.temp-storage/cleanup! rows))
           (->> notification-payload :payload :dashboard_parts))
     (catch Exception e
       (log/warn e "Error cleaning up temp files for notification" id)))

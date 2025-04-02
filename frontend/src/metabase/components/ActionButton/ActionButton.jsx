@@ -121,11 +121,13 @@ export default class ActionButton extends Component {
     } = this.props;
     const { active, result } = this.state;
     const isActionDisabled = active || result === "success";
+    const actionStatus = active ? "pending" : (result ?? "idle");
 
     return (
       <Button
         ref={innerRef}
         {...props}
+        data-action-status={actionStatus}
         className={
           forceActiveStyle
             ? ButtonsS.Button

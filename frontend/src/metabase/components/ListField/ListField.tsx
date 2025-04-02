@@ -9,7 +9,7 @@ import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { delay } from "metabase/lib/delay";
-import { Checkbox, Flex } from "metabase/ui";
+import { Checkbox, Flex, Text } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import {
@@ -166,7 +166,11 @@ export const ListField = ({
             <OptionContainer>
               <Checkbox
                 variant="stacked"
-                label={getToggleAllLabel(debouncedFilter, isAll)}
+                label={
+                  <Text c="text-secondary">
+                    {debouncedFilter ? t`Select these` : t`Select all`}
+                  </Text>
+                }
                 checked={isAll}
                 indeterminate={!isAll && !isNone}
                 onChange={handleToggleAll}
@@ -188,11 +192,3 @@ export const ListField = ({
     </>
   );
 };
-
-function getToggleAllLabel(searchValue: string, isAll: boolean) {
-  if (isAll) {
-    return t`Select none`;
-  } else {
-    return searchValue ? t`Select these` : t`Select all`;
-  }
-}

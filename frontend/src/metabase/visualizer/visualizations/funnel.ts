@@ -9,9 +9,14 @@ import {
   extractReferencedColumns,
   isDraggedColumnItem,
 } from "metabase/visualizer/utils";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import {
+  isDimension,
+  isMetric,
+  isNumeric,
+} from "metabase-lib/v1/types/utils/isa";
 import type { Card, Dataset, DatasetColumn } from "metabase-types/api";
 import type {
+  VisualizerColumnReference,
   VisualizerDataSource,
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
@@ -40,13 +45,20 @@ export const funnelDropHandler = (
     let dimensionColumnName = state.settings["funnel.dimension"];
     if (!dimensionColumnName) {
       dimensionColumnName = columnRef.name;
-      state.columns.push(copyColumn(dimensionColumnName, column));
+      state.columns.push(
+        copyColumn(dimensionColumnName, column, dataSource.name, state.columns),
+      );
       state.settings["funnel.dimension"] = dimensionColumnName;
     } else {
       const index = state.columns.findIndex(
         col => col.name === dimensionColumnName,
       );
-      state.columns[index] = copyColumn(dimensionColumnName, column);
+      state.columns[index] = copyColumn(
+        dimensionColumnName,
+        column,
+        dataSource.name,
+        state.columns,
+      );
     }
 
     if (dimensionColumnName) {
@@ -61,13 +73,20 @@ export const funnelDropHandler = (
     let metricColumnName = state.settings["funnel.metric"];
     if (!metricColumnName) {
       metricColumnName = columnRef.name;
-      state.columns.push(copyColumn(metricColumnName, column));
+      state.columns.push(
+        copyColumn(metricColumnName, column, dataSource.name, state.columns),
+      );
       state.settings["funnel.metric"] = metricColumnName;
     } else {
       const index = state.columns.findIndex(
         col => col.name === metricColumnName,
       );
-      state.columns[index] = copyColumn(metricColumnName, column);
+      state.columns[index] = copyColumn(
+        metricColumnName,
+        column,
+        dataSource.name,
+        state.columns,
+      );
     }
 
     if (metricColumnName) {
@@ -103,8 +122,8 @@ export function addScalarToFunnel(
   let dimensionColumnName = state.settings["funnel.dimension"];
 
   if (!metricColumnName) {
-    metricColumnName = columnRef.name;
-    state.columns.push(copyColumn(metricColumnName, column));
+    metricColumnName = "METRIC";
+    state.columns.push(createMetricColumn(metricColumnName, column.base_type));
     state.settings["funnel.metric"] = metricColumnName;
   }
   if (!dimensionColumnName) {
@@ -123,6 +142,83 @@ export function addScalarToFunnel(
   );
 }
 
+export function addColumnToFunnel(
+  state: VisualizerHistoryItem,
+  column: DatasetColumn,
+  columnRef: VisualizerColumnReference,
+  dataSource: VisualizerDataSource,
+  dataset: Dataset,
+  card?: Card,
+) {
+  const isEmpty = state.columns.length === 0;
+
+  if (
+    (isEmpty || isScalarFunnel(state)) &&
+    card &&
+    canCombineCardWithFunnel(card, dataset)
+  ) {
+    addScalarToFunnel(state, dataSource, dataset.data.cols[0]);
+    return;
+  }
+
+  if (!isScalarFunnel(state)) {
+    state.columns.push(column);
+    state.columnValuesMapping[column.name] = [columnRef];
+
+    const metric = state.settings["funnel.metric"];
+    if (!metric && isMetric(column)) {
+      state.settings["funnel.metric"] = column.name;
+    }
+
+    const dimension = state.settings["funnel.dimension"];
+    if (!dimension && isDimension(column) && !isMetric(column)) {
+      state.settings["funnel.dimension"] = column.name;
+    }
+  }
+}
+
+export function removeColumnFromFunnel(
+  state: VisualizerHistoryItem,
+  columnName: string,
+) {
+  if (isScalarFunnel(state)) {
+    if (columnName === "METRIC") {
+      state.columns = [];
+      state.columnValuesMapping = {};
+      state.settings = {};
+    } else {
+      const index = state.columnValuesMapping.METRIC.findIndex(
+        mapping => typeof mapping !== "string" && mapping.name === columnName,
+      );
+      if (index >= 0) {
+        state.columnValuesMapping.METRIC.splice(index, 1);
+        state.columnValuesMapping.DIMENSION.splice(index, 1);
+      }
+    }
+  } else {
+    if (state.settings["funnel.metric"] === columnName) {
+      delete state.settings["funnel.metric"];
+    }
+    if (state.settings["funnel.dimension"] === columnName) {
+      delete state.settings["funnel.dimension"];
+    }
+  }
+}
+
+function createMetricColumn(
+  name: string,
+  type = "type/Integer",
+): DatasetColumn {
+  return {
+    name,
+    display_name: name,
+    base_type: type,
+    effective_type: type,
+    field_ref: ["field", name, { "base-type": type }],
+    source: "artificial",
+  };
+}
+
 function createDimensionColumn(name: string): DatasetColumn {
   return {
     name,
@@ -134,15 +230,12 @@ function createDimensionColumn(name: string): DatasetColumn {
   };
 }
 
-export function removeColumnFromFunnel(
-  state: VisualizerHistoryItem,
-  columnName: string,
+export function isScalarFunnel(
+  state: Pick<VisualizerHistoryItem, "display" | "settings">,
 ) {
-  if (state.settings["funnel.dimension"] === columnName) {
-    delete state.settings["funnel.dimension"];
-  }
-
-  if (state.settings["funnel.metric"] === columnName) {
-    delete state.settings["funnel.metric"];
-  }
+  return (
+    state.display === "funnel" &&
+    state.settings["funnel.metric"] === "METRIC" &&
+    state.settings["funnel.dimension"] === "DIMENSION"
+  );
 }

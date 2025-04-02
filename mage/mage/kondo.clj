@@ -72,19 +72,9 @@
   [cli-args]
   (kondo* cli-args))
 
-(defn- updated-files
-  "Sequence of filenames that have changes in Git relative to `diff-target`."
-  [diff-target]
-  (->> (shell/sh {:quiet? true}
-                 "git" "diff" "--name-only" diff-target
-                 "--" "*.clj" "*.cljc" "*.cljs" ":!/.clj-kondo" ":!/dev")
-       ;; filter out any files that have been deleted/moved
-       (filter (fn [filename]
-                 (.exists (io/file (str u/project-root-directory "/" filename)))))))
-
 (defn- kondo-updated* [diff-target]
   (let [diff-target   (or diff-target "HEAD")
-        updated-files (updated-files diff-target)]
+        updated-files (u/updated-files diff-target)]
     (when (empty? updated-files)
       (println "No updated Clojure source files.")
       (System/exit 0))

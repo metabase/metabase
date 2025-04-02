@@ -1,11 +1,19 @@
-import { type CSSProperties, type ComponentType, useState } from "react";
-
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
-  type SDKCollectionReference,
-  getCollectionIdSlugFromReference,
-} from "embedding-sdk/store/collections";
+  type CSSProperties,
+  type ComponentType,
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  CollectionNotFoundError,
+  SdkLoader,
+  withPublicComponentWrapper,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
+import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
+import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { isNotNull } from "metabase/lib/types";
@@ -50,7 +58,7 @@ const ENTITY_NAME_MAP: Partial<
 };
 
 export type CollectionBrowserProps = {
-  collectionId?: SDKCollectionReference;
+  collectionId?: SdkCollectionId;
   onClick?: (item: CollectionItem) => void;
   pageSize?: number;
   visibleEntityTypes?: UserFacingEntityName[];
@@ -69,13 +77,19 @@ export const CollectionBrowserInner = ({
   visibleColumns = COLLECTION_BROWSER_LIST_COLUMNS,
   className,
   style,
-}: CollectionBrowserProps) => {
+}: Omit<CollectionBrowserProps, "collectionId"> & {
+  collectionId: CollectionId;
+}) => {
   const baseCollectionId = useSdkSelector(state =>
     getCollectionIdSlugFromReference(state, collectionId),
   );
 
   const [currentCollectionId, setCurrentCollectionId] =
     useState<CollectionId>(baseCollectionId);
+
+  useEffect(() => {
+    setCurrentCollectionId(baseCollectionId);
+  }, [baseCollectionId]);
 
   const onClickItem = (item: CollectionItem) => {
     if (onClick) {
@@ -114,6 +128,25 @@ export const CollectionBrowserInner = ({
   );
 };
 
+const CollectionBrowserWrapper = ({
+  collectionId = "personal",
+  ...restProps
+}: CollectionBrowserProps) => {
+  const { id, isLoading } = useTranslatedCollectionId({
+    id: collectionId,
+  });
+
+  if (isLoading) {
+    return <SdkLoader />;
+  }
+
+  if (!id) {
+    return <CollectionNotFoundError id={collectionId} />;
+  }
+
+  return <CollectionBrowserInner collectionId={id} {...restProps} />;
+};
+
 export const CollectionBrowser = withPublicComponentWrapper(
-  CollectionBrowserInner,
+  CollectionBrowserWrapper,
 );

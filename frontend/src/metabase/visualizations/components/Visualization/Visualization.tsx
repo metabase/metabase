@@ -20,7 +20,10 @@ import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
-import { getIsShowingRawTable } from "metabase/query_builder/selectors";
+import {
+  getIsShowingRawTable,
+  getUiControls,
+} from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
@@ -50,14 +53,18 @@ import {
   type Visualization as VisualizationType,
   isRegularClickAction,
 } from "metabase/visualizations/types";
-import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
+import {
+  formatVisualizerClickObject,
+  isVisualizerDashboardCard,
+} from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Query from "metabase-lib/v1/queries/Query";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
 import type {
   Card,
+  CardId,
   Dashboard,
   DashboardCard,
   RawSeries,
@@ -86,6 +93,7 @@ type StateProps = {
   fontFamily: string;
   isRawTable: boolean;
   isEmbeddingSdk: boolean;
+  scrollToLastColumn: boolean;
 };
 
 type ForwardedRefProps = {
@@ -127,8 +135,9 @@ type VisualizationOwnProps = {
   isVisible?: boolean;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
-  query?: Query;
+  query?: NativeQuery;
   rawSeries?: RawSeries;
+  visualizerRawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;
@@ -143,6 +152,7 @@ type VisualizationOwnProps = {
     showSidebarTitle?: boolean;
   }) => void;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
+  onHeaderColumnReorder?: (columnName: string) => void;
   onChangeLocation?: (location: Location) => void;
   onUpdateQuestion?: () => void;
   onUpdateVisualizationSettings?: (
@@ -150,8 +160,6 @@ type VisualizationOwnProps = {
     question?: Question,
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
-
-  getCard?: (cardId: string) => Promise<Card | undefined>;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -176,6 +184,7 @@ const mapStateToProps = (state: State): StateProps => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
+  scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
 });
 
 const SMALL_CARD_WIDTH_THRESHOLD = 150;
@@ -385,21 +394,28 @@ class Visualization extends PureComponent<
     }
   }
 
-  getClickActions(clicked: ClickObject | null) {
-    if (!clicked) {
+  getClickActions(clickedObject: ClickObject | null) {
+    if (!clickedObject) {
       return [];
     }
 
     const {
+      dashcard,
       metadata,
+      visualizerRawSeries = [],
       isRawTable,
       getExtraDataForClick = () => ({}),
-      rawSeries = [],
     } = this.props;
 
-    const card =
-      rawSeries.find(series => series.card.id === clicked.cardId)?.card ??
-      rawSeries[0].card;
+    const clicked = isVisualizerDashboardCard(dashcard)
+      ? formatVisualizerClickObject(
+          clickedObject,
+          visualizerRawSeries,
+          dashcard.visualization_settings.visualization.columnValuesMapping,
+        )
+      : clickedObject;
+
+    const card = this.findCardById(clicked.cardId);
 
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
@@ -417,6 +433,16 @@ class Visualization extends PureComponent<
         )
       : [];
   }
+
+  findCardById = (cardId?: CardId | null) => {
+    const { dashcard, rawSeries = [], visualizerRawSeries = [] } = this.props;
+    const isVisualizerViz = isVisualizerDashboardCard(dashcard);
+    const lookupSeries = isVisualizerViz ? visualizerRawSeries : rawSeries;
+    return (
+      lookupSeries.find(series => series.card.id === cardId)?.card ??
+      lookupSeries[0].card
+    );
+  };
 
   getNormalizedSizes = () => {
     const { width, height } = this.props;
@@ -471,41 +497,13 @@ class Visualization extends PureComponent<
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = async ({
+  handleOnChangeCardAndRun = ({
     nextCard,
     objectId,
   }: Pick<OnChangeCardAndRunOpts, "nextCard" | "objectId">) => {
-    if (!this.props.onChangeCardAndRun) {
-      return;
-    }
-
-    const { dashcard, rawSeries = [] } = this.props;
-
-    if (isVisualizerDashboardCard(dashcard) && this.props.getCard) {
-      const cardId = nextCard.id;
-
-      if (!cardId) {
-        return;
-      }
-
-      const card = await this.props.getCard(`card:${cardId}`);
-      if (card) {
-        this.props.onChangeCardAndRun({
-          nextCard: card,
-          previousCard: card,
-          objectId,
-        });
-      }
-      return;
-    }
-
-    const previousCard =
-      rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
-      rawSeries[0].card;
-
-    this.props.onChangeCardAndRun({
+    this.props.onChangeCardAndRun?.({
+      previousCard: this.findCardById(nextCard?.id),
       nextCard,
-      previousCard,
       objectId,
     });
   };
@@ -559,6 +557,7 @@ class Visualization extends PureComponent<
       isNightMode,
       isObjectDetail,
       isPreviewing,
+      isRawTable,
       isQueryBuilder,
       isSettings,
       isShowingDetailsOnlyColumns,
@@ -568,10 +567,12 @@ class Visualization extends PureComponent<
       query,
       queryBuilderMode,
       rawSeries = [],
+      visualizerRawSeries,
       renderEmptyMessage,
-      renderTableHeaderWrapper,
+      renderTableHeader,
       replacementContent,
       scrollToColumn,
+      scrollToLastColumn,
       selectedTimelineEventIds,
       showAllLegendItems,
       showTitle,
@@ -726,6 +727,7 @@ class Visualization extends PureComponent<
           className={className}
           style={style}
           data-testid="visualization-root"
+          data-viz-ui-name={visualization?.uiName}
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
@@ -801,15 +803,18 @@ class Visualization extends PureComponent<
                   isObjectDetail={isObjectDetail}
                   isPlaceholder={isPlaceholder}
                   isPreviewing={isPreviewing}
+                  isRawTable={isRawTable}
                   isQueryBuilder={!!isQueryBuilder}
                   isSettings={!!isSettings}
                   isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
+                  scrollToLastColumn={scrollToLastColumn}
                   metadata={metadata}
                   mode={mode}
                   queryBuilderMode={queryBuilderMode}
                   rawSeries={rawSeries}
+                  visualizerRawSeries={visualizerRawSeries}
                   renderEmptyMessage={renderEmptyMessage}
-                  renderTableHeaderWrapper={renderTableHeaderWrapper}
+                  renderTableHeader={renderTableHeader}
                   scrollToColumn={scrollToColumn}
                   selectedTimelineEventIds={selectedTimelineEventIds}
                   series={series}
@@ -840,6 +845,7 @@ class Visualization extends PureComponent<
                   onUpdateVisualizationSettings={onUpdateVisualizationSettings}
                   onUpdateWarnings={onUpdateWarnings}
                   onVisualizationClick={this.handleVisualizationClick}
+                  onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                 />
               </div>
             )

@@ -1,9 +1,11 @@
 import type {
+  Cell,
   CellContext,
   ColumnDefTemplate,
   ColumnSizingState,
   HeaderContext,
   RowData,
+  SortingState,
   Table,
 } from "@tanstack/react-table";
 import type React from "react";
@@ -17,6 +19,7 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     wrap?: boolean;
     enableReordering?: boolean;
+    enableSelection?: boolean;
     headerClickTargetSelector?: string;
   }
 }
@@ -36,7 +39,9 @@ export type BodyCellBaseProps<TValue> = {
   canExpand?: boolean;
   columnId: string;
   rowIndex: number;
+  isSelected?: boolean;
   className?: string;
+  style?: React.CSSProperties;
   onExpand?: (id: string, formattedValue: React.ReactNode) => void;
 };
 
@@ -66,6 +71,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to determine CSS class names for cells */
   getCellClassName?: (value: TValue, rowIndex: number) => string;
+
+  /** Function to determine CSS styles for cells */
+  getCellStyle?: (value: TValue, rowIndex: number) => React.CSSProperties;
 
   /** Visual style of the header cell */
   headerVariant?: HeaderCellVariant;
@@ -103,6 +111,30 @@ export interface RowIdColumnOptions {
   getBackgroundColor?: (rowIndex: number) => string;
 }
 
+export interface DataGridTheme {
+  /** Table font size, defaults to ~12.5px */
+  fontSize?: string;
+
+  /** Background color of the table header that stays fixed while scrolling. Defaults to `white` if no cell background color is set */
+  stickyBackgroundColor?: string;
+
+  cell?: {
+    /** Text color default body cells, defaults to `text-primary`. */
+    textColor?: string;
+
+    /** Default background color of cells, defaults to `background` */
+    backgroundColor?: string;
+  };
+
+  pillCell?: {
+    /** Text color of pill cell, defaults to `brand`. */
+    textColor?: string;
+
+    /** Pill background color of ID column, defaults to `lighten(brand)`  */
+    backgroundColor?: string;
+  };
+}
+
 /**
  * Configuration options for the table
  */
@@ -116,6 +148,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Width of each column by ID */
   columnSizingMap?: ColumnSizingState;
 
+  /** Array of column sorting options */
+  sorting?: SortingState;
+
   /** Default row height in pixels */
   defaultRowHeight?: number;
 
@@ -127,6 +162,12 @@ export interface DataGridOptions<TData = any, TValue = any> {
 
   /** Width in pixels at which to truncate long cell content */
   truncateLongCellWidth?: number;
+
+  /** Data grid theme */
+  theme?: DataGridTheme;
+
+  /** Controlls whether cell selection is enabled */
+  enableSelection?: boolean;
 
   /** Callback when a column is resized */
   onColumnResize?: (columnSizingMap: ColumnSizingState) => void;
@@ -147,7 +188,7 @@ export interface DataGridOptions<TData = any, TValue = any> {
 export type CellAlign = "left" | "middle" | "right";
 export type BodyCellVariant = "text" | "pill";
 export type HeaderCellVariant = "light" | "outline";
-export type RowIdVariant = "indexExpand" | "expandButton";
+export type RowIdVariant = "indexExpand" | "expandButton" | "index";
 
 export type CellFormatter<TValue> = (
   value: TValue,
@@ -157,12 +198,41 @@ export type CellFormatter<TValue> = (
 
 export type ExpandedColumnsState = Record<string, boolean>;
 
+export type DataGridSelection = {
+  selectedCells: SelectedCell[];
+  isEnabled: boolean;
+  isCellSelected: (cell: Cell<any, any>) => boolean;
+  isRowSelected: (rowId: string) => boolean;
+  handlers: {
+    handleCellMouseDown: (
+      e: React.MouseEvent<HTMLElement>,
+      cell: Cell<any, any>,
+    ) => void;
+    handleCellMouseUp: (
+      e: React.MouseEvent<HTMLElement>,
+      cell: Cell<any, any>,
+    ) => void;
+    handleCellMouseOver: (
+      e: React.MouseEvent<HTMLElement>,
+      cell: Cell<any, any>,
+    ) => void;
+    handleCellsKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+  };
+};
+
+export type SelectedCell = {
+  rowId: string;
+  columnId: string;
+  cellId: string;
+};
+
 export interface DataGridInstance<TData> {
   table: Table<TData>;
   gridRef: RefObject<HTMLDivElement>;
   virtualGrid: VirtualGrid;
   measureRoot: React.ReactNode;
   columnsReordering: ColumnsReordering;
+  selection: DataGridSelection;
   measureColumnWidths: () => void;
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,

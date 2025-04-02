@@ -491,8 +491,8 @@
       (empty? stages)
       graph
 
-      (> stages-visited 50)
-      (throw (ex-info (i18n/tru "The chain of dependencies is too long to save card.") {}))
+      (> stages-visited 1000)
+      (throw (ex-info (i18n/tru "There are too many stages (>1000) to save card.") {}))
 
       :else
       (let [[stage & stages] stages]

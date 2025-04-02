@@ -135,6 +135,10 @@ export function QuestionList({
           <Flex key={item.id} className={S.QuestionListItemRoot} gap="2px">
             <SelectList.Item
               id={item.id}
+              classNames={{
+                root: S.QuestionListItemRoot,
+                label: S.QuestionListItemLabel,
+              }}
               className={S.QuestionListItem}
               name={item.getName()}
               icon={{
@@ -178,6 +182,7 @@ export function QuestionList({
             setVisualizerModalCardId(null);
           }}
           onClose={() => setVisualizerModalCardId(null)}
+          allowSaveWhenPristine
         />
       )}
     </>

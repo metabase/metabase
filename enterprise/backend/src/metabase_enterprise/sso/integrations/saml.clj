@@ -39,12 +39,13 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
-   [metabase.session.models.session :as session]
+   [metabase.session.core :as session]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
@@ -77,7 +78,7 @@
                                    (group-names->ids group-names)
                                    (all-mapped-group-ids)))))
 
-(mu/defn- fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
+(mu/defn- fetch-or-create-user! :- [:maybe [:map [:key ms/UUIDString]]]
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-enabled)
@@ -142,13 +143,14 @@
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
             relay-state  (u/encode-base64 redirect-url)]
-        (saml/idp-redirect-response {:request-id  (str "id-" (random-uuid))
-                                     :sp-name     (sso-settings/saml-application-name)
-                                     :issuer      (sso-settings/saml-application-name)
-                                     :acs-url     (acs-url)
-                                     :idp-url     idp-url
-                                     :credential  (sp-cert-keystore-details)
-                                     :relay-state relay-state}))
+        (saml/idp-redirect-response {:request-id       (str "id-" (random-uuid))
+                                     :sp-name          (sso-settings/saml-application-name)
+                                     :issuer           (sso-settings/saml-application-name)
+                                     :acs-url          (acs-url)
+                                     :idp-url          idp-url
+                                     :credential       (sp-cert-keystore-details)
+                                     :relay-state      relay-state
+                                     :protocol-binding :post}))
       (catch Throwable e
         (let [msg (trs "Error generating SAML request")]
           (log/error e msg)
@@ -237,10 +239,9 @@
                                          {:idp-cert idp-cert
                                           :issuer (sso-settings/saml-identity-provider-issuer)
                                           :response-validators [:signature :require-authenticated :issuer]})]
-      (if-let [metabase-session-id (and (saml/logout-success? response)
-                                        (get-in cookies [request/metabase-session-cookie :value]))]
+      (if-let [metabase-session-key (and (saml/logout-success? response) (get-in cookies [request/metabase-session-cookie :value]))]
         (do
-          (t2/delete! :model/Session :id metabase-session-id)
+          (t2/delete! :model/Session {:where [:or [:= (session/hash-session-key metabase-session-key) :key_hashed] [:= metabase-session-key :id]]})
           (request/clear-session-cookie (response/redirect (urls/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

@@ -1,14 +1,13 @@
-import type { ChangeEventHandler } from "react";
-import { useCallback, useEffect, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
 import {
   getApplicationName,
   getShowMetabaseLinks,
@@ -23,31 +22,31 @@ const modelCachingOptions = [
     value: "0 0 0/1 * * ? *",
     // this has to be plural because it's plural elsewhere and it cannot be both a singular message ID and a
     // plural message ID
-    name: ngettext(msgid`Hour`, `Hours`, 1),
+    label: ngettext(msgid`Hour`, `Hours`, 1),
   },
   {
     value: "0 0 0/2 * * ? *",
-    name: t`2 hours`,
+    label: t`2 hours`,
   },
   {
     value: "0 0 0/3 * * ? *",
-    name: t`3 hours`,
+    label: t`3 hours`,
   },
   {
     value: "0 0 0/6 * * ? *",
-    name: t`6 hours`,
+    label: t`6 hours`,
   },
   {
     value: "0 0 0/12 * * ? *",
-    name: t`12 hours`,
+    label: t`12 hours`,
   },
   {
     value: "0 0 0 ? * * *",
-    name: t`24 hours`,
+    label: t`24 hours`,
   },
   {
     value: "custom",
-    name: t`Custom…`,
+    label: t`Custom…`,
   },
 ];
 
@@ -65,75 +64,47 @@ export const ModelPersistenceConfiguration = () => {
     "persisted-model-refresh-cron-schedule",
   );
 
-  const modelCachingSetting = {
-    value: modelCachingSchedule,
-    options: modelCachingOptions,
-  };
   const dispatch = useDispatch();
+  const [sendToast, removeToast] = useToast();
 
-  const showLoadingToast = useCallback(async () => {
-    const result = await dispatch(
-      addUndo({
-        icon: "info",
-        message: t`Loading...`,
-      }),
-    );
+  const showLoadingToast = async () => {
+    const result = await sendToast({
+      icon: "info",
+      message: t`Loading...`,
+    });
     return result?.payload?.id as number;
-  }, [dispatch]);
+  };
 
-  const dismissLoadingToast = useCallback(
-    (toastId: number) => {
-      dispatch(dismissUndo({ undoId: toastId }));
-    },
-    [dispatch],
-  );
-
-  const showErrorToast = useCallback(() => {
-    dispatch(
-      addUndo({
+  const resolveWithToasts = async (promises: Promise<any>[]) => {
+    let loadingToastId;
+    try {
+      loadingToastId = await showLoadingToast();
+      await Promise.all(promises);
+      sendToast({ message: "Saved" });
+    } catch (e) {
+      sendToast({
         icon: "warning",
         toastColor: "error",
         message: t`An error occurred`,
-      }),
-    );
-  }, [dispatch]);
-
-  const showSuccessToast = useCallback(() => {
-    dispatch(addUndo({ message: "Saved" }));
-  }, [dispatch]);
-
-  const resolveWithToasts = useCallback(
-    async (promises: Promise<any>[]) => {
-      let loadingToastId;
-      try {
-        loadingToastId = await showLoadingToast();
-        await Promise.all(promises);
-        showSuccessToast();
-      } catch (e) {
-        showErrorToast();
-      } finally {
-        if (loadingToastId !== undefined) {
-          dismissLoadingToast(loadingToastId);
-        }
+      });
+    } finally {
+      if (loadingToastId !== undefined) {
+        removeToast(loadingToastId);
       }
-    },
-    [showLoadingToast, showSuccessToast, showErrorToast, dismissLoadingToast],
-  );
+    }
+  };
 
   const applicationName = useSelector(getApplicationName);
 
-  const onSwitchChanged = useCallback<ChangeEventHandler<HTMLInputElement>>(
-    async e => {
-      const shouldEnable = e.target.checked;
-      setModelPersistenceEnabled(shouldEnable);
-      const promise = shouldEnable
-        ? PersistedModelsApi.enablePersistence()
-        : PersistedModelsApi.disablePersistence();
-      await resolveWithToasts([promise]);
-      dispatch(refreshSiteSettings({}));
-    },
-    [resolveWithToasts, setModelPersistenceEnabled, dispatch],
-  );
+  const onSwitchChanged = async (e: ChangeEvent<HTMLInputElement>) => {
+    const shouldEnable = e.target.checked;
+    setModelPersistenceEnabled(shouldEnable);
+    const promise = shouldEnable
+      ? PersistedModelsApi.enablePersistence()
+      : PersistedModelsApi.disablePersistence();
+    await resolveWithToasts([promise]);
+    dispatch(refreshSiteSettings());
+  };
 
   const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
 
@@ -182,11 +153,12 @@ export const ModelPersistenceConfiguration = () => {
       {modelPersistenceEnabled && modelCachingSchedule && (
         <div>
           <ModelCachingScheduleWidget
-            setting={modelCachingSetting}
+            value={modelCachingSchedule}
+            options={modelCachingOptions}
             onChange={async (value: unknown) => {
               await resolveWithToasts([
                 PersistedModelsApi.setRefreshSchedule({ cron: value }),
-                dispatch(refreshSiteSettings({})),
+                dispatch(refreshSiteSettings()),
               ]);
             }}
           />

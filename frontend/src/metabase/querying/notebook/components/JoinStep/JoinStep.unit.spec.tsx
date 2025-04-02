@@ -714,7 +714,7 @@ describe("Notebook Editor > Join Step", () => {
       const joinColumnsPicker = await screen.findByTestId(
         "join-columns-picker",
       );
-      await userEvent.click(within(joinColumnsPicker).getByText("Select none"));
+      await userEvent.click(within(joinColumnsPicker).getByText("Select all"));
       expect(within(joinColumnsPicker).getByLabelText("ID")).not.toBeChecked();
       expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
       await userEvent.click(within(joinColumnsPicker).getByLabelText("ID"));
@@ -737,7 +737,7 @@ describe("Notebook Editor > Join Step", () => {
         "join-columns-picker",
       );
 
-      await userEvent.click(within(joinColumnsPicker).getByText("Select none"));
+      await userEvent.click(within(joinColumnsPicker).getByText("Select all"));
 
       await userEvent.click(screen.getByLabelText("Left column"));
       const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
@@ -795,7 +795,7 @@ describe("Notebook Editor > Join Step", () => {
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       const picker = await screen.findByTestId("join-columns-picker");
-      await userEvent.click(within(picker).getByText("Select none"));
+      await userEvent.click(within(picker).getByText("Select all"));
 
       const { fields } = getRecentJoin();
       expect(fields).toBe("none");

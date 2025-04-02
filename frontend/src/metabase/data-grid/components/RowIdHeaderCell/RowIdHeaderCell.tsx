@@ -1,3 +1,5 @@
+import cx from "classnames";
+
 import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";
 
 import S from "./RowIdHeaderCell.module.css";
@@ -8,8 +10,8 @@ export interface RowIdHeaderCellProps {
 
 export const RowIdHeaderCell = ({ name = "" }: RowIdHeaderCellProps) => {
   return (
-    <BaseCell className={S.root} align="right">
-      {name}{" "}
+    <BaseCell className={cx(S.root)} hasHover={false} align="right">
+      {name}
     </BaseCell>
   );
 };

@@ -24,6 +24,11 @@ import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import {
+  getInitialStateForCardDataSource,
+  isVisualizerDashboardCard,
+} from "metabase/visualizer/utils";
+import { getInitialStateForMultipleSeries } from "metabase/visualizer/utils/get-initial-state-for-multiple-series";
 import type {
   Card,
   CardId,
@@ -34,6 +39,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
@@ -95,9 +101,12 @@ export interface DashCardProps {
   /** Callback to execute when the dashcard has auto-scrolled to itself */
   reportAutoScrolledToDashcard: () => void;
 
-  editDashboard: () => void;
-
   className?: string;
+
+  onEditVisualization?: (
+    dashcard: StoreDashcard,
+    initialState: Partial<VisualizerHistoryItem>,
+  ) => void;
 }
 
 function DashCardInner({
@@ -129,8 +138,8 @@ function DashCardInner({
   downloadsEnabled,
   autoScroll,
   reportAutoScrolledToDashcard,
-  editDashboard,
   className,
+  onEditVisualization,
 }: DashCardProps) {
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
@@ -307,6 +316,24 @@ function DashCardInner({
       [dashcard, navigateToNewCardFromDashboard],
     );
 
+  const onEditVisualizationClick = useCallback(() => {
+    let initialState: Partial<VisualizerHistoryItem>;
+
+    if (isVisualizerDashboardCard(dashcard)) {
+      initialState = dashcard.visualization_settings
+        ?.visualization as Partial<VisualizerHistoryItem>;
+    } else if (series.length > 1) {
+      initialState = getInitialStateForMultipleSeries(series);
+    } else {
+      initialState = getInitialStateForCardDataSource(
+        series[0].card,
+        series[0].data?.cols ?? [],
+      );
+    }
+
+    onEditVisualization?.(dashcard, initialState);
+  }, [dashcard, series, onEditVisualization]);
+
   return (
     <ErrorBoundary>
       <Box
@@ -366,6 +393,7 @@ function DashCardInner({
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
             isTrashedOnRemove={isTrashedOnRemove}
+            onEditVisualization={onEditVisualizationClick}
           />
         )}
         <DashCardVisualization
@@ -402,7 +430,7 @@ function DashCardInner({
           onChangeLocation={onChangeLocation}
           onTogglePreviewing={handlePreviewToggle}
           downloadsEnabled={downloadsEnabled}
-          editDashboard={editDashboard}
+          onEditVisualization={onEditVisualizationClick}
         />
       </Box>
     </ErrorBoundary>

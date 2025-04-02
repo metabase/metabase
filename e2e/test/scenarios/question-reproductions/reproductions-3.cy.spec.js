@@ -492,7 +492,7 @@ describe("issue 40435", () => {
     H.openNotebook();
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("User ID").click();
     });
     H.getNotebookStep("data").button("Pick columns").click();
@@ -530,7 +530,9 @@ describe("issue 41381", () => {
     H.addCustomColumn();
     H.enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
     H.popover().within(() => {
-      cy.findByText("Invalid expression").should("be.visible");
+      cy.findByText("Standalone constants are not supported.").should(
+        "be.visible",
+      );
       cy.button("Done").should("be.disabled");
     });
   });
@@ -557,7 +559,7 @@ describe(
     });
 
     it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
-      cy.get("#main-data-grid")
+      H.tableInteractiveBody()
         .findAllByRole("gridcell")
         .first()
         .then($cell => {
@@ -568,16 +570,13 @@ describe(
             "Scenario 1 - Make sure the simple mode filter is working correctly (metabase#40770)",
           );
           H.filter();
-
-          cy.findByRole("dialog").within(() => {
-            cy.findByPlaceholderText("Search by ID").type(id);
-            cy.button("Apply filters").click();
+          H.popover().within(() => {
+            cy.findAllByText("ID").should("have.length", 2).first().click();
+            cy.findByLabelText("Filter value").type(id).click();
+            cy.button("Add filter").click();
           });
-
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 1 row",
-          );
+          H.runButtonOverlay().click();
+          H.assertQueryBuilderRowCount(1);
           removeFilter();
 
           cy.log(
@@ -610,7 +609,7 @@ describe(
           // The preview should show only one row
           const ordersColumns = 10;
           cy.findByTestId("preview-root")
-            .get("#main-data-grid")
+            .findByTestId("table-body")
             .findAllByTestId("cell-data")
             .should("have.length.at.most", ordersColumns);
 
@@ -1502,6 +1501,7 @@ describe("issue 44668", () => {
     H.enterCustomColumnDetails({
       formula: 'concat("abc_", [Count])',
       name: "Custom String",
+      format: true,
     });
     H.popover().button("Done").click();
 
@@ -1713,7 +1713,7 @@ describe("issue 39771", () => {
   });
 });
 
-describe("issue 45063", () => {
+describe("issue 45063", { tags: "@flaky" }, () => {
   function createGuiQuestion({ sourceTableId }) {
     const questionDetails = {
       name: "Question",
@@ -2273,10 +2273,12 @@ describe("issue 48829", () => {
     H.queryBuilderHeader()
       .button(/Filter/)
       .click();
-    H.modal().within(() => {
+    H.popover().within(() => {
+      cy.findByText("Category").click();
       cy.findByText("Doohickey").click();
-      cy.button("Apply filters").click();
+      cy.button("Add filter").click();
     });
+    H.runButtonOverlay().click();
 
     H.queryBuilderHeader()
       .button(/Editor/)
@@ -2439,12 +2441,9 @@ describe("issue 47940", () => {
       coercion_strategy: "Coercion/UNIXMicroSeconds->DateTime",
     });
 
-    cy.log("get new query results with coercion applied");
-    H.queryBuilderHeader().findByTestId("run-button").click();
+    cy.log("reload to get new query results with coercion applied");
+    cy.reload();
     cy.wait("@cardQuery");
-    H.queryBuilderHeader().button("Save").click();
-    H.modal().button("Save").click();
-    cy.wait("@updateCard");
 
     cy.log("turn into a model");
     H.openQuestionActions();

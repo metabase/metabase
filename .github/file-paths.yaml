@@ -31,6 +31,9 @@ frontend_sources: &frontend_sources
   - "webpack.static-viz.config.js"
   - ".nvmrc"
 
+frontend_embedding_sdk_sources:
+  - "enterprise/frontend/src/embedding-sdk/**"
+
 frontend_specs: &frontend_specs
   - *shared_specs
   - "frontend/test/**"

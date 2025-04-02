@@ -21,6 +21,11 @@
       (println "Running: " cmd)
       (try (u/sh cmd) (catch Exception _e nil)))))
 
+(defn updated
+  "Formats or checks all updated clojure files with cljfmt."
+  [parsed]
+  (files (assoc parsed :arguments (u/updated-files))))
+
 (defn staged
   "Formats or checks all staged clojure files with cljfmt."
   [{{force-check? :force-check} :options}]

@@ -2,6 +2,7 @@ import cx from "classnames";
 import type * as React from "react";
 import _ from "underscore";
 
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { IconProps } from "metabase/ui";
 
 import type { BaseSelectListItemProps } from "./BaseSelectListItem";
@@ -17,6 +18,7 @@ export interface SelectListItemProps
   classNames?: {
     root?: string;
     icon?: string;
+    label?: string;
   };
 }
 
@@ -47,8 +49,13 @@ export function SelectListItem({
       {icon && (
         <ItemIcon className={classNames.icon} color="brand" {...iconProps} />
       )}
-      <ItemTitle fw="bold" lh="normal" data-testid="option-text">
-        {name}
+      <ItemTitle
+        className={classNames.label}
+        fw="bold"
+        lh="normal"
+        data-testid="option-text"
+      >
+        <Ellipsified>{name}</Ellipsified>
       </ItemTitle>
       {rightIconProps.name && (
         <ItemIcon className={classNames.icon} {...rightIconProps} />

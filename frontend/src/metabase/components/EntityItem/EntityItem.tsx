@@ -283,7 +283,7 @@ const EntityItem = ({
   onArchive,
   selected,
   onToggleSelected,
-  selectable,
+  selectable = false,
   variant,
   item,
   buttons,
@@ -348,10 +348,6 @@ const EntityItem = ({
       </EntityItemActions>
     </EntityItemWrapper>
   );
-};
-
-EntityItem.defaultProps = {
-  selectable: false,
 };
 
 EntityItem.IconCheckBox = EntityIconCheckBox;

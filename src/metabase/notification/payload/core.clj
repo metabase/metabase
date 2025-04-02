@@ -21,11 +21,13 @@
    [:map
     [:payload_type                   (into [:enum] models.notification/notification-types)]
     ;; allow unsaved notification to be sent
-    [:id            {:optional true} [:maybe ms/PositiveInt]]
-    [:active        {:optional true} :boolean]
-    [:created_at    {:optional true} :any]
-    [:updated_at    {:optional true} :any]
-    [:subscriptions {:optional true} [:sequential ::models.notification/NotificationSubscription]]]
+    [:id                      {:optional true} [:maybe ms/PositiveInt]]
+    [:active                  {:optional true} :boolean]
+    [:created_at              {:optional true} :any]
+    [:updated_at              {:optional true} :any]
+    [:subscriptions           {:optional true} [:sequential ::models.notification/NotificationSubscription]]
+    ;;  the subscription that triggered this notification
+    [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]]
    [:multi {:dispatch :payload_type}
     ;; system event is a bit special in that part of the payload comes from the event itself
     [:notification/system-event

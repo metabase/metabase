@@ -89,3 +89,16 @@
                       :tasks
                       keys)]
     (mapv str (remove #{:requires} task-keys))))
+
+(defn updated-files
+  "Sequence of filenames that have changes in Git relative to `diff-target`."
+  ([] (updated-files "HEAD"))
+  ([diff-target]
+   (->> (shell {:out :string :dir project-root-directory}
+               "git" "diff" "--name-only" diff-target
+               "--" "*.clj" "*.cljc" "*.cljs" ":!/.clj-kondo" ":!/dev")
+        :out
+        (str/split-lines)
+        ;; filter out any files that have been deleted/moved
+        (filter (fn [filename]
+                  (.exists (io/file (str project-root-directory "/" filename))))))))

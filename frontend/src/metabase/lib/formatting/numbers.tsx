@@ -202,12 +202,8 @@ function formatNumberCompact(
   value: number | bigint,
   options: FormatNumberJsxOptions,
 ): string | ReactNode {
-  const separators = options["number_separators"];
-
   if (options.number_style === "percent") {
-    return (
-      formatNumberCompactWithoutOptions(multiply(value, 100), separators) + "%"
-    );
+    return _formatNumberCompact(multiply(value, 100), options) + "%";
   }
   if (options.number_style === "currency") {
     try {
@@ -225,14 +221,10 @@ function formatNumberCompact(
 
       const valueSign = value < 0 ? "-" : "";
 
-      return (
-        valueSign +
-        currency +
-        formatNumberCompactWithoutOptions(abs(value), separators)
-      );
+      return valueSign + currency + _formatNumberCompact(abs(value), options);
     } catch (e) {
       // Intl.NumberFormat failed, so we fall back to a non-currency number
-      return formatNumberCompactWithoutOptions(value, separators);
+      return _formatNumberCompact(value, options);
     }
   }
   if (options.number_style === "scientific") {
@@ -243,12 +235,12 @@ function formatNumberCompact(
       minimumFractionDigits: 1,
     });
   }
-  return formatNumberCompactWithoutOptions(value, separators);
+  return _formatNumberCompact(value, options);
 }
 
-function formatNumberCompactWithoutOptions(
+function _formatNumberCompact(
   value: number | bigint,
-  separators?: string,
+  options: FormatNumberOptions = {},
 ): string {
   if (value === 0 || value === 0n) {
     // 0 => 0
@@ -259,16 +251,30 @@ function formatNumberCompactWithoutOptions(
   if (abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
     // 0.1 => 0.1
     formatted = PRECISION_NUMBER_FORMATTER.format(value);
+
+    // round the number if decimals is set and the result is more compact
+    if (options.decimals != null && typeof value === "number") {
+      const rounded = String(roundFloat(value, +options.decimals));
+      if (String(rounded).length < String(formatted).length) {
+        formatted = String(rounded);
+      }
+    }
   } else if (typeof value === "number") {
     // 1 => 1
     // 1000 => 1K
-    formatted = Humanize.compactInteger(Math.round(value), 1);
+    const isDefaultDecimalCount =
+      options.maximumFractionDigits ===
+      DEFAULT_NUMBER_OPTIONS.maximumFractionDigits;
+    formatted = Humanize.compactInteger(
+      Math.round(value),
+      isDefaultDecimalCount ? 1 : options.maximumFractionDigits,
+    );
   } else {
     formatted = PRECISION_NUMBER_FORMATTER.format(value);
   }
 
-  return separators !== DEFAULT_NUMBER_SEPARATORS
-    ? replaceNumberSeparators(formatted, separators)
+  return options?.number_separators !== DEFAULT_NUMBER_SEPARATORS
+    ? replaceNumberSeparators(formatted, options?.number_separators)
     : formatted;
 }
 
@@ -293,9 +299,8 @@ function formatNumberScientific(
 ): string | ReactNode {
   if (typeof value === "bigint") {
     value = Number(value);
-  } else if (options.maximumFractionDigits) {
-    value = roundFloat(value, options.maximumFractionDigits);
   }
+
   const exp = replaceNumberSeparators(
     value.toExponential(options.minimumFractionDigits),
     options?.number_separators,

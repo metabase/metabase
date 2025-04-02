@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,17 +16,31 @@
   {:engine mi/transform-keyword
    :status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum #{:pending :active :retired}))})
 
+(def ^:private pending-table-cut-off
+  "Period after which a pending table will be discarded, as it is probably corrupted."
+  (t/days 1))
+
 (defn indexes
   "The current 'pending' and 'active' indexes for the given co-ordinates, where they exist."
   [engine version]
-  (t2/select-fn->fn :status :index_name :model/SearchIndexMetadata
+  (let [pending-cut-off (t/minus (t/offset-date-time) pending-table-cut-off)]
+    (->> (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
                     :engine engine
                     :version version
-                    :status [:in [:active :pending]]))
+                    :status [:in [:active :pending]])
+         (filter (fn [{:keys [status created_at]}]
+                   (or (not= status :pending)
+                       (t/before? pending-cut-off created_at))))
+         (u/index-by :status :index_name))))
 
 (defn create-pending!
   "Create a 'pending' entry, unless one already exists. Return whether it was created."
   [engine version index-name]
+  ;; Clear out any expired records
+  (t2/delete! :model/SearchIndexMetadata
+              {:where [:and
+                       [:= :status "pending"]
+                       [:< :created_at (t/minus (t/offset-date-time) pending-table-cut-off)]]})
   (boolean
    (when-not (t2/exists? :model/SearchIndexMetadata
                          :engine engine
@@ -74,4 +89,4 @@
                                  ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
                                  [:and
                                   [:not-in :version (filter some? [our-version (first most-recent)])]
-                                  [:< :updated_at (t/minus (t/zoned-date-time) (t/days 1))]]]})))
+                                  [:< :updated_at (t/minus (t/zoned-date-time) pending-table-cut-off)]]]})))

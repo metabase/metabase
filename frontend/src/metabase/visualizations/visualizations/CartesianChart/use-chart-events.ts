@@ -35,6 +35,7 @@ import {
   getTimelineEventsHoverData,
   hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
+import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
 import {
@@ -48,9 +49,10 @@ export const useChartEvents = (
   timelineEventsModel: TimelineEventsModel | null,
   option: EChartsCoreOption,
   {
-    dashcard,
     card,
     rawSeries,
+    isVisualizerViz,
+    visualizerRawSeries = [],
     selectedTimelineEventIds,
     settings,
     visualizationIsClickable,
@@ -64,22 +66,23 @@ export const useChartEvents = (
     clicked,
     metadata,
     isDashboard,
-    getCard,
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
-      const nextCard =
-        rawSeries.find(series => series.card.id === cardId)?.card ?? card;
-      if (onChangeCardAndRun) {
-        onChangeCardAndRun({
-          nextCard,
-        });
+      if (isVisualizerViz) {
+        const index = getVisualizerSeriesCardIndex(cardId);
+        const nextCard = visualizerRawSeries[index].card;
+        onChangeCardAndRun?.({ nextCard });
+      } else {
+        const nextCard =
+          rawSeries.find(series => series.card.id === cardId)?.card ?? card;
+        onChangeCardAndRun?.({ nextCard });
       }
     },
-    [card, onChangeCardAndRun, rawSeries],
+    [card, rawSeries, visualizerRawSeries, isVisualizerViz, onChangeCardAndRun],
   );
 
   const hoveredSeriesDataKey = useMemo(
@@ -362,7 +365,7 @@ export const useChartEvents = (
   );
 
   const onSelectSeries = useCallback(
-    async (event: React.MouseEvent, seriesIndex: number) => {
+    (event: React.MouseEvent, seriesIndex: number) => {
       const areMultipleCards = rawSeries.length > 1;
       const seriesModel = chartModel.seriesModels[seriesIndex];
 
@@ -393,34 +396,6 @@ export const useChartEvents = (
           element: event.currentTarget,
         });
       } else if (isDashboard) {
-        // if this is a visualizer dashboard card
-        if (
-          dashcard?.visualization_settings?.visualization &&
-          seriesModel.vizSettingsKey !== undefined
-        ) {
-          const visualization: any =
-            dashcard.visualization_settings.visualization;
-          if (!visualization["columnValuesMapping"]) {
-            return;
-          }
-
-          const cardId =
-            visualization["columnValuesMapping"][seriesModel.vizSettingsKey][0]
-              ?.sourceId;
-
-          const card = await getCard(cardId);
-
-          if (!card) {
-            return;
-          }
-
-          onChangeCardAndRun({
-            nextCard: card,
-          });
-
-          return;
-        }
-
         onOpenQuestion(seriesModel.cardId);
       }
     },
@@ -432,9 +407,6 @@ export const useChartEvents = (
       onVisualizationClick,
       onOpenQuestion,
       isDashboard,
-      dashcard,
-      getCard,
-      onChangeCardAndRun,
     ],
   );
 

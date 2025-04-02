@@ -181,13 +181,13 @@ describe("issue 17524", () => {
       cy.get("polygon");
 
       H.filter();
-
-      H.filterField("ID", {
-        operator: "Greater than",
-        value: "1",
+      H.popover().findByText("ID").click();
+      H.selectFilterOperator("Greater than");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("1");
+        cy.button("Add filter").click();
       });
-      cy.findByTestId("apply-filters").click();
-
+      H.runButtonOverlay().click();
       cy.get("polygon");
     });
   });
@@ -996,7 +996,7 @@ describe("issue 32075", () => {
     addCountGreaterThan2Filter();
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1008,7 +1008,7 @@ describe("issue 32075", () => {
     H.addSummaryGroupingField({ field: "Birth Date" });
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1020,7 +1020,7 @@ describe("issue 32075", () => {
     H.addSummaryField({ metric: "Average of ...", field: "Longitude" });
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 

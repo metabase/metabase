@@ -78,7 +78,7 @@ function assertOnHeaderCells(bucketSize) {
 
 function assertOnTableValues(values) {
   values.map(v => {
-    cy.findByText(v);
+    cy.findByText(v).scrollIntoView();
   });
 }
 

@@ -18,7 +18,7 @@ export const WellBox = forwardRef<HTMLDivElement, WellBoxProps>(
         bg={isHighlighted ? "var(--mb-color-brand-light)" : "bg-light"}
         p="sm"
         mih="120px"
-        w="300px"
+        w="150px"
         style={{
           borderRadius: "var(--default-border-radius)",
           border: `1px solid ${borderColor}`,

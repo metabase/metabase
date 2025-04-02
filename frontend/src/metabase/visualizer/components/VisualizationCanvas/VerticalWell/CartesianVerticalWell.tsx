@@ -7,9 +7,11 @@ import { Flex, Text } from "metabase/ui";
 import { getDefaultMetricFilter } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
+  getIsMultiseriesCartesianChart,
   getVisualizationType,
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
+  getVisualizerRawSettings,
 } from "metabase/visualizer/selectors";
 import { isDraggedColumnItem } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
@@ -21,8 +23,10 @@ import { SimpleVerticalWell } from "./SimpleVerticalWell";
 
 export function CartesianVerticalWell() {
   const display = useSelector(getVisualizationType);
-  const settings = useSelector(getVisualizerComputedSettings);
+  const rawSettings = useSelector(getVisualizerRawSettings);
+  const computedSettings = useSelector(getVisualizerComputedSettings);
   const columns = useSelector(getVisualizerDatasetColumns);
+  const isMultiseries = useSelector(getIsMultiseriesCartesianChart);
   const dispatch = useDispatch();
 
   const { active, isOver, setNodeRef } = useDroppable({
@@ -30,11 +34,12 @@ export function CartesianVerticalWell() {
   });
 
   const metrics = useMemo(() => {
+    const settings = isMultiseries ? rawSettings : computedSettings;
     const metricNames = settings["graph.metrics"] ?? [];
     return metricNames
       .map(name => columns.find(column => column.name === name))
       .filter(isNotNull);
-  }, [columns, settings]);
+  }, [columns, computedSettings, rawSettings, isMultiseries]);
 
   const canHandleActiveItem = useMemo(() => {
     if (!display || !active || !isDraggedColumnItem(active)) {
@@ -42,7 +47,9 @@ export function CartesianVerticalWell() {
     }
     const { column } = active.data.current;
     const isSuitableColumn = getDefaultMetricFilter(display);
-    return isSuitableColumn(column);
+    const a = isSuitableColumn(column);
+
+    return a;
   }, [active, display]);
 
   const handleRemoveMetric = (metric: DatasetColumn) => {
@@ -58,10 +65,13 @@ export function CartesianVerticalWell() {
     >
       <Flex
         align="center"
-        justify="center"
         pos="relative"
         gap="sm"
-        style={{ transform: "rotate(-90deg)" }}
+        style={{
+          height: "100%",
+          overflow: "auto",
+          writingMode: "sideways-lr",
+        }}
       >
         {metrics.map(metric => (
           <MetricWellItem

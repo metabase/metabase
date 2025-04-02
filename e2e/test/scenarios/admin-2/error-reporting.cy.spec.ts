@@ -84,7 +84,7 @@ describe("error reporting modal", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("TableInteractive-root").realClick();
+    H.tableInteractive().realClick();
     cy.realPress(["Control", "F1"]);
 
     H.modal().within(() => {
@@ -138,7 +138,7 @@ describe("error reporting modal", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("TableInteractive-root").realClick();
+    H.tableInteractive().realClick();
     cy.realPress(["Control", "F1"]);
 
     H.modal().within(() => {

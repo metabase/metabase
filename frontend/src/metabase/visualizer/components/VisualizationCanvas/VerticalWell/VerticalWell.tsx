@@ -3,7 +3,6 @@ import type { VisualizationDisplay } from "metabase-types/api";
 
 import { CartesianVerticalWell } from "./CartesianVerticalWell";
 import { FunnelVerticalWell } from "./FunnelVerticalWell";
-import { MapVerticalWell } from "./MapVerticalWell";
 import { PieVerticalWell } from "./PieVerticalWell";
 
 interface VerticalWellProps {
@@ -20,8 +19,6 @@ export function VerticalWell({ display }: VerticalWellProps) {
       return <FunnelVerticalWell />;
     case "pie":
       return <PieVerticalWell />;
-    case "map":
-      return <MapVerticalWell />;
   }
 
   return null;

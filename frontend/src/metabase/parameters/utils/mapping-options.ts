@@ -193,17 +193,21 @@ export function getParameterMappingOptions(
     return options;
   }
 
-  const legacyQuery = question.legacyQuery();
+  const legacyNativeQuery = question.legacyNativeQuery();
   const options: NativeParameterMappingOption[] = [];
   const stageIndex = Lib.stageCount(question.query()) - 1;
 
+  if (!legacyNativeQuery) {
+    return options;
+  }
+
   options.push(
-    ...legacyQuery
+    ...legacyNativeQuery
       .variables(parameter ? variableFilterForParameter(parameter) : undefined)
       .map(buildVariableOption),
   );
   options.push(
-    ...legacyQuery
+    ...legacyNativeQuery
       .dimensionOptions(
         parameter ? dimensionFilterForParameter(parameter) : undefined,
       )

@@ -343,13 +343,12 @@
                    [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                               {:type "section", :fields [{:type "mrkdwn", :text (str "<https://testmb.com/dashboard/"
                                                                                      dashboard-id
-                                                                                     " | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                                                                                     "|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
                     {:title           pulse.test-util/card-name
                      :rendered-info   {:attachments false
                                        :content     true}
                      :title_link      (str "https://testmb.com/question/" card-id)
                      :attachment-name "image.png"
-                     :channel-id      "FOO"
                      :fallback        pulse.test-util/card-name}]}
                   (pulse.test-util/thunk->boolean pulse-results))))
          (testing "attached-results-text should be invoked exactly once"
@@ -393,12 +392,11 @@
                  [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                             {:type "section", :fields [{:type "mrkdwn", :text (str "<https://testmb.com/dashboard/"
                                                                                    dashboard-id
-                                                                                   " | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                                                                                   "|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
                   {:title           pulse.test-util/card-name
                    :rendered-info   {:attachments false, :content true, :render/text true},
                    :title_link      (str "https://testmb.com/question/" card-id)
                    :attachment-name "image.png"
-                   :channel-id      "FOO"
                    :fallback        pulse.test-util/card-name}
                   {:blocks [{:type "section" :text {:type "mrkdwn" :text "*header*"}}]}]}
                 (pulse.test-util/thunk->boolean pulse-results)))))}}))
@@ -439,12 +437,11 @@
                                                         :text
                                                         (str "<https://testmb.com/dashboard/"
                                                              dashboard-id
-                                                             " | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                                                             "|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
                   {:title           pulse.test-util/card-name
                    :rendered-info   {:attachments false, :content true, :render/text true},
                    :title_link      (str "https://testmb.com/question/" card-id)
                    :attachment-name "image.png"
-                   :channel-id      "FOO"
                    :fallback        pulse.test-util/card-name}
                   {:blocks [{:type "section" :text {:type "mrkdwn" :text "*# header, quote isn't escaped*"}}]}]}
                 (pulse.test-util/thunk->boolean pulse-results)))))}}))
@@ -486,13 +483,12 @@
                               {:type "section", :fields [{:type "mrkdwn", :text
                                                           (str "<https://testmb.com/dashboard/"
                                                                dashboard-id
-                                                               "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021 | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                                                               "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
 
                     {:title           pulse.test-util/card-name
                      :rendered-info   {:attachments false, :content true, :render/text true},
                      :title_link      (str "https://testmb.com/question/" card-id)
                      :attachment-name "image.png"
-                     :channel-id      "FOO"
                      :fallback        pulse.test-util/card-name}]}
                   (pulse.test-util/thunk->boolean pulse-results)))))}})))
 
@@ -555,13 +551,12 @@
                      {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
                    {:type "section", :fields [{:type "mrkdwn",
                                                :text
-                                               #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\ \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
+                                               #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
 
                  {:title "Test card",
                   :rendered-info {:attachments false, :content true, :render/text true},
                   :title_link #"https://testmb.com/question/.+",
                   :attachment-name "image.png",
-                  :channel-id "FOO",
                   :fallback "Test card"}
                  {:blocks
                   [{:type "section",
@@ -965,14 +960,13 @@
                     [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
                      {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
                    {:type "section", :fields [{:type "mrkdwn"
-                                               :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021 \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
+                                               :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
 
                  {:blocks [{:type "section", :text {:type "mrkdwn", :text "*The first tab*"}}]}
                  {:title "Test card",
                   :rendered-info {:attachments false, :content true, :render/text true},
                   :title_link #"https://testmb.com/question/.+",
                   :attachment-name "image.png",
-                  :channel-id "FOO",
                   :fallback "Test card"}
                  {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 1 tab-1"}}]}
                  {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 2 tab-1"}}]}

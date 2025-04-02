@@ -18,12 +18,14 @@ import { FUNCTIONS, OPERATORS } from "./config";
 export function isExpression(expr: unknown): expr is Expression {
   return (
     isLiteral(expr) ||
+    isValue(expr) ||
     isOperator(expr) ||
     isFunction(expr) ||
     isDimension(expr) ||
     isMetric(expr) ||
     isSegment(expr) ||
-    isCaseOrIf(expr)
+    isCaseOrIf(expr) ||
+    isRawDimension(expr)
   );
 }
 
@@ -49,6 +51,10 @@ export function isBooleanLiteral(expr: unknown): expr is BooleanLiteral {
 
 export function isNumberLiteral(expr: unknown): expr is NumericLiteral {
   return typeof expr === "number";
+}
+
+export function isValue(expr: unknown) {
+  return Array.isArray(expr) && expr[0] === "value";
 }
 
 export function isOperator(expr: unknown): expr is CallExpression {
@@ -101,4 +107,17 @@ export function isCaseOrIf(expr: unknown): expr is CaseOrIfExpression {
 
 export function isOffset(expr: unknown): expr is OffsetExpression {
   return Array.isArray(expr) && expr[0] === "offset";
+}
+
+// RawDimension is only used internally while parsing an expression.
+// It can also be used in examples when there is no query to reference.
+export type RawDimension = ["dimension", string];
+
+// Matches internal dimension reference clause, for use in ie. examples.
+export function isRawDimension(expr: unknown): expr is RawDimension {
+  return (
+    Array.isArray(expr) &&
+    expr[0] === "dimension" &&
+    typeof expr[1] === "string"
+  );
 }

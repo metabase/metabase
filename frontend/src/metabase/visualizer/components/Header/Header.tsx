@@ -8,6 +8,7 @@ import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-h
 import {
   getCurrentVisualizerState,
   getIsDirty,
+  getIsRenderable,
   getVisualizationTitle,
 } from "metabase/visualizer/selectors";
 import {
@@ -21,19 +22,28 @@ import S from "./Header.module.css";
 interface HeaderProps {
   onSave?: (visualization: VisualizerHistoryItem) => void;
   saveLabel?: string;
+  allowSaveWhenPristine?: boolean;
+  className?: string;
 }
 
-export function Header({ onSave, saveLabel }: HeaderProps) {
+export function Header({
+  onSave,
+  saveLabel,
+  allowSaveWhenPristine = false,
+  className,
+}: HeaderProps) {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
-  const visualization = useSelector(getCurrentVisualizerState);
+  const visualizerState = useSelector(getCurrentVisualizerState);
+
   const isDirty = useSelector(getIsDirty);
+  const isRenderable = useSelector(getIsRenderable);
   const title = useSelector(getVisualizationTitle);
 
   const dispatch = useDispatch();
 
   const handleSave = () => {
-    onSave?.(visualization);
+    onSave?.(visualizerState);
   };
 
   const handleChangeTitle = useCallback(
@@ -43,8 +53,10 @@ export function Header({ onSave, saveLabel }: HeaderProps) {
     [dispatch],
   );
 
+  const saveButtonEnabled = isRenderable && (isDirty || allowSaveWhenPristine);
+
   return (
-    <Flex p="md" pb="sm" align="center">
+    <Flex p="md" pb="sm" align="center" className={className}>
       <ActionIcon onClick={() => dispatch(toggleFullscreenMode())}>
         <Icon name="sidebar_open" />
       </ActionIcon>
@@ -65,7 +77,11 @@ export function Header({ onSave, saveLabel }: HeaderProps) {
             <Icon name="chevronright" />
           </ActionIcon>
         </Tooltip>
-        <Button variant="filled" disabled={!isDirty} onClick={handleSave}>
+        <Button
+          variant="filled"
+          disabled={!saveButtonEnabled}
+          onClick={handleSave}
+        >
           {saveLabel ?? t`Add to dashboard`}
         </Button>
       </Flex>

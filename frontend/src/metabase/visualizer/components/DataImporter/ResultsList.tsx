@@ -1,4 +1,6 @@
-import { Box, Text } from "metabase/ui";
+import cx from "classnames";
+
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
@@ -10,6 +12,8 @@ export interface ResultsListProps {
   dataSourceIds: Set<VisualizerDataSourceId>;
 }
 
+import S from "./ResultsList.module.css";
+
 export const ResultsList = ({
   items,
   onSelect,
@@ -18,24 +22,29 @@ export const ResultsList = ({
   return (
     <Box component="ul">
       {items.map((item, index) => (
-        <Box
-          style={{
-            border: "1px solid var(--mb-color-border)",
-            borderRadius: 5,
-            cursor: "pointer",
-            backgroundColor: dataSourceIds.has(item.id)
-              ? "var(--mb-color-bg-light)"
-              : "transparent",
-          }}
+        <Flex
+          className={cx(S.resultItem, {
+            [S.resultItemSelected]: dataSourceIds.has(item.id),
+          })}
+          align="center"
           key={index}
           component="li"
-          px={14}
-          py={10}
-          mb={4}
+          px="sm"
+          py="sm"
+          mb="xs"
           onClick={() => onSelect?.(item)}
         >
-          <Text truncate>{item.name}</Text>
-        </Box>
+          <Icon
+            name="table2"
+            mr="xs"
+            style={{
+              flexShrink: 0,
+            }}
+          />
+          <Text size="md" truncate c="inherit">
+            {item.name}
+          </Text>
+        </Flex>
       ))}
     </Box>
   );

@@ -91,7 +91,10 @@ export const ParameterValueWidget = ({
           className={S.widgetStatus}
           highlighted={fieldHasValueOrFocus}
           status="reset"
-          onClick={() => setParameterValueToDefault?.(parameter.id)}
+          onClick={() => {
+            close();
+            setParameterValueToDefault?.(parameter.id);
+          }}
         />
       );
     }

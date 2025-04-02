@@ -50,6 +50,7 @@
            driver
            eid-translation
            integrations
+           internal-stats
            models
            premium-features
            public-settings
@@ -60,7 +61,8 @@
    :uses #{config driver legacy-mbql lib models sync util}}
 
   api
-  {:api #{metabase.api.cache
+  {:api #{metabase.api.auth
+          metabase.api.cache
           metabase.api.card
           metabase.api.collection
           metabase.api.common
@@ -193,11 +195,11 @@
            util}}
 
   eid-translation
-  {:api  #{metabase.eid-translation}
+  {:api  #{metabase.eid-translation.core}
    :uses #{}}
 
   embed
-  {:api  #{metabase.embed.settings}
+  {:api  #{metabase.embed.settings metabase.embed.app-origins-sdk}
    :uses #{analytics models premium-features tiles util}}
 
   events
@@ -215,6 +217,10 @@
   integrations
   {:api  #{metabase.integrations.slack}
    :uses #{events models util}}
+
+  internal-stats
+  {:api #{metabase.internal-stats}
+   :uses #{db models}}
 
   legacy-mbql
   {:api #{metabase.legacy-mbql.normalize
@@ -262,6 +268,10 @@
           metabase.lib.util.match
           metabase.lib.walk}
    :uses #{config driver legacy-mbql models types util}}
+
+  lib-be
+  {:api #{metabase.lib-be.init}
+   :uses #{models task util}}
 
   logger
   {:api  #{metabase.logger metabase.logger.init}
@@ -392,6 +402,10 @@
            metabase.permissions.util}
    :uses #{api audit config db models plugins premium-features request server util}}
 
+  pivot
+  {:api #{metabase.pivot.core}
+   :uses #{util models}}
+
   plugins
   {:api  #{metabase.plugins metabase.plugins.classloader}
    :uses #{config driver util}}
@@ -399,7 +413,7 @@
   premium-features
   {:api  #{metabase.premium-features.core
            metabase.premium-features.token-check}
-   :uses #{config db models plugins util}}
+   :uses #{config db internal-stats models plugins util}}
 
   public-settings
   {:api  #{metabase.public-settings}
@@ -473,6 +487,7 @@
            model-persistence
            models
            permissions
+           pivot
            premium-features
            public-settings
            request
@@ -512,10 +527,13 @@
           metabase.server.middleware.json
           metabase.server.middleware.session
           metabase.server.streaming-response}
-   :uses #{analytics api config core db driver models premium-features public-settings request util enterprise/sso}}
+   :uses #{analytics api config core db driver embed models premium-features public-settings session request util enterprise/sso}}
 
   session
-  {:api  #{metabase.session.api metabase.session.init metabase.session.models.session}
+  {:api  #{metabase.session.core
+           metabase.session.api
+           metabase.session.init
+           metabase.session.models.session}
    :uses #{api channel config db driver events login-history models public-settings request sso task util}}
 
   setup
@@ -603,8 +621,9 @@
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
            metabase-enterprise.advanced-config.models.pulse-channel
-           metabase-enterprise.advanced-config.file}
-   :uses #{api db driver models premium-features setup sync util}}
+           metabase-enterprise.advanced-config.file
+           metabase-enterprise.advanced-config.crufty}
+   :uses #{api db driver models permissions premium-features setup sync util}}
 
   enterprise/advanced-permissions
   {:api  #{metabase-enterprise.advanced-permissions.api.routes
@@ -664,6 +683,14 @@
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init}
    :uses #{models premium-features sso util enterprise/sso}}
+
+  enterprise/gsheets
+  {:api  #{metabase-enterprise.gsheets.api}
+   :uses #{api analytics enterprise/harbormaster models premium-features server util}}
+
+  enterprise/harbormaster
+  {:api #{metabase-enterprise.harbormaster.client}
+   :uses #{api cloud-migration models util}}
 
   enterprise/impersonation
   {:api #{metabase-enterprise.impersonation.core
@@ -738,7 +765,7 @@
 
   enterprise/upload-management
   {:api  #{metabase-enterprise.upload-management.api}
-   :uses #{api models upload util}}}
+   :uses #{api models premium-features upload util}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

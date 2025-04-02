@@ -140,7 +140,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.log("Make sure user is initially sandboxed");
         cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
           "have.length",
-          11,
+          10,
         );
 
         cy.log("Add filter to a question");
@@ -161,7 +161,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         });
         cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
           "have.length",
-          7,
+          6,
         );
       });
     });
@@ -173,13 +173,10 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           columnId: PEOPLE.ID,
           columnAssertion: Number(ATTRIBUTE_VALUE),
         });
-        cy.get(".test-TableInteractive-headerCellData").should(
-          "have.length",
-          4,
-        );
+        cy.findAllByTestId("header-cell").should("have.length", 4);
         cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
           "have.length",
-          2,
+          1,
         );
       });
     });
@@ -688,9 +685,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
 
-        cy.findByTestId("TableInteractive-root")
-          .findByText("Awesome Concrete Shoes")
-          .click();
+        H.tableInteractive().findByText("Awesome Concrete Shoes").click();
         H.popover()
           .findByText(/View details/i)
           .click();
@@ -1117,9 +1112,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       H.sidebar().findByText("Email this dashboard").should("exist");
 
       // test that user is sandboxed - normal users has over 2000 rows
-      H.getDashboardCards()
-        .findByText(/Rows 1-\d of 11/)
-        .should("exist");
+      H.getDashboardCard().within(() => {
+        H.assertTableRowsCount(11);
+      });
       H.assertDatasetReqIsSandboxed({
         requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
         columnId: ORDERS.USER_ID,
@@ -1223,9 +1218,10 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
         // test that user is sandboxed - normal users has over 2000 rows
-        H.getDashboardCards()
-          .findByText(/Rows 1-\d of 11/)
-          .should("exist");
+        H.getDashboardCard().within(() => {
+          H.assertTableRowsCount(11);
+        });
+
         H.assertDatasetReqIsSandboxed({
           requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
           columnId: ORDERS.USER_ID,

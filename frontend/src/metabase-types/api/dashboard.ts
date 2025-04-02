@@ -15,6 +15,7 @@ import type {
   UserId,
   VirtualCardDisplay,
 } from "metabase-types/api";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import type {
   ActionDisplayType,
@@ -153,6 +154,12 @@ export type QuestionDashboardCard = BaseDashboardCard & {
   card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: Card[];
+};
+
+export type VisualizerDashboardCard = QuestionDashboardCard & {
+  visualization_settings: BaseDashboardCard["visualization_settings"] & {
+    visualization: VisualizerHistoryItem;
+  };
 };
 
 export type VirtualDashboardCard = BaseDashboardCard & {

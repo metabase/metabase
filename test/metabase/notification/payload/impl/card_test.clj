@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.impl.card-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -74,7 +75,6 @@
                                                            :type "plain_text"}
                                                     :type "header"}]}
                                          {:attachment-name "image.png"
-                                          :channel-id "FOO"
                                           :fallback "Card notification test card",
                                           :rendered-info {:attachments false
                                                           :content true
@@ -129,7 +129,6 @@
                                                    :type "plain_text"}
                                             :type "header"}]}
                                  {:attachment-name "image.png"
-                                  :channel-id "FOO"
                                   :fallback "Card notification test card"
                                   :rendered-info {:attachments false :content true}
                                   :title "Card notification test card"}]
@@ -381,10 +380,10 @@
                 (get-in (notification/notification-payload notification)
                         [:payload :card_part :result])))]
       (testing "rasta has no permissions and will get error"
-        (let [rasta-result (payload! :rasta)]
-          (is (= 0 (:row_count rasta-result)))
-          (is (re-find #"You do not have permissions to view Card \d+"
-                       (:error rasta-result)))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You don't have permissions"
+             (payload! :rasta))))
       (testing "crowberto can see the card"
         (is (pos-int? (:row_count (payload! :crowberto))))))))
 
@@ -415,10 +414,76 @@
   (testing "should not send for archived cards"
     (notification.tu/with-card-notification
       [notification {:card     {:archived true}
-
                      :handlers [@notification.tu/default-email-handler]}]
       (notification.tu/test-send-notification!
        notification
        {:channel/email
         (fn [emails]
           (is (empty? emails)))}))))
+
+(deftest notification-with-invalid-card-should-fail-test
+  (testing "If the card is failed to execute, the notification should fail (#54495)"
+    (notification.tu/with-card-notification
+      [notification {:card     {:dataset_query (mt/native-query {:query "select 1/0"})}
+                     :handlers [@notification.tu/default-email-handler]}]
+      (t2/delete! :model/TaskHistory)
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Failed to execute card with error: Division by zero: " 1 ""
+           (#'notification.send/send-notification-sync! notification)))
+      (is (=? [{:status :failed
+                :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
+              (t2/select [:model/TaskHistory :status :task_details] :task "notification-send"
+                         {:order-by [[:started_at :asc]]}))))))
+
+(defn- email->attachment-line-count
+  [email]
+  (let [attachment (m/find-first #(= "text/csv" (:content-type %)) (:message email))]
+    (if attachment
+      (with-open [rdr (io/reader (:content attachment))]
+        (count (line-seq rdr)))
+      nil)))
+
+(deftest card-attachment-limit-test
+  (testing "#55522"
+    (testing "by default card attachment returns all rows"
+      (notification.tu/with-card-notification
+        [notification {:card     {:dataset_query (mt/mbql-query orders)}
+                       :handlers [@notification.tu/default-email-handler]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [emails]
+            (is (= 18761 (email->attachment-line-count (first emails)))))})))
+
+    (testing "respect attachment limit env if set"
+      (mt/with-temporary-setting-values [attachment-row-limit 10]
+        (notification.tu/with-card-notification
+          [notification {:card     {:dataset_query (mt/mbql-query orders)}
+                         :handlers [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [emails]
+              (is (= 11 (email->attachment-line-count (first emails)))))}))))
+
+    (testing "respect query limit if set"
+      (notification.tu/with-card-notification
+        [notification {:card     {:dataset_query (mt/mbql-query orders {:limit 10})}
+                       :handlers [@notification.tu/default-email-handler]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [emails]
+            (is (= 11 (email->attachment-line-count (first emails)))))})))
+
+    (testing "attachment limit env > query limit"
+      (mt/with-temporary-setting-values [attachment-row-limit 10]
+        (notification.tu/with-card-notification
+          [notification {:card     {:dataset_query (mt/mbql-query orders {:limit 20})}
+                         :handlers [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [emails]
+              (is (= 11 (email->attachment-line-count (first emails)))))}))))))

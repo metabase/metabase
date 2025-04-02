@@ -2,6 +2,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Stack, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
@@ -54,14 +55,16 @@ function PieMetricWell() {
 
   return (
     <Box mt="lg">
-      <Text>{t`Pie chart metric`}</Text>
+      <Text>{t`Metric`}</Text>
       <WellBox isHighlighted={isHighlighted} isOver={isOver} ref={setNodeRef}>
         <Stack>
-          <WellItem onRemove={metric && handleRemoveMetric}>
-            <Text>
-              {metric?.display_name ?? t`Drop your chart Metric here`}
-            </Text>
-          </WellItem>
+          {metric && (
+            <WellItem onRemove={metric && handleRemoveMetric}>
+              <Ellipsified style={{ flex: 1 }}>
+                {metric.display_name}
+              </Ellipsified>
+            </WellItem>
+          )}
         </Stack>
       </WellBox>
     </Box>
@@ -95,22 +98,20 @@ function PieDimensionWell() {
 
   return (
     <Box mt="lg">
-      <Text>{t`Pie chart dimensions`}</Text>
+      <Text>{t`Dimensions`}</Text>
       <WellBox isHighlighted={isHighlighted} isOver={isOver} ref={setNodeRef}>
-        {dimensions.length > 0 ? (
-          <Stack>
-            {dimensions.map(dimension => (
-              <WellItem
-                key={dimension.id}
-                onRemove={() => handleRemoveDimension(dimension)}
-              >
+        <Stack>
+          {dimensions.map(dimension => (
+            <WellItem
+              key={dimension.id}
+              onRemove={() => handleRemoveDimension(dimension)}
+            >
+              <Ellipsified style={{ flex: 1 }}>
                 {dimension.display_name}
-              </WellItem>
-            ))}
-          </Stack>
-        ) : (
-          <Text>{t`Drop your chart Dimensions here`}</Text>
-        )}
+              </Ellipsified>
+            </WellItem>
+          ))}
+        </Stack>
       </WellBox>
     </Box>
   );

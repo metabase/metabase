@@ -46,10 +46,8 @@ describe("issue 19180", () => {
           cy.visit(`/model/${QUESTION_ID}/query`);
           cy.wait("@cardQuery");
           cy.button("Cancel").click();
-          cy.get(".test-TableInteractive");
-          cy.findByText("Here's where your results will appear").should(
-            "not.exist",
-          );
+          H.tableInteractive();
+          cy.findByText("Query results will appear here.").should("not.exist");
         },
       );
     });
@@ -88,8 +86,9 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
+    cy.findByLabelText("Navigation bar").within(() => {
+      cy.findByText("New").click();
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
@@ -111,8 +110,9 @@ describe("issue 19737", () => {
     // Close the modal so the next time we move the model another model will always be shown
     cy.icon("close:visible").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
+    cy.findByLabelText("Navigation bar").within(() => {
+      cy.findByText("New").click();
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
@@ -135,14 +135,16 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
+    cy.findByLabelText("Navigation bar").within(() => {
+      cy.findByText("New").click();
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("First collection").should("not.exist");
-      H.entityPickerModalLevel(1).should("not.exist");
+      H.entityPickerModalLevel(1).should("exist");
       H.entityPickerModalLevel(2).should("not.exist");
     });
   });
@@ -355,7 +357,7 @@ describe("issue 20963", () => {
 
     // Creat a snippet
     cy.icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
@@ -604,14 +606,12 @@ describe("filtering based on the remapped column name should result in a correct
 
   it("when done through the filter trigger (metabase#22715-2)", () => {
     H.filter();
-
-    H.modal().within(() => {
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
       cy.findByText("Today").click();
-      cy.findByText("Apply filters").click();
     });
-
+    H.runButtonOverlay().click();
     cy.wait("@dataset");
-
     cy.get("[data-testid=cell-data]")
       .should("have.length", 4)
       .and("contain", "Created At");
@@ -949,10 +949,12 @@ describe("issue 28971", () => {
     cy.wait("@createCard");
 
     H.filter();
-    H.filterField("Quantity", { operator: "equal to" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    H.filterFieldPopover("Quantity").within(() => cy.findByText("20").click());
-    cy.button("Apply filters").click();
+    H.popover().within(() => {
+      cy.findByText("Quantity").click();
+      cy.findByText("20").click();
+      cy.button("Add filter").click();
+    });
+    H.runButtonOverlay().click();
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 20").should("exist");
@@ -988,10 +990,12 @@ describe("issue 28971", () => {
     cy.wait("@createCard");
 
     H.filter();
-    H.filterField("Quantity", { operator: "equal to" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    H.filterFieldPopover("Quantity").within(() => cy.findByText("20").click());
-    cy.button("Apply filters").click();
+    H.popover().within(() => {
+      cy.findByText("Quantity").click();
+      cy.findByText("20").click();
+      cy.button("Add filter").click();
+    });
+    H.runButtonOverlay().click();
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 20").should("exist");
@@ -1371,6 +1375,65 @@ describe("issue 53556 - nested question based on native model with remapped valu
   });
 });
 
+describe("issue 54108 - nested question broken out by day", () => {
+  const questionDetails = {
+    name: "54108 base",
+    type: "question",
+    native: {
+      query: "select ID, CREATED_AT from ORDERS",
+      "template-tags": {},
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      H.createQuestion(
+        {
+          type: "question",
+          name: "54108",
+          query: {
+            "source-table": `card__${id}`,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                "CREATED_AT",
+                { "temporal-unit": "day", "base-type": "type/Date" },
+              ],
+            ],
+          },
+          display: "line",
+        },
+        {
+          wrapId: true,
+          idAlias: "nestedQuestionId",
+        },
+      );
+    });
+  });
+
+  it("drill-through should work (metabase#54108)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    H.visitQuestion("@nestedQuestionId");
+
+    // We can click on any circle; this index was chosen randomly
+    H.cartesianChartCircle().eq(500).click({ force: true });
+    H.popover()
+      .findByText(/^See these/)
+      .click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("qb-filters-panel").findByText(
+      "CREATED_AT is Oct 11, 2023",
+    );
+
+    H.assertQueryBuilderRowCount(6);
+  });
+});
+
 describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
   const questionDetails = {
     name: "29951",
@@ -1389,15 +1452,6 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
       .findByText(name)
       .findByLabelText("close icon")
       .click();
-  };
-
-  const dragColumn = (index, distance) => {
-    cy.get(".react-draggable")
-      .should("have.length", 20) // 10 columns X 2 draggable elements
-      .eq(index)
-      .trigger("mousedown", 0, 0, { force: true })
-      .trigger("mousemove", distance, 0, { force: true })
-      .trigger("mouseup", distance, 0, { force: true });
   };
 
   beforeEach(() => {
@@ -1419,8 +1473,9 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
 
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
+    H.tableHeaderColumn("ID").as("idHeader");
+    H.moveDnDKitElementByAlias("@idHeader", { horizontal: 100 });
 
-    dragColumn(0, 100);
     cy.findByTestId("qb-header").button("Refresh").click();
     cy.wait("@dataset");
     cy.get("[data-testid=cell-data]").should("contain", "37.65");
@@ -1532,17 +1587,17 @@ describe("issue 31663", () => {
     cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Edit metadata").click();
 
-    cy.findByTestId("TableInteractive-root").findByText("Product ID").click();
+    H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
-    cy.findByLabelText("Foreign key target").click();
+    cy.findByPlaceholderText("Select a target").click();
     H.popover().within(() => {
       cy.findByText("Orders Model → ID").should("not.exist");
       cy.findByText("Products Model → ID").should("not.exist");
 
-      cy.findByText("Orders → ID").should("exist");
-      cy.findByText("People → ID").should("exist");
-      cy.findByText("Products → ID").should("exist");
-      cy.findByText("Reviews → ID").should("exist");
+      cy.findByText("Orders → ID").should("be.visible");
+      cy.findByText("People → ID").should("be.visible");
+      cy.findByText("Products → ID").should("be.visible");
+      cy.findByText("Reviews → ID").should("be.visible");
     });
   });
 });
@@ -2068,14 +2123,16 @@ describe("cumulative count - issue 33330", () => {
   });
 
   it("should still work after applying a post-aggregation filter (metabase#33330-2)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
     H.filter();
-    cy.findByRole("dialog").within(() => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.findByTestId("filter-column-Created At").findByText("Today").click();
-      cy.button("Apply filters").click();
-      cy.wait("@dataset");
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.findByText("Today").click();
     });
+    H.runButtonOverlay().click();
+    cy.wait("@dataset");
 
+    H.queryBuilderHeader().findByLabelText("Show filters").click();
     cy.findByTestId("filter-pill").should("have.text", "Created At is today");
     cy.findAllByTestId("header-cell")
       .should("contain", "Created At: Month")

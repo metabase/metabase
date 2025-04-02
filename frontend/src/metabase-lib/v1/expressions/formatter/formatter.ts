@@ -1,6 +1,7 @@
 import type { AstPath, Doc, ParserOptions, Plugin } from "prettier";
 import { builders } from "prettier/doc";
 import { format as pformat } from "prettier/standalone";
+import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
@@ -24,10 +25,16 @@ import {
 } from "../config";
 import {
   formatDimensionName,
+  formatIdentifier,
   formatMetricName,
   formatSegmentName,
 } from "../identifier";
-import { isFunction, isOperator, isOptionsObject } from "../matchers";
+import {
+  type RawDimension,
+  isFunction,
+  isOperator,
+  isOptionsObject,
+} from "../matchers";
 import { formatStringLiteral } from "../string";
 
 import { pathMatchers as check } from "./utils";
@@ -50,10 +57,28 @@ export async function format(expression: Expression, options: FormatOptions) {
   });
 }
 
+export type FormatExampleOptions = {
+  printWidth?: number;
+  quotes?: typeof EDITOR_QUOTES;
+};
+
+export async function formatExample(
+  expression: Expression,
+  options: FormatExampleOptions = {},
+) {
+  return pformat(JSON.stringify(expression), {
+    parser: PRETTIER_PLUGIN_NAME,
+    plugins: [plugin(options)],
+    printWidth: options.printWidth ?? 80,
+  });
+}
+
 const PRETTIER_PLUGIN_NAME = "custom-expression";
 
 // Set up a prettier plugin that formats expressions
-function plugin(options: FormatOptions): Plugin<ExpressionNode> {
+function plugin(
+  options: FormatOptions | FormatExampleOptions,
+): Plugin<ExpressionNode> {
   return {
     languages: [
       {
@@ -114,6 +139,8 @@ function print(
     return formatBooleanLiteral(path.node);
   } else if (check.isStringLiteral(path)) {
     return formatStringLiteral(path.node, options.extra);
+  } else if (check.isValue(path)) {
+    return formatValue(path, print);
   } else if (check.isOperator(path)) {
     return formatOperator(path, print);
   } else if (check.isOffset(path)) {
@@ -128,6 +155,8 @@ function print(
     return formatSegment(path, options.extra);
   } else if (check.isCaseOrIf(path)) {
     return formatCaseOrIf(path, print);
+  } else if (check.isRawDimension(path)) {
+    return formatDimensionReference(path);
   } else if (check.isOptionsObject(path)) {
     return "";
   }
@@ -163,7 +192,7 @@ function formatDimension(
 
   const column = columns[columnIndex];
   if (!column) {
-    return "";
+    return formatIdentifier(t`Unknown Field`, options);
   }
 
   const info = Lib.displayInfo(query, stageIndex, column);
@@ -185,7 +214,7 @@ function formatMetric(path: AstPath<MetricAgg>, options: FormatOptions): Doc {
   });
 
   if (!metric) {
-    throw new Error(`metric with ID: ${metricId} does not exist`);
+    return formatIdentifier(t`Unknown Metric`, options);
   }
 
   const displayInfo = Lib.displayInfo(query, stageIndex, metric);
@@ -211,7 +240,7 @@ function formatSegment(path: AstPath<SegmentFilter>, options: FormatOptions) {
   });
 
   if (!segment) {
-    throw new Error(`segment with ID does not exist: ${segmentId}`);
+    return formatIdentifier(t`Unknown Segment`, options);
   }
 
   const displayInfo = Lib.displayInfo(query, stageIndex, segment);
@@ -289,6 +318,15 @@ function formatFunction(path: AstPath<CallExpression>, print: Print): Doc {
   }
 
   return formatCallExpression(name, args);
+}
+
+function formatValue(path: AstPath<CallExpression>, print: Print): Doc {
+  const { node } = path;
+  if (!Array.isArray(node)) {
+    throw new Error("Expected array");
+  }
+
+  return recurse(path, print, path.node[1]);
 }
 
 function formatOperator(path: AstPath<CallExpression>, print: Print): Doc {
@@ -471,4 +509,8 @@ function formatCallExpression(callee: string, args: Doc[]): Doc {
     softline,
     ")",
   ]);
+}
+
+function formatDimensionReference(path: AstPath<RawDimension>) {
+  return formatIdentifier(path.node[1]);
 }
