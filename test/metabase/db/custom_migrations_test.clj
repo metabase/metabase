@@ -78,7 +78,7 @@
       (is (= (sort versions)
              versions)))))
 
-(jobs/defjob AbandonmentEmail [_] :default)
+(task/defjob AbandonmentEmail [_] :default)
 
 (defn- table-default [table]
   (letfn [(with-timestamped [props]
