@@ -34,6 +34,11 @@ import {
 
 import { MetricsTable } from "./MetricsTable";
 import type { MetricFilterSettings, MetricResult } from "./types";
+import { mode } from "d3-array";
+import { filters } from "dc";
+import { ContentTranslationProvider } from "metabase/i18n/components/ContentTranslationContext";
+import { data } from "metabase/static-viz/components/ComboChart/stories-data";
+import url from "postcss-url";
 
 const {
   contentVerificationEnabled,
@@ -50,54 +55,56 @@ export function BrowseMetrics() {
   const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
 
   return (
-    <BrowseContainer aria-labelledby={titleId}>
-      <BrowseHeader role="heading" data-testid="browse-metrics-header">
-        <BrowseSection>
-          <Flex
-            w="100%"
-            h="2.25rem"
-            direction="row"
-            justify="space-between"
-            align="center"
-          >
-            <Title order={1} c="text-dark" id={titleId}>
-              <Group gap="sm">
-                <Icon
-                  size={24}
-                  color="var(--mb-color-icon-primary)"
-                  name="metric"
+    <ContentTranslationProvider>
+      <BrowseContainer aria-labelledby={titleId}>
+        <BrowseHeader role="heading" data-testid="browse-metrics-header">
+          <BrowseSection>
+            <Flex
+              w="100%"
+              h="2.25rem"
+              direction="row"
+              justify="space-between"
+              align="center"
+            >
+              <Title order={1} c="text-dark" id={titleId}>
+                <Group gap="sm">
+                  <Icon
+                    size={24}
+                    color="var(--mb-color-icon-primary)"
+                    name="metric"
+                  />
+                  {t`Metrics`}
+                </Group>
+              </Title>
+              {hasVerifiedMetrics && (
+                <MetricFilterControls
+                  metricFilters={metricFilters}
+                  setMetricFilters={setMetricFilters}
                 />
-                {t`Metrics`}
-              </Group>
-            </Title>
-            {hasVerifiedMetrics && (
-              <MetricFilterControls
-                metricFilters={metricFilters}
-                setMetricFilters={setMetricFilters}
-              />
-            )}
-          </Flex>
-        </BrowseSection>
-      </BrowseHeader>
-      <BrowseMain>
-        <BrowseSection>
-          <Stack mb="lg" gap="md" w="100%">
-            {isEmpty ? (
-              <MetricsEmptyState />
-            ) : (
-              <DelayedLoadingAndErrorWrapper
-                error={error}
-                loading={isLoading}
-                style={{ flex: 1 }}
-                loader={<MetricsTable skeleton />}
-              >
-                <MetricsTable metrics={metrics} />
-              </DelayedLoadingAndErrorWrapper>
-            )}
-          </Stack>
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+              )}
+            </Flex>
+          </BrowseSection>
+        </BrowseHeader>
+        <BrowseMain>
+          <BrowseSection>
+            <Stack mb="lg" gap="md" w="100%">
+              {isEmpty ? (
+                <MetricsEmptyState />
+              ) : (
+                <DelayedLoadingAndErrorWrapper
+                  error={error}
+                  loading={isLoading}
+                  style={{ flex: 1 }}
+                  loader={<MetricsTable skeleton />}
+                >
+                  <MetricsTable metrics={metrics} />
+                </DelayedLoadingAndErrorWrapper>
+              )}
+            </Stack>
+          </BrowseSection>
+        </BrowseMain>
+      </BrowseContainer>
+    </ContentTranslationProvider>
   );
 }
 

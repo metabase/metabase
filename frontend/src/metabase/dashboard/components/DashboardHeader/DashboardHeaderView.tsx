@@ -31,7 +31,11 @@ import type {
   DashboardNightModeControls,
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
-import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
+import {
+  useTranslateContent,
+  useTranslateContent2,
+  useTranslateContent2,
+} from "metabase/i18n/components/ContentTranslationContext";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -160,8 +164,8 @@ export function DashboardHeaderView({
     return () => clearTimeout(timerId);
   }, [isLastEditInfoVisible]);
 
-  const tc = useTranslateContent();
-  const translatedName = tc(dashboard, "name");
+  const tc = useTranslateContent2();
+  const translatedName = tc(dashboard.name);
 
   return (
     <div>
