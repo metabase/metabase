@@ -1,8 +1,10 @@
 (ns metabase.query-processor.middleware.update-used-cards-test
   (:require
+   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
+   [metabase.db :as mdb]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.send-test :as pulse.send-test]
@@ -11,6 +13,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -117,3 +120,19 @@
                  (-> (t2/select-one-fn :last_used_at :model/Card card-id-1)
                      t/offset-date-time
                      (.withNano 0)))))))))
+
+(deftest with-cluster-locking-test
+  ;; this only works on postgres
+  (when (= (mdb/db-type) #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres)
+    (testing "cluster locking test error if lock is not released"
+      (let [fin-chan (a/chan)]
+        (future (#'qp.update-used-cards/do-with-cluster-lock ::test-lock #(a/<!! fin-chan)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Failed to run statement with cluster lock"
+             (#'qp.update-used-cards/do-with-cluster-lock ::test-lock #(Thread/sleep 1))))
+        (a/>!! fin-chan :done)))
+    (testing "cluster locking test error if lock is released"
+      (let [fin-chan (a/chan)]
+        (future (#'qp.update-used-cards/do-with-cluster-lock ::test-lock #(a/<!! fin-chan)))
+        (future (do (Thread/sleep 1000) (a/>!! fin-chan :done)))
+        (is (nil? (#'qp.update-used-cards/do-with-cluster-lock ::test-lock #(Thread/sleep 1))))))))
