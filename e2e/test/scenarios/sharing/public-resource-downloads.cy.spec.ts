@@ -68,7 +68,6 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByText("Export as PDF").should("not.exist");
-        H.showDashboardCardActions();
         H.getDashboardCardMenu().should("exist");
       });
 
@@ -77,7 +76,6 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByText("Export as PDF").should("exist");
-        H.showDashboardCardActions();
         H.getDashboardCardMenu().should("exist");
       });
 
@@ -86,7 +84,6 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByText("Export as PDF").should("exist");
-        H.showDashboardCardActions();
         H.getDashboardCardMenu().should("exist");
       });
 
@@ -95,7 +92,6 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByText("Export as PDF").should("exist");
-        H.showDashboardCardActions();
         H.getDashboardCardMenu().should("exist");
       });
 
