@@ -10,7 +10,7 @@ type EmbedFlowAppearance = {
   bordered?: boolean;
   theme?: string;
   font?: string;
-  downloads?: string | boolean | null;
+  downloads?: boolean | null;
   hide_download_button?: boolean | null;
 };
 
