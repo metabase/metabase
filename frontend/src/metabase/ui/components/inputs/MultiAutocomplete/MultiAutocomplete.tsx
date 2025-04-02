@@ -18,7 +18,7 @@ export type MultiAutocompleteProps = {
 };
 
 export function MultiAutocomplete({
-  values: effectiveValues,
+  values,
   options,
   placeholder,
   shouldCreate = defaultShouldCreate,
@@ -26,6 +26,80 @@ export function MultiAutocomplete({
   onChange,
 }: MultiAutocompleteProps) {
   const combobox = useCombobox();
+  const {
+    visibleValues,
+    fieldValue,
+    editValueIndex,
+    handleFieldChange,
+    handleFieldFocus,
+    handleFieldBlur,
+    handlePillDoubleClick,
+    handlePillRemoveClick,
+  } = useMultiAutocomplete({ values, shouldCreate, onChange });
+
+  const field = (
+    <Combobox.EventsTarget>
+      <PillsInput.Field
+        value={fieldValue}
+        placeholder={placeholder}
+        autoFocus={autoFocus || editValueIndex != null}
+        onChange={handleFieldChange}
+        onFocus={handleFieldFocus}
+        onBlur={handleFieldBlur}
+      />
+    </Combobox.EventsTarget>
+  );
+
+  return (
+    <Combobox store={combobox}>
+      <Combobox.DropdownTarget>
+        <PillsInput>
+          <Pill.Group>
+            {visibleValues.map((value, valueIndex) =>
+              editValueIndex === valueIndex ? (
+                field
+              ) : (
+                <Pill
+                  key={valueIndex}
+                  withRemoveButton
+                  onDoubleClick={() => handlePillDoubleClick(valueIndex)}
+                  onRemove={() => handlePillRemoveClick(valueIndex)}
+                >
+                  {value}
+                </Pill>
+              ),
+            )}
+            {editValueIndex == null && field}
+          </Pill.Group>
+        </PillsInput>
+      </Combobox.DropdownTarget>
+      <OptionsDropdown
+        data={options}
+        filter={undefined}
+        search={undefined}
+        limit={undefined}
+        withScrollArea={undefined}
+        maxDropdownHeight={undefined}
+        unstyled={false}
+        labelId={undefined}
+        aria-label={undefined}
+        scrollAreaProps={undefined}
+      />
+    </Combobox>
+  );
+}
+
+type UseMultiAutocompleteProps = {
+  values: string[];
+  shouldCreate: (newValue: string) => boolean;
+  onChange: (newValues: string[]) => void;
+};
+
+function useMultiAutocomplete({
+  values: effectiveValues,
+  shouldCreate,
+  onChange,
+}: UseMultiAutocompleteProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [pillValues, setPillValues] = useState<string[]>([]);
   const [fieldValue, setFieldValue] = useState("");
@@ -67,7 +141,7 @@ export function MultiAutocomplete({
     setEditValueIndex(valueIndex);
   };
 
-  const handlePillRemove = (valueIndex: number) => {
+  const handlePillRemoveClick = (valueIndex: number) => {
     const newValues = [...effectiveValues];
     const removeValueIndex =
       editValueIndex != null &&
@@ -82,56 +156,16 @@ export function MultiAutocomplete({
     setEditValueIndex(undefined);
   };
 
-  const field = (
-    <Combobox.EventsTarget>
-      <PillsInput.Field
-        value={fieldValue}
-        placeholder={placeholder}
-        autoFocus={autoFocus || editValueIndex != null}
-        onChange={handleFieldChange}
-        onFocus={handleFieldFocus}
-        onBlur={handleFieldBlur}
-      />
-    </Combobox.EventsTarget>
-  );
-
-  return (
-    <Combobox store={combobox}>
-      <Combobox.DropdownTarget>
-        <PillsInput>
-          <Pill.Group>
-            {visibleValues.map((value, valueIndex) =>
-              editValueIndex === valueIndex ? (
-                field
-              ) : (
-                <Pill
-                  key={valueIndex}
-                  withRemoveButton
-                  onDoubleClick={() => handlePillDoubleClick(valueIndex)}
-                  onRemove={() => handlePillRemove(valueIndex)}
-                >
-                  {value}
-                </Pill>
-              ),
-            )}
-            {editValueIndex == null && field}
-          </Pill.Group>
-        </PillsInput>
-      </Combobox.DropdownTarget>
-      <OptionsDropdown
-        data={options}
-        filter={undefined}
-        search={undefined}
-        limit={undefined}
-        withScrollArea={undefined}
-        maxDropdownHeight={undefined}
-        unstyled={false}
-        labelId={undefined}
-        aria-label={undefined}
-        scrollAreaProps={undefined}
-      />
-    </Combobox>
-  );
+  return {
+    visibleValues,
+    fieldValue,
+    editValueIndex,
+    handleFieldChange,
+    handleFieldFocus,
+    handleFieldBlur,
+    handlePillDoubleClick,
+    handlePillRemoveClick,
+  };
 }
 
 function defaultShouldCreate(value: string) {
