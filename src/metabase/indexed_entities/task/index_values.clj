@@ -49,7 +49,7 @@
           (t2/delete! :model/ModelIndex model-index-id)))
       (model-index/add-values! model-index))))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Refresh model indexed columns"}
   ModelIndexRefresh [job-context]
   (let [{:strs [model-index-id]} (qc/from-job-data job-context)]
