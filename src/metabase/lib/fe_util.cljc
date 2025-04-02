@@ -86,7 +86,6 @@
                     fmt.date/date->iso-string)]
     (into [:between options column-arg] (map formatter) interval)))
 
-
 ;; HACK: This is a hack to make sure that the display name of an unknown field
 ;; is "Unknown Field" instead of it's id.
 (defn- set-display-name-for-unknown-field
