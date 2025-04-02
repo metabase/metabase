@@ -194,10 +194,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (define-migration DeleteAbandonmentEmailTask
-  (define-migration DeleteTruncateAuditLogTask
-    (custom-migrations.util/with-temp-schedule! [scheduler]
-      (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
-      (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job")))))
+  (custom-migrations.util/with-temp-schedule! [scheduler]
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))))
 
 (define-migration FillJSONUnfoldingDefault
   (let [db-ids-to-not-update (->> (t2/query {:select [:id :details]
