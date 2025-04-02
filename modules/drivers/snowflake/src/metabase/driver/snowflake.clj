@@ -57,7 +57,10 @@
                               :datetime-diff                          true
                               :identifiers-with-spaces                true
                               :describe-fields                        true
-                              :cast                                   true
+                              :expressions/text                       true
+                              :expressions/integer                    true
+                              :expressions/date                       true
+                              :split-part                             true
                               :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
@@ -452,6 +455,10 @@
   [driver [_ arg]]
   ;; BIGINT is an alias for NUMBER
   (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:snowflake :split-part]
+  [driver [_ text divider position]]
+  [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but

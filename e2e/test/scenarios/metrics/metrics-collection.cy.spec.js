@@ -94,36 +94,50 @@ describe("scenarios > metrics > collection", () => {
       .should("not.exist");
   });
 
-  it("should be possible to add and remove a metric from bookmarks", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
-    H.createQuestion({
-      ...ORDERS_TIMESERIES_METRIC,
-      collection_position: null,
-    });
-    cy.visit("/collection/root");
+  it(
+    "should be possible to add and remove a metric from bookmarks",
+    { tags: "@flaky" },
+    () => {
+      H.createQuestion(ORDERS_SCALAR_METRIC);
+      H.createQuestion({
+        ...ORDERS_TIMESERIES_METRIC,
+        collection_position: null,
+      });
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
-    H.popover().findByText("Bookmark").click();
-    H.navigationSidebar()
-      .findByText(ORDERS_SCALAR_METRIC.name)
-      .should("be.visible");
-    H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
-    H.popover().findByText("Remove from bookmarks").click();
-    H.navigationSidebar()
-      .findByText(ORDERS_SCALAR_METRIC.name)
-      .should("not.exist");
+      cy.visit("/collection/root");
 
-    H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
-    H.popover().findByText("Bookmark").click();
-    H.navigationSidebar()
-      .findByText(ORDERS_TIMESERIES_METRIC.name)
-      .should("be.visible");
-    H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
-    H.popover().findByText("Remove from bookmarks").click();
-    H.navigationSidebar()
-      .findByText(ORDERS_TIMESERIES_METRIC.name)
-      .should("not.exist");
-  });
+      cy.wait("@cardQuery");
+      H.getPinnedSection().should("contain", "18,760");
+      H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+
+      H.popover().findByText("Bookmark").click();
+      H.navigationSidebar()
+        .findByText(ORDERS_SCALAR_METRIC.name)
+        .should("be.visible");
+
+      cy.log("pinned card should 'blink' to load and later show the data");
+      cy.wait("@cardQuery");
+      H.getPinnedSection().should("contain", "18,760");
+
+      H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+      H.popover().findByText("Remove from bookmarks").click();
+      H.navigationSidebar()
+        .findByText(ORDERS_SCALAR_METRIC.name)
+        .should("not.exist");
+
+      H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+      H.popover().findByText("Bookmark").click();
+      H.navigationSidebar()
+        .findByText(ORDERS_TIMESERIES_METRIC.name)
+        .should("be.visible");
+      H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+      H.popover().findByText("Remove from bookmarks").click();
+      H.navigationSidebar()
+        .findByText(ORDERS_TIMESERIES_METRIC.name)
+        .should("not.exist");
+    },
+  );
 
   it("should be possible to hide the visualization for a pinned metric", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);

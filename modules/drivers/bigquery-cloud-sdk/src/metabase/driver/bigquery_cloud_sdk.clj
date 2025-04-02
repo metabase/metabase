@@ -670,7 +670,10 @@
                               :percentile-aggregations  true
                               :metadata/key-constraints false
                               :identifiers-with-spaces  true
-                              :cast                     true
+                              :expressions/text         true
+                              :expressions/integer      true
+                              :expressions/date         true
+                              :split-part               true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and

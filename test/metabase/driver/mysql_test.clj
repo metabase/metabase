@@ -815,4 +815,3 @@
             (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type)
                         (map #(get {"TIMESTAMP" "DATETIME"} % %)))
                    (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))
-
