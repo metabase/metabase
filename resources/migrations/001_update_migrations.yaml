@@ -11022,7 +11022,7 @@ databaseChangeLog:
             indexName: idx_report_card_card_schema
 
   - changeSet:
-      id: v54.2025-03-15T11:00:00
+      id: v55.2025-04-02T11:00:00
       author: rafpaf
       comment: 'Content translation table'
       preConditions:
