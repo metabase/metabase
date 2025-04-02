@@ -165,6 +165,13 @@ H.describeWithSnowplowEE(
         cy.signOut();
       });
 
+      it("#downloads=results should enable result downloads", () => {
+        cy.visit(`${publicLink}#downloads=results`);
+        waitLoading();
+
+        cy.findByTestId("download-button").should("exist");
+      });
+
       it("#downloads=false should disable result downloads", () => {
         cy.visit(`${publicLink}#downloads=false`);
         waitLoading();
