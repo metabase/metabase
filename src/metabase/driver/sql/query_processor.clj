@@ -646,6 +646,9 @@
                [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
                (cast-temporal-byte driver coercion-strategy honeysql-form)
 
+               [:type/Text (:isa? :Coercion/String->Float)]
+               (->float driver honeysql-form)
+
                :else honeysql-form)
       (when-not (= <> honeysql-form)
         (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
