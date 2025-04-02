@@ -118,7 +118,6 @@ function useMultiAutocomplete({
     const newValues = pillValues.concat(parsedValues);
     const newPillValues = isMultiValue || isDelimiter ? newValues : pillValues;
     const newFieldValue = isMultiValue || isDelimiter ? "" : newValue;
-
     onChange(newValues);
     setPillValues(newPillValues);
     setFieldValue(newFieldValue);
