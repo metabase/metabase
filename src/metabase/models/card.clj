@@ -557,9 +557,9 @@
                      (case (some-> (:type card) name)
                        nil false
                        "question" false
-                       ;; allow editables
-                       ;; TODO there may be other places in the dashboard-question code paths that break with models
-                       "model" (= "editable-table" (:display card))
+                       ;; We support "editables", a special case of "enhanced tables"
+                       ;; TODO there may be other places to relax in dashboard-question code
+                       "model" (not= "table-editable" (:display card))
                        true)
                      (some? (:collection_position card)))]
     (when invalid?
