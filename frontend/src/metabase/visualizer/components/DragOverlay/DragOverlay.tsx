@@ -5,7 +5,7 @@ import {
 } from "metabase/visualizer/utils";
 import type { DraggedItem } from "metabase-types/store/visualizer";
 
-import { ColumnListItem } from "../DataManager";
+import { ColumnListItem } from "../DatasetList/ColumnListItem";
 import { WellItem } from "../VisualizationCanvas/WellItem";
 
 interface DragOverlayProps {

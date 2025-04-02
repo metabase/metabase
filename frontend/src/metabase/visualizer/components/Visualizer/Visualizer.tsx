@@ -6,13 +6,11 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
-import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect } from "react";
 import { usePrevious, useUnmount } from "react-use";
-import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Button, Flex, Icon, Title } from "metabase/ui";
+import { Box } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import {
@@ -38,7 +36,6 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
-import { DataManager } from "../DataManager";
 import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";
 import { Footer } from "../Footer";
 import { Header } from "../Header";
@@ -162,8 +159,6 @@ export const Visualizer = (props: VisualizerProps) => {
     .filter(Boolean)
     .join(" ");
 
-  const [dataImporterOpen, handlers] = useDisclosure(false);
-
   return (
     <DndContext
       sensors={[canvasSensor]}
@@ -181,41 +176,7 @@ export const Visualizer = (props: VisualizerProps) => {
       <Box className={classNames}>
         {/* left side bar */}
         <Box className={S.dataSidebar}>
-          {dataImporterOpen ? (
-            <Flex direction="column" miw={320} h="100%">
-              <Box p="md" h="100%">
-                <Flex align="center">
-                  <Title order={4} mb="xs">{t`Add data`}</Title>
-                  <Button
-                    size="xs"
-                    variant="transparent"
-                    ml="auto"
-                    onClick={() => handlers.toggle()}
-                  >{t`Done`}</Button>
-                </Flex>
-                <DataImporter />
-              </Box>
-            </Flex>
-          ) : (
-            <Flex direction="column" miw={320} p="md" h="100%">
-              <Flex align="center">
-                <Box px={12} py={8}>
-                  <Title order={4}>{t`Manage data`}</Title>
-                </Box>
-
-                <Button
-                  variant="transparent"
-                  leftSection={<Icon name="add" />}
-                  aria-label={t`Add more data`}
-                  onClick={() => handlers.toggle()}
-                  ml="auto"
-                >
-                  {t`Add more data`}
-                </Button>
-              </Flex>
-              <DataManager />
-            </Flex>
-          )}
+          <DataImporter />
         </Box>
 
         {/* top header bar */}

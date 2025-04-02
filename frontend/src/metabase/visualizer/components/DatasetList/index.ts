@@ -1,2 +1,2 @@
 export * from "./ColumnListItem";
-export * from "./DataManager";
+export * from "./DatasetList";
