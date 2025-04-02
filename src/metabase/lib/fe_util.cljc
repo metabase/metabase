@@ -175,7 +175,7 @@
 (mu/defn expression-parts :- [:or ExpressionArg ExpressionParts]
   "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
   ([query value]
-   (expression-parts-method query -1 value))
+   (expression-parts query -1 value))
 
   ([query :- ::lib.schema/query
     stage-index :- :int
