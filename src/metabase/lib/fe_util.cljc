@@ -107,10 +107,9 @@
 ;; HACK: This is a hack to make sure that the display name of an unknown field
 ;; is "Unknown Field" instead of it's id.
 (defn- set-display-name-for-unknown-field
-  [metadata]
-  (if (and (nil? (:id metadata)) (nil? (:lib/expression-name metadata)))
-    (assoc metadata :display-name (i18n/tru "Unknown Field"))
-    metadata))
+  [{:keys [id lib/expression-name] :as metadata}]
+  (cond-> metadata
+    (not (or id expression-name)) (assoc :display-name (i18n/tru "Unknown Field"))))
 
 (defn- column-metadata-from-ref
   [query stage-number a-ref]
