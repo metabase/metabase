@@ -204,7 +204,7 @@
   unit."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
-  (or (when-let [temporal-bucket (lib.temporal-bucket/raw-temporal-bucket a-ref)]
+  (or (let [temporal-bucket (lib.temporal-bucket/raw-temporal-bucket a-ref)]
         (let [matching-columns (filter (fn [col]
                                          (= (lib.temporal-bucket/raw-temporal-bucket col) temporal-bucket))
                                        columns)]
