@@ -8,8 +8,6 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
