@@ -134,41 +134,23 @@
      :options  options
      :args     (mapv #(expression-parts-method query stage-number %) args)}))
 
-(defmethod expression-parts-method :dispatch-type/expression-parts
-  [_query _stage-number value]
-  value)
-
-(defmethod expression-parts-method :dispatch-type/string
-  [_query _stage-number value]
-  value)
-
-(defmethod expression-parts-method :dispatch-type/integer
-  [_query _stage-number value]
-  value)
-
-(defmethod expression-parts-method :dispatch-type/number
-  [_query _stage-number value]
-  value)
-
-(defmethod expression-parts-method :dispatch-type/boolean
-  [_query _stage-number value]
-  value)
-
-(defmethod expression-parts-method :dispatch-type/keyword
-  [_query _stage-number value]
-  (name value))
-
-(defmethod expression-parts-method :dispatch-type/nil
-  [_query _stage-number value]
-  value)
+(doseq [dispatch-value [:dispatch-type/expression-parts
+                        :dispatch-type/string
+                        :dispatch-type/integer
+                        :dispatch-type/number
+                        :dispatch-type/boolean
+                        :dispatch-type/keyword
+                        :dispatch-type/nil
+                        :metadata/column
+                        :metadata/segment
+                        :metadata/metric]]
+  (defmethod expression-parts-method dispatch-value
+    [_query _stage-number value]
+    value))
 
 (defmethod expression-parts-method :field
   [query stage-number field-ref]
   (column-metadata-from-ref query stage-number field-ref))
-
-(defmethod expression-parts-method :metadata/column
-  [_query _stage-number column]
-  column)
 
 (defmethod expression-parts-method :segment
   [query _stage-number segment-ref]
@@ -178,10 +160,6 @@
      :id (last segment-ref)
      :display-name (i18n/tru "Unknown Segment")}))
 
-(defmethod expression-parts-method :metadata/segment
-  [_query _stage-number segment]
-  segment)
-
 (defmethod expression-parts-method :metric
   [query _stage-number metric-ref]
   (if-let [metric (lib.metadata/metric query (last metric-ref))]
@@ -189,10 +167,6 @@
     {:lib/type :metadata/metric
      :id (last metric-ref)
      :display-name (i18n/tru "Unknown Metric")}))
-
-(defmethod expression-parts-method :metadata/metric
-  [_query _stage-number metric]
-  metric)
 
 (defmethod expression-parts-method :expression
   [query stage-number expression-ref]
