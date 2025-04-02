@@ -553,7 +553,9 @@
   (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))
         invalid? (or (and (contains? card :collection_id)
                           (not= correct-collection-id (:collection_id card)))
-                     (not (contains? #{:question "question" nil} (:type card)))
+                     ;(not (contains? #{:question "question" nil} (:type card)))
+                     ;; TODO this might cause havoc somewhere?
+                     (not (contains? #{:question "question" :model "model" nil} (:type card)))
                      (some? (:collection_position card)))]
     (when invalid?
       (throw (ex-info (tru "Invalid dashboard-internal card")
