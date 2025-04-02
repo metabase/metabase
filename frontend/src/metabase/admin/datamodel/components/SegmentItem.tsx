@@ -1,11 +1,10 @@
-import cx from "classnames";
 import { Link } from "react-router";
 
-import CS from "metabase/css/core/index.css";
-import { Group, Icon } from "metabase/ui";
+import { Box, Flex, Group, Icon } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
 import SegmentActionSelect from "./SegmentActionSelect";
+import S from "./SegmentItem.module.css";
 
 interface Props {
   segment: Segment;
@@ -14,21 +13,32 @@ interface Props {
 
 export const SegmentItem = ({ segment, onRetire }: Props) => {
   return (
-    <tr className={cx(CS.mt1, CS.mb3)}>
-      <td className={cx(CS.px1, CS.py1, CS.textWrap)}>
+    <tr>
+      <Box component="td" className={S.cell} p="sm">
         <Link to={`/admin/datamodel/segment/${segment.id}`}>
-          <Group align="center" display="inline-flex">
-            <Icon name="segment" className={cx(CS.mr1, CS.textMedium)} />
-            <span className={cx(CS.textDark, CS.textBold)}>{segment.name}</span>
+          <Group display="inline-flex" gap="sm" wrap="nowrap">
+            <Box
+              color="text-medium"
+              component={Icon}
+              flex="0 0 auto"
+              name="segment"
+            />
+            <Box c="text-dark" fw="bold">
+              {segment.name}
+            </Box>
           </Group>
         </Link>
-      </td>
-      <td className={cx(CS.px1, CS.py1, CS.textWrap)}>
+      </Box>
+
+      <Box component="td" className={S.cell} p="sm">
         {segment.definition_description}
-      </td>
-      <td className={cx(CS.px1, CS.py1, CS.textCentered)}>
-        <SegmentActionSelect object={segment} onRetire={onRetire} />
-      </td>
+      </Box>
+
+      <Box component="td" className={S.cell} p="sm">
+        <Flex justify="center">
+          <SegmentActionSelect object={segment} onRetire={onRetire} />
+        </Flex>
+      </Box>
     </tr>
   );
 };
