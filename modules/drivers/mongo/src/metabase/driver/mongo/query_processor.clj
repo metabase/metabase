@@ -842,7 +842,7 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod compile-cond :between [[_ field min-val max-val]]
-  (compile-cond [:and [:>= field min-val] [:< field max-val]]))
+  (compile-cond [:and [:>= field min-val] [:<= field max-val]]))
 
 (defn- index-of-code-point
   "See https://docs.mongodb.com/manual/reference/operator/aggregation/indexOfCP/"
