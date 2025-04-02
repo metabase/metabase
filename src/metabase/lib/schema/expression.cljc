@@ -204,7 +204,7 @@
 (mr/def ::expressions
   [:sequential {:min 1} [:ref ::expression.definition]])
 
-(mr/def ::positive-integer
+(mr/def ::positive-integer-or-numeric-expression
   [:and
    [:ref ::integer]
    [:fn
