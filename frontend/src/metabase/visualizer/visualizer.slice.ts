@@ -287,22 +287,22 @@ const visualizerHistoryItemSlice = createSlice({
         addColumnToPieChart(state, column);
       }
     },
-    removeColumn: (state, action: PayloadAction<{ name: string }>) => {
-      const { name } = action.payload;
+    removeColumn: (
+      state,
+      action: PayloadAction<{ name: string; well?: "bubble" }>,
+    ) => {
+      const { name, well } = action.payload;
       if (!state.display) {
         return;
       }
 
       if (isCartesianChart(state.display)) {
-        removeColumnFromCartesianChart(state, name);
+        removeColumnFromCartesianChart(state, name, well);
       } else if (state.display === "funnel") {
         removeColumnFromFunnel(state, name);
       } else if (state.display === "pie") {
         removeColumnFromPieChart(state, name);
       }
-
-      state.columns = state.columns.filter(col => col.name !== name);
-      delete state.columnValuesMapping[name];
     },
     handleDropInner: (
       state,
