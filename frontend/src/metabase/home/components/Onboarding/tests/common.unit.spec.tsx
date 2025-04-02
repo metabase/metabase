@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within } from "__support__/ui";
+import { getScrollIntoViewMock, screen, within } from "__support__/ui";
 
 import type { ChecklistItemValue } from "../types";
 
@@ -19,6 +19,8 @@ const getItemControl = (label: string) => {
 };
 
 describe("Onboarding", () => {
+  const scrollIntoViewMock = getScrollIntoViewMock();
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -60,7 +62,7 @@ describe("Onboarding", () => {
   });
 
   it("'database' accordion item should be open by default for admins", () => {
-    const { scrollIntoViewMock } = setup();
+    setup();
 
     const databaseItem = getItem("database");
     const databaseItemControl = getItemControl("Connect to your database");
@@ -85,7 +87,7 @@ describe("Onboarding", () => {
   });
 
   it("'x-ray' accordion item should be open by default for non-admins", () => {
-    const { scrollIntoViewMock } = setup({ isAdmin: false });
+    setup({ isAdmin: false });
 
     const xRayItem = getItem("x-ray");
     const xRayItemControl = getItemControl("Create automatic dashboards");
@@ -98,7 +100,7 @@ describe("Onboarding", () => {
   });
 
   it("should be possible to open a different item", async () => {
-    const { scrollIntoViewMock } = setup();
+    setup();
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
 
     expect(getItem("database")).toHaveAttribute("data-active", "true");
@@ -110,7 +112,7 @@ describe("Onboarding", () => {
   });
 
   it("should scroll the last remembered item into view on page load", () => {
-    const { scrollIntoViewMock } = setup({ openItem: "sql" });
+    setup({ openItem: "sql" });
 
     expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
 

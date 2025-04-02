@@ -102,6 +102,7 @@ serdes/meta:
   label: question_views_per_month
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
 metabase_version: vUNKNOWN (13e6090)
 source_card_id: P6Ityjj7igswKh4NgZZjz

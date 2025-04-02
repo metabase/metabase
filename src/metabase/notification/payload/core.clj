@@ -2,6 +2,7 @@
   (:require
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
+   [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
    [metabase.public-settings :as public-settings]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -12,7 +13,10 @@
 (p/import-vars
  [notification.payload.execute
   execute-dashboard
-  process-virtual-dashcard])
+  process-virtual-dashcard]
+ [notification.payload.temp-storage
+  cleanup!
+  is-cleanable?])
 
 (mr/def ::Notification
   "Schema for the notification."
