@@ -4,6 +4,7 @@ import { useAreAnyTruncated } from "metabase/hooks/use-is-truncated";
 import { Tooltip } from "metabase/ui";
 
 import S from "./EllipsifiedPath.module.css";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 type EllipsifiedPathProps = { items: string[]; tooltip: string };
 
@@ -17,6 +18,7 @@ type EllipsifiedPathProps = { items: string[]; tooltip: string };
  * A tooltip is shown if any items are truncated.
  */
 export const EllipsifiedPath = ({ items, tooltip }: EllipsifiedPathProps) => {
+  const tc = useTranslateContent2();
   const { areAnyTruncated, ref } = useAreAnyTruncated<HTMLDivElement>();
 
   return (
@@ -35,7 +37,7 @@ export const EllipsifiedPath = ({ items, tooltip }: EllipsifiedPathProps) => {
                 ref={(el) => el && ref.current.set(key, el)}
                 className={S.item}
               >
-                {item}
+                {tc(item)}
               </div>
               {index < items.length - 1 && <div className={S.slash}>/</div>}
             </React.Fragment>

@@ -1,19 +1,16 @@
 import { type ReactNode, createContext, useContext } from "react";
 
-import { useLocale, useUserSetting } from "metabase/common/hooks";
+import { useListContentTranslationsQuery } from "metabase/api/content-translation";
+import { useLocale } from "metabase/common/hooks";
 
-import {
-  type ContentTranslationContextObject,
-  type ContentTranslationDictionary,
-  isValidContentTranslationDictionary,
-} from "../types";
+import type { ContentTranslationContextObject } from "../types";
 import { translateProperty, translateString } from "../utils";
 
 export const ContentTranslationContext =
   createContext<ContentTranslationContextObject>({
     shouldLocalize: true,
     dictionary: [],
-    locale: "fr", //hard-code for now
+    locale: "en",
   });
 
 export const ContentTranslationProvider = ({
@@ -21,40 +18,24 @@ export const ContentTranslationProvider = ({
 }: {
   children: ReactNode;
 }) => {
-  const [stringifiedDictionary, setStringifiedDictionary] =
-    useUserSetting("dynamic-dictionary");
-
-  let dictionary: ContentTranslationDictionary | null = [];
-  try {
-    const parsedDictionary = JSON.parse(stringifiedDictionary || "");
-    dictionary = isValidContentTranslationDictionary(parsedDictionary)
-      ? parsedDictionary
-      : null;
-    if (!dictionary) {
-      throw new Error("Invalid dictionary", parsedDictionary);
-    }
-  } catch (e) {
-    console.error(
-      "Failed to parse content translation dictionary from settings",
-      e,
-    );
-  }
-
-  const setDictionary = (newDictionary: ContentTranslationDictionary) => {
-    setStringifiedDictionary(JSON.stringify(newDictionary));
-  };
-
-  if (!dictionary?.length) {
-    // hard code this for now
-    setDictionary([["en", "Monkeys", "Monkeys!!!!"]]);
-  }
   const locale = useLocale();
+  const {
+    data,
+    error,
+    // TODO: the loading state is not represented
+    isLoading: _isLoading,
+  } = useListContentTranslationsQuery({
+    locale,
+  });
+
+  if (error) {
+    console.error("Error while retrieving content translations", error);
+  }
 
   const contextValue = {
-    shouldLocalize: true,
-    dictionary: dictionary || [],
-    setDictionary,
+    dictionary: data?.data || [],
     locale,
+    shouldLocalize: true,
   };
 
   return (
@@ -66,9 +47,23 @@ export const ContentTranslationProvider = ({
 
 export const useTranslateContent = () => {
   const context = useContext(ContentTranslationContext);
-  const tc = (obj: any, property: string) =>
+  return getContentTranslationFunction(context);
+};
+
+export const useTranslateContent2 = () => {
+  const context = useContext(ContentTranslationContext);
+
+  return <TypeOfArgument,>(msgid?: TypeOfArgument): TypeOfArgument =>
+    (msgid && typeof msgid === "string"
+      ? translateString(msgid, context)
+      : msgid) as TypeOfArgument;
+};
+
+export const getContentTranslationFunction = (
+  context: ContentTranslationContextObject,
+) => {
+  return (obj: any, property: string) =>
     translateProperty(obj, property, (msgid: string) =>
       translateString(msgid, context),
     );
-  return tc;
 };

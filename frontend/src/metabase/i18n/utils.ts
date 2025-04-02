@@ -11,7 +11,7 @@ export const translateString = (
   }
 
   const matches = dictionary.filter(entry => {
-    const [entryLocaleCode, entryMsgid] = entry.map(s => s.trim());
+    const { locale: entryLocaleCode, msgid: entryMsgid } = entry;
     return locale === entryLocaleCode && msgid === entryMsgid;
   });
 
@@ -19,7 +19,7 @@ export const translateString = (
     console.error("Multiple matches for:", locale, msgid);
   }
 
-  return matches[0]?.[2] || msgid;
+  return matches[0]?.msgstr || msgid;
 };
 
 type LocalizedProperty<T, K extends keyof T> =
@@ -43,7 +43,13 @@ export const translateProperty = <
   }
   const localizedKey = `${property}_localized`;
   const msgid = obj[property] as T[K];
-  (obj as Record<typeof localizedKey, any>)[localizedKey] ??=
-    translateString?.(msgid);
-  return (obj[localizedKey] as NonNullable<LocalizedProperty<T, K>>) || msgid;
+  const translated = translateString?.(msgid) as NonNullable<
+    LocalizedProperty<T, K>
+  >;
+  try {
+    (obj as Record<typeof localizedKey, any>)[localizedKey] ??= translated;
+  } catch (e) {
+    console.error("Couldn't cache translation", e);
+  }
+  return translated || msgid;
 };

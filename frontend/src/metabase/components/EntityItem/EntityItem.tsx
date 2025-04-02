@@ -38,6 +38,11 @@ import {
   EntityItemWrapper,
   EntityMenuContainer,
 } from "./EntityItem.styled";
+import {
+  useTranslateContent,
+  useTranslateContent2,
+} from "metabase/i18n/components/ContentTranslationContext";
+import { translateString } from "metabase/i18n/utils";
 
 type EntityIconCheckBoxProps = {
   variant?: string;
@@ -107,6 +112,7 @@ function EntityItemName({
   name: string;
   variant?: string;
 } & React.HTMLAttributes<HTMLHeadingElement>) {
+  const tc = useTranslateContent2();
   return (
     <h3
       className={cx(CS.overflowHidden, {
@@ -114,7 +120,7 @@ function EntityItemName({
       })}
       {...props}
     >
-      <Ellipsified>{name}</Ellipsified>
+      <Ellipsified>{tc(name)}</Ellipsified>
     </h3>
   );
 }
@@ -312,6 +318,7 @@ const EntityItem = ({
   disabled?: boolean;
 }) => {
   const icon = useMemo(() => ({ name: iconName }), [iconName]);
+  const tc = useTranslateContent2();
 
   return (
     <EntityItemWrapper
@@ -332,7 +339,7 @@ const EntityItem = ({
       />
 
       <div className={CS.overflowHidden}>
-        <EntityItemName name={name} />
+        <EntityItemName name={tc(name)} />
         <div>{extraInfo && extraInfo}</div>
       </div>
 

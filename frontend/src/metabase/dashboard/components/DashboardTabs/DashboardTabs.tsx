@@ -7,6 +7,7 @@ import { TabButton } from "metabase/core/components/TabButton";
 import { TabRow } from "metabase/core/components/TabRow";
 import { Flex } from "metabase/ui";
 import { MaybeTranslationCannotBeEditedHoverCard } from "metabase/i18n/MaybeTranslationCannotBeEditedHoverCard";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
@@ -39,6 +40,8 @@ export function DashboardTabs({
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
   const tc = useTranslateContent2();
+
+  const tc = useTranslateContent();
 
   if (!showTabs) {
     return null;

@@ -24,7 +24,10 @@ import type {
 } from "metabase/dashboard/types";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
-import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
+import {
+  useTranslateContent,
+  useTranslateContent2,
+} from "metabase/i18n/components/ContentTranslationContext";
 import { useDispatch } from "metabase/lib/redux";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -206,7 +209,7 @@ function Dashboard(props: DashboardProps) {
 
   const dispatch = useDispatch();
 
-  const tc = useTranslateContent();
+  const tc = useTranslateContent2();
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -423,13 +426,17 @@ function Dashboard(props: DashboardProps) {
           <Flex direction="column" mih="100%" w="100%" flex="1 0 auto">
             {dashboard.archived && (
               <ArchivedEntityBanner
-                name={tc(dashboard, "name")}
+                name={tc(dashboard.name)}
                 entityType="dashboard"
                 canMove={canWrite}
                 canRestore={canRestore}
                 canDelete={canDelete}
                 onUnarchive={async () => {
-                  await dispatch(setArchivedDashboard(false));
+                  await dispatch(
+                    setArchivedDashboard(false, false, {
+                      name: tc(dashboard.name),
+                    }),
+                  );
                   await dispatch(Bookmarks.actions.invalidateLists());
                 }}
                 onMove={({ id }) => dispatch(moveDashboardToCollection({ id }))}
