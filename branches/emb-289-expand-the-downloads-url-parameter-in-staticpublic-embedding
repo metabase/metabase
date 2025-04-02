@@ -2,5 +2,16 @@
   "base": {
     "name": "master",
     "hash": "339b7d1dd4d798b35113af797980eba1343efbf3"
+  },
+  "upstream": {
+    "branch": "emb-289-expand-the-downloads-url-parameter-in-staticpublic-embedding"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 56131,
+        "gqlID": "PR_kwDOAczgH86REuvd"
+      }
+    }
   }
 }
