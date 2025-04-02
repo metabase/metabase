@@ -110,12 +110,14 @@ function useMultiAutocomplete({
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.value;
     const parsedValues = parseValues(newValue).filter(shouldCreate);
+    const isMultiValue = parsedValues.length > 1;
+    const isDelimiter = DELIMITERS.some((delimiter) =>
+      newValue.endsWith(delimiter),
+    );
 
     const newValues = pillValues.concat(parsedValues);
-    const newPillValues =
-      parsedValues.length > 1 ? newValues.slice(-1) : pillValues;
-    const newFieldValue =
-      parsedValues.length > 1 ? newValues[newValues.length - 1] : newValue;
+    const newPillValues = isMultiValue || isDelimiter ? newValues : pillValues;
+    const newFieldValue = isMultiValue || isDelimiter ? "" : newValue;
 
     onChange(newValues);
     setPillValues(newPillValues);
@@ -166,10 +168,12 @@ function useMultiAutocomplete({
   };
 }
 
+const DELIMITERS = [",", "\t", "\n"];
+
 function parseValues(str: string): string[] {
   try {
     return parse(str, {
-      delimiter: [",", "\t", "\n"],
+      delimiter: DELIMITERS,
       skip_empty_lines: true,
       relax_column_count: true,
       relax_quotes: true,
