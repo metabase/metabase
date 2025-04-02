@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 
+import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
 import type { IconProps } from "metabase/ui";
-import { Box } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import type {
@@ -13,10 +14,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import {
-  VisualizationActionButtonsContainer,
-  VisualizationSlowSpinner,
-} from "../Visualization.styled";
+import { VisualizationSlowSpinner } from "../Visualization.styled";
 
 interface VisualizationHeaderProps {
   series: Series | null;
@@ -59,9 +57,8 @@ export const VisualizationHeader = ({
   error,
   noResults,
 }: VisualizationHeaderProps) => {
-  // Only create action buttons content if we have action buttons to show
   const actionButtonsContent = actionButtons && (
-    <VisualizationActionButtonsContainer>
+    <Flex align="center">
       {isSlow && !loading && (
         <VisualizationSlowSpinner
           className={DashboardS.VisualizationSlowSpinner}
@@ -70,7 +67,7 @@ export const VisualizationHeader = ({
         />
       )}
       {actionButtons}
-    </VisualizationActionButtonsContainer>
+    </Flex>
   );
 
   const title = settings["card.title"];
@@ -86,7 +83,7 @@ export const VisualizationHeader = ({
   }
 
   return (
-    <Box p="0.5rem" style={{ flexShrink: 0 }}>
+    <Box p="sm" className={CS.flexNoShrink}>
       <ChartCaption
         series={series}
         settings={settings}

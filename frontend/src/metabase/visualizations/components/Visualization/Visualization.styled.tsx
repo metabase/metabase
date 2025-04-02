@@ -10,19 +10,9 @@ export const VisualizationRoot = styled.div`
   height: 100%;
 `;
 
-export const VisualizationHeader = styled.div`
-  padding: 0.5rem;
-  flex-shrink: 0;
-`;
-
 interface VisualizationSlowSpinnerProps {
   isUsuallySlow: boolean;
 }
-
-export const VisualizationActionButtonsContainer = styled.span`
-  display: flex;
-  align-items: center;
-`;
 
 export const VisualizationSlowSpinner = styled(
   LoadingSpinner,
