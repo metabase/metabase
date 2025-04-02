@@ -1,0 +1,24 @@
+name: Mage Tests
+
+on:
+  pull_request:
+    paths: ["mage/**", "test/mage/**"]
+
+jobs:
+  mage-tests:
+    runs-on: ubuntu-22.04
+    name: Mage
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'kondo'
+      - name: run mage once
+        run: ./bin/mage
+      - name: Check bb runs
+        run: ./bin/bb --version
+      - name: bb task list
+        run: ./bin/bb tasks
+      - name: Run mage tests
+        run: ./bin/bb ./test/mage/runtests.clj
