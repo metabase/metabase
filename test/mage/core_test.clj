@@ -33,9 +33,16 @@
           (is (str/includes? result "The following tasks are available:")))))))
 
 (deftest mage-tests
+  (println "Running mage tests")
+
+  (println "  bb tasks have examples")
   (testing "bb tasks have examples"
     (mapv bb-task-has-example? (u/public-bb-tasks-list)))
+
+  (println "  bb tasks have help")
   (testing "mage has help"
     (bin-mage-has-help?))
+
+  (println "  invalid task names print help")
   (testing "Invalid task name prints help"
     (invalid-task-names-print-help-test)))

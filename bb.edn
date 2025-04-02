@@ -59,7 +59,7 @@
 
   start-maildev
   {:doc      "Start Maildev"
-   :examples [["John" "will write one soon"]]
+   :examples [["./bin/mage start-maildev -h" "print help for start-maildev"]]
    :requires [[mage.start-maildev :as start-maildev]]
    :task     (do (cli/parse! (current-task)) (start-maildev/start-maildev!))}
 
@@ -153,10 +153,10 @@
    ;; map of ports.
    :data       {:a [:b :c] :b [:d]}}
 
-  -test-help {:doc      "run all mage tests"
-              :requires [[mage.core-test :as core-test]]
-              :task     (System/exit
-                         (if (= :ok (core-test/run-tests)) 0 1))}
+  -test {:doc      "run all mage tests"
+         :requires [[mage.core-test]
+                    [clojure.test :refer [run-tests]]]
+         :task     (run-tests 'mage.core-test)}
 
   -test-examples
   {:doc      "Runs every example and checks that it exits with 0"
