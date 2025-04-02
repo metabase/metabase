@@ -7,7 +7,7 @@
   "Boolean values that report on the state of different embedding configurations."
   :feature :none
   [embedded-dashboard-count embedded-question-count]
-  {:enabled-embedding-static      (boolean (and (setting/get :enable-embedding-sdk)
+  {:enabled-embedding-static      (boolean (and (setting/get :enable-embedding-static)
                                                 (or (> embedded-question-count 0)
                                                     (> embedded-dashboard-count 0))))
    :enabled-embedding-interactive (boolean (and (setting/get :enable-embedding-interactive)

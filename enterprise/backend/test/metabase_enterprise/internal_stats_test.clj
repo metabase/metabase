@@ -5,16 +5,16 @@
    [metabase.test :as mt]))
 
 (deftest enabled-embedding-static-test
-  (testing "true when enable embedding sdk is true and dashboard count is greater than 0"
-    (mt/with-temporary-setting-values [enable-embedding-sdk true]
+  (testing "true when enable embedding static is true and dashboard count is greater than 0"
+    (mt/with-temporary-setting-values [enable-embedding-static true]
       (is (:enabled-embedding-static (sut/embedding-settings 1 0)))))
-  (testing "true when enable embedding sdk is true and question count is greater than 0"
-    (mt/with-temporary-setting-values [enable-embedding-sdk true]
+  (testing "true when enable embedding static is true and question count is greater than 0"
+    (mt/with-temporary-setting-values [enable-embedding-static true]
       (is (:enabled-embedding-static (sut/embedding-settings 0 1)))))
-  (testing "false when enable embedding sdk is true and no cards are dashboards are enabled"
+  (testing "false when enable embedding static is true and no cards are dashboards are enabled"
     (is (not (:enabled-embedding-static (sut/embedding-settings 0 0)))))
-  (testing "false when enable embedding sdk is false"
-    (mt/with-temporary-setting-values [enable-embedding-sdk false]
+  (testing "false when enable embedding static is false"
+    (mt/with-temporary-setting-values [enable-embedding-static false]
       (is (not (:enabled-embedding-static (sut/embedding-settings 1 1)))))))
 
 (def ^:private idp-cert (slurp "test_resources/sso/auth0-public-idp.cert"))
