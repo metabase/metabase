@@ -1,11 +1,13 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.metrics-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -869,224 +871,213 @@
                   (get-in (#'metrics/fetch-referenced-metrics query stage)
                           [(:id metric) :aggregation 1 :name]))))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;; Tests for transformation of metric filter into case expression             ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#_(comment
-    [:avg         lib/avg ; ok seemingly, verify other dbms
-     :count       lib/count ; must be transormed to count if
-     :cum-count   lib/cum-count ; ?
-     :count-where lib/count-where ; used for counts , condition would have to be modified
-     :distinct    lib/distinct ; count(distinct [field]) -- ok
-     :max         lib/max
-     :median      lib/median
-     :min         lib/min
-     :offset
-     :percentile
-     :share
-     :stddev
-     :sum       lib/sum
-     :cum-sum   lib/cum-sum ; ???
-     :sum-where lib/sum-where ; need to merge filters here
-     :var       lib/var
-     #_:metric])
+(defn- aggregate-col-1st-arg-fn
+  [f]
+  (fn [query]
+    (lib/aggregate query (f (m/find-first (comp #{"Total"} :display-name)
+                                          (lib/visible-columns query))))))
 
-(def tested-op-list
-  [#'lib/avg ; ok
-   #_lib/count
-   #_lib/cum-count
-   #_lib/count-where
-   #_#'lib/distinct
-   #'lib/max ; ok
-   #_#'lib/median
-   #'lib/min ; ok
-   #_lib/offset
-   #'lib/percentile ; make it fail for some to see whether logs work
-   #_lib/share
-   #'lib/stddev ;ok
-   #'lib/sum ; ok
-   #_lib/cum-sum
-   #_lib/sum-where
-   #'lib/var ;ok
-   ])
+(def tested-aggregations
+  [;; nullary
+   [:count     (fn [query] (lib/aggregate query (lib/count)))]
+   [:cum-count (fn [query] (lib/aggregate query (lib/cum-count)))]
+   ;; standard 1st arg col
+   [:avg       (aggregate-col-1st-arg-fn lib/avg)]
+   [:cum-sum   (aggregate-col-1st-arg-fn lib/cum-sum)]
+   [:distinct  (aggregate-col-1st-arg-fn lib/distinct)]
+   [:max       (aggregate-col-1st-arg-fn lib/max)]
+   [:min       (aggregate-col-1st-arg-fn lib/min)]
+   [:stddev    (aggregate-col-1st-arg-fn lib/stddev)]
+   [:sum       (aggregate-col-1st-arg-fn lib/sum)]
+   [:var       (aggregate-col-1st-arg-fn lib/var)]
+   ;; special
+   [:count-where
+    (fn [query]
+      (lib/aggregate query (lib/count-where (lib/< (lib/ref (m/find-first (comp #{"Product ID"} :display-name)
+                                                                          (lib/filterable-columns query)))
+                                                   30))))]
+   [:sum-where
+    (fn [query]
+      (lib/aggregate query (lib/sum-where (m/find-first (comp #{"Total"} :display-name)
+                                                        (lib/visible-columns query))
+                                          (lib/< (m/find-first (comp #{"Product ID"} :display-name)
+                                                               (lib/filterable-columns query))
+                                                 30))))]
+   [:share
+    (fn [query]
+      (lib/aggregate query (lib/share (lib/< (m/find-first (comp #{"Product ID"} :display-name)
+                                                           (lib/filterable-columns query))
+                                             30))))]])
 
-#_(def tested-op-list
-    [#_#'lib/avg ; ok
-     #_lib/count
-     #_#'lib/cum-count ;; could be rewritten as cum-sum?
-     #_lib/count-where
-     #_#'lib/distinct
-     #_#'lib/max ; ok
-     #_#'lib/median
-     #_#'lib/min ; ok
-     #_lib/offset ; possibly ok -- would need special test
-     #_#'lib/percentile
-     #_lib/share
-     #_#'lib/stddev ;ok
-     #_#'lib/sum ; ok
-     #_#'lib/cum-sum ; ok
-     #_lib/sum-where
-     #_#'lib/var ;ok
-     ])
+(def tested-percentile-aggregations
+  [[:percentile (fn [query]
+                  (lib/aggregate query (lib/percentile (m/find-first (comp #{"Total"} :display-name)
+                                                                     (lib/visible-columns query))
+                                                       0.7)))]
+   [:median (fn [query]
+              (lib/aggregate query (lib/median (m/find-first (comp #{"Total"} :display-name)
+                                                             (lib/visible-columns query)))))]])
 
-(deftest case-vs-filter-difference-NO-breakout-test
+(deftest filtered-metric-comparison-test
   (mt/test-drivers
     (mt/normal-drivers)
-    (log/fatal "`case-vs-filter-difference-NO-breakout-test` runs now")
-    (doseq [ag-op tested-op-list]
-      (testing ag-op
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-              query-base (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-              filter-col (m/find-first (comp #{"User ID"} :display-name)
-                                       (lib/visible-columns query-base))
-              agg-col (m/find-first (comp #{"Total"} :display-name)
-                                    (lib/visible-columns query-base))
-              cond-1 (lib/< filter-col 10)
-              cond-2 (lib/>= filter-col 10)
-              case-query (-> query-base
-                          ;; is the or needed?
-                             (lib/filter (lib/or (lib.util/fresh-uuids cond-1)
-                                                 (lib.util/fresh-uuids cond-2)))
-                             (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-1) agg-col]])))
-                             (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-2) agg-col]]))))
-              filter-query-1 (-> query-base
-                                 (lib/filter cond-1)
-                                 (lib/aggregate (ag-op agg-col)))
-              filter-query-2 (-> query-base
-                                 (lib/filter cond-2)
-                                 (lib/aggregate (ag-op agg-col)))
-              filter-query-1-result @(def r1 (qp/process-query filter-query-1))
-              filter-query-2-result @(def r2 (qp/process-query filter-query-2))
-              case-query-result @(def r3 (qp/process-query case-query))
-              filter-query-1-rows (mt/formatted-rows [2.0] filter-query-1-result)
-              filter-query-2-rows (mt/formatted-rows [2.0] filter-query-2-result)
-              case-query-rows (mt/formatted-rows [2.0 2.0] case-query-result)]
-       ;; initially only first row
-          (is (=? (let [exp (ffirst filter-query-1-rows)]
-                    (if (number? exp)
-                      (=?/approx [exp 0.01])
-                      exp))
-                  (ffirst case-query-rows)))
-          (is (=? (let [exp (ffirst filter-query-2-rows)]
-                    (if (number? exp)
-                      (=?/approx [exp 0.01])
-                      exp))
-                  (second (first case-query-rows)))))))))
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (doseq [[operator aggregate] tested-aggregations]
+        (testing (format "Result of aggregation with filter is same as of metric with filter for %s" operator)
+          (let [base-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                             (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
+                                                                      (lib/filterable-columns $))
+                                                        "2017-04-01"
+                                                        "2018-03-31"))
+                             (lib/breakout $ (lib/with-temporal-bucket
+                                               (m/find-first (comp #{"Created At"} :display-name)
+                                                             (lib/breakoutable-columns $))
+                                               :month)))
+                metric-query (-> base-query
+                                 aggregate
+                                 (lib.util/update-query-stage -1 update-in [:aggregation 0] lib.options/update-options
+                                                              merge {:name "metric_aggregation"
+                                                                     :display-name "Metric Aggregation"}))]
+            (mt/with-temp
+              [:model/Card
+               metric-card
+               {:type :metric
+                :dataset_query (lib.convert/->legacy-MBQL metric-query)}]
+              (let [query (-> base-query
+                              aggregate
+                              (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
+                    result (qp/process-query query)]
+                (is (every? (fn [[_ aggregation-value metric-value]]
+                              (= aggregation-value metric-value))
+                            (mt/formatted-rows [str 3.0 3.0] result)))))))))))
 
-(deftest case-vs-filter-difference-WITH-breakout-test-yyy
+(deftest filter-metric-comparison-for-percentile-aggregations-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :percentile-aggregations)
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (doseq [[operator aggregate] tested-percentile-aggregations]
+        (testing (format "Result of aggregation with filter is same as of metric with filter for %s" operator)
+          (let [base-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                             (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
+                                                                      (lib/filterable-columns $))
+                                                        "2017-04-01"
+                                                        "2018-03-31"))
+                             (lib/breakout $ (lib/with-temporal-bucket
+                                               (m/find-first (comp #{"Created At"} :display-name)
+                                                             (lib/breakoutable-columns $))
+                                               :month)))
+                metric-query (-> base-query
+                                 aggregate
+                                 (lib.util/update-query-stage -1 update-in [:aggregation 0] lib.options/update-options
+                                                              merge {:name "metric_aggregation"
+                                                                     :display-name "Metric Aggregation"}))]
+            (mt/with-temp
+              [:model/Card
+               metric-card
+               {:type :metric
+                :dataset_query (lib.convert/->legacy-MBQL metric-query)}]
+              (let [query (-> base-query
+                              aggregate
+                              (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
+                    result (qp/process-query query)]
+                (is (every? (fn [[_ aggregation-value metric-value]]
+                              (= aggregation-value metric-value))
+                            (mt/formatted-rows [str 3.0 3.0] result)))))))))))
+
+(deftest next-stage-reference-test
   (mt/test-drivers
     (mt/normal-drivers)
-    (log/fatal "`case-vs-filter-difference-WITH-breakout-test-yyy` runs now")
-    (doseq [ag-op tested-op-list]
-      (testing (str "xixi" (:name (meta ag-op)))
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-              query-base (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-              filter-col (m/find-first (comp #{"User ID"} :display-name)
-                                       (lib/visible-columns query-base))
-              agg-col (m/find-first (comp #{"Total"} :display-name)
-                                    (lib/visible-columns query-base))
-              breakout-col (lib/with-temporal-bucket
-                             (m/find-first (comp #{"Created At"} :display-name)
-                                           (lib/breakoutable-columns query-base))
-                             :quarter)
-              cond-1 (lib/< filter-col 10)
-              cond-2 (lib/>= filter-col 10)
-              case-query (-> query-base
-                             (lib/breakout breakout-col)
-                          ;; is the or needed?
-                             #_(lib/filter (lib/or (lib.util/fresh-uuids cond-1)
-                                                   (lib.util/fresh-uuids cond-2)))
-                             (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-1) agg-col]])))
-                             (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-2) agg-col]]))))
-              filter-query-1 (-> query-base
-                                 (lib/breakout breakout-col)
-                                 (lib/filter cond-1)
-                                 (lib/aggregate (ag-op agg-col)))
-              filter-query-2 (-> query-base
-                                 (lib/breakout breakout-col)
-                                 (lib/filter cond-2)
-                                 (lib/aggregate (ag-op agg-col)))
-              filter-query-1-result @(def r1 (qp/process-query filter-query-1))
-              filter-query-2-result @(def r2 (qp/process-query filter-query-2))
-              case-query-result @(def r3 (qp/process-query case-query))
-              filter-query-1-rows (mt/rows filter-query-1-result)
-              filter-query-2-rows (mt/rows filter-query-2-result)
-              case-query-rows (mt/rows case-query-result)
-              f1-rows-prepared @(def f1p (into {} (map #(vector (first %) (second %))) filter-query-1-rows))
-              f2-rows-prepared @(def f2p (into {} (map #(vector (first %) (second %))) filter-query-2-rows))]
-          (doseq [case-row case-query-rows
-                  :let [[breakout a1 a2] case-row]]
-            (testing "a1"
-              (is (=? (if (number? a1)
-                        (=?/approx [a1 0.000001])
-                        a1)
-                      (or (get f1-rows-prepared breakout)
-                          (when (= "distinct" (name (:name (meta ag-op))))
-                            0.0)))))
-            (testing "a2"
-              (is (=? (if (number? a2)
-                        (=?/approx [a2 0.000001])
-                        a2)
-                      (or (get f2-rows-prepared breakout)
-                          (when (= "distinct" (name (:name (meta ag-op))))
-                            0.0)))))))))))
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (doseq [[operator aggregate] tested-aggregations]
+        (testing (format "Next stage reference works for %s" operator)
+          (mt/with-temp
+            [:model/Card
+             metric-card
+             {:type :metric
+              :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                               (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
+                                                                        (lib/filterable-columns $))
+                                                          "2017-04-01"
+                                                          "2018-03-31"))
+                               (aggregate $))}]
+            (let [query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                          (lib/aggregate $ (lib.metadata/metric mp (:id metric-card)))
+                          (lib/breakout $ (lib/with-temporal-bucket
+                                            (m/find-first (comp #{"Created At"} :display-name)
+                                                          (lib/breakoutable-columns $))
+                                            :month))
+                          (lib/append-stage $)
+                          (lib/filter $ (lib/> (let [aggregation-uuids (set (map (comp :lib/uuid lib.options/options)
+                                                                                 (lib/aggregations $ 0)))]
+                                                 (m/find-first (comp aggregation-uuids :lib/source-uuid)
+                                                               (lib/filterable-columns $)))
+                                               0)))]
+              (is (=? {:status :completed}
+                      (qp/process-query query))))))))))
 
-(deftest with-nulls-test
+(deftest metrics-with-conflicting-filters-produce-meaningful-result-test
   (mt/test-drivers
     (mt/normal-drivers)
-    (mt/dataset
-      daily-bird-counts
-      (log/fatal "`with-nulls-test` runs now")
-      (doseq [ag-op #_[#'lib/sum] tested-op-list]
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-              query-base (lib/query mp (lib.metadata/table mp (mt/id :bird-count)))
-              filter-col (m/find-first (comp #{"Date"} :display-name)
-                                       (lib/visible-columns query-base))
-              agg-col (m/find-first (comp #{"Count"} :display-name)
-                                    (lib/visible-columns query-base))
-              breakout-col (lib/with-temporal-bucket
-                             (m/find-first (comp #{"Date"} :display-name)
-                                           (lib/breakoutable-columns query-base))
-                             :year)
-              cond-1 (lib/between filter-col "2018-10-01" "2018-10-31")
-              cond-2 (lib/between filter-col "2018-09-01" "2018-09-30")
-              case-query (-> query-base
-                             (lib/breakout breakout-col)
-                              ;; is the or needed?
-                             (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-1) agg-col]])))
-                             (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-2)
-                                                              ;; bug: difference in filters and case between handling for date 
-                                                               #_(lib/between filter-col "2018-09-01" "2018-10-01")
-                                                               agg-col]]))))
-              filter-query-1 (-> query-base
-                                 (lib/breakout breakout-col)
-                                 (lib/filter cond-1)
-                                 (lib/aggregate (ag-op agg-col)))
-              filter-query-2 (-> query-base
-                                 (lib/breakout breakout-col)
-                                 (lib/filter cond-2)
-                                 (lib/aggregate (ag-op agg-col)))
-              filter-query-1-result @(def r1 (qp/process-query filter-query-1))
-              filter-query-2-result @(def r2 (qp/process-query filter-query-2))
-              case-query-result @(def r3 (qp/process-query case-query))
-              filter-query-1-rows (mt/rows filter-query-1-result)
-              filter-query-2-rows (mt/rows filter-query-2-result)
-              case-query-rows (mt/rows case-query-result)
-              f1-rows-prepared @(def f1p (into {} (map #(vector (first %) (second %))) filter-query-1-rows))
-              f2-rows-prepared @(def f2p (into {} (map #(vector (first %) (second %))) filter-query-2-rows))]
-          (doseq [case-row case-query-rows
-                  :let [[breakout a1 a2] case-row]]
-            (testing (str "a1 `" (name (:name (meta ag-op))) "`")
-              (is (=? (if (number? a1)
-                        (=?/approx [a1 0.000001])
-                        a1)
-                      (or (get f1-rows-prepared breakout)
-                          (when (= "distinct" (name (:name (meta ag-op))))
-                            0.0)))))
-            (testing (str "a2 `" (name (:name (meta ag-op))) "`")
-              (is (=? (if (number? a2)
-                        (=?/approx [a2 0.000001])
-                        a2)
-                      (or (get f2-rows-prepared breakout)
-                          (when (= "distinct" (name (:name (meta ag-op))))
-                            0.0)))))))))))
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          filter #(lib/filter %1 (%2 (m/find-first (comp #{"Created At"} :display-name)
+                                                   (lib/filterable-columns %1))
+                                     "2018-04-01"))
+          breakout #(lib/breakout % (lib/with-temporal-bucket
+                                      (m/find-first (comp #{"Created At"} :display-name)
+                                                    (lib/breakoutable-columns %))
+                                      :month))]
+      (doseq [[operator aggregate] tested-aggregations]
+        (testing operator
+          (mt/with-temp
+            [:model/Card
+             first-metric-card
+             {:type :metric
+              :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                 (filter lib/<)
+                                 (aggregate))}
+             :model/Card
+             second-metric-card
+             {:type :metric
+              :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                 (filter lib/>=)
+                                 (aggregate))}]
+            (let [metric-referencing-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                               breakout
+                                               (lib/aggregate (lib.metadata/metric mp (:id first-metric-card)))
+                                               (lib/aggregate (lib.metadata/metric mp (:id second-metric-card))))
+                  plain-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                  breakout
+                                  aggregate)
+                  metric-rows  (mt/formatted-rows [str 3.0 3.0] (qp/process-query metric-referencing-query))
+                  plain-rows (mt/formatted-rows [str 3.0 3.0] (qp/process-query plain-query))]
+              (case operator
+                (:cum-count :cum-sum)
+                (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
+                              (let [d (- plain-ag-col (or metric-col-1 0) (or metric-col-2 0))]
+                                (< d 0.001)))
+                            (map vector metric-rows plain-rows)))
+
+                (:distinct :sum-where :count-where)
+                (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
+                              (= (if (zero? metric-col-1) metric-col-2 metric-col-1)
+                                 plain-ag-col))
+                            (map vector metric-rows plain-rows)))
+
+                (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
+                              (= (or metric-col-1 metric-col-2)
+                                 plain-ag-col))
+                            (map vector metric-rows plain-rows)))))))))))
+
+(deftest ^:parallel all-available-aggregations-covered
+  (testing "All available aggregations are tested for filter expansion in metric"
+    (is (empty? (set/difference
+                 (disj (descendants @lib.hierarchy/hierarchy :metabase.lib.schema.aggregation/aggregation-clause-tag)
+                       :metric :offset)
+                 (set (map first tested-aggregations))
+                 (set (map first tested-percentile-aggregations)))))))
