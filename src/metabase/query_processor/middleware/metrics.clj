@@ -137,14 +137,20 @@
 
              :else form #_(throw (Exception. "nope")))))))))
 
-(defn- maybe-case-wrap-metric-aggregation
+(defn- metric-query-filters->aggregation
   "Entrypoint into the marvelous world of transforming metric aggregation into one that hase case wrapped column arg."
-  [aggregation {:keys [aggregation-names filters] :as _metric-info}]
-  (if (empty? filters)
-    aggregation
-    (-> aggregation
-        (case-wrap-metric-aggregation (filters->condition filters))
-        (lib.options/update-options merge aggregation-names))))
+  [metric-query]
+  (if-some [filters (not-empty (lib/filters metric-query))]
+    (let [aggregation-names (select-keys (m/find-first (comp #{:source/aggregations} :lib/source)
+                                                       (lib/returned-columns metric-query))
+                                         [:name :display-name])]
+      (-> metric-query
+          (lib.util/update-query-stage -1 update-in [:aggregation 0]
+                                       #(-> %
+                                            (case-wrap-metric-aggregation (filters->condition filters))
+                                            (lib.options/update-options merge aggregation-names)))
+          (lib.util/update-query-stage -1 dissoc :filters)))
+    metric-query))
 
 (defn- replace-metric-aggregation-refs [query stage-number lookup]
   (if-let [aggregations (lib/aggregations query stage-number)]
@@ -152,7 +158,7 @@
       (assoc-in query [:stages stage-number :aggregation]
                 (lib.util.match/replace aggregations
                   [:metric _ metric-id]
-                  (if-let [{replacement :aggregation metric-name :name :as metric-info} (get lookup metric-id)]
+                  (if-let [{replacement :aggregation metric-name :name} (get lookup metric-id)]
                     ;; We have to replace references from the source-metric with references appropriate for
                     ;; this stage (expression/aggregation -> field, field-id to string)
                     (let [replacement (lib.util.match/replace replacement
@@ -162,7 +168,6 @@
                                           ;; This is probably due to a field-id where it shouldn't be
                                           &match))]
                       (update (-> replacement
-                                  (maybe-case-wrap-metric-aggregation metric-info)
                                   lib.util/fresh-uuids)
                               1
                               #(merge
@@ -179,7 +184,6 @@
     [:metric _ (id :guard pos-int?)]
     id))
 
-;; either edit this to update aggregation right away
 (defn- fetch-referenced-metrics
   [query stage]
   (let [metric-ids (find-metric-ids stage)]
@@ -190,7 +194,8 @@
                       (let [metric-query (->> (:dataset-query card-metadata)
                                               (lib/query query)
                                               ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
-                                              (lib/query query))
+                                              (lib/query query)
+                                              metric-query-filters->aggregation)
                             metric-name (:name card-metadata)]
                         (if-let [aggregation (first (lib/aggregations metric-query))]
                           [(:id card-metadata)
@@ -198,12 +203,7 @@
                             ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
                             ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
                             :aggregation aggregation
-                            :name metric-name
-                            ;; WIP
-                            :filters (lib/filters metric-query)
-                            :aggregation-names (select-keys (m/find-first (comp #{:source/aggregations} :lib/source)
-                                                                          (lib/returned-columns metric-query))
-                                                            [:name :display-name])}]
+                            :name metric-name}]
                           (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
          not-empty)))
 
@@ -213,7 +213,6 @@
 
 (defn- update-metric-query-expression-names
   [metric-query unique-name-fn]
-  (def aaa2 [metric-query unique-name-fn])
   (let [original+new-name-pairs (into []
                                       (keep (fn [[_ {:lib/keys [expression-name]}]]
                                               (let [new-name (unique-name-fn expression-name)]
@@ -264,7 +263,6 @@
 (defn- splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
   [query path expanded-stages]
-  (println "ahoj")
   (let [agg-stage-index (aggregation-stage-index expanded-stages)]
     (if-let [lookup (->> expanded-stages
                          (drop agg-stage-index)
@@ -282,16 +280,14 @@
                                   (or (= (lib/stage-count metric-query) 1)
                                       (= (:qp/stage-had-source-card (last (:stages metric-query)))
                                          (:qp/stage-had-source-card (lib.util/query-stage query agg-stage-index)))))
-                           (let [metric-query @(def mqe (update-metric-query-expression-names metric-query unique-name-fn))
-                                 ;; TODO: Move transform into fetching code!
-                                 lookup (assoc-in lookup [_metric-id :query] metric-query)
-                                 lookup (assoc-in lookup [_metric-id :filters] (lib/filters metric-query))]
+                           (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)
+                                 lookup (-> lookup
+                                            (assoc-in [_metric-id :query] metric-query)
+                                            (assoc-in [_metric-id :aggregation] (first (lib/aggregations metric-query))))]
                              (as-> query $q
                                (reduce #(expression-with-name-from-source %1 agg-stage-index %2)
                                        $q (lib/expressions metric-query -1))
                                (include-implicit-joins $q agg-stage-index metric-query)
-                               ;; TODO: remove when certain
-                               #_(reduce #(lib/filter %1 agg-stage-index %2) $q (lib/filters metric-query -1))
                                (replace-metric-aggregation-refs $q agg-stage-index lookup)))
                            (throw (ex-info "Incompatible metric" {:query query
                                                                   :metric metric-query}))))
@@ -299,12 +295,6 @@
                        lookup)]
         (:stages new-query))
       expanded-stages)))
-
-(comment
-
-  (metabase.test/with-metadata-provider (-> aaa first :lib/metadata lib.metadata/->metadata-provider)
-    (apply splice-compatible-metrics aaa))
-  mqe)
 
 (defn- find-metric-transition
   "Finds an unadjusted transition between a metric source-card and the next stage."
