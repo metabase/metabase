@@ -249,7 +249,6 @@ function isExpression(op: string): op is "expression" {
   return op === "expression";
 }
 
-// TODO: should this be handled in Lib?
 function formatExpression(path: AstPath<Lib.ExpressionParts>): Doc {
   const { node } = path;
   if (!isExpression(node.operator)) {
