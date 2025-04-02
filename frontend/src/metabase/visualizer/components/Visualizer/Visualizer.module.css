@@ -1,7 +1,8 @@
 .Container {
   display: grid;
 
-  --sidebar-width: 320px;
+  --data-sidebar-width: 320px;
+  --settings-sidebar-width: 320px;
   --transition-duration: 200ms;
   --left: 0;
   --right: 0;
@@ -17,7 +18,7 @@
 }
 
 .Container.dataSidebarOpen {
-  --left: var(--sidebar-width);
+  --left: var(--data-sidebar-width);
 }
 
 .Container.dataSidebarOpen .dataSidebar {
@@ -25,12 +26,12 @@
 }
 
 .Container.vizSettingsOpen {
-  --right: var(--sidebar-width);
+  --right: var(--settings-sidebar-width);
 }
 
 .dataSidebar {
   position: relative;
-  left: calc(-1 * var(--sidebar-width));
+  left: calc(-1 * var(--data-sidebar-width));
   transition: var(--transition-duration);
   grid-area: dataSidebar;
   min-width: 0;
@@ -38,7 +39,7 @@
 }
 
 .dataSidebarContent {
-  min-width: var(--sidebar-width);
+  min-width: var(--data-sidebar-width);
 }
 
 .Header {
@@ -68,5 +69,5 @@
 }
 
 .settingsSidebarContent {
-  min-width: var(--sidebar-width);
+  min-width: var(--settings-sidebar-width);
 }
