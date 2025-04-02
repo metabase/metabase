@@ -24,7 +24,7 @@
 (defn request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [{:keys [metabot_id message context history conversation_id state]
-    :or {metabot_id 1}}]
+    :or {metabot_id metabot-v3.tools.api/internal-metabot-id}}]
   (let [initial-message (metabot-v3.envelope/user-message message)
         history (conj (vec history) initial-message)
         env (-> {:context (metabot-v3.context/create-context context)
@@ -43,7 +43,7 @@
   [_route-params
    _query-params
    {:keys [conversation_id] :as body} :- [:map
-                                          [:metabot_id {:optional true} :int]
+                                          [:metabot_id {:optional true} :string]
                                           [:message ms/NonBlankString]
                                           [:context ::metabot-v3.context/context]
                                           [:conversation_id ms/UUIDString]

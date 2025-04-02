@@ -51,26 +51,26 @@
   :audit      :never)
 
 (defn- get-ai-service-token
-  [user-id]
+  [user-id metabot-id]
   (let [secret (buddy-hash/sha256 (site-uuid-for-metabot-tools))
-        claims {:user user-id, :exp (time/plus (time/now) (time/seconds (metabot-ai-service-token-ttl)))}]
+        claims {:user user-id
+                :exp (time/plus (time/now) (time/seconds (metabot-ai-service-token-ttl)))
+                :metabot-id metabot-id}]
     (jwt/encrypt claims secret {:alg :dir, :enc :a128cbc-hs256})))
 
 (defn- decode-ai-service-token
   [token]
   (try
     (when (string? token)
-      (-> token
-          (jwt/decrypt (buddy-hash/sha256 (site-uuid-for-metabot-tools)))
-          :user))
+      (jwt/decrypt token (buddy-hash/sha256 (site-uuid-for-metabot-tools))))
     (catch Exception e
       (log/error e "Bad AI service token")
       nil)))
 
 (defn handle-envelope
   "Executes the AI loop in the context of a new session. Returns the response of the AI service."
-  [e]
-  (let [session-id (get-ai-service-token api/*current-user-id*)]
+  [{:keys [metabot-id] :as e}]
+  (let [session-id (get-ai-service-token api/*current-user-id* metabot-id)]
     (try
       (metabot-v3.client/request (assoc e :session-id session-id))
       (catch Exception ex
@@ -254,9 +254,7 @@
    [:map
     [:output :string]]])
 
-(mr/def ::tool-request [:map
-                        [:metabot_id {:optional true} :int]
-                        [:conversation_id ms/UUIDString]])
+(mr/def ::tool-request [:map [:conversation_id ms/UUIDString]])
 
 (mr/def ::subscription-schedule
   (let [days ["sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
@@ -455,27 +453,34 @@
                          [:models  [:sequential ::full-table]]]]]
    [:map [:output :string]]])
 
+(def internal-metabot-id
+  "The ID of the internal Metabot instance."
+  "b5716059-ad40-4d83-a4e1-673af020b2d8")
+
+(def embedded-metabot-id
+  "The ID of the embedded Metabot instance."
+  "c61bf5f5-1025-47b6-9298-bf1827105bb6")
+
 (def metabot-config
   "The name of the collection exposed by the answer-sources tool."
-  {1 {:collection-name "__METABOT__"}
-   2 {:collection-name "__METABOT_EMBEDDING__"}})
+  {internal-metabot-id {:collection-name "__METABOT__"}
+   embedded-metabot-id {:collection-name "__METABOT_EMBEDDING__"}})
 
 (api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]
   "Create a dashboard subscription."
   [_route-params
    _query-params
-   {:keys [metabot_id conversation_id]
-    :as body
-    :or {metabot_id 1}} :- ::tool-request]
+   {:keys [conversation_id] :as body} :- ::tool-request
+   {:keys [metabot-v3/metabot-id]}]
   (metabot-v3.context/log (assoc body :api :answer-sources) :llm.log/llm->be)
-  (if-let [collection-name (get-in metabot-config [metabot_id :collection-name])]
+  (if-let [collection-name (get-in metabot-config [metabot-id :collection-name])]
     (doto (-> (mc/decode ::answer-sources-result
                          (metabot-v3.dummy-tools/answer-sources collection-name)
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))
-    (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot_id)
-                    {:metabot_id metabot_id, :status-code 400}))))
+    (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
+                    {:metabot_id metabot-id, :status-code 400}))))
 
 (api.macros/defendpoint :post "/create-dashboard-subscription" :- [:merge
                                                                    [:map [:output :string]]
@@ -680,9 +685,11 @@
   [handler]
   (with-meta
    (fn [{:keys [headers] :as request} respond raise]
-     (if-let [user-id (decode-ai-service-token (get headers "x-metabase-session"))]
-       (request/with-current-user user-id
-         (handler request respond raise))
+     (if-let [{:keys [user metabot-id]} (-> headers
+                                            (get "x-metabase-session")
+                                            decode-ai-service-token)]
+       (request/with-current-user user
+         (handler (assoc request :metabot-v3/metabot-id metabot-id) respond raise))
        (if (:metabase-user-id request)
          (handler request respond raise)
          (respond request/response-unauthentic))))

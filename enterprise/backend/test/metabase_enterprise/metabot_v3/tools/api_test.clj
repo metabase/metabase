@@ -17,9 +17,10 @@
    [toucan2.core :as t2]))
 
 (defn- ai-session-token
-  ([] (ai-session-token :rasta))
-  ([user]
-   (-> user mt/user->id (#'metabot-v3.tools.api/get-ai-service-token))))
+  ([] (ai-session-token :rasta (str (random-uuid))))
+  ([metabot-id] (ai-session-token :rasta metabot-id))
+  ([user metabot-id]
+   (-> user mt/user->id (#'metabot-v3.tools.api/get-ai-service-token metabot-id))))
 
 (deftest create-dashboard-subscription-test
   (mt/with-premium-features #{:metabot-v3}
@@ -255,7 +256,7 @@
                       :dataset_query (lib/->legacy-MBQL model-source-query)
                       :type :model}
           collection-name (str (random-uuid))
-          metabot-id 42]
+          metabot-id (str (random-uuid))]
       (with-redefs [metabot-v3.tools.api/metabot-config {metabot-id {:collection-name collection-name}}]
         (mt/with-temp [:model/Collection {collection-id :id} {:name collection-name}
                        :model/Card {metric-id :id} (assoc metric-data :collection_id collection-id)
@@ -276,14 +277,13 @@
               (ensure-field-values! :products)
               (testing "Calling with Wrong metabot-id"
                 (let [conversation-id (str (random-uuid))
-                      ai-token (ai-session-token)]
+                      ai-token (ai-session-token (str metabot-id "-"))]
                   (mt/user-http-request :rasta :post 400 "ee/metabot-tools/answer-sources"
                                         {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                        {:metabot_id (dec metabot-id)
-                                         :conversation_id conversation-id})))
+                                        {:conversation_id conversation-id})))
               (testing "Normal call"
                 (let [conversation-id (str (random-uuid))
-                      ai-token (ai-session-token)
+                      ai-token (ai-session-token metabot-id)
                       response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/answer-sources"
                                                      {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                      {:metabot_id metabot-id

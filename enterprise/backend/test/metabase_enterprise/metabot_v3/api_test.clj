@@ -22,7 +22,7 @@
                                                 {:messages [agent-message]
                                                  :state agent-state})]
         (testing "Trivial request"
-          (doseq [metabot-id [nil 42]]
+          (doseq [metabot-id [nil (str (random-uuid))]]
             (reset! ai-requests [])
             (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-v3/v2/agent"
                                                  (-> {:message question
@@ -34,9 +34,12 @@
               (is (=? [{:context {:current_user_time (every-pred string? java.time.Instant/parse)}
                         :messages [(update historical-message :role keyword) {:role :user, :content question}]
                         :state {}
-                        :metabot-id (or metabot-id 1)
                         :conversation-id conversation-id
-                        :session-id #(#'metabot-v3.tools.api/decode-ai-service-token %)}]
+                        :session-id (fn [session-id]
+                                      (when-let [token (#'metabot-v3.tools.api/decode-ai-service-token session-id)]
+                                        (and (= (:metabot-id token) (or metabot-id
+                                                                        metabot-v3.tools.api/internal-metabot-id))
+                                             (= (:user token) (mt/user->id :rasta)))))}]
                       @ai-requests))
               (is (=? {:reactions [{:type "metabot.reaction/redirect", :url navigation-target}]
                        :history [historical-message
