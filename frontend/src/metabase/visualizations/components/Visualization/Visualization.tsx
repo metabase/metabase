@@ -15,7 +15,6 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { SmallGenericError } from "metabase/components/ErrorPages";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
-import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
@@ -33,7 +32,6 @@ import {
 } from "metabase/visualizations";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
-import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
@@ -73,12 +71,8 @@ import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
-import {
-  VisualizationActionButtonsContainer,
-  VisualizationHeader,
-  VisualizationRoot,
-  VisualizationSlowSpinner,
-} from "./Visualization.styled";
+import { VisualizationRoot } from "./Visualization.styled";
+import { VisualizationHeader } from "./VisualizationHeader/VisualizationHeader";
 
 type StateDispatchProps = {
   dispatch: Dispatch;
@@ -642,19 +636,6 @@ class Visualization extends PureComponent<
       );
     }
 
-    const extra = (
-      <VisualizationActionButtonsContainer>
-        {isSlow && !loading && (
-          <VisualizationSlowSpinner
-            className={DashboardS.VisualizationSlowSpinner}
-            size={18}
-            isUsuallySlow={isSlow === "usually-slow"}
-          />
-        )}
-        {actionButtons}
-      </VisualizationActionButtonsContainer>
-    );
-
     let { gridSize, gridUnit } = this.props;
     if (
       !gridSize &&
@@ -682,16 +663,6 @@ class Visualization extends PureComponent<
 
     const CardVisualization = visualization as VisualizationType;
 
-    const title = settings["card.title"];
-    const hasHeaderContent = title || extra;
-    const isHeaderEnabled = !(visualization && visualization.noHeader);
-
-    const hasHeader =
-      (showTitle &&
-        hasHeaderContent &&
-        (loading || error || noResults || isHeaderEnabled)) ||
-      (replacementContent && (dashcard?.size_y !== 1 || isMobile) && !isAction);
-
     return (
       <ErrorBoundary
         onError={this.onErrorBoundaryError}
@@ -704,24 +675,37 @@ class Visualization extends PureComponent<
           data-viz-ui-name={visualization?.uiName}
           ref={this.props.forwardedRef}
         >
-          {!!hasHeader && (
-            <VisualizationHeader>
-              <ChartCaption
-                series={series}
-                settings={settings}
-                icon={headerIcon}
-                actionButtons={extra}
-                hasInfoTooltip={!isDashboard || !isEditing}
-                width={width}
-                getHref={getHref}
-                onChangeCardAndRun={
-                  this.props.onChangeCardAndRun && !replacementContent
-                    ? this.handleOnChangeCardAndRun
-                    : null
-                }
-              />
-            </VisualizationHeader>
+          {showTitle && (
+            <VisualizationHeader
+              series={series}
+              settings={settings}
+              headerIcon={headerIcon}
+              actionButtons={actionButtons}
+              isSlow={isSlow}
+              loading={loading}
+              visualization={visualization}
+              replacementContent={replacementContent}
+              dashcard={dashcard}
+              isMobile={isMobile}
+              isAction={isAction}
+              isDashboard={isDashboard}
+              isEditing={isEditing}
+              width={width}
+              getHref={getHref}
+              onChangeCardAndRun={
+                this.props.onChangeCardAndRun && series?.[0]?.card
+                  ? (opts) =>
+                      this.props.onChangeCardAndRun?.({
+                        ...opts,
+                        previousCard: series[0].card,
+                      })
+                  : null
+              }
+              error={error}
+              noResults={noResults}
+            />
           )}
+
           {replacementContent ? (
             replacementContent
           ) : isDashboard && noResults ? (
@@ -767,7 +751,7 @@ class Visualization extends PureComponent<
                   getExtraDataForClick={getExtraDataForClick}
                   getHref={getHref}
                   gridSize={gridSize}
-                  headerIcon={hasHeader ? null : headerIcon}
+                  headerIcon={headerIcon} // FIXME: show only when there is header
                   height={rawHeight}
                   hovered={hovered}
                   isDashboard={!!isDashboard}
