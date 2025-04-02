@@ -23,7 +23,7 @@ export type DashboardNightModeControls = {
 };
 
 export type DashboardDownloadControls = {
-  downloadsEnabled?: { pdf: boolean; cardResult: boolean };
+  downloadsEnabled: { pdf: boolean; cardResult: boolean };
 };
 
 export type DashboardFooterControls = {

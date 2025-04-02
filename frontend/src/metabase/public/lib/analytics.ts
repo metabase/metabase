@@ -18,7 +18,7 @@ type Appearance = {
   bordered: boolean;
   theme: DisplayTheme;
   font: "instance" | "custom";
-  downloads: boolean | null;
+  downloads: string | boolean | null;
 };
 
 export const trackStaticEmbedDiscarded = ({

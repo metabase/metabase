@@ -27,6 +27,6 @@ export type EmbedDisplayParams = {
   font: EmbedFont;
   theme: DisplayTheme;
   getClickActionMode?: ClickActionModeGetter;
-  downloadsEnabled: { pdf: boolean; cardResult: boolean };
+  downloadsEnabled: string | boolean;
   withFooter: boolean;
 };

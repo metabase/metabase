@@ -181,7 +181,11 @@ export const LookAndFeelSettings = ({
               labelPosition="left"
               size="sm"
               variant="stretch"
-              checked={displayOptions.downloads ?? true}
+              // TODO: support the `downloads=pdf` and `downloads=result` options in the settings
+              checked={
+                displayOptions.downloads === null ||
+                displayOptions.downloads === true
+              }
               onChange={(e) =>
                 onChangeDisplayOptions({
                   ...displayOptions,

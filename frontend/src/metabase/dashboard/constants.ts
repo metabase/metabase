@@ -64,6 +64,6 @@ export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   hideParameters: null,
   font: null,
   theme: "light",
-  downloadsEnabled: { pdf: true, cardResult: true },
+  downloadsEnabled: true,
   withFooter: true,
 };

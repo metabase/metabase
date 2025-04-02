@@ -197,7 +197,7 @@ function Dashboard(props: DashboardProps) {
     setSharing,
     toggleSidebar,
     parameterQueryParams,
-    downloadsEnabled = true,
+    downloadsEnabled = { pdf: true, cardResult: true },
     noLoaderWrapper = false,
   } = props;
 
@@ -492,7 +492,7 @@ function Dashboard(props: DashboardProps) {
                       }
                       selectedTabId={selectedTabId}
                       onEditingChange={handleSetEditing}
-                      downloadsEnabled={downloadsEnabled}
+                      downloadsEnabled={downloadsEnabled.cardResult}
                       autoScrollToDashcardId={autoScrollToDashcardId}
                       reportAutoScrolledToDashcard={
                         reportAutoScrolledToDashcard

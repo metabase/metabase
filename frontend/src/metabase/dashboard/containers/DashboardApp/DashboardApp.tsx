@@ -406,6 +406,7 @@ const DashboardApp = (props: DashboardAppProps) => {
         hideAddParameterPopover={hideAddParameterPopover}
         fetchDashboard={fetchDashboard}
         fetchDashboardCardData={fetchDashboardCardData}
+        downloadsEnabled={{ pdf: true, cardResult: true }}
       />
       {/* For rendering modal urls */}
       {props.children}
