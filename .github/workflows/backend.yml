@@ -44,6 +44,11 @@ jobs:
     runs-on: ubuntu-22.04
     name: Mage
     steps:
+      - uses: actions/checkout@v4
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'kondo'
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.7.0
         with:
