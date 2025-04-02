@@ -1,8 +1,8 @@
 import { useDroppable } from "@dnd-kit/core";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -10,11 +10,14 @@ import {
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import { isDraggedColumnItem } from "metabase/visualizer/utils";
+import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import { isNumber } from "metabase-lib/v1/types/utils/isa";
 
 import { WellItem } from "../WellItem";
 
 export function ScatterFloatingWell() {
+  const dispatch = useDispatch();
+
   const columns = useSelector(getVisualizerDatasetColumns);
   const settings = useSelector(getVisualizerComputedSettings);
 
@@ -34,6 +37,14 @@ export function ScatterFloatingWell() {
     col => col.name === settings["scatter.bubble"],
   );
 
+  const handleRemove = useCallback(() => {
+    if (!bubbleSize) {
+      return;
+    }
+
+    dispatch(removeColumn({ name: bubbleSize.name, well: "bubble" }));
+  }, [bubbleSize, dispatch]);
+
   return (
     <Box
       p="md"
@@ -47,7 +58,7 @@ export function ScatterFloatingWell() {
       }}
       ref={setNodeRef}
     >
-      <WellItem>
+      <WellItem onRemove={handleRemove}>
         <Text truncate>
           {bubbleSize
             ? t`Bubble size` + `: ${bubbleSize.display_name}`

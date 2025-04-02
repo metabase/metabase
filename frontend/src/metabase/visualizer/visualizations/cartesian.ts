@@ -243,10 +243,37 @@ export function addColumnToCartesianChart(
   }
 }
 
-export function removeColumnFromCartesianChart(
+/**
+ * Removes the bubble size from the state, for scatter charts.
+ *
+ * @param state the current state (will be mutated)
+ * @param columnName the column to remove
+ */
+export function removeBubbleSizeFromCartesianChart(
   state: VisualizerHistoryItem,
   columnName: string,
 ) {
+  if (state.settings["scatter.bubble"] === columnName) {
+    delete state.settings["scatter.bubble"];
+  }
+}
+
+/**
+ * Removes a column from the state, for cartesian charts.
+ *
+ * @param state the current state (will be mutated)
+ * @param columnName the column to remove
+ */
+export function removeColumnFromCartesianChart(
+  state: VisualizerHistoryItem,
+  columnName: string,
+  well?: "bubble",
+) {
+  if (well === "bubble") {
+    removeBubbleSizeFromCartesianChart(state, columnName);
+    return;
+  }
+
   const isMultiseries =
     state.display &&
     isCartesianChart(state.display) &&
@@ -272,10 +299,6 @@ export function removeColumnFromCartesianChart(
     state.settings["graph.metrics"] = metrics.filter(
       metric => metric !== columnName,
     );
-  }
-
-  if (state.settings["scatter.bubble"] === columnName) {
-    delete state.settings["scatter.bubble"];
   }
 }
 
