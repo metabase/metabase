@@ -25,7 +25,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getFont } from "metabase/styled-components/selectors";
-import type { IconName, IconProps } from "metabase/ui";
+import { Flex, type IconName, type IconProps } from "metabase/ui";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -71,7 +71,6 @@ import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
-import { VisualizationRoot } from "./Visualization.styled";
 import { VisualizationHeader } from "./VisualizationHeader/VisualizationHeader";
 
 type StateDispatchProps = {
@@ -668,7 +667,9 @@ class Visualization extends PureComponent<
         onError={this.onErrorBoundaryError}
         ref={this.props.forwardedRef}
       >
-        <VisualizationRoot
+        <Flex
+          direction="column"
+          h="100%"
           className={className}
           style={style}
           data-testid="visualization-root"
@@ -821,7 +822,7 @@ class Visualization extends PureComponent<
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             />
           )}
-        </VisualizationRoot>
+        </Flex>
       </ErrorBoundary>
     );
   }
