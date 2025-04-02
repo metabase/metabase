@@ -20,7 +20,10 @@
 (def ^:private idp-cert (slurp "test_resources/sso/auth0-public-idp.cert"))
 
 (deftest enabled-embedding-interactive-test
-  (mt/with-premium-features #{:sso-saml :sso-jwt :embedding}
+  (mt/with-temporary-setting-values [saml-enabled        false
+                                     google-auth-enabled false
+                                     jwt-enabled         false
+                                     ldap-enabled        false]
     (testing "with saml-enabled"
       (mt/with-temporary-setting-values [saml-enabled                       true
                                          saml-identity-provider-uri         "https://idp.example.com"
@@ -61,19 +64,18 @@
             (is (:enabled-embedding-interactive (sut/embedding-settings 0 0)))))))))
 
 (deftest enabled-embedding-sdk
-  (mt/with-premium-features #{:sso-jwt}
-    (testing "with sdk enabled and jwt enabled"
-      (mt/with-temporary-setting-values [enable-embedding-sdk true
-                                         jwt-shared-secret    "asdfasdf"
-                                         jwt-enabled          true]
-        (is (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))
+  (testing "with sdk enabled and jwt enabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                       jwt-shared-secret    "asdfasdf"
+                                       jwt-enabled          true]
+      (is (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))
 
-    (testing "with sdk disabled and jwt enabled"
-      (mt/with-temporary-setting-values [enable-embedding-sdk false
-                                         jwt-enabled          true]
-        (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0))))))
+  (testing "with sdk disabled and jwt enabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk false
+                                       jwt-enabled          true]
+      (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0))))))
 
-    (testing "with sdk enabled and jwt disabled"
-      (mt/with-temporary-setting-values [enable-embedding-sdk true
-                                         jwt-enabled          false]
-        (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0))))))))
+  (testing "with sdk enabled and jwt disabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                       jwt-enabled          false]
+      (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))))
