@@ -39,17 +39,11 @@ jobs:
           m2-cache-key: "eastwood"
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
         name: Run Eastwood linter
-
+  # run mage tests even if the rest of be isnt needed
   mage-tests:
-    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     name: Mage
     steps:
-      - uses: actions/checkout@v4
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: 'kondo'
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.7.0
         with:
