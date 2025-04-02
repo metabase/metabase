@@ -206,8 +206,7 @@
 (defn- fix-expression-clause
   [clause]
   (cond-> clause
-    (case-or-if-expression? clause) group-case-or-if-args
-    true lib.options/ensure-uuid))
+    (case-or-if-expression? clause) group-case-or-if-args))
 
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
@@ -216,9 +215,10 @@
    options  :- [:maybe :map]]
   (lib.normalize/normalize
    (fix-expression-clause
-    (into [operator options]
-          (map lib.common/->op-arg)
-          args))))
+    (lib.options/ensure-uuid
+     (into [operator options]
+           (map lib.common/->op-arg)
+           args)))))
 
 (defmethod lib.common/->op-arg :mbql/expression-parts
   [{:keys [operator options args] :or {options {}}}]
