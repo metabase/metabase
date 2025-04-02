@@ -123,7 +123,7 @@ You can toggle text wrapping, which is useful for columns with long text values 
 You can display a column as:
 
 - Text
-- [Link](#display-url-as-a-link)
+- [Link](#display-text-as-a-link)
 - Email link
 - [Image](#display-url-as-an-image)
 - Automatic (Metabase guesses based on the values). 
