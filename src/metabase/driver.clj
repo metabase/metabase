@@ -726,8 +726,14 @@
     ;; Does this driver support the :distinct-where function?
     :distinct-where
 
-    ;; Does this driver support casting?
-    :cast
+    ;; Does this driver support casting text to integers? (`integer()` custom expression function)
+    :expressions/integer
+
+    ;; Does this driver support casting values to text? (`text()` custom expression function)
+    :expressions/text
+
+    ;; Does this driver support casting text to dates? (`date()` custom expression function)
+    :expressions/date
 
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test

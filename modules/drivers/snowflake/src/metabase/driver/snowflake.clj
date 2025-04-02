@@ -57,7 +57,9 @@
                               :datetime-diff                          true
                               :identifiers-with-spaces                true
                               :describe-fields                        true
-                              :cast                                   true
+                              :expressions/text                       true
+                              :expressions/integer                    true
+                              :expressions/date                       true
                               :split-part                             true
                               :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
