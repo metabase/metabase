@@ -117,22 +117,6 @@
       lib.filter/add-column-operators
       set-display-name-for-unknown-field))
 
-(defn- segment-metadata-from-ref
-  [query segment-ref]
-  (if-let [segment (lib.metadata/segment query (last segment-ref))]
-    segment
-    {:lib/type :metadata/segment
-     :id (last segment-ref)
-     :display-name (i18n/tru "Unknown Segment")}))
-
-(defn- metric-metadata-from-ref
-  [query metric-ref]
-  (if-let [metric (lib.metadata/metric query (last metric-ref))]
-    metric
-    {:lib/type :metadata/metric
-     :id (last metric-ref)
-     :display-name (i18n/tru "Unknown Metric")}))
-
 (defmulti expression-parts-method
   "Builds the expression parts by dispatching on the type of the argument."
   {:arglists '([query stage-number arg])}
@@ -188,7 +172,11 @@
 
 (defmethod expression-parts-method :segment
   [query _stage-number segment-ref]
-  (segment-metadata-from-ref query segment-ref))
+  (if-let [segment (lib.metadata/segment query (last segment-ref))]
+    segment
+    {:lib/type :metadata/segment
+     :id (last segment-ref)
+     :display-name (i18n/tru "Unknown Segment")}))
 
 (defmethod expression-parts-method :metadata/segment
   [_query _stage-number segment]
@@ -196,7 +184,11 @@
 
 (defmethod expression-parts-method :metric
   [query _stage-number metric-ref]
-  (metric-metadata-from-ref query metric-ref))
+  (if-let [metric (lib.metadata/metric query (last metric-ref))]
+    metric
+    {:lib/type :metadata/metric
+     :id (last metric-ref)
+     :display-name (i18n/tru "Unknown Metric")}))
 
 (defmethod expression-parts-method :metadata/metric
   [_query _stage-number metric]
