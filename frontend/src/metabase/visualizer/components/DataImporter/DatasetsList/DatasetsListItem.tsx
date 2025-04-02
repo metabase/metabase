@@ -5,10 +5,13 @@ import { cardApi } from "metabase/api";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
-import { getVisualizerPrimaryColumn } from "metabase/visualizer/selectors";
+import {
+  getVisualizationType,
+  getVisualizerPrimaryColumn,
+} from "metabase/visualizer/selectors";
 import { parseDataSourceId } from "metabase/visualizer/utils";
 import { isNumber, isString } from "metabase-lib/v1/types/utils/isa";
-import type { Field } from "metabase-types/api";
+import type { Field, VisualizationDisplay } from "metabase-types/api";
 import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
@@ -27,9 +30,13 @@ interface DatasetsListItemProps {
 export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const { selected, item, onSwap, onAdd, mode } = props;
 
+  const currentDisplay = useSelector(getVisualizationType);
   const primaryColumn = useSelector(getVisualizerPrimaryColumn);
 
-  const [metadata, setMetadata] = useState<Field[] | undefined>([]);
+  const [metadata, setMetadata] = useState<{
+    display?: VisualizationDisplay | undefined;
+    fields?: Field[] | undefined;
+  }>({});
 
   const dispatch = useDispatch();
 
@@ -41,7 +48,10 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
           cardApi.endpoints.getCard.initiate({ id: sourceId }),
         );
 
-        setMetadata(result.data?.result_metadata);
+        setMetadata({
+          display: result.data?.display,
+          fields: result.data?.result_metadata,
+        });
       }
     },
     [dispatch],
@@ -52,16 +62,26 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   }, [item, getFieldsMetadata]);
 
   const isCompatible = useMemo(() => {
+    const { display, fields } = metadata;
+
+    if (currentDisplay === "pie") {
+      return false;
+    }
+
+    if (currentDisplay === "scalar") {
+      return display === "scalar";
+    }
+
     if (!primaryColumn || !metadata) {
       return true;
     }
 
     if (isNumber(primaryColumn) || isString(primaryColumn)) {
-      return metadata?.some(field => field.id === primaryColumn.id);
+      return fields?.some(field => field.id === primaryColumn.id);
     }
 
-    return metadata.some(field => field.base_type === primaryColumn?.base_type);
-  }, [metadata, primaryColumn]);
+    return fields?.some(field => field.base_type === primaryColumn?.base_type);
+  }, [metadata, primaryColumn, currentDisplay]);
 
   if (mode === "add" && !isCompatible) {
     return null;
