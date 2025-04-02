@@ -75,6 +75,7 @@ function DashCardActionsPanelInner({
     supportsSeries,
     disableClickBehavior,
     disableReplaceCard,
+    additionalDashcardActionButtons,
   } = getVisualizationRaw(series) ?? {};
 
   const buttons = [];
@@ -136,6 +137,17 @@ function DashCardActionsPanelInner({
         onOpen={() => setIsDashCardTabMenuOpen(true)}
       />,
     );
+  }
+
+  if (additionalDashcardActionButtons) {
+    additionalDashcardActionButtons.forEach((AdditionalButtonComponent) => {
+      buttons.push(
+        <AdditionalButtonComponent
+          key={AdditionalButtonComponent.name}
+          dashcard={dashcard}
+        />,
+      );
+    });
   }
 
   if (supportPreviewing && isPreviewing) {

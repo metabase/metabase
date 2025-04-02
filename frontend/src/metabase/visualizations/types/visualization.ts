@@ -334,4 +334,6 @@ export type VisualizationDefinition = {
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
   placeholderSeries: RawSeries;
+
+  additionalDashcardActionButtons?: React.FC<{ dashcard?: DashboardCard }>[];
 };
