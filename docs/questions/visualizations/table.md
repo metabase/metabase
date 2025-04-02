@@ -25,6 +25,10 @@ Admins (and people in groups with access to table metadata) can hide columns acr
 
 To rearrange the order of the columns, simply click and drag any of the columns in the sidebar. You can also click on a column's heading in the table and drag the column to another position in the table.
 
+## Resize columns
+
+To change the width of a column, you can click and drag the edges of the column's header.
+
 ## Column heading options for filtering and summarizing
 
 Click on a column heading and Metabase will present quick options for filtering and summarizing the data. The options for the column depend on the column's data type (ID, Text, Number, Date).
