@@ -24,6 +24,8 @@ import type {
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
 
+import { removeColumnfromStateUnlessUsedElseWhere } from "./utils";
+
 export const cartesianDropHandler = (
   state: VisualizerHistoryItem,
   { active, over }: DragEndEvent,
@@ -256,6 +258,12 @@ export function removeBubbleSizeFromCartesianChart(
   if (state.settings["scatter.bubble"] === columnName) {
     delete state.settings["scatter.bubble"];
   }
+
+  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+    "graph.metrics",
+    "graph.dimensions",
+    "scatter.bubble",
+  ]);
 }
 
 /**
@@ -267,13 +275,7 @@ export function removeBubbleSizeFromCartesianChart(
 export function removeColumnFromCartesianChart(
   state: VisualizerHistoryItem,
   columnName: string,
-  well?: "bubble",
 ) {
-  if (well === "bubble") {
-    removeBubbleSizeFromCartesianChart(state, columnName);
-    return;
-  }
-
   const isMultiseries =
     state.display &&
     isCartesianChart(state.display) &&
@@ -300,6 +302,16 @@ export function removeColumnFromCartesianChart(
       metric => metric !== columnName,
     );
   }
+
+  if (state.settings["scatter.bubble"] === columnName) {
+    removeBubbleSizeFromCartesianChart(state, columnName);
+  }
+
+  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+    "graph.metrics",
+    "graph.dimensions",
+    "scatter.bubble",
+  ]);
 }
 
 function removeDimensionFromMultiSeriesChart(

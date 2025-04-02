@@ -50,6 +50,7 @@ import {
   addMetricColumnToCartesianChart,
   cartesianDropHandler,
   maybeImportDimensionsFromOtherDataSources,
+  removeBubbleSizeFromCartesianChart,
   removeColumnFromCartesianChart,
 } from "./visualizations/cartesian";
 import {
@@ -297,7 +298,11 @@ const visualizerHistoryItemSlice = createSlice({
       }
 
       if (isCartesianChart(state.display)) {
-        removeColumnFromCartesianChart(state, name, well);
+        if (well === "bubble") {
+          removeBubbleSizeFromCartesianChart(state, name);
+        } else {
+          removeColumnFromCartesianChart(state, name);
+        }
       } else if (state.display === "funnel") {
         removeColumnFromFunnel(state, name);
       } else if (state.display === "pie") {
