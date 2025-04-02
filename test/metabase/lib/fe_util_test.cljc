@@ -197,8 +197,13 @@
               round-tripped-parts       (lib.fe-util/expression-parts query round-tripped-expression)]
 
           (is (=? (:operator parts) (:operator round-tripped-parts)))
-          (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))
+          (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))))
 
+(deftest ^:parallel nested-case-or-if-parts-test
+  (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        int-field    (meta/field-metadata :venues :category-id)
+        string-field (meta/field-metadata :venues :name)
+        boolean-field (meta/field-metadata :venues :category-id)]
     (testing "deeply nested case/if should round-trip through expression-parts and expression-clause"
       (doseq [parts [{:lib/type :mbql/expression-parts
                       :operator :case
