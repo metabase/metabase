@@ -4,7 +4,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import SegmentItem from "metabase/admin/datamodel/components/SegmentItem";
+import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
