@@ -54,7 +54,7 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      - name: Start the jar
+      - name: Run the tests
         env:
           MB_EDITION: ee
           CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
@@ -63,10 +63,7 @@ jobs:
         run: |
           bash bin/embedding-sdk/backward-compatibility-test.sh \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
-            run
-
-      - name: Run the cypress tests
-        run: |
-          bash bin/embedding-sdk/backward-compatibility-test.sh \
+            run & \
+            bash bin/embedding-sdk/backward-compatibility-test.sh \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
             test
