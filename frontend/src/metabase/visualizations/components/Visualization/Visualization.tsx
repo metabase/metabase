@@ -129,12 +129,12 @@ type VisualizationOwnProps = {
   isAction?: boolean;
   isDashboard?: boolean;
   isMobile?: boolean;
-  isShowingSummarySidebar: boolean;
+  isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
-  onEditSummary: () => void;
+  onEditSummary?: () => void;
   query?: NativeQuery;
   rawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;

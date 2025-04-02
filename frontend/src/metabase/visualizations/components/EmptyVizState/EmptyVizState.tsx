@@ -13,8 +13,8 @@ import { getEmptyVizContext } from "./utils";
 
 interface EmptyVizStateProps {
   visualization: VisualizationDefinition;
-  isSummarizeSidebarOpen: boolean;
-  onEditSummary: () => void;
+  isSummarizeSidebarOpen?: boolean;
+  onEditSummary?: () => void;
 }
 
 const utmTags = {
@@ -38,7 +38,7 @@ export const EmptyVizState = ({
   });
 
   const handleClick = () => {
-    if (isSummarizeSidebarOpen) {
+    if (isSummarizeSidebarOpen || !onEditSummary) {
       return;
     }
 
