@@ -198,6 +198,7 @@
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
   [operator :- :keyword
+    ;; TODO - remove lib.schema.expression/expression here as it might not be supported in all cases
    args     :- [:sequential [:or ExpressionArg ExpressionParts ::lib.schema.expression/expression]]
    options  :- [:maybe :map]]
   (-> (into [operator options] (map lib.common/->op-arg) args)
