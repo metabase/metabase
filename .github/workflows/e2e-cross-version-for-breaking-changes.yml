@@ -42,6 +42,9 @@ jobs:
           m2-cache-key: cross-version-uberjar
 
       - name: Build jar with different frontend and backend version
+        env:
+          MB_EDITION: ee
+          CYPRESS_CI: true
         run: |
           bash bin/embedding-sdk/backward-compatibility-test.sh \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
@@ -52,6 +55,11 @@ jobs:
         uses: ./.github/actions/prepare-cypress
 
       - name: Start the jar
+        env:
+          MB_EDITION: ee
+          CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+          CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+          CYPRESS_CI: true
         run: |
           bash bin/embedding-sdk/backward-compatibility-test.sh \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
