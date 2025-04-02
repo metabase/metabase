@@ -16,6 +16,7 @@ To manage these columns, including columns from linked tables, just click **add 
 
 When viewing tables, you can click on the **gear** icon in the bottom left to bring up the columns picker. Click **Add or remove columns** to search for and pick columns, including columns from related tables.
 
+
 ![Adding or removing columns](../images/column-selection.png)
 
 Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata-editing.md#column-visibility).
@@ -100,9 +101,23 @@ The options you see will differ depending on the type of column you're viewing:
 
 You can rename the column.
 
+## Align text
+
+You can display the text on the left, right, or in the middle (i.e., centered) of the column.
+
+## Wrap text
+
+You can toggle text wrapping, which is useful for long text columns.
+
 ### Display as
 
-You can display the text as is, or if the text is a URL, you can display the text as a link or image.
+You can display a column as:
+
+- Text
+- [Link](#display-url-as-a-link)
+- Email link
+- [Image](#display-url-as-an-image)
+- Automatic (Metabase guesses based on the values). 
 
 #### Display text as a link
 
@@ -127,6 +142,10 @@ If you select image, and the text is a link to an image asset, Metabase will dis
 ## Date formatting options
 
 Date formatting options include the same options as [Text formatting](#text-formatting-options), as well as:
+
+### Align date
+
+You can display the date on the left, right, or in the middle (i.e., centered) of the column.
 
 ### Date style
 
@@ -230,12 +249,12 @@ When you add a new rule, you'll first need to pick which column(s) should be aff
 - **Single color**. Pick single color if you want to highlight cells in the column if they're greater, less than, or equal to a specific number, or if they match or contain a certain word or phrase. You can optionally highlight the whole row of a cell that matches the condition you pick so that it's easier to spot as you scroll down your table.
 - **Color range**. Choose color range if you want to tint all the cells in the column from smallest to largest or vice versa. This option is only available for numeric columns.
 
-You can set as many rules on a table as you want. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
+You can set as many rules on a table as you want, and change the order in which those rules are applied. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
 
 ### Pivoted tables
+
+> This auto-pivoting is distinct from the [pivot table](./pivot-table.md) visualization.
 
 If your table is a result that contains one numeric column and two grouping columns, Metabase will also automatically "pivot" your table, like in the example below. Pivoting takes one of your columns and rotates it 90 degrees ("pivots" it) so that each of its values becomes a column heading. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong; or you can also turn the pivoting behavior off entirely.
 
 ![Pivot table](../images/pivot.png)
-
-This auto-pivoting is distinct from the [pivot table](./pivot-table.md) visualization.
