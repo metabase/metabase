@@ -10,7 +10,6 @@ import {
 } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box } from "metabase/ui";
-import { extractRemappedColumns } from "metabase/visualizations";
 import type {
   DatasetData,
   FieldWithMetadata,
@@ -38,7 +37,7 @@ export const EditTableDataGrid = ({
   onCellValueUpdate,
   onRowExpandClick,
 }: EditTableDataGridProps) => {
-  const { cols, rows } = useMemo(() => extractRemappedColumns(data), [data]);
+  const { cols, rows } = data;
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
     useTableEditing();
