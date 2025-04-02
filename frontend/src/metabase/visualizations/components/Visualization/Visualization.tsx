@@ -1,22 +1,17 @@
 import cx from "classnames";
 import {
-  type CSSProperties,
   type ComponentType,
   type ErrorInfo,
   PureComponent,
-  type ReactNode,
-  type Ref,
   forwardRef,
 } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { SmallGenericError } from "metabase/components/ErrorPages";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
@@ -26,11 +21,6 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getFont } from "metabase/styled-components/selectors";
-import type { IconName, IconProps } from "metabase/ui";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
@@ -42,137 +32,41 @@ import {
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
-import {
-  type ClickActionModeGetter,
-  type ClickObject,
-  type HoveredObject,
-  type QueryClickActionsMode,
-  type VisualizationDefinition,
-  type VisualizationPassThroughProps,
-  type Visualization as VisualizationType,
-  isRegularClickAction,
+import { isSameSeries } from "metabase/visualizations/lib/utils";
+import type {
+  ClickActionModeGetter,
+  ClickObject,
+  HoveredObject,
+  QueryClickActionsMode,
 } from "metabase/visualizations/types";
+import { isRegularClickAction } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
-import type {
-  Card,
-  Dashboard,
-  DashboardCard,
-  RawSeries,
-  Series,
-  TimelineEvent,
-  VisualizationSettings,
-} from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
+import type { Card } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
-import { ErrorView } from "./ErrorView";
-import LoadingView from "./LoadingView";
-import NoResultsView from "./NoResultsView";
 import {
   VisualizationActionButtonsContainer,
   VisualizationHeader,
   VisualizationRoot,
   VisualizationSlowSpinner,
 } from "./Visualization.styled";
-
-type StateDispatchProps = {
-  dispatch: Dispatch;
-};
-
-type StateProps = {
-  fontFamily: string;
-  isRawTable: boolean;
-  isEmbeddingSdk: boolean;
-  scrollToLastColumn: boolean;
-};
-
-type ForwardedRefProps = {
-  forwardedRef: Ref<HTMLDivElement>;
-};
-
-type OnChangeCardAndRunOpts = {
-  nextCard: Card;
-  previousCard: Card;
-  objectId?: number;
-};
-
-type VisualizationOwnProps = {
-  actionButtons?: ReactNode | null;
-  className?: string;
-  dashboard?: Dashboard;
-  dashcard?: DashboardCard;
-  error?: ReactNode;
-  errorIcon?: IconName;
-  errorMessageOverride?: string;
-  expectedDuration?: number;
-  getExtraDataForClick?: (
-    clicked: ClickObject | null,
-  ) => Record<string, unknown>;
-  getHref?: () => string | undefined;
-  gridSize?: {
-    width: number;
-    height: number;
-  };
-  gridUnit?: number;
-  handleVisualizationClick?: (clicked: ClickObject | null) => void;
-  headerIcon?: IconProps;
-  width?: number | null;
-  height?: number | null;
-  isAction?: boolean;
-  isDashboard?: boolean;
-  isMobile?: boolean;
-  isSlow?: CardSlownessStatus;
-  isVisible?: boolean;
-  metadata?: Metadata;
-  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
-  query?: NativeQuery;
-  rawSeries?: RawSeries;
-  replacementContent?: JSX.Element | null;
-  selectedTimelineEventIds?: number[];
-  settings?: VisualizationSettings;
-  showTitle?: boolean;
-  showWarnings?: boolean;
-  style?: CSSProperties;
-  timelineEvents?: TimelineEvent[];
-  uuid?: string;
-  token?: string;
-  onOpenChartSettings?: (data: {
-    initialChartSettings: { section: string };
-    showSidebarTitle?: boolean;
-  }) => void;
-  onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
-  onHeaderColumnReorder?: (columnName: string) => void;
-  onChangeLocation?: (location: Location) => void;
-  onUpdateQuestion?: () => void;
-  onUpdateVisualizationSettings?: (
-    settings: VisualizationSettings,
-    question?: Question,
-  ) => void;
-  onUpdateWarnings?: (warnings: string[]) => void;
-} & VisualizationPassThroughProps;
-
-type VisualizationProps = StateDispatchProps &
-  StateProps &
-  ForwardedRefProps &
-  VisualizationOwnProps;
-
-type VisualizationState = {
-  clicked: ClickObject | null;
-  computedSettings: Record<string, string>;
-  error: ReactNode;
-  genericError: ErrorInfo | null;
-  getHref: (() => string) | undefined;
-  hovered: HoveredObject | null;
-  series: Series | null;
-  visualization: VisualizationDefinition | null;
-  warnings: string[];
-  _lastProps?: VisualizationProps;
-};
+import { VisualizationContent } from "./VisualizationContent";
+import type {
+  OnChangeCardAndRunOpts,
+  StateProps,
+  VisualizationOwnProps,
+  VisualizationProps,
+  VisualizationState,
+} from "./types";
+import {
+  SMALL_CARD_WIDTH_THRESHOLD,
+  deriveStateFromProps,
+  isLoading,
+} from "./utils";
 
 const mapStateToProps = (state: State): StateProps => ({
   fontFamily: getFont(state),
@@ -180,37 +74,6 @@ const mapStateToProps = (state: State): StateProps => ({
   isEmbeddingSdk: getIsEmbeddingSdk(state),
   scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
 });
-
-const SMALL_CARD_WIDTH_THRESHOLD = 150;
-
-const isLoading = (series: Series | null) => {
-  return !(
-    series &&
-    series.length > 0 &&
-    _.every(
-      series,
-      (s) => !!s.data || _.isObject(s.card.visualization_settings.virtual_card),
-    )
-  );
-};
-
-const deriveStateFromProps = (props: VisualizationProps) => {
-  const transformed = props.rawSeries
-    ? getVisualizationTransformed(extractRemappings(props.rawSeries))
-    : null;
-
-  const series = transformed?.series ?? null;
-
-  const computedSettings = !isLoading(series)
-    ? getComputedSettingsForSeries(series)
-    : {};
-
-  return {
-    series,
-    computedSettings,
-    visualization: transformed?.visualization,
-  };
-};
 
 class Visualization extends PureComponent<
   VisualizationProps,
@@ -258,7 +121,6 @@ class Visualization extends PureComponent<
     state: VisualizationState,
   ) {
     // When these props has changed, we need to re-derive the state.
-    // getDerivedStateFromProps does not have access to the last props, so
     if (
       !isSameSeries(props.rawSeries, state._lastProps?.rawSeries) ||
       !equals(props.settings, state._lastProps?.settings) ||
@@ -571,6 +433,7 @@ class Visualization extends PureComponent<
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
+      onHeaderColumnReorder,
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
 
@@ -680,8 +543,6 @@ class Visualization extends PureComponent<
       };
     }
 
-    const CardVisualization = visualization as VisualizationType;
-
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
@@ -691,6 +552,69 @@ class Visualization extends PureComponent<
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard?.size_y !== 1 || isMobile) && !isAction);
+
+    // Create a combined object with all visualization props
+    const visualizationProps = {
+      actionButtons,
+      canRemoveSeries,
+      canToggleSeriesVisibility,
+      className: cx("CardVisualization", CS.flexFull, CS.flexBasisNone),
+      dashboard,
+      dashcard,
+      dispatch,
+      errorIcon,
+      fontFamily,
+      getExtraDataForClick,
+      getHref,
+      gridSize,
+      headerIcon: hasHeader ? null : headerIcon,
+      height: rawHeight,
+      isDashboard: !!isDashboard,
+      isEditing: !!isEditing,
+      isEmbeddingSdk,
+      isFullscreen: !!isFullscreen,
+      isMobile: !!isMobile,
+      isNightMode: !!isNightMode,
+      isObjectDetail,
+      isPlaceholder,
+      isPreviewing,
+      isRawTable,
+      isQueryBuilder: !!isQueryBuilder,
+      isSettings: !!isSettings,
+      isShowingDetailsOnlyColumns,
+      scrollToLastColumn,
+      metadata,
+      mode,
+      queryBuilderMode,
+      rawSeries,
+      renderEmptyMessage,
+      renderTableHeader,
+      scrollToColumn,
+      selectedTimelineEventIds,
+      showAllLegendItems,
+      showTitle: !!showTitle,
+      tableHeaderHeight,
+      timelineEvents,
+      totalNumGridCols,
+      width: rawWidth,
+      uuid,
+      token,
+      onActionDismissal: this.hideActions,
+      onChangeCardAndRun: this.props.onChangeCardAndRun
+        ? this.handleOnChangeCardAndRun
+        : null,
+      onDeselectTimelineEvents,
+      onOpenTimelines,
+      onRender: this.onRender,
+      onRenderError: this.onRenderError,
+      onRemoveSeries,
+      onSelectTimelineEvents,
+      onTogglePreviewing,
+      onUpdateVisualizationSettings,
+      onUpdateWarnings,
+      visualizationIsClickable: this.visualizationIsClickable,
+      onHeaderColumnReorder,
+    };
 
     return (
       <ErrorBoundary
@@ -722,109 +646,30 @@ class Visualization extends PureComponent<
               />
             </VisualizationHeader>
           )}
-          {replacementContent ? (
-            replacementContent
-          ) : isDashboard && noResults ? (
-            <NoResultsView isSmall={small} />
-          ) : error ? (
-            <ErrorView
-              error={errorMessageOverride ?? error}
-              icon={errorIcon}
-              isSmall={small}
-              isDashboard={!!isDashboard}
-            />
-          ) : genericError ? (
-            <SmallGenericError bordered={false} />
-          ) : loading ? (
-            <LoadingView
-              expectedDuration={expectedDuration}
-              isSlow={!!isSlow}
-            />
-          ) : (
-            series && (
-              <div
-                data-card-key={getCardKey(series[0].card?.id)}
-                className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
-              >
-                <CardVisualization
-                  actionButtons={actionButtons}
-                  // NOTE: CardVisualization class used as a selector for tests
-                  className={cx(
-                    "CardVisualization",
-                    CS.flexFull,
-                    CS.flexBasisNone,
-                  )}
-                  card={series[0].card} // convenience for single-series visualizations
-                  canRemoveSeries={canRemoveSeries}
-                  canToggleSeriesVisibility={canToggleSeriesVisibility}
-                  clicked={clicked}
-                  data={series[0].data} // convenience for single-series visualizations
-                  dashboard={dashboard}
-                  dashcard={dashcard}
-                  dispatch={dispatch}
-                  errorIcon={errorIcon}
-                  fontFamily={fontFamily}
-                  getExtraDataForClick={getExtraDataForClick}
-                  getHref={getHref}
-                  gridSize={gridSize}
-                  headerIcon={hasHeader ? null : headerIcon}
-                  height={rawHeight}
-                  hovered={hovered}
-                  isDashboard={!!isDashboard}
-                  isEditing={!!isEditing}
-                  isEmbeddingSdk={isEmbeddingSdk}
-                  isFullscreen={!!isFullscreen}
-                  isMobile={!!isMobile}
-                  isNightMode={!!isNightMode}
-                  isObjectDetail={isObjectDetail}
-                  isPlaceholder={isPlaceholder}
-                  isPreviewing={isPreviewing}
-                  isRawTable={isRawTable}
-                  isQueryBuilder={!!isQueryBuilder}
-                  isSettings={!!isSettings}
-                  isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
-                  scrollToLastColumn={scrollToLastColumn}
-                  metadata={metadata}
-                  mode={mode}
-                  queryBuilderMode={queryBuilderMode}
-                  rawSeries={rawSeries}
-                  renderEmptyMessage={renderEmptyMessage}
-                  renderTableHeader={renderTableHeader}
-                  scrollToColumn={scrollToColumn}
-                  selectedTimelineEventIds={selectedTimelineEventIds}
-                  series={series}
-                  settings={settings}
-                  showAllLegendItems={showAllLegendItems}
-                  showTitle={!!showTitle}
-                  tableHeaderHeight={tableHeaderHeight}
-                  timelineEvents={timelineEvents}
-                  totalNumGridCols={totalNumGridCols}
-                  visualizationIsClickable={this.visualizationIsClickable}
-                  width={rawWidth}
-                  uuid={uuid}
-                  token={token}
-                  onActionDismissal={this.hideActions}
-                  onChangeCardAndRun={
-                    this.props.onChangeCardAndRun
-                      ? this.handleOnChangeCardAndRun
-                      : null
-                  }
-                  onDeselectTimelineEvents={onDeselectTimelineEvents}
-                  onHoverChange={this.handleHoverChange}
-                  onOpenTimelines={onOpenTimelines}
-                  onRender={this.onRender}
-                  onRenderError={this.onRenderError}
-                  onRemoveSeries={onRemoveSeries}
-                  onSelectTimelineEvents={onSelectTimelineEvents}
-                  onTogglePreviewing={onTogglePreviewing}
-                  onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-                  onUpdateWarnings={onUpdateWarnings}
-                  onVisualizationClick={this.handleVisualizationClick}
-                  onHeaderColumnReorder={this.props.onHeaderColumnReorder}
-                />
-              </div>
-            )
-          )}
+
+          <VisualizationContent
+            series={series}
+            error={error}
+            genericError={genericError}
+            loading={loading}
+            noResults={noResults}
+            replacementContent={replacementContent}
+            expectedDuration={expectedDuration}
+            isSlow={isSlow}
+            isDashboard={isDashboard}
+            small={small}
+            errorMessageOverride={errorMessageOverride}
+            errorIcon={errorIcon}
+            visualizationProps={visualizationProps}
+            clicked={clicked}
+            hovered={hovered}
+            settings={settings}
+            handleVisualizationClick={this.handleVisualizationClick}
+            handleHoverChange={this.handleHoverChange}
+            visualization={visualization}
+            isPlaceholder={isPlaceholder}
+          />
+
           <ChartTooltip hovered={hovered} settings={settings} />
           {this.props.onChangeCardAndRun && (
             <ConnectedClickActionsPopover
