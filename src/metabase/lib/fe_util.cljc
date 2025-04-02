@@ -113,13 +113,11 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod expression-parts-method :default
-  [query stage-number value]
-  (let [[op options & args] (cond-> value
-                              (expandable-temporal-expression? value) expand-temporal-expression)]
-    {:lib/type :mbql/expression-parts
-     :operator op
-     :options  options
-     :args     (mapv #(expression-parts-method query stage-number %) args)}))
+  [query stage-number [op options & args]]
+  {:lib/type :mbql/expression-parts
+   :operator op
+   :options  options
+   :args     (mapv (partial expression-parts-method query stage-number) args)})
 
 (doseq [dispatch-value [:if :case]]
   (defmethod expression-parts-method dispatch-value
@@ -145,6 +143,12 @@
   (defmethod expression-parts-method dispatch-value
     [_query _stage-number value]
     value))
+
+(defmethod expression-parts-method :=
+  [query stage-number clause]
+  ((get-method expression-parts-method :default)
+   query stage-number (cond-> clause
+                        (expandable-temporal-expression? clause) expand-temporal-expression)))
 
 (defmethod expression-parts-method :field
   [query stage-number field-ref]
