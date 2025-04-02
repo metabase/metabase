@@ -165,6 +165,7 @@
                     :aggregation [[:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
          (adjust query)))))
 
+;; DONE
 (deftest ^:parallel metric-with-implicit-join-test
   (testing "Metrics with filters on implicitly joined columns should work #43943"
     (let [[source-metric mp] (mock-metric (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) $q
@@ -175,17 +176,21 @@
       (is (=?
            {:stages [{:source-table (meta/id :orders)
                       :joins [{:stages [{:source-table (meta/id :products)}]}]
-                      :filters [[:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]]
-                      :aggregation [[:count {}]]}]}
+                      :aggregation [[:sum {} [:case {} [[[:= {}
+                                                          [:field {} (meta/id :products :category)]
+                                                          [:value {} "Gadget"]]
+                                                         1]]]]]}]}
            (adjust query)))
       (testing "With an explicit product join in consumer query"
         (is (=?
              {:stages [{:source-table (meta/id :orders)
                         :joins [{:stages [{:source-table (meta/id :products)}]}
                                 {:stages [{:source-table (meta/id :products)}]}]
-                        :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]
-                                  [:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]]
-                        :aggregation [[:count {}]]}]}
+                        :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]]
+                        :aggregation [[:sum {} [:case {} [[[:= {}
+                                                            [:field {} (meta/id :products :category)]
+                                                            [:value {} "Gadget"]]
+                                                           1]]]]]}]}
              (adjust (as-> (lib/query mp (meta/table-metadata :orders)) $q
                        (lib/join $q (meta/table-metadata :products))
                        (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :title)} :id) (lib/filterable-columns $q))
@@ -195,14 +200,17 @@
         (is (=?
              {:stages [{:source-table (meta/id :orders)
                         :joins [{:stages [{:source-table (meta/id :products)}]}]
-                        :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]
-                                  [:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]]
-                        :aggregation [[:count {}]]}]}
+                        :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]]
+                        :aggregation [[:sum {} [:case {} [[[:= {}
+                                                            [:field {} (meta/id :products :category)]
+                                                            [:value {} "Gadget"]]
+                                                           1]]]]]}]}
              (adjust (as-> (lib/query mp (meta/table-metadata :orders)) $q
                        (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :title)} :id) (lib/filterable-columns $q))
                                              "foobar"))
                        (lib/aggregate $q (lib.options/ensure-uuid [:metric {} (:id source-metric)]))))))))))
 
+;; DONE
 (deftest ^:parallel multiple-source-metrics-with-implicit-join-test
   (let [[first-metric mp] (mock-metric (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) $q
                                          (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :category)} :id)
@@ -219,10 +227,12 @@
                   (lib/aggregate (lib.options/ensure-uuid [:metric {} (:id second-metric)])))]
     (is (=? {:stages [{:source-table (meta/id :orders)
                        :joins [{:stages [{:source-table (meta/id :products)}]}]
-                       :filters [[:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]
-                                 [:= {} [:field {} (meta/id :products :title)] [:value {} "Title"]]]
-                       :aggregation [[:count {}]
-                                     [:count {}]]}]}
+                       :aggregation [[:sum {} [:case {}
+                                               [[[:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]
+                                                 1]]]]
+                                     [:sum {} [:case {}
+                                               [[[:= {} [:field {} (meta/id :products :title)] [:value {} "Title"]]
+                                                 1]]]]]}]}
             (adjust query)))))
 
 (deftest ^:parallel adjust-aggregation-metric-ordering-test
@@ -269,6 +279,7 @@
                     :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
          (adjust query)))))
 
+;; TODO: case stmt should reflect deduplicated expression
 (deftest ^:parallel adjust-expression-name-collision-test
   (let [[source-metric mp] (mock-metric (-> (basic-metric-query)
                                             (lib/expression "foobar" (lib/+ 1 1))
@@ -286,21 +297,28 @@
                                   [:- {:lib/expression-name "qux"} [:expression {} "foobar"] 2]
                                   [:+ {:lib/expression-name "foobar_2"} 1 1]
                                   [:+ {:lib/expression-name "qux_2"} [:expression {} "foobar_2"] 1]]
-                    :filters [[:= {} [:expression {} "foobar"] [:expression {} "qux"]]
-                              [:= {} [:expression {} "qux_2"] [:expression {} "foobar_2"]]]
-                    :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
-         (adjust query)))))
+                    :filters [[:= {} [:expression {} "foobar"] [:expression {} "qux"]]]
+                    :aggregation [[:avg {}
+                                   [:case {}
+                                    [[#_some? [:= {} [:expression {} "qux_2"] [:expression {} "foobar_2"]]
+                                      [:field {} (meta/id :products :rating)]]]]]]}]}
+         @(def rr (adjust query))))))
 
+;; DONE
 (deftest ^:parallel adjust-filter-test
   (let [[source-metric mp] (mock-metric (lib/filter (basic-metric-query) (lib/> (meta/field-metadata :products :price) 1)))
         query (-> (lib/query mp source-metric)
                   (lib/filter (lib/= (meta/field-metadata :products :category) "Widget")))]
     (is (=?
          {:stages [{:source-table (meta/id :products)
-                    :filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]
-                              [:> {} [:field {} (meta/id :products :price)] [:value {} 1]]]}]}
+                    :aggregation [[:avg {} [:case {} [[[:> {}
+                                                        [:field {} (meta/id :products :price)]
+                                                        [:value {} 1]]
+                                                       [:field {} (meta/id :products :rating)]]]]]]
+                    :filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
          (adjust query)))))
 
+;; TODO: Should be merging nested case statements?
 (deftest ^:parallel adjust-mixed-multi-source-test
   (let [mp                (lib.tu/metadata-provider-with-mock-cards)
         [first-metric mp] (mock-metric mp
@@ -312,10 +330,13 @@
         query (-> (lib/query mp second-metric)
                   (lib/filter (lib/= (meta/field-metadata :products :category) "Widget")))]
     (is (=? {:stages [{:source-table (meta/id :products)}
-                      {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]
-                                 [:< {} [:field {} (meta/id :products :price)] [:value {} 100]]
-                                 [:> {} [:field {} (meta/id :products :price)] [:value {} 1]]]
-                       :aggregation some?}]}
+                      {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]
+                       :aggregation [[:avg {}
+                                      [:case {}
+                                       [[[:< {} [:field {} (meta/id :products :price)] [:value {} 100]]
+                                         [:case {}
+                                          [[[:> {} [:field {} "PRICE"] [:value {} 1]]
+                                            [:field {} "RATING"]]]]]]]]]}]}
             (adjust query)))))
 
 (deftest ^:parallel question-based-on-metric-based-on-metric-based-on-metric-test
@@ -584,6 +605,7 @@
                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))
                      (add-aggregation-options {:display-name "My cooler metric" :name "Better Named Metric"})))))))
 
+;; DONE
 (deftest ^:parallel metric-with-nested-segments-test
   (let [mp (lib.tu/mock-metadata-provider
             meta/metadata-provider
@@ -597,16 +619,22 @@
     (is (=?
          {:stages
           [{:source-table (meta/id :products)
-            :aggregation [[:avg {:name "avg"} [:field {} (meta/id :products :rating)]]]
-            :filters [[:= {} [:field {} (meta/id :venues :name)] some?]]}]}
+            :aggregation [[:avg {:name "avg"}
+                           [:case {}
+                            [[[:= {} [:field {} (meta/id :venues :name)] some?]
+                              [:field {} (meta/id :products :rating)]]]]]]}]}
          (adjust (lib/query mp source-metric))))
     ;; Segments will be expanded in this case as the metric query that is spliced in needs to be processed
     (is (=?
-         {:stages [{:filters [[:= {} [:field {} (meta/id :venues :name)] some?]]}]}
+         {:stages [{:aggregation [[:avg {}
+                                   [:case {}
+                                    [[[:= {} [:field {} (meta/id :venues :name)] [:value {} "abc"]]
+                                      [:field {} (meta/id :products :rating)]]]]]]}]}
          (adjust
           (-> (lib/query mp (meta/table-metadata :products))
               (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
 
+;; DONE
 (deftest ^:parallel expand-macros-in-nested-queries-test
   (testing "expand-macros should expand things in the correct nested level (#12507)"
     (let [[source-metric mp] (mock-metric (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -616,9 +644,10 @@
           before {:source-table (meta/id :venues)
                   :aggregation  [[:metric (:id source-metric)]]}
           after {:source-table (meta/id :venues)
-                 :aggregation  [[:aggregation-options [:sum [:field (meta/id :venues :price) {}]]
-                                 {:display-name "My Cool Aggregation"}]]
-                 :filter       [:= [:field (meta/id :venues :name) {}] [:value "abc" {}]]}
+                 :aggregation  [[:aggregation-options
+                                 [:sum [:case [[[:= [:field (meta/id :venues :name) {}] [:value "abc" {}]]
+                                                #_some? [:field (meta/id :venues :price) {}]]]]]
+                                 {:display-name "My Cool Aggregation"}]]}
           expand-macros (fn [mbql-query]
                           (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->pMBQL mbql-query)))))]
       (comment
@@ -659,6 +688,7 @@
                                                  [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
                                                    :source-query before}]}}))))))))
 
+;; DONE
 (deftest ^:parallel model-based-metric-use-test
   (let [model {:lib/type :metadata/card
                :id (fresh-card-id meta/metadata-provider)
@@ -701,10 +731,14 @@
     (testing "model based metrics can be used in question based on that model"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :filters [[:> {} [:field {} (meta/id :products :rating)] 2]]}
-                        {:aggregation [[:avg {:name "avg"} [:field {} "RATING"]]
-                                       [:count {:name "count"}]]
-                         :filters [[:< {} [:field {} "RATING"] [:value {} 5]]
-                                   [:> {} [:field {} "RATING"] [:value {} 3]]]}]}
+                        {:aggregation [[:avg {:name "avg"}
+                                        [:case {}
+                                         [[[:< {} [:field {} "RATING"] [:value {} 5]]
+                                           [:field {} "RATING"]]]]]
+                                       [:sum {:name "count"}
+                                        [:case {}
+                                         [[[:> {} [:field {} "RATING"] [:value {} 3]]
+                                           1]]]]]}]}
               (adjust query))))))
 
 (deftest ^:parallel model-based-metric-with-implicit-join-test
