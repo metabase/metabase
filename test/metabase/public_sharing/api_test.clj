@@ -1458,7 +1458,12 @@
               (is (= {:values          [[2] [3] [4] [5] [6]]
                       :has_more_values false}
                      (->> (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys)))
-                          (chain-filter-test/take-n-values 5))))))
+                          (chain-filter-test/take-n-values 5))))
+              (testing "with constraints"
+                (is (= {:values          [[44]]
+                        :has_more_values false}
+                       (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys))
+                                      (keyword (:id param-keys)) "7"))))))
 
           (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
             (testing "parameter with source is a static list"

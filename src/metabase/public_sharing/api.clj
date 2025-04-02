@@ -626,7 +626,7 @@
   [{:keys [uuid param-key]} :- [:map
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
-   constraint-param-key->value]
+   constraint-param-key->value :- [:map-of string? any?]]
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
