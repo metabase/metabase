@@ -24,7 +24,7 @@ type ConnectedDashboardProps = {
   parameterQueryParams: Record<string, string>;
 
   downloadsEnabled?: boolean;
-  onNavigateToNewCardFromDashboard: (
+  onNavigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
   plugins?: MetabasePluginsConfig;
@@ -75,7 +75,7 @@ export const ConnectedDashboard = ({
       refreshPeriod={refreshPeriod}
       onRefreshPeriodChange={onRefreshPeriodChange}
       setRefreshElapsedHook={setRefreshElapsedHook}
-      onNavigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
+      navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
       autoScrollToDashcardId={undefined}
       reportAutoScrolledToDashcard={_.noop}
     >

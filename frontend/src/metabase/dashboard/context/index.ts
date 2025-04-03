@@ -1,1 +1,1 @@
-export * from "./context.tsx";
+export * from "./context";

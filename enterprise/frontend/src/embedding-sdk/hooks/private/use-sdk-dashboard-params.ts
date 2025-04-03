@@ -1,4 +1,5 @@
 import type { Query } from "history";
+import type { CSSProperties } from "react";
 import { pick } from "underscore";
 
 import type { SdkDashboardId } from "embedding-sdk/types/dashboard";

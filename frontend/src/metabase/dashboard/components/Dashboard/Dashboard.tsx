@@ -42,7 +42,7 @@ function Dashboard() {
     reportAutoScrolledToDashcard,
     selectedTabId,
     setSharing,
-    parameterQueryParams,
+    parameterQueryParams = {},
     downloadsEnabled = true,
     handleAddQuestion,
     shouldRenderAsNightMode,

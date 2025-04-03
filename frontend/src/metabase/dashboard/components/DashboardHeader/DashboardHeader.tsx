@@ -1,4 +1,3 @@
-import type { Query } from "history";
 import { useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -37,7 +36,7 @@ import { CancelEditButton, SaveEditButton } from "./buttons";
 export type DashboardHeaderProps = {
   dashboard: Dashboard;
   dashboardBeforeEditing?: Dashboard | null;
-  parameterQueryParams: Query;
+  parameterQueryParams: Record<string, string>;
   isAdditionalInfoVisible: boolean;
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &

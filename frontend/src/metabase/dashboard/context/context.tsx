@@ -38,11 +38,11 @@ type DashboardLoadingState = {
 
 type OwnProps = {
   dashboardId: DashboardId;
-  parameterQueryParams: Record<string, string>;
-  onLoad: (result: SuccessfulFetchDashboardResult) => void;
-  onError: (result: FailedFetchDashboardResult) => void;
-  navigateToNewCardFromDashboard: (
-    opts?: NavigateToNewCardFromDashboardOpts,
+  parameterQueryParams?: Record<string, string>;
+  onLoad?: (result: SuccessfulFetchDashboardResult) => void;
+  onError?: (result: FailedFetchDashboardResult) => void;
+  navigateToNewCardFromDashboard?: (
+    opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
 };
 
@@ -68,38 +68,43 @@ type DashboardControls = DashboardFullscreenControls &
   UseAutoScrollToDashcardResult &
   DashboardOptions;
 
-type ContextProps = OwnProps & ReduxProps & DashboardControls;
+type ContextProps = OwnProps & ReduxProps & Partial<DashboardControls>;
 
-type ContextReturned = OwnResult & ContextProps & DashboardLoadingState;
+type ContextReturned = OwnResult &
+  OwnProps &
+  ReduxProps &
+  Required<DashboardControls> &
+  DashboardLoadingState;
 
 const DashboardContext = createContext<ContextReturned | undefined>(undefined);
 
 const DashboardContextProviderInner = ({
   dashboardId,
-  parameterQueryParams,
+  parameterQueryParams = {},
   onLoad,
   onError,
 
   children,
 
   // url params
-  isFullscreen,
-  onFullscreenChange,
-  hasNightModeToggle,
-  onNightModeChange,
-  isNightMode,
-  refreshPeriod,
-  setRefreshElapsedHook,
-  onRefreshPeriodChange,
-  background,
-  bordered,
-  titled,
-  theme,
-  setTheme,
-  hideParameters,
-  downloadsEnabled,
-  autoScrollToDashcardId,
-  reportAutoScrolledToDashcard,
+  isFullscreen = false,
+  onFullscreenChange = _.noop,
+  hasNightModeToggle = false,
+  onNightModeChange = _.noop,
+  isNightMode = false,
+  refreshPeriod = null,
+  setRefreshElapsedHook = _.noop,
+  onRefreshPeriodChange = _.noop,
+  background = true,
+  bordered = true,
+  titled = true,
+  font = null,
+  theme = "light",
+  setTheme = _.noop,
+  hideParameters = null,
+  downloadsEnabled = true,
+  autoScrollToDashcardId = undefined,
+  reportAutoScrolledToDashcard = _.noop,
 
   // redux selectors
   dashboard,
@@ -130,11 +135,11 @@ const DashboardContextProviderInner = ({
   const previousTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
 
-  const shouldRenderAsNightMode = isNightMode && isFullscreen;
+  const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 
   const handleAddQuestion = useCallback(() => {
     if (!isEditing) {
-      onRefreshPeriodChange(null);
+      onRefreshPeriodChange?.(null);
       setEditingDashboard(dashboard);
     }
     toggleSidebar(SIDEBAR_NAME.addQuestion);
@@ -161,11 +166,11 @@ const DashboardContextProviderInner = ({
 
       if (!isSuccessfulFetchDashboardResult(result)) {
         if (isFailedFetchDashboardResult(result)) {
-          onError(result);
+          onError?.(result);
         }
         return;
       }
-      onLoad(result);
+      onLoad?.(result);
     },
     [
       fetchDashboard,
@@ -247,6 +252,7 @@ const DashboardContextProviderInner = ({
         background,
         bordered,
         titled,
+        font,
         theme,
         setTheme,
         hideParameters,
