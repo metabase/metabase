@@ -228,9 +228,10 @@ export function checkRenderable(
   settings: VisualizationSettings,
   query?: NativeQuery | null,
 ) {
-  if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
-    throw new Error(t`Pivot tables can only be used with aggregated queries.`);
-  }
+  // TODO: temporarily disabling renderability check for prototype
+  // if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
+  //   throw new Error(t`Pivot tables can only be used with aggregated queries.`);
+  // }
   if (!databaseSupportsPivotTables(query)) {
     throw new Error(t`This database does not support pivot tables.`);
   }
