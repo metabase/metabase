@@ -114,7 +114,6 @@ function compileLogicalNot(
   opts: Options,
 ): Lib.ExpressionParts | Lib.ExpressionArg {
   assert(node.type === LOGICAL_NOT, t`Invalid node type`);
-  assert(node.token?.text, t`Empty token text`);
 
   // TODO: remove this cast
   return compileUnaryOp("not" as Lib.ExpressionOperator, node, opts);
@@ -122,14 +121,12 @@ function compileLogicalNot(
 
 function compileLogicalAnd(node: Node, opts: Options): Lib.ExpressionParts {
   assert(node.type === LOGICAL_AND, t`Invalid node type`);
-  assert(node.token?.text, t`Empty token text`);
 
   return compileInfixOp("and" as Lib.ExpressionOperator, node, opts);
 }
 
 function compileLogicalOr(node: Node, opts: Options): Lib.ExpressionParts {
   assert(node.type === LOGICAL_OR, t`Invalid node type`);
-  assert(node.token?.text, t`Empty token text`);
 
   // TODO: remove this cast
   return compileInfixOp("or" as Lib.ExpressionOperator, node, opts);
@@ -202,7 +199,6 @@ function compileNegative(
   opts: Options,
 ): Lib.ExpressionParts | NumberValue {
   assert(node.type === NEGATIVE, t`Invalid node type`);
-  assert(node.token?.text, t`Empty token text`);
 
   const result = compileUnaryOp("-", node, opts);
   if (typeof result.args[0] === "number") {
@@ -213,7 +209,6 @@ function compileNegative(
 
 function compileAdditionOp(node: Node, opts: Options): Lib.ExpressionParts {
   assert(node.type === ADD, t`Invalid node type`);
-  assert(node.token?.text, t`Empty token text`);
 
   return compileInfixOp("+", node, opts);
 }
@@ -229,7 +224,6 @@ function compileMulDivOp(node: Node, opts: Options): Lib.ExpressionParts {
 
 function compileSubtractionOp(node: Node, opts: Options): Lib.ExpressionParts {
   assert(node.type === SUB, t`Invalid node type`);
-  assert(node.token?.text, t`Empty token text`);
 
   return compileInfixOp("-", node, opts);
 }
@@ -249,9 +243,11 @@ function compileUnaryOp(
 ): Lib.ExpressionParts {
   if (node.children.length > 1) {
     throw new CompileError(t`Unexpected expression`, node.children[1]);
-  } else if (node.children.length === 0) {
+  }
+  if (node.children.length === 0) {
     throw new CompileError(t`Expected expression`, node);
   }
+
   return withNode(node, {
     operator,
     options: {},
@@ -266,7 +262,8 @@ function compileInfixOp(
 ): Lib.ExpressionParts {
   if (node.children.length > 2) {
     throw new CompileError(t`Unexpected expression`, node.children[2]);
-  } else if (node.children.length === 0) {
+  }
+  if (node.children.length === 0) {
     throw new CompileError(t`Expected expression`, node);
   }
 
