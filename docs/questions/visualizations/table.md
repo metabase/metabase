@@ -82,15 +82,16 @@ From a datetime, you can grab:
 - **Quarter of year**: Q1, Q2...
 - **Year**: 2024, 2025...
 
-### Extract domain, host
+### Extract domain, subdomain, host, or path
 
-Grab the domain or host from a URL or email. So if you have `https://www.example.com`:
+Grab the domain or host from a URL or email. So if you have `https://www.example.com/path/to/page#heading-on-page`:
 
 - Host: `example.com`
 - Domain: `example`
 - Subdomain: `www`
+- Path: `/path/to/page`
 
-> Extracting domain and host from a URL or email is unavailable for MongoDB, SQLite, and SQL Server. For Druid, extracting domain and host is only available for the Druid-JDBC driver.
+> Extracting parts of a URL or email is unavailable for MongoDB, SQLite, and SQL Server. For Druid, extracting domain and host is only available for the Druid-JDBC driver.
 
 ### Sum over time
 
@@ -123,7 +124,7 @@ You can toggle text wrapping, which is useful for columns with long text values 
 You can display a column as:
 
 - Text
-- [Link](#display-url-as-a-link)
+- [Link](#display-text-as-a-link)
 - Email link
 - [Image](#display-url-as-an-image)
 - Automatic (Metabase guesses based on the values). 

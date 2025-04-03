@@ -118,7 +118,12 @@
 (def ^:private
   gdrive-link
   "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
-  "<expected-gdrive-link>")
+  "https://drive.google.com/drive/expected-gdrive-link")
+
+(def ^:private
+  gsheet-link
+  "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "https://docs.google.com/spreadsheets/expected-sheet-link")
 
 (defmacro with-sample-db-as-dwh [& body]
   "We need an attached dwh for these tests, so let's have the sample db fill in for us:"
@@ -134,6 +139,14 @@
         (is (partial=
              {:status "loading", :folder_url gdrive-link, :created-by-id (mt/user->id :crowberto)}
              (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link})))))))
+
+(deftest post-sheet-test
+  (with-sample-db-as-dwh
+    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+      (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+        (is (partial=
+             {:status "loading", :folder_url gsheet-link}
+             (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gsheet-link})))))))
 
 (deftest post-folder-syncing-test
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
@@ -209,3 +222,10 @@
       (with-redefs [hm.client/make-request (partial mock-make-request (+failed-delete-response happy-responses))]
         (= {:status "not-connected"}
            (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder"))))))
+
+(deftest url-type
+  (is (= "gdrive" (#'gsheets.api/url-type "https://drive.google.com/drive/abc")))
+  (is (= "gdrive" (#'gsheets.api/url-type "http://drive.google.com/drive/abc")))
+  (is (= "google_spreadsheet" (#'gsheets.api/url-type "https://docs.google.com/spreadsheets/abc")))
+  (is (= "google_spreadsheet" (#'gsheets.api/url-type "http://docs.google.com/spreadsheets/abc")))
+  (is (thrown-with-msg? Exception #"Invalid URL: https://not.google.com/file" (#'gsheets.api/url-type "https://not.google.com/file"))))
