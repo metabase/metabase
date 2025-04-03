@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-289-expand-the-downloads-url-parameter-in-staticpublic-embedding",
     "hash": "f2d3745cde9183abb0ac3d58a51e918a5dae159a"
+  },
+  "upstream": {
+    "branch": "emb-291-expose-separate-pdf-and-card-result-download-toggles-in"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 56211,
+        "gqlID": "PR_kwDOAczgH86RQWLp"
+      }
+    }
   }
 }
