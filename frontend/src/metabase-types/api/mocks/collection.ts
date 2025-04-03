@@ -1,4 +1,5 @@
 import type {
+  BaseEntityId,
   Collection,
   CollectionEssentials,
   CollectionItem,
@@ -27,6 +28,7 @@ export const createMockCollectionItem = (
   opts?: Partial<CollectionItem>,
 ): CollectionItem => ({
   id: 1,
+  entity_id: createMockEntityId(),
   model: "card",
   name: "Question",
   description: null,
@@ -47,6 +49,7 @@ export const createMockCollectionItemFromCollection = (
   createMockCollectionItem({
     ...opts,
     id: opts?.id as number,
+    entity_id: opts?.entity_id as BaseEntityId,
     model: "collection",
     type: undefined,
     location: opts?.location || "/",
