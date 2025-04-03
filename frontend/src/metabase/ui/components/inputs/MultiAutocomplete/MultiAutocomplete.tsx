@@ -52,7 +52,6 @@ export function MultiAutocomplete({
     handleOptionSubmit,
   } = useMultiAutocomplete({
     values,
-    options,
     shouldCreate,
     onChange,
     onSearchChange,
