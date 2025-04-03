@@ -104,6 +104,7 @@ function compileLogicalNot(
   assert(node.type === LOGICAL_NOT, "Invalid Node Type");
   assert(node.token?.text, "Empty token text");
   return withNode(node, {
+    // TODO: remove this cast
     operator: "not" as Lib.ExpressionOperator,
     options: {},
     args: [compileUnaryOp(node, opts)],
@@ -115,6 +116,7 @@ function compileLogicalAnd(node: Node, opts: Options): Lib.ExpressionParts {
   assert(node.token?.text, "Empty token text");
   const [left, right] = compileInfixOp(node, opts);
   return withNode(node, {
+    // TODO: remove this cast
     operator: "and" as Lib.ExpressionOperator,
     options: {},
     args: [...left, ...right],
@@ -126,6 +128,7 @@ function compileLogicalOr(node: Node, opts: Options): Lib.ExpressionParts {
   assert(node.token?.text, "Empty token text");
   const [left, right] = compileInfixOp(node, opts);
   return withNode(node, {
+    // TODO: remove this cast
     operator: "or" as Lib.ExpressionOperator,
     options: {},
     args: [...left, ...right],
@@ -138,6 +141,7 @@ function compileComparisonOp(node: Node, opts: Options): Lib.ExpressionParts {
   assert(operator, "Empty token operator");
   const [left, right] = compileInfixOp(node, opts);
   return withNode(node, {
+    // TODO: remove this cast
     operator: operator as Lib.ExpressionOperator,
     options: {},
     args: [...left, ...right],
@@ -166,6 +170,7 @@ function compileFunctionCall(node: Node, opts: Options): Lib.ExpressionParts {
   const name = node.token?.text.trim().toLowerCase();
   const fn = opts.getMBQLName(name);
   return withNode(node, {
+    // TODO: remove this cast
     operator: (fn ? fn : name) as Lib.ExpressionOperator,
     options: {},
     args: compileArgList(node.children[0], opts),
@@ -234,6 +239,7 @@ function compileMulDivOp(node: Node, opts: Options): Lib.ExpressionParts {
   assert(operator, "Empty token operator");
   const [left, right] = compileInfixOp(node, opts);
   return withNode(node, {
+    // TODO: remove this cast
     operator: operator as Lib.ExpressionOperator,
     options: {},
     args: [...left, ...right],
