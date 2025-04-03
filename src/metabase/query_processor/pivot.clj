@@ -610,15 +610,20 @@
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
-       (let [rff               (or rff qp.reducible/default-rff)
-             nested-query      (nest-query query)
-             query             (lib/query (qp.store/metadata-provider) #_query nested-query)
-             pivot-opts        (or
-                                (pivot-options query (get query :viz-settings))
-                                (pivot-options query (get-in query [:info :visualization-settings]))
-                                (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
-             query             (-> query
-                                   (assoc-in [:middleware :pivot-options] pivot-opts))
-             all-queries       (generate-queries query pivot-opts)
-             column-mapping-fn (make-column-mapping-fn query)]
-         (process-multiple-queries all-queries rff column-mapping-fn))))))
+       ;; TODO
+       ;; Using pivot_rows as a proxy for whether this is a plain table query (which we run directly) or a pivoted query
+       (if (= (:pivot_rows query) [])
+         (qp/process-query (dissoc query :info)
+                           (or rff qp.reducible/default-rff))
+         (let [rff               (or rff qp.reducible/default-rff)
+               nested-query      (nest-query query)
+               query             (lib/query (qp.store/metadata-provider) #_query nested-query)
+               pivot-opts        (or
+                                  (pivot-options query (get query :viz-settings))
+                                  (pivot-options query (get-in query [:info :visualization-settings]))
+                                  (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
+               query             (-> query
+                                     (assoc-in [:middleware :pivot-options] pivot-opts))
+               all-queries       (generate-queries query pivot-opts)
+               column-mapping-fn (make-column-mapping-fn query)]
+           (process-multiple-queries all-queries rff column-mapping-fn)))))))
