@@ -43,7 +43,6 @@ export function MultiAutocomplete({
     combobox,
     pillValues,
     fieldValue,
-    isFocused,
     handleFieldChange,
     handleFieldKeyDown,
     handleFieldFocus,
@@ -73,7 +72,7 @@ export function MultiAutocomplete({
       onOptionSubmit={handleOptionSubmit}
     >
       <Combobox.DropdownTarget>
-        <PillsInput rightSection={rightSection ?? (isFocused && infoIcon)}>
+        <PillsInput rightSection={rightSection ?? infoIcon}>
           <Pill.Group>
             {pillValues.map((value, valueIndex) =>
               value !== null ? (

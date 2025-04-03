@@ -34,7 +34,6 @@ export function useMultiAutocomplete({
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
   });
-  const [isFocused, setIsFocused] = useState(false);
   const [fieldValue, setFieldValue] = useState("");
   const [fieldSelection, setFieldSelection] = useState<FieldSelection>({
     index: values.length,
@@ -90,13 +89,11 @@ export function useMultiAutocomplete({
 
   const handleFieldFocus = () => {
     combobox.openDropdown();
-    setIsFocused(true);
     setFieldSelection({ index: values.length, length: 0 });
   };
 
   const handleFieldBlur = () => {
     combobox.closeDropdown();
-    setIsFocused(false);
     setFieldState({
       fieldValue: "",
       fieldSelection: { index: values.length, length: 0 },
@@ -148,7 +145,6 @@ export function useMultiAutocomplete({
       fieldSelection,
     ),
     fieldValue,
-    isFocused,
     handleFieldChange,
     handleFieldKeyDown,
     handleFieldFocus,
