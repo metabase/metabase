@@ -82,7 +82,6 @@
 
 (defn- annotate-native-cols [cols card-entity-id]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
-    #_(tap> (list `annotate-native-cols :card-ident card-ident :query query))
     (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
             (let [col-name (name col-name)]
               (merge
@@ -295,7 +294,6 @@
 
       (integer? id-or-name)
       (merge (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id-or-name)]
-               #_(tap> (list `col-info-for-field-clause* "ID ref" clause '=> field))
                #_{:clj-kondo/ignore [:deprecated-var]}
                (if-not parent-id
                  (qp.store/->legacy-metadata field)
@@ -530,11 +528,7 @@
         (let [col' (merge col
                           (when model?
                             (select-keys source-metadata-for-field qp.util/preserved-keys)))]
-          (u/prog1 (merge-source-metadata-col source-metadata-for-field
-                                              col')
-            #_(tap> (list `merge-source-metadata-col 'source source-metadata-for-field 'own-col col
-                          'augmented (if model? col' :same)
-                          '=> <>))))
+          (merge-source-metadata-col source-metadata-for-field col'))
         col))))
 
 (declare mbql-cols)
@@ -562,8 +556,10 @@
     (when-not (string? card-entity-id)
       (throw (ex-info "idents-for-model with blank card-entity-id" {:cols cols}))))
 
-  (for [col cols]
-    (update col :ident lib/model-ident card-entity-id)))
+  cols
+  ;; XXX: Leaving this as a breadcrumb during development.
+  #_(for [col cols]
+      (update col :ident lib/model-ident card-entity-id)))
 
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
@@ -576,15 +572,9 @@
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
       source-query
-      (cond-> (u/prog1 (cols-for-source-query inner-query outer-query results)
-                #_(tap> (list `cols-for-source-query <>)))
-        (seq cols) (as-> $metadata (u/prog1 (flow-field-metadata $metadata cols model?)
-                                     #_(tap> (list `flow-field-metadata 'source-cols $metadata 'own-cols cols 'model? model?
-                                                   '=> ^{:portal.viewer/default :portal.viewer/diff} [(vec $metadata) (vec <>)]))))
-        model?     ((fn [$metadata]
-                      (u/prog1 (idents-for-model $metadata entity-id)
-                        #_(tap> (list `idents-for-model $metadata entity-id
-                                      '=> ^{:portal.viewer/default :portal.viewer/diff} [$metadata <>]))))))
+      (cond-> (cols-for-source-query inner-query outer-query results)
+        (seq cols) (flow-field-metadata cols model?)
+        model?     (idents-for-model entity-id))
 
       (every? #(lib.util.match/match-one % [:field (field-name :guard string?) _] field-name) fields)
       (maybe-merge-source-metadata source-metadata cols)
@@ -698,22 +688,10 @@
 ;; TODO: Use `:ident`s for matching up model metadata!
 (defn- merge-model-metadata
   [query-metadata model-metadata card-entity-id]
-  (u/prog1 (->> (qp.util/combine-metadata query-metadata model-metadata)
-                (mapv #(update % :ident lib/model-ident card-entity-id)))
-    (tap> [`merge-model-metadata 'query-metadata query-metadata 'model-metadata model-metadata
-                  ;^{:portal.viewer/default :portal.viewer/diff} [(vec query-metadata) (vec model-metadata)]
-           '=> ^{:portal.viewer/default :portal.viewer/diff} [query-metadata (vec <>)]])))
-
-;; XXX: START HERE: Ad-hoc queries against a model are getting their metadata double-bagged.
-;; I need to think more deliberately about the arc of a model's metadata and idents.
-;; In particular, `card-entity-id` is not a flag that controls whether *this* card is a model!
-;; Nor is `:model/model-metadata` or whatever it's called... those are set when the query is being run *against*
-;; a model as an input! From the QP's POV, running the inner query of the model and saving its `result_metadata` in
-;; model form is not the path.
-;; Instead, the `model_...` wrapping should be added by trailing logic, outside the QP. The columns from an inner
-;; query only become columns of a model right before they get saved to a model's card... right?
-;; The other piece of the puzzle is that if a source query is from a model then its metadata needs either to come from
-;; `:result_metadata` with the idents already wrapped, or to have it put on them directly if we're inferring.
+  (cond->> (qp.util/combine-metadata query-metadata model-metadata)
+    ;; XXX: This might lead to double-bagging? It seems to be fine as I test things, but perhaps it needs the
+    ;; same guarding as the logic in [[metabase.models.card.metadata/xform-maybe-fix-idents-for-model]].
+    card-entity-id (mapv #(update % :ident lib/model-ident card-entity-id))))
 
 (defn- add-column-info-xform
   [query metadata rf]

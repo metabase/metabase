@@ -805,7 +805,7 @@
 ;; 21 begins storing `:ident`s on all columns in `:result_metadata`.
 
 ;; On reading an old card and upgrading it to 21, the idents are inferred from the query and filled in.
-;; Since this operation is expensive (and recursive when cards depend on cards!), an LRU cache is used to prevent
+;; Since this operation is expensive (and recursive when cards depend on cards!), a bounded cache is used to prevent
 ;; too much repeated work being performed.
 (defn- backfill-result-metadata-idents*
   [result-metadata {query :dataset_query, eid :entity_id, :as card}]
@@ -825,19 +825,21 @@
                               {:card card})))
 
     ;; For MBQL queries, re-run the inference.
-    :query  (let [inferred (card.metadata/infer-metadata query)
+    :query  (let [inferred (card.metadata/infer-metadata-with-model-overrides query card) ; These already have [[lib/model-ident]] applied.
                   by-ref   (group-by :field_ref inferred)
                   by-name  (group-by :name inferred)]
               (mapv (fn [original]
-                      (let [[{:keys [ident]} :as matches] (or (get by-ref (:field_ref original))
-                                                              (get by-name (:name original)))
-                            ident (cond-> ident
-                                    (and ident (= (:type card) :model)) (lib/model-ident eid))]
+                      (let [matches (or (get by-ref (:field_ref original))
+                                        (get by-name (:name original)))]
+                        (when (> (count matches) 0)
+                          (log/warn "No match of saved result_metadata with inferred metadata."
+                                    {:column original}))
                         (when (> (count matches) 1)
                           (log/warn "Ambiguous match of saved result_metadata with inferred metadata."
                                     {:column original
                                      :candidates matches}))
-                        (m/assoc-some original :ident ident)))
+                        (or (first matches)
+                            original)))
                     result-metadata))
     ;; Fallback: Do nothing.
     result-metadata))

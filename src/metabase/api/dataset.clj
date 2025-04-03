@@ -64,7 +64,7 @@
         (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
                                                   :user-id api/*current-user-id*})))
     ;; add sensible constraints for results limits on our query
-    (let [source-card-id (query->source-card-id query)
+    (let [source-card-id (query->source-card-id query) ; This is only set for direct :source-table "card__..."
           source-card    (when source-card-id
                            (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*

@@ -1,6 +1,7 @@
 (ns metabase.models.card.metadata
   "Code related to Card metadata (re)calculation and saving updated metadata asynchronously."
   (:require
+   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -199,13 +200,41 @@ saved later when it is ready."
 (defn infer-metadata
   "Infer the default result_metadata to store for MBQL cards.
 
-  Ignores any that might be present already."
-  ([query]
-   (not-empty (request/with-current-user nil
-                (u/ignore-exceptions
-                  (qp.preprocess/query->expected-cols query)))))
-  ([query {:keys [entity_id] :as _card}]
-   (infer-metadata (assoc-in query [:info :card-entity-id] entity_id))))
+  Ignores any that might be present already.
+
+  If the card is provided and is a model, this will wrap [[lib/model-ident]] around the `:ident`s from the inner query."
+  [query]
+  (not-empty (request/with-current-user nil
+               (u/ignore-exceptions
+                 (qp.preprocess/query->expected-cols query)))))
+
+(defn- xform-maybe-fix-idents-for-model
+  "Returns a transducer that will conditionally wrap `:ident`s with [[lib/model-ident]] if they are not already wrapped
+  for this model.
+
+  If the provided card is not a model, returns [[identity]]."
+  [card]
+  (if (= (:type card) :model)
+    (let [eid (:entity_id card)]
+      (map (fn [col]
+             (cond-> col
+               (not (lib/valid-model-ident? col eid))
+               (update :ident lib/model-ident eid)))))
+    identity))
+
+(defn infer-metadata-with-model-overrides
+  "Does a fresh [[infer-metadata]] for the provided query.
+
+  - If the `card` is not a model, that fresh metadata is returned directly.
+  - If the `card` **is** a model, then the fresh metadata is returned, but any existing `:result_metadata` is included
+  so model metadata overrides (eg. new display_name or field types) are preserved in the result."
+  [query card]
+  (let [model?         (= (:type card) :model)
+        model-metadata (when model? (:result_metadata card))
+        ;; If this is a model, include that model metadata so QP will infer correctly overridden metadata.
+        query          (cond-> query
+                         model-metadata (update :info merge {:metadata/model-metadata model-metadata}))]
+    (into [] (xform-maybe-fix-idents-for-model card) (infer-metadata query))))
 
 ;; TODO: Refactor this to use idents rather than names, so it's more robust.
 (defn refresh-metadata
@@ -219,10 +248,15 @@ saved later when it is ready."
                  (->> (remove (comp old-names :name) new-metadata)
                       (map update-fn))))))
 
-(defn- replace-placeholder-idents
-  [metadata card-entity-id]
-  (mapv #(update % :ident lib/replace-placeholder-idents card-entity-id)
-        metadata))
+(defn- fix-incoming-idents
+  "Result metadata included with an insert or update should already be in its final form, but might:
+  - Have placeholders, if we didn't have an `:entity_id` for a new card when the query ran
+  - Be for an inner query, not for a model, and need to be wrapped with the [[lib/model-ident]]."
+  [results-metadata card]
+  ;; It's important that the placeholders are handled first, otherwise the check for double-wrapping will fail.
+  (into [] (comp (map #(update % :ident lib/replace-placeholder-idents (:entity_id card)))
+                 (xform-maybe-fix-idents-for-model card))
+        results-metadata))
 
 (defn populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
@@ -239,7 +273,7 @@ saved later when it is ready."
     metadata
     (do
       (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
-      (update card :result_metadata replace-placeholder-idents (:entity_id card)))
+      (update card :result_metadata fix-incoming-idents card))
 
     ;; this is an update, and dataset_query hasn't changed => no-op
     (and existing-card-id
@@ -262,7 +296,7 @@ saved later when it is ready."
     :else
     (do
       (log/debug "Attempting to infer result metadata for Card")
-      (assoc card :result_metadata (infer-metadata query card)))))
+      (assoc card :result_metadata (infer-metadata-with-model-overrides query card)))))
 
 (defn assert-valid-idents
   "Given a card (or updates being made to a card) check the `:result_metadata` has correctly formed idents."

@@ -207,12 +207,8 @@
     (for [{:keys [source] :as col} fresh]
       (if-let [existing (and (not= :aggregation source)
                              (get by-name (:name col)))]
-        (u/prog1 (merge col (select-keys existing preserved-keys))
-          #_(tap> (list `combine-metadata :fresh-run col :pre-existing existing '=>
-                        :fresh->final ^{:portal.viewer/default :portal.viewer/diff} [(into {} col) <>]
-                        :prev->final  ^{:portal.viewer/default :portal.viewer/diff} [existing <>])))
-        (u/prog1 col
-          #_(tap> (list `combine-metadata :no-existing <>)))))))
+        (merge col (select-keys existing preserved-keys))
+        col))))
 
 (def ^:dynamic *execute-async?*
   "Used to control `with-execute-async` to whether or not execute its body asynchronously."
