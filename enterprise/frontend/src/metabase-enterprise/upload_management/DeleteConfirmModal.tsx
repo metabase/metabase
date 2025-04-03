@@ -43,7 +43,7 @@ export function DeleteConfirmModal({
               `Also send all models and questions based on these tables to the trash`,
               tables.length,
             )}
-            onChange={e => setSendToTrash(e.target.checked)}
+            onChange={(e) => setSendToTrash(e.target.checked)}
           />
         </Box>
       }
