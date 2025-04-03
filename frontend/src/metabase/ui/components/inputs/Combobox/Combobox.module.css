@@ -1,0 +1,4 @@
+.empty {
+  color: var(--mb-color-text-light);
+  padding: 1.5rem 0.5rem;
+}
