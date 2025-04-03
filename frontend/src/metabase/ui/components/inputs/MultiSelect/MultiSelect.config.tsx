@@ -28,10 +28,7 @@ export const multiSelectOverrides = {
     },
     classNames: {
       ...(selectOverrides?.Select?.classNames ?? {}),
-      wrapper: S.MultiSelectWrapper,
       input: S.MultiSelectInput,
-      inputField: S.MultiSelectInputField,
-      pillsList: S.MultiSelectPillsList,
     },
   }),
 };

@@ -1,7 +1,38 @@
+.wrapper {
+  &[data-size="md"] {
+    --value-height: rem(28px);
+  }
+
+  &[data-size="xs"] {
+    --value-height: rem(20px);
+  }
+
+  &[data-position="right"] {
+    color: var(--mb-color-text-light);
+    right: var(--right-section-end);
+  }
+}
+
 .input {
   --input-fz: 0.875rem;
 
   input::placeholder {
     color: var(--mb-color-text-tertiary);
+  }
+}
+
+.field {
+  height: var(--value-height);
+  padding-inline-start: rem(8px);
+
+  /* hide placeholder if there are pills */
+  &:not(:first-child) {
+    &::placeholder {
+      color: transparent;
+    }
+  }
+
+  &::placeholder {
+    color: var(--mb-color-text-light);
   }
 }
