@@ -54,6 +54,13 @@ export function CustomHomepageDashboardSetting() {
       key: "custom-homepage",
       value: newValue,
     });
+    if (newValue === false) {
+      await updateSetting({
+        key: "custom-homepage-dashboard",
+        value: null,
+      });
+    }
+
     await dispatch(refreshCurrentUser());
 
     if (customHomepageDashboardId || !newValue) {
@@ -62,7 +69,7 @@ export function CustomHomepageDashboardSetting() {
   };
 
   return (
-    <Stack>
+    <Stack data-testid="custom-homepage-setting">
       <SettingHeader
         id="custom-homepage"
         title={t`Custom Homepage`}
@@ -75,10 +82,12 @@ export function CustomHomepageDashboardSetting() {
         onChange={(newValue) => handleToggleChange(Boolean(newValue))}
       />
       {customHomepage && (
-        <DashboardSelector
-          value={customHomepageDashboardId ?? undefined}
-          onChange={handleDashboardChange}
-        />
+        <div data-testid="custom-homepage-dashboard-setting">
+          <DashboardSelector
+            value={customHomepageDashboardId ?? undefined}
+            onChange={handleDashboardChange}
+          />
+        </div>
       )}
     </Stack>
   );
