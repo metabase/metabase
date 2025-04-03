@@ -42,6 +42,7 @@ export function MultiAutocomplete({
   const {
     combobox,
     pillValues,
+    filteredOptions,
     fieldValue,
     handleFieldChange,
     handleFieldPaste,
@@ -53,6 +54,7 @@ export function MultiAutocomplete({
     handleOptionSubmit,
   } = useMultiAutocomplete({
     values,
+    options,
     shouldCreate,
     onChange,
     onSearchChange,
@@ -112,7 +114,7 @@ export function MultiAutocomplete({
           </PillsInput>
         </Combobox.DropdownTarget>
         <OptionsDropdown
-          data={options}
+          data={filteredOptions}
           search={fieldValue}
           nothingFoundMessage={nothingFoundMessage}
           hiddenWhenEmpty={!nothingFoundMessage}

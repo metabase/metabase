@@ -1,4 +1,4 @@
-import { useCombobox } from "@mantine/core";
+import { type ComboboxItem, useCombobox } from "@mantine/core";
 import { parse } from "csv-parse/browser/esm/sync";
 import {
   type ChangeEvent,
@@ -15,6 +15,7 @@ const FIELD_PLACEHOLDER = null;
 
 type UseMultiAutocompleteProps = {
   values: string[];
+  options: ComboboxItem[];
   shouldCreate?: (newValue: string) => boolean;
   onChange: (newValues: string[]) => void;
   onSearchChange?: (newValue: string) => void;
@@ -32,6 +33,7 @@ type FieldSelection = {
 
 export function useMultiAutocomplete({
   values,
+  options,
   shouldCreate = defaultShouldCreate,
   onChange,
   onSearchChange,
@@ -154,6 +156,7 @@ export function useMultiAutocomplete({
   return {
     combobox,
     pillValues: getPillValues(values, fieldSelection),
+    filteredOptions: getFilteredOptions(options, values),
     fieldValue,
     handleFieldChange,
     handleFieldPaste,
@@ -168,6 +171,22 @@ export function useMultiAutocomplete({
 
 function getPillValues(values: string[], fieldSelection: FieldSelection) {
   return getValuesAfterChange(values, [FIELD_PLACEHOLDER], fieldSelection);
+}
+
+function normalizeValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function getFilteredOptions(options: ComboboxItem[], values: string[]) {
+  const usedValues = new Set(values.map(normalizeValue));
+  return options.reduce((newOptions: ComboboxItem[], option) => {
+    const normalizedValue = normalizeValue(option.value);
+    if (!usedValues.has(normalizedValue)) {
+      newOptions.push(option);
+      usedValues.add(normalizedValue);
+    }
+    return newOptions;
+  }, []);
 }
 
 function getUniqueFieldValues(
