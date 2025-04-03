@@ -162,34 +162,6 @@ export const USERS = {
       { id: COLLECTION_GROUP, is_group_manager: false },
     ],
   },
-  dbRouterUserA: {
-    first_name: "Don",
-    last_name: "RouterA",
-    email: "routerA@metabase.test",
-    password: "12341234",
-    login_attributes: {
-      destination_database: "postgres_two",
-    },
-    user_group_memberships: [
-      { id: ALL_USERS_GROUP, is_group_manager: false },
-      { id: COLLECTION_GROUP, is_group_manager: false },
-      { id: DATA_GROUP, is_group_manager: false },
-    ],
-  },
-  dbRouterUserB: {
-    first_name: "Tom",
-    last_name: "RouterB",
-    email: "routerB@metabase.test",
-    password: "12341234",
-    login_attributes: {
-      destination_database: "postgres_three",
-    },
-    user_group_memberships: [
-      { id: ALL_USERS_GROUP, is_group_manager: false },
-      { id: COLLECTION_GROUP, is_group_manager: false },
-      { id: DATA_GROUP, is_group_manager: false },
-    ],
-  },
 };
 
 // Embedding
