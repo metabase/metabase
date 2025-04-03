@@ -19,11 +19,12 @@ export const TableBreadcrumbs = ({
 }: Props) => {
   const { data: table } = useGetTableQuery({ id: tableId });
 
-  const { data: schemas } = useListDatabaseSchemasQuery(
-    table && table.db_id ? { id: table.db_id } : skipToken,
-  );
+  const { data: schemas, isLoading: isLoadingSchemas } =
+    useListDatabaseSchemasQuery(
+      table && table.db_id && table.schema ? { id: table.db_id } : skipToken,
+    );
 
-  if (!table || !table.db || !schemas) {
+  if (!table || !table.db || isLoadingSchemas) {
     return null;
   }
 
@@ -37,7 +38,7 @@ export const TableBreadcrumbs = ({
         {table.db.name}
       </Group>
 
-      {schemas.length > 1 && table.schema && (
+      {schemas && schemas.length > 1 && table.schema && (
         <>
           <Separator />
 
