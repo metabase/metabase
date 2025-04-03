@@ -1,5 +1,6 @@
 (ns metabase.events.schema
   (:require
+   [malli.core :as mc]
    [malli.util :as mut]
    [metabase.lib.schema.common :as common]
    [metabase.models.view-log-impl :as view-log-impl]
@@ -209,17 +210,33 @@
 
 (mr/def ::nano-id ::common/non-blank-string)
 
+(def ^:private table-id-hydrate (-> [:table_id {:optional true} pos-int?] (with-hydrate :table table-hydrate)))
+
 (mr/def ::action-events
   [:map #_{:closed true}
    [:action :keyword]
    ;; TODO ... this shouldn't be snake
    [:invocation_id ::nano-id]
-   ;; TODO well, some can have it :/ not feeling great about defining non-generic fields here
-   (-> [:table_id {:optional true} pos-int?] (with-hydrate :table table-hydrate))
    (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))])
 
 (mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
-(mr/def :event/action.success [:merge ::action-events [:map [:result :map]]])
+(mr/def :event/action.success [:merge ::action-events [:multi {:dispatch :action}
+                                                       [:row/create [:map [:result
+                                                                           [:map
+                                                                            table-id-hydrate
+                                                                            [:created_row :map]]]]]
+                                                       [:row/update [:map [:result
+                                                                           [:map
+                                                                            table-id-hydrate
+                                                                            [:raw_update [:maybe :map]]
+                                                                            [:after  [:maybe :map]]
+                                                                            [:before :map]]]]]
+                                                       [:row/delete [:map [:result
+                                                                           [:map
+                                                                            table-id-hydrate
+                                                                            [:deleted_row :map]]]]]
+                                                       [::mc/default :map]]])
+
 (mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])
 
 ;(mr/def :row/create [:merge

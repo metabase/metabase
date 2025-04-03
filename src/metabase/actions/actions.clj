@@ -202,35 +202,29 @@
         (driver/with-driver driver
           (perform-action!* driver action db arg-map))))))
 
-(defn- promote-keys
-  "Promote relevant keys nested within the \"payload\" of an action lifecycle event to the top level. Why? ..."
-  [nested-map top-level-map]
-  (merge top-level-map (u/snake-keys (select-keys nested-map [:table-id]))))
-
 (defn- publish-action-invocation! [invocation-id user-id action-kw args-map]
   (->> {:action        action-kw
         :invocation_id invocation-id
         :actor_id      user-id
         :args          args-map}
-       (promote-keys args-map)
        (events/publish-event! :event/action.invoked)))
 
-(defn- publish-action-success*! [invocation-id user-id action-kw result]
+(defn publish-action-success!
+  "Publish an action success event. This is a success event for the action that was invoked."
+  [invocation-id user-id action-kw result]
   (->> {:action        action-kw
         :invocation_id invocation-id
         :actor_id      user-id
         :result        result}
-       (promote-keys result)
        (events/publish-event! :event/action.success)))
 
-(defn- publish-action-failure*! [invocation-id user-id action-kw msg info]
+(defn- publish-action-failure! [invocation-id user-id action-kw msg info]
   (->> {:action        action-kw
         :invocation_id invocation-id
         :actor_id      user-id
         :error         (:error info)
         :message       msg
         :info          info}
-       (promote-keys info)
        (events/publish-event! :event/action.failure)))
 
 (defn perform-with-system-events!
@@ -241,18 +235,20 @@
     (publish-action-invocation! invocation-id user-id action-kw args-map)
     (try
       (let [result (perform-action! action-kw args-map opts)]
-        (publish-action-success*! invocation-id user-id action-kw result)
+        (publish-action-success! invocation-id user-id action-kw result)
         result)
       (catch Exception e
         (let [msg  (ex-message e)
               info (ex-data e)
               info (with-meta info (merge (meta info) {:exception e}))]
-          (publish-action-failure*! invocation-id user-id action-kw msg info)
+          (publish-action-failure! invocation-id user-id action-kw msg info)
           (throw e))))))
 
-(defmulti action-filter-keys {:arglists '([action-kw])} identity)
+(defmulti action-filter-keys {:arglists '([event action event-info])
+                              :doc      "Return a honeysql filter for the given action and event info."}
+  (fn [event action _event-info] [event action]))
 
-(defmethod action-filter-keys :default [_])
+(defmethod action-filter-keys :default [_action _event_info])
 
 (defmethod events.notification/notification-filter-for-topic :event/action.success
   [_topic event-info]

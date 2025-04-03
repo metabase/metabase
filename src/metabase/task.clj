@@ -291,17 +291,15 @@
   [job-key]
   (when-let [scheduler (scheduler)]
     (let [job-key (->job-key job-key)]
-      ;; fuck this.. figure out what's wrong with my env later
-      (when (qs/get-job scheduler job-key)
-        (try
-          (assoc (job-detail->info (qs/get-job scheduler job-key))
-                 :triggers (for [trigger (sort-by #(-> ^Trigger % .getKey .getName)
-                                                  (qs/get-triggers-of-job scheduler job-key))]
-                             (trigger->info trigger)))
-          (catch ClassNotFoundException _
-            (log/infof "Class not found for Quartz Job %s. This probably means that this job was removed or renamed." (.getName job-key)))
-          (catch Throwable e
-            (log/warnf e "Error fetching details for Quartz Job: %s" (.getName job-key))))))))
+      (try
+        (assoc (job-detail->info (qs/get-job scheduler job-key))
+               :triggers (for [trigger (sort-by #(-> ^Trigger % .getKey .getName)
+                                                (qs/get-triggers-of-job scheduler job-key))]
+                           (trigger->info trigger)))
+        (catch ClassNotFoundException _
+          (log/infof "Class not found for Quartz Job %s. This probably means that this job was removed or renamed." (.getName job-key)))
+        (catch Throwable e
+          (log/warnf e "Error fetching details for Quartz Job: %s" (.getName job-key)))))))
 
 (defn- jobs-info []
   (->> (some-> (scheduler) (.getJobKeys nil))

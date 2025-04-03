@@ -487,6 +487,47 @@
     (current-user-can-read-payload? instance))))
 
 ;; ------------------------------------------------------------------------------------------------;;
+;;                                         Update spec                                             ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defn- base-spec
+  [payload-spec]
+  {:model        :model/Notification
+   :compare-cols [:active :condition]
+   :extra-cols   [:payload_type :internal_id :payload_id]
+   :nested-specs {:payload       payload-spec
+                  :subscriptions {:model        :model/NotificationSubscription
+                                  :fk-column    :notification_id
+                                  :compare-cols [:notification_id :type :cron_schedule :ui_display_type :table_id]
+                                  :multi-row?   true}
+                  :handlers      {:model        :model/NotificationHandler
+                                  :fk-column    :notification_id
+                                  :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
+                                  :multi-row?   true
+                                  :nested-specs {:recipients {:model        :model/NotificationRecipient
+                                                              :fk-column    :notification_handler_id
+                                                              :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
+                                                              :multi-row?   true}
+                                                 :template   {:model         :model/ChannelTemplate
+                                                              :ref-in-parent :template_id
+                                                              :compare-cols  [:channel_type :name :details]}}}}})
+
+(models.u.spec-update/define-spec notification-card-update-spec
+  "Spec for updating card notifications."
+  (base-spec {:model        :model/NotificationCard
+              :compare-cols [:send_condition :send_once]
+              :extra-cols   [:card_id]}))
+
+(models.u.spec-update/define-spec notification-system-event-update-spec
+  "Spec for updating system event notifications."
+  (base-spec {:model        :model/NotificationSystemEvent
+              :compare-cols [:event_name :table_id :action]}))
+
+(models.u.spec-update/define-spec notification-testing-update-spec
+  "Spec for updating testing notifications."
+  (base-spec {:model :model/NotificationCard}))
+
+;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
@@ -574,43 +615,6 @@
               handler-id (t2/insert-returning-pk! :model/NotificationHandler handler)]
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
-
-(defn- base-spec
-  [payload-spec]
-  {:model        :model/Notification
-   :compare-cols [:active :condition]
-   :extra-cols   [:payload_type :internal_id :payload_id]
-   :nested-specs {:payload       payload-spec
-                  :subscriptions {:model        :model/NotificationSubscription
-                                  :fk-column    :notification_id
-                                  :compare-cols [:notification_id :type :cron_schedule :ui_display_type :table_id]
-                                  :multi-row?   true}
-                  :handlers      {:model        :model/NotificationHandler
-                                  :fk-column    :notification_id
-                                  :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
-                                  :multi-row?   true
-                                  :nested-specs {:recipients {:model        :model/NotificationRecipient
-                                                              :fk-column    :notification_handler_id
-                                                              :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
-                                                              :multi-row?   true}
-                                                 :template   {:model         :model/ChannelTemplate
-                                                              :ref-in-parent :template_id
-                                                              :compare-cols  [:channel_type :name :details]}}}}})
-
-(models.u.spec-update/define-spec notification-card-update-spec
-  "Spec for updating card notifications."
-  (base-spec {:model        :model/NotificationCard
-              :compare-cols [:send_condition :send_once]
-              :extra-cols   [:card_id]}))
-
-(models.u.spec-update/define-spec notification-system-event-update-spec
-  "Spec for updating system event notifications."
-  (base-spec {:model        :model/NotificationSystemEvent
-              :compare-cols [:event_name :table_id :action]}))
-
-(models.u.spec-update/define-spec notification-testing-update-spec
-  "Spec for updating testing notifications."
-  (base-spec {:model :model/NotificationCard}))
 
 (defn update-notification!
   "Update an existing notification with `new-notification`."

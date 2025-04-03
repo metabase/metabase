@@ -197,22 +197,22 @@
 (def ^:private action->template
   {:row/create {:channel_type :channel/slack
                 :details      {:type :slack/handlebars-text
-                               :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has created a row for {{payload.event_info.table.name}}"
+                               :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has created a row for {{payload.event_info.result.table.name}}"
                                           "\n\n\n"
                                           "{{#each payload.event_info.result.created_row}}\n"
                                           "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
                                           "{{/each}}")}}
    :row/update {:channel_type :channel/slack
                 :details      {:type :slack/handlebars-text
-                               :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has updated a from {{payload.event_info.table.name}}\n\n"
+                               :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has updated a from {{payload.event_info.result.table.name}}\n\n"
                                           "## Update:"
                                           "\n\n"
-                                          "{{#each payload.event_info.result.update}}\n"
+                                          "{{#each payload.event_info.result.raw_update}}\n"
                                           "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
                                           "{{/each}}")}}
    :row/delete {:channel_type :channel/slack
                 :details      {:type :slack/handlebars-text
-                               :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has deleted a from {{payload.event_info.table.name}}"
+                               :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has deleted a from {{payload.event_info.result.table.name}}"
                                           "\n\n"
                                           "{{#each payload.event_info.result.deleted_row}}\n"
                                           "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
@@ -224,7 +224,7 @@
         template    (or template
                         (when (= :event/action.success event-topic)
                           (get action->template (:action (:event_info payload)))))]
-    #_(assert template (str "No template found for event " event-topic))
+    (assert template (str "No template found for event " event-topic))
     (if-not template
       []
       (for [channel-id (map notification-recipient->channel-id recipients)]

@@ -4,7 +4,6 @@
    [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
-   [metabase.events :as events]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
@@ -50,11 +49,10 @@
     ;; TODO if we are inserting via webhook endpoint, we have no user id - but schema requires it.
     (when-some [user-id api/*current-user-id*]
       (doseq [row (:created-rows res)]
-        (events/publish-event! :event/action.success
-                               {:action        :row/create
-                                :invocation_id (nano-id/nano-id)
-                                :actor_id      user-id
-                                :table_id      table-id
-                                :result        {:created_row row
-                                                :table-id    table-id}})))
+        (actions/publish-action-success!
+         (nano-id/nano-id)
+         user-id
+         :row/create
+         {:table_id   table-id
+          :created_row row})))
     res))

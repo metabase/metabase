@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
+   [metabase.events.notification :as events.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]))
 
@@ -25,10 +26,10 @@
   (data-editing.tu/with-temp-test-db!
     (mt/with-temp [:model/Channel chn {:type :channel/http}]
       (notification.tu/with-system-event-notification!
-        [_notification {:subscriptions [{:event_name :event/action.success
-                                         :action     action
-                                         :table_id   (mt/id :categories)}]
-                        :handlers      (all-handlers (:id chn))}]
+        [_notification {:notification-system-event {:event_name :event/action.success
+                                                    :action     action
+                                                    :table_id   (mt/id :categories)}
+                        :handlers                  (all-handlers (:id chn))}]
         (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
           (let [channel-type->captured-message (notification.tu/with-captured-channel-send!
                                                  (request-fn))]
@@ -64,27 +65,26 @@
                               email
                               #"Crowberto Corv has created a row for CATEGORIES"
                               #"NAME: New Category"))))
-    :channel/http    (fn [reqs]
-                       (let [reqs (filter (comp #{"row"} namespace :action :event_info :body) reqs)]
-                         (is (= 1 (count reqs)))
-                         (is (=? {:body {:type       "system_event"
-                                         :event_name :event/action.success
-                                         :event_info {:action   :row/create
-                                                      :actor    {:common_name "Crowberto Corv"
-                                                                 :email       "crowberto@metabase.com"
-                                                                 :first_name  "Crowberto"
-                                                                 :last_name   "Corv"}
-                                                      :actor_id (mt/user->id :crowberto),
-                                                      :table    {:name "CATEGORIES"}
-                                                      :table_id (mt/id :categories)
-                                                      :result   {:table-id    (mt/id :categories)
-                                                                 :created_row {"ID"   (mt/malli=? :int)
-                                                                               "NAME" "New Category"}}}}}
-                                 (first reqs)))))}))
+    :channel/http  (fn [reqs]
+                     (let [reqs (filter (comp #{"row"} namespace :action :event_info :body) reqs)]
+                       (is (= 1 (count reqs)))
+                       (is (=? {:body {:type "system_event",
+                                       :event_name :event/action.success
+                                       :event_info {:action :row/create
+                                                    :invocation_id (mt/malli=? :string)
+                                                    :actor_id     (mt/user->id :crowberto)
+                                                    :result       {:table_id    (mt/id :categories)
+                                                                   :created_row {"ID" 76, "NAME" "New Category"}
+                                                                   :table       {:name "CATEGORIES"}}
+                                                    :actor {:first_name  "Crowberto"
+                                                            :last_name   "Corv"
+                                                            :email       "crowberto@metabase.com"
+                                                            :common_name "Crowberto Corv"}}}}
+                               (first reqs)))))}))
 
 (deftest update-row-notification-test
   (test-row-notification!
-   :event/data-editing-row-update
+   :row/update
    (fn []
      (mt/user-http-request
       :crowberto
@@ -98,7 +98,7 @@
                                              [{:type "section",
                                                :text
                                                {:type "mrkdwn",
-                                                :text "*Crowberto Corv has updated a from CATEGORIES*\n*Update:*\n• NAME : Updated Category"}}]}]
+                                                :text "*Crowberto Corv has updated a from CATEGORIES*\n*Update:*\n• ID : 1\n• NAME : Updated Category"}}]}]
                               :channel-id  "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
@@ -112,23 +112,25 @@
                               #"NAME: Updated Category"))))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
-                     (is (=? {:body {:event_info {:actor    {:common_name "Crowberto Corv"
-                                                             :email       "crowberto@metabase.com"
-                                                             :first_name  "Crowberto"
-                                                             :last_name   "Corv"}
-                                                  :actor_id (mt/user->id :crowberto),
-                                                  :after    {:ID 1 :NAME "Updated Category"}
-                                                  :before   {:ID 1 :NAME (mt/malli=? :string)}
-                                                  :update   {:NAME "Updated Category"}
-                                                  :table    {:name "CATEGORIES"}
-                                                  :table_id (mt/id :categories)}
-                                     :event_name :event/data-editing-row-update,
+                     (is (=? {:body {:event_info {:action :row/update,
+                                                  :invocation_id (mt/malli=? :string)
+                                                  :actor_id (mt/user->id :crowberto)
+                                                  :result {:table_id (mt/id :categories)
+                                                           :after {:ID 1, :NAME "Updated Category"}
+                                                           :before {:ID 1, :NAME "African"}
+                                                           :raw_update {:ID 1, :NAME "Updated Category"}
+                                                           :table {:name "CATEGORIES"}}
+                                                  :actor {:first_name  "Crowberto"
+                                                          :last_name   "Corv"
+                                                          :email       "crowberto@metabase.com"
+                                                          :common_name "Crowberto Corv"}}
+                                     :event_name :event/action.success
                                      :type "system_event"}}
                              req)))}))
 
 (deftest delete-row-notification-test
   (test-row-notification!
-   :event/data-editing-row-delete
+   :row/delete
    (fn []
      (mt/user-http-request
       :crowberto
@@ -156,14 +158,36 @@
                               #"NAME: African"))))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
-                     (is (=? {:body {:event_info {:actor       {:common_name "Crowberto Corv"
-                                                                :email "crowberto@metabase.com"
-                                                                :first_name "Crowberto"
-                                                                :last_name "Corv"}
-                                                  :actor_id    (mt/user->id :crowberto),
-                                                  :deleted_row {:ID 1 :NAME "African"}
-                                                  :table       {:name "CATEGORIES"}
-                                                  :table_id    (mt/id :categories)}
-                                     :event_name :event/data-editing-row-delete,
+                     (is (=? {:body {:event_info {:action        :row/delete
+                                                  :invocation_id (mt/malli=? :string)
+                                                  :actor_id      (mt/user->id :crowberto)
+                                                  :result        {:table_id    (mt/id :categories)
+                                                                  :deleted_row {:ID 1 :NAME "African"}
+                                                                  :table {:name "CATEGORIES"}}
+                                                  :actor         {:first_name  "Crowberto"
+                                                                  :last_name   "Corv"
+                                                                  :email       "crowberto@metabase.com"
+                                                                  :common_name "Crowberto Corv"}}
+                                     :event_name :event/action.success
                                      :type "system_event"}}
                              req)))}))
+
+(deftest filter-notifications-test
+  (testing "getting table notifications will return only notifications of a table and action"
+    (doseq [action [:row/create
+                    :row/update
+                    :row/delete]]
+      (notification.tu/with-system-event-notification!
+        [_create-categories {:notification-system-event {:event_name :event/action.success
+                                                         :action     action
+                                                         :table_id   (mt/id :categories)}}]
+
+        (notification.tu/with-system-event-notification!
+          [create-orders {:notification-system-event {:event_name :event/action.success
+                                                      :action     action
+                                                      :table_id   (mt/id :orders)}}]
+          (is (= [(:id create-orders)]
+                 (map :id (#'events.notification/notifications-for-topic
+                           :event/action.success
+                           {:action action
+                            :result {:table_id (mt/id :orders)}})))))))))

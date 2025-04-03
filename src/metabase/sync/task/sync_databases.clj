@@ -292,8 +292,7 @@
                      (:name task-info)
                      (:name database)
                      (cron-schedule database task-info)))
-        ;; ffffffffuuuuuu
-        #_(task/add-trigger! new-trigger))
+        (task/add-trigger! new-trigger))
 
      ;; don't need to do anything as the existing trigger matches the new schedule
       :else

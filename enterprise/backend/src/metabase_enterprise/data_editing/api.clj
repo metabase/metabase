@@ -7,21 +7,23 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
-   [metabase.events :as events]
+   [metabase.events.notification :as events.notification]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.upload :as-alias upload]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
-(doseq [action [:row/create
-                :row/update
-                :row/delete]]
-  (defmethod actions/action-filter-keys action [_] [:table_id]))
+(defmethod events.notification/notification-filter-for-topic :event/action.success
+  [_topic event-info]
+  [:and
+   [:= :table_id (-> event-info :result :table_id)]
+   [:= :action (u/qualified-name (:action event-info))]])
 
 (defn- qp-result->row-map
   [{:keys [rows cols]}]
@@ -90,15 +92,14 @@
               row-before (get id->db-row (get-row-pk pk-field row))]
           (vswap! updated-rows conj after-row)
           (when (pos-int? result)
-            (events/publish-event! :event/action.success
-                                   {:action   :row/update
-                                    :invocation_id (nano-id/nano-id)
-                                    :actor_id api/*current-user-id*
-                                    :table_id table-id
-                                    :result   {:table-id   table-id
-                                               :after      after-row
-                                               :before     row-before
-                                               :raw_update row}}))))
+            (actions/publish-action-success!
+             (nano-id/nano-id)
+             api/*current-user-id*
+             :row/update
+             {:table_id   table-id
+              :after      after-row
+              :before     row-before
+              :raw_update row}))))
       {:updated @updated-rows})))
 
 (api.macros/defendpoint :post "/table/:table-id/delete"
@@ -111,14 +112,12 @@
         id->db-rows (query-db-rows table-id pk-field rows)
         res         (data-editing/perform-bulk-action! :bulk/delete table-id rows)]
     (doseq [row rows]
-      (events/publish-event! :event/action.success
-                             {:action   :row/delete
-                              :invocation_id (nano-id/nano-id)
-                              :actor_id api/*current-user-id*
-                              :table_id table-id
-                              :result   {:table-id    table-id
-                                         :deleted_row (get id->db-rows (get-row-pk pk-field row))
-                                         :table_id    table-id}}))
+      (actions/publish-action-success!
+       (nano-id/nano-id)
+       api/*current-user-id*
+       :row/delete
+       {:table_id   table-id
+        :deleted_row (get id->db-rows (get-row-pk pk-field row))}))
     res))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust

@@ -309,15 +309,15 @@
 (def ^:private action->template
   {:row/create {:channel_type :channel/email
                 :details      {:type    :email/handlebars-resource
-                               :subject "Table {{payload.event_info.table.name}} has a new row"
+                               :subject "Table {{payload.event_info.result.table.name}} has a new row"
                                :path    "metabase/channel/email/data_editing_row_create.hbs"}}
    :row/update {:channel_type :channel/email
                 :details      {:type    :email/handlebars-resource
-                               :subject "Table {{payload.event_info.table.name}} has been updated"
+                               :subject "Table {{payload.event_info.result.table.name}} has been updated"
                                :path    "metabase/channel/email/data_editing_row_update.hbs"}}
    :row/delete {:channel_type :channel/email
                 :details      {:type    :email/handlebars-resource
-                               :subject "Table {{payload.event_info.table.name}} has a row deleted"
+                               :subject "Table {{payload.event_info.result.table.name}} has a row deleted"
                                :path    "metabase/channel/email/data_editing_row_delete.hbs"}}})
 
 (mu/defmethod channel/render-notification

@@ -24,7 +24,8 @@
   check-data-editing-enabled-for-database!
   perform-action!
   perform-action!*
-  perform-with-system-events!]
+  perform-with-system-events!
+  publish-action-success!]
  [metabase.actions.error
   incorrect-value-type
   violate-foreign-key-constraint

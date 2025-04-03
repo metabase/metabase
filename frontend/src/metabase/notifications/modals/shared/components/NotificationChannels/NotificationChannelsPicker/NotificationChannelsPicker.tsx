@@ -544,7 +544,7 @@ export const NotificationChannelsPicker = ({
                   <Stack>
                     <TextInput
                       label={t`Subject`}
-                      placeholder={t`Alert from {{payload.event_info.table.name}} table`}
+                      placeholder={t`Alert from {{payload.event_info.result.table.name}} table`}
                       value={getTemplateValue("email", "subject")}
                       onChange={(event) =>
                         handleTemplateUpdate(
