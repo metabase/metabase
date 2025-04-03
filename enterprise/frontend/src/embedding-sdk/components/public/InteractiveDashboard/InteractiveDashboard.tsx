@@ -49,7 +49,7 @@ export type InteractiveDashboardProps = {
    */
   renderDrillThroughQuestion?: () => ReactNode;
   drillThroughQuestionHeight?: number;
-  questionProps?: Omit<InteractiveQuestionProps, "questionId"> &
+  drillThroughQuestionProps?: Omit<InteractiveQuestionProps, "questionId"> &
     InteractiveQuestionDefaultViewProps;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
@@ -68,7 +68,7 @@ const InteractiveDashboardInner = ({
   onLoadWithoutCards,
   className,
   style,
-  questionProps = {
+  drillThroughQuestionProps = {
     title: withTitle,
     height: drillThroughQuestionHeight,
     plugins: plugins,
@@ -144,7 +144,7 @@ const InteractiveDashboardInner = ({
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
           onNavigateBack={onNavigateBackToDashboard}
-          {...questionProps}
+          {...drillThroughQuestionProps}
         >
           {AdHocQuestionView && <AdHocQuestionView />}
         </InteractiveAdHocQuestion>

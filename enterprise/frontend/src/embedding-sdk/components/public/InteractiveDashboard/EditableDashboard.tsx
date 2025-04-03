@@ -34,7 +34,7 @@ export type EditableDashboardProps = {
   plugins?: MetabasePluginsConfig;
   className?: string;
   style?: CSSProperties;
-  questionProps?: Omit<InteractiveQuestionProps, "questionId"> &
+  drillThroughQuestionProps?: Omit<InteractiveQuestionProps, "questionId"> &
     InteractiveQuestionDefaultViewProps;
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   PublicOrEmbeddedDashboardEventHandlersProps;
@@ -49,7 +49,7 @@ export const EditableDashboard = ({
   onLoadWithoutCards,
   className,
   style,
-  questionProps = {
+  drillThroughQuestionProps = {
     title: true,
     height: drillThroughQuestionHeight,
     plugins: plugins,
@@ -108,7 +108,7 @@ export const EditableDashboard = ({
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
           onNavigateBack={onNavigateBackToDashboard}
-          {...questionProps}
+          {...drillThroughQuestionProps}
         />
       ) : (
         <InteractiveDashboardProvider
