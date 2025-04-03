@@ -694,6 +694,27 @@
              (driver.common/values->base-type)
              (analyze/constant-fingerprinter driver-base-type)))))
 
+;; TODO: Start recording the :ident of the inner column under a different key.
+;; TODO: Use `:ident`s for matching up model metadata!
+(defn- merge-model-metadata
+  [query-metadata model-metadata card-entity-id]
+  (u/prog1 (->> (qp.util/combine-metadata query-metadata model-metadata)
+                (mapv #(update % :ident lib/model-ident card-entity-id)))
+    (tap> [`merge-model-metadata 'query-metadata query-metadata 'model-metadata model-metadata
+                  ;^{:portal.viewer/default :portal.viewer/diff} [(vec query-metadata) (vec model-metadata)]
+           '=> ^{:portal.viewer/default :portal.viewer/diff} [query-metadata (vec <>)]])))
+
+;; XXX: START HERE: Ad-hoc queries against a model are getting their metadata double-bagged.
+;; I need to think more deliberately about the arc of a model's metadata and idents.
+;; In particular, `card-entity-id` is not a flag that controls whether *this* card is a model!
+;; Nor is `:model/model-metadata` or whatever it's called... those are set when the query is being run *against*
+;; a model as an input! From the QP's POV, running the inner query of the model and saving its `result_metadata` in
+;; model form is not the path.
+;; Instead, the `model_...` wrapping should be added by trailing logic, outside the QP. The columns from an inner
+;; query only become columns of a model right before they get saved to a model's card... right?
+;; The other piece of the puzzle is that if a source query is from a model then its metadata needs either to come from
+;; `:result_metadata` with the idents already wrapped, or to have it put on them directly if we're inferring.
+
 (defn- add-column-info-xform
   [query metadata rf]
   (qp.reducible/combine-additional-reducing-fns
@@ -734,7 +755,7 @@
                        (escape-join-aliases/restore-aliases escaped->original))
             metadata (cond-> (assoc metadata :cols (merged-column-info query metadata))
                        (seq model-metadata)
-                       (update :cols qp.util/combine-metadata model-metadata))]
+                       (update :cols merge-model-metadata model-metadata card-entity-id))]
         (qp.debug/debug> (list `add-column-info '=> metadata))
         (rff metadata))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
@@ -742,7 +763,7 @@
       (let [metadata (cond-> (update metadata :cols annotate-native-cols card-entity-id)
                        ;; annotate-native-cols ensures that column refs are present which we need to match metadata
                        (seq model-metadata)
-                       (update :cols qp.util/combine-metadata model-metadata)
+                       (update :cols merge-model-metadata model-metadata card-entity-id)
                        ;; but we want those column refs removed since they have type info which we don't know yet
                        :always
                        (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
