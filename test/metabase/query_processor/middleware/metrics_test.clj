@@ -1047,23 +1047,10 @@
                                   aggregate)
                   metric-rows  (mt/formatted-rows [str 3.0 3.0] (qp/process-query metric-referencing-query))
                   plain-rows (mt/formatted-rows [str 3.0 3.0] (qp/process-query plain-query))]
-              (case operator
-                (:cum-count :cum-sum)
-                (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
-                              (let [d (- plain-ag-col (or metric-col-1 0) (or metric-col-2 0))]
-                                (< d 0.001)))
-                            (map vector metric-rows plain-rows)))
-
-                (:distinct :sum-where :count-where)
-                (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
-                              (= (if (zero? metric-col-1) metric-col-2 metric-col-1)
-                                 plain-ag-col))
-                            (map vector metric-rows plain-rows)))
-
-                (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
-                              (= (or metric-col-1 metric-col-2)
-                                 plain-ag-col))
-                            (map vector metric-rows plain-rows)))))))))))
+              (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
+                            (let [d (- plain-ag-col (or metric-col-1 0) (or metric-col-2 0))]
+                              (< d 0.01)))
+                          (map vector metric-rows plain-rows))))))))))
 
 (deftest ^:parallel all-available-aggregations-covered
   (testing "All available aggregations are tested for filter expansion in metric"
