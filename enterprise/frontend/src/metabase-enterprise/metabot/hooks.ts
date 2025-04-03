@@ -50,7 +50,9 @@ export const useMetabotAgent = () => {
         const context = getChatContext();
         const history = sendMessageReq.data?.history || [];
         const state = sendMessageReq.data?.state || {};
-        await dispatch(submitInput({ message, context, history, state }));
+        return await dispatch(
+          submitInput({ message, context, history, state }),
+        );
       },
       [
         dispatch,

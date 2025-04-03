@@ -22,8 +22,8 @@ export default {
 
 const Template: StoryFn<MetabotQuestionProps> = () => {
   return (
-    <Box bg="var(--mb-color-background)" mih="100vh">
-      <MetabotQuestion visible={true} onClose={() => {}} />
+    <Box bg="var(--mb-color-background)" mih="100vh" bd="1px solid #000">
+      <MetabotQuestion />
     </Box>
   );
 };

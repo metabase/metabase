@@ -1,15 +1,12 @@
 import { useMemo, useState } from "react";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import { MetabotChat } from "metabase-enterprise/metabot/components/MetabotChat";
+import { Flex } from "metabase/ui";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
-export interface MetabotQuestionProps {
-  visible: boolean;
-  onClose: () => void;
-}
+import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 
-export const MetabotQuestion = ({ visible, onClose }: MetabotQuestionProps) => {
+export const MetabotQuestion = () => {
   const [result, setResult] = useState<Record<string, any> | null>(null);
 
   const redirectUrl = useMemo(() => {
@@ -21,17 +18,16 @@ export const MetabotQuestion = ({ visible, onClose }: MetabotQuestionProps) => {
 
   return (
     <MetabotProvider>
-      {redirectUrl && (
-        <InteractiveAdHocQuestion
-          questionPath={redirectUrl}
-          title={false}
-          onNavigateBack={() => {}}
-        />
-      )}
-
-      {visible && (
-        <MetabotChat onClose={onClose} onResult={setResult} withMicrophone />
-      )}
+      <Flex direction="column" align="center">
+        <MetabotChatEmbedding onResult={setResult} />
+        {redirectUrl && (
+          <InteractiveAdHocQuestion
+            questionPath={redirectUrl}
+            title={false}
+            onNavigateBack={() => {}}
+          />
+        )}
+      </Flex>
     </MetabotProvider>
   );
 };
