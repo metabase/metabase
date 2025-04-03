@@ -22,7 +22,7 @@ export type EmbedResourceParameter = {
 
 export type EmbedResourceDownloadOptions = {
   pdf: boolean;
-  cardResult: boolean;
+  dashcard: boolean;
 };
 
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
