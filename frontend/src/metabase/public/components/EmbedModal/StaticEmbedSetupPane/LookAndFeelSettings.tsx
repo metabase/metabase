@@ -218,7 +218,7 @@ export const LookAndFeelSettings = ({
                         pdf:
                           resourceType === "dashboard"
                             ? (displayOptions.downloads?.pdf ?? true)
-                            : false,
+                            : e.target.checked,
                       },
                     })
                   }
