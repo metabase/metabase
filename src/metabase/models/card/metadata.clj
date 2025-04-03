@@ -1,7 +1,6 @@
 (ns metabase.models.card.metadata
   "Code related to Card metadata (re)calculation and saving updated metadata asynchronously."
   (:require
-   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -155,7 +154,7 @@ saved later when it is ready."
 (defn- valid-ident?
   "Validates that native queries have the right `native__CardEntityId__ColumnName` idents, and models have idents that
   always start with `model__CardEntityId__`."
-  [card column]
+  [column card]
   (let [native?  (-> card :dataset_query :type (= :native))
         model?   (= (:type card) :model)
         valid-fn (cond
@@ -186,9 +185,7 @@ saved later when it is ready."
             (log/infof "Not updating metadata asynchronously for card %s because no metadata" (u/the-id card))
 
             :else
-            (let [missing-idents   (remove :ident metadata)
-                  malformed-idents (remove #(valid-ident? card %) metadata)
-                  current-query    (t2/select-one-fn :dataset_query [:model/Card :dataset_query :card_schema] :id id)]
+            (let [current-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query :card_schema] :id id)]
               (if (= (:dataset_query card) current-query)
                 (do
                   (t2/update! :model/Card id {:result_metadata metadata})
@@ -298,9 +295,12 @@ saved later when it is ready."
       (log/debug "Attempting to infer result metadata for Card")
       (assoc card :result_metadata (infer-metadata-with-model-overrides query card)))))
 
-(defn assert-valid-idents
+(defn assert-valid-idents!
   "Given a card (or updates being made to a card) check the `:result_metadata` has correctly formed idents."
-  [{cols :result_metadata :as _card-or-changes}]
+  [{cols :result_metadata :as card}]
   (when-let [missing (seq (remove :ident cols))]
     (throw (ex-info "Some columns in :result_metadata are missing :idents; these are required"
-                    {:missing missing}))))
+                    {:missing missing})))
+  (when-let [invalid (seq (remove #(valid-ident? % card) cols))]
+    (throw (ex-info "Some columns in :result_metadata have bad :idents!"
+                    {:invalid invalid}))))

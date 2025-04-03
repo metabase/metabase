@@ -608,8 +608,5 @@
              query             (-> query
                                    (assoc-in [:middleware :pivot-options] pivot-opts))
              all-queries       (generate-queries query pivot-opts)
-             dump (fn [q]
-                    (into [] (comp cat (map (juxt :name :ident))) [(lib/breakouts-metadata q)
-                                                                   (lib/aggregations-metadata q)]))
              column-mapping-fn (make-column-mapping-fn query)]
          (process-multiple-queries all-queries rff column-mapping-fn))))))

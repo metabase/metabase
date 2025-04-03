@@ -45,17 +45,3 @@
                        escape-format-string
                        (str/replace re-param-zero (str n)))
                    n)))
-
-(comment
-  (let [format-string    "Day"
-        format-string-pl "Days"
-        n 2]
-    (let [format-string-esc (escape-format-string format-string)
-          strings           (str/split format-string-esc re-param-zero)
-          strings           (if (= (count strings) 1)
-                              [format-string-esc ""]
-                              strings)
-          has-n?            (re-find #".*\{0\}.*" format-string-esc)
-
-          id (ttag/msgid (clj->js strings) (if has-n? n ""))]
-      (ttag/ngettext id format-string-pl n))))

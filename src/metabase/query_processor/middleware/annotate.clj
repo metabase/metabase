@@ -536,14 +536,14 @@
 (defn- cols-for-source-query
   [{:keys [source-metadata source-query/entity-id]
     {native-source-query :native, :as source-query} :source-query}
-   {{:keys [card-entity-id]} :info, :as outer-query}
+   outer-query
    results]
-  (let [columns       (if native-source-query
-                        (maybe-merge-source-metadata
-                         source-metadata (column-info {:type :native
-                                                       :info {:card-entity-id entity-id}}
-                                                      results))
-                        (mbql-cols source-query outer-query results))]
+  (let [columns (if native-source-query
+                  (maybe-merge-source-metadata
+                   source-metadata (column-info {:type :native
+                                                 :info {:card-entity-id entity-id}}
+                                                results))
+                  (mbql-cols source-query outer-query results))]
     (qp.util/combine-metadata columns source-metadata)))
 
 (defn- idents-for-model

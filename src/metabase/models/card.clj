@@ -581,7 +581,7 @@
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
-      (card.metadata/assert-valid-idents card)
+      (card.metadata/assert-valid-idents! card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
@@ -704,7 +704,7 @@
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints changes)
-      (card.metadata/assert-valid-idents changes)
+      (card.metadata/assert-valid-idents! (merge old-card-info changes))
       (assert-valid-type (merge old-card-info changes)))))
 
 (defn- add-query-description-to-metric-card
@@ -920,17 +920,16 @@
 
 (t2/define-before-insert :model/Card
   [card]
-  (tap> ['before-insert/top (map :ident (:result_metadata card))])
-  (dev.portal/diff-> card
-                     (assoc :metabase_version config/mb-version-string
-                            :card_schema current-schema-version)
-                     maybe-normalize-query
+  (-> card
+      (assoc :metabase_version config/mb-version-string
+             :card_schema current-schema-version)
+      maybe-normalize-query
       ; Add any missing idents on the query (expr, breakout, agg) before populating :result_metadata.
-                     (ensure-clause-idents ::before-insert)
-                     (u/assoc-default :entity_id (u/generate-nano-id)) ; Must have an entity_id before populating the metadata.
-                     card.metadata/populate-result-metadata
-                     pre-insert
-                     populate-query-fields))
+      (ensure-clause-idents ::before-insert)
+      (u/assoc-default :entity_id (u/generate-nano-id)) ; Must have an entity_id before populating the metadata.
+      card.metadata/populate-result-metadata
+      pre-insert
+      populate-query-fields))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -1281,7 +1280,7 @@
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
-  [{:keys [card-before-update card-updates actor delete-old-dashcards?] :as m}]
+  [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! card-before-update card-updates)
