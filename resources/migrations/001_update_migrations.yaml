@@ -10530,6 +10530,27 @@ databaseChangeLog:
             );
       rollback: # not needed, these are created on startup using deserialization
 
+  - changeSet:
+      id: v53.2025-04-02T15:25:04
+      author: edpaget
+      comment: create new cluster lock table for instance coordination
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabase_cluster_lock
+      changes:
+        - createTable:
+            tableName: metabase_cluster_lock
+            remarks: A table to allow metabase instances to take locks across a cluster
+            columns:
+              - column:
+                  name: lock_name
+                  type: varchar(254)
+                  remarks: a single column that can be used to a lock across a cluster
+                  constraints:
+                    primaryKey: true
+                    nullable: false
 
   - changeSet:
       id: v54.2025-01-30T16:10:55
