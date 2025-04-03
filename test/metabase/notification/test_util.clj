@@ -40,6 +40,10 @@
   [_channel-type notification-info _template _recipients]
   [notification-info])
 
+(defmethod channel/render-notification [:channel/metabase-test :notification/system-event]
+  [_channel-type notification-info _template _recipients]
+  [notification-info])
+
 (defmethod notification.payload/payload :notification/testing
   [_notification]
   {::payload? true})

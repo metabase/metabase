@@ -533,7 +533,8 @@
   (t2/select :model/Notification
              {:select    [:n.*]
               :from      [[:notification :n]]
-              :left-join [[:notification_system_event :nse] [:and [:= :n.payload_id :nse.id] [:= :n.payload_type (u/qualified-name :notification/system-event)]]]
+              :left-join [[:notification_system_event :nse]
+                          [:and [:= :n.payload_id :nse.id] [:= :n.payload_type (u/qualified-name :notification/system-event)]]]
               :where     (->> (conj
                                [[:= :n.active true]
                                 [:= :n.payload_type (u/qualified-name :notification/system-event)]

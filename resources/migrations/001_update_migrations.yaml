@@ -11220,8 +11220,7 @@ databaseChangeLog:
                   remarks: the event name of subscriptions with type :notification-subscription/system-event
                   type: varchar(64)
                   constraints:
-                    nullable: false
-
+                    nullable: true
 
   - changeSet:
       id: v55.2025-03-24T16:28:41
