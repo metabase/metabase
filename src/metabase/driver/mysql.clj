@@ -70,9 +70,7 @@
                               :schemas                                false
                               :uploads                                true
                               :identifiers-with-spaces                true
-                              :expressions/text                       true
                               :expressions/integer                    true
-                              :expressions/date                       true
                               :split-part                             true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
@@ -320,7 +318,31 @@
 
 (defmethod sql.qp/->honeysql [:mysql :split-part]
   [driver [_ text divider position]]
-  [:substring_index (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
+  (let [text (sql.qp/->honeysql driver text)
+        div  (sql.qp/->honeysql driver divider)
+        pos  (sql.qp/->honeysql driver position)]
+    [:case
+     ;; non-positive position
+     [:< pos 1]
+     ""
+
+     ;; position greater than number of parts
+     [:> pos
+      [:+ 1
+       [:floor
+        [:/
+         [:- [:length text]
+          [:length [:replace text div ""]]]
+         [:length div]]]]]
+     ""
+
+     ;; This needs some explanation.
+     ;; The inner substring_index returns the string up to the `pos` instance of `div`
+     ;; The outer substring_index returns the string from the last instance of `div` to the end
+     :else
+     [:substring_index
+      [:substring_index text div pos]
+      div -1]]))
 
 (defmethod sql.qp/->honeysql [:mysql :text]
   [driver [_ value]]
@@ -343,6 +365,9 @@
   If it doesn't support the ordinary SQL standard type, then we coerce it to a different type that MySQL does support here"
   {"integer"          "signed"
    "text"             "char"
+   ;; MySQL decimal defaults to 0 decimal places, so cast it as a double
+   ;; See https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
+   "decimal"          "double"
    "double precision" "double"
    "bigint"           "unsigned"})
 
