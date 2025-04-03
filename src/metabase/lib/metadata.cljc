@@ -169,10 +169,13 @@
       (editable-stages? query stages))))
 
 (mu/defn database-supports? :- :boolean
-  "Does `query`s [[database]] support the given `feature`?"
-  [query   :- ::lib.schema/query
-   feature :- :keyword]
-  (-> query
+  "Does `metadata-providerable`'s [[database]] support the given `feature`?
+
+  Minimize the use of this function. Using it is often a code smell. The lib should not normally be concerned with
+  driver features. See https://github.com/metabase/metabase/pull/55206#discussion_r2017378181"
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   feature               :- :keyword]
+  (-> metadata-providerable
       database
       :features
       (contains? feature)))

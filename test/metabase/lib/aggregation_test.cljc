@@ -453,6 +453,15 @@
                   :lib/source     :source/aggregations}]
                 (lib/aggregations-metadata agg-query)))))))
 
+(deftest ^:parallel available-aggregation-operators-missing-feature-test
+  (let [provider-without-feature  (meta/updated-metadata-provider
+                                   update :features disj :basic-aggregations :percentile-aggregations)
+        query-without-feature     (lib/query provider-without-feature (meta/table-metadata :venues))
+        operators-without-feature (lib/available-aggregation-operators query-without-feature)]
+    (is (=? [{:short :stddev
+              :driver-feature :standard-deviation-aggregations}]
+            operators-without-feature))))
+
 (deftest ^:parallel selected-aggregation-operator-test
   (let [query (-> (lib.tu/venues-query)
                   (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))

@@ -10,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -553,9 +552,7 @@
 
 (deftest ^:parallel diagnose-expression-literals-without-feature-support-test
   (testing "top-level literals are not allowed if the :expression-literals feature is not supported"
-    (let [metadata-graph (.-metadata-graph meta/metadata-provider)
-          restricted-metadata-graph (update metadata-graph :features disj :expression-literals)
-          restricted-provider (meta.graph-provider/->SimpleGraphMetadataProvider restricted-metadata-graph)
+    (let [restricted-provider (meta/updated-metadata-provider update :features disj :expression-literals)
           query (lib/query restricted-provider (meta/table-metadata :orders))
           expr  (lib.expression/value true)]
       (doseq [mode [:expression :filter]]
