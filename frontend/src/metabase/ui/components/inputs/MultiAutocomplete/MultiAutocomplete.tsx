@@ -85,6 +85,9 @@ export function MultiAutocomplete({
 }
 
 const DELIMITERS = [",", "\t", "\n"];
+const QUOTE_CHAR = '"';
+const ESCAPE_CHAR = "\\";
+const SPECIAL_CHARS_REGEX = /[,\t\n"\\]/g;
 const FIELD_PLACEHOLDER = null;
 
 type UseMultiAutocompleteProps = {
@@ -134,7 +137,7 @@ function useMultiAutocomplete({
   };
 
   const handlePillDoubleClick = (valueIndex: number) => {
-    setFieldValue(values[valueIndex]);
+    setFieldValue(formatCsv(values[valueIndex]));
     setFieldSelection({ index: valueIndex, length: 1 });
   };
 
@@ -201,20 +204,27 @@ function getFieldStateAfterChange(
   }
 }
 
-function parseCsv(fieldValue: string): string[] {
+function parseCsv(rawValue: string): string[] {
   try {
-    return parse(fieldValue, {
+    return parse(rawValue, {
       delimiter: DELIMITERS,
       skip_empty_lines: true,
       relax_column_count: true,
       relax_quotes: true,
       trim: true,
-      quote: '"',
-      escape: "\\",
+      quote: QUOTE_CHAR,
+      escape: ESCAPE_CHAR,
     }).flat();
   } catch (err) {
     return [];
   }
+}
+
+function formatCsv(value: string): string {
+  if (SPECIAL_CHARS_REGEX.test(value)) {
+    return `${QUOTE_CHAR}${value.replaceAll(SPECIAL_CHARS_REGEX, (s) => `${ESCAPE_CHAR}${s}`)}${QUOTE_CHAR}`;
+  }
+  return value;
 }
 
 function defaultShouldCreate(value: string) {
