@@ -189,7 +189,7 @@ function compileArgList(
   });
 }
 
-function compileNumber(node: Node): NumberValue {
+function compileNumber(node: Node): NumberValue | Lib.ExpressionParts {
   assert(node.type === NUMBER, t`Invalid node type`);
   assert(node.token?.text, t`No token text`);
 
@@ -198,7 +198,15 @@ function compileNumber(node: Node): NumberValue {
     throw new CompileError(t`Invalid number format`, node);
   }
 
-  // TODO: handle bigint by wrapping it in :value?
+  if (typeof number === "bigint") {
+    return withNode(node, {
+      operator: "value" as Lib.ExpressionOperator,
+      options: {
+        "base-type": "type/BigInteger",
+      },
+      args: [String(number)],
+    });
+  }
 
   return number;
 }
