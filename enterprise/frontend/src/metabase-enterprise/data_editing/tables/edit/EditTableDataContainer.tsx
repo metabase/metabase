@@ -36,20 +36,20 @@ export const EditTableDataContainer = ({
 
   const dispatch = useDispatch();
 
-  const { data: database } = useGetDatabaseMetadataQuery({ id: dbId }); // TODO: consider using just "dbId" to avoid extra data request
+  const { data: database } = useGetDatabaseMetadataQuery({ id: dbId });
   const { data: table, isLoading: tableIdLoading } = useGetTableQuery({
     id: tableId,
   });
 
-  const { data: datasetData, isLoading } = useGetTableDataQuery({
+  const { data: rawDatasetResult, isLoading } = useGetTableDataQuery({
     tableId,
   });
 
-  const { cols: remappedCols } = useMemo(() => {
-    return datasetData
-      ? extractRemappedColumns(datasetData.data)
-      : { cols: undefined };
-  }, [datasetData]);
+  const datasetData = useMemo(() => {
+    return rawDatasetResult
+      ? extractRemappedColumns(rawDatasetResult.data)
+      : undefined;
+  }, [rawDatasetResult]);
 
   const {
     isCreateRowModalOpen,
@@ -62,7 +62,7 @@ export const EditTableDataContainer = ({
     handleCellValueUpdate,
     handleExpandedRowDelete,
     handleModalOpenAndExpandedRow,
-  } = useTableCRUD({ tableId, datasetData: datasetData?.data });
+  } = useTableCRUD({ tableId, datasetData });
 
   useMount(() => {
     dispatch(closeNavbar());
@@ -73,7 +73,7 @@ export const EditTableDataContainer = ({
     return null;
   }
 
-  if (!datasetData || !tableFieldMetadataMap || !remappedCols) {
+  if (!rawDatasetResult || !datasetData || !tableFieldMetadataMap) {
     // TODO: show error
     return null;
   }
@@ -91,7 +91,7 @@ export const EditTableDataContainer = ({
           <>
             <Box pos="relative" className={S.gridWrapper}>
               <EditTableDataGrid
-                data={datasetData.data}
+                data={datasetData}
                 fieldMetadataMap={tableFieldMetadataMap}
                 onCellValueUpdate={handleCellValueUpdate}
                 onRowExpandClick={handleModalOpenAndExpandedRow}
@@ -106,7 +106,7 @@ export const EditTableDataContainer = ({
               className={S.gridFooter}
             >
               <Text fw="bold" size="md" c="inherit" component="span">
-                {getRowCountMessage(datasetData)}
+                {getRowCountMessage(rawDatasetResult)}
               </Text>
             </Flex>
           </>
@@ -124,11 +124,11 @@ export const EditTableDataContainer = ({
         onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleExpandedRowDelete}
-        datasetColumns={remappedCols}
+        datasetColumns={datasetData.cols}
         currentRowIndex={expandedRowIndex}
         currentRowData={
           expandedRowIndex !== undefined
-            ? datasetData.data.rows[expandedRowIndex]
+            ? datasetData.rows[expandedRowIndex]
             : undefined
         }
         fieldMetadataMap={tableFieldMetadataMap}
