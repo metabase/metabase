@@ -1053,7 +1053,7 @@
                                   breakout
                                   aggregate)
                   metric-rows  (mt/formatted-rows [str 3.0 3.0] (qp/process-query metric-referencing-query))
-                  plain-rows (mt/formatted-rows [str 3.0 3.0] (qp/process-query plain-query))]
+                  plain-rows (mt/formatted-rows [str 3.0] (qp/process-query plain-query))]
               (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
                             (let [d (- plain-ag-col (or metric-col-1 0) (or metric-col-2 0))]
                               (< d 0.01)))
