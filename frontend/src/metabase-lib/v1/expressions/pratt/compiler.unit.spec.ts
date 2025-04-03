@@ -1,9 +1,11 @@
+import type * as Lib from "metabase-lib";
+
 import { compile, lexify, parse } from ".";
 
-function value(value: unknown) {
+function value(value: unknown, options: Lib.ExpressionOptions = {}) {
   return {
     operator: "value",
-    options: {},
+    options,
     args: [value],
   };
 }
@@ -28,6 +30,25 @@ describe("pratt/compiler", () => {
       expect(expr(`'a\\'b'`)).toEqual(value(`a'b`));
       expect(expr(`"'"`)).toEqual(value(`'`));
       expect(expr(`'"'`)).toEqual(value(`"`));
+    });
+
+    it("should compile bigints", () => {
+      expect(expr("12309109320930192039")).toEqual(
+        value("12309109320930192039", {
+          "base-type": "type/BigInteger",
+        }),
+      );
+
+      expect(expr("1 + 12309109320930192039")).toEqual({
+        operator: "+",
+        options: {},
+        args: [
+          1,
+          value("12309109320930192039", {
+            "base-type": "type/BigInteger",
+          }),
+        ],
+      });
     });
 
     /// TODO: Fix w/ some type info
