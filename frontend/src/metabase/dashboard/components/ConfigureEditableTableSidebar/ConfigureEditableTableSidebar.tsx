@@ -37,7 +37,7 @@ export function ConfigureEditableTableSidebar({
 
         <Box p="md">
           <Tabs.Panel value="columns">
-            <ConfigureEditableTableColumns dashcard={dashcard} />
+            {dashcard && <ConfigureEditableTableColumns dashcard={dashcard} />}
           </Tabs.Panel>
           <Tabs.Panel value="filters">
             <div>DashcardID: {dashcardId}</div>

@@ -10,6 +10,7 @@ import {
 import { onUpdateDashCardVisualizationSettings } from "metabase/dashboard/actions";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import { useDispatch } from "metabase/lib/redux";
+import { ChartSettingActionIcon } from "metabase/visualizations/components/settings/ChartSettingActionIcon";
 import { ColumnItem } from "metabase/visualizations/components/settings/ColumnItem";
 import type {
   DashboardCard,
@@ -91,6 +92,9 @@ export function ConfigureEditableTableColumns({
           }
           draggable={!isDragDisabled}
           icon={item.icon}
+          additionalActions={
+            <ChartSettingActionIcon icon="pencil" onClick={() => {}} />
+          }
         />
       </Sortable>
     ),
