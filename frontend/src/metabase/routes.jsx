@@ -121,10 +121,10 @@ export const getRoutes = (store) => {
             path="/"
             component={HomePage}
             onEnter={(nextState, replace) => {
-              const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
-              if (page && page !== "/") {
+              const page = PLUGIN_LANDING_PAGE.getLandingPage();
+              if (page !== "/") {
                 replace({
-                  pathname: page[0] === "/" ? page : `/${page}`,
+                  pathname: page.startsWith("/") ? page : `/${page}`,
                   state: { preserveNavbarState: true },
                 });
               }

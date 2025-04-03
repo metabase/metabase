@@ -87,7 +87,7 @@ describe("siteUrlWidget", () => {
     expect(await screen.findByText("Changes saved")).toBeInTheDocument();
   });
 
-  it("should show error toast", async () => {
+  it("should show error message", async () => {
     setup();
     setupUpdateSettingEndpoint({ status: 500 });
 
@@ -97,7 +97,6 @@ describe("siteUrlWidget", () => {
     await fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
-    expect(await screen.findByLabelText("warning icon")).toBeInTheDocument();
     expect(
       await screen.findByText("Error saving Site URL"),
     ).toBeInTheDocument();

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { useToast } from "metabase/common/hooks";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { TextInput } from "metabase/ui";
 import { useEnterpriseAdminSetting } from "metabase-enterprise/api/utils/settings";
@@ -13,6 +14,7 @@ export function LandingPageWidget() {
   const { value, updateSetting, description } =
     useEnterpriseAdminSetting("landing-page");
   const [inputValue, setInputValue] = useState(value ?? "");
+  const [sendToast] = useToast();
 
   useEffect(() => {
     if (value) {
@@ -37,9 +39,13 @@ export function LandingPageWidget() {
     });
 
     if (result.error) {
-      setError(
-        (result as GenericErrorResponse)?.message || t`Something went wrong`,
-      );
+      const message =
+        (result.error as { data: GenericErrorResponse })?.data?.message ||
+        t`Something went wrong`;
+      setError(message);
+      sendToast({ message, icon: "check" });
+    } else {
+      sendToast({ message: t`Changes saved`, icon: "check" });
     }
   };
 
