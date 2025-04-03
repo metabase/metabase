@@ -94,7 +94,16 @@ export const ClauseStep = <T,>({
         {items.map((item, index) => (
           <ClausePopover
             key={index}
-            renderItem={(onOpen) => renderItem({ item, index, onOpen })}
+            renderItem={(onOpen) =>
+              renderItem({
+                item: (() => {
+                  console.log("@m920b8ps", "item", item);
+                  return item;
+                })(),
+                index,
+                onOpen,
+              })
+            }
             renderPopover={(onClose) => renderPopover({ item, index, onClose })}
           />
         ))}

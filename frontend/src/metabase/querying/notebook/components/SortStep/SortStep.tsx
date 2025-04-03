@@ -9,6 +9,7 @@ import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
 import S from "./SortStep.module.css";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export function SortStep({
   query,
@@ -19,6 +20,8 @@ export function SortStep({
   updateQuery,
 }: NotebookStepProps) {
   const { stageIndex } = step;
+
+  const tc = useTranslateContent2();
 
   const clauses = useMemo(() => {
     return Lib.orderBys(query, stageIndex);
@@ -69,7 +72,7 @@ export function SortStep({
       isLastOpened={isLastOpened}
       renderName={(clause) => (
         <SortDisplayName
-          displayInfo={Lib.displayInfo(query, stageIndex, clause)}
+          displayInfo={Lib.displayInfo(query, stageIndex, clause, tc)}
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
         />
       )}

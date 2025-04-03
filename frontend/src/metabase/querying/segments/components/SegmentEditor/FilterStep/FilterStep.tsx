@@ -7,6 +7,7 @@ import { Button, Flex, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ClauseStep } from "../ClauseStep";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 type FilterStepProps = {
   query: Lib.Query | undefined;
@@ -64,10 +65,12 @@ function FilterPopover({
   hasFilters,
   onChange,
 }: FilterPopoverProps) {
+  const tc = useTranslateContent2();
   const [isOpened, setIsOpened] = useState(false);
   const filterInfo = filter
-    ? Lib.displayInfo(query, stageIndex, filter)
+    ? Lib.displayInfo(query, stageIndex, filter, tc)
     : undefined;
+  console.log("@m920f908", "filterInfo", filterInfo);
 
   const handleSelect = (newFilter: Lib.Filterable) => {
     const newQuery = filter
@@ -92,7 +95,7 @@ function FilterPopover({
             onClick={() => setIsOpened(!isOpened)}
             onRemoveClick={handleRemove}
           >
-            {filterInfo.displayName}
+            {tc(filterInfo.displayName)}
           </FilterPill>
         ) : (
           <AddFilterButton
