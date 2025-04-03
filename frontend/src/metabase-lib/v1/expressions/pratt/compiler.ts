@@ -42,7 +42,8 @@ export function compile(
   node: Node,
   { getMBQLName = defaultGetMBQLName }: CompileOptions = {},
 ): Lib.ExpressionParts | Lib.ExpressionArg {
-  assert(node.type === ROOT, "Must be root node");
+  assert(node.type === ROOT, t`Must be root node`);
+
   return compileUnaryOp(node, { getMBQLName });
 }
 
@@ -71,8 +72,9 @@ function compileField(node: Node): Lib.ExpressionParts {
 }
 
 function compileIdentifier(node: Node): Lib.ExpressionParts {
-  assert(node.type === IDENTIFIER, "Invalid node type");
-  assert(node.token?.text, "Empty token text");
+  assert(node.type === IDENTIFIER, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
+
   const name = node.token.text;
   return withNode(node, {
     // TODO: remove this cast
@@ -86,13 +88,15 @@ function compileGroup(
   node: Node,
   opts: Options,
 ): Lib.ExpressionParts | Lib.ExpressionArg {
-  assert(node.type === GROUP, "Invalid node type");
+  assert(node.type === GROUP, t`Invalid node type`);
+
   return compileUnaryOp(node, opts);
 }
 
 function compileString(node: Node): string {
-  assert(node.type === STRING, "Invalid node type");
-  assert(typeof node.token?.value === "string", "No token text");
+  assert(node.type === STRING, t`Invalid node type`);
+  assert(typeof node.token?.value === "string", t`No token text`);
+
   return node.token.value;
 }
 
@@ -100,8 +104,9 @@ function compileLogicalNot(
   node: Node,
   opts: Options,
 ): Lib.ExpressionParts | Lib.ExpressionArg {
-  assert(node.type === LOGICAL_NOT, "Invalid node type");
-  assert(node.token?.text, "Empty token text");
+  assert(node.type === LOGICAL_NOT, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
+
   return withNode(node, {
     // TODO: remove this cast
     operator: "not" as Lib.ExpressionOperator,
@@ -111,8 +116,9 @@ function compileLogicalNot(
 }
 
 function compileLogicalAnd(node: Node, opts: Options): Lib.ExpressionParts {
-  assert(node.type === LOGICAL_AND, "Invalid node type");
-  assert(node.token?.text, "Empty token text");
+  assert(node.type === LOGICAL_AND, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
+
   const [left, right] = compileInfixOp(node, opts);
   return withNode(node, {
     // TODO: remove this cast
@@ -123,8 +129,9 @@ function compileLogicalAnd(node: Node, opts: Options): Lib.ExpressionParts {
 }
 
 function compileLogicalOr(node: Node, opts: Options): Lib.ExpressionParts {
-  assert(node.type === LOGICAL_OR, "Invalid node type");
-  assert(node.token?.text, "Empty token text");
+  assert(node.type === LOGICAL_OR, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
+
   const [left, right] = compileInfixOp(node, opts);
   return withNode(node, {
     // TODO: remove this cast
@@ -135,9 +142,10 @@ function compileLogicalOr(node: Node, opts: Options): Lib.ExpressionParts {
 }
 
 function compileComparisonOp(node: Node, opts: Options): Lib.ExpressionParts {
-  assert(node.type === COMPARISON, "Invalid node type");
+  assert(node.type === COMPARISON, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
+
   const operator = node.token?.text;
-  assert(operator, "Empty token operator");
   const [left, right] = compileInfixOp(node, opts);
   return withNode(node, {
     // TODO: remove this cast
@@ -148,9 +156,10 @@ function compileComparisonOp(node: Node, opts: Options): Lib.ExpressionParts {
 }
 
 function compileEqualityOp(node: Node, opts: Options): Lib.ExpressionParts {
-  assert(node.type === EQUALITY, "Invalid node type");
+  assert(node.type === EQUALITY, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
+
   const operator = node.token?.text;
-  assert(operator, "Empty token operator");
   const [left, right] = compileInfixOp(node, opts);
   return withNode(node, {
     operator: operator as Lib.ExpressionOperator,
@@ -160,17 +169,18 @@ function compileEqualityOp(node: Node, opts: Options): Lib.ExpressionParts {
 }
 
 function compileFunctionCall(node: Node, opts: Options): Lib.ExpressionParts {
-  assert(node.type === CALL, "Invalid node type");
-  assert(node.token?.text, "Empty token text");
+  assert(node.type === CALL, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
   assert(
     node.children[0].type === ARG_LIST,
-    "First argument must be an arglist",
+    t`First argument must be an arglist`,
   );
-  const name = node.token?.text.trim().toLowerCase();
-  const fn = opts.getMBQLName(name);
+
+  const text = node.token?.text.trim().toLowerCase();
+  const name = opts.getMBQLName(text) ?? text;
   return withNode(node, {
     // TODO: remove this cast
-    operator: (fn ? fn : name) as Lib.ExpressionOperator,
+    operator: name as Lib.ExpressionOperator,
     options: {},
     args: compileArgList(node.children[0], opts),
   });
@@ -180,7 +190,8 @@ function compileArgList(
   node: Node,
   opts: Options,
 ): (Lib.ExpressionParts | Lib.ExpressionArg)[] {
-  assert(node.type === ARG_LIST, "Invalid node type");
+  assert(node.type === ARG_LIST, t`Invalid node type`);
+
   return node.children.map((child) => {
     const expr = compileNode(child, opts);
     return (expr as any).node ? expr : withNode(child, expr);
@@ -188,8 +199,8 @@ function compileArgList(
 }
 
 function compileNumber(node: Node): NumberValue {
-  assert(node.type === NUMBER, "Invalid node type");
-  assert(typeof node.token?.text === "string", "No token text");
+  assert(node.type === NUMBER, t`Invalid node type`);
+  assert(node.token?.text, t`No token text`);
 
   const number = parseNumber(node.token.text);
   if (number == null) {
@@ -205,8 +216,9 @@ function compileNegative(
   node: Node,
   opts: Options,
 ): Lib.ExpressionParts | NumberValue {
-  assert(node.type === NEGATIVE, "Invalid node type");
-  assert(node.token?.text, "Empty token text");
+  assert(node.type === NEGATIVE, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
+
   const arg = compileUnaryOp(node, opts);
   if (typeof arg === "number") {
     return -arg;
@@ -219,8 +231,9 @@ function compileNegative(
 }
 
 function compileAdditionOp(node: Node, opts: Options): Lib.ExpressionParts {
-  assert(node.type === ADD, "Invalid node type");
-  assert(node.token?.text, "Empty token text");
+  assert(node.type === ADD, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
+
   const [left, right] = compileInfixOp(node, opts);
   return withNode(node, {
     operator: "+",
@@ -230,9 +243,10 @@ function compileAdditionOp(node: Node, opts: Options): Lib.ExpressionParts {
 }
 
 function compileMulDivOp(node: Node, opts: Options): Lib.ExpressionParts {
-  assert(node.type === MULDIV_OP, "Invalid node type");
+  assert(node.type === MULDIV_OP, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
+
   const operator = node.token?.text;
-  assert(operator, "Empty token operator");
   const [left, right] = compileInfixOp(node, opts);
   return withNode(node, {
     // TODO: remove this cast
@@ -243,8 +257,9 @@ function compileMulDivOp(node: Node, opts: Options): Lib.ExpressionParts {
 }
 
 function compileSubtractionOp(node: Node, opts: Options): Lib.ExpressionParts {
-  assert(node.type === SUB, "Invalid node type");
-  assert(node.token?.text, "Empty token text");
+  assert(node.type === SUB, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
+
   const [left, right] = compileInfixOp(node, opts);
   return withNode(node, {
     operator: "-",
@@ -254,8 +269,9 @@ function compileSubtractionOp(node: Node, opts: Options): Lib.ExpressionParts {
 }
 
 function compileBoolean(node: Node, _opts: Options): boolean {
-  assert(node.type === BOOLEAN, "Invalid node type");
-  assert(node.token?.text, "Empty token text");
+  assert(node.type === BOOLEAN, t`Invalid node type`);
+  assert(node.token?.text, t`Empty token text`);
+
   const text = node.token.text.toLowerCase();
   return text === "true" ? true : false;
 }
@@ -276,13 +292,14 @@ function compileInfixOp(
   (Lib.ExpressionParts | Lib.ExpressionArg)[],
   (Lib.ExpressionParts | Lib.ExpressionArg)[],
 ] {
+  assert(node.token?.text, t`Empty token text`);
+
   if (node.children.length > 2) {
     throw new CompileError(t`Unexpected expression`, node.children[2]);
   } else if (node.children.length === 0) {
     throw new CompileError(t`Expected expression`, node);
   }
 
-  assert(node.token?.text, "Empty token text");
   const operator = opts.getMBQLName(node.token?.text);
 
   const leftNode = compileNode(node.children[0], opts);
