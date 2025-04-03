@@ -34,9 +34,9 @@
                                                           :user_id user-id}]
         (let [rasta (mt/fetch-user :rasta)]
           (models.notification/create-notification!
-           {:payload_type :notification/system-event}
-           [{:type       :notification-subscription/system-event
-             :event_name :event/user-invited}]
+           {:payload_type :notification/system-event
+            :payload      {:event_name :event/user-invited}}
+           nil
            [{:channel_type :channel/email
              :template_id  (:id tmpl)
              :recipients   [{:type    :notification-recipient/user
@@ -71,9 +71,9 @@
                                                           :user_id user-id}]
         (let [rasta (mt/fetch-user :rasta)]
           (models.notification/create-notification!
-           {:payload_type :notification/system-event}
-           [{:type       :notification-subscription/system-event
-             :event_name :event/user-invited}]
+           {:payload_type :notification/system-event
+            :payload      {:event_name :event/user-invited}}
+           nil
            [{:channel_type :channel/email
              :template_id  (:id tmpl)
              :recipients   [{:type    :notification-recipient/user

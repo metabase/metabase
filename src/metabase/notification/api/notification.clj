@@ -65,11 +65,11 @@
 
                               table_id
                               (-> (sql.helpers/left-join
-                                   :notification_subscription
+                                   :notification_system_event
                                    [:and
-                                    [:= :notification_subscription.notification_id :notification.id]
+                                    [:= :notification_system_event.id :notification.payload_id]
                                     [:= :notification.payload_type "notification/system-event"]])
-                                  (sql.helpers/where [:= :notification_subscription.table_id table_id]))
+                                  (sql.helpers/where [:= :notification_system_event.table_id table_id]))
 
                               (and (nil? legacy-active) (not (true? include_inactive)))
                               (sql.helpers/where [:= :notification.active true])

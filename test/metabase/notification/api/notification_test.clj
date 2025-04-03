@@ -189,7 +189,6 @@
                                  :payload_type  "notification/card"
                                  :subscriptions [{:notification_id (:id created-notification)
                                                   :type "notification-subscription/cron"
-                                                  :event_name nil
                                                   :cron_schedule "0 0 0 * * ?"}]
                                  :handlers [{:recipients [{:id (mt/malli=? int?)
                                                            :type "notification-recipient/user"
@@ -354,7 +353,6 @@
                                        :active true}
                             :new      {:subscriptions [{:notification_id (:id notification)
                                                         :type "notification-subscription/cron"
-                                                        :event_name nil
                                                         :cron_schedule "0 0 0 * * ?"
                                                         :ui_display_type nil
                                                         :table_id nil
@@ -841,13 +839,13 @@
 (deftest list-filter-table-notifications-test
   (let [table-id (mt/id :categories)]
     (notification.tu/with-system-event-notification!
-      [{noti-id-1 :id} {:subscriptions [{:event_name :event/action.success
-                                         :action     :row/create
-                                         :table_id   table-id}]}]
+      [{noti-id-1 :id} {:notification-system-event {:event_name :event/action.success
+                                                    :action     :row/create
+                                                    :table_id   table-id}}]
       (notification.tu/with-system-event-notification!
-        [{noti-id-2 :id} {:subscriptions [{:event_name :event/action.success
-                                           :action :row/create
-                                           :table_id   table-id}]}]
+        [{noti-id-2 :id} {:notification-system-event {:event_name :event/action.success
+                                                      :action :row/create
+                                                      :table_id   table-id}}]
         (testing "returns notifications for the given table"
           (is (= #{noti-id-1 noti-id-2}
                  (list-notification-ids :crowberto #{noti-id-1 noti-id-2}
@@ -1050,21 +1048,19 @@
     (let [table-id     (mt/id :orders)
           notification (mt/user-http-request :crowberto :post 200 "notification"
                                              {:payload_type :notification/system-event
+                                              :payload      {:table_id   table-id
+                                                             :action     :row/create
+                                                             :event_name :event/action.success}
                                               :creator_id   (mt/user->id :crowberto)
                                               :condition    [:= [:context "event_info" "table_id"] table-id]
-                                              :handlers     [@notification.tu/default-email-handler]
-                                              :subscriptions [{:type       :notification-subscription/system-event
-                                                               :table_id   table-id
-                                                               :action     :row/create
-                                                               :event_name :event/action.success}]})]
+                                              :handlers     [@notification.tu/default-email-handler]})]
       (testing "can create a table notification"
         (is (=? {:condition     ["=" ["context" "event_info" "table_id"] table-id]
+                 :payload       {:event_name "event/action.success"
+                                 :table_id   table-id
+                                 :action     "row/create"}
                  :creator_id    (mt/user->id :crowberto)
-                 :payload_type  "notification/system-event"
-                 :subscriptions [{:event_name "event/action.success"
-                                  :action     "row/create"
-                                  :table_id   table-id
-                                  :type       "notification-subscription/system-event"}]}
+                 :payload_type  "notification/system-event"}
                 notification))
 
         (testing "can update its condition"

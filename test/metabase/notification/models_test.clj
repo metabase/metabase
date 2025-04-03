@@ -14,17 +14,17 @@
 
 (use-fixtures :once (fixtures/initialize :web-server))
 
-(def default-system-event-notification
-  {:payload_type :notification/system-event
+(def default-notification
+  {:payload_type :notification/testing
    :active       true})
 
-(def default-user-invited-subscription
-  {:type       :notification-subscription/system-event
-   :event_name :event/user-invited})
+(def daily-cron
+  {:type          :notification-subscription/cron
+   :cron_schedule "0 0 0 * * ? *"})
 
-(def default-card-created-subscription
-  {:type       :notification-subscription/system-event
-   :event_name :event/card-create})
+(def hourly-corn
+  {:type       :notification-subscription/cron
+   :cron_schedule "0 0 * * * ? *"})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Life cycle test                                            ;;
@@ -45,7 +45,7 @@
 
 (deftest disallow-update-notification-type-test
   (testing "can't change notification payload"
-    (mt/with-temp [:model/Notification {noti-id :id} default-system-event-notification]
+    (mt/with-temp [:model/Notification {noti-id :id} default-notification]
       (is (thrown-with-msg?
            java.lang.Exception
            #"Update payload_type is not allowed."
@@ -80,42 +80,13 @@
           (t2/delete! :model/Notification (:id notification))
           (is (not (t2/exists? :model/NotificationCard notification-card-id))))))))
 
-(deftest notification-subscription-type-test
-  (mt/with-temp [:model/Notification {n-id :id} {}]
+(deftest notification-system-event-event-name-test
+  (mt/with-model-cleanup [:model/NotificationSystemEvent]
     (testing "success path"
-      (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
-                                                                             :event_name      :event/card-create
-                                                                             :notification_id n-id})]
-        (is (some? (t2/select-one :model/NotificationSubscription sub-id)))))
-
-    (testing "fail if type is system event but event-name is nil"
-      (is (thrown-with-msg? Exception #"Value does not match schema"
-                            (t2/insert! :model/NotificationSubscription {:type            :notification-subscription/system-event
-                                                                         :notification_id n-id}))))
-    (testing "fail if type is cron but cron_schedule is nil"
-      (is (thrown-with-msg? Exception #"Value does not match schema"
-                            (t2/insert! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                         :notification_id n-id}))))
-    (testing "fail if type is system event but has cron_schedule"
-      (is (thrown-with-msg? Exception #"Value does not match schema"
-                            (t2/insert! :model/NotificationSubscription {:type            :notification-subscription/system-event
-                                                                         :event_name      :event/card-create
-                                                                         :cron_schedule   "0 * * * * ? *"
-                                                                         :notification_id n-id}))))))
-
-(deftest notification-subscription-event-name-test
-  (mt/with-temp [:model/Notification {n-id :id} {}]
-    (testing "success path"
-      (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
-                                                                             :event_name      (first (descendants :metabase/event))
-                                                                             :notification_id n-id})]
-        (is (some? (t2/select-one :model/NotificationSubscription sub-id)))))
-
+      (is (int? (t2/insert-returning-pk! :model/NotificationSystemEvent {:event_name (first (descendants :metabase/event))}))))
     (testing "failed if type is invalid"
       (is (thrown-with-msg? Exception #"Must be a namespaced keyword under :event, got: :user-join"
-                            (t2/insert! :model/NotificationSubscription {:type           :notification-subscription/system-event
-                                                                         :event_name     :user-join
-                                                                         :notification_id n-id}))))))
+                            (t2/insert! :model/NotificationSystemEvent {:event_name :user-join}))))))
 
 (deftest create-notification!+hydration-keys-test
   (mt/with-model-cleanup [:model/Notification]
@@ -130,9 +101,9 @@
                                                         :user_id (mt/user->id :lucky)}]
       (testing "create a notification with 2 subscriptions with 2 handlers that has 2 recipients"
         (let [noti (models.notification/create-notification!
-                    default-system-event-notification
-                    [default-user-invited-subscription
-                     default-card-created-subscription]
+                    default-notification
+                    [daily-cron
+                     hourly-corn]
                     [{:channel_type (:type chn-1)
                       :channel_id   (:id chn-1)
                       :template_id  (:id tmpl)
@@ -146,8 +117,8 @@
                                       :user_id  (mt/user->id :crowberto)}]}])]
 
           (testing "hydrate subscriptions"
-            (is (=? [default-user-invited-subscription
-                     default-card-created-subscription]
+            (is (=? [daily-cron
+                     hourly-corn]
                     (:subscriptions (t2/hydrate noti :subscriptions)))))
 
           (testing "hydrate handlers"
@@ -190,8 +161,8 @@
       (mt/with-temp [:model/Channel         chn-1   (assoc api.channel-test/default-test-channel :name "Channel 1")
                      :model/ChannelTemplate tmpl-1 {:channel_type (:type chn-1)}]
         (let [noti (models.notification/create-notification!
-                    default-system-event-notification
-                    [default-user-invited-subscription]
+                    default-notification
+                    [daily-cron]
                     [{:channel_type (:type chn-1)
                       :channel_id   (:id chn-1)
                       :template_id  (:id tmpl-1)
@@ -304,13 +275,7 @@
             (is (= [(notification.tu/subscription->trigger-info
                      sub-id
                      "1 * * * * ? *")]
-                   (notification.tu/send-notification-triggers sub-id))))
-
-          (testing "delete the trigger when type changes"
-            (t2/update! :model/NotificationSubscription sub-id {:type :notification-subscription/system-event
-                                                                :cron_schedule nil
-                                                                :event_name :event/card-create})
-            (is (empty? (notification.tu/send-notification-triggers sub-id))))))
+                   (notification.tu/send-notification-triggers sub-id))))))
 
       (testing "delete the trigger when delete subscription"
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron

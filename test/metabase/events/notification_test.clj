@@ -16,21 +16,21 @@
       (let [topic      :event/test-notification
             n-1        (models.notification/create-notification!
                         {:payload_type :notification/system-event
-                         :active       true}
-                        [{:type       :notification-subscription/system-event
-                          :event_name topic}]
-                        nil)
+                         :active       true
+                         :payload      {:event_name topic}}
+                        nil
+                        [])
             n-2         (models.notification/create-notification!
                          {:payload_type :notification/system-event
-                          :active       true}
-                         [{:type       :notification-subscription/system-event
-                           :event_name topic}]
-                         nil)
+                          :active       true
+                          :payload      {:event_name topic}}
+                         nil
+                         [])
             _inactive  (models.notification/create-notification!
                         {:payload_type :notification/system-event
-                         :active       false}
-                        [{:type       :notification-subscription/system-event
-                          :event_name topic}]
+                         :active       false
+                         :payload      {:event_name topic}}
+                        []
                         nil)
             sent-notis (atom [])]
         (testing "publishing event will send all the actively subscribed notifciations"
@@ -50,9 +50,9 @@
             sent-notis (atom #{})]
         (models.notification/create-notification!
          {:payload_type :notification/system-event
-          :active       true}
-         [{:type       :notification-subscription/system-event
-           :event_name topic}]
+          :active       true
+          :payload      {:event_name topic}}
+         []
          nil)
         (testing "publish an event that is not supported for notifications will not send any notifications"
           (with-redefs
@@ -113,9 +113,9 @@
                    :model/Channel chn-2 (assoc notification.tu/default-can-connect-channel :name (mt/random-name))]
       (notification.tu/with-temporary-event-topics! #{:event/testing}
         (doseq [_ (range 2)]
-          (models.notification/create-notification! {:payload_type :notification/testing}
-                                                    [{:type :notification-subscription/system-event
-                                                      :event_name :event/testing}]
+          (models.notification/create-notification! {:payload_type :notification/system-event
+                                                     :payload      {:event_name :event/testing}}
+                                                    []
                                                     [{:channel_type notification.tu/test-channel-type
                                                       :channel_id   (:id chn-1)
                                                       :template_id  nil
@@ -145,10 +145,10 @@
   (mt/with-model-cleanup [:model/Notification]
     (notification.tu/with-temporary-event-topics! #{:event/filter-by-table-id}
       (let [table-id (mt/id :users)
-            noti     (models.notification/create-notification! {:payload_type :notification/testing}
-                                                               [{:type :notification-subscription/system-event
-                                                                 :event_name :event/filter-by-table-id
-                                                                 :table_id table-id}]
+            noti     (models.notification/create-notification! {:payload_type :notification/system-event
+                                                                :payload       {:event_name :event/filter-by-table-id
+                                                                                :table_id      table-id}}
+                                                               []
                                                                [])]
 
         (testing "returns notification if filter matches"
