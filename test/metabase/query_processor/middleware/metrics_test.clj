@@ -884,7 +884,6 @@
    [:distinct  (aggregate-col-1st-arg-fn lib/distinct)]
    [:max       (aggregate-col-1st-arg-fn lib/max)]
    [:min       (aggregate-col-1st-arg-fn lib/min)]
-   [:stddev    (aggregate-col-1st-arg-fn lib/stddev)]
    [:sum       (aggregate-col-1st-arg-fn lib/sum)]
    [:var       (aggregate-col-1st-arg-fn lib/var)]
    ;; special
@@ -906,14 +905,21 @@
                                                            (lib/filterable-columns query))
                                              30))))]])
 
-(def tested-percentile-aggregations
-  [[:percentile (fn [query]
-                  (lib/aggregate query (lib/percentile (m/find-first (comp #{"Total"} :display-name)
-                                                                     (lib/visible-columns query))
-                                                       0.7)))]
-   [:median (fn [query]
-              (lib/aggregate query (lib/median (m/find-first (comp #{"Total"} :display-name)
-                                                             (lib/visible-columns query)))))]])
+(def tested-feature-dependent-aggregations
+  [[:percentile-aggregations
+    :percentile
+    (fn [query]
+      (lib/aggregate query (lib/percentile (m/find-first (comp #{"Total"} :display-name)
+                                                         (lib/visible-columns query))
+                                           0.7)))]
+   [:percentile-aggregations
+    :median
+    (fn [query]
+      (lib/aggregate query (lib/median (m/find-first (comp #{"Total"} :display-name)
+                                                     (lib/visible-columns query)))))]
+   [:standard-deviation-aggregations
+    :stddev
+    (aggregate-col-1st-arg-fn lib/stddev)]])
 
 (deftest filtered-metric-comparison-test
   (mt/test-drivers
@@ -945,14 +951,15 @@
                               (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
                     result (qp/process-query query)]
                 (is (every? (fn [[_ aggregation-value metric-value]]
-                              (< 0.01 (abs (- aggregation-value metric-value))))
+                              (< (abs (- aggregation-value metric-value)) 0.01))
                             (mt/formatted-rows [str 3.0 3.0] result)))))))))))
 
-(deftest filter-metric-comparison-for-percentile-aggregations-test
-  (mt/test-drivers
-    (mt/normal-drivers-with-feature :percentile-aggregations)
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-      (doseq [[operator aggregate] tested-percentile-aggregations]
+(deftest filter-metric-comparison-for-driver-dependent-aggregations-test
+  (doseq [[feature operator aggregate] tested-feature-dependent-aggregations]
+    (mt/test-drivers
+      (mt/normal-drivers-with-feature feature)
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+
         (testing (format "Result of aggregation with filter is same as of metric with filter for %s" operator)
           (let [base-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                              (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
@@ -978,7 +985,7 @@
                               (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
                     result (qp/process-query query)]
                 (is (every? (fn [[_ aggregation-value metric-value]]
-                              (< 0.01 (abs (- aggregation-value metric-value))))
+                              (< (abs (- aggregation-value metric-value)) 0.01))
                             (mt/formatted-rows [str 3.0 3.0] result)))))))))))
 
 (deftest next-stage-reference-test
@@ -1060,4 +1067,4 @@
                        ;; TBD
                        :distinct-where)
                  (set (map first tested-aggregations))
-                 (set (map first tested-percentile-aggregations)))))))
+                 (set (map first tested-feature-dependent-aggregations)))))))
