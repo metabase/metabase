@@ -63,12 +63,14 @@ const SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG = {
       "2024-08-02",
     ],
     "source-query": {
-      "source-table": 5,
-      aggregation: [["sum", ["field", 40, { "base-type": "type/Float" }]]],
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+      ],
       breakout: [
         [
           "field",
-          39,
+          ORDERS.CREATED_AT,
           { "base-type": "type/DateTime", "temporal-unit": "month" },
         ],
       ],
@@ -953,7 +955,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
         filter: [
           "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
+          ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
           "2024-01-01",
           "2024-05-30",
         ],
@@ -971,7 +973,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
         filter: [
           "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
+          ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
           "2024-03-01",
           "2024-03-31",
         ],
@@ -989,7 +991,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }]],
         filter: [
           "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
+          ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
           "2024-03-09",
           "2024-03-12",
         ],
