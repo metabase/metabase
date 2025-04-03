@@ -110,7 +110,7 @@ export function PublicOrEmbeddedDashboardView({
   navigateToNewCardFromDashboard,
   slowCards,
   cardTitled,
-  downloadsEnabled,
+  downloadsEnabled = { pdf: true, dashcard: true },
 }: PublicOrEmbeddedDashboardViewProps) {
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
