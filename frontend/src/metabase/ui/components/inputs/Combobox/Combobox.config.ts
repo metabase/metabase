@@ -8,6 +8,8 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
       size: "md",
     },
     classNames: {
+      options: S.options,
+      option: S.option,
       empty: S.empty,
     },
   }),
