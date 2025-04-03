@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { EnterpriseSettingKey, SettingKey } from "metabase-types/api";
+import type { EnterpriseSettingKey } from "metabase-types/api";
 
 import { useGetSettingsQuery } from "../session";
 import {
@@ -10,9 +10,8 @@ import {
 
 /**
  * One hook to get setting values and mutators for a given setting
- * generic version, should not be used directly
  */
-export const _useAdminSetting = <SettingName extends EnterpriseSettingKey>(
+export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
   settingName: SettingName,
 ) => {
   const {
@@ -40,8 +39,3 @@ export const _useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     ...apiProps,
   };
 };
-
-/**
- * One hook to get setting values and mutators for a given OSS setting
- */
-export const useAdminSetting = _useAdminSetting<SettingKey>;
