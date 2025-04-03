@@ -918,12 +918,14 @@
 
 (t2/define-before-insert :model/Card
   [card]
+  (tap> ['before-insert/top (map :ident (:result_metadata card))])
   (dev.portal/diff-> card
                      (assoc :metabase_version config/mb-version-string
                             :card_schema current-schema-version)
                      maybe-normalize-query
       ; Add any missing idents on the query (expr, breakout, agg) before populating :result_metadata.
                      (ensure-clause-idents ::before-insert)
+                     (u/assoc-default :entity_id (u/generate-nano-id)) ; Must have an entity_id before populating the metadata.
                      card.metadata/populate-result-metadata
                      pre-insert
                      populate-query-fields))

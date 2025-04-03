@@ -200,10 +200,12 @@ saved later when it is ready."
   "Infer the default result_metadata to store for MBQL cards.
 
   Ignores any that might be present already."
-  [query]
-  (not-empty (request/with-current-user nil
-               (u/ignore-exceptions
-                 (qp.preprocess/query->expected-cols query)))))
+  ([query]
+   (not-empty (request/with-current-user nil
+                (u/ignore-exceptions
+                  (qp.preprocess/query->expected-cols query)))))
+  ([query {:keys [entity_id] :as _card}]
+   (infer-metadata (assoc-in query [:info :card-entity-id] entity_id))))
 
 ;; TODO: Refactor this to use idents rather than names, so it's more robust.
 (defn refresh-metadata
@@ -217,6 +219,11 @@ saved later when it is ready."
                  (->> (remove (comp old-names :name) new-metadata)
                       (map update-fn))))))
 
+(defn- replace-placeholder-idents
+  [metadata card-entity-id]
+  (mapv #(update % :ident lib/replace-placeholder-idents card-entity-id)
+        metadata))
+
 (defn populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
   metadata from the query."
@@ -228,11 +235,11 @@ saved later when it is ready."
       (log/debug "Not inferring result metadata for Card: query was not updated")
       card)
 
-    ;; passing in metadata => no-op
+    ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
     metadata
     (do
       (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
-      card)
+      (update card :result_metadata replace-placeholder-idents (:entity_id card)))
 
     ;; this is an update, and dataset_query hasn't changed => no-op
     (and existing-card-id
@@ -255,7 +262,7 @@ saved later when it is ready."
     :else
     (do
       (log/debug "Attempting to infer result metadata for Card")
-      (assoc card :result_metadata (infer-metadata query)))))
+      (assoc card :result_metadata (infer-metadata query card)))))
 
 (defn assert-valid-idents
   "Given a card (or updates being made to a card) check the `:result_metadata` has correctly formed idents."

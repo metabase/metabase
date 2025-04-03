@@ -1,7 +1,8 @@
 (ns metabase.lib.metadata.ident
   "Helpers for working with `:ident` fields on columns."
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [metabase.util :as u]))
 
 (defn explicitly-joined-ident
   "Returns the ident for an explicitly joined column, given the idents of the join clause and the target column.
@@ -42,10 +43,59 @@
   [target-ident source-ident]
   (str "remapped__" source-ident "__to__" target-ident))
 
+;; ## Placeholder :idents
+;; We need the `:entity_id` of the card for native and model idents, but ad-hoc queries don't have an `:entity_id`
+;; yet. In that case we generate a **placeholder** `:entity_id` which gets replaced when the card is saved.
+
+;; This is sailing pretty close to the wind. It wouldn't work so neatly for a multi-stage query, since we might have
+;; references to these temporary idents in the later stages. But Card `:entity_id`s are only needed for idents on
+;; models and native queries. Native queries are single stage, and models have to be saved to become models!
+;; So we generate a placeholder `:entity_id` and then replace them in `:result_metadata` before saving the card.
+(defn placeholder-card-entity-id-for-adhoc-query
+  "Returns a string that can be used as a placeholder for the `:entity_id` of a card, when running an ad-hoc query.
+
+  The resulting `:ident`s are temporary! But they should not be able to \"escape\", since they only appear in idents
+  for the columns of models (which must be saved) and native queries (which only have one stage, free of refs).
+
+  On saving a card, any occurrences of such a placeholder in the `:ident`s of its `:result_metadata` are updated.
+
+  These placeholders deliberately contain characters which are not in the NanoID alphabet."
+  []
+  (str "$$ADHOC[" (u/generate-nano-id) "]"))
+
+(def ^:private placeholder-prefixes
+  #{"$$ADHOC"})
+
+(def ^:private placeholder-regex
+  #"\$\$ADHOC\[[A-Za-z0-9_-]{21}\]")
+
+(defn replace-placeholder-idents
+  "Given an `:ident` and the true `:entity_id` for a card, overwrite the placeholders."
+  [ident card-entity-id]
+  (str/replace ident placeholder-regex card-entity-id))
+
+(comment
+  (let [placeholder-ident (native-ident "SOME_COLUMN" (placeholder-card-entity-id-for-adhoc-query))
+        card-entity-id    (u/generate-nano-id)
+        replaced-ident    (replace-placeholder-idents placeholder-ident card-entity-id)]
+    [placeholder-ident card-entity-id '=> replaced-ident]))
+
 ;; Validation of idents for various things.
 (defn- ->ident [column-or-ident]
   (cond-> column-or-ident
     (map? column-or-ident) :ident))
+
+(defn valid-basic-ident?
+  "Validates a generic ident: a nonempty string, and no illegal placeholders.
+
+  Accepts an optional second argument (a `card-entity-id`) for uniformity with the other validators, but it's unused."
+  ([column-or-ident _card-entity-id]
+   (valid-basic-ident? column-or-ident))
+  ([column-or-ident]
+   (let [ident (->ident column-or-ident)]
+     (boolean (and (string? ident)
+                   (seq ident)
+                   (nil? (some #(str/index-of ident %) placeholder-prefixes)))))))
 
 (defn valid-model-ident?
   "Returns whether a given ident (or `:ident` from the column) is correct for the given model."
@@ -53,6 +103,7 @@
   (let [ident  (->ident column-or-ident)
         prefix (model-ident "" card-entity-id)]
     (and (string? ident)
+         (valid-basic-ident? ident)
          (str/starts-with? ident prefix)
          ;; The inner ident can't be empty, or it's also invalid.
          (> (count ident) (count prefix)))))
@@ -63,6 +114,7 @@
   (let [ident  (->ident column-or-ident)
         prefix (native-ident "" card-entity-id)]
     (and (string? ident)
+         (valid-basic-ident? ident)
          (str/starts-with? ident prefix))))
 
 (defn valid-native-model-ident?
@@ -74,18 +126,8 @@
                    (native-ident card-entity-id)
                    (model-ident card-entity-id))]
     (and (string? ident)
+         (valid-basic-ident? ident)
          (str/starts-with? ident prefix))))
-
-(defn valid-basic-ident?
-  "Validates a generic ident: a nonempty string!
-
-  Accepts an optional second argument (a `card-entity-id`) for uniformity with the other validators, but it's unused."
-  ([column-or-ident _card-entity-id]
-   (valid-basic-ident? column-or-ident))
-  ([column-or-ident]
-   (let [ident (->ident column-or-ident)]
-     (boolean (and (string? ident)
-                   (seq ident))))))
 
 (def ^:dynamic *enforce-idents-present*
   "The [[assert-idents-present!]] check is sometimes too zealous; this dynamic var can be overridden whe we know the

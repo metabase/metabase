@@ -305,6 +305,8 @@
   implicitly-joined-ident
   model-ident
   native-ident
+  placeholder-card-entity-id-for-adhoc-query
+  replace-placeholder-idents
   valid-basic-ident?
   valid-model-ident?
   valid-native-ident?

@@ -80,7 +80,7 @@
                          :first-row        (first rows)
                          :type             qp.error-type/qp}))))))
 
-(defn- annotate-native-cols [cols]
+(defn- annotate-native-cols [cols card-entity-id]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
     #_(tap> (list `annotate-native-cols :card-ident card-ident :query query))
     (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
@@ -93,14 +93,16 @@
                ;; names in MBQL `:field` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a
                ;; valid `:field`, omit the `:field_ref`.
                (when-not (str/blank? col-name)
-                 {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
+                 (let [unique-col-name (unique-name-fn col-name)]
+                   {:field_ref [:field unique-col-name {:base-type base-type}]
+                    :ident     (lib/native-ident unique-col-name card-entity-id)}))
                driver-col-metadata)))
           cols)))
 
 (defmethod column-info :native
-  [_query {:keys [cols rows] :as _results}]
+  [{{:keys [card-entity-id]} :info :as _query} {:keys [cols rows] :as _results}]
   (check-driver-native-columns cols rows)
-  (annotate-native-cols cols))
+  (annotate-native-cols cols card-entity-id))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Adding :cols info for MBQL queries                                       |
@@ -545,7 +547,7 @@
   (let [columns       (if native-source-query
                         (maybe-merge-source-metadata
                          source-metadata (column-info {:type :native
-                                                       :info {:card-entity-id (or entity-id card-entity-id)}}
+                                                       :info {:card-entity-id entity-id}}
                                                       results))
                         (mbql-cols source-query outer-query results))]
     (qp.util/combine-metadata columns source-metadata)))
@@ -555,10 +557,10 @@
   ;; Safety checks during dev and test.
   (when-not config/is-prod?
     (when-not (every? :ident cols)
-      (throw (ex-info "idents-for-models with missing idents" {:cols           cols
-                                                               :card-entity-id card-entity-id})))
+      (throw (ex-info "idents-for-model with missing idents" {:cols           cols
+                                                              :card-entity-id card-entity-id})))
     (when-not (string? card-entity-id)
-      (throw (ex-info "idents-for-models with blank card-entity-id" {:cols cols}))))
+      (throw (ex-info "idents-for-model with blank card-entity-id" {:cols cols}))))
 
   (for [col cols]
     (update col :ident lib/model-ident card-entity-id)))
@@ -700,7 +702,7 @@
     ((take 1) conj)]
    (fn combine [result base-types truncated-rows]
      (let [metadata (update metadata :cols
-                            (comp annotate-native-cols
+                            (comp #(annotate-native-cols % (-> query :info :card-entity-id))
                                   (fn [cols]
                                     (map (fn [col base-type]
                                            (-> col
@@ -719,7 +721,7 @@
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [{query-type :type, :as query
-    {:keys [:metadata/model-metadata :alias/escaped->original]} :info} rff]
+    {:keys [card-entity-id :metadata/model-metadata :alias/escaped->original]} :info} rff]
   (fn add-column-info-rff* [metadata]
     (qp.debug/debug> (list `add-column-info query metadata))
     (if (and (= query-type :query)
@@ -737,7 +739,7 @@
         (rff metadata))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
       ;; queries...
-      (let [metadata (cond-> (update metadata :cols annotate-native-cols)
+      (let [metadata (cond-> (update metadata :cols annotate-native-cols card-entity-id)
                        ;; annotate-native-cols ensures that column refs are present which we need to match metadata
                        (seq model-metadata)
                        (update :cols qp.util/combine-metadata model-metadata)
