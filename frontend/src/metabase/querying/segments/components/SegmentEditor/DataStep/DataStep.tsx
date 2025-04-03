@@ -59,7 +59,7 @@ export function DataStep({
       <Box>
         {tableId && (
           <Flex maw={300} wrap="nowrap">
-            <Text className={S.breadcrumbsContainer} size="sm">
+            <Text c="text-medium" className={S.breadcrumbsContainer} size="sm">
               <TableBreadcrumbs hideTableName tableId={tableId} />
             </Text>
           </Flex>

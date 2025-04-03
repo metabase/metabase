@@ -6,7 +6,7 @@ import {
   useListDatabaseSchemasQuery,
 } from "metabase/api";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { Flex, Group, Icon } from "metabase/ui";
+import { Group, Icon } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
 import S from "./TableBreadcrumbs.module.css";
@@ -41,10 +41,7 @@ export const TableBreadcrumbs = ({
       wrap="nowrap"
     >
       <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
-        <Flex c="brand">
-          <Icon name="database" />
-        </Flex>
-
+        <Icon name="database" />
         <Ellipsified>{table.db.name}</Ellipsified>
       </Group>
 
@@ -53,10 +50,7 @@ export const TableBreadcrumbs = ({
           <Separator />
 
           <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
-            <Flex c="brand">
-              <Icon name="folder" />
-            </Flex>
-
+            <Icon name="folder" />
             <Ellipsified>{table.schema}</Ellipsified>
           </Group>
         </>
@@ -67,10 +61,7 @@ export const TableBreadcrumbs = ({
           <Separator />
 
           <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
-            <Flex c="brand">
-              <Icon name="table" />
-            </Flex>
-
+            <Icon name="table" />
             <Ellipsified>{table.display_name}</Ellipsified>
           </Group>
         </>
