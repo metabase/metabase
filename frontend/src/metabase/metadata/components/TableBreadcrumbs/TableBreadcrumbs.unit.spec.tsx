@@ -24,15 +24,46 @@ const setup = ({ hideTableName, table }: SetupOpts) => {
 };
 
 describe("TableBreadcrumbs", () => {
-  const TEST_TABLE = createMockTable({
-    display_name: "My table",
-    schema: "My schema",
-    db: createMockDatabase({
-      name: "My database",
-    }),
+  describe("no schema", () => {
+    const TEST_TABLE = createMockTable({
+      display_name: "My table",
+      schema: "",
+      db: createMockDatabase({
+        name: "My database",
+        tables: [
+          createMockTable({
+            display_name: "My table",
+            schema: "",
+          }),
+        ],
+      }),
+    });
+
+    it("should show database name and table name", async () => {
+      setup({ table: TEST_TABLE });
+
+      expect(await screen.findByText("My database")).toBeInTheDocument();
+      expect(screen.queryByLabelText("folder icon")).not.toBeInTheDocument();
+      expect(screen.queryByText("My schema")).not.toBeInTheDocument();
+      expect(screen.getByText("My table")).toBeInTheDocument();
+    });
   });
 
-  describe("single schema or no schema", () => {
+  describe("single schema", () => {
+    const TEST_TABLE = createMockTable({
+      display_name: "My table",
+      schema: "My schema",
+      db: createMockDatabase({
+        name: "My database",
+        tables: [
+          createMockTable({
+            display_name: "My table",
+            schema: "My schema",
+          }),
+        ],
+      }),
+    });
+
     it("should show database name and table name", async () => {
       setup({ table: TEST_TABLE });
 
