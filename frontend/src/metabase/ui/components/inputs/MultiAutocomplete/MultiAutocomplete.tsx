@@ -71,59 +71,62 @@ export function MultiAutocomplete({
   );
 
   return (
-    <Combobox
-      store={combobox}
-      withinPortal={false}
-      floatingStrategy="fixed"
-      onOptionSubmit={handleOptionSubmit}
-    >
-      <Combobox.DropdownTarget>
-        <PillsInput rightSection={rightSection ?? infoIcon}>
-          <Pill.Group>
-            {pillValues.map((value, valueIndex) =>
-              value !== null ? (
-                <Pill
-                  key={valueIndex}
-                  withRemoveButton
-                  onDoubleClick={() => handlePillDoubleClick(valueIndex)}
-                  onRemove={() => handlePillRemoveClick(valueIndex)}
-                >
-                  {value}
-                </Pill>
-              ) : (
-                <Combobox.EventsTarget key="field">
-                  <PillsInput.Field
-                    value={fieldValue}
-                    placeholder={placeholder}
-                    role="combobox"
-                    autoFocus={autoFocus}
-                    aria-label={ariaLabel}
-                    onChange={handleFieldChange}
-                    onPaste={handleFieldPaste}
-                    onKeyDown={handleFieldKeyDown}
-                    onFocus={handleFieldFocus}
-                    onBlur={handleFieldBlur}
-                  />
-                </Combobox.EventsTarget>
-              ),
-            )}
-          </Pill.Group>
-        </PillsInput>
-      </Combobox.DropdownTarget>
-      <OptionsDropdown
-        data={options}
-        search={fieldValue}
-        nothingFoundMessage={nothingFoundMessage}
-        hiddenWhenEmpty={!nothingFoundMessage}
-        filter={undefined}
-        limit={undefined}
-        maxDropdownHeight={undefined}
-        unstyled={false}
-        labelId={undefined}
-        withScrollArea={undefined}
-        scrollAreaProps={undefined}
-        aria-label={undefined}
-      />
-    </Combobox>
+    <>
+      <Combobox
+        store={combobox}
+        withinPortal={false}
+        floatingStrategy="fixed"
+        onOptionSubmit={handleOptionSubmit}
+      >
+        <Combobox.DropdownTarget>
+          <PillsInput rightSection={rightSection ?? infoIcon}>
+            <Pill.Group>
+              {pillValues.map((value, valueIndex) =>
+                value !== null ? (
+                  <Pill
+                    key={valueIndex}
+                    withRemoveButton
+                    onDoubleClick={() => handlePillDoubleClick(valueIndex)}
+                    onRemove={() => handlePillRemoveClick(valueIndex)}
+                  >
+                    {value}
+                  </Pill>
+                ) : (
+                  <Combobox.EventsTarget key="field">
+                    <PillsInput.Field
+                      value={fieldValue}
+                      placeholder={placeholder}
+                      role="combobox"
+                      autoFocus={autoFocus}
+                      aria-label={ariaLabel}
+                      onChange={handleFieldChange}
+                      onPaste={handleFieldPaste}
+                      onKeyDown={handleFieldKeyDown}
+                      onFocus={handleFieldFocus}
+                      onBlur={handleFieldBlur}
+                    />
+                  </Combobox.EventsTarget>
+                ),
+              )}
+            </Pill.Group>
+          </PillsInput>
+        </Combobox.DropdownTarget>
+        <OptionsDropdown
+          data={options}
+          search={fieldValue}
+          nothingFoundMessage={nothingFoundMessage}
+          hiddenWhenEmpty={!nothingFoundMessage}
+          filter={undefined}
+          limit={undefined}
+          maxDropdownHeight={undefined}
+          unstyled={false}
+          labelId={undefined}
+          withScrollArea={undefined}
+          scrollAreaProps={undefined}
+          aria-label={undefined}
+        />
+      </Combobox>
+      <Combobox.HiddenInput value={values} />
+    </>
   );
 }
