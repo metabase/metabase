@@ -10,7 +10,7 @@ export const getDatabaseOptions = (databases: Database[]) =>
   }));
 
 export const getSchemaOptions = (schemas: SchemaName[]) =>
-  schemas.map(schema => ({ label: schema, value: schema }));
+  schemas.map((schema) => ({ label: schema, value: schema }));
 
 export const dbHasSchema = (databases: Database[], dbId: number): boolean =>
   !!databases

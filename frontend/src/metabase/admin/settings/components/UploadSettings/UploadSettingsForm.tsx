@@ -119,7 +119,7 @@ export function UploadSettingsFormView({
         schema_name: schemaName,
         table_prefix: tablePrefix,
       },
-    }).then(response => {
+    }).then((response) => {
       if (response.error) {
         showError(getErrorMessage(enableErrorMessage));
         throw new Error("Error enabling uploads");
@@ -138,7 +138,7 @@ export function UploadSettingsFormView({
         schema_name: null,
         table_prefix: null,
       },
-    }).then(response => {
+    }).then((response) => {
       if (response.error) {
         showError(getErrorMessage(disableErrorMessage));
         throw new Error("Error disabling uploads");
@@ -159,7 +159,7 @@ export function UploadSettingsFormView({
 
   const hasValidDatabases = databaseOptions.length > 0;
   const isH2db = Boolean(
-    dbId && databases.find(db => db.id === dbId)?.engine === "h2",
+    dbId && databases.find((db) => db.id === dbId)?.engine === "h2",
   );
 
   const {
@@ -181,7 +181,7 @@ export function UploadSettingsFormView({
           placeholder={t`Select a database`}
           disabled={!hasValidDatabases}
           data={databaseOptions}
-          onChange={newValue => {
+          onChange={(newValue) => {
             const newDbId = Number(newValue);
             setDbId(newDbId);
             if (newDbId) {
@@ -201,7 +201,7 @@ export function UploadSettingsFormView({
             value={schemaName}
             placeholder={t`Select a schema`}
             data={getSchemaOptions(schemas ?? [])}
-            onChange={newValue => {
+            onChange={(newValue) => {
               resetButtons();
               setSchemaName(newValue);
             }}
@@ -225,7 +225,7 @@ export function UploadSettingsFormView({
             label={t`Upload Table Prefix (optional)`}
             value={tablePrefix ?? ""}
             placeholder={t`upload_`}
-            onChange={e => {
+            onChange={(e) => {
               resetButtons();
               setTablePrefix(e.target.value);
             }}
