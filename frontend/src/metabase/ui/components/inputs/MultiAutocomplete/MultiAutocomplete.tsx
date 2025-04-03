@@ -66,7 +66,12 @@ export function MultiAutocomplete({
   );
 
   return (
-    <Combobox store={combobox} onOptionSubmit={handleOptionSubmit}>
+    <Combobox
+      store={combobox}
+      withinPortal={false}
+      floatingStrategy="fixed"
+      onOptionSubmit={handleOptionSubmit}
+    >
       <Combobox.DropdownTarget>
         <PillsInput rightSection={rightSection ?? (isFocused && infoIcon)}>
           <Pill.Group>

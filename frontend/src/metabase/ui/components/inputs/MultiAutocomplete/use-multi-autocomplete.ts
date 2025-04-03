@@ -137,6 +137,7 @@ export function useMultiAutocomplete({
         length: 0,
       },
     });
+    combobox.resetSelectedOption();
   };
 
   return {
