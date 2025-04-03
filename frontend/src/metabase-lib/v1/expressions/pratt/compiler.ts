@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 
 import { getMBQLName as defaultGetMBQLName } from "../config";
 import { CompileError } from "../errors";
+import { isLiteral } from "../matchers";
 import { unescapeString } from "../string";
 
 import {
@@ -63,6 +64,15 @@ function compileRoot(
 ): Lib.ExpressionParts | Lib.ExpressionArg {
   assert(node.type === ROOT, t`Must be root node`);
   assert(node.children.length === 1, t`Root must have one child`);
+
+  const result = compileNode(node.children[0], opts);
+  if (isLiteral(result)) {
+    return {
+      operator: "value" as Lib.ExpressionOperator,
+      options: {},
+      args: [result],
+    };
+  }
 
   return compileNode(node.children[0], opts);
 }
