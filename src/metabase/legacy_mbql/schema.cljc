@@ -204,7 +204,9 @@
 ;; treat certain objects. For example, a string compared against a Postgres UUID Field needs to be parsed into a UUID
 ;; object, since text <-> UUID comparison doesn't work in Postgres. For this reason, raw literals in `:filter`
 ;; clauses are wrapped in `:value` clauses and given information about the type of the Field they will be compared to.
-(defclause ^:internal value
+;;
+;; :value clauses are also used to wrap top-level literal values in expression clauses.
+(defclause value
   value    :any
   type-info [:maybe ::ValueTypeInfo])
 
@@ -389,7 +391,7 @@
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
   #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
-    :host :domain :subdomain :month-name :quarter-name :day-name :text})
+    :host :domain :subdomain :path :month-name :quarter-name :day-name :text :split-part})
 
 (def ^:private StringExpression
   "Schema for the definition of an string expression."
@@ -430,7 +432,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -542,6 +544,9 @@
 (defclause ^{:requires-features #{:expressions}} substring
   s StringExpressionArg, start IntGreaterThanZeroOrNumericExpression, length (optional NumericExpressionArg))
 
+(defclause ^{:requires-features #{:expressions :split-part}} split-part
+  text StringExpressionArg, delimiter [:string {:min 1}], position IntGreaterThanZeroOrNumericExpression)
+
 (defclause ^{:requires-features #{:expressions}} length
   s StringExpressionArg)
 
@@ -563,7 +568,7 @@
 (defclause ^{:requires-features #{:expressions}} replace
   s StringExpressionArg, match :string, replacement :string)
 
-(defclause ^{:requires-features #{:expressions :cast}} text
+(defclause ^{:requires-features #{:expressions :expressions/text}} text
   x :any)
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
@@ -581,6 +586,9 @@
   s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions :regex}} subdomain
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions :regex}} path
   s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions}} month-name
@@ -626,7 +634,7 @@
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
 
-(defclause ^{:requires-features #{:expressions :cast}} integer
+(defclause ^{:requires-features #{:expressions :expressions/integer}} integer
   x [:or NumericExpressionArg
      StringExpressionArg])
 
@@ -700,8 +708,11 @@
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
+(defclause ^{:requires-features #{:expressions :expressions/date}} date
+  string StringExpressionArg)
+
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now))
+  (one-of + datetime-add datetime-subtract convert-timezone now date))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
@@ -917,12 +928,16 @@
                        (is-clause? numeric-functions x)  :numeric
                        (is-clause? string-functions x)   :string
                        (is-clause? boolean-functions x)  :boolean
+                       (is-clause? :value x)             :value
+                       (is-clause? :segment x)           :segment
                        :else                             :else))}
    [:datetime DatetimeExpression]
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
-   [:else     (one-of segment)]])
+   [:value    value]
+   [:segment  segment]
+   [:else     Field]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
@@ -948,11 +963,11 @@
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
-          subdomain month-name quarter-name day-name text))
+          subdomain path month-name quarter-name day-name text split-part))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
-  `:+` clause or a `:field` clause."
+  `:+` clause or a `:field` or `:value` clause."
   [:multi
    {:error/message ":field or :expression reference or expression"
     :doc/title     "expression definition"
@@ -965,6 +980,7 @@
                        (is-clause? :case x)              :case
                        (is-clause? :if   x)              :if
                        (is-clause? :offset x)            :offset
+                       (is-clause? :value x)             :value
                        :else                             :else))}
    [:numeric  NumericExpression]
    [:string   StringExpression]
@@ -973,6 +989,7 @@
    [:case     case]
    [:if       case:if]
    [:offset   offset]
+   [:value    value]
    [:else     Field]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------

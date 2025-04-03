@@ -3,6 +3,11 @@ import { c, t } from "ttag";
 import { useUserSetting } from "metabase/common/hooks";
 import CollapseSection from "metabase/components/CollapseSection";
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
+import {
+  getEmbedOptions,
+  getIsEmbeddingIframe,
+} from "metabase/selectors/embed";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import type { SelectedItem } from "../types";
@@ -24,6 +29,11 @@ export const BrowseNavSection = ({
     "expand-browse-in-nav",
   );
 
+  const entityTypes = useSelector(
+    (state) => getEmbedOptions(state).entity_types,
+  );
+  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+
   return (
     <CollapseSection
       header={
@@ -36,37 +46,42 @@ export const BrowseNavSection = ({
       headerClass={CS.mb1}
       onToggle={setExpandBrowse}
     >
-      <PaddedSidebarLink
-        icon="model"
-        url={BROWSE_MODELS_URL}
-        isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
-        onClick={onItemSelect}
-        aria-label={t`Browse models`}
-      >
-        {t`Models`}
-      </PaddedSidebarLink>
-
-      {hasDataAccess && (
+      {(!isEmbeddingIframe || entityTypes.includes("model")) && (
         <PaddedSidebarLink
-          icon="database"
-          url={BROWSE_DATA_URL}
-          isSelected={nonEntityItem?.url?.startsWith(BROWSE_DATA_URL)}
+          icon="model"
+          url={BROWSE_MODELS_URL}
+          isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
           onClick={onItemSelect}
-          aria-label={t`Browse databases`}
+          aria-label={t`Browse models`}
         >
-          {t`Databases`}
+          {t`Models`}
         </PaddedSidebarLink>
       )}
 
-      <PaddedSidebarLink
-        icon="metric"
-        url={BROWSE_METRICS_URL}
-        isSelected={nonEntityItem?.url?.startsWith(BROWSE_METRICS_URL)}
-        onClick={onItemSelect}
-        aria-label={t`Browse metrics`}
-      >
-        {t`Metrics`}
-      </PaddedSidebarLink>
+      {hasDataAccess &&
+        (!isEmbeddingIframe || entityTypes.includes("table")) && (
+          <PaddedSidebarLink
+            icon="database"
+            url={BROWSE_DATA_URL}
+            isSelected={nonEntityItem?.url?.startsWith(BROWSE_DATA_URL)}
+            onClick={onItemSelect}
+            aria-label={t`Browse databases`}
+          >
+            {t`Databases`}
+          </PaddedSidebarLink>
+        )}
+
+      {!isEmbeddingIframe && (
+        <PaddedSidebarLink
+          icon="metric"
+          url={BROWSE_METRICS_URL}
+          isSelected={nonEntityItem?.url?.startsWith(BROWSE_METRICS_URL)}
+          onClick={onItemSelect}
+          aria-label={t`Browse metrics`}
+        >
+          {t`Metrics`}
+        </PaddedSidebarLink>
+      )}
     </CollapseSection>
   );
 };

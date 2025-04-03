@@ -62,16 +62,23 @@ describe("getHelpText", () => {
       );
     });
 
-    it("offset", () => {
+    it("offset", async () => {
       const { database } = setup();
       const helpText = getHelpText("offset", database, reportTimezone);
 
       expect(helpText?.structure).toBe("Offset");
       expect(helpText?.example).toEqual([
         "offset",
+        {},
         ["sum", ["dimension", "Total"]],
         -1,
       ]);
+      if (!helpText?.example) {
+        throw new Error("unreachable");
+      }
+      expect(await formatExample(helpText?.example)).toEqual(
+        "Offset(Sum([Total]), -1)",
+      );
     });
 
     describe("datetimeDiff", () => {
@@ -81,7 +88,7 @@ describe("getHelpText", () => {
           getHelpText("datetime-diff", database, reportTimezone),
         );
         const unitArg = checkNotNull(
-          helpText.args?.find(arg => arg.name === "unit"),
+          helpText.args?.find((arg) => arg.name === "unit"),
         );
         expect(unitArg.description).toContain("second");
         expect(unitArg.description).not.toContain("millisecond");
@@ -126,7 +133,7 @@ describe("getHelpText", () => {
       if (!helpText) {
         continue;
       }
-      expect(() => formatExample(helpText.example)).not.toThrow();
+      expect(await formatExample(helpText.example)).toEqual(expect.any(String));
     }
   });
 });

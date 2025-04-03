@@ -34,6 +34,7 @@ export const OPERATOR_PRECEDENCE: Record<string, number> = {
   or: 5,
 };
 
+// `type` and `args` types have no effect. Type checking is done by MBQL lib.
 export const MBQL_CLAUSES: MBQLClauseMap = {
   // aggregation functions
   count: { displayName: `Count`, type: "aggregation", args: [] },
@@ -102,13 +103,19 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: "text",
     type: "string",
     args: ["expression"],
-    requiresFeature: "cast",
+    requiresFeature: "expressions/text",
   },
   integer: {
     displayName: "integer",
     type: "number",
     args: ["expression"],
-    requiresFeature: "cast",
+    requiresFeature: "expressions/integer",
+  },
+  date: {
+    displayName: "date",
+    type: "datetime",
+    args: ["expression"],
+    requiresFeature: "expressions/date",
   },
   // string functions
   lower: { displayName: `lower`, type: "string", args: ["string"] },
@@ -123,10 +130,27 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
       }
     },
   },
+  "split-part": {
+    displayName: "splitPart",
+    type: "string",
+    args: ["string", "string", "number"],
+    validator: function (_arg: any, _delimeter: string, position: number) {
+      if (position < 1) {
+        return t`Expected positive integer but found ${position}`;
+      }
+    },
+    requiresFeature: "split-part",
+  },
   "regex-match-first": {
     displayName: `regexextract`,
     type: "string",
     args: ["string", "string"],
+    requiresFeature: "regex",
+  },
+  path: {
+    displayName: `path`,
+    type: "string",
+    args: ["string"],
     requiresFeature: "regex",
   },
   concat: {
@@ -142,8 +166,8 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   },
   length: { displayName: `length`, type: "number", args: ["string"] },
   trim: { displayName: `trim`, type: "string", args: ["string"] },
-  rtrim: { displayName: `rtrim`, type: "string", args: ["string"] },
-  ltrim: { displayName: `ltrim`, type: "string", args: ["string"] },
+  rtrim: { displayName: `rTrim`, type: "string", args: ["string"] },
+  ltrim: { displayName: `lTrim`, type: "string", args: ["string"] },
   domain: {
     displayName: `domain`,
     type: "string",
@@ -282,22 +306,22 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["number", "string"],
   },
   "is-null": {
-    displayName: `isnull`,
+    displayName: `isNull`,
     type: "boolean",
     args: ["expression"],
   },
   "not-null": {
-    displayName: `notnull`,
+    displayName: `notNull`,
     type: "boolean",
     args: ["expression"],
   },
   "is-empty": {
-    displayName: `isempty`,
+    displayName: `isEmpty`,
     type: "boolean",
     args: ["expression"],
   },
   "not-empty": {
-    displayName: `notempty`,
+    displayName: `notEmpty`,
     type: "boolean",
     args: ["expression"],
   },
@@ -542,11 +566,14 @@ export const EXPRESSION_FUNCTIONS = new Set([
   // cast
   "text",
   "integer",
+  "date",
   // string
   "lower",
   "upper",
   "substring",
+  "split-part",
   "regex-match-first",
+  "path",
   "concat",
   "replace",
   "trim",
@@ -610,7 +637,7 @@ const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
 // operators in which order of operands doesn't matter
 export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
 
-export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
+const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
 const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
 const LOGICAL_AND_OPERATOR = new Set(["and"]);
@@ -628,28 +655,3 @@ export const OPERATORS = new Set([
   ...LOGICAL_AND_OPERATOR,
   ...LOGICAL_OR_OPERATOR,
 ]);
-
-export const POPULAR_FUNCTIONS = [
-  "case",
-  "concat",
-  "contains",
-  "between",
-  "coalesce",
-];
-
-export const POPULAR_FILTERS = [
-  "contains",
-  "case",
-  "between",
-  "interval",
-  "concat",
-  "round",
-];
-
-export const POPULAR_AGGREGATIONS = [
-  "count",
-  "distinct",
-  "count-where",
-  "sum",
-  "avg",
-];

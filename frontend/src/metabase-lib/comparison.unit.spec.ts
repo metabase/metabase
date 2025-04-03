@@ -25,7 +25,7 @@ describe("findColumnIndexesFromLegacyRefs", () => {
       query,
       stageIndex,
       columns,
-      columns.map(column => Lib.legacyRef(query, stageIndex, column)),
+      columns.map((column) => Lib.legacyRef(query, stageIndex, column)),
     );
     expect(columnIndexes).toEqual([0, 1]);
   });
@@ -50,7 +50,7 @@ describe("findColumnIndexesFromLegacyRefs", () => {
       query,
       stageIndex,
       columns,
-      columns.map(column => Lib.legacyRef(query, stageIndex, column)),
+      columns.map((column) => Lib.legacyRef(query, stageIndex, column)),
     );
     expect(columnIndexes).toEqual([0, 1]);
   });

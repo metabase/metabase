@@ -5,7 +5,7 @@ export const getInitialExpandedIds = (
   nodes: ITreeNodeItem[],
 ): ITreeNodeItem["id"][] =>
   nodes
-    .map(node => {
+    .map((node) => {
       if (node.id === selectedId) {
         return [node.id];
       }

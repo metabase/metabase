@@ -18,7 +18,7 @@ export const UserTypeToggle = ({
   const tooltipText = isManager ? t`Turn into Member` : t`Turn into Manager`;
   const icon = isManager ? "arrow_down" : "arrow_up";
 
-  const handleChangeType: MouseEventHandler = e => {
+  const handleChangeType: MouseEventHandler = (e) => {
     e.stopPropagation();
     onChange(!isManager);
   };

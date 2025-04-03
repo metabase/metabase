@@ -53,7 +53,9 @@ export const navigateActionIndex = (
   index: number,
   diff: number,
 ): number => {
-  if (actions.every(action => typeof action === "string" || action.disabled)) {
+  if (
+    actions.every((action) => typeof action === "string" || action.disabled)
+  ) {
     return index;
   } else {
     return findClosestActionIndex(actions, index, diff);
@@ -80,8 +82,9 @@ export const findClosestActionIndex = (
   return index + diff;
 };
 
-export const filterRecentItems: (items: RecentItem[]) => RecentItem[] = items =>
-  items.filter(item => item.model !== "collection").slice(0, 5);
+export const filterRecentItems: (items: RecentItem[]) => RecentItem[] = (
+  items,
+) => items.filter((item) => item.model !== "collection").slice(0, 5);
 
 export const getCommandPaletteIcon = (
   item: PaletteActionImpl,

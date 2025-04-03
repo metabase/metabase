@@ -14,7 +14,7 @@ import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
 
-export const ViewMainContainer = props => {
+export const ViewMainContainer = (props) => {
   const {
     queryBuilderMode,
     mode,

@@ -1,8 +1,11 @@
 import type { Operator } from "semver";
 import { t } from "ttag";
 
+import { parseNumber } from "metabase/lib/number";
 import type { Expression } from "metabase-types/api";
 
+import { getMBQLName as defaultGetMBQLName } from "../config";
+import { CompileError } from "../errors";
 import { unescapeString } from "../string";
 
 import {
@@ -25,18 +28,19 @@ import {
   STRING,
   SUB,
 } from "./syntax";
-import { CompileError, type Node, type NodeType, assert } from "./types";
+import { type Node, type NodeType, assert } from "./types";
 
-type CompilerPass = (expr: Expression) => Expression;
+export type CompileOptions = {
+  getMBQLName?: (expressionName: string) => string | undefined;
+};
 
-interface Options {
-  getMBQLName(expressionName: string): string | undefined;
-  passes?: CompilerPass[];
-}
-
+type Options = Required<CompileOptions>;
 type CompileFn = (node: Node, opts: Options) => Expression;
 
-export function compile(node: Node, opts: Options): Expression {
+export function compile(
+  node: Node,
+  { getMBQLName = defaultGetMBQLName }: CompileOptions = {},
+): Expression {
   assert(node.type === ROOT, "Must be root node");
   if (node.children.length > 1) {
     throw new CompileError(t`Unexpected expression`, {
@@ -45,12 +49,7 @@ export function compile(node: Node, opts: Options): Expression {
     });
   }
   const func = compileUnaryOp(node);
-  let expr = func(node.children[0], opts);
-  const { passes = [] } = opts;
-  for (const pass of passes) {
-    expr = pass(expr);
-  }
-  return expr;
+  return func(node.children[0], { getMBQLName });
 }
 
 // ----------------------------------------------------------------
@@ -78,9 +77,8 @@ function compileGroup(node: Node, opts: Options): Expression {
 
 function compileString(node: Node): Expression {
   assert(node.type === STRING, "Invalid Node Type");
-  assert(typeof node.token?.text === "string", "No token text");
-  // Slice off the leading and trailing quotes
-  return node.token.text.slice(1, node.token.text.length - 1);
+  assert(typeof node.token?.value === "string", "No token text");
+  return node.token.value;
 }
 
 // ----------------------------------------------------------------
@@ -141,7 +139,7 @@ function compileFunctionCall(node: Node, opts: Options): Expression {
 
 function compileArgList(node: Node, opts: Options): Expression[] {
   assert(node.type === ARG_LIST, "Invalid Node Type");
-  return node.children.map(child => {
+  return node.children.map((child) => {
     const func = getCompileFunction(child);
     if (!func) {
       throw new CompileError(t`Invalid node type`, { node: child });
@@ -156,9 +154,10 @@ function compileArgList(node: Node, opts: Options): Expression[] {
 function compileNumber(node: Node): Expression {
   assert(node.type === NUMBER, "Invalid Node Type");
   assert(typeof node.token?.text === "string", "No token text");
-  try {
-    return parseFloat(node.token.text);
-  } catch (err) {
+  const number = parseNumber(node.token.text);
+  if (number != null) {
+    return number;
+  } else {
     throw new CompileError(t`Invalid number format`, {
       node,
       token: node.token,

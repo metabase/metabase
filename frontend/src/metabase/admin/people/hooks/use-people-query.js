@@ -11,13 +11,13 @@ const MIN_SEARCH_LENGTH = 2;
 // it is not the best place to store pagination state since we might want to
 // change it from the ancestors, for instance, when we change list filter props.
 // If users change any filters, we should reset the page state.
-export const usePeopleQuery = pageSize => {
+export const usePeopleQuery = (pageSize) => {
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
 
   const [status, setStatus] = useState(USER_STATUS.active);
   const [searchInputValue, _setSearchInputValue] = useState("");
   const dirtyRef = useRef(false);
-  const setSearchInputValue = useCallback(setter => {
+  const setSearchInputValue = useCallback((setter) => {
     _setSearchInputValue(setter);
     dirtyRef.current = true;
   }, []);
@@ -39,7 +39,7 @@ export const usePeopleQuery = pageSize => {
     }
   }, [searchInputValue, setPage]);
 
-  const updateStatus = status => {
+  const updateStatus = (status) => {
     setPage(0);
     setStatus(status);
   };

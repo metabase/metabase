@@ -131,4 +131,4 @@ dashcards:
     model: DashboardCard
 initially_published_at: null
 tabs: []
-width: fixed
+width: full

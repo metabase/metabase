@@ -58,7 +58,7 @@ describe(
         },
       };
 
-      cy.get<number>("@questionId").then(questionId => {
+      cy.get<number>("@questionId").then((questionId) => {
         mountSdkContent(
           <Box bg={theme.colors?.background} h="100vh">
             <InteractiveQuestion questionId={questionId} />
@@ -78,18 +78,18 @@ describe(
         cy.findByTestId("notebook-button")
           .should("be.visible")
           .realHover()
-          .should($el => haveBackgroundColor($el, buttonHoverBg));
+          .should(($el) => haveBackgroundColor($el, buttonHoverBg));
 
         // Should be the lightened version of the background color
         cy.findByTestId("chart-type-selector-button")
           .should("be.visible")
           .realHover()
-          .should($el => haveBackgroundColor($el, buttonHoverBg));
+          .should(($el) => haveBackgroundColor($el, buttonHoverBg));
 
         cy.findByTestId("notebook-button").click();
 
         // Should be the lightened version of the background color, same as the notebook button hover.
-        cy.get(customColumn).should($el =>
+        cy.get(customColumn).should(($el) =>
           haveBackgroundColor($el, buttonHoverBg),
         );
 
@@ -97,7 +97,7 @@ describe(
         cy.get(customColumn)
           .should("be.visible")
           .realHover()
-          .should($el =>
+          .should(($el) =>
             haveBackgroundColor($el, lighten(theme.colors?.background, 0.4)),
           );
       });
@@ -114,7 +114,7 @@ describe(
         },
       };
 
-      cy.get<number>("@questionId").then(questionId => {
+      cy.get<number>("@questionId").then((questionId) => {
         mountSdkContent(
           <Box bg={theme.colors?.background} h="100vh">
             <InteractiveQuestion questionId={questionId} />
@@ -131,7 +131,7 @@ describe(
         cy.findByTestId("notebook-button").click();
 
         // Should be the slightly darker version of the background color, same as the notebook button hover
-        cy.get(customColumn).should($el =>
+        cy.get(customColumn).should(($el) =>
           haveBackgroundColor($el, darken(theme.colors?.background, 0.05)),
         );
 
@@ -139,7 +139,7 @@ describe(
         cy.get(customColumn)
           .should("be.visible")
           .realHover()
-          .should($el =>
+          .should(($el) =>
             haveBackgroundColor($el, darken(theme.colors?.background, 0.1)),
           );
       });

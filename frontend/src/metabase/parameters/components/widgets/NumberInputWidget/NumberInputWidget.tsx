@@ -76,7 +76,7 @@ export function NumberInputWidget({
   const valueOptions = unsavedArrayValue
     .map((item): SelectItem | null => {
       const option = parameter?.values_source_config?.values?.find(
-        option => getValue(option)?.toString() === item?.toString(),
+        (option) => getValue(option)?.toString() === item?.toString(),
       );
 
       if (!option) {
@@ -96,7 +96,7 @@ export function NumberInputWidget({
     .filter(isNotNull);
 
   const customLabelOptions = options.filter(
-    option => option.label !== option.value,
+    (option) => option.label !== option.value,
   );
 
   function shouldCreate(value: string) {
@@ -112,10 +112,10 @@ export function NumberInputWidget({
           <MultiAutocomplete
             onChange={(values: string[]) =>
               setUnsavedArrayValue(
-                values.map(value => parseNumber(value)).filter(isNotNull),
+                values.map((value) => parseNumber(value)).filter(isNotNull),
               )
             }
-            value={filteredUnsavedArrayValue.map(value => value?.toString())}
+            value={filteredUnsavedArrayValue.map((value) => value?.toString())}
             placeholder={placeholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
@@ -127,7 +127,7 @@ export function NumberInputWidget({
               options: any[];
               search: string;
             }) => {
-              return options.filter(item =>
+              return options.filter((item) =>
                 Boolean(
                   search !== "" &&
                     item.label?.toLowerCase().startsWith(search.toLowerCase()),
@@ -137,7 +137,7 @@ export function NumberInputWidget({
           />
         </TokenFieldWrapper>
       ) : (
-        _.times(arity, i => (
+        _.times(arity, (i) => (
           <div key={i}>
             <NumericInput
               fullWidth
@@ -145,7 +145,7 @@ export function NumberInputWidget({
               autoFocus={autoFocus && i === 0}
               value={unsavedArrayValue[i]?.toString()}
               onChange={(_newValue, newValueText) => {
-                setUnsavedArrayValue(unsavedArrayValue => {
+                setUnsavedArrayValue((unsavedArrayValue) => {
                   const newUnsavedValue = [...unsavedArrayValue];
                   newUnsavedValue[i] = parseNumber(newValueText) ?? undefined;
                   return newUnsavedValue;

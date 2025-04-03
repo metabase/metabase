@@ -25,7 +25,7 @@ export interface TimelinePickerProps {
 const TimelinePicker = ({ value, options, onChange }: TimelinePickerProps) => {
   return (
     <ListRoot>
-      {options.map(option => (
+      {options.map((option) => (
         <TimelineCard
           key={option.id}
           timeline={option}

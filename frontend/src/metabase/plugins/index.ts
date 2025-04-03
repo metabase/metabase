@@ -34,6 +34,7 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
+import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import type { PaletteAction } from "metabase/palette/types";
@@ -67,6 +68,7 @@ import type {
   ModelCacheRefreshStatus,
   Pulse,
   Revision,
+  TableId,
   User,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
@@ -536,9 +538,18 @@ export const PLUGIN_EMBEDDING = {
   isInteractiveEmbeddingEnabled: (_state: State) => false,
 };
 
+export interface SimpleDataPickerProps {
+  filterByDatabaseId: number | null;
+  selectedEntity?: TableId;
+  isInitiallyOpen: boolean;
+  triggerElement: ReactNode;
+  setSourceTableFn: (tableId: TableId) => void;
+  entityTypes: EmbeddingEntityType[];
+}
+
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
-  SimpleDataPicker: (_props: any) => null,
+  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -577,7 +588,7 @@ export const PLUGIN_AUDIT = {
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
-type GsheetConnectionModalProps = {
+type GdriveConnectionModalProps = {
   isModalOpen: boolean;
   onClose: () => void;
   reconnect: boolean;
@@ -585,11 +596,13 @@ type GsheetConnectionModalProps = {
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   UploadManagementTable: PluginPlaceholder,
-  GsheetsSyncStatus: PluginPlaceholder,
-  GsheetConnectionModal:
-    PluginPlaceholder as ComponentType<GsheetConnectionModalProps>,
-  GsheetMenuItem: PluginPlaceholder as ComponentType<{ onClick: () => void }>,
-  GsheetConnectButton: PluginPlaceholder,
+  GdriveSyncStatus: PluginPlaceholder,
+  GdriveConnectionModal:
+    PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
+  GdriveSidebarMenuItem: PluginPlaceholder as ComponentType<{
+    onClick: () => void;
+  }>,
+  GdriveDbMenu: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {

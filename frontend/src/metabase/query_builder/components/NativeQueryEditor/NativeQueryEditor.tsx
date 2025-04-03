@@ -16,6 +16,7 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import { useDispatch } from "metabase/lib/redux";
 import {
+  runQuestionOrSelectedQuery,
   setIsNativeEditorOpen,
   setUIControls,
 } from "metabase/query_builder/actions";
@@ -78,7 +79,6 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   isShowingSnippetSidebar: boolean;
 
   readOnly?: boolean;
-  enableRun?: boolean;
   canChangeDatabase?: boolean;
   hasTopBar?: boolean;
   hasParametersList?: boolean;
@@ -89,6 +89,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
 
   editorContext?: "question";
 
+  runQuery: () => void;
   toggleEditor: () => void;
   handleResize: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
@@ -154,7 +155,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
 
   static defaultProps = {
     isOpen: false,
-    enableRun: true,
     canChangeDatabase: true,
     resizable: true,
     sidebarFeatures: {
@@ -176,10 +176,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     setIsNativeEditorOpen?.(!question || !question.isSaved());
   }
 
-  componentDidMount() {
-    document.addEventListener("keydown", this.handleKeyDown);
-  }
-
   onChange = (queryText: string) => {
     const { query, setDatasetQuery } = this.props;
     if (query.queryText() !== queryText) {
@@ -191,10 +187,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     }
   };
 
-  componentWillUnmount() {
-    document.removeEventListener("keydown", this.handleKeyDown);
-  }
-
   componentDidUpdate(prevProps: Props) {
     if (
       this.state.isSelectedTextPopoverOpen &&
@@ -205,37 +197,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       this.setState({ isSelectedTextPopoverOpen: false });
     }
   }
-
-  handleKeyDown = (e: KeyboardEvent) => {
-    const { isRunning, cancelQuery, enableRun } = this.props;
-
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-      if (isRunning && cancelQuery) {
-        cancelQuery();
-      } else if (enableRun) {
-        this.runQuery();
-      }
-    }
-  };
-
-  runQuery = () => {
-    this.props.cancelQuery?.();
-    const { query, runQuestionQuery } = this.props;
-
-    // if any text is selected, just run that
-    const selectedText = this.props.nativeEditorSelectedText;
-
-    if (selectedText) {
-      const temporaryQuestion = query.setQueryText(selectedText).question();
-
-      runQuestionQuery({
-        overrideWithQuestion: temporaryQuestion,
-        shouldUpdateUrl: false,
-      });
-    } else if (query.canRun()) {
-      runQuestionQuery();
-    }
-  };
 
   focus() {
     if (this.props.readOnly) {
@@ -276,7 +237,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   };
 
   togglePromptVisibility = () => {
-    this.setState(prev => ({
+    this.setState((prev) => ({
       isPromptInputVisible: !prev.isPromptInputVisible,
     }));
   };
@@ -350,6 +311,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       canChangeDatabase,
       setParameterValueToDefault,
       forwardedRef,
+      runQuery,
       highlightedLineNumbers,
     } = this.props;
 
@@ -362,7 +324,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     ) : null;
 
     const canSaveSnippets = snippetCollections.some(
-      collection => collection.can_write,
+      (collection) => collection.can_write,
     );
 
     return (
@@ -428,6 +390,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               readOnly={readOnly}
               highlightedLineNumbers={highlightedLineNumbers}
               onChange={this.onChange}
+              onRunQuery={runQuery}
               onSelectionChange={setNativeEditorSelectedRange}
               onCursorMoveOverCardTag={openDataReferenceAtQuestion}
               onRightClickSelection={this.handleRightClickSelection}
@@ -435,7 +398,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
 
             {hasEditingSidebar && !readOnly && (
               <NativeQueryEditorSidebar
-                runQuery={this.runQuery}
                 features={sidebarFeatures}
                 onShowPromptInput={this.togglePromptVisibility}
                 onFormatQuery={this.formatQuery}
@@ -449,7 +411,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
         <RightClickPopover
           isOpen={this.state.isSelectedTextPopoverOpen}
           openSnippetModalWithSelectedText={openSnippetModalWithSelectedText}
-          runQuery={this.runQuery}
+          runQuery={runQuery}
           target={() => this.editor.current?.getSelectionTarget()}
           canSaveSnippets={canSaveSnippets}
         />
@@ -475,11 +437,15 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
 
 const NativeQueryEditorWrapper = forwardRef<
   HTMLDivElement,
-  Omit<Props, "toggleEditor">
+  Omit<Props, "runQuery" | "toggleEditor">
 >(function NativeQueryEditorWrapper(props, ref) {
   const screenSize = useNotebookScreenSize();
   const dispatch = useDispatch();
   const { isNativeEditorOpen } = props;
+
+  const runQuery = useCallback(() => {
+    dispatch(runQuestionOrSelectedQuery());
+  }, [dispatch]);
 
   /**
    * do not show reference sidebar on small screens automatically
@@ -494,6 +460,7 @@ const NativeQueryEditorWrapper = forwardRef<
 
   return (
     <NativeQueryEditor
+      runQuery={runQuery}
       toggleEditor={toggleEditor}
       {...props}
       forwardedRef={ref}

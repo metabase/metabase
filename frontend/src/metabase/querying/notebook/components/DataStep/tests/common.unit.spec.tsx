@@ -25,7 +25,7 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 const createQueryWithFields = (columnNames: string[]) => {
   const query = createQuery();
   const findColumn = columnFinder(query, Lib.fieldableColumns(query, 0));
-  const columns = columnNames.map(name => findColumn("ORDERS", name));
+  const columns = columnNames.map((name) => findColumn("ORDERS", name));
   return Lib.withFields(query, 0, columns);
 };
 

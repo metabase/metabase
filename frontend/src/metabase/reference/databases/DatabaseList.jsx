@@ -37,7 +37,7 @@ class DatabaseList extends Component {
     const { entities, style, loadingError, loading } = this.props;
 
     const databases = Object.values(entities)
-      .filter(database => {
+      .filter((database) => {
         const exists = Boolean(database?.id && database?.name);
         return exists && !database.is_saved_questions;
       })
@@ -57,7 +57,7 @@ class DatabaseList extends Component {
             Object.keys(entities).length > 0 ? (
               <div className={CS.wrapper}>
                 <List>
-                  {databases.map(database => (
+                  {databases.map((database) => (
                     <ListItem
                       key={database.id}
                       name={database.name}

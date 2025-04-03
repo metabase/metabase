@@ -1,6 +1,8 @@
 import {
   type ColumnSizingState,
+  type PaginationState,
   getCoreRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
@@ -9,7 +11,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUpdateEffect } from "react-use";
 import _ from "underscore";
 
-import type { DataGridProps } from "metabase/data-grid/components/DataGrid/DataGrid";
 import {
   MIN_COLUMN_WIDTH,
   ROW_ID_COLUMN_ID,
@@ -21,6 +22,7 @@ import { useColumnsReordering } from "metabase/data-grid/hooks/use-columns-reord
 import { useMeasureColumnWidths } from "metabase/data-grid/hooks/use-measure-column-widths";
 import { useVirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
 import type {
+  DataGridInstance,
   DataGridOptions,
   ExpandedColumnsState,
 } from "metabase/data-grid/types";
@@ -29,6 +31,9 @@ import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
 import { isNotNull } from "metabase/lib/types";
 
 import { useCellSelection } from "./use-cell-selection";
+
+// Setting pageSize to -1 to render all items
+const DISABLED_PAGINATION_STATE = { pageSize: -1, pageIndex: 0 };
 
 const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
   _.uniq(
@@ -45,17 +50,18 @@ export const useDataGridInstance = <TData, TValue>({
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
   columnsOptions,
   theme,
+  pageSize,
   enableSelection,
   onColumnResize,
   onColumnReorder,
   measurementRenderWrapper,
-}: DataGridOptions<TData, TValue>): DataGridProps<TData> => {
+}: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
   const hasRowIdColumn = rowId != null;
 
   const [columnOrder, setColumnOrder] = useState<string[]>(
     getColumnOrder(
-      controlledColumnOrder ?? columnsOptions.map(column => column.id),
+      controlledColumnOrder ?? columnsOptions.map((column) => column.id),
       hasRowIdColumn,
     ),
   );
@@ -91,7 +97,7 @@ export const useDataGridInstance = <TData, TValue>({
 
   const handleUpdateColumnExpanded = useCallback(
     (columnName: string, isExpanded = true) => {
-      setExpandedColumnsMap(prev => {
+      setExpandedColumnsMap((prev) => {
         return { ...prev, [columnName]: isExpanded };
       });
     },
@@ -100,10 +106,6 @@ export const useDataGridInstance = <TData, TValue>({
 
   const handleExpandButtonClick = useCallback(
     (columnName: string, content: React.ReactNode) => {
-      if (typeof content !== "string") {
-        throw new Error("Columns with rich formatting cannot be expanded");
-      }
-
       const newColumnWidth = Math.max(
         measureBodyCellDimensions(content).width,
         measuredColumnSizingMap[columnName],
@@ -129,7 +131,7 @@ export const useDataGridInstance = <TData, TValue>({
     const rowIdColumnDefinition =
       rowId != null ? getRowIdColumn<TData, TValue>(rowId) : null;
 
-    const dataColumns = columnsOptions.map(options =>
+    const dataColumns = columnsOptions.map((options) =>
       getDataColumn<TData, TValue>(
         options,
         columnSizingMap,
@@ -152,8 +154,28 @@ export const useDataGridInstance = <TData, TValue>({
   ]);
 
   const wrappedColumnsOptions = useMemo(() => {
-    return columnsOptions.filter(column => column.wrap);
+    return columnsOptions.filter((column) => column.wrap);
   }, [columnsOptions]);
+
+  const [pagination, setPagination] = useState<PaginationState>(
+    pageSize != null && pageSize > 0
+      ? {
+          pageIndex: 0,
+          pageSize: pageSize ?? 0,
+        }
+      : DISABLED_PAGINATION_STATE,
+  );
+
+  useEffect(() => {
+    if (pageSize != null && pageSize > 0) {
+      setPagination((prev) => ({ ...prev, pageSize }));
+    } else {
+      setPagination(DISABLED_PAGINATION_STATE);
+    }
+  }, [pageSize]);
+
+  const enablePagination =
+    pagination?.pageSize !== DISABLED_PAGINATION_STATE.pageSize;
 
   const table = useReactTable({
     data,
@@ -163,12 +185,17 @@ export const useDataGridInstance = <TData, TValue>({
       columnOrder,
       columnPinning: { left: [ROW_ID_COLUMN_ID] },
       sorting,
+      pagination,
     },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: enablePagination
+      ? getPaginationRowModel()
+      : undefined,
     columnResizeMode: "onChange",
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizingMap,
+    onPaginationChange: setPagination,
   });
 
   const measureRowHeight = useCallback(
@@ -178,16 +205,13 @@ export const useDataGridInstance = <TData, TValue>({
       }
 
       const height = Math.max(
-        ...wrappedColumnsOptions.map(column => {
+        ...wrappedColumnsOptions.map((column) => {
           const value = column.accessorFn(data[rowIndex]);
           const formattedValue = column.formatter
             ? column.formatter(value, rowIndex, column.id)
-            : value;
-          if (
-            value == null ||
-            typeof formattedValue !== "string" ||
-            formattedValue === ""
-          ) {
+            : String(value);
+
+          if (value == null || formattedValue === "") {
             return defaultRowHeight;
           }
           const tableColumn = table.getColumn(column.id);
@@ -212,16 +236,17 @@ export const useDataGridInstance = <TData, TValue>({
     ],
   );
 
+  const enableRowVirtualization = !enablePagination;
   const virtualGrid = useVirtualGrid({
     gridRef,
     table,
     defaultRowHeight,
     measureRowHeight,
+    enableRowVirtualization,
   });
 
   const measureColumnWidths = useMeasureColumnWidths(
     table,
-    data,
     columnsOptions,
     truncateLongCellWidth,
     theme,
@@ -240,7 +265,7 @@ export const useDataGridInstance = <TData, TValue>({
     const didColumnWrappingChange =
       prevWrappedColumns.current != null &&
       !_.isEqual(
-        wrappedColumnsOptions.map(column => column.id),
+        wrappedColumnsOptions.map((column) => column.id),
         prevWrappedColumns.current,
       );
 
@@ -249,7 +274,9 @@ export const useDataGridInstance = <TData, TValue>({
     }
 
     prevColumnSizing.current = columnSizingMap;
-    prevWrappedColumns.current = wrappedColumnsOptions.map(column => column.id);
+    prevWrappedColumns.current = wrappedColumnsOptions.map(
+      (column) => column.id,
+    );
   }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
 
   const handleColumnResize = useCallback(
@@ -305,6 +332,57 @@ export const useDataGridInstance = <TData, TValue>({
     scrollTo,
   });
 
+  const getTotalHeight = useCallback(() => {
+    if (enableRowVirtualization) {
+      return virtualGrid.rowVirtualizer.getTotalSize();
+    }
+
+    return table.getRowModel().rows.length * defaultRowHeight;
+  }, [
+    defaultRowHeight,
+    enableRowVirtualization,
+    table,
+    virtualGrid.rowVirtualizer,
+  ]);
+
+  const getVisibleRows = useCallback(() => {
+    if (enableRowVirtualization) {
+      return virtualGrid.virtualRows.map((virtualRow) => {
+        const row = table.getRowModel().rows[virtualRow.index];
+        return {
+          row,
+          virtualRow,
+        };
+      });
+    }
+
+    return table.getRowModel().rows;
+  }, [enableRowVirtualization, table, virtualGrid.virtualRows]);
+
+  const previousPaginationRef = useRef<PaginationState>();
+  useEffect(() => {
+    // Auto-adjusts column widths during pagination when sizes aren't explicitly specified
+    const previousPagination = previousPaginationRef.current;
+    if (
+      pagination.pageSize === DISABLED_PAGINATION_STATE.pageSize ||
+      !previousPagination
+    ) {
+      return;
+    }
+    const hasExplicitlySizedColumns =
+      Object.values(controlledColumnSizingMap ?? {}).length === 0;
+
+    const shouldMeasureColumnsForPage =
+      !hasExplicitlySizedColumns &&
+      (pagination.pageIndex !== previousPagination.pageIndex ||
+        pagination.pageSize !== previousPagination.pageSize);
+
+    if (shouldMeasureColumnsForPage) {
+      measureColumnWidths();
+    }
+    previousPaginationRef.current = pagination;
+  }, [controlledColumnSizingMap, measureColumnWidths, pagination]);
+
   return {
     table,
     theme,
@@ -314,5 +392,9 @@ export const useDataGridInstance = <TData, TValue>({
     columnsReordering,
     selection,
     measureColumnWidths,
+    enableRowVirtualization,
+    getTotalHeight,
+    getVisibleRows,
+    enablePagination,
   };
 };

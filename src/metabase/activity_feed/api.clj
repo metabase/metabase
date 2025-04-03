@@ -18,7 +18,7 @@
    (case model
      "card"      [:model/Card
                   :id :name :collection_id :description :display
-                  :dataset_query :type :archived
+                  :dataset_query :type :archived :card_schema
                   :collection.authority_level [:collection.name :collection_name]
                   [:dashboard.name :dashboard_name] :dashboard_id]
      "dashboard" [:model/Dashboard

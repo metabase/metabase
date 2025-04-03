@@ -129,7 +129,7 @@
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
                                    (let [current-state (t2/select-one-fn :state :model/PersistedInfo :id (:id persisted-info))
-                                         card-info     (t2/select-one [:model/Card :archived :type]
+                                         card-info     (t2/select-one [:model/Card :archived :type :card_schema]
                                                                       :id (:card_id persisted-info))]
                                      (if (or (contains? (persisted-info/prunable-states) current-state)
                                              (:archived card-info)
@@ -240,12 +240,12 @@
   [_job-context]
   (prune-all-deletable! dispatching-refresher))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Refresh persisted tables job"}
   PersistenceRefresh [job-context]
   (refresh-job-fn! job-context))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Remove deletable persisted tables"}
   PersistencePrune [job-context]
   (prune-job-fn! job-context))

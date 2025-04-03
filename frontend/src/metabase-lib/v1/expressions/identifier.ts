@@ -29,7 +29,7 @@ export function parseMetric(
 ) {
   const metrics = Lib.availableMetrics(query, stageIndex);
 
-  const metric = metrics.find(metric => {
+  const metric = metrics.find((metric) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, metric);
 
     return displayInfo.displayName.toLowerCase() === metricName.toLowerCase();
@@ -49,9 +49,13 @@ export function formatMetricName(
 
 export function parseSegment(
   segmentName: string,
-  { query, stageIndex }: { query: Lib.Query; stageIndex: number },
+  {
+    query,
+    stageIndex,
+    expressionIndex,
+  }: { query: Lib.Query; stageIndex: number; expressionIndex?: number },
 ) {
-  const segment = Lib.availableSegments(query, stageIndex).find(segment => {
+  const segment = Lib.availableSegments(query, stageIndex).find((segment) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, segment);
 
     return displayInfo.displayName.toLowerCase() === segmentName.toLowerCase();
@@ -61,9 +65,13 @@ export function parseSegment(
     return segment;
   }
 
-  const column = Lib.fieldableColumns(query, stageIndex).find(field => {
+  const column = Lib.expressionableColumns(
+    query,
+    stageIndex,
+    expressionIndex,
+  ).find((field) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, field);
-    return displayInfo.name.toLowerCase() === segmentName.toLowerCase();
+    return displayInfo.displayName.toLowerCase() === segmentName.toLowerCase();
   });
 
   if (column && Lib.isBoolean(column)) {
@@ -93,7 +101,7 @@ export function parseDimension(
   },
 ) {
   return getAvailableDimensions(options).find(({ info }) => {
-    return EDITOR_FK_SYMBOLS.symbols.some(separator => {
+    return EDITOR_FK_SYMBOLS.symbols.some((separator) => {
       const displayName = getDisplayNameWithSeparator(
         info.longDisplayName,
         separator,
@@ -119,7 +127,7 @@ function getAvailableDimensions({
     query,
     stageIndex,
     expressionIndex,
-  ).map(dimension => {
+  ).map((dimension) => {
     return {
       dimension,
       info: Lib.displayInfo(query, stageIndex, dimension),
@@ -129,7 +137,7 @@ function getAvailableDimensions({
   if (startRule === "aggregation") {
     return [
       ...results,
-      ...Lib.availableMetrics(query, stageIndex).map(dimension => {
+      ...Lib.availableMetrics(query, stageIndex).map((dimension) => {
         return {
           dimension,
           info: Lib.displayInfo(query, stageIndex, dimension),

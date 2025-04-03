@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
+import type { UserId } from "./user";
 
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
@@ -87,7 +88,10 @@ export type ScheduleType =
   | "hourly"
   | "daily"
   | "weekly"
-  | "monthly";
+  | "monthly"
+  // 'cron' type implies usage of more complex expressions represented
+  // by raw cron string.
+  | "cron";
 
 export type ScheduleDayType =
   | "sun"
@@ -374,6 +378,7 @@ interface PublicSettings {
     status: "not-connected" | "loading" | "complete" | "error";
     folder_url: string | null;
     error?: string;
+    "created-by-id"?: UserId;
   };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;

@@ -598,7 +598,7 @@ describe("scenarios > dashboard > parameters", () => {
 
   describe("when parameters are (dis)connected to dashcards", () => {
     beforeEach(() => {
-      createDashboardWithCards({ cards }).then(dashboardId =>
+      createDashboardWithCards({ cards }).then((dashboardId) =>
         H.visitDashboard(dashboardId),
       );
 
@@ -735,7 +735,9 @@ describe("scenarios > dashboard > parameters", () => {
       cy.visit("/collection/root");
       cy.wait("@getPinnedItems");
 
-      cy.get("@dashboardId").then(dashboardId => H.visitDashboard(dashboardId));
+      cy.get("@dashboardId").then((dashboardId) =>
+        H.visitDashboard(dashboardId),
+      );
 
       H.filterWidget()
         .findByRole("listitem")
@@ -763,7 +765,9 @@ describe("scenarios > dashboard > parameters", () => {
 
       cy.log("reset filter values from url by visiting dashboard by id");
 
-      cy.get("@dashboardId").then(dashboardId => H.visitDashboard(dashboardId));
+      cy.get("@dashboardId").then((dashboardId) =>
+        H.visitDashboard(dashboardId),
+      );
 
       H.filterWidget().icon("close").click();
 
@@ -773,7 +777,9 @@ describe("scenarios > dashboard > parameters", () => {
 
       cy.log("verify filter value is not specified after reload");
 
-      cy.get("@dashboardId").then(dashboardId => H.visitDashboard(dashboardId));
+      cy.get("@dashboardId").then((dashboardId) =>
+        H.visitDashboard(dashboardId),
+      );
 
       H.getDashboardCard()
         .findByText("761 Fish Hill Road")

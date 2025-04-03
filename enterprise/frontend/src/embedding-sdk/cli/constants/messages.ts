@@ -23,7 +23,7 @@ export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
 
 export const MISSING_REACT_DEPENDENCY = `
   Your package.json file does not contain a dependency for React.
-  Please make sure your package.json file contains a dependency for React 18.
+  Please make sure your package.json file contains a dependency for React 18 or React 19.
 `;
 
 export const UNSUPPORTED_REACT_VERSION = `
@@ -105,8 +105,8 @@ export const SETUP_PRO_LICENSE_MESSAGE_WITH_SAMPLE_DATABASE = `
 
   If you want to use this tool to set up permissions for multi-tenancy with JWT SSO,
   you'll need to select your own database.
-  
-  With the sample database selected, this tool will simply create a mock back-end server 
+
+  With the sample database selected, this tool will simply create a mock back-end server
   that signs people into Metabase, without setting up JWT SSO.
 `;
 

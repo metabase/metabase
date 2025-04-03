@@ -83,10 +83,6 @@ const setup = async ({
 };
 
 describe("SearchResults", () => {
-  beforeAll(() => {
-    window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
   it("should display the empty state when no results are found", async () => {
     await setup({ searchResults: [] });
 
@@ -113,7 +109,7 @@ describe("SearchResults", () => {
 
       const resultItems = await screen.findAllByTestId("search-result-item");
 
-      const filteredElement = resultItems.find(element =>
+      const filteredElement = resultItems.find((element) =>
         element.textContent?.includes(name),
       );
       expect(filteredElement).toHaveAttribute("data-is-selected", "true");

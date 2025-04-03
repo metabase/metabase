@@ -74,10 +74,10 @@ export function getColorShades(colorName: string): ColorShades {
 export function getThemeColors(): Record<string, ColorShades> {
   return {
     ...Object.fromEntries(
-      ORIGINAL_COLORS.map(name => [name, getColorShades("transparent")]),
+      ORIGINAL_COLORS.map((name) => [name, getColorShades("transparent")]),
     ),
     ...Object.fromEntries(
-      CUSTOM_COLORS.map(name => [name, getColorShades(legacyColor(name))]),
+      CUSTOM_COLORS.map((name) => [name, getColorShades(legacyColor(name))]),
     ),
   };
 }

@@ -62,7 +62,7 @@ export const FieldSchema = new schema.Entity("fields", undefined, {
       uniqueId,
     };
   },
-  idAttribute: field => {
+  idAttribute: (field) => {
     return getUniqueFieldId(field);
   },
 });

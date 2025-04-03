@@ -26,22 +26,61 @@ dataset_query:
     aggregation:
     - - max
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - timestamp
+        - timestamp
         - base-type: type/DateTimeWithLocalTZ
           temporal-unit: minute
+          original-temporal-unit: month
+          inherited-temporal-unit: default
+    aggregation-idents:
+      0: KgDE_qFte8LODn0DoYnVO
     breakout:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - entity_qualified_id
+      - entity_qualified_id
       - base-type: type/Text
+    breakout-idents:
+      0: fSWOaaeBC3bztKE9nIWkh
     source-table: P6Ityjj7igswKh4NgZZjz
   type: query
-result_metadata: null
+result_metadata:
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Entity Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - entity_qualified_id
+  - base-type: type/Text
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_qualified_id
+  id:
+  - Internal Metabase Database
+  - public
+  - v_view_log
+  - entity_qualified_id
+  ident: field__audit_development_app_db__public__v_view_log__entity_qualified_id
+  name: entity_qualified_id
+  position: 5
+  semantic_type: type/FK
+  source: breakout
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_view_log
+  visibility_type: normal
+- aggregation_index: 0
+  base_type: type/DateTimeWithLocalTZ
+  display_name: 'Max of Timestamp: Minute'
+  field_ref:
+  - aggregation
+  - 0
+  ident: null
+  name: max
+  semantic_type: type/CreationTimestamp
+  source: aggregation
 visualization_settings:
   column_settings: null
   table.cell_column: max
@@ -50,6 +89,8 @@ serdes/meta:
   label: last_content_viewed_at
   model: Card
 archived_directly: false
-metabase_version: vUNKNOWN (901f705)
+card_schema: 20
+dashboard_id: null
+metabase_version: vUNKNOWN (38e44a2)
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

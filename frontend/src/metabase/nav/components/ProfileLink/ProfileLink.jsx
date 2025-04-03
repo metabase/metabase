@@ -33,7 +33,7 @@ import { useHelpLink } from "./useHelpLink";
 
 // generate the proper set of list items for the current user
 // based on whether they're an admin or not
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   adminItems: getAdminPaths(state),
   canAccessOnboardingPage: getCanAccessOnboardingPage(state),
   isNewInstance: getIsNewInstance(state),
@@ -60,7 +60,7 @@ function ProfileLink({
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
 
-  const openModal = modalName => {
+  const openModal = (modalName) => {
     setModalOpen(modalName);
   };
 

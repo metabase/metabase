@@ -78,7 +78,7 @@ export function CombineColumns({
     column: Lib.ColumnMetadata | null,
     separator: string,
   ) => {
-    setState(state => {
+    setState((state) => {
       const updated = {
         ...state,
         columnsAndSeparators: [
@@ -92,7 +92,7 @@ export function CombineColumns({
         // rewrite the default separator when the first column is selected
         const defaultSeparator = getDefaultSeparator(column);
         updated.columnsAndSeparators = updated.columnsAndSeparators.map(
-          columnAndSeparator => ({
+          (columnAndSeparator) => ({
             ...columnAndSeparator,
             separator: defaultSeparator,
           }),
@@ -105,7 +105,7 @@ export function CombineColumns({
   };
 
   const handleRowRemove = (index: number) => {
-    setState(state => ({
+    setState((state) => ({
       ...state,
       columnsAndSeparators: [
         ...state.columnsAndSeparators.slice(0, index),
@@ -115,7 +115,7 @@ export function CombineColumns({
   };
 
   const handleRowAdd = () => {
-    setState(state => {
+    setState((state) => {
       return {
         ...state,
         columnsAndSeparators: [
@@ -131,13 +131,13 @@ export function CombineColumns({
   };
 
   const handleEditSeparators = () => {
-    setState(state => ({
+    setState((state) => ({
       ...state,
       isUsingDefaultSeparator: false,
     }));
   };
 
-  const handleSubmit: FormEventHandler = event => {
+  const handleSubmit: FormEventHandler = (event) => {
     event.preventDefault();
 
     const name = getExpressionName(query, stageIndex, columnsAndSeparators);

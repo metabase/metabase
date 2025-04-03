@@ -10,11 +10,11 @@ import {
 
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import { enclosingFunction } from "metabase-lib/v1/expressions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { HelpText } from "../HelpText";
 import { Listbox, useCompletions } from "../Listbox";
-import { enclosingFunction } from "../utils";
 
 import S from "./Tooltip.module.css";
 
@@ -49,7 +49,7 @@ export function Tooltip({
 
   useEffect(() => {
     setHasMovedCursor(
-      hasMovedCursor => hasMovedCursor || state.selection.main.head !== 0,
+      (hasMovedCursor) => hasMovedCursor || state.selection.main.head !== 0,
     );
   }, [state.selection.main.head]);
 
@@ -64,7 +64,7 @@ export function Tooltip({
       setPreferHelpText(!preferHelpText);
       return;
     }
-    setIsHelpTextOpen(open => !open);
+    setIsHelpTextOpen((open) => !open);
   }, [completions, preferHelpText]);
 
   useEffect(() => {

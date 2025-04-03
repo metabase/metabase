@@ -21,6 +21,7 @@ export type CodeMirrorEditorProps = {
   highlightedLineNumbers?: number[];
   readOnly?: boolean;
   onChange?: (queryText: string) => void;
+  onRunQuery?: () => void;
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
   onSelectionChange?: (range: SelectionRange) => void;
@@ -48,6 +49,7 @@ export const CodeMirrorEditor = forwardRef<
     highlightedLineNumbers,
     readOnly,
     onChange,
+    onRunQuery,
     onSelectionChange,
     onRightClickSelection,
     onCursorMoveOverCardTag,
@@ -55,7 +57,7 @@ export const CodeMirrorEditor = forwardRef<
   ref,
 ) {
   const editorRef = useRef<ReactCodeMirrorRef>(null);
-  const extensions = useExtensions(query);
+  const extensions = useExtensions({ query, onRunQuery });
   useHighlightLines(editorRef, highlightedLineNumbers);
 
   const engine = Lib.engine(query);
@@ -115,7 +117,7 @@ export const CodeMirrorEditor = forwardRef<
         document.querySelectorAll(".cm-selectionBackground"),
       );
 
-      if (selections.some(selection => isEventOverElement(evt, selection))) {
+      if (selections.some((selection) => isEventOverElement(evt, selection))) {
         evt.preventDefault();
         onRightClickSelection?.();
       }

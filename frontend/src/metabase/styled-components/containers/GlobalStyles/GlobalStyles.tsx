@@ -31,7 +31,7 @@ export const GlobalStyles = (): JSX.Element => {
 
       ${defaultFontFiles({ baseUrl: sitePath })}
       ${fontFiles?.map(
-        file => css`
+        (file) => css`
           @font-face {
             font-family: "Custom";
             src: url(${encodeURI(file.src)}) format("${file.fontFormat}");

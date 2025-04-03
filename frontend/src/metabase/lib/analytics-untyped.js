@@ -3,7 +3,7 @@ import * as Snowplow from "@snowplow/browser-tracker";
 import Settings from "metabase/lib/settings";
 import { getUserId } from "metabase/selectors/user";
 
-export const trackPageView = url => {
+export const trackPageView = (url) => {
   if (!url || !Settings.trackingEnabled()) {
     return;
   }
@@ -12,13 +12,13 @@ export const trackPageView = url => {
     trackSnowplowPageView(getSanitizedUrl(url));
   }
 };
-export const createTracker = store => {
+export const createTracker = (store) => {
   if (Settings.snowplowEnabled()) {
     createSnowplowTracker(store);
   }
 };
 
-const createSnowplowPlugin = store => {
+const createSnowplowPlugin = (store) => {
   return {
     beforeTrack: () => {
       const userId = getUserId(store.getState());
@@ -47,7 +47,7 @@ const createSnowplowPlugin = store => {
   };
 };
 
-const createSnowplowTracker = store => {
+const createSnowplowTracker = (store) => {
   Snowplow.newTracker("sp", Settings.snowplowUrl(), {
     appId: "metabase",
     platform: "web",
@@ -60,13 +60,13 @@ const createSnowplowTracker = store => {
   });
 };
 
-const trackSnowplowPageView = url => {
+const trackSnowplowPageView = (url) => {
   Snowplow.setReferrerUrl("#");
   Snowplow.setCustomUrl(url);
   Snowplow.trackPageView();
 };
 
-const getSanitizedUrl = url => {
+const getSanitizedUrl = (url) => {
   const urlWithoutSlug = url.replace(/(\/\d+)-[^\/]+$/, (match, path) => path);
   const urlWithoutHost = new URL(urlWithoutSlug, Settings.snowplowUrl());
 

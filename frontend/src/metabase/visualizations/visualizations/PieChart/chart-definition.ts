@@ -80,7 +80,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     const isDimensionMissing =
       !settings["pie.dimension"] ||
       (Array.isArray(settings["pie.dimension"]) &&
-        settings["pie.dimension"].every(col => col == null));
+        settings["pie.dimension"].every((col) => col == null));
     if (isDimensionMissing || !settings["pie.metric"]) {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
         section: `Data`,
@@ -185,7 +185,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
           pieRows,
           updateRowName: (newName: string, key: string | number) => {
             onChangeSettings({
-              "pie.rows": pieRows.map(row => {
+              "pie.rows": pieRows.map((row) => {
                 if (row.key !== key) {
                   return row;
                 }

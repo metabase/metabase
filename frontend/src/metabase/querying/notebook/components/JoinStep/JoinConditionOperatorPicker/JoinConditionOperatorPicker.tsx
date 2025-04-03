@@ -81,7 +81,7 @@ function JoinConditionOperatorDropdown({
 }: JoinConditionOperatorDropdownProps) {
   const items = useMemo(
     () =>
-      Lib.joinConditionOperators(query, stageIndex).map(operator => ({
+      Lib.joinConditionOperators(query, stageIndex).map((operator) => ({
         operator,
         operatorInfo: Lib.displayInfo(query, stageIndex, operator),
       })),

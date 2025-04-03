@@ -500,6 +500,7 @@
   "The set of all official drivers"
   #{"athena"
     "bigquery-cloud-sdk"
+    "clickhouse"
     "databricks"
     "druid"
     "druid-jdbc"
@@ -514,11 +515,12 @@
     "sparksql"
     "sqlite"
     "sqlserver"
+    "starburst"
     "vertica"})
 
 (def partner-drivers
   "The set of other drivers in the partnership program"
-  #{"clickhouse" "firebolt" "materialize" "starburst"})
+  #{"firebolt" "materialize"})
 
 (defn driver-source
   "Return the source type of the driver: official, partner, or community"

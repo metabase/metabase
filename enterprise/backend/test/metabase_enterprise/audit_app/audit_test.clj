@@ -82,74 +82,6 @@
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
         (t2/update! :model/Database :is_audit true {:engine "h2"})))))
 
-(def ^:private audit-table-eids
-  {"v_alerts"        "qTuDhH4a4sSqVzZ47jJ8R"
-   "v_audit_log"     "tSCO5aQmgbiUf-SLSQVpi"
-   "v_content"       "p53BD8eTrMM1neH9_4eZx"
-   "v_dashboardcard" "S3ZF9KyTHqp7zj_N8x0KI"
-   "v_databases"     "Blz8U_EUpr3TKzZ__T3Wt"
-   "v_fields"        "IuKLQLGZin2wvJeZWlOam"
-   "v_group_members" "uGm59moVbiP8uHLIII-JN"
-   "v_query_log"     "5RKjPrEoH_ojdWK2ItOJa"
-   "v_subscriptions" "MXMK0SDjKjLlXKCGt4fei"
-   "v_tables"        "YvPPmCigBjeBH5QLSXzuH"
-   "v_tasks"         "t4AxH0GHZpxw6QNUIwwHd"
-   "v_users"         "VnUplpevdFkZyG2I9brb5"
-   "v_view_log"      "-G_OzovvQZlIm6xoipIL2"})
-
-(deftest audit-db-entity-ids-test
-  (mt/test-drivers #{:postgres :h2 :mysql}
-    (testing "Audit DB content has the hard-coded `:entity_id`s"
-      (testing "when freshly loaded:"
-        (t2/delete! :model/Database :is_audit true)
-        (audit/last-analytics-checksum! 0)
-        (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-        ;; Fresh install now complete.
-        (is (= [audit/audit-db-id] (t2/select-fn-vec :id 'Database {:where [:= :is_audit true]}))
-            "Audit DB is installed and unique.")
-        (testing "database has hard-coded audit/audit-db-entity-id"
-          (is (= "audit__rP75CiURKZ-0pq" (t2/select-one-fn :entity_id 'Database :is_audit true))))
-        (testing "tables have entity_ids derived from the fixed database entity_id"
-          (is (= audit-table-eids
-                 (->> (t2/reducible-select 'Table :db_id audit/audit-db-id)
-                      (into {} (map (juxt (comp u/lower-case-en :name) :entity_id)))))))
-        (testing "tables have entity_ids derived from the fixed database entity_id"
-          (doseq [table (t2/select ['Table :id :entity_id :name] :db_id audit/audit-db-id)
-                  field (t2/select ['Field :entity_id :name] :table_id (:id table))]
-            (is (= (#'ee-audit/entity-id-for-field (:entity_id table) field)
-                   (:entity_id field))))))
-
-      (testing "pre-existing with no entity_ids"
-        (t2/update! :model/Database audit/audit-db-id {:entity_id nil})
-        (let [table-ids (t2/update-returning-pks! :model/Table
-                                                  {:db_id audit/audit-db-id}
-                                                  {:entity_id nil})]
-          (is (= (count audit-table-eids)
-                 (count table-ids)))
-          (t2/update! :model/Field {:table_id [:in table-ids]}
-                      {:entity_id nil})
-          (is (= [nil] (t2/select-fn-vec :entity_id :model/Database :is_audit true))
-              "Audit DB is installed and unique, but its entity_id was removed")
-          (is (= #{nil} (t2/select-fn-set :entity_id :model/Table :db_id audit/audit-db-id)))
-          (is (= #{nil} (t2/select-fn-set :entity_id :model/Field :table_id [:in table-ids]))))
-
-        ;; Installing the DB is a no-op, since it's already installed.
-        (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        ;; Audit DB has not been duplicated, but all the entity_ids are back.
-        (is (= [audit/audit-db-id] (t2/select-fn-vec :id 'Database {:where [:= :is_audit true]}))
-            "Audit DB is installed and unique.")
-        (testing "database has hard-coded audit/audit-db-entity-id"
-          (is (= ["audit__rP75CiURKZ-0pq"] (t2/select-fn-vec :entity_id 'Database :is_audit true))))
-        (testing "tables have entity_ids derived from the fixed database entity_id"
-          (is (= audit-table-eids
-                 (->> (t2/reducible-select 'Table :db_id audit/audit-db-id)
-                      (into {} (map (juxt (comp u/lower-case-en :name) :entity_id)))))))
-        (testing "tables have entity_ids derived from the fixed database entity_id"
-          (doseq [table (t2/select ['Table :id :entity_id :name] :db_id audit/audit-db-id)
-                  field (t2/select ['Field :entity_id :name] :table_id (:id table))]
-            (is (= (#'ee-audit/entity-id-for-field (:entity_id table) field)
-                   (:entity_id field)))))))))
-
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
   (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
     (try
@@ -178,16 +110,22 @@
     (filter audit-db? trigger-keys)))
 
 (deftest no-sync-tasks-for-audit-db
-  (with-audit-db-restoration
-    (ee-audit/ensure-audit-db-installed!)
-    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync scheduled after installation")
+  (mt/with-temp-scheduler!
+    (#'task.sync-databases/job-init)
+    (with-audit-db-restoration
+      (ee-audit/ensure-audit-db-installed!)
+      (is (= '("metabase.task.update-field-values.trigger.13371337")
+             (get-audit-db-trigger-keys))
+          "no sync scheduled after installation")
 
-    (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Cannot sync Database: It is the audit db."
-           (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
-    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))
+      (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot sync Database: It is the audit db."
+             (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
+      (is (= '("metabase.task.update-field-values.trigger.13371337")
+             (get-audit-db-trigger-keys))
+          "no sync occured even when called directly for audit db."))))
 
 (deftest no-backfill-occurs-when-loading-analytics-content-test
   (mt/with-model-cleanup [:model/Collection]

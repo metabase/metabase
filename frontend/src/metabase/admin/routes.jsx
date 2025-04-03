@@ -19,7 +19,7 @@ import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp";
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
-import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
+import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
@@ -153,7 +153,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <IndexRedirect to={PerformanceTabId.Databases} />
           {PLUGIN_CACHING.getTabMetadata().map(({ name, key, tabId }) => (
             <Route
-              component={routeProps => (
+              component={(routeProps) => (
                 <PerformanceApp {...routeProps} tabId={tabId} />
               )}
               title={name}
@@ -185,7 +185,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
       {/* PLUGINS */}
       <Fragment>
-        {PLUGIN_ADMIN_ROUTES.map(getRoutes => getRoutes(store))}
+        {PLUGIN_ADMIN_ROUTES.map((getRoutes) => getRoutes(store))}
       </Fragment>
     </Route>
   </Route>

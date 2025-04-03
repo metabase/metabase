@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { execSync } from "child_process";
 import fs from "fs";
 
 import path from "path";
@@ -11,10 +10,6 @@ import {
   getNextJsAnalyticsPageSnippet,
   getNextJsPagesWrapperOrAppWrapperSnippet,
 } from "../cli/snippets/nextjs-snippets";
-
-function installDependencies(tempDir: string) {
-  execSync("yarn", { cwd: tempDir, stdio: "inherit" });
-}
 
 function setupOutDir(outDir: string) {
   fs.mkdirSync(outDir, { recursive: true });
@@ -44,17 +39,17 @@ const generateComponentSnippets = ({
     isNextJs: false,
   });
   const nextJsAnalyticsPageSnippetContent = getNextJsAnalyticsPageSnippet({
-    resolveImport: path => `./${path}`,
+    resolveImport: (path) => `./${path}`,
   });
   const nextJsPagesWrapperSnippetContent =
     getNextJsPagesWrapperOrAppWrapperSnippet({
       router: "pages",
-      resolveImport: path => `./${path}`,
+      resolveImport: (path) => `./${path}`,
     });
   const nextJsAppWrapperSnippetContent =
     getNextJsPagesWrapperOrAppWrapperSnippet({
       router: "app",
-      resolveImport: path => `./${path}`,
+      resolveImport: (path) => `./${path}`,
     });
 
   for (const { fileName, content } of snippets) {
@@ -85,17 +80,17 @@ const generateComponentSnippets = ({
 
 const generateNextJsSnippets = ({ folderName }: { folderName: string }) => {
   const nextJsAnalyticsPageSnippetContent = getNextJsAnalyticsPageSnippet({
-    resolveImport: path => `./${path}`,
+    resolveImport: (path) => `./${path}`,
   });
   const nextJsPagesWrapperSnippetContent =
     getNextJsPagesWrapperOrAppWrapperSnippet({
       router: "pages",
-      resolveImport: path => `./${path}`,
+      resolveImport: (path) => `./${path}`,
     });
   const nextJsAppWrapperSnippetContent =
     getNextJsPagesWrapperOrAppWrapperSnippet({
       router: "app",
-      resolveImport: path => `./${path}`,
+      resolveImport: (path) => `./${path}`,
     });
 
   generateComponentSnippets({
@@ -143,8 +138,6 @@ const generateExpressServerSnippet = ({
 
   fs.writeFileSync(snippetFilePath, snippetContent, "utf8");
   fs.writeFileSync(packageJsonFilePath, packageJsonContent, "utf8");
-
-  installDependencies(outDir);
 };
 
 const generate = () => {

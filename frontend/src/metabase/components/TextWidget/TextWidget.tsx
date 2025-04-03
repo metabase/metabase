@@ -73,13 +73,13 @@ export class TextWidget extends Component<TextWidgetProps, State> {
         className={className}
         type="text"
         value={value ?? ""}
-        onChange={e => {
+        onChange={(e) => {
           this.setState({ value: e.target.value });
           if (this.props.commitImmediately) {
             this.props.setValue(e.target.value ?? null);
           }
         }}
-        onKeyUp={e => {
+        onKeyUp={(e) => {
           const target = e.target as HTMLInputElement;
           if (e.key === "Escape") {
             target.blur();

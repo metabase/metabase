@@ -41,8 +41,8 @@ function DataPermissionsPage({
   groups,
 }: DataPermissionsPageProps) {
   const isDirty = useSelector(getIsDirty);
-  const diff = useSelector(state => getDiff(state, { databases, groups }));
-  const showSplitPermsModal = useSelector(state =>
+  const diff = useSelector((state) => getDiff(state, { databases, groups }));
+  const showSplitPermsModal = useSelector((state) =>
     getSetting(state, "show-updated-permission-modal"),
   );
 

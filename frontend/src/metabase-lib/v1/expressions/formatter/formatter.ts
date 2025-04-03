@@ -3,17 +3,22 @@ import { builders } from "prettier/doc";
 import { format as pformat } from "prettier/standalone";
 import { t } from "ttag";
 
+import { parseNumber } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import { isa } from "metabase-lib/v1/types/utils/isa";
 import type {
+  BooleanLiteral,
   CallExpression,
   CallOptions,
   CaseOrIfExpression,
   Expression,
   FieldReference,
   MetricAgg,
+  NumericLiteral,
   OffsetExpression,
   SegmentFilter,
+  ValueExpression,
 } from "metabase-types/api";
 
 import {
@@ -139,6 +144,8 @@ function print(
     return formatBooleanLiteral(path.node);
   } else if (check.isStringLiteral(path)) {
     return formatStringLiteral(path.node, options.extra);
+  } else if (check.isValue(path)) {
+    return formatValue(path, print);
   } else if (check.isOperator(path)) {
     return formatOperator(path, print);
   } else if (check.isOffset(path)) {
@@ -162,11 +169,11 @@ function print(
   throw new Error("Unknown MBQL clause " + JSON.stringify(path.node));
 }
 
-function formatNumberLiteral(node: number): Doc {
-  return JSON.stringify(node);
+function formatNumberLiteral(node: NumericLiteral): Doc {
+  return String(node);
 }
 
-function formatBooleanLiteral(node: boolean): Doc {
+function formatBooleanLiteral(node: BooleanLiteral): Doc {
   return node ? "True" : "False";
 }
 
@@ -206,7 +213,7 @@ function formatMetric(path: AstPath<MetricAgg>, options: FormatOptions): Doc {
     throw new Error("`query` is a required parameter to format expressions");
   }
 
-  const metric = Lib.availableMetrics(query, stageIndex).find(metric => {
+  const metric = Lib.availableMetrics(query, stageIndex).find((metric) => {
     const [_type, availableMetricId] = Lib.legacyRef(query, stageIndex, metric);
     return availableMetricId === metricId;
   });
@@ -227,7 +234,7 @@ function formatSegment(path: AstPath<SegmentFilter>, options: FormatOptions) {
   }
 
   const [, segmentId] = path.node;
-  const segment = Lib.availableSegments(query, stageIndex).find(segment => {
+  const segment = Lib.availableSegments(query, stageIndex).find((segment) => {
     const [_type, availableSegmentId] = Lib.legacyRef(
       query,
       stageIndex,
@@ -316,6 +323,27 @@ function formatFunction(path: AstPath<CallExpression>, print: Print): Doc {
   }
 
   return formatCallExpression(name, args);
+}
+
+function formatValue(path: AstPath<ValueExpression>, print: Print): Doc {
+  const { node } = path;
+  if (!Array.isArray(node)) {
+    throw new Error("Expected array");
+  }
+
+  const [_tag, value, options] = node;
+  const baseType = options?.base_type;
+  if (
+    typeof value === "string" &&
+    typeof baseType === "string" &&
+    isa(baseType, "type/BigInteger")
+  ) {
+    const number = parseNumber(value);
+    if (number != null) {
+      return recurse(path, print, number);
+    }
+  }
+  return recurse(path, print, value);
 }
 
 function formatOperator(path: AstPath<CallExpression>, print: Print): Doc {

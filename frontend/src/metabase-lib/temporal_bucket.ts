@@ -47,7 +47,7 @@ export function defaultTemporalBucket(
 ): Bucket | null {
   const buckets = availableTemporalBuckets(query, stageIndex, column);
   const defaultBucket = buckets.find(
-    bucket => displayInfo(query, stageIndex, bucket).default,
+    (bucket) => displayInfo(query, stageIndex, bucket).default,
   );
 
   return defaultBucket ?? null;

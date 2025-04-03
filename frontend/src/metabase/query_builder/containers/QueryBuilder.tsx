@@ -1,3 +1,4 @@
+import { useHotkeys } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
@@ -224,6 +225,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB,
     locationChanged,
     setUIControls,
+    runQuestionOrSelectedQuery,
     cancelQuery,
     isBookmarked,
     createBookmark,
@@ -234,6 +236,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isLoadingComplete,
     closeQB,
     route,
+    queryBuilderMode,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -402,6 +405,14 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       }),
     [question, isNewQuestion],
   );
+
+  const handleCmdEnter = () => {
+    if (queryBuilderMode !== "notebook") {
+      runQuestionOrSelectedQuery();
+    }
+  };
+
+  useHotkeys([["mod+Enter", handleCmdEnter]]);
 
   return (
     <>

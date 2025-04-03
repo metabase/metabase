@@ -13,7 +13,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.number :as u.number]))
 
 (comment lib/keep-me)
 
@@ -474,19 +475,19 @@
 (deftest ^:parallel diagnose-expression-test-2
   (testing "correct expression are accepted silently"
     (testing "type errors are reported"
-      (binding [lib.schema.expression/*suppress-expression-type-check?* false]
-        (are [mode expr] (=? {:message #"Type error: .*"}
-                             (lib.expression/diagnose-expression
-                              (lib.tu/venues-query) 0 mode
-                              (lib.convert/->pMBQL expr)
-                              #?(:clj nil :cljs js/undefined)))
-          :expression  [:/ [:field 1 {:base-type :type/Address}] 100]
+      (are [mode expr] (=? {:message  "Types are incompatible."
+                            :friendly true}
+                           (lib.expression/diagnose-expression
+                            (lib.tu/venues-query) 0 mode
+                            (lib.convert/->pMBQL expr)
+                            #?(:clj nil :cljs js/undefined)))
+        :expression  [:/ [:field 1 {:base-type :type/Address}] 100]
              ;; To make this test case work, the aggregation schema has to be
              ;; tighter and not allow anything. That's a bigger piece of work,
              ;; because it makes expressions and aggregations mutually recursive
              ;; or requires a large amount of duplication.
-          #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
-          :filter      [:sum [:field 1 {:base-type :type/Integer}]])))))
+        #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
+        :filter      [:sum [:field 1 {:base-type :type/Integer}]]))))
 
 (deftest ^:parallel diagnose-expression-test-3
   (testing "correct expression are accepted silently"
@@ -541,6 +542,15 @@
                                                          100)
                                                   nil))))))
 
+(deftest ^:parallel diagnose-expression-literals-test
+  (testing "top-level literals are not allowed"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          expr  (lib.expression/value true)]
+      (doseq [mode [:expression :filter]]
+        (is (=? {:message  "Standalone constants are not supported."
+                 :friendly true}
+                (lib.expression/diagnose-expression query 0 mode expr nil)))))))
+
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
     #{:type/Date :type/Text} "2024-07-02"))
@@ -589,3 +599,10 @@
     #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789+07:00"
     #{:type/DateTime :type/Text} "2024-07-02 12:34:56-03:00"
     #{:type/DateTime :type/Text} "2024-07-02 12:34+02:03"))
+
+(deftest ^:parallel value-test
+  (are [expected value] (=? expected (lib.expression/value value))
+    [:value {:base-type :type/Text} "abc"]       "abc"
+    [:value {:base-type :type/Integer} 123]      123
+    [:value {:base-type :type/Boolean} false]    false
+    [:value {:base-type :type/BigInteger} "123"] (u.number/bigint "123")))

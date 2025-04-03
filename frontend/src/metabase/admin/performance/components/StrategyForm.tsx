@@ -35,20 +35,18 @@ import type {
   CacheStrategyType,
   CacheableModel,
   DurationStrategy,
-  ScheduleSettings,
   ScheduleStrategy,
 } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
 import { strategyValidationSchema } from "../constants/complex";
-import { rootId } from "../constants/simple";
+import { defaultCronSchedule, rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
 import { isModelWithClearableCache } from "../types";
 import {
   cronToScheduleSettings,
   getDefaultValueForField,
   getLabelString,
-  scheduleSettingsToCron,
 } from "../utils";
 
 import Styles from "./PerformanceApp.module.css";
@@ -134,7 +132,7 @@ export const StrategyForm = ({
 const isFormDirty = (values: CacheStrategy, initialValues: CacheStrategy) => {
   const fieldNames = [...Object.keys(values), ...Object.keys(initialValues)];
   const defaultValues = _.object(
-    _.map(fieldNames, fieldName => [
+    _.map(fieldNames, (fieldName) => [
       fieldName,
       getDefaultValueForField(values.type, fieldName),
     ]),
@@ -391,19 +389,14 @@ const ScheduleStrategyFormFields = () => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
   const initialSchedule = cronToScheduleSettings(scheduleInCronFormat);
-  const [schedule, setSchedule] = useState<ScheduleSettings>(
-    initialSchedule || {},
-  );
-  const timezone = useSelector(state =>
+  const timezone = useSelector((state) =>
     getSetting(state, "report-timezone-short"),
   );
   const onScheduleChange = useCallback(
-    (nextSchedule: ScheduleSettings) => {
-      setSchedule(nextSchedule);
-      const cron = scheduleSettingsToCron(nextSchedule);
-      setFieldValue("schedule", cron);
+    (newCronSchedule: string) => {
+      setFieldValue("schedule", newCronSchedule);
     },
-    [setFieldValue, setSchedule],
+    [setFieldValue],
   );
   if (!initialSchedule) {
     return (
@@ -412,10 +405,11 @@ const ScheduleStrategyFormFields = () => {
       />
     );
   }
+
   return (
     <>
       <Schedule
-        schedule={schedule}
+        cronString={scheduleInCronFormat || defaultCronSchedule}
         scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
         onScheduleChange={onScheduleChange}
         verb={c("A verb in the imperative mood").t`Invalidate`}

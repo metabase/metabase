@@ -33,6 +33,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { getScheduleExplanation } from "./cron";
+
 export const formatTitle = ({ item, type }: NotificationListItem) => {
   switch (type) {
     case "pulse":
@@ -53,7 +55,7 @@ const getRecipientIdentity = (recipient: NotificationRecipient) => {
 };
 
 export const canArchive = (item: Notification, user: User) => {
-  const recipients = item.handlers.flatMap(channel => {
+  const recipients = item.handlers.flatMap((channel) => {
     if (channel.recipients) {
       return channel.recipients.map(getRecipientIdentity);
     } else {
@@ -132,8 +134,8 @@ export function alertIsValid(
   return (
     channelSpec?.channels &&
     handlers.length > 0 &&
-    handlers.every(handlers => channelIsValid(handlers)) &&
-    handlers.every(c => {
+    handlers.every((handlers) => channelIsValid(handlers)) &&
+    handlers.every((c) => {
       const handlerChannelType =
         notificationHandlerTypeToChannelMap[c.channel_type];
 
@@ -188,7 +190,7 @@ export const getNotificationEnabledChannelsMap = (
 ): NotificationEnabledChannelsMap => {
   const result: NotificationEnabledChannelsMap = {};
 
-  notification.handlers.forEach(handler => {
+  notification.handlers.forEach((handler) => {
     result[handler.channel_type] = true;
   });
 
@@ -202,7 +204,7 @@ export const getNotificationHandlersGroupedByTypes = (
   let slackHandler: NotificationHandlerSlack | undefined;
   let hookHandlers: NotificationHandlerHttp[] | undefined;
 
-  notificationHandlers.forEach(handler => {
+  notificationHandlers.forEach((handler) => {
     if (handler.channel_type === "channel/email") {
       emailHandler = handler;
       return;
@@ -229,18 +231,28 @@ export const getNotificationHandlersGroupedByTypes = (
 export const formatNotificationSchedule = (
   subscription: NotificationCronSubscription,
 ): string | null => {
-  const schedule = cronToScheduleSettings(subscription.cron_schedule);
+  const schedule = cronToScheduleSettings(
+    subscription.cron_schedule,
+    subscription.ui_display_type === "cron/raw",
+  );
 
-  return (schedule && formatNotificationCheckSchedule(schedule)) || null;
+  return (
+    (schedule &&
+      formatNotificationCheckSchedule(schedule, subscription.cron_schedule)) ||
+    null
+  );
 };
 
-export const formatNotificationCheckSchedule = ({
-  schedule_type,
-  schedule_minute,
-  schedule_hour,
-  schedule_day,
-  schedule_frame,
-}: ScheduleSettings) => {
+export const formatNotificationCheckSchedule = (
+  {
+    schedule_type,
+    schedule_minute,
+    schedule_hour,
+    schedule_day,
+    schedule_frame,
+  }: ScheduleSettings,
+  cronSchedule: string,
+) => {
   const options = MetabaseSettings.formattingOptions();
 
   switch (schedule_type) {
@@ -280,7 +292,15 @@ export const formatNotificationCheckSchedule = ({
       }
       break;
     }
+    case "cron":
+      try {
+        return t`Check ${getScheduleExplanation(cronSchedule)}`;
+      } catch {
+        return null;
+      }
   }
+
+  return null;
 };
 
 export const formatNotificationScheduleDescription = ({
