@@ -60,6 +60,16 @@
                                 "antlr4-runtime" {:resource "BSD.txt"}}
  "org.eclipse.jetty"           {"jetty-webapp" {:resource "EPL.txt"}}
  "org.eclipse.jetty.toolchain" {"jetty-jakarta-servlet-api" {:resource "EPL.txt"}}
+ "org.eclipse.jetty.ee9.websocket" {"jetty-ee9-websocket-jetty-api" {:resource "EPL.txt"}
+                                    "jetty-ee9-websocket-jetty-common" {:resource "EPL.txt"}
+                                    "jetty-ee9-websocket-jetty-server" {:resource "EPL.txt"}
+                                    "jetty-ee9-websocket-servlet" {:resource "EPL.txt"}}
+ "org.eclipse.jetty.ee9"       {"jetty-ee9-servlet" {:resource "EPL.txt"}
+                                "jetty-ee9-nested" {:resource "EPL.txt"}
+                                "jetty-ee9-security" {:resource "EPL.txt"}
+                                "jetty-ee9-webapp" {:resource "EPL.txt"}}
+ "org.eclipse.jetty.websocket" {"jetty-websocket-core-server" {:resource "EPL.txt"}
+                                "jetty-websocket-core-common" {:resource "EPL.txt"}}
  "org.fusesource.leveldbjni"   {"leveldbjni-all" {:resource "BSD.txt"}}
  "org.glassfish.jaxb"          {"jaxb-runtime" {:resource "EDL.txt"}
                                 "txw2"         {:resource "EDL.txt"}}
