@@ -12,6 +12,7 @@
    [metabase.config :as config]
    [metabase.driver.init]
    [metabase.events.init]
+   [metabase.feature-flags.init]
    [metabase.indexed-entities.init]
    [metabase.lib-be.init]
    [metabase.logger.init]

@@ -6,10 +6,16 @@
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->mirror-db-id]]
    [metabase.api.common :as api]
    [metabase.database-routing.core :refer [with-database-routing-on]]
+   [metabase.feature-flags.unleash :as feature-flags]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
+
+(defn- db-routing-feature-enabled?
+  "Check if the database routing feature is enabled via Unleash."
+  []
+  (feature-flags/feature-enabled? "db-routing" nil false))
 
 (defenterprise swap-mirror-db
   "Must be the last middleware before we actually hit the database. If a Router Database is specified, swaps out the
@@ -17,24 +23,30 @@
   :feature :database-routing
   [qp]
   (fn [query rff]
-    (if-let [mirror-db-id (:mirror-database/id query)]
-      (let [current-database (lib.metadata/database (qp.store/metadata-provider))
-            rff* (fn [metadata]
-                   (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
-                     (qp.store/with-metadata-provider (u/id current-database)
-                       (rff metadata))))]
-        (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
-          (qp.store/with-metadata-provider mirror-db-id
-            (with-database-routing-on
-              (qp query rff*)))))
-      (qp query rff))))
+    ;; Skip if the feature flag is disabled
+    (if-not (db-routing-feature-enabled?)
+      (qp query rff)
+      (if-let [mirror-db-id (:mirror-database/id query)]
+        (let [current-database (lib.metadata/database (qp.store/metadata-provider))
+              rff* (fn [metadata]
+                     (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
+                       (qp.store/with-metadata-provider (u/id current-database)
+                         (rff metadata))))]
+          (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
+            (qp.store/with-metadata-provider mirror-db-id
+              (with-database-routing-on
+                (qp query rff*)))))
+        (qp query rff)))))
 
 (defenterprise attach-mirror-db-middleware
   "Pre-processing middleware. Calculates the mirror database that should be used for this query, e.g. for caching
   purposes. Does not make any changes to the query besides (possibly) adding a `:mirror-database/id` key."
   :feature :database-routing
   [query]
-  (let [database (lib.metadata/database (qp.store/metadata-provider))
-        mirror-db-id (router-db-or-id->mirror-db-id @api/*current-user* database)]
-    (cond-> query
-      mirror-db-id (assoc :mirror-database/id mirror-db-id))))
+  ;; Skip if the feature flag is disabled
+  (if-not (db-routing-feature-enabled?)
+    query
+    (let [database (lib.metadata/database (qp.store/metadata-provider))
+          mirror-db-id (router-db-or-id->mirror-db-id @api/*current-user* database)]
+      (cond-> query
+        mirror-db-id (assoc :mirror-database/id mirror-db-id)))))
