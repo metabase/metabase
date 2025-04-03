@@ -4,8 +4,13 @@ import {
   OptionsDropdown,
   Pill,
   PillsInput,
+  Text,
+  Tooltip,
 } from "@mantine/core";
 import type { ReactNode } from "react";
+import { t } from "ttag";
+
+import { Icon } from "../../icons";
 
 import { useMultiAutocomplete } from "./use-multi-autocomplete";
 
@@ -15,6 +20,7 @@ export type MultiAutocompleteProps = {
   placeholder?: string;
   shouldCreate?: (value: string) => boolean;
   autoFocus?: boolean;
+  rightSection?: ReactNode;
   nothingFoundMessage?: ReactNode;
   onChange: (newValues: string[]) => void;
   onSearchChange?: (newValue: string) => void;
@@ -26,6 +32,7 @@ export function MultiAutocomplete({
   placeholder,
   shouldCreate,
   autoFocus,
+  rightSection,
   nothingFoundMessage,
   onChange,
   onSearchChange,
@@ -34,6 +41,7 @@ export function MultiAutocomplete({
     combobox,
     pillValues,
     fieldValue,
+    isFocused,
     handleFieldChange,
     handleFieldKeyDown,
     handleFieldFocus,
@@ -43,10 +51,22 @@ export function MultiAutocomplete({
     handleOptionSubmit,
   } = useMultiAutocomplete({ values, shouldCreate, onChange, onSearchChange });
 
+  const infoIcon = (
+    <Tooltip
+      label={
+        <Text c="inherit" maw="20rem">
+          {t`Separate values with commas, tabs, or newlines. Use double quotes if what you’re searching for has commas — and if it itself includes quotes, use backslashes like this: “searching, you see, is a \\“simple\\” thing.”`}
+        </Text>
+      }
+    >
+      <Icon c="text-light" name="info_filled" />
+    </Tooltip>
+  );
+
   return (
     <Combobox store={combobox} onOptionSubmit={handleOptionSubmit}>
       <Combobox.DropdownTarget>
-        <PillsInput onClick={() => combobox.openDropdown()}>
+        <PillsInput rightSection={rightSection ?? (isFocused && infoIcon)}>
           <Pill.Group>
             {pillValues.map((value, valueIndex) =>
               value !== null ? (
@@ -77,9 +97,10 @@ export function MultiAutocomplete({
       </Combobox.DropdownTarget>
       <OptionsDropdown
         data={options}
+        search={fieldValue}
         nothingFoundMessage={nothingFoundMessage}
+        hiddenWhenEmpty={!nothingFoundMessage}
         filter={undefined}
-        search={undefined}
         limit={undefined}
         maxDropdownHeight={undefined}
         unstyled={false}

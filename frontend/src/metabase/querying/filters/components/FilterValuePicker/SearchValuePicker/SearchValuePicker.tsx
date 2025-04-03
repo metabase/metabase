@@ -3,7 +3,7 @@ import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import { useSearchFieldValuesQuery } from "metabase/api";
-import { MultiAutocomplete } from "metabase/ui";
+import { Loader, MultiAutocomplete } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
 import { getFieldOptions } from "../utils";
@@ -93,6 +93,7 @@ export function SearchValuePicker({
       shouldCreate={shouldCreate}
       placeholder={t`Search by ${columnDisplayName}`}
       autoFocus={autoFocus}
+      rightSection={isSearching ? <Loader size="xs" /> : undefined}
       nothingFoundMessage={nothingFoundMessage}
       onChange={onChange}
       onSearchChange={handleSearchChange}
