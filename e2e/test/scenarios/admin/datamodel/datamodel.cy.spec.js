@@ -765,20 +765,22 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.get("main").findByText("Something’s gone wrong").should("not.exist");
     });
 
-    it("should show up in UI list", () => {
+    it("should show up in UI list and should show the segment details of a specific id", () => {
       cy.visit("/admin/datamodel/segments");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(SEGMENT_NAME);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Filtered by Total");
-    });
 
-    it("should show the segment details of a specific id", () => {
-      cy.visit("/admin/datamodel/segment/1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit Your Segment");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Preview");
+      cy.findByRole("table")
+        .findByText("Filtered by Total is less than 100")
+        .should("be.visible");
+      cy.findByRole("link", { name: /Orders < 100/ })
+        .should("be.visible")
+        .click();
+
+      cy.get("form").findByText("Edit Your Segment").should("be.visible");
+      cy.findByPlaceholderText("Something descriptive but not too long").should(
+        "have.value",
+        SEGMENT_NAME,
+      );
+      cy.findByRole("link", { name: "Preview" }).should("be.visible");
     });
 
     it("should see a newly asked question in its questions list", () => {
