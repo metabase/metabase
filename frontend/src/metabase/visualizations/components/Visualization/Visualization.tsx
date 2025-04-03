@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 import cx from "classnames";
 import {
   type CSSProperties,
