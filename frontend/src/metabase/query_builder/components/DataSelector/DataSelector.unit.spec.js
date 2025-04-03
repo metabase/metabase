@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
@@ -29,6 +30,22 @@ const OTHER_MULTI_SCHEMA_TABLE2_ID = 201;
 const EMPTY_DB_ID = 4;
 
 describe("DataSelector", () => {
+  beforeEach(() => {
+    fetchMock.get(
+      {
+        url: "path:/api/search",
+        query: { models: "dataset", limit: 1 },
+      },
+      {
+        data: [],
+        limit: 1,
+        models: ["dataset"],
+        offset: 0,
+        total: 0,
+      },
+    );
+  });
+
   const databases = [
     createSampleDatabase(),
     createMockDatabase({
@@ -467,6 +484,7 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         databases={[SAMPLE_DATABASE, SAVED_QUESTIONS_DATABASE]}
         hasNestedQueriesEnabled
+        hasTableSearch
         loaded
         search={[{}]}
         triggerElement={<div />}
@@ -486,6 +504,7 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         databases={[SAMPLE_DATABASE]}
         hasNestedQueriesEnabled
+        hasTableSearch
         loaded
         search={[{}]}
         triggerElement={<div />}
