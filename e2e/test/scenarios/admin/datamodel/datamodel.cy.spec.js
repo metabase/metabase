@@ -780,9 +780,9 @@ describe("scenarios > admin > datamodel > segments", () => {
         .click();
 
       cy.get("form").within(() => {
+        cy.findByText("Edit Your Segment").should("be.visible");
         cy.findByText("Sample Database").should("be.visible");
         cy.findByText("Orders").should("be.visible");
-        cy.findByText("Edit Your Segment").should("be.visible");
       });
       cy.findByPlaceholderText("Something descriptive but not too long").should(
         "have.value",
