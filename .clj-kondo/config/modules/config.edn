@@ -630,6 +630,10 @@
   {:api #{metabase-enterprise.ai-sql-fixer.api}
    :uses #{api driver enterprise/metabot-v3 query-analysis query-processor util}}
 
+  enterprise/ai-sql-generation
+  {:api #{metabase-enterprise.ai-sql-generation.api}
+   :uses #{api driver enterprise/metabot-v3 util}}
+
   enterprise/airgap
   {:api  #{}
    :uses #{premium-features util}}

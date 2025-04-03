@@ -25,6 +25,7 @@
                               :llm-autodescription
                               :metabot-v3
                               :ai-sql-fixer
+                              :ai-sql-generation
                               :no-upsell
                               :official-collections
                               :query-reference-validation
@@ -37,7 +38,7 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
-                              :upload_management
+                              :upload-management
                               :whitelabel
                               :collection-cleanup}
     (is (= {:advanced_permissions           true
@@ -58,6 +59,7 @@
             :llm_autodescription            true
             :metabot_v3                     true
             :ai_sql_fixer                   true
+            :ai_sql_generation              true
             :official_collections           true
             :query_reference_validation     true
             :sandboxes                      true
@@ -69,7 +71,7 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
-            :upload_management              false
+            :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

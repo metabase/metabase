@@ -50,7 +50,11 @@
                                                      (println "🗨 " (u/colorize :blue input))
                                                      (when (and (not (#{"quit" "exit" "bye" "goodbye" "\\q"} input))
                                                                 (not (str/blank? input)))
-                                                       (let [result (api/request input context history conversation-id state)]
+                                                       (let [result (api/request {:message input
+                                                                                  :context context
+                                                                                  :history history
+                                                                                  :conversation_id conversation-id
+                                                                                  :state state})]
                                                          (handle-reactions (:reactions result))
                                                          result)))
                                                    (catch Throwable e
