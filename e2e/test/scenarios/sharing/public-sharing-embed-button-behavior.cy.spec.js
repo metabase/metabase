@@ -631,7 +631,11 @@ describe("#39152 sharing an unsaved question", () => {
               "Assert that it sends `downloads: false` when downloads are disabled",
             );
             H.modal()
-              .findByLabelText("Download buttons")
+              .findByLabelText(
+                resource === "dashboard"
+                  ? "Results (csv, xlsx, json, png)"
+                  : "Download (csv, xlsx, json, png)",
+              )
               .click({ force: true });
 
             cy.findByTestId("embed-backend")
