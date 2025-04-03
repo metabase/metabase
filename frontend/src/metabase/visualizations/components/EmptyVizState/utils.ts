@@ -6,6 +6,7 @@ import comboEmptyState from "assets/img/empty-states/visualizations/combo.svg";
 import funnelEmptyState from "assets/img/empty-states/visualizations/funnel.svg";
 import gaugeEmptyState from "assets/img/empty-states/visualizations/gauge.svg";
 import lineEmptyState from "assets/img/empty-states/visualizations/line.svg";
+import mapEmptyState from "assets/img/empty-states/visualizations/map-region.svg";
 import pieEmptyState from "assets/img/empty-states/visualizations/pie.svg";
 import pivotEmptyState from "assets/img/empty-states/visualizations/pivot.svg";
 import progressEmptyState from "assets/img/empty-states/visualizations/progress.svg";
@@ -17,7 +18,7 @@ import smartscalarEmptyState from "assets/img/empty-states/visualizations/smarts
 import waterfallEmptyState from "assets/img/empty-states/visualizations/waterfall.svg";
 import type { CardDisplayType } from "metabase-types/api";
 
-type ExcludedDisplayTypes = "table" | "map" | "object";
+type ExcludedDisplayTypes = "table" | "object";
 type SupportedDisplayType = Exclude<CardDisplayType, ExcludedDisplayTypes>;
 
 type EmptyVizContext = {
@@ -58,6 +59,12 @@ const emptyVizContexts: Record<SupportedDisplayType, EmptyVizContext> = {
     imgSrc: lineEmptyState,
     primaryText: t`Then pick one or more metrics and a time column to group by.`,
     secondaryText: t`E.g., Count of orders grouped by Year`,
+  },
+  map: {
+    imgSrc: mapEmptyState,
+    primaryText: t`Use a location-based column to plot data on a map. Add coordinates for precise pin placement, region names for shaded areas, or numerical values to create density overlays.`,
+    secondaryText: t`Read the docs`,
+    docsLink: "questions/visualizations/map",
   },
   pie: {
     imgSrc: pieEmptyState,
