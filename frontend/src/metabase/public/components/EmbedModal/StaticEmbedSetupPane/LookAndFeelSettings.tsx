@@ -214,13 +214,9 @@ export const LookAndFeelSettings = ({
                       downloads: {
                         ...displayOptions.downloads,
                         dashcard: e.target.checked,
-
-                        // PDF downloads are not supported for questions, so we set it to match
-                        // the dashcard's value. For dashboards, we maintain the existing PDF setting.
-                        pdf:
-                          resourceType === "question"
-                            ? e.target.checked
-                            : (displayOptions.downloads?.pdf ?? true),
+                        pdf: isDashboard
+                          ? (displayOptions.downloads?.pdf ?? true)
+                          : e.target.checked, // ! PDF downloads are not supported for questions, so we set it to match the dashcard download's toggle.
                       },
                     })
                   }
