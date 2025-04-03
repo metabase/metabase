@@ -31,7 +31,7 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
         </Link>
       </Box>
 
-      <Box component="td" className={S.cell} p="sm" maw={150}>
+      <Box component="td" className={S.cell} maw={500} p="sm">
         <TableBreadcrumbs tableId={segment.table_id} />
       </Box>
 
