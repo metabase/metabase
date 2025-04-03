@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "master",
-    "hash": "339b7d1dd4d798b35113af797980eba1343efbf3"
+    "hash": "bff123bb455b6d17ed8ec54579b4af3f74bdd8ba"
   },
   "upstream": {
     "branch": "emb-289-expand-the-downloads-url-parameter-in-staticpublic-embedding"
