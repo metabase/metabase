@@ -94,6 +94,7 @@ export function MultiAutocomplete({
                   <PillsInput.Field
                     value={fieldValue}
                     placeholder={placeholder}
+                    role="combobox"
                     autoFocus={autoFocus}
                     aria-label={ariaLabel}
                     onChange={handleFieldChange}
