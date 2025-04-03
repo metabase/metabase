@@ -10,11 +10,13 @@ import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Icon, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
 import { ClauseStep } from "../ClauseStep";
+
+import S from "./DataStep.module.css";
 
 type DataStepProps = {
   query: Lib.Query | undefined;
@@ -55,7 +57,13 @@ export function DataStep({
   return (
     <ClauseStep label={t`Data`}>
       <Box>
-        {tableId && <TableBreadcrumbs hideTableName tableId={tableId} />}
+        {tableId && (
+          <Flex maw={300} wrap="nowrap">
+            <Text className={S.breadcrumbsContainer} size="sm">
+              <TableBreadcrumbs hideTableName tableId={tableId} />
+            </Text>
+          </Flex>
+        )}
 
         {isNew ? (
           <Button

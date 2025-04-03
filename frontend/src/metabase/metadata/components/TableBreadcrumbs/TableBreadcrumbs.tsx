@@ -1,10 +1,15 @@
+import cx from "classnames";
+
 import {
   skipToken,
   useGetTableQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Flex, Group, Icon } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
+
+import S from "./TableBreadcrumbs.module.css";
 
 interface Props {
   className?: string;
@@ -29,25 +34,30 @@ export const TableBreadcrumbs = ({
   }
 
   return (
-    <Group align="center" className={className} gap="sm">
-      <Group align="center" gap="xs">
+    <Group
+      align="center"
+      className={cx(S.breadcrumbs, className)}
+      gap="sm"
+      wrap="nowrap"
+    >
+      <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
         <Flex c="brand">
           <Icon name="database" />
         </Flex>
 
-        {table.db.name}
+        <Ellipsified>{table.db.name}</Ellipsified>
       </Group>
 
       {schemas && schemas.length > 1 && table.schema && (
         <>
           <Separator />
 
-          <Group align="center" gap="xs">
+          <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
             <Flex c="brand">
               <Icon name="folder" />
             </Flex>
 
-            {table.schema}
+            <Ellipsified>{table.schema}</Ellipsified>
           </Group>
         </>
       )}
@@ -56,12 +66,12 @@ export const TableBreadcrumbs = ({
         <>
           <Separator />
 
-          <Group align="center" gap="xs">
+          <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
             <Flex c="brand">
               <Icon name="table" />
             </Flex>
 
-            {table.display_name}
+            <Ellipsified>{table.display_name}</Ellipsified>
           </Group>
         </>
       )}
