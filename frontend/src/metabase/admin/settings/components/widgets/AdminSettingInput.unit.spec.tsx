@@ -8,7 +8,6 @@ import {
 } from "__support__/server-mocks";
 import {
   fireEvent,
-  mockScrollIntoView,
   renderWithProviders,
   screen,
   waitFor,
@@ -57,10 +56,6 @@ const setup = (props: AdminSettingInputProps<SettingKey>) => {
 };
 
 describe("AdminSettingInput", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   it("should not allow invalid settings", async () => {
     setup({
       title: "Fake Setting",

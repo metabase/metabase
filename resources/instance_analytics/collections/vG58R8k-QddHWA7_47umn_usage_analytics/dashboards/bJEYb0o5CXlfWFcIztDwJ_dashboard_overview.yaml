@@ -222,9 +222,9 @@ dashcards:
   card_id: xrgv7nzXe_v8ORWIbq839
   created_at: '2023-08-18T18:53:47.157159Z'
   row: 13
-  col: 12
+  col: 0
   size_x: 12
-  size_y: 14
+  size_y: 7
   action_id: null
   dashboard_tab_id: null
   parameter_mappings:
@@ -286,9 +286,9 @@ dashcards:
 - entity_id: cKFQR4ATKoLlhHiQ1Kd1b
   card_id: Bp2r19P5a9HjDTR4-VuZa
   created_at: '2023-11-01T02:17:51.755215Z'
-  row: 27
-  col: 0
-  size_x: 24
+  row: 13
+  col: 12
+  size_x: 12
   size_y: 7
   action_id: null
   dashboard_tab_id: null
@@ -328,10 +328,10 @@ dashcards:
 - entity_id: U1rsHOTwmxXbOTsfOixVj
   card_id: yVr4oMzxq8BPWf5HLbdwL
   created_at: '2023-11-01T02:30:58.105138Z'
-  row: 13
+  row: 6
   col: 0
   size_x: 12
-  size_y: 14
+  size_y: 7
   action_id: null
   dashboard_tab_id: null
   parameter_mappings:
