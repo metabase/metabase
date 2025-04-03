@@ -4,12 +4,12 @@ import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/Inter
 import { MetabotChat } from "metabase-enterprise/metabot/components/MetabotChat";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
-interface Props {
+export interface MetabotQuestionProps {
   visible: boolean;
   onClose: () => void;
 }
 
-export const MetabotQuestion = ({ visible, onClose }: Props) => {
+export const MetabotQuestion = ({ visible, onClose }: MetabotQuestionProps) => {
   const [result, setResult] = useState<Record<string, any> | null>(null);
 
   const redirectUrl = useMemo(() => {
