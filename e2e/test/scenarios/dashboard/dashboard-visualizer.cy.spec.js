@@ -5,7 +5,8 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createDataSourceNameRef } from "metabase/visualizer/utils";
 import { createMockColumn } from "metabase-types/api/mocks";
 
-const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > visualizer", () => {
   beforeEach(() => {
@@ -520,6 +521,117 @@ describe("scenarios > dashboard > visualizer", () => {
           chartLegend().should("not.exist");
         });
       });
+
+      it("should combine with non-cartesian card data sources", () => {
+        H.createQuestion(TREND_CARD);
+        H.createQuestion({ ...MULTI_SERIES_CHART_CARD, display: "table" });
+
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        H.editDashboard();
+        H.openQuestionsSidebar();
+
+        clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+
+        H.modal().within(() => {
+          cy.button("Add more data").click();
+          cy.findByPlaceholderText("Search for something").type("Multi");
+          cy.findByText(MULTI_SERIES_CHART_CARD.name).click();
+          cy.wait("@cardQuery");
+          cy.findByPlaceholderText("Search for something").type(
+            "{selectall}{del}quart",
+          );
+          cy.findByText(TREND_CARD.name).click();
+          cy.wait("@cardQuery");
+          cy.button("Done").click();
+
+          assertDataSourceColumnSelected(
+            ORDERS_COUNT_BY_CREATED_AT.name,
+            "Count",
+          );
+          assertDataSourceColumnSelected(
+            ORDERS_COUNT_BY_CREATED_AT.name,
+            "Created At: Month",
+          );
+
+          assertDataSourceColumnSelected(
+            MULTI_SERIES_CHART_CARD.name,
+            "Created At: Year",
+          );
+          assertDataSourceColumnSelected(
+            MULTI_SERIES_CHART_CARD.name,
+            "Product → Category",
+          );
+          assertDataSourceColumnSelected(MULTI_SERIES_CHART_CARD.name, "Count");
+          assertDataSourceColumnSelected(
+            MULTI_SERIES_CHART_CARD.name,
+            "Average of Quantity",
+          );
+
+          assertDataSourceColumnSelected(
+            TREND_CARD.name,
+            "Created At: Quarter",
+          );
+          assertDataSourceColumnSelected(TREND_CARD.name, "Count");
+
+          chartLegendItems().should("have.length", 7);
+          verticalWell().findAllByTestId("well-item").should("have.length", 4);
+          horizontalWell().within(() => {
+            cy.findAllByTestId("well-item").should("have.length", 2);
+            cy.findByText("Created At: Month").should("exist");
+            cy.findByText("Product → Category").should("exist");
+          });
+
+          H.echartsContainer().within(() => {
+            // x-axis values
+            cy.findByText("January 2022").should("exist");
+            cy.findByText("January 2026").should("exist");
+            // y-axis values
+            cy.findByText("300").should("exist");
+            cy.findByText("1,800").should("exist");
+          });
+
+          // Test adding/removing common dimensions
+
+          dataSourceColumn(MULTI_SERIES_CHART_CARD.name, "Created At: Year")
+            .findByLabelText("Remove")
+            .click();
+
+          assertDataSourceColumnSelected(
+            ORDERS_COUNT_BY_CREATED_AT.name,
+            "Created At: Month",
+            false,
+          );
+          assertDataSourceColumnSelected(
+            MULTI_SERIES_CHART_CARD.name,
+            "Created At: Year",
+            false,
+          );
+          assertDataSourceColumnSelected(
+            TREND_CARD.name,
+            "Created At: Quarter",
+            false,
+          );
+          horizontalWell()
+            .findByText(/Created At/)
+            .should("not.exist");
+
+          dataSourceColumn(TREND_CARD.name, "Created At: Quarter").click();
+
+          assertDataSourceColumnSelected(
+            ORDERS_COUNT_BY_CREATED_AT.name,
+            "Created At: Month",
+          );
+          assertDataSourceColumnSelected(
+            MULTI_SERIES_CHART_CARD.name,
+            "Created At: Year",
+          );
+          assertDataSourceColumnSelected(
+            TREND_CARD.name,
+            "Created At: Quarter",
+          );
+          horizontalWell().findByText("Created At: Quarter").should("exist");
+        });
+      });
     });
 
     describe("category breakout", () => {
@@ -622,6 +734,55 @@ describe("scenarios > dashboard > visualizer", () => {
             .findAllByTestId("well-item")
             .should("have.length", 1);
           chartLegend().should("not.exist");
+        });
+      });
+
+      it("should combine with non-cartesian card data sources", () => {
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        H.editDashboard();
+        H.openQuestionsSidebar();
+
+        clickVisualizeAnotherWay(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name);
+
+        H.modal().within(() => {
+          cy.button("Add more data").click();
+          cy.findByPlaceholderText("Search for something").type("pie");
+          cy.findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).click();
+          cy.wait("@cardQuery");
+          cy.button("Done").click();
+
+          assertDataSourceColumnSelected(
+            ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+            "Count",
+          );
+          assertDataSourceColumnSelected(
+            ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+            "Product → Category",
+          );
+          assertDataSourceColumnSelected(
+            PRODUCTS_COUNT_BY_CATEGORY_PIE.name,
+            "Count",
+          );
+          assertDataSourceColumnSelected(
+            PRODUCTS_COUNT_BY_CATEGORY_PIE.name,
+            "Category",
+          );
+
+          chartLegendItems().should("have.length", 2);
+          verticalWell().findAllByTestId("well-item").should("have.length", 2);
+          horizontalWell().within(() => {
+            cy.findAllByTestId("well-item").should("have.length", 1);
+            cy.findByText("Product → Category").should("exist");
+          });
+
+          H.echartsContainer().within(() => {
+            // x-axis values
+            cy.findByText("Gadget").should("exist");
+            cy.findByText("Widget").should("exist");
+            // y-axis values
+            cy.findByText("1,000").should("exist");
+            cy.findByText("5,000").should("exist");
+          });
         });
       });
     });
@@ -960,6 +1121,19 @@ const PRODUCTS_COUNT_BY_CATEGORY_PIE = {
   name: "Products by Category (Pie)",
 };
 
+const MULTI_SERIES_CHART_CARD = {
+  name: "Multi series question",
+  display: "combo",
+  query: {
+    aggregation: [["count"], ["avg", ["field", ORDERS.QUANTITY, null]]],
+    breakout: [
+      ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+    ],
+    "source-table": ORDERS_ID,
+  },
+};
+
 const SCALAR_CARD = {
   LANDING_PAGE_VIEWS: {
     display: "scalar",
@@ -1009,6 +1183,16 @@ const VIEWS_COLUMN_CARD = {
       UNION
       SELECT 100 as "Views"
     `,
+  },
+};
+
+const TREND_CARD = {
+  name: "User count per quarter",
+  display: "smartscalar",
+  query: {
+    aggregation: ["count"],
+    breakout: [["field", PEOPLE.CREATED_AT, { "temporal-unit": "quarter" }]],
+    "source-table": PEOPLE_ID,
   },
 };
 
