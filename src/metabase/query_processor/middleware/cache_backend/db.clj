@@ -75,16 +75,22 @@
 (defn- cached-results [query-hash strategy respond]
   ;; VERY IMPORTANT! Open up a connection (which internally binds [[toucan2.connection/*current-connectable*]] so it
   ;; will get reused elsewhere for the duration of results reduction, otherwise we can potentially end up deadlocking if
-  ;; we need to acquire another connection for one reason or another, such as recording QueryExecutions
-  (t2/with-connection [conn]
-    (when-let [stmt (fetch-cache-stmt strategy query-hash conn)]
-      (with-open [stmt ^PreparedStatement stmt
-                  rs   (.executeQuery stmt)]
-        (assert (= t2.connection/*current-connectable* conn))
-        (if-not (.next rs)
-          (respond nil)
-          (with-open [is (encryption/maybe-decrypt-stream (.getBinaryStream rs 1))]
-            (respond is)))))))
+  ;; we need to acquire another connection for one reason or another, such as recording QueryExecutions.
+  ;;
+  ;; This deadlock issue only happens on a cache hit. On a miss we need to release to connection to avoid blocking
+  ;; other requests while querying the actual database.
+  (let [result (t2/with-connection [conn]
+                 (when-let [stmt (fetch-cache-stmt strategy query-hash conn)]
+                   (with-open [stmt ^PreparedStatement stmt
+                               rs   (.executeQuery stmt)]
+                     (assert (= t2.connection/*current-connectable* conn))
+                     (if-not (.next rs)
+                       ::cache-miss
+                       (with-open [is (encryption/maybe-decrypt-stream (.getBinaryStream rs 1))]
+                         (respond is)
+                         ::cache-hit)))))]
+    (when (= ::cache-miss result)
+      (respond nil))))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
