@@ -1,17 +1,20 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetFieldValuesQuery } from "metabase/api";
+import { useSearchFieldValuesQuery } from "metabase/api";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getFieldOptions } from "metabase/querying/filters/components/FilterValuePicker/utils";
 import {
   Box,
   Combobox,
   Icon,
   Input,
+  Loader,
   type SelectOption,
   TextInput,
   useCombobox,
 } from "metabase/ui";
+import type { FieldValue } from "metabase-types/api";
 
 import type { EditingBodyPrimitiveProps } from "./types";
 
@@ -37,28 +40,21 @@ export const EditingBodyCellCategorySelect = ({
   onChangeValue,
   onCancel,
 }: EditingBodyCellCategorySelectProps) => {
-  const { data: fieldData, isLoading } = useGetFieldValuesQuery(
-    datasetColumn.id ?? skipToken,
-  );
-
   const [value, setValue] = useState(initialValue?.toString() ?? "");
   const [search, setSearch] = useState("");
+
   const combobox = useCombobox({
     defaultOpened: autoFocus,
     onDropdownClose: onCancel,
   });
 
-  const options = useMemo(
-    () =>
-      fieldData
-        ? getFieldOptions(fieldData.values).filter((item) =>
-            getDropdownLabelText(item)
-              .toLowerCase()
-              .includes(search.toLowerCase().trim()),
-          )
-        : [],
-    [fieldData, getDropdownLabelText, search],
-  );
+  const { options, isLoading, isFetching } = useCategorySelectSearchOptions({
+    search,
+    fieldId: datasetColumn?.id,
+    // Mostly used for FKs, e.g. an ID is remapped to a name
+    searchFieldId: datasetColumn.remapped_to_column?.id ?? datasetColumn.id,
+    getDropdownLabelText,
+  });
 
   const handleOptionSubmit = useCallback(
     (value: string) => {
@@ -70,22 +66,20 @@ export const EditingBodyCellCategorySelect = ({
     [onSubmit, setValue, onChangeValue, combobox],
   );
 
-  const optionValueSelectOptionMap = useMemo(
+  const optionValueToOptionMap = useMemo(
     () =>
-      fieldData
-        ? getFieldOptions(fieldData.values).reduce(
-            (map, item) => ({
-              ...map,
-              [item.value]: item,
-            }),
-            {} as Record<string, SelectOption>,
-          )
-        : null,
-    [fieldData],
+      options.reduce(
+        (map, item) => ({
+          ...map,
+          [item.value]: item,
+        }),
+        {} as Record<string, SelectOption>,
+      ),
+    [options],
   );
 
   const inputLabel = useMemo(() => {
-    if (isLoading || !optionValueSelectOptionMap) {
+    if (isLoading) {
       return (
         <Input.Placeholder c="text-light">{t`Loading...`}</Input.Placeholder>
       );
@@ -101,8 +95,8 @@ export const EditingBodyCellCategorySelect = ({
 
     if (value) {
       // Type safety, should always be present
-      if (value in optionValueSelectOptionMap) {
-        return getSelectedLabelText(optionValueSelectOptionMap[value]);
+      if (value in optionValueToOptionMap) {
+        return getSelectedLabelText(optionValueToOptionMap[value]);
       }
 
       return value;
@@ -112,7 +106,7 @@ export const EditingBodyCellCategorySelect = ({
   }, [
     isLoading,
     value,
-    optionValueSelectOptionMap,
+    optionValueToOptionMap,
     inputProps?.placeholder,
     getSelectedLabelText,
   ]);
@@ -146,6 +140,7 @@ export const EditingBodyCellCategorySelect = ({
             onChange={(event) => setSearch(event.currentTarget.value)}
             placeholder={t`Search the list`}
             leftSection={<Icon name="search" />}
+            rightSection={isFetching ? <Loader size="xs" /> : undefined}
             autoFocus
           />
         </Box>
@@ -175,3 +170,88 @@ export const EditingBodyCellCategorySelect = ({
     </Combobox>
   );
 };
+
+const SEARCH_LIMIT_DEFAULT = 20;
+const SEARCH_DEBOUNCE = 500;
+
+type UseCategorySelectSearchOptionsProps = {
+  search: string;
+  fieldId?: number;
+  searchFieldId?: number;
+  limit?: number;
+  getDropdownLabelText: (item: SelectOption) => string;
+};
+
+function useCategorySelectSearchOptions({
+  search,
+  fieldId,
+  searchFieldId,
+  limit = SEARCH_LIMIT_DEFAULT,
+  getDropdownLabelText,
+}: UseCategorySelectSearchOptionsProps) {
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE);
+  const [searchValueToFetch, setSearchValueToFetch] = useState(debouncedSearch);
+
+  // Values that are fetched without search value (all values with some limit)
+  const [initialFieldValues, setInitialFieldValues] = useState<
+    FieldValue[] | undefined
+  >(undefined);
+
+  // Local search is performed if there are less than `limit` initial values
+  const shouldPerformLocalSearch =
+    initialFieldValues && initialFieldValues.length < limit;
+
+  // Update the search value to fetch on every debounced search value change
+  // if the local search is disabled
+  useEffect(() => {
+    if (!shouldPerformLocalSearch) {
+      setSearchValueToFetch(debouncedSearch);
+    }
+  }, [debouncedSearch, shouldPerformLocalSearch]);
+
+  const {
+    data: fieldValues,
+    isLoading,
+    isFetching,
+  } = useSearchFieldValuesQuery(
+    {
+      fieldId: fieldId ?? -1, // type guard
+      searchFieldId: searchFieldId ?? -1, // type guard
+      // empty string is invalid from the API perspective
+      value: searchValueToFetch === "" ? undefined : searchValueToFetch,
+      limit: SEARCH_LIMIT_DEFAULT,
+    },
+    { skip: fieldId === undefined },
+  );
+
+  useEffect(() => {
+    if (!initialFieldValues && fieldValues) {
+      setInitialFieldValues(fieldValues);
+    }
+  }, [initialFieldValues, fieldValues]);
+
+  const options = useMemo(() => {
+    if (fieldValues) {
+      const options = getFieldOptions(fieldValues);
+
+      if (shouldPerformLocalSearch) {
+        return options.filter((item) =>
+          getDropdownLabelText(item)
+            .toLowerCase()
+            .includes(search.toLowerCase().trim()),
+        );
+      }
+
+      return options;
+    }
+
+    return [];
+  }, [shouldPerformLocalSearch, fieldValues, search, getDropdownLabelText]);
+
+  return {
+    options,
+    isLoading,
+    isFetching:
+      (isFetching || search !== debouncedSearch) && !shouldPerformLocalSearch,
+  };
+}
