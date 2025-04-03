@@ -11024,7 +11024,7 @@ databaseChangeLog:
   - changeSet:
       id: v55.2025-04-02T11:00:00
       author: rafpaf
-      comment: 'Content translation table'
+      comment: Create content translation table
       preConditions:
         - onFail: MARK_RAN
         - not:

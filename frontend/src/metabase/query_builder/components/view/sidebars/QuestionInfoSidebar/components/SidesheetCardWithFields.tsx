@@ -2,6 +2,7 @@ import { c, msgid } from "ttag";
 
 import { SidesheetCard } from "metabase/common/components/Sidesheet";
 import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 import { Box, Group, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -50,6 +51,7 @@ const Column = ({
   columnMetadata: Lib.ColumnMetadata;
   columnDisplayInfo: Lib.ColumnDisplayInfo;
 }) => {
+  const tc = useTranslateContent2();
   return (
     <Group gap="sm" role="listitem">
       <QueryColumnInfoIcon
@@ -58,7 +60,7 @@ const Column = ({
         column={columnMetadata}
         stageIndex={-1}
       />
-      {columnInfo.displayName}
+      {tc(columnInfo.displayName)}
     </Group>
   );
 };
