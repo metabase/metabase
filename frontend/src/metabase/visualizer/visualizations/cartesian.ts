@@ -2,6 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import _ from "underscore";
 
 import { isCartesianChart } from "metabase/visualizations";
+import { getDatasetMetricsAndDimensions } from "metabase/visualizations/lib/utils";
 import {
   getDefaultDimensionFilter,
   getDefaultDimensions,
@@ -61,14 +62,12 @@ export const cartesianDropHandler = (
 
     if (isSuitableColumn(column)) {
       addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
-      if (column.id) {
-        maybeImportDimensionsFromOtherDataSources(
-          state,
-          column.id,
-          _.omit(datasetMap, dataSource.id),
-          dataSourceMap,
-        );
-      }
+      maybeImportDimensionsFromOtherDataSources(
+        state,
+        column,
+        _.omit(datasetMap, dataSource.id),
+        dataSourceMap,
+      );
     }
   }
 
@@ -320,34 +319,38 @@ function removeDimensionFromMultiSeriesChart(
 
 export function maybeImportDimensionsFromOtherDataSources(
   state: VisualizerHistoryItem,
-  dimensionId: number,
+  newDimension: DatasetColumn,
   datasetMap: Record<string, Dataset>,
   dataSourceMap: Record<string, VisualizerDataSource>,
 ) {
   Object.entries(datasetMap).forEach(([dataSourceId, dataset]) => {
     const dataSource = dataSourceMap[dataSourceId];
-    const matchingDimension = dataset.data.cols.find(
-      col => col.id === dimensionId,
-    );
+
+    let matchingDimension: DatasetColumn | undefined = undefined;
+    if (isDate(newDimension)) {
+      const { dimensions } = getDatasetMetricsAndDimensions(dataset);
+      const dimensionColumns = dataset.data.cols.filter(col =>
+        dimensions.includes(col.name),
+      );
+      matchingDimension = dimensionColumns.find(isDate);
+    } else if (newDimension.id) {
+      matchingDimension = dataset.data.cols.find(
+        col => col.id === newDimension.id,
+      );
+    }
+
     if (matchingDimension) {
       const columnRef = createVisualizerColumnReference(
         dataSource,
         matchingDimension,
         extractReferencedColumns(state.columnValuesMapping),
       );
-      const column = copyColumn(
-        columnRef.name,
+      addDimensionColumnToCartesianChart(
+        state,
         matchingDimension,
-        dataSource.name,
-        state.columns,
+        columnRef,
+        dataSource,
       );
-
-      state.columns.push(column);
-      state.columnValuesMapping[column.name] = [columnRef];
-      if (!state.settings["graph.dimensions"]) {
-        state.settings["graph.dimensions"] = [];
-      }
-      state.settings["graph.dimensions"].push(column.name);
     }
   });
 }

@@ -276,7 +276,7 @@ const visualizerHistoryItemSlice = createSlice({
         if (isDimension && column.id) {
           maybeImportDimensionsFromOtherDataSources(
             state,
-            column.id,
+            column,
             _.omit(datasetMap, dataSource.id),
             dataSourceMap,
           );
