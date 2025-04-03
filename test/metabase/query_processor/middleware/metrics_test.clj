@@ -1080,4 +1080,4 @@
                        ;; TBD
                        :distinct-where)
                  (set (map first tested-aggregations))
-                 (set (map first tested-feature-dependent-aggregations)))))))
+                 (set (map second tested-feature-dependent-aggregations)))))))
