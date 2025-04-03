@@ -617,7 +617,7 @@ class Visualization extends PureComponent<
             t`Could not display this chart with this data.`;
           if (
             e instanceof ChartSettingsError &&
-            visualization.placeholderSeries &&
+            visualization.hasEmptyState &&
             !isDashboard
           ) {
             // hide the error and display the empty state instead

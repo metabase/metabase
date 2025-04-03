@@ -303,6 +303,7 @@ export type VisualizationDefinition = {
   identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;
+  hasEmptyState?: boolean;
 
   maxMetricsSupported?: number;
   maxDimensionsSupported?: number;
@@ -320,8 +321,6 @@ export type VisualizationDefinition = {
 
   settings: VisualizationSettingsDefinitions;
 
-  placeHolderSeries?: Series;
-
   transformSeries?: (series: Series) => TransformedSeries;
   isSensible: (data: DatasetData) => boolean;
   // checkRenderable throws an error if a visualization is not renderable
@@ -332,5 +331,4 @@ export type VisualizationDefinition = {
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
-  placeholderSeries: RawSeries;
 };

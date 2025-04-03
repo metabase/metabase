@@ -1,7 +1,6 @@
 import type * as React from "react";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
@@ -422,25 +421,7 @@ RowChartVisualization.checkRenderable = (
   validateStacking(settings);
 };
 
-RowChartVisualization.placeholderSeries = [
-  {
-    card: {
-      display: "row",
-      visualization_settings: {
-        "graph.metrics": ["x"],
-        "graph.dimensions": ["y"],
-      },
-      dataset_query: { type: "null" },
-    },
-    data: {
-      rows: _.range(0, 11).map((i) => [i, i]),
-      cols: [
-        { name: "x", base_type: "type/Integer" },
-        { name: "y", base_type: "type/Integer" },
-      ],
-    },
-  },
-];
+RowChartVisualization.hasEmptyState = true;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default RowChartVisualization;
