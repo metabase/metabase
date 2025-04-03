@@ -497,11 +497,7 @@
                              schema  (filter #(= (:table_schem %) schema))))
           schemas     (set/difference all-schemas (sql-jdbc.sync/excluded-schemas driver))]
       (set (for [schema schemas
-                 table  (try
-                          (get-tables metadata (:table_schem schema) (:table_catalog schema))
-                          (catch Throwable e
-                            (log/errorf e "Error retreiving tables for catalog '%s' and schema '%s'" (:table_catalog schema) (:table_schem schema))
-                            []))]
+                 table  (get-tables metadata (:table_schem schema) (:table_catalog schema))]
              (let [remarks (:remarks table)]
                {:name        (:table_name table)
                 :schema      (:table_schem schema)
