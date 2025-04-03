@@ -130,16 +130,21 @@ export function useMultiAutocomplete({
   };
 
   const handleOptionSubmit = (value: string) => {
+    const newFieldValues = getUniqueFieldValues(
+      values,
+      [value],
+      fieldSelection,
+    );
     const newValues = getValuesAfterChange(
       values,
-      getUniqueFieldValues(values, [value], fieldSelection),
+      newFieldValues,
       fieldSelection,
     );
     onChange(newValues);
     setFieldState({
       fieldValue: "",
       fieldSelection: {
-        index: fieldSelection.index + 1,
+        index: fieldSelection.index + newFieldValues.length,
         length: 0,
       },
     });
