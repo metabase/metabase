@@ -19,6 +19,8 @@ export const ContentTranslationProvider = ({
   children: ReactNode;
 }) => {
   const locale = useLocale();
+  console.log("@m91rnpfs", "locale", locale);
+
   const {
     data,
     error,
@@ -52,6 +54,12 @@ export const useTranslateContent = () => {
 
 export const useTranslateContent2 = () => {
   const context = useContext(ContentTranslationContext);
+  console.log("@m91rhom8", "context", context);
+
+  // FIXME: Useful in development but let's remove this later
+  if (!context.dictionary?.length) {
+    console.log("Dictionary is empty");
+  }
 
   return <TypeOfArgument,>(msgid?: TypeOfArgument): TypeOfArgument =>
     (msgid && typeof msgid === "string"

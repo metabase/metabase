@@ -48,6 +48,8 @@ export const ParameterDropdownWidget = ({
   dashboard,
   enableRequiredBehavior,
 }: ParameterDropdownWidgetProps) => {
+  console.log("pdw");
+
   const normalizedValue = Array.isArray(value)
     ? value
     : [value].filter((v) => v != null);

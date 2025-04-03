@@ -103,6 +103,7 @@ class AutomaticDashboardAppInner extends Component {
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
     const more = dashboard && dashboard.more;
     const related = dashboard && dashboard.related;
+    console.log("@m91ruwp4", "related", related);
 
     const hasSidebar = related && Object.keys(related).length > 0;
 

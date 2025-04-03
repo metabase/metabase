@@ -14,6 +14,7 @@ import * as Lib from "metabase-lib";
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
 import { StyledAccordionList } from "./QueryColumnPicker.styled";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
@@ -65,6 +66,7 @@ export function QueryColumnPicker({
   alwaysExpanded,
   disableSearch,
 }: QueryColumnPickerProps) {
+  const tc = useTranslateContent2();
   const sections: Sections[] = useMemo(
     () =>
       columnGroups.map((group) => {
@@ -75,13 +77,20 @@ export function QueryColumnPicker({
           column,
         }));
 
+        const translatedItems = items
+          .map((item) => ({
+            ...item,
+            displayName: tc(item.longDisplayName),
+          }))
+          .toSorted((a, b) => a.displayName.localeCompare(b.displayName));
+
         return {
           name: groupInfo.displayName,
           icon: getColumnGroupIcon(groupInfo),
-          items,
+          items: translatedItems,
         };
       }),
-    [query, stageIndex, columnGroups],
+    [query, stageIndex, columnGroups, tc],
   );
 
   const handleSelect = useCallback(

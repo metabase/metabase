@@ -71,6 +71,7 @@ export function FilterColumnPicker({
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
+  console.log("fcp");
   const tc = useTranslateContent2();
   const sections = useMemo(
     () =>
@@ -132,6 +133,7 @@ function getSections(
   withCustomExpression: boolean,
   tc: (msgid: string) => string,
 ) {
+  console.log("get s");
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -150,6 +152,9 @@ function getSections(
           stageIndex,
         };
       });
+
+      const sortedColumnItems = sortedByDisplayName(columnItems);
+
       const segments = groupInfo.isSourceTable
         ? Lib.availableSegments(query, stageIndex)
         : [];
@@ -169,7 +174,10 @@ function getSections(
           ? getGroupName(groupInfo, stageIndex)
           : groupInfo.displayName,
         icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
-        items: [...segmentItems, ...columnItems],
+        items: [
+          ...sortedByDisplayName(segmentItems),
+          ...sortedByDisplayName(columnItems),
+        ],
       };
     });
   });
@@ -209,3 +217,11 @@ function renderItemIcon(
 function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
 }
+
+/** Sort an array by display name, since some display names may be translated */
+const sortedByDisplayName = (arr: { displayName: string }[]) => {
+  return arr.toSorted((a, b) =>
+    // FIXME: Remove locale
+    a.displayName.localeCompare(b.displayName, "fr"),
+  );
+};
