@@ -87,10 +87,10 @@
                      (if-not (.next rs)
                        ::cache-miss
                        (with-open [is (encryption/maybe-decrypt-stream (.getBinaryStream rs 1))]
-                         (respond is)
-                         ::cache-hit)))))]
-    (when (= ::cache-miss result)
-      (respond nil))))
+                         (respond is))))))]
+    (if (= ::cache-miss result)
+      (respond nil)
+      result)))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
