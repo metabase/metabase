@@ -34,3 +34,7 @@ export function setupGdriveServiceAccountEndpoint(
     return { email };
   });
 }
+
+export function setupGdrivePostFolderEndpoint() {
+  fetchMock.post("path:/api/ee/gsheets/folder", { status: 202 });
+}
