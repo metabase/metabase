@@ -24,6 +24,18 @@ const utmTags = {
   utm_content: "empty-states-viz",
 };
 
+const getButtonProps = (isSummarizeSidebarOpen?: boolean) => {
+  if (isSummarizeSidebarOpen) {
+    return {};
+  }
+
+  return {
+    className: CS.link,
+    role: "button",
+    "aria-label": t`Open summarize sidebar`,
+  };
+};
+
 export const EmptyVizState = ({
   visualization,
   isSummarizeSidebarOpen,
@@ -73,7 +85,7 @@ export const EmptyVizState = ({
               "{0} refers to the 'Summarize'. {1} refers to the follow up instructions.",
             ).jt`Click on ${(
               <b
-                className={!isSummarizeSidebarOpen ? CS.link : undefined}
+                {...getButtonProps(isSummarizeSidebarOpen)}
                 key="summarize-cta"
                 onClick={handleClick}
               >
