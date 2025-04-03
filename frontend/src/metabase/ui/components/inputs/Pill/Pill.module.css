@@ -1,0 +1,25 @@
+.root {
+  height: var(--value-height);
+  padding: rem(1px) var(--mantine-spacing-sm);
+  font-weight: bold;
+  font-size: var(--multiselect-pill-font-size);
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-text-selected);
+  background-color: var(--mb-color-background-selected);
+}
+
+.remove {
+  --remove-button-size: rem(12px);
+
+  padding: 0;
+  border-width: 0;
+
+  svg {
+    width: var(--remove-button-size) !important;
+    height: var(--remove-button-size) !important;
+  }
+}
+
+.group {
+  padding-right: var(--input-right-section-width);
+}

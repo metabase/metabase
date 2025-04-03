@@ -31,18 +31,6 @@
   background-color: var(--mb-color-background-selected);
 }
 
-.MultiSelectPillRemove {
-  --remove-button-size: rem(12px);
-
-  padding: 0;
-  border-width: 0;
-
-  svg {
-    width: var(--remove-button-size) !important;
-    height: var(--remove-button-size) !important;
-  }
-}
-
 /* this is the actual input element */
 .MultiSelectInputField {
   height: var(--value-height);
