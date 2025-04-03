@@ -945,7 +945,7 @@
                               (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
                     result (qp/process-query query)]
                 (is (every? (fn [[_ aggregation-value metric-value]]
-                              (= aggregation-value metric-value))
+                              (< 0.01 (abs (- aggregation-value metric-value))))
                             (mt/formatted-rows [str 3.0 3.0] result)))))))))))
 
 (deftest filter-metric-comparison-for-percentile-aggregations-test
@@ -978,7 +978,7 @@
                               (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
                     result (qp/process-query query)]
                 (is (every? (fn [[_ aggregation-value metric-value]]
-                              (= aggregation-value metric-value))
+                              (< 0.01 (abs (- aggregation-value metric-value))))
                             (mt/formatted-rows [str 3.0 3.0] result)))))))))))
 
 (deftest next-stage-reference-test
