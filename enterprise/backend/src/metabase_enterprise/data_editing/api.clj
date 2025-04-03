@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-editing.api
   (:require
    [medley.core :as m]
-   [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
+   [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -17,15 +17,6 @@
    [metabase.util.malli.schema :as ms]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
-
-(defn- perform-bulk-action! [action-kw table-id rows]
-  (api/check-superuser)
-  (actions/perform-with-system-events!
-   action-kw
-   {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
-    :table-id table-id
-    :arg      rows}
-   {:policy :data-editing}))
 
 (doseq [action [:row/create
                 :row/update
@@ -65,64 +56,36 @@
                qp-result->row-map
                (m/index-by #(get-row-pk pk-field %))))))))
 
-(defn- apply-coercions
-  "For fields that have a coercion_strategy, apply the coercion function (defined in data-editing.coerce) to the corresponding value in each row.
-  Intentionally does not coerce primary key values (behaviour for pks with coercion strategies is undefined)."
-  [table-id input-rows]
-  (let [input-keys  (into #{} (mapcat keys) input-rows)
-        field-names (map name input-keys)
-        ;; TODO not sure how to do an :in clause with toucan2
-        fields      (mapv #(t2/select-one :model/Field :table_id table-id :name %) field-names)
-        coerce-fn   (->> (for [{field-name :name, :keys [coercion_strategy, semantic_type]} fields
-                               :when (not (isa? semantic_type :type/PK))]
-                           [(keyword field-name)
-                            (or (when (nil? coercion_strategy) identity)
-                                (data-editing.coerce/input-coercion-fn coercion_strategy)
-                                (throw (ex-info "Coercion strategy has no defined coercion function"
-                                                {:status 400
-                                                 :field field-name
-                                                 :coercion_strategy coercion_strategy})))])
-                         (into {}))
-        coerce      (fn [k v] (some-> v ((coerce-fn k identity))))]
-    (for [row input-rows]
-      (m/map-kv-vals coerce row))))
-
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
-  (let [rows (apply-coercions table-id rows)
-        res  (perform-bulk-action! :bulk/create table-id rows)]
-    (doseq [row (:created-rows res)]
-      (events/publish-event! :event/action.success
-                             {:action        :row/create
-                              :invocation_id (nano-id/nano-id)
-                              :actor_id      api/*current-user-id*
-                              :table_id      table-id
-                              :result        {:created_row row
-                                              :table-id    table-id}}))
-    (let [pk-field   (table-id->pk table-id)
-          ;; actions code does not return coerced values
-          ;; right now the FE works off qp outputs, which coerce output row data
-          ;; still feels messy, revisit this
-          id->db-row (query-db-rows table-id pk-field (map #(update-keys % keyword) (:created-rows res)))]
-      {:created-rows (vals id->db-row)})))
+  (api/check-superuser)
+  (let [rows'      (data-editing/apply-coercions table-id rows)
+        res        (data-editing/insert! table-id rows')
+        pk-field   (table-id->pk table-id)
+         ;; actions code does not return coerced values
+         ;; right now the FE works off qp outputs, which coerce output row data
+         ;; still feels messy, revisit this
+        id->db-row (query-db-rows table-id pk-field (map #(update-keys % keyword) (:created-rows res)))]
+    {:created-rows (vals id->db-row)}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+  (api/check-superuser)
   (if (empty? rows)
     {:updated []}
-    (let [rows         (apply-coercions table-id rows)
+    (let [rows         (data-editing/apply-coercions table-id rows)
           pk-field     (table-id->pk table-id)
           id->db-row   (query-db-rows table-id pk-field rows)
           updated-rows (volatile! [])]
       (doseq [row rows]
         (let [;; well, this is a trick, but I haven't figured out how to do single row update
-              result     (:rows-updated (perform-bulk-action! :bulk/update table-id [row]))
+              result     (:rows-updated (data-editing/perform-bulk-action! :bulk/update table-id [row]))
               after-row  (-> (query-db-rows table-id pk-field [row]) vals first)
               row-before (get id->db-row (get-row-pk pk-field row))]
           (vswap! updated-rows conj after-row)
@@ -135,7 +98,7 @@
                                     :result   {:table-id   table-id
                                                :after      after-row
                                                :before     row-before
-                                               :raw-update row}}))))
+                                               :raw_update row}}))))
       {:updated @updated-rows})))
 
 (api.macros/defendpoint :post "/table/:table-id/delete"
@@ -143,9 +106,10 @@
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+  (api/check-superuser)
   (let [pk-field    (table-id->pk table-id)
         id->db-rows (query-db-rows table-id pk-field rows)
-        res         (perform-bulk-action! :bulk/delete table-id rows)]
+        res         (data-editing/perform-bulk-action! :bulk/delete table-id rows)]
     (doseq [row rows]
       (events/publish-event! :event/action.success
                              {:action   :row/delete
@@ -206,6 +170,41 @@
                           [column-name (ensure-database-type driver column-type)])
                         (into {}))]
     (driver/create-table! driver db-id table-name column-map :primary-key (map keyword primary_key))))
+
+(api.macros/defendpoint :post "/webhook"
+  "Creates a new webhook endpoint token.
+  The token can be used with the unauthenticated ingestion endpoint.
+  POST /ee/data-editing-public/webhook/{token} to insert rows."
+  [_
+   _
+   {:keys [table-id]}] :- [:map [:table-id ms/PositiveInt]]
+  (api/check-superuser)
+  (let [_       (api/check-404 (t2/select-one :model/Table table-id))
+        token   (str (random-uuid))
+        user-id api/*current-user-id*]
+    (t2/insert! :table_webhook_token {:token token, :table_id table-id, :creator_id user-id})
+    {:table_id table-id
+     :token token}))
+
+(api.macros/defendpoint :delete "/webhook/:token"
+  "Deletes a webhook endpoint token."
+  [{:keys [token]}
+   _
+   _]
+  (api/check-superuser)
+  (let [deleted-count (t2/delete! :table_webhook_token :token token)]
+    (api/check-404 (pos? deleted-count)))
+  {})
+
+(api.macros/defendpoint :get "/webhook"
+  "Lists webhook endpoints tokens for a table.
+  Behaviour is currently undefined if no table-id parameter is specified"
+  [_
+   {:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/Table table-id))
+  (let [include-cols [:token :table_id :creator_id]]
+    {:tokens (t2/select (into [:table_webhook_token] include-cols) :table_id table-id)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

@@ -7,6 +7,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -28,13 +29,16 @@
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :put 402 url))
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 (str url "/delete"))))))
 
+(defn- toggle-data-editing-enabled! [on-or-off]
+  (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing (boolean on-or-off)}}))
+
 (deftest table-operations-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/with-empty-h2-app-db
       (with-open [table-ref (data-editing.tu/open-test-table!)]
         (let [table-id @table-ref
               url      (data-editing.tu/table-url table-id)]
-          (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing true}})
+          (toggle-data-editing-enabled! true)
           (testing "Initially the table is empty"
             (is (= [] (table-rows table-id))))
 
@@ -232,7 +236,7 @@
 (deftest coercion-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/with-empty-h2-app-db
-      (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing true}})
+      (toggle-data-editing-enabled! true)
       (let [user :crowberto
             req mt/user-http-request
             create!
@@ -303,3 +307,141 @@
               #_#_#_#_:text :Coercion/YYYYMMDDHHMMSSString->Temporal     "2025-03-25T14:34:42Z"     "20250325143442"]
              (partition 4)
              (run! #(apply do-test %)))))))
+
+(deftest webhook-creation-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/with-empty-h2-app-db
+      (with-open [test-table (data-editing.tu/open-test-table!)]
+        (let [url            "ee/data-editing/webhook"
+              req            #(mt/user-http-request-full-response %1 :post url %2)
+              status         (comp :status req)
+              table-id       @test-table
+              not-a-table-id Long/MAX_VALUE]
+          (testing "auth fail"
+            (is (= 403 (status :rasta {})))
+            (is (= 403 (status :rasta {:table-id table-id})) "no information leakage"))
+          (testing "creates token"
+            (let [token (:token (:body (req :crowberto {:table-id table-id})))]
+              (is (string? token))
+              (testing "token in database"
+                (is (some? (t2/select-one :table_webhook_token :token token))))
+              (testing "new token if called again"
+                (is (not= token (:token (req :crowberto {:table-id table-id}))))
+                (testing "table does not exist"
+                  (is (= 404 (status :crowberto {:table-id not-a-table-id}))))))))))))
+
+(deftest webhook-list-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/with-empty-h2-app-db
+      (with-open [test-table1 (data-editing.tu/open-test-table!)
+                  test-table2 (data-editing.tu/open-test-table!)]
+        (let [url            "ee/data-editing/webhook"
+              req            #(mt/user-http-request-full-response %1 :get url :table-id %2)
+              create-url     "ee/data-editing/webhook"
+              create         #(:body (mt/user-http-request-full-response :crowberto :post create-url {:table-id %}))
+              status         (comp :status req)
+              table-id1      @test-table1
+              table-id2      @test-table2
+              not-a-table-id Long/MAX_VALUE]
+          (testing "auth fail"
+            (is (= 403 (status :rasta table-id1)))
+            (is (= 403 (status :rasta not-a-table-id)) "no information leakage"))
+          (testing "table does not exist"
+            (is (= 404 (status :crowberto not-a-table-id))))
+          (testing "no tokens"
+            (is (= [] (:tokens (:body (req :crowberto table-id1))))))
+          (testing "n tokens"
+            (let [{token1 :token} (create table-id1)
+                  {token2 :token} (create table-id2)
+                  {token3 :token} (create table-id1)
+                  table1-res      (:body (req :crowberto table-id1))
+                  table2-res      (:body (req :crowberto table-id2))
+                  table1-tokens   (map :token (:tokens table1-res))
+                  table2-tokens   (map :token (:tokens table2-res))]
+              (is (= {token1 1 token3 1} (frequencies table1-tokens)))
+              (is (= [token2] table2-tokens)))))))))
+
+(deftest webhook-delete-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/with-empty-h2-app-db
+      (with-open [test-table (data-editing.tu/open-test-table!)]
+        (let [url            #(format "ee/data-editing/webhook/%s" %)
+              req            #(mt/user-http-request-full-response %1 :delete (url %2) {})
+              create-url     "ee/data-editing/webhook"
+              create         #(:body (mt/user-http-request-full-response :crowberto :post create-url {:table-id %}))
+              list-url       "ee/data-editing/webhook"
+              list-tokens    #(:body (mt/user-http-request-full-response :crowberto :get list-url :table-id %))
+              status         (comp :status req)
+              table-id       @test-table
+              {token :token} (create table-id)
+              not-a-token    (str (random-uuid))]
+          (testing "auth fail"
+            (is (= 403 (status :rasta token)))
+            (is (= 403 (status :rasta not-a-token)) "no information leakage"))
+          (testing "token does not exist"
+            (is (= 404 (status :crowberto not-a-token))))
+          (testing "token does exist"
+            (is (some #{token} (map :token (:tokens (list-tokens table-id)))))
+            (is (= 200 (status :crowberto token)))
+            (is (not-any? #{token} (map :token (:tokens (list-tokens table-id))))))
+          (testing "token does not exist when deleted"
+            (is (= 404 (status :crowberto token)))))))))
+
+(deftest webhook-ingest-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/with-empty-h2-app-db
+      (toggle-data-editing-enabled! true)
+      (with-open [test-table (data-editing.tu/open-test-table!
+                              {:id [:int]
+                               :v [:text]}
+                              {:primary-key [:id]})]
+        (let [url            #(format "ee/data-editing-public/webhook/%s/data" %)
+              req            #(mt/client-full-response
+                               :post (url %1)
+                               {:request-options {:body (.getBytes (json/encode %2))}})
+              status         (comp :status req)
+              create-url     "ee/data-editing/webhook"
+              create         #(:body (mt/user-http-request-full-response :crowberto :post create-url {:table-id %}))
+              delete-url     #(format "ee/data-editing/webhook/%s" %)
+              delete         #(mt/user-http-request :crowberto :delete (delete-url %))
+              table-id       @test-table
+              {token :token} (create table-id)
+              not-a-token    (str (random-uuid))]
+          (testing "token does not exist"
+            (is (= 404 (status not-a-token [{:v "foo"}]))))
+          (testing "empty rows"
+            (are [input code]
+                 (= code (status token input))
+              nil  200
+              {}   400
+              []   200
+              [{}] 400))
+          (testing "one row in array"
+            (is (= 200 (status token [{:id 1, :v "a"}])))
+            (is (= [[1 "a"]] (table-rows table-id))))
+          (testing "multiple rows in array"
+            (is (= 200 (status token [{:id 2, :v "b"} {:id 3, :v "c"}])))
+            (is (= [[1 "a"] [2 "b"] [3 "c"]] (table-rows table-id))))
+          (testing "missing pk"
+            (is (= 400 (status token [{:v "d"}]))))
+          (testing "insert collision"
+            (is (= 400 (status token [{:id 1, :v "a"}])))
+            (testing "partial failure"
+              (let [rows-before (table-rows table-id)]
+                (is (= 400 (status token [{:id 4, :v "d"} {:id 1, :v "a"}])))
+                (is (= rows-before (table-rows table-id))))))
+          (testing "wrong columns"
+            (is (= 400 (status token [{:id 1, :not_a_column "a"}]))))
+          (testing "data editing disabled"
+            (try
+              (toggle-data-editing-enabled! false)
+              (is (= 400 (status token [{:id 4, :v "d"}])))
+              (toggle-data-editing-enabled! true)
+              (is (= 200 (status token [{:id 4, :v "d"}])))
+              (finally
+                (toggle-data-editing-enabled! true))))
+          (testing "token deleted"
+            (delete token)
+            (is (= 404 (status token [{:id 5, :v "e"}])))))))))
+          ;; It would be nice to have for-all config/inputs type tests verifying
+          ;; insert behaviour is same as the POST data-editing/table inserts (collision, violation error, event)
