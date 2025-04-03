@@ -761,7 +761,7 @@
 
   enterprise/data-editing
   {:api #{}
-   :uses #{api actions driver events lib query-processor upload util}}
+   :uses #{api actions driver events lib models query-processor upload util}}
 
   enterprise/data-editing-public
   {:api #{}

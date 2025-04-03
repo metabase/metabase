@@ -4,6 +4,7 @@
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
+   [metabase.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -445,3 +446,25 @@
             (is (= 404 (status token [{:id 5, :v "e"}])))))))))
           ;; It would be nice to have for-all config/inputs type tests verifying
           ;; insert behaviour is same as the POST data-editing/table inserts (collision, violation error, event)
+
+(deftest field-values-invalidated-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/with-empty-h2-app-db
+      (toggle-data-editing-enabled! true)
+      (with-open [table (data-editing.tu/open-test-table! {:id 'auto-inc-type, :n [:text]} {:primary-key [:id]})]
+        (let [table-id     @table
+              url          (data-editing.tu/table-url table-id)
+              field-id     (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
+              field-values #(vec (:values (field-values/get-latest-full-field-values field-id)))
+              create!      #(mt/user-http-request :crowberto :post 200 url {:rows %})
+              update!      #(mt/user-http-request :crowberto :put  200 url {:rows %})]
+          (is (= [] (field-values)))
+          (create! [{:n "a"}])
+          (is (= ["a"] (field-values)))
+          (create! [{:n "b"} {:n "c"}])
+          (is (= ["a" "b" "c"] (field-values)))
+          (update! [{:id 2, :n "d"}])
+          (is (= ["a" "c" "d"] (field-values)))
+          (create! [{:n "a"}])
+          (update! [{:id 1, :n "e"}])
+          (is (= ["a" "c" "d" "e"] (field-values))))))))
