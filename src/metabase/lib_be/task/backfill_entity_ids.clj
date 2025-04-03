@@ -136,7 +136,7 @@
         model (get ctx-map "model")]
     (when-not (backfill-entity-ids!-inner model)
       (log/info "Backfill: Finished backfilling entity-ids for" model)
-      (task/delete-trigger! (triggers/key (model-key model)))
+      (task/delete-task! (jobs/key backfill-job-key) (triggers/key (model-key model)))
       (when-let [new-model (next-model model)]
         (start-backfill-job! new-model)))))
 

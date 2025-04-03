@@ -191,7 +191,7 @@
   mi/dispatch-on-model)
 
 (defmethod hash-required-fields :default
-  [entity]
+  [_entity]
   nil)
 
 (defn- increment-hash-values
