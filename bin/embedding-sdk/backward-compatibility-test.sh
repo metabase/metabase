@@ -74,10 +74,8 @@ function test() {
   node e2e/runner/run_cypress_ci.js snapshot
 
   print_step "Running tests..."
-  BACKEND_PORT=4000 TEST_SUITE="e2e" node e2e/runner/run_cypress_ci.js e2e --spec e2e/test/scenarios/dashboard/*.cy.spec.*
+  BACKEND_PORT=4000 TEST_SUITE="e2e" node e2e/runner/run_cypress_ci.js e2e  grepTags="--@flaky --@external",grepOmitFiltered=true --spec "e2e/test/scenarios/dashboard/dashboard.cy.spec.js,e2e/test/scenarios/question/caching.cy.spec.js,e2e/test/scenarios/question/column-compare.cy.spec.ts,e2e/test/scenarios/question/document-title.cy.spec.js,e2e/test/scenarios/question/native-query-drill.cy.spec.ts,e2e/test/scenarios/question/nested.cy.spec.js,e2e/test/scenarios/question/new.cy.spec.js,e2e/test/scenarios/question/notebook-data-source.cy.spec.ts,e2e/test/scenarios/question/notebook-link-to-data-source.cy.spec.ts,e2e/test/scenarios/question/notebook-native-preview-sidebar.cy.spec.ts,e2e/test/scenarios/question/notebook.cy.spec.js,e2e/test/scenarios/question/nulls.cy.spec.js,e2e/test/scenarios/question/offset.cy.spec.ts,e2e/test/scenarios/question/query-external.cy.spec.js,e2e/test/scenarios/question/question-management.cy.spec.js,e2e/test/scenarios/question/questions-entity-id.cy.spec.ts,e2e/test/scenarios/question/saved.cy.spec.js,e2e/test/scenarios/question/settings.cy.spec.js,e2e/test/scenarios/question/summarization.cy.spec.js"
 }
-
-
 
 if [ "$#" -ne 3 ]; then
   echo "$INSTRUCTIONS"
