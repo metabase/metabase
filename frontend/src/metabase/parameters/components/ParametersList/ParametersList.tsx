@@ -14,6 +14,7 @@ import { Icon } from "metabase/ui";
 import type { Parameter, ParameterId } from "metabase-types/api";
 
 import { ParameterWidget } from "../ParameterWidget";
+import { ContentTranslationProvider } from "metabase/i18n/components/ContentTranslationContext";
 
 const getId = (valuePopulatedParameter: Parameter) =>
   valuePopulatedParameter.id;
@@ -106,13 +107,15 @@ export const ParametersList = ({
         vertical ? CS.flexColumn : CS.flexRow,
       )}
     >
-      <SortableList
-        items={visibleValuePopulatedParameters}
-        getId={getId}
-        renderItem={renderItem}
-        onSortEnd={handleSortEnd}
-        sensors={[pointerSensor]}
-      />
+      <ContentTranslationProvider>
+        <SortableList
+          items={visibleValuePopulatedParameters}
+          getId={getId}
+          renderItem={renderItem}
+          onSortEnd={handleSortEnd}
+          sensors={[pointerSensor]}
+        />
+      </ContentTranslationProvider>
     </div>
   ) : null;
 };
