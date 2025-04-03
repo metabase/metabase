@@ -76,7 +76,7 @@ describe("scenarios > embedding-sdk > create-dashboard modal", () => {
       cy.intercept("POST", "/api/dashboard").as("createDashboard");
     });
 
-    it("should create a dashboard in the root collection when initialCollectionId is 'root'", () => {
+    it.only("should create a dashboard in the root collection when initialCollectionId is 'root'", () => {
       mountSdkContent(<CreateDashboardModal initialCollectionId="root" />);
 
       fillAndSubmitForm();

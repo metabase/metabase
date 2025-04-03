@@ -292,6 +292,7 @@ describe("InteractiveQuestion", () => {
     expect(
       screen.getByTestId("chart-type-selector-button"),
     ).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
     for (const visType of VISUALIZATION_TYPES) {
       await userEvent.click(screen.getByTestId("chart-type-selector-button"));

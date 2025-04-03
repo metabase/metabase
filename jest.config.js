@@ -1,4 +1,5 @@
 // @ts-check
+
 const esmPackages = [
   "ccount",
   "character-entities-html4",
@@ -25,7 +26,6 @@ const esmPackages = [
   "zwitch",
 ];
 
-/** @type {import('jest').Config} */
 const baseConfig = {
   moduleNameMapper: {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
@@ -78,9 +78,7 @@ const baseConfig = {
   globals: {
     ga: {},
   },
-  reporters: ["default", "jest-junit"],
   coverageDirectory: "./coverage",
-  coverageReporters: ["html", "lcov"],
   collectCoverageFrom: [
     "frontend/src/**/*.{js,jsx,ts,tsx}",
     "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
@@ -97,34 +95,34 @@ const baseConfig = {
     "/frontend/test/",
   ],
   testEnvironment: "jest-environment-jsdom",
+};
+
+/** @type {import('jest').Config} */
+const config = {
+  reporters: ["default", "jest-junit"],
+  coverageReporters: ["html", "lcov"],
   watchPlugins: [
     "jest-watch-typeahead/filename",
     "jest-watch-typeahead/testname",
   ],
   testTimeout: 30000,
-};
-
-/** @type {import('jest').Config} */
-const config = {
   projects: [
     {
       ...baseConfig,
-      displayName: "main",
-      testPathIgnorePatterns: [
-        ...(baseConfig.testPathIgnorePatterns || []),
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/",
+      displayName: "sdk",
+
+      testMatch: [
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/**/*.unit.spec.{js,jsx,ts,tsx}",
+      ],
+
+      setupFilesAfterEnv: [
+        ...baseConfig.setupFilesAfterEnv,
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest-console-restrictions.js",
       ],
     },
     {
       ...baseConfig,
-      displayName: "sdk",
-      testMatch: [
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/**/*.unit.spec.{js,jsx,ts,tsx}",
-      ],
-      setupFiles: [
-        ...(baseConfig.setupFiles || []),
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest.sdk.config.js",
-      ],
+      displayName: "core",
     },
   ],
 };
