@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { useCallback, useEffect, useState } from "react";
-import type { WithRouterProps } from "react-router";
+import type { Route, WithRouterProps } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -23,7 +23,7 @@ import {
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
 import type { SuccessfulFetchDashboardResult } from "metabase/dashboard/types";
-import { SetTitle } from "metabase/hoc/Title";
+import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import { useFavicon } from "metabase/hooks/use-favicon";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
@@ -39,24 +39,10 @@ import type { DashboardId } from "metabase-types/api";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import { getFavicon } from "../../selectors";
 
-interface DashboardAppProps {
+interface DashboardAppProps extends PropsWithChildren {
   dashboardId?: DashboardId;
+  route: Route;
 }
-
-const DashboardAppInner = ({
-  dashboardId: _dashboardId,
-  children,
-}: PropsWithChildren<DashboardAppProps>) => {
-  useSlowCardNotification();
-
-  return (
-    <>
-      <Dashboard />
-      {/* For rendering modal urls */}
-      {children}
-    </>
-  );
-};
 
 const useSlowCardNotification = () => {
   const { dashboard, isRunning, isLoadingComplete } = useDashboardContext();
@@ -123,10 +109,11 @@ export const DashboardApp = ({
   router,
   route,
   dashboardId: _dashboardId,
-}: WithRouterProps<{ slug: string }>) => {
+  children,
+}: DashboardAppProps & WithRouterProps<{ slug: string }>) => {
   const dispatch = useDispatch();
 
-  const [error, setError] = useState();
+  const [error, setError] = useState<string>();
 
   const favicon = useSelector(getFavicon);
   useFavicon({ favicon });
@@ -191,7 +178,7 @@ export const DashboardApp = ({
         setErrorPage({ ...error, context: "dashboard" });
       } else {
         console.error(error);
-        setError(error);
+        setError(error as string);
       }
     }
   };
@@ -222,16 +209,31 @@ export const DashboardApp = ({
         hideParameters={null}
         font={null}
       >
-        <SetTitle></SetTitle>
+        <DashboardTitle />
         <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
           <DashboardLeaveConfirmationModal route={route} />
-          <DashboardAppInner />
+          <Dashboard />
+          {/* For rendering modal urls */}
+          {children}
         </div>
       </DashboardContextProvider>
     </ErrorBoundary>
   );
 };
 
-export const DashboardAppold = _.compose(
-  titleWithLoadingTime("loadingStartTime"),
-)(DashboardApp);
+const DashboardTitle = () => {
+  const { dashboard, documentTitle, pageFavicon } = useDashboardContext();
+
+  useFavicon({ favicon: pageFavicon });
+  useSlowCardNotification();
+
+  const Component = _.compose(
+    title(() => ({
+      title: documentTitle || dashboard?.name,
+      titleIndex: 1,
+    })),
+    titleWithLoadingTime("loadingStartTime"),
+  )(() => null);
+
+  return <Component />;
+};
