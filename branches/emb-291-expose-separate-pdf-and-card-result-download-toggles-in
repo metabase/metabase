@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-289-expand-the-downloads-url-parameter-in-staticpublic-embedding",
-    "hash": "787a3d88ea660375b25ebd0bef09f4da52459f58"
+    "hash": "23cc453f5a7539d1f76b9bf2863f8c8360a29354"
   },
   "upstream": {
     "branch": "emb-291-expose-separate-pdf-and-card-result-download-toggles-in"
