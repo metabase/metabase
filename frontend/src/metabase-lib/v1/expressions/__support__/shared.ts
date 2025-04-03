@@ -65,7 +65,7 @@ const metadata = createMockMetadata({
                 database: SAMPLE_DB_ID,
                 query: {
                   "source-table": ORDERS_ID,
-                  aggregation: [["sum", ["field", 11, {}]]],
+                  aggregation: [["sum", ["field", ORDERS.TOTAL, {}]]],
                 },
               }),
             }),
