@@ -1,29 +1,47 @@
+import { match } from "ts-pattern";
+
 import { optionsToHashParams } from "./embed";
 import type {
   CodeSampleParameters,
   EmbeddingDisplayOptions,
+  EmbeddingHashOptions,
   EmbeddingParametersValues,
 } from "./types";
 
 export function getIframeQueryWithoutDefaults(
   displayOptions: EmbeddingDisplayOptions,
 ) {
+  const hashOptions = transformEmbeddingDisplayToHashOptions(displayOptions);
+
   return optionsToHashParams(
-    removeDefaultValueParameters(displayOptions, {
+    removeDefaultValueParameters(hashOptions, {
       theme: "light",
       hide_download_button: false,
       background: true,
     }),
   );
 }
+
+function transformEmbeddingDisplayToHashOptions(
+  displayOptions: EmbeddingDisplayOptions,
+): EmbeddingHashOptions {
+  const downloads = match(displayOptions.downloads)
+    .with({ pdf: true, dashcard: false }, () => "pdf")
+    .with({ pdf: false, dashcard: true }, () => "results")
+    .with({ pdf: false, dashcard: false }, () => false)
+    .otherwise(() => true);
+
+  return { ...displayOptions, downloads };
+}
+
 function getIframeQuerySource(displayOptions: EmbeddingDisplayOptions) {
   return JSON.stringify(getIframeQueryWithoutDefaults(displayOptions));
 }
 
 function removeDefaultValueParameters(
-  options: EmbeddingDisplayOptions,
-  defaultValues: Partial<EmbeddingDisplayOptions>,
-): Partial<EmbeddingDisplayOptions> {
+  options: EmbeddingHashOptions,
+  defaultValues: Partial<EmbeddingHashOptions>,
+): Partial<EmbeddingHashOptions> {
   return Object.fromEntries(
     Object.entries(options).filter(
       ([key, value]) =>

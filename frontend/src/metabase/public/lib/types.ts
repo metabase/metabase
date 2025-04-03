@@ -55,7 +55,9 @@ export type EmbeddingAdditionalHashOptions = {
   locale?: string;
 };
 
-export type EmbeddingHashOptions = EmbeddingDisplayOptions &
+export type EmbeddingHashOptions = {
+  downloads: string | boolean | null;
+} & Omit<EmbeddingDisplayOptions, "downloads"> &
   EmbeddingAdditionalHashOptions;
 
 export type CodeSampleParameters = {
