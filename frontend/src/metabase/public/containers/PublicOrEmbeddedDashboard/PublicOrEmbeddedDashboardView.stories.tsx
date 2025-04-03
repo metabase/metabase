@@ -159,7 +159,7 @@ const defaultArgs: Partial<
   ComponentProps<typeof PublicOrEmbeddedDashboardView>
 > = {
   dashboard: createDashboard(),
-  downloadsEnabled: { pdf: false, dashcard: false },
+  downloadsEnabled: { pdf: true, dashcard: true },
   titled: true,
   bordered: true,
   background: true,
