@@ -1,4 +1,4 @@
-const ERROR_PATTERNS = [
+const RESTRICTED_CONSOLE_PATTERNS = [
   /UNSAFE_component.*Visualization/,
   /UNSAFE_component.*DashboardGrid/,
   /Warning: React does not recognize the `.*?` prop on a DOM element/,
@@ -14,7 +14,7 @@ console.error = (...args) => {
 
   const errorMsg = args.join(" ");
 
-  const matchedPattern = ERROR_PATTERNS.find((pattern) =>
+  const matchedPattern = RESTRICTED_CONSOLE_PATTERNS.find((pattern) =>
     pattern.test(errorMsg),
   );
 
