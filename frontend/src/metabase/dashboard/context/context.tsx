@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { usePrevious, useUnmount } from "react-use";
-import { isEqual, isObject } from "underscore";
+import { isEqual, isObject, noop } from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
 import type { DisplayTheme } from "metabase/public/lib/types";
@@ -88,23 +88,23 @@ const DashboardContextProviderInner = ({
 
   // url params
   isFullscreen = false,
-  onFullscreenChange = _.noop,
+  onFullscreenChange = noop,
   hasNightModeToggle = false,
-  onNightModeChange = _.noop,
+  onNightModeChange = noop,
   isNightMode = false,
   refreshPeriod = null,
-  setRefreshElapsedHook = _.noop,
-  onRefreshPeriodChange = _.noop,
+  setRefreshElapsedHook = noop,
+  onRefreshPeriodChange = noop,
   background = true,
   bordered = true,
   titled = true,
   font = null,
   theme = "light",
-  setTheme = _.noop,
+  setTheme = noop,
   hideParameters = null,
   downloadsEnabled = true,
   autoScrollToDashcardId = undefined,
-  reportAutoScrolledToDashcard = _.noop,
+  reportAutoScrolledToDashcard = noop,
 
   // redux selectors
   dashboard,
