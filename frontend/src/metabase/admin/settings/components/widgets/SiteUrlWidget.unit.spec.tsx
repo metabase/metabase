@@ -6,12 +6,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import {
-  fireEvent,
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/containers/UndoListing";
 import {
   createMockSettingDefinition,
@@ -43,10 +38,6 @@ const setup = () => {
 };
 
 describe("siteUrlWidget", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   it("should render a SiteUrlWidget", async () => {
     setup();
     expect(await screen.findByText("Site Url")).toBeInTheDocument();

@@ -62,6 +62,7 @@ const setup = (
   setupSettingsEndpoints([
     createMockSettingDefinition({
       key: "custom-homepage",
+      description: "Pick one of your dashboards",
       value: false,
     }),
     createMockSettingDefinition({
