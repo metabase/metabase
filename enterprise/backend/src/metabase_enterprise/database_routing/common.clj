@@ -1,10 +1,34 @@
 (ns metabase-enterprise.database-routing.common
   (:require
+   [clojure.tools.logging :as log]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.feature-flags.unleash :as feature-flags]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+;; Helper function to check if the feature is enabled via Unleash
+(defn- db-routing-feature-enabled?
+  "Check if the database routing feature is enabled via Unleash."
+  []
+  (feature-flags/db-routing-enabled?))
+
+;; Track the feature flag state for logging changes
+(def ^:private -db-routing-flag-state (atom nil))
+
+(defn- check-and-log-feature-flag-change
+  "Check if the db-routing feature flag has changed and log if it has"
+  []
+  (let [current-state (db-routing-feature-enabled?)
+        previous-state @-db-routing-flag-state]
+    (when (and (some? previous-state) (not= previous-state current-state))
+      (log/info "Enterprise DB Routing feature flag changed from" previous-state "to" current-state
+                (if current-state
+                  "- Database routing is now ACTIVE"
+                  "- Database routing is now INACTIVE")))
+    (reset! -db-routing-flag-state current-state)
+    current-state))
 
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
@@ -18,31 +42,33 @@
   ([db-or-id]
    (router-db-or-id->mirror-db-id @api/*current-user* db-or-id))
   ([user db-or-id]
-   (when-let [attr-name (user-attribute db-or-id)]
-     (let [database-name (get (:login_attributes user) attr-name)]
-       (cond
-         (nil? user)
-         (throw (ex-info "Anonymous access to a Router Database is prohibited." {}))
+   ;; Skip if the feature flag is disabled
+   (when (check-and-log-feature-flag-change)
+     (when-let [attr-name (user-attribute db-or-id)]
+       (let [database-name (get (:login_attributes user) attr-name)]
+         (cond
+           (nil? user)
+           (throw (ex-info "Anonymous access to a Router Database is prohibited." {}))
 
-         (= database-name "__METABASE_ROUTER__")
-         (u/the-id db-or-id)
+           (= database-name "__METABASE_ROUTER__")
+           (u/the-id db-or-id)
 
-         ;; superusers default to the Router Database
-         (and (nil? database-name)
-              api/*is-superuser?*)
-         (u/the-id db-or-id)
+           ;; superusers default to the Router Database
+           (and (nil? database-name)
+                api/*is-superuser?*)
+           (u/the-id db-or-id)
 
-         ;; non-superusers get an error
-         (nil? database-name)
-         (throw (ex-info "User attribute missing, cannot lookup Mirror Database" {:database-name database-name
-                                                                                  :router-database-id (u/the-id db-or-id)}))
+           ;; non-superusers get an error
+           (nil? database-name)
+           (throw (ex-info "User attribute missing, cannot lookup Mirror Database" {:database-name database-name
+                                                                                    :router-database-id (u/the-id db-or-id)}))
 
-         :else
-         (or (t2/select-one-pk :model/Database
-                               :router_database_id (u/the-id db-or-id)
-                               :name database-name)
-             (throw (ex-info "No Mirror Database found for user attribute" {:database-name database-name
-                                                                            :router-database-id (u/the-id db-or-id)}))))))))
+           :else
+           (or (t2/select-one-pk :model/Database
+                                 :router_database_id (u/the-id db-or-id)
+                                 :name database-name)
+               (throw (ex-info "No Mirror Database found for user attribute" {:database-name database-name
+                                                                              :router-database-id (u/the-id db-or-id)})))))))))
 
 ;; We want, at all times, a guarantee that we are not hitting a router *or* destination database without being
 ;; intentional about it. It would be bad to EITHER:
@@ -69,25 +95,33 @@
   "Enterprise version. Calls the function with Database Routing allowed."
   :feature :database-routing
   [f]
-  (binding [*database-routing-on?* true]
+  ;; Skip if the feature flag is disabled
+  (if (check-and-log-feature-flag-change)
+    (binding [*database-routing-on?* true]
+      (f))
     (f)))
 
 (defenterprise with-database-routing-off-fn
   "Enterprise version. Calls the function with Database Routing prohibited."
   :feature :database-routing
   [f]
-  (binding [*database-routing-on?* false]
+  ;; Skip if the feature flag is disabled
+  (if (check-and-log-feature-flag-change)
+    (binding [*database-routing-on?* false]
+      (f))
     (f)))
 
 (defn- is-disallowed-router-db-access?
   [db-or-id]
-  (and (some-> (router-db-or-id->mirror-db-id db-or-id)
+  (and (check-and-log-feature-flag-change)
+       (some-> (router-db-or-id->mirror-db-id db-or-id)
                (not= db-or-id))
        (not= *database-routing-on?* false)))
 
 (defn- is-disallowed-mirror-db-access?
   [db-or-id]
-  (and (t2/exists? :model/Database :id db-or-id :router_database_id [:not= nil])
+  (and (check-and-log-feature-flag-change)
+       (t2/exists? :model/Database :id db-or-id :router_database_id [:not= nil])
        (not= *database-routing-on?* true)))
 
 (defenterprise check-allowed-access!
@@ -104,9 +138,11 @@
   database (unless that was the user's intent, i.e. the user's attribute was `__METABASE_ROUTER__`) "
   :feature :database-routing
   [db-or-id-or-spec]
-  (when-let [db-id (and (not config/is-prod?)
-                        (u/id db-or-id-or-spec))]
-    (when (is-disallowed-router-db-access? db-id)
-      (throw (ex-info "Forbidden access to Router Database without `with-database-routing-off`" {})))
-    (when (is-disallowed-mirror-db-access? db-id)
-      (throw (ex-info "Forbidden access to Mirror Database without `with-database-routing-on`" {})))))
+  ;; Skip if the feature flag is disabled
+  (when (check-and-log-feature-flag-change)
+    (when-let [db-id (and (not config/is-prod?)
+                          (u/id db-or-id-or-spec))]
+      (when (is-disallowed-router-db-access? db-id)
+        (throw (ex-info "Forbidden access to Router Database without `with-database-routing-off`" {})))
+      (when (is-disallowed-mirror-db-access? db-id)
+        (throw (ex-info "Forbidden access to Mirror Database without `with-database-routing-on`" {}))))))
