@@ -285,6 +285,8 @@ export type ExpressionOperator =
   | "relative-datetime"
   | "datetime-add"
   | "inside"
+  | "field"
+  | "metric"
   | "segment"
   | "offset"
   | "value";
