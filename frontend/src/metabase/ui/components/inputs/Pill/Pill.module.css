@@ -19,11 +19,3 @@
     height: var(--remove-button-size) !important;
   }
 }
-
-.group {
-  gap: var(--mantine-spacing-xs);
-  align-items: center;
-  box-sizing: "border-box";
-  margin-left: 0;
-  padding-right: var(--mantine-spacing-lg);
-}
