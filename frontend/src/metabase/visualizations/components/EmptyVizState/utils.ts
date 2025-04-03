@@ -114,6 +114,12 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
   },
 };
 
+/**
+ * Returns the data for the empty state for supported card charts.
+ * Excludes the "table" and the "object" (detail) charts because
+ * they can always display the data using the raw table alone, so
+ * they don't need an empty state.
+ */
 export const getEmptyVizConfig = (
   chartType: CardDisplayType,
 ): EmptyVizConfig | Record<string, never> => {
