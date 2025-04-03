@@ -155,7 +155,7 @@ export function useMultiAutocomplete({
 
   return {
     combobox,
-    pillValues: getPillValues(values, fieldSelection),
+    pillValues: getPillValues(values, options, fieldSelection),
     filteredOptions: getFilteredOptions(options, values),
     fieldValue,
     handleFieldChange,
@@ -169,8 +169,22 @@ export function useMultiAutocomplete({
   };
 }
 
-function getPillValues(values: string[], fieldSelection: FieldSelection) {
-  return getValuesAfterChange(values, [FIELD_PLACEHOLDER], fieldSelection);
+function getPillValues(
+  values: string[],
+  options: ComboboxItem[],
+  fieldSelection: FieldSelection,
+) {
+  const optionByValue = Object.fromEntries(
+    options.map((option) => [option.value, option]),
+  );
+  const mappedValues = values.map(
+    (value) => optionByValue[value]?.label ?? value,
+  );
+  return getValuesAfterChange(
+    mappedValues,
+    [FIELD_PLACEHOLDER],
+    fieldSelection,
+  );
 }
 
 function normalizeValue(value: string) {
