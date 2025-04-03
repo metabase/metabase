@@ -84,7 +84,7 @@ export const GRAPH_DATA_SETTINGS = {
     widget: "fields",
     getMarginBottom: (series, vizSettings) =>
       vizSettings["graph.dimensions"]?.length === 2 &&
-      series.length <= MAX_SERIES
+        series.length <= MAX_SERIES
         ? "0.5rem"
         : "1rem",
     isValid: (series, vizSettings) => {
@@ -96,8 +96,9 @@ export const GRAPH_DATA_SETTINGS = {
         return getAreDimensionsAndMetricsValid(series, vizSettings);
       }
     },
-    getDefault: (series, vizSettings) =>
-      getDefaultDimensions(series, vizSettings),
+    getDefault: (series, vizSettings) => {
+      return getDefaultDimensions(series, vizSettings);
+    },
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
       const addedDimensions = vizSettings["graph.dimensions"];
@@ -109,11 +110,11 @@ export const GRAPH_DATA_SETTINGS = {
         options,
         addAnother:
           options.length > addedDimensions.length &&
-          addedDimensions.length < maxDimensionsSupported &&
-          addedDimensions.every(
-            (dimension) => dimension !== undefined && dimension !== null,
-          ) &&
-          vizSettings["graph.metrics"].length < 2
+            addedDimensions.length < maxDimensionsSupported &&
+            addedDimensions.every(
+              (dimension) => dimension !== undefined && dimension !== null,
+            ) &&
+            vizSettings["graph.metrics"].length < 2
             ? t`Add series breakout`
             : null,
         columns: data.cols,
@@ -149,7 +150,7 @@ export const GRAPH_DATA_SETTINGS = {
     getProps: (rawSeries, settings, _onChange, _extra, onChangeSettings) => {
       const groupedAfterIndex =
         settings["graph.max_categories_enabled"] &&
-        settings["graph.max_categories"] !== 0
+          settings["graph.max_categories"] !== 0
           ? settings["graph.max_categories"]
           : Infinity;
       const onOtherColorChange = (color) =>

@@ -88,6 +88,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     },
     ref,
   ) {
+    console.log({ settings });
     const [viewPortWidth, setViewPortWidth] = useState(width);
     const [shouldOverflow, setShouldOverflow] = useState(false);
     const columnWidthSettings = settings["pivot_table.column_widths"];
@@ -134,7 +135,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     const topHeaderRef = useRef<Collection>(null);
 
     const getColumnTitle = useCallback(
-      function (columnIndex: number) {
+      function(columnIndex: number) {
         const column = data.cols.filter((col) => !isPivotGroupColumn(col))[
           columnIndex
         ];
