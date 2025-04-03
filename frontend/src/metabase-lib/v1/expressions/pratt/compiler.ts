@@ -117,21 +117,19 @@ function compileLogicalNot(
 ): Lib.ExpressionParts | Lib.ExpressionArg {
   assert(node.type === LOGICAL_NOT, t`Invalid node type`);
 
-  // TODO: remove this cast
-  return compileUnaryOp("not" as Lib.ExpressionOperator, node, opts);
+  return compileUnaryOp("not", node, opts);
 }
 
 function compileLogicalAnd(node: Node, opts: Options): Lib.ExpressionParts {
   assert(node.type === LOGICAL_AND, t`Invalid node type`);
 
-  return compileInfixOp("and" as Lib.ExpressionOperator, node, opts);
+  return compileInfixOp("and", node, opts);
 }
 
 function compileLogicalOr(node: Node, opts: Options): Lib.ExpressionParts {
   assert(node.type === LOGICAL_OR, t`Invalid node type`);
 
-  // TODO: remove this cast
-  return compileInfixOp("or" as Lib.ExpressionOperator, node, opts);
+  return compileInfixOp("or", node, opts);
 }
 
 function compileComparisonOp(node: Node, opts: Options): Lib.ExpressionParts {
