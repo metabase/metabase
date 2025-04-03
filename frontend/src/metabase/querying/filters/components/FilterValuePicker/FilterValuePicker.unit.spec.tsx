@@ -26,7 +26,6 @@ import {
 import {
   ORDERS,
   PEOPLE,
-  PEOPLE_STATE_VALUES,
   PRODUCTS,
   PRODUCT_CATEGORY_VALUES,
   createOrdersProductIdField,
@@ -44,7 +43,6 @@ interface SetupOpts<T> {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: T[];
-  compact?: boolean;
   fieldId?: FieldId;
   searchFieldId?: FieldId;
   fieldValues?: GetFieldValuesResponse;
@@ -56,7 +54,6 @@ async function setupStringPicker({
   stageIndex,
   column,
   values,
-  compact,
   fieldId,
   searchFieldId = fieldId,
   fieldValues,
@@ -84,7 +81,6 @@ async function setupStringPicker({
       stageIndex={stageIndex}
       column={column}
       values={values}
-      compact={compact}
       onChange={onChange}
     />,
   );
@@ -99,7 +95,6 @@ async function setupNumberPicker({
   stageIndex,
   column,
   values,
-  compact,
   fieldValues,
 }: SetupOpts<number>) {
   const onChange = jest.fn();
@@ -114,7 +109,6 @@ async function setupNumberPicker({
       stageIndex={stageIndex}
       column={column}
       values={values}
-      compact={compact}
       onChange={onChange}
     />,
   );
@@ -162,28 +156,6 @@ describe("StringFilterValuePicker", () => {
 
       await userEvent.click(screen.getByText("Gadget"));
       expect(onChange).toHaveBeenCalledWith(["Gadget"]);
-    });
-
-    it("should allow to search the list of values in compact mode", async () => {
-      const { onChange } = await setupStringPicker({
-        query,
-        stageIndex,
-        column: findColumn("PEOPLE", "STATE"),
-        values: [],
-        compact: true,
-        fieldId: PEOPLE.STATE,
-        fieldValues: PEOPLE_STATE_VALUES,
-      });
-
-      await userEvent.type(
-        screen.getByPlaceholderText("Search the list"),
-        "CA",
-      );
-      expect(screen.getByText("CA")).toBeInTheDocument();
-      expect(screen.queryByText("GA")).not.toBeInTheDocument();
-
-      await userEvent.click(screen.getByText("CA"));
-      expect(onChange).toHaveBeenCalledWith(["CA"]);
     });
 
     it("should allow to update selected values", async () => {

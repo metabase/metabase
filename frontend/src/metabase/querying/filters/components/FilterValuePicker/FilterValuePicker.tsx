@@ -24,7 +24,6 @@ interface FilterValuePickerProps<T> {
   column: Lib.ColumnMetadata;
   values: T[];
   autoFocus?: boolean;
-  compact?: boolean;
   onChange: (newValues: T[]) => void;
   shouldCreate?: (query: string) => boolean;
 }
@@ -40,7 +39,6 @@ function FilterValuePicker({
   values: selectedValues,
   placeholder,
   autoFocus = false,
-  compact = false,
   shouldCreate,
   onChange,
 }: FilterValuePickerOwnProps) {
@@ -68,9 +66,7 @@ function FilterValuePicker({
         fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
-        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
-        compact={compact}
         onChange={onChange}
       />
     );
