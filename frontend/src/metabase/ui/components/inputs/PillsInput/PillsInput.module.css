@@ -1,5 +1,5 @@
 .input {
-  --input-fz: 0.875rem;
+  --input-fz: var(--mantine-font-size-md);
 
   input::placeholder {
     color: var(--mb-color-text-tertiary);
