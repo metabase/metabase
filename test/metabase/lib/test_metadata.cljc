@@ -3026,6 +3026,7 @@
                                   :date-arithmetics
                                   :datetime-diff
                                   :expression-aggregations
+                                  :expression-literals
                                   :expressions
                                   :inner-join
                                   :left-join

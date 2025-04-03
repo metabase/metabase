@@ -394,7 +394,7 @@
     {:database 1
      :type     :query
      :query    {:source-table 224
-                :expressions {"a" [:value 1 nil]}
+                :expressions {"a" [:value 1 {:base_type :type/Integer}]}
                 :expression-idents {"a" (u/generate-nano-id)}}}
 
     ;; card__<id> source table syntax.
@@ -540,6 +540,10 @@
     {} [:value true nil]
 
     {} [:value false nil]
+
+    {} [:value true {:base_type :type/Boolean}]
+
+    {} [:value false {:base_type :type/Boolean}]
 
     {} [:field 1 {:base-type :type/Boolean}]
 

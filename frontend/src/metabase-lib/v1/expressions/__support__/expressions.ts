@@ -94,6 +94,7 @@ const database = createMockDatabase({
     "percentile-aggregations",
     "native-parameters",
     "expressions",
+    "expression-literals",
     "advanced-math-expressions",
     "right-join",
     "left-join",

@@ -518,7 +518,6 @@
 
 (deftest ^:parallel nested-literal-expression-test
   (testing "nested literal expression"
-    ;; TODO Fix this test for H2 (QUE-726)
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
       (is (= [(into [1] standard-literal-expression-values)]
              (mt/formatted-rows
@@ -540,14 +539,13 @@
               [8  1 "25°"]]
              (mt/rows
               (mt/run-mbql-query venues
-                {:expressions {"One" [:value 1 nil]}
+                {:expressions {"One" [:value 1 {:base_type :type/Integer}]}
                  :fields      [$id [:expression "One"] $name]
                  :order-by    [[:asc [:expression "One"]]
                                [:asc $name]]
                  :limit       2})))))))
 
 (deftest ^:parallel order-by-literal-expression-test
-  ;; TODO Fix this test for H2 (QUE-726)
   (testing "order-by all literal expression types"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
       (is (= [(into [1] standard-literal-expression-values)
@@ -562,7 +560,6 @@
                  :limit       2})))))))
 
 (deftest ^:parallel breakout-by-literal-expression-test
-  ;; TODO Fix this test for H2 (QUE-726)
   (testing "breakout by all literal expression types"
     (mt/test-drivers (mt/normal-drivers-with-feature :expression-literals :basic-aggregations)
       (let [orders-count 18760]
@@ -583,8 +580,8 @@
                (mt/formatted-rows
                 [mt/boolish->bool mt/boolish->bool]
                 (mt/run-mbql-query orders
-                  {:expressions {"true"  [:value true  nil]
-                                 "false" [:value false nil]}
+                  {:expressions {"true"  [:value true  {:base_type :type/Boolean}]
+                                 "false" [:value false {:base_type :type/Boolean}]}
                    :fields      [[:expression "true"]
                                  [:expression "false"]]
                    :filter      (into [op] [[:expression "true"]
@@ -609,7 +606,6 @@
 
 (deftest ^:parallel nested-and-filtered-literal-expression-test
   (testing "nested and filtered literal expression"
-    ;; TODO Fix this test for H2 (QUE-726)
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
       (is (= [[2 "Stout Burgers & Beers" true "Red Medicine" 1 2 "Bob's Burgers"]
               [3 "The Apple Pan" true "Red Medicine" 1 2 "Bob's Burgers"]
@@ -648,7 +644,6 @@
 
 (deftest ^:parallel joined-literal-expression-test
   (testing "joined literal expression"
-    ;; TODO Fix this test for H2 (QUE-726)
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :left-join :nested-queries)
       (is (= [[2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "25°"]
               [2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "In-N-Out Burger"]
@@ -670,8 +665,8 @@
                  :joins       [{:strategy     :left-join
                                 :condition    [:= $category_id &JoinedCategories.venues.category_id]
                                 :source-query {:source-table $$venues
-                                               :expressions  {"LiteralInt"    [:value 1 nil]
-                                                              "LiteralString" [:value "Stout Burgers & Beers" nil]}
+                                               :expressions  {"LiteralInt"    [:value 1 {:base_type :type/Integer}]
+                                                              "LiteralString" [:value "Stout Burgers & Beers" {:base_type :type/Text}]}
                                                :filters     [[:!= $name [:expression "LiteralString"]]]
                                                :fields       [$category_id
                                                               $name

@@ -380,7 +380,6 @@
 
 (deftest ^:parallel literal-expressions-inside-nested-and-filtered-aggregations-test
   (testing "nested aggregated and filtered literal expression"
-    ;; TODO Fix this test for H2 (QUE-726)
     (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations :expression-literals :nested-queries)
       (is (= [[2 true "Red Medicine" 1 8 16]
               [3 true "Red Medicine" 1 2 4]
@@ -437,7 +436,7 @@
                  :joins       [{:strategy     :left-join
                                 :condition    [:= $category_id &JoinedCategories.venues.category_id]
                                 :source-query {:source-table $$venues
-                                               :expressions  {"One" [:value 1 nil]}
+                                               :expressions  {"One" [:value 1 {:base_type :type/Integer}]}
                                                :aggregation  [[:aggregation-options [:max [:expression "One"]] {:name "MaxOne"}]]
                                                :breakout     [$category_id]}
                                 :alias        "JoinedCategories"}]
