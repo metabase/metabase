@@ -192,9 +192,7 @@
 
 (defmethod hash-required-fields :default
   [entity]
-  (throw (ex-info "Called hash-required-fields on an unsupported model"
-                  {:entity entity
-                   :model (t2/model entity)})))
+  nil)
 
 (defn- increment-hash-values
   "Potenially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
@@ -260,7 +258,10 @@
     nil
     (let [id (:id entity)
           {:keys [model required-fields]} (hash-required-fields entity)]
-      (if (and model id)
+      (cond
+        (nil? model) (calculate-entity-id entity 0)
+
+        (some? id)
         (let [cached (swap! entity-id-cache
                             (fn [cache]
                               (cond-> cache
@@ -275,7 +276,9 @@
                                                     (binding [*skip-entity-id-calc* true]
                                                       (t2/select-one model :id id)))))))))]
           (-> cached model (get id) deref))
-        (throw (ex-info "Entity is missing either an id or a model, so we cannot calculate an entity-id"
+
+        :else
+        (throw (ex-info "Entity is missing an id, so we cannot calculate an entity-id"
                         {:entity entity
                          :id id
                          :model model}))))))
