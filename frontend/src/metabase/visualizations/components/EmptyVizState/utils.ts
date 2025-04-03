@@ -21,14 +21,14 @@ import type { CardDisplayType } from "metabase-types/api";
 type ExcludedDisplayTypes = "table" | "object";
 type SupportedDisplayType = Exclude<CardDisplayType, ExcludedDisplayTypes>;
 
-type EmptyVizContext = {
+type EmptyVizConfig = {
   imgSrc: string;
   primaryText: string;
   secondaryText: string;
   docsLink?: string;
 };
 
-const emptyVizContexts: Record<SupportedDisplayType, EmptyVizContext> = {
+const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
   area: {
     imgSrc: areaEmptyState,
     primaryText: t`Then pick a metric and multiple columns to group by.`,
@@ -88,7 +88,7 @@ const emptyVizContexts: Record<SupportedDisplayType, EmptyVizContext> = {
   },
   sankey: {
     imgSrc: sankeyEmptyState,
-    primaryText: t`Sankey charts show how data flows through multi-dimensional steps. They’re useful for showing which elements, called nodes, contribute to the overall flow.`,
+    primaryText: t`Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow.`,
     secondaryText: t`Read the docs`,
     docsLink: "questions/visualizations/sankey",
   },
@@ -114,15 +114,12 @@ const emptyVizContexts: Record<SupportedDisplayType, EmptyVizContext> = {
   },
 };
 
-export const getEmptyVizContext = (
-  chartType: SupportedDisplayType,
-): EmptyVizContext => {
-  return (
-    emptyVizContexts[chartType] ?? {
-      imgSrc: barEmptyState,
-      primaryText: "Chart",
-      secondaryText: "Visualize your data",
-      cta: "summarize",
-    }
-  );
+export const getEmptyVizConfig = (
+  chartType: CardDisplayType,
+): EmptyVizConfig | Record<string, never> => {
+  if (chartType === "table" || chartType === "object") {
+    return {};
+  }
+
+  return emptyVizConfig[chartType];
 };

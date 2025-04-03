@@ -5,11 +5,9 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 import type { VisualizationDefinition } from "metabase/visualizations/types";
-import type { CardDisplayType } from "metabase-types/api";
-type ExcludedDisplayTypes = "table" | "map" | "object";
-type SupportedDisplayType = Exclude<CardDisplayType, ExcludedDisplayTypes>;
+import { isCardDisplayType } from "metabase-types/api/visualization";
 
-import { getEmptyVizContext } from "./utils";
+import { getEmptyVizConfig } from "./utils";
 
 interface EmptyVizStateProps {
   visualization: VisualizationDefinition;
@@ -41,9 +39,11 @@ export const EmptyVizState = ({
   isSummarizeSidebarOpen,
   onEditSummary,
 }: EmptyVizStateProps) => {
-  const { imgSrc, primaryText, secondaryText, docsLink } = getEmptyVizContext(
-    visualization.identifier as SupportedDisplayType,
-  );
+  const chartType = visualization.identifier;
+  const validChartType = isCardDisplayType(chartType) ? chartType : "bar";
+
+  const { imgSrc, primaryText, secondaryText, docsLink } =
+    getEmptyVizConfig(validChartType);
 
   const { url, showMetabaseLinks } = useDocsUrl(docsLink ?? "", {
     utm: utmTags,
