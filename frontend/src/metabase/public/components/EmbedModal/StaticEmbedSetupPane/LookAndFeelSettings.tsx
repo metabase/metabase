@@ -179,45 +179,51 @@ export const LookAndFeelSettings = ({
             <DisplayOptionSection
               title={resourceType === "dashboard" ? t`Downloads` : null}
             >
-              {resourceType === "dashboard" && (
+              <Stack gap="md" mt={resourceType === "dashboard" ? "md" : 0}>
+                {resourceType === "dashboard" && (
+                  <Switch
+                    label={t`Export to PDF`}
+                    labelPosition="left"
+                    size="sm"
+                    variant="stretch"
+                    checked={displayOptions.downloads?.pdf ?? true}
+                    onChange={(e) =>
+                      onChangeDisplayOptions({
+                        ...displayOptions,
+                        downloads: {
+                          pdf: e.target.checked,
+                          dashcard: displayOptions.downloads?.dashcard ?? true,
+                        },
+                      })
+                    }
+                  />
+                )}
+
                 <Switch
-                  label={t`Export to PDF`}
+                  label={
+                    resourceType === "dashboard"
+                      ? t`Results (csv, xlsx, json, png)`
+                      : t`Download (csv, xlsx, json, png)`
+                  }
                   labelPosition="left"
                   size="sm"
                   variant="stretch"
-                  checked={displayOptions.downloads?.pdf ?? true}
+                  checked={displayOptions.downloads?.dashcard ?? true}
                   onChange={(e) =>
                     onChangeDisplayOptions({
                       ...displayOptions,
                       downloads: {
-                        pdf: e.target.checked,
-                        dashcard: displayOptions.downloads?.dashcard ?? true,
+                        ...displayOptions.downloads,
+                        dashcard: e.target.checked,
+                        pdf:
+                          resourceType === "dashboard"
+                            ? (displayOptions.downloads?.pdf ?? true)
+                            : false,
                       },
                     })
                   }
                 />
-              )}
-
-              <Switch
-                label={
-                  resourceType === "dashboard"
-                    ? t`Results (csv, xlsx, json, png)`
-                    : t`Download (csv, xlsx, json, png)`
-                }
-                labelPosition="left"
-                size="sm"
-                variant="stretch"
-                checked={displayOptions.downloads?.dashcard ?? true}
-                onChange={(e) =>
-                  onChangeDisplayOptions({
-                    ...displayOptions,
-                    downloads: {
-                      dashcard: e.target.checked,
-                      pdf: displayOptions.downloads?.pdf ?? true,
-                    },
-                  })
-                }
-              />
+              </Stack>
             </DisplayOptionSection>
           )}
         </Stack>

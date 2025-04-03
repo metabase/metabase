@@ -57,13 +57,14 @@ export const DisplayOptionSection = ({
   title: string | null;
   titleId?: string;
   children: ReactNode;
-}) => (
-  <div>
-    {title && (
+}) =>
+  title ? (
+    <div>
       <Text fw="bold" mb="0.25rem" lh="1rem" id={titleId}>
         {title}
       </Text>
-    )}
-    {children}
-  </div>
-);
+      {children}
+    </div>
+  ) : (
+    children
+  );
