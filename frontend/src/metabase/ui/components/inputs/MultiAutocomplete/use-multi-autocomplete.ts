@@ -48,18 +48,22 @@ export function useMultiAutocomplete({
   };
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const rawValue = event.target.value;
-    const parsedValues = parseCsv(rawValue).filter(shouldCreate);
+    const newFieldValue = event.target.value;
+    const newFieldValues = getUniqueFieldValues(
+      values,
+      parseCsv(newFieldValue).filter(shouldCreate),
+      fieldSelection,
+    );
     const newValues = getValuesAfterChange(
       values,
-      parsedValues,
+      newFieldValues,
       fieldSelection,
     );
     onChange(newValues);
     const newFieldState = getFieldStateAfterChange(
+      newFieldValue,
+      newFieldValues,
       fieldSelection,
-      rawValue,
-      parsedValues,
     );
     setFieldState(newFieldState);
   };
@@ -120,7 +124,11 @@ export function useMultiAutocomplete({
   };
 
   const handleOptionSubmit = (value: string) => {
-    const newValues = getValuesAfterChange(values, [value], fieldSelection);
+    const newValues = getValuesAfterChange(
+      values,
+      getUniqueFieldValues(values, [value], fieldSelection),
+      fieldSelection,
+    );
     onChange(newValues);
     setFieldState({
       fieldValue: "",
@@ -150,32 +158,41 @@ export function useMultiAutocomplete({
   };
 }
 
-function getValuesAfterChange<T>(
-  values: T[],
-  parsedValues: T[],
+function getUniqueFieldValues(
+  values: string[],
+  fieldValues: string[],
   fieldSelection: FieldSelection,
 ) {
-  return [
-    ...values.slice(0, fieldSelection.index),
-    ...parsedValues,
-    ...values.slice(fieldSelection.index + fieldSelection.length),
-  ];
+  const startValues = values.slice(0, fieldSelection.index);
+  const endValues = values.slice(fieldSelection.index + fieldSelection.length);
+  const unchangedValues = new Set([...startValues, ...endValues]);
+  return fieldValues.filter((value) => !unchangedValues.has(value));
+}
+
+function getValuesAfterChange<T>(
+  values: T[],
+  fieldValues: T[],
+  fieldSelection: FieldSelection,
+) {
+  const startValues = values.slice(0, fieldSelection.index);
+  const endValues = values.slice(fieldSelection.index + fieldSelection.length);
+  return [...startValues, ...fieldValues, ...endValues];
 }
 
 function getFieldStateAfterChange(
-  fieldSelection: FieldSelection,
   fieldValue: string,
-  parsedValues: string[],
+  fieldValues: string[],
+  fieldSelection: FieldSelection,
 ) {
   const isDelimiter = DELIMITERS.some((delimiter) =>
     fieldValue.endsWith(delimiter),
   );
 
-  if (parsedValues.length > 1 || (isDelimiter && parsedValues.length > 0)) {
+  if (fieldValues.length > 1 || (isDelimiter && fieldValues.length > 0)) {
     return {
       fieldValue: "",
       fieldSelection: {
-        index: fieldSelection.index + parsedValues.length,
+        index: fieldSelection.index + fieldValues.length,
         length: 0,
       },
     };
@@ -184,7 +201,7 @@ function getFieldStateAfterChange(
       fieldValue,
       fieldSelection: {
         index: fieldSelection.index,
-        length: parsedValues.length > 0 ? 1 : 0,
+        length: fieldValues.length > 0 ? 1 : 0,
       },
     };
   }

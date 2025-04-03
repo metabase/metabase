@@ -36,8 +36,6 @@ function setup({
       autoFocus={autoFocus}
       compact={compact}
       onChange={onChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
     />,
   );
 

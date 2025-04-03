@@ -109,17 +109,12 @@ export function StringFilterValuePicker({
   values,
   ...props
 }: FilterValuePickerProps<string>) {
-  const shouldCreate = (query: string) => {
-    return query.trim().length > 0 && !values.includes(query);
-  };
-
   return (
     <FilterValuePicker
       {...props}
       column={column}
       values={values}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
-      shouldCreate={shouldCreate}
     />
   );
 }
@@ -131,8 +126,7 @@ export function NumberFilterValuePicker({
   ...props
 }: FilterValuePickerProps<Lib.NumberFilterValue>) {
   const shouldCreate = (value: string) => {
-    const number = parseNumber(value);
-    return number != null && !values.includes(number);
+    return parseNumber(value) != null;
   };
 
   return (
