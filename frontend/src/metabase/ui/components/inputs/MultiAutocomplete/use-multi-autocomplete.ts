@@ -22,7 +22,7 @@ type UseMultiAutocompleteProps = {
 
 type FieldState = {
   fieldValue: string;
-  fieldSelection: FieldSelection;
+  fieldSelection: FieldSelection | undefined;
 };
 
 type FieldSelection = {
@@ -40,10 +40,8 @@ export function useMultiAutocomplete({
     onDropdownClose: () => combobox.resetSelectedOption(),
   });
   const [fieldValue, setFieldValue] = useState("");
-  const [fieldSelection, setFieldSelection] = useState<FieldSelection>({
-    index: values.length,
-    length: 0,
-  });
+  const [_fieldSelection, setFieldSelection] = useState<FieldSelection>();
+  const fieldSelection = _fieldSelection ?? { index: values.length, length: 0 };
 
   const setFieldState = ({ fieldValue, fieldSelection }: FieldState) => {
     setFieldValue(fieldValue);
@@ -105,14 +103,13 @@ export function useMultiAutocomplete({
 
   const handleFieldFocus = () => {
     combobox.openDropdown();
-    setFieldSelection({ index: values.length, length: 0 });
   };
 
   const handleFieldBlur = () => {
     combobox.closeDropdown();
     setFieldState({
       fieldValue: "",
-      fieldSelection: { index: values.length, length: 0 },
+      fieldSelection: undefined,
     });
   };
 
@@ -129,10 +126,7 @@ export function useMultiAutocomplete({
     onChange(newValues);
     setFieldState({
       fieldValue: "",
-      fieldSelection: {
-        index: newValues.length,
-        length: 0,
-      },
+      fieldSelection: undefined,
     });
   };
 
