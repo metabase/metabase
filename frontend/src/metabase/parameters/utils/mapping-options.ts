@@ -35,6 +35,7 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 import { isStructuredDimensionTarget } from "metabase-types/guards";
+import { TCFunc } from "metabase/i18n/components/ContentTranslationContext";
 
 export type StructuredQuerySectionOption = {
   sectionName: string;
@@ -49,11 +50,12 @@ function buildStructuredQuerySectionOptions(
   stageIndex: number,
   group: Lib.ColumnGroup,
   columns: Lib.ColumnMetadata[],
+  tc?: TCFunc,
 ): StructuredQuerySectionOption[] {
   const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
   return columns.map((column) => {
-    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    const columnInfo = Lib.displayInfo(query, stageIndex, column, tc);
 
     return {
       sectionName: getGroupName(groupInfo, stageIndex) ?? t`Summaries`,
@@ -131,6 +133,7 @@ export function getParameterMappingOptions(
   parameter: Parameter | null | undefined = null,
   card: Card,
   dashcard: BaseDashboardCard | null | undefined = null,
+  tc?: TCFunc,
 ): ParameterMappingOption[] {
   if (dashcard && isVirtualDashCard(dashcard)) {
     if (["heading", "text"].includes(card.display)) {
@@ -184,7 +187,8 @@ export function getParameterMappingOptions(
             query,
             stageIndex,
             group,
-            Lib.getColumnsFromColumnGroup(group),
+            Lib.getColumnsFromColumnGroup(group, tc),
+            tc,
           ),
         );
       },

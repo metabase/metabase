@@ -16,7 +16,6 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.models.content-translation :as ct]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -55,7 +54,6 @@
   "Calculate a nice human-friendly display name for something. See [[DisplayNameStyle]] for a the difference between
   different `style`s."
   ([query]
-   (log/info "hi from display-name")
    (display-name query query))
 
   ([query x]
@@ -357,48 +355,43 @@
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
   implementation and add additional information to it."
   [query stage-number x]
-  (let [x-metadata (metadata query stage-number x)
-        constructed-map (merge
+  (let [x-metadata (metadata query stage-number x)]
+    (merge
      ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display-name`
      ;; everywhere? Determine whether or not this is the case.
-                         (select-keys x-metadata [:name :display-name :semantic-type])
-                         (when-let [custom (lib.util/custom-name x)]
-                           {:display-name custom
-                            :named? true})
-                         (when-let [long-display-name (display-name query stage-number x :long)]
-                           {:long-display-name long-display-name})
+     (select-keys x-metadata [:name :display-name :semantic-type])
+     (when-let [custom (lib.util/custom-name x)]
+       {:display-name custom
+        :named? true})
+     (when-let [long-display-name (display-name query stage-number x :long)]
+       {:long-display-name long-display-name})
      ;; don't return `:base-type`, FE should just use `:effective-type` everywhere and not even need to know
      ;; `:base-type` exists.
-                         (when-let [effective-type ((some-fn :effective-type :base-type) x-metadata)]
-                           {:effective-type effective-type})
-                         (when-let [table-id (:table-id x-metadata)]
+     (when-let [effective-type ((some-fn :effective-type :base-type) x-metadata)]
+       {:effective-type effective-type})
+     (when-let [table-id (:table-id x-metadata)]
        ;; TODO: only ColumnMetadatas should possibly have legacy `card__<id>` `:table-id`s... we should
        ;; probably move this special casing into [[metabase.lib.field]] instead of having it be part of the
        ;; `:default` method.
-                           (when-let [inner-metadata (cond
-                                                       (integer? table-id) (lib.metadata/table query table-id)
-                                                       (string? table-id)  (lib.metadata/card
-                                                                            query (lib.util/legacy-string-table-id->card-id table-id)))]
-                             {:table (display-info query stage-number inner-metadata)}))
-                         (when-let [source (:lib/source x-metadata)]
-                           {:is-from-previous-stage (= source :source/previous-stage)
-                            :is-from-join           (= source :source/joins)
-                            :is-calculated          (= source :source/expressions)
-                            :is-implicitly-joinable (= source :source/implicitly-joinable)
-                            :is-aggregation         (= source :source/aggregations)
-                            :is-breakout            (= source :source/breakouts)})
-                         (when-some [selected (:selected? x-metadata)]
-                           {:selected selected})
-                         (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) x-metadata)]
-                           {:is-temporal-extraction
-                            (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
-                                 (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
-                         (select-keys x-metadata [:breakout-positions :order-by-position :filter-positions]))]
-   ;; Translate the display name
-    (log/info "hiiii")
-    (if-let [display-name (:display-name constructed-map)]
-      (assoc constructed-map :display-name (ct/translate-string display-name))
-      constructed-map)))
+       (when-let [inner-metadata (cond
+                                   (integer? table-id) (lib.metadata/table query table-id)
+                                   (string? table-id)  (lib.metadata/card
+                                                        query (lib.util/legacy-string-table-id->card-id table-id)))]
+         {:table (display-info query stage-number inner-metadata)}))
+     (when-let [source (:lib/source x-metadata)]
+       {:is-from-previous-stage (= source :source/previous-stage)
+        :is-from-join           (= source :source/joins)
+        :is-calculated          (= source :source/expressions)
+        :is-implicitly-joinable (= source :source/implicitly-joinable)
+        :is-aggregation         (= source :source/aggregations)
+        :is-breakout            (= source :source/breakouts)})
+     (when-some [selected (:selected? x-metadata)]
+       {:selected selected})
+     (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) x-metadata)]
+       {:is-temporal-extraction
+        (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
+             (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
+     (select-keys x-metadata [:breakout-positions :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
   [query stage-number x]
