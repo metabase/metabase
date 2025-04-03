@@ -898,7 +898,6 @@
    [:max       (aggregate-col-1st-arg-fn lib/max)]
    [:min       (aggregate-col-1st-arg-fn lib/min)]
    [:sum       (aggregate-col-1st-arg-fn lib/sum)]
-   [:var       (aggregate-col-1st-arg-fn lib/var)]
    ;; special
    [:count-where
     (fn [query]
@@ -932,7 +931,10 @@
                                                      (lib/visible-columns query)))))]
    [:standard-deviation-aggregations
     :stddev
-    (aggregate-col-1st-arg-fn lib/stddev)]])
+    (aggregate-col-1st-arg-fn lib/stddev)]
+   [:standard-deviation-aggregations
+    :var
+    (aggregate-col-1st-arg-fn lib/var)]])
 
 (deftest filtered-metric-comparison-test
   (mt/test-drivers
