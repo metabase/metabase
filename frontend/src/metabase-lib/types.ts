@@ -288,6 +288,9 @@ export type ExpressionOperator =
   | "segment"
   | "offset"
   | "value";
+  | "and"
+  | "or"
+  | "not";
 
 export type ExpressionArg =
   | null
