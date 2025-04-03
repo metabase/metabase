@@ -398,9 +398,9 @@ describe("scenarios > dashboard > visualizer", () => {
         cy.button("Settings").click();
 
         H.goalLine().should("not.exist");
-        vizSettingControl("Goal line")
-          .findByRole("switch")
-          .click({ force: true });
+        cy.findByTestId("chartsettings-sidebar")
+          .findByText("Goal line")
+          .click();
         H.goalLine().should("exist");
 
         // TODO Fix multi-series chart settings and extend the test
@@ -428,9 +428,9 @@ describe("scenarios > dashboard > visualizer", () => {
           cy.findByText("200").should("exist");
           cy.findByText("TOTAL").should("exist");
         });
-        vizSettingControl("Show total")
-          .findByRole("switch")
-          .click({ force: true });
+        cy.findByTestId("chartsettings-sidebar")
+          .findByText("Show total")
+          .click();
         H.echartsContainer().within(() => {
           cy.findByText("200").should("not.exist");
           cy.findByText("TOTAL").should("not.exist");
@@ -1076,10 +1076,6 @@ function chartLegendItems() {
 
 function chartLegendItem(name) {
   return chartLegend().findByText(name);
-}
-
-function vizSettingControl(fieldTitle) {
-  return cy.get(`[data-field-title="${fieldTitle}"]`);
 }
 
 function createDatetimeColumn(opts) {
