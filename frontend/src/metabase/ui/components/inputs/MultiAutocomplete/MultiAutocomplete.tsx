@@ -7,7 +7,7 @@ import {
   useCombobox,
 } from "@mantine/core";
 import { parse } from "csv-parse/browser/esm/sync";
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, type KeyboardEvent, useState } from "react";
 
 export type MultiAutocompleteProps = {
   values: string[];
@@ -31,6 +31,7 @@ export function MultiAutocomplete({
     pillValues,
     fieldValue,
     handleFieldChange,
+    handleFieldKeyDown,
     handleFieldFocus,
     handleFieldBlur,
     handlePillDoubleClick,
@@ -59,6 +60,7 @@ export function MultiAutocomplete({
                     placeholder={placeholder}
                     autoFocus={autoFocus}
                     onChange={handleFieldChange}
+                    onKeyDown={handleFieldKeyDown}
                     onFocus={handleFieldFocus}
                     onBlur={handleFieldBlur}
                   />
@@ -127,6 +129,33 @@ function useMultiAutocomplete({
     setFieldSelection(newFieldSelection);
   };
 
+  const handleValueRemove = (
+    valueIndex: number,
+    { preserveSelection }: { preserveSelection: boolean },
+  ) => {
+    const newValues = [...values];
+    newValues.splice(valueIndex, 1);
+    onChange(newValues);
+    setFieldValue("");
+    setFieldSelection({
+      index: preserveSelection
+        ? fieldSelection.index + fieldSelection.length - 1
+        : newValues.length,
+      length: 0,
+    });
+  };
+
+  const handleFieldKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (
+      event.key === "Backspace" &&
+      fieldValue.length === 0 &&
+      fieldSelection.index > 0 &&
+      fieldSelection.length === 0
+    ) {
+      handleValueRemove(fieldSelection.index - 1, { preserveSelection: true });
+    }
+  };
+
   const handleFieldFocus = () => {
     setFieldSelection({ index: values.length, length: 0 });
   };
@@ -142,11 +171,7 @@ function useMultiAutocomplete({
   };
 
   const handlePillRemoveClick = (valueIndex: number) => {
-    const newValues = [...values];
-    newValues.splice(valueIndex, 1);
-    onChange(newValues);
-    setFieldValue("");
-    setFieldSelection({ index: newValues.length, length: 0 });
+    handleValueRemove(valueIndex, { preserveSelection: false });
   };
 
   return {
@@ -157,6 +182,7 @@ function useMultiAutocomplete({
     ),
     fieldValue,
     handleFieldChange,
+    handleFieldKeyDown,
     handleFieldFocus,
     handleFieldBlur,
     handlePillDoubleClick,
