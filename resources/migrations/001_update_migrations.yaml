@@ -11203,10 +11203,10 @@ databaseChangeLog:
       author: qnkhuat
       comment: Drop notification_subscription.event_name
       preConditions:
-        - not:
-          - columnExists:
-              tableName: notification_subscription
-              columnName: event_name
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: notification_subscription
+            columnName: event_name
       changes:
         - dropColumn:
             tableName: notification_subscription
