@@ -44,6 +44,7 @@ export function MultiAutocomplete({
     pillValues,
     fieldValue,
     handleFieldChange,
+    handleFieldPaste,
     handleFieldKeyDown,
     handleFieldFocus,
     handleFieldBlur,
@@ -98,6 +99,7 @@ export function MultiAutocomplete({
                     autoFocus={autoFocus}
                     aria-label={ariaLabel}
                     onChange={handleFieldChange}
+                    onPaste={handleFieldPaste}
                     onKeyDown={handleFieldKeyDown}
                     onFocus={handleFieldFocus}
                     onBlur={handleFieldBlur}

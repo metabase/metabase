@@ -1,6 +1,11 @@
 import { useCombobox } from "@mantine/core";
 import { parse } from "csv-parse/browser/esm/sync";
-import { type ChangeEvent, type KeyboardEvent, useState } from "react";
+import {
+  type ChangeEvent,
+  type ClipboardEvent,
+  type KeyboardEvent,
+  useState,
+} from "react";
 
 const DELIMITERS = [",", "\t", "\n"];
 const QUOTE_CHAR = '"';
@@ -46,8 +51,7 @@ export function useMultiAutocomplete({
     onSearchChange?.(fieldValue);
   };
 
-  const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const newFieldValue = event.target.value;
+  const handleFieldInput = (newFieldValue: string) => {
     const newFieldValues = getUniqueFieldValues(
       values,
       parseCsv(newFieldValue).filter(shouldCreate),
@@ -65,6 +69,18 @@ export function useMultiAutocomplete({
       fieldSelection,
     );
     setFieldState(newFieldState);
+  };
+
+  const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const newFieldValue = event.target.value;
+    handleFieldInput(newFieldValue);
+  };
+
+  const handleFieldPaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault();
+
+    const newFieldValue = event.clipboardData.getData("text");
+    handleFieldInput(newFieldValue);
   };
 
   const handleFieldKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -142,6 +158,7 @@ export function useMultiAutocomplete({
     pillValues: getPillValues(values, fieldSelection),
     fieldValue,
     handleFieldChange,
+    handleFieldPaste,
     handleFieldKeyDown,
     handleFieldFocus,
     handleFieldBlur,

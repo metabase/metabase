@@ -899,12 +899,12 @@ describe("StringFilterValuePicker", () => {
         query,
         stageIndex,
         column,
-        values: ["a"],
+        values: ["a", "ab"],
       });
 
       await userEvent.type(
         screen.getByRole("combobox", { name: "Filter value" }),
-        "ab,abc",
+        "abc",
       );
       await userEvent.tab();
 
