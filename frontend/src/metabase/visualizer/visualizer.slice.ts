@@ -14,7 +14,6 @@ import {
   getColumnVizSettings,
   isCartesianChart,
 } from "metabase/visualizations";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardId,
@@ -54,13 +53,13 @@ import {
 } from "./visualizations/cartesian";
 import {
   addColumnToFunnel,
-  addScalarToFunnel,
-  canCombineCardWithFunnel,
+  combineWithFunnel,
   funnelDropHandler,
   removeColumnFromFunnel,
 } from "./visualizations/funnel";
 import {
   addColumnToPieChart,
+  combineWithPieChart,
   pieDropHandler,
   removeColumnFromPieChart,
 } from "./visualizations/pie";
@@ -581,135 +580,33 @@ function maybeUpdateHistory(state: VisualizerState, action: Action) {
 
 function maybeCombineDataset(
   currentState: VisualizerHistoryItem,
-  card: Card,
-  dataset: Dataset,
+  series: RawSeries,
 ) {
+  const [{ card, data }] = series;
+
   const state = { ...currentState };
-  const source = createDataSource("card", card.id, card.name);
+  const dataSource = createDataSource("card", card.id, card.name);
 
   if (
     !state.display ||
     (card.display === state.display && state.columns.length === 0)
   ) {
-    return getInitialStateForCardDataSource(card, dataset.data.cols);
+    return getInitialStateForCardDataSource(card, data.cols);
   }
-
-  const series: RawSeries = [{ card, ...dataset }];
 
   if (
     isCartesianChart(state.display) &&
     isCompatibleWithCartesianChart(state, series)
   ) {
-    combineWithCartesianChart(state, series, source);
+    combineWithCartesianChart(state, series, dataSource);
   }
 
   if (state.display === "pie") {
-    const metrics = dataset.data.cols.filter(col => isMetric(col));
-    const dimensions = dataset.data.cols.filter(
-      col => isDimension(col) && !isMetric(col),
-    );
-
-    if (!state.settings["pie.metric"] && metrics.length === 1) {
-      const [metric] = metrics;
-      const columnRef = createVisualizerColumnReference(
-        source,
-        metric,
-        extractReferencedColumns(state.columnValuesMapping),
-      );
-      const column = copyColumn(
-        columnRef.name,
-        metric,
-        source.name,
-        state.columns,
-      );
-      state.columns.push(column);
-      state.columnValuesMapping[column.name] = [columnRef];
-      addColumnToPieChart(state, column);
-    }
-
-    if (!state.settings["pie.dimension"] && dimensions.length === 1) {
-      const [dimension] = dimensions;
-      const columnRef = createVisualizerColumnReference(
-        source,
-        dimension,
-        extractReferencedColumns(state.columnValuesMapping),
-      );
-      const column = copyColumn(
-        columnRef.name,
-        dimension,
-        source.name,
-        state.columns,
-      );
-      state.columns.push(column);
-      state.columnValuesMapping[column.name] = [columnRef];
-      addColumnToPieChart(state, column);
-    }
+    combineWithPieChart(state, series, dataSource);
   }
 
   if (state.display === "funnel") {
-    const isEmpty =
-      !state.settings["funnel.metric"] && !state.settings["funnel.dimension"];
-    const isMadeOfScalars = state.columnValuesMapping.METRIC?.length >= 1;
-
-    if (
-      (isEmpty || isMadeOfScalars) &&
-      canCombineCardWithFunnel(card, dataset)
-    ) {
-      const [column] = dataset.data.cols;
-      addScalarToFunnel(state, source, column);
-      return state;
-    }
-
-    if (!isMadeOfScalars) {
-      const metrics = dataset.data.cols.filter(col => isMetric(col));
-      const dimensions = dataset.data.cols.filter(
-        col => isDimension(col) && !isMetric(col),
-      );
-
-      if (!state.settings["funnel.metric"] && metrics.length === 1) {
-        const dataSource = createDataSource("card", card.id, card.name);
-        const [metric] = metrics;
-        const columnRef = createVisualizerColumnReference(
-          dataSource,
-          metric,
-          extractReferencedColumns(state.columnValuesMapping),
-        );
-        const newColumn = copyColumn(
-          columnRef.name,
-          metric,
-          dataSource.name,
-          state.columns,
-        );
-        state.columns = [...state.columns, newColumn];
-        state.columnValuesMapping = {
-          ...state.columnValuesMapping,
-          [newColumn.name]: [columnRef],
-        };
-        state.settings["funnel.metric"] = columnRef.name;
-      }
-
-      if (!state.settings["funnel.dimension"] && dimensions.length === 1) {
-        const dataSource = createDataSource("card", card.id, card.name);
-        const [dimension] = dimensions;
-        const columnRef = createVisualizerColumnReference(
-          dataSource,
-          dimension,
-          extractReferencedColumns(state.columnValuesMapping),
-        );
-        const newColumn = copyColumn(
-          columnRef.name,
-          dimension,
-          dataSource.name,
-          state.columns,
-        );
-        state.columns = [...state.columns, newColumn];
-        state.columnValuesMapping = {
-          ...state.columnValuesMapping,
-          [newColumn.name]: [columnRef],
-        };
-        state.settings["funnel.dimension"] = columnRef.name;
-      }
-    }
+    combineWithFunnel(state, series, dataSource);
   }
 
   return state;

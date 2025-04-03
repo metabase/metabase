@@ -13,8 +13,11 @@ import {
   isMetric,
   isNumeric,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import type { DatasetColumn, RawSeries } from "metabase-types/api";
+import type {
+  VisualizerDataSource,
+  VisualizerHistoryItem,
+} from "metabase-types/store/visualizer";
 
 export const pieDropHandler = (
   state: VisualizerHistoryItem,
@@ -109,5 +112,54 @@ export function removeColumnFromPieChart(
 
   if (state.settings["pie.metric"] === columnName) {
     delete state.settings["pie.metric"];
+  }
+}
+
+export function combineWithPieChart(
+  state: VisualizerHistoryItem,
+  series: RawSeries,
+  dataSource: VisualizerDataSource,
+) {
+  const [{ data }] = series;
+
+  const metrics = data.cols.filter(col => isMetric(col));
+  const dimensions = data.cols.filter(
+    col => isDimension(col) && !isMetric(col),
+  );
+
+  if (!state.settings["pie.metric"] && metrics.length === 1) {
+    const [metric] = metrics;
+    const columnRef = createVisualizerColumnReference(
+      dataSource,
+      metric,
+      extractReferencedColumns(state.columnValuesMapping),
+    );
+    const column = copyColumn(
+      columnRef.name,
+      metric,
+      dataSource.name,
+      state.columns,
+    );
+    state.columns.push(column);
+    state.columnValuesMapping[column.name] = [columnRef];
+    addColumnToPieChart(state, column);
+  }
+
+  if (!state.settings["pie.dimension"] && dimensions.length === 1) {
+    const [dimension] = dimensions;
+    const columnRef = createVisualizerColumnReference(
+      dataSource,
+      dimension,
+      extractReferencedColumns(state.columnValuesMapping),
+    );
+    const column = copyColumn(
+      columnRef.name,
+      dimension,
+      dataSource.name,
+      state.columns,
+    );
+    state.columns.push(column);
+    state.columnValuesMapping[column.name] = [columnRef];
+    addColumnToPieChart(state, column);
   }
 }
