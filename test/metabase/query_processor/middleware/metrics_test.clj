@@ -943,7 +943,12 @@
       (doseq [[operator aggregate] tested-aggregations]
         (testing (format "Result of aggregation with filter is same as of metric with filter for %s" operator)
           (let [base-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                             (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
+                             (lib/filter $
+                                         (lib/between (m/find-first (comp #{"User ID"} :display-name)
+                                                                    (lib/filterable-columns $))
+                                                      10
+                                                      50)
+                                         #_(lib/between (m/find-first (comp #{"Created At"} :display-name)
                                                                       (lib/filterable-columns $))
                                                         "2017-04-01"
                                                         "2018-03-31"))
@@ -977,7 +982,12 @@
 
         (testing (format "Result of aggregation with filter is same as of metric with filter for %s" operator)
           (let [base-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                             (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
+                             (lib/filter $
+                                         (lib/between (m/find-first (comp #{"User ID"} :display-name)
+                                                                    (lib/filterable-columns $))
+                                                      10
+                                                      50)
+                                         #_(lib/between (m/find-first (comp #{"Created At"} :display-name)
                                                                       (lib/filterable-columns $))
                                                         "2017-04-01"
                                                         "2018-03-31"))
@@ -1014,7 +1024,12 @@
              metric-card
              {:type :metric
               :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                               (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
+                               (lib/filter $
+                                           (lib/between (m/find-first (comp #{"User ID"} :display-name)
+                                                                      (lib/filterable-columns $))
+                                                        10
+                                                        50)
+                                           #_(lib/between (m/find-first (comp #{"Created At"} :display-name)
                                                                         (lib/filterable-columns $))
                                                           "2017-04-01"
                                                           "2018-03-31"))
@@ -1038,9 +1053,13 @@
   (mt/test-drivers
     (mt/normal-drivers)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-          filter #(lib/filter %1 (%2 (m/find-first (comp #{"Created At"} :display-name)
-                                                   (lib/filterable-columns %1))
-                                     "2018-04-01"))
+          filter #(lib/filter %1
+                              (%2 (m/find-first (comp #{"User ID"} :display-name)
+                                                (lib/filterable-columns %1))
+                                  20)
+                              #_(%2 (m/find-first (comp #{"Created At"} :display-name)
+                                                  (lib/filterable-columns %1))
+                                    "2018-04-01"))
           breakout #(lib/breakout % (lib/with-temporal-bucket
                                       (m/find-first (comp #{"Created At"} :display-name)
                                                     (lib/breakoutable-columns %))
