@@ -439,6 +439,7 @@ describe("scenarios > question > native", () => {
         .should("contain", "Sample Database");
 
       cy.findByTestId("visibility-toggler").click();
+      dataReferenceSidebar().should("not.be.visible");
 
       cy.log("open editor on a small screen size");
       cy.viewport(1279, 800);
