@@ -1594,3 +1594,21 @@ describe("issue 55622", () => {
     H.assertQueryBuilderRowCount(1);
   });
 });
+
+describe("issue 56152", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Should show the help text popover when typing a multi-line expression (metabase#56152)", () => {
+    H.openPeopleTable({ mode: "notebook" });
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type(dedent`
+      datetimeDiff(
+        [Created At],
+    `);
+
+    H.CustomExpressionEditor.helpText().should("be.visible");
+  });
+});
