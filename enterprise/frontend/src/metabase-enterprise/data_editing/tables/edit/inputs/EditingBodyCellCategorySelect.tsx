@@ -126,6 +126,7 @@ export const EditingBodyCellCategorySelect = ({
       <Combobox.Target>
         <Input
           component="button"
+          type="button"
           pointer
           onClick={() => combobox.openDropdown()}
           {...inputProps}
