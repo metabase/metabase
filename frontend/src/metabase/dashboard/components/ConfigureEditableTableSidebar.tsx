@@ -2,9 +2,11 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { datasetApi } from "metabase/api";
+import { updateEditingDashboardCard } from "metabase/dashboard/actions";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isQuestionCard } from "metabase/dashboard/utils";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -16,9 +18,14 @@ import {
   Popover,
   Tabs,
 } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Card, DashCardId, DashboardCard } from "metabase-types/api";
+import type {
+  Card,
+  DashCardId,
+  DashboardCard,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
 
 import { getDashCardById, getSidebar } from "../selectors";
 
@@ -83,7 +90,11 @@ function ConfigureEditableTableFilters({
 }) {
   const [isOpened, { close, toggle }] = useDisclosure();
 
+  const dispatch = useDispatch();
+
   const metadata = useSelector(getMetadata);
+
+  // TODO: handle just added card.
   const initialQuery = useMemo(() => {
     const question = isQuestionCard(dashcard?.card)
       ? new Question(dashcard.card, metadata)
@@ -94,14 +105,31 @@ function ConfigureEditableTableFilters({
 
   const [query, setQuery] = useState(initialQuery);
 
-  const handleQueryChange = (newQuery: Lib.Query) => {
-    // const legacyQuery = Lib.toLegacyQuery(newQuery);
-    //
-    // const newCard = { ...dashcard.card, dataset_query: legacyQuery };
-    //
-    // onUpdateDashCard(dashcard.id, newCard);
+  const handleQueryChange = async (newQuery: Lib.Query) => {
+    setQuery(newQuery);
 
-    setQuery(query);
+    const legacyQuery = Lib.toLegacyQuery(newQuery);
+
+    // NOTE: we cannot do data loading inside an action, as we don't support ad-hoc queries as a dashcard.
+    // TODO: move this logic to FETCH_CARD_DATA action
+    const action = dispatch(
+      datasetApi.endpoints.getAdhocQuery.initiate(legacyQuery),
+    );
+
+    const cardData = await action.unwrap();
+
+    const newCard: Card<StructuredDatasetQuery> = {
+      ...dashcard.card,
+      dataset_query: legacyQuery,
+    };
+
+    // setDashcardData(dashcard, cardData);
+    dispatch(
+      updateEditingDashboardCard({
+        ...dashcard,
+        card: newCard,
+      }),
+    );
   };
 
   if (!query) {

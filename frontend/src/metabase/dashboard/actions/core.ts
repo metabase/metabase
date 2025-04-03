@@ -43,6 +43,13 @@ export const cancelEditingDashboard = () => (dispatch: Dispatch) => {
   dispatch({ type: CANCEL_EDITING_DASHBOARD });
 };
 
+export const UPDATE_EDITING_DASHBOARD_CARD =
+  "metabase/dashboard/UPDATE_EDITING_DASHBOARD_CARD";
+export const updateEditingDashboardCard =
+  (dashcard: DashboardCard) => (dispatch: Dispatch) => {
+    dispatch({ type: UPDATE_EDITING_DASHBOARD_CARD, payload: dashcard });
+  };
+
 export type SetDashboardAttributesOpts = {
   id: DashboardId;
   attributes: Partial<Dashboard>;
