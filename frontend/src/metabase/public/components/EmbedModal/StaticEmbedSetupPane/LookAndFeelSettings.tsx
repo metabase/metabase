@@ -176,7 +176,8 @@ export const LookAndFeelSettings = ({
             }
           />
 
-          {canWhitelabel && (
+          {/** `downloads` is only null when `canWhitelabel` is false. */}
+          {canWhitelabel && displayOptions.downloads && (
             <DisplayOptionSection title={isDashboard ? t`Downloads` : null}>
               <Stack gap="md" mt={isDashboard ? "md" : 0}>
                 {isDashboard && (
@@ -185,16 +186,20 @@ export const LookAndFeelSettings = ({
                     labelPosition="left"
                     size="sm"
                     variant="stretch"
-                    checked={displayOptions.downloads?.pdf ?? true}
-                    onChange={(e) =>
+                    checked={displayOptions.downloads.pdf}
+                    onChange={(e) => {
+                      if (!displayOptions.downloads) {
+                        return;
+                      }
+
                       onChangeDisplayOptions({
                         ...displayOptions,
                         downloads: {
+                          ...displayOptions.downloads,
                           pdf: e.target.checked,
-                          dashcard: displayOptions.downloads?.dashcard ?? true,
                         },
-                      })
-                    }
+                      });
+                    }}
                   />
                 )}
 
@@ -207,19 +212,22 @@ export const LookAndFeelSettings = ({
                   labelPosition="left"
                   size="sm"
                   variant="stretch"
-                  checked={displayOptions.downloads?.dashcard ?? true}
-                  onChange={(e) =>
+                  checked={displayOptions.downloads.dashcard}
+                  onChange={(e) => {
+                    if (!displayOptions.downloads) {
+                      return;
+                    }
+
                     onChangeDisplayOptions({
                       ...displayOptions,
                       downloads: {
-                        ...displayOptions.downloads,
                         dashcard: e.target.checked,
                         pdf: isDashboard
-                          ? (displayOptions.downloads?.pdf ?? true)
-                          : e.target.checked, // ! PDF downloads are not supported for questions, so we set it to match the dashcard download's toggle.
+                          ? displayOptions.downloads.pdf
+                          : e.target.checked, // ! PDF exports are not supported for questions, so we match the dashcard download's state.
                       },
-                    })
-                  }
+                    });
+                  }}
                 />
               </Stack>
             </DisplayOptionSection>
