@@ -25,7 +25,7 @@ const setup = ({ hideTableName, table }: SetupOpts) => {
 
 describe("TableBreadcrumbs", () => {
   describe("no schema", () => {
-    const TEST_TABLE = createMockTable({
+    const table = createMockTable({
       display_name: "My table",
       schema: "",
       db: createMockDatabase({
@@ -40,7 +40,7 @@ describe("TableBreadcrumbs", () => {
     });
 
     it("should show database name and table name", async () => {
-      setup({ table: TEST_TABLE });
+      setup({ table });
 
       expect(await screen.findByText("My database")).toBeInTheDocument();
       expect(screen.queryByLabelText("folder icon")).not.toBeInTheDocument();
@@ -50,7 +50,7 @@ describe("TableBreadcrumbs", () => {
   });
 
   describe("single schema", () => {
-    const TEST_TABLE = createMockTable({
+    const table = createMockTable({
       display_name: "My table",
       schema: "My schema",
       db: createMockDatabase({
@@ -65,7 +65,7 @@ describe("TableBreadcrumbs", () => {
     });
 
     it("should show database name and table name", async () => {
-      setup({ table: TEST_TABLE });
+      setup({ table });
 
       expect(await screen.findByText("My database")).toBeInTheDocument();
       expect(screen.queryByText("My schema")).not.toBeInTheDocument();
@@ -73,7 +73,7 @@ describe("TableBreadcrumbs", () => {
     });
 
     it("should not show table name when 'hideTableName' is true", async () => {
-      setup({ table: TEST_TABLE, hideTableName: true });
+      setup({ table, hideTableName: true });
 
       expect(await screen.findByText("My database")).toBeInTheDocument();
       expect(screen.queryByText("My schema")).not.toBeInTheDocument();
@@ -82,7 +82,7 @@ describe("TableBreadcrumbs", () => {
   });
 
   describe("multiple schemas", () => {
-    const TEST_TABLE = createMockTable({
+    const table = createMockTable({
       display_name: "My table",
       schema: "My schema",
       db: createMockDatabase({
@@ -95,7 +95,7 @@ describe("TableBreadcrumbs", () => {
     });
 
     it("should show schema name if database has multiple schemas", async () => {
-      setup({ table: TEST_TABLE });
+      setup({ table });
 
       expect(await screen.findByText("My database")).toBeInTheDocument();
       expect(screen.getByText("My schema")).toBeInTheDocument();
