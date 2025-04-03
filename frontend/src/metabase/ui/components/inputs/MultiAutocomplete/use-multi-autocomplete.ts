@@ -1,4 +1,8 @@
-import { useCombobox } from "@mantine/core";
+import {
+  type ComboboxItem,
+  getOptionsLockup,
+  useCombobox,
+} from "@mantine/core";
 import { parse } from "csv-parse/browser/esm/sync";
 import { type ChangeEvent, type KeyboardEvent, useState } from "react";
 
@@ -10,6 +14,7 @@ const FIELD_PLACEHOLDER = null;
 
 type UseMultiAutocompleteProps = {
   values: string[];
+  options: ComboboxItem[];
   shouldCreate?: (newValue: string) => boolean;
   onChange: (newValues: string[]) => void;
   onSearchChange?: (newValue: string) => void;
@@ -27,6 +32,7 @@ type FieldSelection = {
 
 export function useMultiAutocomplete({
   values,
+  options,
   shouldCreate = defaultShouldCreate,
   onChange,
   onSearchChange,
@@ -139,11 +145,7 @@ export function useMultiAutocomplete({
 
   return {
     combobox,
-    pillValues: getValuesAfterChange(
-      values,
-      [FIELD_PLACEHOLDER],
-      fieldSelection,
-    ),
+    pillValues: getPillValues(values, options, fieldSelection),
     fieldValue,
     handleFieldChange,
     handleFieldKeyDown,
@@ -153,6 +155,20 @@ export function useMultiAutocomplete({
     handlePillRemoveClick,
     handleOptionSubmit,
   };
+}
+
+function getPillValues(
+  values: string[],
+  options: ComboboxItem[],
+  fieldSelection: FieldSelection,
+) {
+  const lookup = getOptionsLockup(options);
+  const mappedValues = values.map((value) => lookup[value]?.label ?? value);
+  return getValuesAfterChange(
+    mappedValues,
+    [FIELD_PLACEHOLDER],
+    fieldSelection,
+  );
 }
 
 function getUniqueFieldValues(

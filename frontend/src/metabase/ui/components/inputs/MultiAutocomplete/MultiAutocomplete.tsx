@@ -50,7 +50,13 @@ export function MultiAutocomplete({
     handlePillDoubleClick,
     handlePillRemoveClick,
     handleOptionSubmit,
-  } = useMultiAutocomplete({ values, shouldCreate, onChange, onSearchChange });
+  } = useMultiAutocomplete({
+    values,
+    options,
+    shouldCreate,
+    onChange,
+    onSearchChange,
+  });
 
   const infoIcon = (
     <Tooltip
