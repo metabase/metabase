@@ -7,7 +7,12 @@ import {
   useCombobox,
 } from "@mantine/core";
 import { parse } from "csv-parse/browser/esm/sync";
-import { type ChangeEvent, type KeyboardEvent, useState } from "react";
+import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  useState,
+} from "react";
 
 export type MultiAutocompleteProps = {
   values: string[];
@@ -15,7 +20,9 @@ export type MultiAutocompleteProps = {
   placeholder?: string;
   shouldCreate?: (value: string) => boolean;
   autoFocus?: boolean;
+  nothingFoundMessage?: ReactNode;
   onChange: (newValues: string[]) => void;
+  onSearchChange?: (newValue: string) => void;
 };
 
 export function MultiAutocomplete({
@@ -24,7 +31,9 @@ export function MultiAutocomplete({
   placeholder,
   shouldCreate = defaultShouldCreate,
   autoFocus,
+  nothingFoundMessage,
   onChange,
+  onSearchChange,
 }: MultiAutocompleteProps) {
   const combobox = useCombobox();
   const {
@@ -36,7 +45,7 @@ export function MultiAutocomplete({
     handleFieldBlur,
     handlePillDoubleClick,
     handlePillRemoveClick,
-  } = useMultiAutocomplete({ values, shouldCreate, onChange });
+  } = useMultiAutocomplete({ values, shouldCreate, onChange, onSearchChange });
 
   return (
     <Combobox store={combobox}>
@@ -72,15 +81,16 @@ export function MultiAutocomplete({
       </Combobox.DropdownTarget>
       <OptionsDropdown
         data={options}
+        nothingFoundMessage={nothingFoundMessage}
         filter={undefined}
         search={undefined}
         limit={undefined}
-        withScrollArea={undefined}
         maxDropdownHeight={undefined}
         unstyled={false}
         labelId={undefined}
-        aria-label={undefined}
+        withScrollArea={undefined}
         scrollAreaProps={undefined}
+        aria-label={undefined}
       />
     </Combobox>
   );
@@ -96,6 +106,7 @@ type UseMultiAutocompleteProps = {
   values: string[];
   shouldCreate: (newValue: string) => boolean;
   onChange: (newValues: string[]) => void;
+  onSearchChange?: (newValue: string) => void;
 };
 
 type FieldSelection = {
@@ -107,12 +118,34 @@ function useMultiAutocomplete({
   values,
   shouldCreate,
   onChange,
+  onSearchChange,
 }: UseMultiAutocompleteProps) {
   const [fieldValue, setFieldValue] = useState("");
   const [fieldSelection, setFieldSelection] = useState<FieldSelection>({
     index: values.length,
     length: 0,
   });
+
+  const setFieldValueAndNotify = (newFieldValue: string) => {
+    setFieldValue(newFieldValue);
+    onSearchChange?.(newFieldValue);
+  };
+
+  const removeValue = (
+    valueIndex: number,
+    { preserveSelection }: { preserveSelection: boolean },
+  ) => {
+    const newValues = [...values];
+    newValues.splice(valueIndex, 1);
+    onChange(newValues);
+    setFieldValueAndNotify("");
+    setFieldSelection({
+      index: preserveSelection
+        ? fieldSelection.index + fieldSelection.length - 1
+        : newValues.length,
+      length: 0,
+    });
+  };
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
     const rawValue = event.target.value;
@@ -125,24 +158,8 @@ function useMultiAutocomplete({
     const { fieldValue: newFieldValue, fieldSelection: newFieldSelection } =
       getFieldStateAfterChange(fieldSelection, rawValue, parsedValues);
     onChange(newValues);
-    setFieldValue(newFieldValue);
+    setFieldValueAndNotify(newFieldValue);
     setFieldSelection(newFieldSelection);
-  };
-
-  const handleValueRemove = (
-    valueIndex: number,
-    { preserveSelection }: { preserveSelection: boolean },
-  ) => {
-    const newValues = [...values];
-    newValues.splice(valueIndex, 1);
-    onChange(newValues);
-    setFieldValue("");
-    setFieldSelection({
-      index: preserveSelection
-        ? fieldSelection.index + fieldSelection.length - 1
-        : newValues.length,
-      length: 0,
-    });
   };
 
   const handleFieldKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -152,7 +169,7 @@ function useMultiAutocomplete({
       fieldSelection.index > 0 &&
       fieldSelection.length === 0
     ) {
-      handleValueRemove(fieldSelection.index - 1, { preserveSelection: true });
+      removeValue(fieldSelection.index - 1, { preserveSelection: true });
     }
   };
 
@@ -161,17 +178,17 @@ function useMultiAutocomplete({
   };
 
   const handleFieldBlur = () => {
-    setFieldValue("");
+    setFieldValueAndNotify("");
     setFieldSelection({ index: values.length, length: 0 });
   };
 
   const handlePillDoubleClick = (valueIndex: number) => {
-    setFieldValue(formatCsv(values[valueIndex]));
+    setFieldValueAndNotify(formatCsv(values[valueIndex]));
     setFieldSelection({ index: valueIndex, length: 1 });
   };
 
   const handlePillRemoveClick = (valueIndex: number) => {
-    handleValueRemove(valueIndex, { preserveSelection: false });
+    removeValue(valueIndex, { preserveSelection: false });
   };
 
   return {
