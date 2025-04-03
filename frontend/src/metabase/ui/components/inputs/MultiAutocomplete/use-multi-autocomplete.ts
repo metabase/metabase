@@ -76,7 +76,6 @@ export function useMultiAutocomplete({
 
   const handleFieldPaste = (event: ClipboardEvent<HTMLInputElement>) => {
     event.preventDefault();
-
     const newFieldValue = event.clipboardData.getData("text");
     handleFieldInput(newFieldValue);
   };
