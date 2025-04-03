@@ -485,10 +485,7 @@
 (deftest ^:parallel get-model-details-test
   (mt/with-premium-features #{:metabot-v3}
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-          source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                           (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
-                           (lib/breakout (lib/with-temporal-bucket
-                                           (lib.metadata/field mp (mt/id :products :created_at)) :week)))
+          source-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           model-data {:name "Model model"
                       :description "Model desc"
                       :dataset_query (lib/->legacy-MBQL source-query)
@@ -501,21 +498,67 @@
                 response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                {:arguments arguments
-                                                :conversation_id conversation-id})]
+                                                :conversation_id conversation-id})
+                expected-fields
+                [{:name "ID", :type "number", :semantic_type "pk"}
+                 {:name "User ID", :type "number", :semantic_type "fk"}
+                 {:name "Product ID", :type "number", :semantic_type "fk"}
+                 {:name "Subtotal", :type "number"}
+                 {:name "Tax", :type "number"}
+                 {:name "Total", :type "number"}
+                 {:name "Discount", :type "number", :semantic_type "discount"}
+                 {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}
+                 {:name "Quantity", :type "number", :semantic_type "quantity", :field_values int-sequence?}
+                 {:name "ID", :type "number", :semantic_type "pk", :table_reference "User"}
+                 {:name "Address", :type "string", :table_reference "User"}
+                 {:name "Email", :type "string", :semantic_type "email", :table_reference "User"}
+                 {:name "Password", :type "string", :table_reference "User"}
+                 {:name "Name", :type "string", :semantic_type "name", :table_reference "User"}
+                 {:name "City", :type "string", :semantic_type "city", :table_reference "User"}
+                 {:name "Longitude", :type "number", :semantic_type "longitude", :table_reference "User"}
+                 {:name "State", :type "string", :semantic_type "state", :table_reference "User"}
+                 {:name "Source", :type "string", :semantic_type "source", :table_reference "User"}
+                 {:name "Birth Date", :type "date", :table_reference "User"}
+                 {:name "Zip", :type "string", :table_reference "User"}
+                 {:name "Latitude", :type "number", :semantic_type "latitude", :table_reference "User"}
+                 {:name "Created At", :type "datetime", :semantic_type "creation_timestamp", :table_reference "User"}
+                 {:name "ID", :type "number", :semantic_type "pk", :table_reference "Product"}
+                 {:name "Ean"
+                  :type "string"
+                  :field_values string-sequence?
+                  :table_reference "Product"}
+                 {:name "Title"
+                  :type "string"
+                  :semantic_type "title"
+                  :field_values string-sequence?
+                  :table_reference "Product"}
+                 {:name "Category"
+                  :type "string"
+                  :semantic_type "category"
+                  :field_values string-sequence?
+                  :table_reference "Product"}
+                 {:name "Vendor"
+                  :type "string"
+                  :semantic_type "company"
+                  :field_values string-sequence?
+                  :table_reference "Product"}
+                 {:name "Price", :type "number", :table_reference "Product"}
+                 {:name "Rating", :type "number", :semantic_type "score", :table_reference "Product"}
+                 {:name "Created At", :type "datetime", :semantic_type "creation_timestamp", :table_reference "Product"}]]
             (is (=? {:structured_output (-> model-data
                                             (select-keys [:name :description])
                                             (assoc :id model-id
                                                    :type "model"
+                                                   :queryable_foreign_key_tables []
                                                    :fields
                                                    (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
-                                                                [{:name "Created At: Week", :type "datetime"}
-                                                                 {:name "Average of Rating", :type "number"}])))
+                                                                expected-fields)))
                      :conversation_id conversation-id}
                     response))))))))
 
 (deftest get-table-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [table-id (mt/id :products)]
+    (let [table-id (mt/id :orders)]
       (ensure-field-values! table-id)
       (doseq [arg-id [table-id (str table-id)]]
         (let [conversation-id (str (random-uuid))
@@ -526,14 +569,48 @@
                                               :conversation_id conversation-id})
               expected-fields
               [{:name "ID", :type "number", :semantic_type "pk"}
-               {:name "Ean", :type "string", :field_values string-sequence?}
-               {:name "Title", :type "string", :semantic_type "title", :field_values string-sequence?}
-               {:name "Category", :type "string", :semantic_type "category", :field_values string-sequence?}
-               {:name "Vendor", :type "string", :semantic_type "company", :field_values string-sequence?}
-               {:name "Price", :type "number"}
-               {:name "Rating", :type "number", :semantic_type "score"}
-               {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]]
-          (is (=? {:structured_output {:name "Products"
+               {:name "User ID", :type "number", :semantic_type "fk"}
+               {:name "Product ID", :type "number", :semantic_type "fk"}
+               {:name "Subtotal", :type "number"}
+               {:name "Tax", :type "number"}
+               {:name "Total", :type "number"}
+               {:name "Discount", :type "number", :semantic_type "discount"}
+               {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}
+               {:name "Quantity" :type "number" :semantic_type "quantity" :field_values int-sequence?}
+               {:name "ID", :type "number", :semantic_type "pk", :table_reference "User"}
+               {:name "Address", :type "string", :table_reference "User"}
+               {:name "Email", :type "string", :semantic_type "email", :table_reference "User"}
+               {:name "Password", :type "string", :table_reference "User"}
+               {:name "Name", :type "string", :semantic_type "name", :table_reference "User"}
+               {:name "City", :type "string", :semantic_type "city", :table_reference "User"}
+               {:name "Longitude", :type "number", :semantic_type "longitude", :table_reference "User"}
+               {:name "State", :type "string", :semantic_type "state", :table_reference "User"}
+               {:name "Source", :type "string", :semantic_type "source", :table_reference "User"}
+               {:name "Birth Date", :type "date", :table_reference "User"}
+               {:name "Zip", :type "string", :table_reference "User"}
+               {:name "Latitude", :type "number", :semantic_type "latitude", :table_reference "User"}
+               {:name "Created At" :type "datetime" :semantic_type "creation_timestamp" :table_reference "User"}
+               {:name "ID", :type "number", :semantic_type "pk", :table_reference "Product"}
+               {:name "Ean" :type "string" :field_values string-sequence? :table_reference "Product"}
+               {:name "Title"
+                :type "string"
+                :semantic_type "title"
+                :field_values string-sequence?
+                :table_reference "Product"}
+               {:name "Category"
+                :type "string"
+                :semantic_type "category"
+                :field_values string-sequence?
+                :table_reference "Product"}
+               {:name "Vendor"
+                :type "string"
+                :semantic_type "company"
+                :field_values string-sequence?
+                :table_reference "Product"}
+               {:name "Price", :type "number", :table_reference "Product"}
+               {:name "Rating", :type "number", :semantic_type "score", :table_reference "Product"}
+               {:name "Created At" :type "datetime" :semantic_type "creation_timestamp" :table_reference "Product"}]]
+          (is (=? {:structured_output {:name "Orders"
                                        :id table-id
                                        :type "table"
                                        :fields (map-indexed #(assoc %2 :field_id (format "t%d/%d" table-id %1))

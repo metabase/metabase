@@ -89,39 +89,25 @@
   (-> db-metric (metric-details metadata-provider)
       (select-keys  [:id :type :name :description :default_time_dimension_field_id])))
 
-(declare ^:private table-details)
-
-(defn- foreign-key-tables
-  [metadata-provider fields]
-  (when-let [target-field-ids (->> fields
-                                   (into #{} (keep :fk-target-field-id))
-                                   not-empty)]
-    (let [table-ids (t2/select-fn-set :table_id :model/Field :id [:in target-field-ids])]
-      (lib.metadata/bulk-metadata metadata-provider :metadata/table table-ids)
-      (->> table-ids
-           (into [] (keep #(table-details % {:include-foreign-key-tables? false
-                                             :metadata-provider metadata-provider})))
-           not-empty))))
-
 (defn- table-details
-  [id {:keys [include-foreign-key-tables? metadata-provider]}]
-  (when-let [base (if metadata-provider
-                    (lib.metadata/table metadata-provider id)
-                    (metabot-v3.tools.u/get-table id :db_id :description))]
-    (let [mp (or metadata-provider
-                 (lib.metadata.jvm/application-database-metadata-provider (:db_id base)))
-          table-query (lib/query mp (lib.metadata/table mp id))
-          cols (-> (lib/returned-columns table-query)
-                   add-field-values)
-          field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
-      (-> {:id id
-           :type :table
-           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
-           :name (lib/display-name table-query)}
-          (m/assoc-some :description (:description base)
-                        :metrics (not-empty (mapv #(convert-metric % mp) (lib/available-metrics table-query)))
-                        :queryable-foreign-key-tables (when include-foreign-key-tables?
-                                                        (foreign-key-tables mp cols)))))))
+  ([id] (table-details id nil))
+  ([id {:keys [metadata-provider]}]
+   (when-let [base (if metadata-provider
+                     (lib.metadata/table metadata-provider id)
+                     (metabot-v3.tools.u/get-table id :db_id :description))]
+     (let [mp (or metadata-provider
+                  (lib.metadata.jvm/application-database-metadata-provider (:db_id base)))
+           table-query (lib/query mp (lib.metadata/table mp id))
+           cols (->> (lib/visible-columns table-query)
+                     add-field-values
+                     (map #(add-table-reference table-query %)))
+           field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
+       (-> {:id id
+            :type :table
+            :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
+            :name (lib/display-name table-query)}
+           (m/assoc-some :description (:description base)
+                         :metrics (not-empty (mapv #(convert-metric % mp) (lib/available-metrics table-query)))))))))
 
 (defn- card-details
   "Get details for a card."
@@ -139,14 +125,15 @@
                                                           (#{:query} (:type dataset-query)))
                                                    dataset-query
                                                    card-metadata))
-         cols (-> (lib/returned-columns card-query)
-                  add-field-values)
+         cols (->> (lib/visible-columns card-query)
+                   add-field-values
+                   (map #(add-table-reference card-query %)))
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
           :type card-type
           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
           :name (lib/display-name card-query)
-          :queryable-foreign-key-tables (vec (foreign-key-tables metadata-provider cols))}
+          :queryable-foreign-key-tables []}
          (m/assoc-some :description (:description base)
                        :metrics (not-empty (mapv #(convert-metric % metadata-provider) (lib/available-metrics card-query))))))))
 
@@ -191,11 +178,11 @@
   [{:keys [model-id table-id]}]
   (let [details (cond
                   (int? model-id) (card-details model-id)
-                  (int? table-id) (table-details table-id {:include-foreign-key-tables? true})
+                  (int? table-id) (table-details table-id)
                   (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                                        (card-details (parse-long card-id))
                                        (if (re-matches #"\d+" table-id)
-                                         (table-details (parse-long table-id) {:include-foreign-key-tables? true})
+                                         (table-details (parse-long table-id))
                                          "invalid table_id"))
                   :else "invalid arguments")]
     (if (map? details)
