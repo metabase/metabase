@@ -20,13 +20,16 @@ const { H } = cy;
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 const { PRODUCTS_ID, ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
-type CustomColumnType =
-  | "numberExpr"
-  | "numberLiteral"
-  | "stringExpr"
-  | "stringLiteral"
-  | "booleanExpr"
-  | "booleanLiteral";
+const customColumnTypeToFormulaUntyped = {
+  booleanExpr: '[Category]="Gizmo"',
+  stringExpr: 'concat("Category is ",[Category])',
+  numberExpr: 'if([Category] = "Gizmo", 1, 0)',
+  booleanLiteral: "true",
+  stringLiteral: '"fixed literal string"',
+  numberLiteral: "1",
+} as const;
+
+type CustomColumnType = keyof typeof customColumnTypeToFormulaUntyped;
 type CustomViewType = "Question" | "Model";
 
 type SandboxPolicy = {
@@ -37,15 +40,8 @@ type SandboxPolicy = {
   filterColumn?: string;
 };
 
-const customColumnTypeToFormula: Record<CustomColumnType, string> = {
-  booleanExpr: '[Category]="Gizmo"',
-  stringExpr: 'concat("Category is ",[Category])',
-  numberExpr: 'if([Category] = "Gizmo", 1, 0)',
-  booleanLiteral: "true",
-  stringLiteral: '"fixed literal string"',
-  numberLiteral: "1",
-};
-
+const customColumnTypeToFormula: Record<CustomColumnType, string> =
+  customColumnTypeToFormulaUntyped;
 const customColumnTypes = Object.keys(
   customColumnTypeToFormula,
 ) as CustomColumnType[];
