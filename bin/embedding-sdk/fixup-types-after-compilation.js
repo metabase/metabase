@@ -25,7 +25,7 @@ const REPLACES_MAP = {
 
 const API_EXTRACTOR_CONFIG_PATH = path.join(
   __dirname,
-  "../../api-extractor.json",
+  "../../enterprise/frontend/src/embedding-sdk/embedding-sdk-api-extractor.json",
 );
 
 const getLogger = (prefix) => {
@@ -153,7 +153,7 @@ const generateDtsRollup = () => {
 
   if (!extractorResult.succeeded) {
     error(
-      `$API Extractor completed with ${extractorResult.errorCount} errors` +
+      `API Extractor completed with ${extractorResult.errorCount} errors` +
         ` and ${extractorResult.warningCount} warnings`,
     );
     process.exitCode = 1;
