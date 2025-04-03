@@ -4,6 +4,7 @@ import { trackSchemaEvent } from "metabase/lib/analytics";
 import type {
   DisplayTheme,
   EmbedResource,
+  EmbedResourceDownloadOptions,
   EmbedResourceType,
   EmbeddingDisplayOptions,
   EmbeddingParameterVisibility,
@@ -18,7 +19,7 @@ type Appearance = {
   bordered: boolean;
   theme: DisplayTheme;
   font: "instance" | "custom";
-  downloads: boolean | null;
+  downloads: EmbedResourceDownloadOptions | null;
 };
 
 export const trackStaticEmbedDiscarded = ({

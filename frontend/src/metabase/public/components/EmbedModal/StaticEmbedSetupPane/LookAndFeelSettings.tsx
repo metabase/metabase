@@ -176,19 +176,49 @@ export const LookAndFeelSettings = ({
           />
 
           {canWhitelabel && (
-            <Switch
-              label={t`Download buttons`}
-              labelPosition="left"
-              size="sm"
-              variant="stretch"
-              checked={displayOptions.downloads ?? true}
-              onChange={(e) =>
-                onChangeDisplayOptions({
-                  ...displayOptions,
-                  downloads: e.target.checked,
-                })
-              }
-            />
+            <DisplayOptionSection
+              title={resourceType === "dashboard" ? t`Downloads` : null}
+            >
+              {resourceType === "dashboard" && (
+                <Switch
+                  label={t`Export to PDF`}
+                  labelPosition="left"
+                  size="sm"
+                  variant="stretch"
+                  checked={displayOptions.downloads?.pdf ?? true}
+                  onChange={(e) =>
+                    onChangeDisplayOptions({
+                      ...displayOptions,
+                      downloads: {
+                        pdf: e.target.checked,
+                        dashcard: displayOptions.downloads?.dashcard ?? true,
+                      },
+                    })
+                  }
+                />
+              )}
+
+              <Switch
+                label={
+                  resourceType === "dashboard"
+                    ? t`Results (csv, xlsx, json, png)`
+                    : t`Download (csv, xlsx, json, png)`
+                }
+                labelPosition="left"
+                size="sm"
+                variant="stretch"
+                checked={displayOptions.downloads?.dashcard ?? true}
+                onChange={(e) =>
+                  onChangeDisplayOptions({
+                    ...displayOptions,
+                    downloads: {
+                      dashcard: e.target.checked,
+                      pdf: displayOptions.downloads?.pdf ?? true,
+                    },
+                  })
+                }
+              />
+            </DisplayOptionSection>
           )}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>
