@@ -4,7 +4,9 @@ import _ from "underscore";
 import { isCartesianChart } from "metabase/visualizations";
 import {
   getDefaultDimensionFilter,
+  getDefaultDimensions,
   getDefaultMetricFilter,
+  getDefaultMetrics,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -16,7 +18,12 @@ import {
   shouldSplitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import { isCategory, isDate } from "metabase-lib/v1/types/utils/isa";
-import type { Card, Dataset, DatasetColumn } from "metabase-types/api";
+import type {
+  Card,
+  Dataset,
+  DatasetColumn,
+  RawSeries,
+} from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerDataSource,
@@ -347,5 +354,75 @@ export function maybeImportDimensionsFromOtherDataSources(
       }
       state.settings["graph.dimensions"].push(column.name);
     }
+  });
+}
+
+export function isCompatibleWithCartesianChart(
+  state: VisualizerHistoryItem,
+  series: RawSeries,
+) {
+  const [{ card, data }] = series;
+
+  const ownDimensions = state.settings["graph.dimensions"] ?? [];
+  const ownDimensionColumns = state.columns.filter(col =>
+    ownDimensions.includes(col.name),
+  );
+  const [ownTimeDimensions, ownOtherDimensions] = _.partition(
+    ownDimensionColumns,
+    col => isDate(col),
+  );
+
+  const dimensions = getDefaultDimensions(series, card.visualization_settings);
+  const dimensionColumns = data.cols.filter(col =>
+    dimensions.includes(col.name),
+  );
+  const [timeDimensions, otherDimensions] = _.partition(dimensionColumns, col =>
+    isDate(col),
+  );
+
+  let isCompatible = false;
+  if (ownOtherDimensions.length > 0) {
+    isCompatible = otherDimensions.every(col =>
+      ownOtherDimensions.some(ownCol => ownCol.id === col.id),
+    );
+  }
+  if (ownTimeDimensions.length > 0) {
+    isCompatible = timeDimensions.some(col => isDate(col));
+  }
+
+  return isCompatible;
+}
+
+export function combineWithCartesianChart(
+  state: VisualizerHistoryItem,
+  series: RawSeries,
+  dataSource: VisualizerDataSource,
+) {
+  const [{ card, data }] = series;
+
+  const metrics = getDefaultMetrics(series, card.visualization_settings);
+  const metricColumns = data.cols.filter(col => metrics.includes(col.name));
+
+  const dimensions = getDefaultDimensions(series, card.visualization_settings);
+  const dimensionColumns = data.cols.filter(col =>
+    dimensions.includes(col.name),
+  );
+
+  metricColumns.forEach(column => {
+    const columnRef = createVisualizerColumnReference(
+      dataSource,
+      column,
+      extractReferencedColumns(state.columnValuesMapping),
+    );
+    addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+  });
+
+  dimensionColumns.forEach(column => {
+    const columnRef = createVisualizerColumnReference(
+      dataSource,
+      column,
+      extractReferencedColumns(state.columnValuesMapping),
+    );
+    addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
   });
 }

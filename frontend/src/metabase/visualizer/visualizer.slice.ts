@@ -20,6 +20,7 @@ import type {
   CardId,
   Dataset,
   DatasetColumn,
+  RawSeries,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -33,7 +34,6 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import {
-  canCombineCard,
   copyColumn,
   createDataSource,
   createVisualizerColumnReference,
@@ -46,9 +46,9 @@ import {
 import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
 import {
   addColumnToCartesianChart,
-  addDimensionColumnToCartesianChart,
-  addMetricColumnToCartesianChart,
   cartesianDropHandler,
+  combineWithCartesianChart,
+  isCompatibleWithCartesianChart,
   maybeImportDimensionsFromOtherDataSources,
   removeColumnFromCartesianChart,
 } from "./visualizations/cartesian";
@@ -594,28 +594,13 @@ function maybeCombineDataset(
     return getInitialStateForCardDataSource(card, dataset.data.cols);
   }
 
+  const series: RawSeries = [{ card, ...dataset }];
+
   if (
-    ["area", "bar", "line"].includes(state.display) &&
-    canCombineCard(state.display, state.columns, state.settings, card)
+    isCartesianChart(state.display) &&
+    isCompatibleWithCartesianChart(state, series)
   ) {
-    const metrics = card.visualization_settings["graph.metrics"] ?? [];
-    const dimensions = card.visualization_settings["graph.dimensions"] ?? [];
-    const columns = dataset.data.cols.filter(
-      col => metrics.includes(col.name) || dimensions.includes(col.name),
-    );
-    columns.forEach(column => {
-      const columnRef = createVisualizerColumnReference(
-        source,
-        column,
-        extractReferencedColumns(state.columnValuesMapping),
-      );
-      if (metrics.includes(column.name)) {
-        addMetricColumnToCartesianChart(state, column, columnRef, source);
-      } else {
-        addDimensionColumnToCartesianChart(state, column, columnRef, source);
-      }
-    });
-    return state;
+    combineWithCartesianChart(state, series, source);
   }
 
   if (state.display === "pie") {
