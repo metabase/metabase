@@ -19,6 +19,7 @@ import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesi
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export function useModelsAndOption(
   {
@@ -36,6 +37,9 @@ export function useModelsAndOption(
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
+  const tc = useTranslateContent2();
+  console.log("@m9252gao", "tc in usemodelsandoption", tc);
+
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 
   const seriesToRender = useMemo(
@@ -62,13 +66,19 @@ export function useModelsAndOption(
       getModel = getScatterPlotModel;
     }
 
-    return getModel(
+    const model = getModel(
       seriesToRender,
       settings,
       Array.from(hiddenSeries),
       renderingContext,
       showWarning,
     );
+
+    model.xAxisModel.label = tc(model.xAxisModel.label);
+    model.dimensionModel.column.display_name = tc(
+      model.dimensionModel.column.display_name,
+    );
+    return model;
   }, [
     card.display,
     seriesToRender,
@@ -76,6 +86,7 @@ export function useModelsAndOption(
     hiddenSeries,
     renderingContext,
     showWarning,
+    tc,
   ]);
 
   const chartMeasurements = useMemo(
@@ -167,6 +178,7 @@ export function useModelsAndOption(
           width,
           shouldAnimate,
           renderingContext,
+          tc,
         );
     }
 
@@ -185,6 +197,7 @@ export function useModelsAndOption(
     selectedOrHoveredTimelineEventIds,
     settings,
     renderingContext,
+    tc,
   ]);
 
   return { chartModel, timelineEventsModel, option };

@@ -10,6 +10,7 @@ import type { AccentColorOptions } from "metabase/lib/colors/types";
 import type { IconProps } from "metabase/ui";
 
 import { ColumnItem } from "../ColumnItem";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export interface SortableItem {
   enabled: boolean;

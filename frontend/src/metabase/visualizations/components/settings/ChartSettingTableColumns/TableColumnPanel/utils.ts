@@ -14,6 +14,7 @@ import type { ColumnItem } from "./types";
 export function getColumnItems(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
+  tc?: TCFunc,
 ): ColumnItem[] {
   const columnIndexes = findColumnIndexesForColumnSettings(
     columns,
@@ -24,8 +25,10 @@ export function getColumnItems(
     const columnIndex = columnIndexes[columnSettingIndex];
     const column = columns[columnIndex];
 
+    column.display_name = tc ? tc(column.display_name) : column.display_name;
+
     return {
-      name: column.name,
+      name: tc ? column.name : column.name,
       enabled: columnSetting.enabled,
       index: columnSettingIndex,
       icon: getIconForField(column) as IconName,

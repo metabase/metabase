@@ -131,6 +131,8 @@ function _CartesianChart(props: VisualizationProps) {
     props,
   );
 
+  console.log("@m92432dk", "chartModel", chartModel);
+
   const handleResize = useCallback((width: number, height: number) => {
     setChartSize({ width, height });
   }, []);
@@ -142,6 +144,8 @@ function _CartesianChart(props: VisualizationProps) {
   );
 
   useCloseTooltipOnScroll(chartRef);
+
+  console.log("@m924deag", "title", title);
 
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>

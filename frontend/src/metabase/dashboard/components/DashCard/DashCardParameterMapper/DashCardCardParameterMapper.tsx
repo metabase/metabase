@@ -29,6 +29,7 @@ import type { State } from "metabase-types/store";
 
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
 import S from "./DashCardParameterMapper.module.css";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 const mapStateToProps = (
   state: State,
@@ -71,14 +72,22 @@ export function DashCardCardParameterMapper({
   mappingOptions,
   isRecentlyAutoConnected,
 }: DashcardCardParameterMapperProps) {
+  const tc = useTranslateContent2();
   const isQuestion = isQuestionDashCard(dashcard);
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
   const isAction = isActionDashCard(dashcard);
   const isDisabled = mappingOptions.length === 0 || isAction;
   const isNative = isQuestion && isNativeDashCard(dashcard);
 
+  const translatedMappingOptions = mappingOptions
+    .map((opt) => ({
+      ...opt,
+      name: tc(opt.name),
+    }))
+    .toSorted((a, b) => a.name.localeCompare(b.name));
+
   const selectedMappingOption = getMappingOptionByTarget(
-    mappingOptions,
+    translatedMappingOptions,
     target,
     question,
     editingParameter ?? undefined,
@@ -112,7 +121,7 @@ export function DashCardCardParameterMapper({
         dashcard={dashcard}
         question={question}
         editingParameter={editingParameter}
-        mappingOptions={mappingOptions}
+        mappingOptions={translatedMappingOptions}
         isQuestion={isQuestion}
         card={card}
         selectedMappingOption={selectedMappingOption}
