@@ -111,7 +111,7 @@ function useMultiAutocomplete({
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
     const rawValue = event.target.value;
-    const parsedValues = parseValues(rawValue).filter(shouldCreate);
+    const parsedValues = parseCsv(rawValue).filter(shouldCreate);
     const newValues = getValuesAfterChange(
       values,
       parsedValues,
@@ -182,7 +182,7 @@ function getFieldStateAfterChange(
     fieldValue.endsWith(delimiter),
   );
 
-  if (parsedValues.length > 1 || isDelimiter) {
+  if (parsedValues.length > 1 || (isDelimiter && parsedValues.length > 0)) {
     return {
       fieldValue: "",
       fieldSelection: {
@@ -201,7 +201,7 @@ function getFieldStateAfterChange(
   }
 }
 
-function parseValues(fieldValue: string): string[] {
+function parseCsv(fieldValue: string): string[] {
   try {
     return parse(fieldValue, {
       delimiter: DELIMITERS,
