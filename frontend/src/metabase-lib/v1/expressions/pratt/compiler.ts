@@ -196,7 +196,7 @@ function compileArgList(
 
   return node.children.map((child) => {
     const expr = compileNode(child, opts);
-    return (expr as any).node ? expr : withNode(child, expr);
+    return withNode(child, expr);
   });
 }
 
@@ -317,7 +317,11 @@ function compileInfixOp(
 }
 
 function withNode<T>(node: Node, expressionParts: T): T {
-  if (typeof expressionParts === "object") {
+  if (
+    expressionParts != null &&
+    typeof expressionParts === "object" &&
+    !("node" in expressionParts)
+  ) {
     Object.defineProperty(expressionParts, "node", {
       writable: false,
       enumerable: false,
