@@ -43,6 +43,10 @@ export type EditableDashboardProps = {
    * Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.
    */
   plugins?: MetabasePluginsConfig;
+
+  /**
+   * Props for the drill-through question
+   */
   drillThroughQuestionProps?: Omit<InteractiveQuestionProps, "questionId"> &
     InteractiveQuestionDefaultViewProps;
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
