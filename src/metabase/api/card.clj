@@ -782,8 +782,9 @@
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
-  `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
-  is normally used to power 'Download Results' buttons that use HTML `form` actions)."
+  `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
+  or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
+  HTML `form` actions)."
   [{:keys [card-id export-format]} :- [:map
                                        [:card-id       ms/PositiveInt]
                                        [:export-format (into [:enum] api.dataset/export-formats)]]

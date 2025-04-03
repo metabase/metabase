@@ -18,6 +18,18 @@ title: API changelog
     - Notification API documentation at `{{YOUR_URL}}/api/docs/#tag/apinotification`
     - Interactive API documentation available at `/api/docs` endpoint
 
+## Metabase 0.53.0
+
+- `POST /api/card/:card-id/query/:export-format`
+
+  Previously, request parameters (parameters, pivot-results?, and format-rows?) could be sent via query parameters or
+  as application/x-www-form-urlencoded form content. In Metabase 0.53.0, parameters must be sent as either:
+
+  - application/x-www-form-urlencoded form content
+  - JSON-encoded in the request body
+
+  Sending parameters as query parameters in the URL is no longer supported.
+
 ## Metabase 0.52.0
 
 - `POST /api/user/:id/send_invite` has been removed.
