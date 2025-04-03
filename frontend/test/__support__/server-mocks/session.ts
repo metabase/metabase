@@ -1,7 +1,10 @@
 import fetchMock from "fetch-mock";
 
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
-import type { PasswordResetTokenStatus, Settings } from "metabase-types/api";
+import type {
+  EnterpriseSettings,
+  PasswordResetTokenStatus,
+  Settings,
+} from "metabase-types/api";
 
 export function setupPropertiesEndpoints(
   settings: Settings | EnterpriseSettings,
