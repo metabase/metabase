@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Stack, Text } from "metabase/ui";
+import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
 type ExcludedDisplayTypes = "table" | "map" | "object";
@@ -54,12 +54,17 @@ export const EmptyVizState = ({
             .t`${visualization.identifier} chart example illustration`}
         />
       </Box>
-      <Stack gap="0.75rem" maw="25rem" ta="center">
+      <Stack gap="0.75rem" maw="25rem" ta="center" align="center">
         {docsLink ? (
           <>
             <Text>{primaryText}</Text>
             {showMetabaseLinks && (
-              <ExternalLink href={url}>{secondaryText}</ExternalLink>
+              <ExternalLink href={url}>
+                <Group gap="xs">
+                  <b>{secondaryText}</b>
+                  <Icon name="external" color="brand" />
+                </Group>
+              </ExternalLink>
             )}
           </>
         ) : (
