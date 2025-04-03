@@ -6,8 +6,12 @@ import {
 } from "react";
 import _ from "underscore";
 
-import type { MetabasePluginsConfig } from "embedding-sdk";
+import type {
+  InteractiveQuestionProps,
+  MetabasePluginsConfig,
+} from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
+import type { InteractiveQuestionDefaultViewProps } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   SdkLoader,
@@ -45,6 +49,8 @@ export type InteractiveDashboardProps = {
    */
   renderDrillThroughQuestion?: () => ReactNode;
   drillThroughQuestionHeight?: number;
+  drillThroughQuestionProps?: Omit<InteractiveQuestionProps, "questionId"> &
+    InteractiveQuestionDefaultViewProps;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
@@ -62,6 +68,11 @@ const InteractiveDashboardInner = ({
   onLoadWithoutCards,
   className,
   style,
+  drillThroughQuestionProps = {
+    title: withTitle,
+    height: drillThroughQuestionHeight,
+    plugins: plugins,
+  },
   renderDrillThroughQuestion: AdHocQuestionView,
 }: InteractiveDashboardProps) => {
   const {
@@ -132,10 +143,8 @@ const InteractiveDashboardInner = ({
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
-          title={withTitle}
-          height={drillThroughQuestionHeight}
-          plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
+          {...drillThroughQuestionProps}
         >
           {AdHocQuestionView && <AdHocQuestionView />}
         </InteractiveAdHocQuestion>
