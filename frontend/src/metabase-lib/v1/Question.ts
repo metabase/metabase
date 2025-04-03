@@ -101,7 +101,6 @@ class Question {
     metadata?: Metadata,
     parameterValues?: ParameterValuesMap,
   ) {
-    this._card = card;
     this._metadata =
       metadata ||
       new Metadata({
@@ -113,6 +112,18 @@ class Question {
         questions: {},
       });
     this._parameterValues = parameterValues || {};
+
+    // If the card has a top-level entity_id, use that. Otherwise, use the one on the query info.
+    // If neither of those exists, synthesize a random one.
+    const innerEntityIdPath = ["dataset_query", "info", "card-entity-id"];
+    const entity_id =
+      card?.entity_id || getIn(card, innerEntityIdPath) || Lib.randomIdent();
+
+    // Then set both locations.
+    this._card = chain(card || {})
+      .assoc("entity_id", entity_id)
+      .assocIn(innerEntityIdPath, entity_id)
+      .value();
   }
 
   clone() {
@@ -205,7 +216,13 @@ class Question {
   }
 
   setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
-    return this.setCard(assoc(this.card(), "dataset_query", newDatasetQuery));
+    const card = this.card();
+    const newQuery = assocIn(
+      newDatasetQuery,
+      ["info", "card-entity-id"],
+      card.entity_id,
+    );
+    return this.setCard(assoc(card, "dataset_query", newQuery));
   }
 
   /**
@@ -923,18 +940,6 @@ class Question {
     if (databaseId != null) {
       card = assocIn(card, ["dataset_query", "database"], databaseId);
     }
-
-    // If the card has a top-level entity_id, use that. Otherwise, use the one on the query info.
-    // If neither of those exists, synthesize a random one.
-    const innerEntityIdPath = ["dataset_query", "info", "card-entity-id"];
-    const entity_id =
-      card.entity_id || getIn(card, innerEntityIdPath) || Lib.randomIdent();
-
-    // Then set both locations.
-    card = chain(card)
-      .assoc("entity_id", entity_id)
-      .assocIn(innerEntityIdPath, entity_id)
-      .value();
 
     return new Question(card, metadata, parameterValues);
   }
