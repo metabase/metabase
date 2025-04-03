@@ -52,19 +52,22 @@ export const useTranslateContent = () => {
   return getContentTranslationFunction(context);
 };
 
+export type TCFunc = <TypeOfArgument>(msgid?: TypeOfArgument) => TypeOfArgument;
+
 export const useTranslateContent2 = () => {
   const context = useContext(ContentTranslationContext);
-  console.log("@m91rhom8", "context", context);
 
   // FIXME: Useful in development but let's remove this later
   if (!context.dictionary?.length) {
     console.log("Dictionary is empty");
   }
 
-  return <TypeOfArgument,>(msgid?: TypeOfArgument): TypeOfArgument =>
+  const tcFunc: TCFunc = <TypeOfArgument,>(msgid?: TypeOfArgument) =>
     (msgid && typeof msgid === "string"
       ? translateString(msgid, context)
       : msgid) as TypeOfArgument;
+
+  return tcFunc;
 };
 
 export const getContentTranslationFunction = (

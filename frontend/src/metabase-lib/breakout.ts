@@ -1,8 +1,8 @@
 import * as ML from "cljs/metabase.lib.js";
 
 import { removeClause } from "./query";
+import { TCFunc } from "metabase/i18n/components/ContentTranslationContext";
 import type { BreakoutClause, ColumnMetadata, Query } from "./types";
-
 export function breakoutableColumns(
   query: Query,
   stageIndex: number,
@@ -40,6 +40,15 @@ export function breakoutColumn(
   query: Query,
   stageIndex: number,
   breakout: BreakoutClause,
+  tc?: TCFunc,
 ): ColumnMetadata {
-  return ML.breakout_column(query, stageIndex, breakout);
+  const col = ML.breakout_column(query, stageIndex, breakout);
+  if (tc) {
+    return {
+      ...col,
+      displayName: tc(col.displayName),
+      longDisplayName: tc(col.longDisplayName),
+    };
+  }
+  return col;
 }

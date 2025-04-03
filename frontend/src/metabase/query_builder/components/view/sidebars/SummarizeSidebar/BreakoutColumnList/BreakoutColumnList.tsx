@@ -14,6 +14,7 @@ import * as Lib from "metabase-lib";
 import BreakoutColumnListS from "./BreakoutColumnList.module.css";
 import { BreakoutColumnListItem } from "./BreakoutColumnListItem";
 import { getBreakoutListItem, getColumnSections, isPinnedColumn } from "./util";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export type BreakoutColumnListProps = UpdateQueryHookProps;
 
@@ -29,6 +30,8 @@ export function BreakoutColumnList({
     onReplaceBreakouts,
   } = useBreakoutQueryHandlers({ query, onQueryChange, stageIndex });
 
+  const tc = useTranslateContent2();
+
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(
     searchQuery,
@@ -43,8 +46,10 @@ export function BreakoutColumnList({
     () =>
       breakouts
         .slice(0, pinnedItemCount)
-        .map((breakout) => getBreakoutListItem(query, stageIndex, breakout)),
-    [query, stageIndex, breakouts, pinnedItemCount],
+        .map((breakout) =>
+          getBreakoutListItem(query, stageIndex, breakout, tc),
+        ),
+    [query, stageIndex, breakouts, pinnedItemCount, tc],
   );
 
   const allColumns = useMemo(
@@ -67,6 +72,7 @@ export function BreakoutColumnList({
         stageIndex,
         isSearching ? allColumns : unpinnedColumns,
         debouncedSearchQuery,
+        tc,
       ),
     [
       query,
@@ -75,6 +81,7 @@ export function BreakoutColumnList({
       unpinnedColumns,
       isSearching,
       debouncedSearchQuery,
+      tc,
     ],
   );
 
