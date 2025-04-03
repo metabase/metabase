@@ -13,7 +13,7 @@ import {
   isMetric,
   isNumeric,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, RawSeries } from "metabase-types/api";
+import type { Dataset, DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerDataSource,
   VisualizerHistoryItem,
@@ -117,11 +117,9 @@ export function removeColumnFromPieChart(
 
 export function combineWithPieChart(
   state: VisualizerHistoryItem,
-  series: RawSeries,
+  { data }: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const [{ data }] = series;
-
   const metrics = data.cols.filter(col => isMetric(col));
   const dimensions = data.cols.filter(
     col => isDimension(col) && !isMetric(col),

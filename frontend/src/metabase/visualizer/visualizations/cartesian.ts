@@ -20,7 +20,7 @@ import {
   isDimension,
   isMetric,
 } from "metabase-lib/v1/types/utils/isa";
-import type { Dataset, DatasetColumn, RawSeries } from "metabase-types/api";
+import type { Dataset, DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerDataSource,
@@ -186,7 +186,7 @@ export function addColumnToCartesianChart(
   state: VisualizerHistoryItem,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
-  series: RawSeries,
+  dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
   if (
@@ -223,7 +223,7 @@ export function addColumnToCartesianChart(
 
   if (
     ownDimensions.length === 0 ||
-    isCompatibleWithCartesianChart(state, series)
+    isCompatibleWithCartesianChart(state, dataset)
   ) {
     if (isDimension(column)) {
       state.settings["graph.dimensions"] = [...ownDimensions, column.name];
@@ -345,10 +345,8 @@ export function maybeImportDimensionsFromOtherDataSources(
 
 export function isCompatibleWithCartesianChart(
   state: VisualizerHistoryItem,
-  series: RawSeries,
+  { data }: Dataset,
 ) {
-  const [{ data }] = series;
-
   const ownDimensions = state.settings["graph.dimensions"] ?? [];
   const ownDimensionColumns = state.columns.filter(col =>
     ownDimensions.includes(col.name),
@@ -380,11 +378,9 @@ export function isCompatibleWithCartesianChart(
 
 export function combineWithCartesianChart(
   state: VisualizerHistoryItem,
-  series: RawSeries,
+  { data }: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const [{ data }] = series;
-
   const metrics = data.cols.filter(col => isMetric(col));
   const dimensions = data.cols.filter(
     col => isDimension(col) && !isMetric(col),

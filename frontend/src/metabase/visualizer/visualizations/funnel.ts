@@ -14,7 +14,7 @@ import {
   isMetric,
   isNumeric,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, RawSeries } from "metabase-types/api";
+import type { Dataset, DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerDataSource,
@@ -98,9 +98,8 @@ export const funnelDropHandler = (
   }
 };
 
-export function canCombineCardWithFunnel([{ card, data }]: RawSeries) {
+export function canCombineCardWithFunnel({ data }: Dataset) {
   return (
-    card.display === "scalar" &&
     data?.cols?.length === 1 &&
     isNumeric(data.cols[0]) &&
     data.rows?.length === 1
@@ -146,14 +145,13 @@ export function addColumnToFunnel(
   state: VisualizerHistoryItem,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
-  series: RawSeries,
+  dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
   const isEmpty = state.columns.length === 0;
 
-  if ((isEmpty || isScalarFunnel(state)) && canCombineCardWithFunnel(series)) {
-    const [{ data }] = series;
-    addScalarToFunnel(state, dataSource, data.cols[0]);
+  if ((isEmpty || isScalarFunnel(state)) && canCombineCardWithFunnel(dataset)) {
+    addScalarToFunnel(state, dataSource, dataset.data.cols[0]);
     return;
   }
 
@@ -238,16 +236,16 @@ export function isScalarFunnel(
 
 export function combineWithFunnel(
   state: VisualizerHistoryItem,
-  series: RawSeries,
+  dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const [{ data }] = series;
+  const { data } = dataset;
 
   const isEmpty =
     !state.settings["funnel.metric"] && !state.settings["funnel.dimension"];
   const isMadeOfScalars = state.columnValuesMapping.METRIC?.length >= 1;
 
-  if ((isEmpty || isMadeOfScalars) && canCombineCardWithFunnel(series)) {
+  if ((isEmpty || isMadeOfScalars) && canCombineCardWithFunnel(dataset)) {
     const [column] = data.cols;
     addScalarToFunnel(state, dataSource, column);
     return state;

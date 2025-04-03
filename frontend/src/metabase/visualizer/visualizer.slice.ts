@@ -19,7 +19,6 @@ import type {
   CardId,
   Dataset,
   DatasetColumn,
-  RawSeries,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -229,16 +228,16 @@ const visualizerHistoryItemSlice = createSlice({
       state,
       action: PayloadAction<{
         column: DatasetColumn;
-        series: RawSeries;
         dataSource: VisualizerDataSource;
+        dataset: Dataset;
         dataSourceMap: Record<VisualizerDataSourceId, VisualizerDataSource>;
         datasetMap: Record<VisualizerDataSourceId, Dataset>;
       }>,
     ) => {
       const {
         column: originalColumn,
-        series,
         dataSource,
+        dataset,
         dataSourceMap,
         datasetMap,
       } = action.payload;
@@ -260,7 +259,7 @@ const visualizerHistoryItemSlice = createSlice({
       );
 
       if (state.display === "funnel") {
-        addColumnToFunnel(state, column, columnRef, series, dataSource);
+        addColumnToFunnel(state, column, columnRef, dataset, dataSource);
         return;
       }
 
@@ -268,7 +267,13 @@ const visualizerHistoryItemSlice = createSlice({
       state.columnValuesMapping[column.name] = [columnRef];
 
       if (isCartesianChart(state.display)) {
-        addColumnToCartesianChart(state, column, columnRef, series, dataSource);
+        addColumnToCartesianChart(
+          state,
+          column,
+          columnRef,
+          dataset,
+          dataSource,
+        );
 
         const dimension = state.settings["graph.dimensions"] ?? [];
         const isDimension = dimension.includes(column.name);
@@ -338,8 +343,14 @@ const visualizerHistoryItemSlice = createSlice({
       })
       .addCase(addDataSource.fulfilled, (state, action) => {
         const { card, dataset } = action.payload;
-        const series = [{ card, ...dataset }];
-        Object.assign(state, maybeCombineDataset(state, series));
+        if (
+          !state.display ||
+          (card.display === state.display && state.columns.length === 0)
+        ) {
+          return getInitialStateForCardDataSource(card, dataset.data.cols);
+        }
+        const dataSource = createDataSource("card", card.id, card.name);
+        Object.assign(state, maybeCombineDataset(state, dataSource, dataset));
       })
       .addCase(removeDataSource, (state, action) => {
         const source = action.payload;
@@ -540,13 +551,7 @@ const visualizerSlice = createSlice({
         const { cards, datasets } = state;
         const { column, dataSource } = action.payload;
 
-        const card = cards.find(card => card.id === dataSource.sourceId);
-        if (!card) {
-          return;
-        }
-
         const dataset = datasets[dataSource.id];
-        const series = [{ card, ...dataset }];
 
         const dataSourceMap = Object.fromEntries(
           cards.map(card => {
@@ -559,7 +564,7 @@ const visualizerSlice = createSlice({
           state,
           addColumnInner({
             column,
-            series,
+            dataset,
             dataSource,
             dataSourceMap,
             datasetMap: datasets,
@@ -584,33 +589,27 @@ function maybeUpdateHistory(state: VisualizerState, action: Action) {
 
 function maybeCombineDataset(
   currentState: VisualizerHistoryItem,
-  series: RawSeries,
+  dataSource: VisualizerDataSource,
+  dataset: Dataset,
 ) {
-  const [{ card, data }] = series;
-
   const state = { ...currentState };
-  const dataSource = createDataSource("card", card.id, card.name);
-
-  if (
-    !state.display ||
-    (card.display === state.display && state.columns.length === 0)
-  ) {
-    return getInitialStateForCardDataSource(card, data.cols);
+  if (!state.display) {
+    return;
   }
 
   if (
     isCartesianChart(state.display) &&
-    isCompatibleWithCartesianChart(state, series)
+    isCompatibleWithCartesianChart(state, dataset)
   ) {
-    combineWithCartesianChart(state, series, dataSource);
+    combineWithCartesianChart(state, dataset, dataSource);
   }
 
   if (state.display === "pie") {
-    combineWithPieChart(state, series, dataSource);
+    combineWithPieChart(state, dataset, dataSource);
   }
 
   if (state.display === "funnel") {
-    combineWithFunnel(state, series, dataSource);
+    combineWithFunnel(state, dataset, dataSource);
   }
 
   return state;
