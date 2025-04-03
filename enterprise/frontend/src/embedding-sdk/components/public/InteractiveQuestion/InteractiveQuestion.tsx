@@ -1,6 +1,5 @@
 import type { PropsWithChildren } from "react";
 
-import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import {
   BackButton,
   Breakout,
@@ -71,8 +70,7 @@ export const _InteractiveQuestion = ({
   withDownloads = false,
   initialSqlParameters,
 }: InteractiveQuestionProps &
-  InteractiveQuestionDefaultViewProps &
-  FlexibleSizeProps): JSX.Element | null => (
+  InteractiveQuestionDefaultViewProps): JSX.Element | null => (
   <InteractiveQuestionProvider
     questionId={questionId}
     componentPlugins={plugins}
