@@ -197,7 +197,7 @@ export const PublicOrEmbeddedQuestion = ({
         theme={theme}
         titled={titled}
         setCard={setCard}
-        downloadsEnabled={downloadsEnabled.cardResult}
+        downloadsEnabled={downloadsEnabled.dashcard}
       />
     </LocaleProvider>
   );
