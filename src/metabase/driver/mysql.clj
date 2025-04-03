@@ -359,6 +359,9 @@
   If it doesn't support the ordinary SQL standard type, then we coerce it to a different type that MySQL does support here"
   {"integer"          "signed"
    "text"             "char"
+   ;; MySQL decimal defaults to 0 decimal places, so cast it as a double
+   ;; See https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
+   "decimal"          "double"
    "double precision" "double"
    "bigint"           "unsigned"})
 
