@@ -238,8 +238,7 @@
   50)
 
 (defn- deduplicated-entity-id [model cache entity]
-  (let [id (:id entity)
-        cached-entity-ids (->> cache model vals (map deref) set)]
+  (let [cached-entity-ids (->> cache model vals (map deref) set)]
     (loop [retry 0]
       (if (> retry *max-retries*)
         (throw (ex-info "Failed to find unique entity-id for entity"

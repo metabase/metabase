@@ -140,11 +140,11 @@
       (when-let [new-model (next-model model)]
         (start-backfill-job! new-model)))))
 
-(jobs/defjob  ^{:doc "Selects batches of dbs/tables/fields to add them to the cache and backfill queue."}
+(task/defjob  ^{:doc "Selects batches of dbs/tables/fields to add them to the cache and backfill queue."}
   BackfillEntityIds [ctx]
   (backfill-entity-ids! ctx))
 
-(jobs/defjob ^{:doc "Drains the entity-id cache and updates the db with the new entity ids"}
+(task/defjob ^{:doc "Drains the entity-id cache and updates the db with the new entity ids"}
   DrainEntityIds [_ctx]
   (drain-entity-ids!))
 
