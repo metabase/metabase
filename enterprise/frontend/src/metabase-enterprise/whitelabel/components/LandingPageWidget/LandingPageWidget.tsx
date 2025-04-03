@@ -2,17 +2,16 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { useAdminSetting } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { TextInput } from "metabase/ui";
-import { useEnterpriseAdminSetting } from "metabase-enterprise/api/utils/settings";
 
 import { getRelativeLandingPageUrl } from "./utils";
 
 export function LandingPageWidget() {
   const [error, setError] = useState<string | null>(null);
-  const { value, updateSetting, description } =
-    useEnterpriseAdminSetting("landing-page");
+  const { value, updateSetting, description } = useAdminSetting("landing-page");
   const [inputValue, setInputValue] = useState(value ?? "");
   const [sendToast] = useToast();
 
