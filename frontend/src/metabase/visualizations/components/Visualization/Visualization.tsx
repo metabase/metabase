@@ -70,7 +70,7 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
-import { EmptyVizState } from "../EmptyVizState/EmptyVizState";
+import { EmptyVizState } from "../EmptyVizState";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
