@@ -35,6 +35,13 @@ describe("admin > permissions > sandboxing > misconfiguration", () => {
       "INSERT INTO products (id, name, category) VALUES (1, 'A', 'Gizmo'), (2, 'B', 'Widget')",
     );
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "products" });
+
+    H.snapshot("sandboxing-misconfiguration-snapshot");
+  });
+
+  beforeEach(() => {
+    cy.signInAsAdmin();
+    H.restore("sandboxing-misconfiguration-snapshot" as any);
   });
 
   it("if we create a sandboxing policy on a column but then the column is deleted, the sandboxing system fails closed", () => {
@@ -71,25 +78,24 @@ describe("admin > permissions > sandboxing > misconfiguration", () => {
       );
     });
 
-    signInAs(gizmoViewer).then(() => {
-      cy.get<number>("@questionId").then((questionId) => {
-        getCardResponses([{ ...questionData, id: questionId }]).then((data) =>
-          rowsShouldContainOnlyOneCategory({
-            ...data,
-            productCategory: "Gizmo",
-          }),
-        );
-      });
-    });
+    signInAs(gizmoViewer);
 
-    H.queryWritableDB("ALTER TABLE products DROP COLUMN category");
+    cy.get<number>("@questionId").then((questionId) => {
+      getCardResponses([{ ...questionData, id: questionId }]).then((data) =>
+        rowsShouldContainOnlyOneCategory({
+          ...data,
+          productCategory: "Gizmo",
+        }),
+      );
 
-    signInAs(gizmoViewer).then(() => {
-      cy.get<number>("@questionId").then((questionId) => {
-        getCardResponses([{ ...questionData, id: questionId }]).then(
-          ({ responses }) => responses.forEach(assertResponseFailsClosed),
-        );
-      });
+      H.queryWritableDB("ALTER TABLE products DROP COLUMN category");
+
+      cy.log(
+        "After the column is dropped, the sandboxing system should fail closed",
+      );
+      getCardResponses([{ ...questionData, id: questionId }]).then(
+        ({ responses }) => responses.forEach(assertResponseFailsClosed),
+      );
     });
   });
 });
