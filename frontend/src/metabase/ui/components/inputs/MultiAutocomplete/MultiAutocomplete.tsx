@@ -22,6 +22,7 @@ export type MultiAutocompleteProps = {
   autoFocus?: boolean;
   rightSection?: ReactNode;
   nothingFoundMessage?: ReactNode;
+  "aria-label"?: string;
   onChange: (newValues: string[]) => void;
   onSearchChange?: (newValue: string) => void;
 };
@@ -34,6 +35,7 @@ export function MultiAutocomplete({
   autoFocus,
   rightSection,
   nothingFoundMessage,
+  "aria-label": ariaLabel,
   onChange,
   onSearchChange,
 }: MultiAutocompleteProps) {
@@ -84,6 +86,7 @@ export function MultiAutocomplete({
                     value={fieldValue}
                     placeholder={placeholder}
                     autoFocus={autoFocus}
+                    aria-label={ariaLabel}
                     onChange={handleFieldChange}
                     onKeyDown={handleFieldKeyDown}
                     onFocus={handleFieldFocus}

@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { MultiAutocomplete } from "metabase/ui";
 
 interface StaticValuePickerProps {
@@ -22,6 +24,7 @@ export function StaticValuePicker({
       placeholder={placeholder}
       shouldCreate={shouldCreate}
       autoFocus={autoFocus}
+      aria-label={t`Filter value`}
       onChange={onChange}
     />
   );

@@ -95,6 +95,7 @@ export function SearchValuePicker({
       autoFocus={autoFocus}
       rightSection={isSearching ? <Loader size="xs" /> : undefined}
       nothingFoundMessage={nothingFoundMessage}
+      aria-label={t`Filter value`}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />

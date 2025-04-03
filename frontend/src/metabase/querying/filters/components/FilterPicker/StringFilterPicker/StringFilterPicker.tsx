@@ -141,6 +141,7 @@ function StringValueInput({
           values={values}
           options={[]}
           placeholder={t`Enter some text`}
+          aria-label={t`Filter value`}
           onChange={onChange}
         />
         <Box pt="md" />

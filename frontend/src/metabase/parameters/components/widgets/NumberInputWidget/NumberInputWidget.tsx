@@ -115,25 +115,11 @@ export function NumberInputWidget({
                 values.map((value) => parseNumber(value)).filter(isNotNull),
               )
             }
-            value={filteredUnsavedArrayValue.map((value) => value?.toString())}
+            values={filteredUnsavedArrayValue.map((value) => value?.toString())}
             placeholder={placeholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
-            data={customLabelOptions.concat(valueOptions)}
-            filter={({
-              options,
-              search,
-            }: {
-              options: any[];
-              search: string;
-            }) => {
-              return options.filter((item) =>
-                Boolean(
-                  search !== "" &&
-                    item.label?.toLowerCase().startsWith(search.toLowerCase()),
-                ),
-              );
-            }}
+            options={customLabelOptions.concat(valueOptions)}
           />
         </TokenFieldWrapper>
       ) : (
