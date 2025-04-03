@@ -50,6 +50,7 @@ import type {
 } from "./types";
 import type Field from "./v1/metadata/Field";
 import type Metadata from "./v1/metadata/Metadata";
+import { TCFunc } from "metabase/i18n/components/ContentTranslationContext";
 
 export function metadataProvider(
   databaseId: DatabaseId | null,
@@ -69,105 +70,163 @@ declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   columnMetadata: ColumnMetadata,
+  tc?: TCFunc,
 ): ColumnDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   columnGroup: ColumnGroup,
+  tc?: TCFunc,
 ): ColumnGroupDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   cardMetadata: CardMetadata,
+  tc?: TCFunc,
 ): CardDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   tableMetadata: TableMetadata,
+  tc?: TCFunc,
 ): TableDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   tableLike: CardMetadata | TableMetadata,
+  tc?: TCFunc,
 ): CardDisplayInfo | TableDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   aggregationClause: AggregationClause,
+  tc?: TCFunc,
 ): AggregationClauseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   aggregationOperator: AggregationOperator,
+  tc?: TCFunc,
 ): AggregationOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   breakoutClause: BreakoutClause,
+  tc?: TCFunc,
 ): BreakoutClauseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   orderByClause: OrderByClause,
+  tc?: TCFunc,
 ): OrderByClauseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   clause: Clause,
+  tc?: TCFunc,
 ): ClauseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   bucket: Bucket,
+  tc?: TCFunc,
 ): BucketDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   metric: MetricMetadata,
+  tc?: TCFunc,
 ): MetricDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   joinStrategy: JoinStrategy,
+  tc?: TCFunc,
 ): JoinStrategyDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   joinConditionOperator: JoinConditionOperator,
+  tc?: TCFunc,
 ): JoinConditionOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   drillThru: DrillThru,
+  tc?: TCFunc,
 ): DrillThruDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   filterOperator: FilterOperator,
+  tc?: TCFunc,
 ): FilterOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   segment: SegmentMetadata,
+  tc?: TCFunc,
 ): SegmentDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   extraction: ColumnExtraction,
+  tc?: TCFunc,
 ): ColumnExtractionInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
-export const displayInfo: typeof DisplayInfoFn = ML.display_info;
+export const displayInfo: typeof DisplayInfoFn = (...args) => {
+  const info = ML.display_info(...args);
+  if (args.length === 4 && typeof args[3] === "function") {
+    const tc = args[3] as TCFunc;
+    return {
+      ...info,
+      ...(info.displayName
+        ? {
+            displayName: tc(info.displayName),
+          }
+        : {}),
+      ...(info.longDisplayName
+        ? {
+            longDisplayName: tc(info.longDisplayName),
+          }
+        : {}),
+    };
+  }
+  return info;
+};
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
   return ML.group_columns(columns);
 }
 
+const hasDisplayNames = (
+  arr: ColumnMetadata[],
+): arr is ColumnMetadataWithDisplayName[] => {
+  return "displayName" in arr[0];
+};
+
+type ColumnMetadataWithDisplayName = ColumnMetadata & {
+  displayName: string;
+};
+
+// FIXME: translation may not be needed here. i'm not sure this has display names in it
 export function getColumnsFromColumnGroup(
   group: ColumnGroup,
+  tc?: TCFunc,
 ): ColumnMetadata[] {
-  return ML.columns_group_columns(group);
+  const columns: ColumnMetadata[] = ML.columns_group_columns(group);
+  if (tc && hasDisplayNames(columns)) {
+    return columns
+      .map((col) => ({
+        ...col,
+        displayName: tc(col.displayName),
+      }))
+      .toSorted((a, b) => a.displayName.localeCompare(b.displayName));
+  }
+  return columns;
 }
 
 export function describeTemporalUnit(

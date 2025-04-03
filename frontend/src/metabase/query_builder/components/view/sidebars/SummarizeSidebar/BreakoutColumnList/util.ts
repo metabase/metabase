@@ -1,14 +1,19 @@
 import * as Lib from "metabase-lib";
 
 import type { ListItem, ListSection } from "./types";
+import {
+  TCFunc,
+  useTranslateContent2,
+} from "metabase/i18n/components/ContentTranslationContext";
 
 export function getBreakoutListItem(
   query: Lib.Query,
   stageIndex: number,
   breakout: Lib.BreakoutClause,
+  tc?: TCFunc,
 ): ListItem {
   const column = Lib.breakoutColumn(query, stageIndex, breakout);
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
+  const columnInfo = Lib.displayInfo(query, stageIndex, column, tc);
   return { ...columnInfo, column, breakout };
 }
 
@@ -17,8 +22,11 @@ function getColumnListItems(
   stageIndex: number,
   breakouts: Lib.BreakoutClause[],
   column: Lib.ColumnMetadata,
+  tc?: TCFunc,
 ): ListItem[] {
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
+  const columnInfo = Lib.displayInfo(query, stageIndex, column, tc);
+  console.log("@m91xhouo", "columnInfo", columnInfo);
+
   const { breakoutPositions = [] } = columnInfo;
   if (breakoutPositions.length === 0) {
     return [{ ...columnInfo, column }];
@@ -39,6 +47,7 @@ export function getColumnSections(
   stageIndex: number,
   columns: Lib.ColumnMetadata[],
   searchQuery: string,
+  tc: TCFunc,
 ): ListSection[] {
   const breakouts = Lib.breakouts(query, stageIndex);
   const formattedSearchQuery = searchQuery.trim().toLowerCase();
@@ -46,7 +55,12 @@ export function getColumnSections(
   const filteredColumns =
     formattedSearchQuery.length > 0
       ? columns.filter((column) => {
-          const { displayName } = Lib.displayInfo(query, stageIndex, column);
+          const { displayName } = Lib.displayInfo(
+            query,
+            stageIndex,
+            column,
+            tc,
+          );
           return displayName.toLowerCase().includes(formattedSearchQuery);
         })
       : columns;
@@ -54,9 +68,11 @@ export function getColumnSections(
   return Lib.groupColumns(filteredColumns).map((group) => {
     const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-    const items = Lib.getColumnsFromColumnGroup(group).flatMap((column) =>
-      getColumnListItems(query, stageIndex, breakouts, column),
-    );
+    const items = Lib.getColumnsFromColumnGroup(group, tc)
+      .flatMap((column) =>
+        getColumnListItems(query, stageIndex, breakouts, column, tc),
+      )
+      .toSorted((a, b) => a.displayName.localeCompare(b.displayName));
 
     return {
       name: groupInfo.displayName,
