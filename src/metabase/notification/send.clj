@@ -156,6 +156,7 @@
           (task-history/with-task-history {:task          "notification-send"
                                            :task_details {:notification_id       id
                                                           :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
+            (def hydrated-notification hydrated-notification)
             (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))]
               (if-let [reason (notification.payload/skip-reason notification-payload)]
                 (log/info "Skipping" {:reason reason})

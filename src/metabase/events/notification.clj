@@ -2,8 +2,10 @@
 (ns metabase.events.notification
   (:require
    [malli.core :as mc]
+   [malli.generator :as mg]
    [malli.transform :as mtx]
    [metabase.events :as events]
+   [metabase.events.schema :as events.schema]
    [metabase.models.task-history :as task-history]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
@@ -81,16 +83,23 @@
 (defn- maybe-send-notification-for-topic!
   [topic event-info]
   (when-not *skip-sending-notification?*
-    (when-let [notifications (notifications-for-topic topic event-info)]
+    (when-let [notifications (t2/hydrate (notifications-for-topic topic event-info) :payload)]
       (task-history/with-task-history {:task         "notification-trigger"
                                        :task_details {:trigger_type     :notification-subscription/system-event
                                                       :event_name       topic
                                                       :notification_ids (map :id notifications)}}
         (log/debugf "Found %d notifications for event: %s" (count notifications) topic)
         (doseq [notification notifications]
-          (notification/send-notification! (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
-                                                                         :event_topic topic})))))))
+          (notification/send-notification! (assoc notification :event_info (maybe-hydrate-event-info topic event-info))))))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]
   (maybe-send-notification-for-topic! topic event-info))
+
+;; TODO: move notification events schema here
+
+(defmethod events/event-info-example :event/action.success
+  [_topic options]
+  (let [action (:action options)]
+    (binding [events.schema/*action-gen-value* action]
+      (mg/generate :event/action.success))))

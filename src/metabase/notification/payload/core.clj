@@ -34,14 +34,13 @@
     ;;  the subscription that triggered this notification
     [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]]
    [:multi {:dispatch :payload_type}
-    ;; system event is a bit special in that part of the payload comes from the event itself
     [:notification/system-event
      [:map
       [:payload
-       [:map {:closed true}
-        ;; TODO: event-info schema for each event type
-        [:event_topic [:fn #(= "event" (-> % keyword namespace))]]
-        [:event_info  [:maybe :map]]]]]]
+       [:map
+        [:event_name [:fn #(= "event" (-> % keyword namespace))]]
+        [:action     :keyword]]]
+      [:event_info  [:maybe :map]]]]
     [:notification/card
      [:map
       [:payload    {:optional true} ::models.notification/NotificationCard]
@@ -76,11 +75,7 @@
     [:notification/system-event
      [:map
       ;; override the payload with extra context
-      [:payload
-       [:map {:closed true}
-        [:event_topic                   [:fn #(= "event" (-> % keyword namespace))]]
-        [:event_info                    [:maybe :map]]
-        [:custom       {:optional true} [:maybe :map]]]]]]
+      [:payload :map]]]
     [:notification/dashboard
      [:map
       [:payload [:map

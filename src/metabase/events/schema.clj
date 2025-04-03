@@ -1,12 +1,14 @@
 (ns metabase.events.schema
   (:require
    [malli.core :as mc]
+   [malli.generator :as mg]
    [malli.util :as mut]
    [metabase.lib.schema.common :as common]
    [metabase.models.view-log-impl :as view-log-impl]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (mu/defn event-schema
@@ -212,46 +214,42 @@
 
 (def ^:private table-id-hydrate (-> [:table_id {:optional true} pos-int?] (with-hydrate :table table-hydrate)))
 
+(def ^{:dynamic true
+       :private true} *action-gen-value* nil)
+
 (mr/def ::action-events
   [:map #_{:closed true}
-   [:action :keyword]
-   ;; TODO ... this shouldn't be snake
+   [:action {:gen/fmap (fn [_x] *action-gen-value*)} :keyword]
    [:invocation_id ::nano-id]
-   (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))])
+   (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))
+   #_[:actor [:map {:gen/return {:first_name "Meta"
+                                 :last_name  "Bot"
+                                 :email      "bot@metabase.com"}}
+              [:first_name [:maybe :string]]
+              [:last_name  [:maybe :string]]
+              [:email      [:maybe :string]]]]])
 
 (mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
 (mr/def :event/action.success [:merge ::action-events [:multi {:dispatch :action}
                                                        [:row/create [:map [:result
                                                                            [:map
                                                                             table-id-hydrate
-                                                                            [:created_row :map]]]]]
+                                                                            [:created_row {:gen/return {:id 1
+                                                                                                        :name "this is an example"}} :map]]]]]
                                                        [:row/update [:map [:result
                                                                            [:map
                                                                             table-id-hydrate
-                                                                            [:raw_update [:maybe :map]]
-                                                                            [:after  [:maybe :map]]
-                                                                            [:before :map]]]]]
+                                                                            [:raw_update {:gen/return {:id 1
+                                                                                                       :name "New Name"}} [:maybe :map]]
+                                                                            [:after  {:gen/return {:id 2
+                                                                                                   :name "New Name"}} [:maybe :map]]
+                                                                            [:before {:gen/return {:id 2
+                                                                                                   :name "Old Name"}} :map]]]]]
                                                        [:row/delete [:map [:result
                                                                            [:map
                                                                             table-id-hydrate
-                                                                            [:deleted_row :map]]]]]
+                                                                            [:deleted_row {:gen/return {:id 1
+                                                                                                        :name "this is an example"}} :map]]]]]
                                                        [::mc/default :map]]])
 
 (mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])
-
-;(mr/def :row/create [:merge
-;                     ::data-editing-events
-;                     [:map
-;                      [:created_row :map]]])
-;(mr/def :row/update [:merge
-;                     ::data-editing-events
-;                     [:map
-;                      ;; there could be no changes when update
-;                      [:update [:maybe :map]]
-;                      [:after [:maybe :map]]
-;                      [:before :map]]])
-;(mr/def :row/delete [:merge
-;                     ::data-editing-events
-;                     [:map
-;                      [:deleted_row :map]]])
-
