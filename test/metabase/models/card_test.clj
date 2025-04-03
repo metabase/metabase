@@ -1058,16 +1058,6 @@
                                 :condition    [:= $user_id &another_join.people.id]
                                 :source-table $$people}]}}))
 
-(comment
-  (def q1
-    (mt/mbql-query orders
-      {:source-query {:source-table $$orders
-                      :aggregation  [[:count] [:sum $subtotal]]
-                      :breakout     [$subtotal [:expression "yo"]]
-                      :expressions  {"yo" [:+ $subtotal 7]}}}))
-  (-> q1 :query :source-query)
-  (qp.preprocess/query->expected-cols q1))
-
 (defn- bare-query-exp [eid]
   (mt/$ids orders
     {:source-query {:source-table       $$orders

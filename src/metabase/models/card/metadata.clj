@@ -60,28 +60,6 @@ saved later when it is ready."
                               metadata')))}
       {:metadata (qp.util/combine-metadata result metadata')})))
 
-(comment
-  (t2/select-one :model/Card :id 114)
-  ;; XXX: START HERE: Just got the ad-hoc native query including its entity_id.
-  ;; I think that fix will apply to MBQL as well, though it matters less there.
-  ;; Next steps:
-  ;; - Update annotate to return correct idents for all columns.
-  ;; - Adjust add-source-metadata to pass along the idents from earlier queries.
-  ;;     - Since idents aren't in `:result_metadata` yet, this needs to be inferred!
-  ;;     - The inference may as well be cached centrally from the first, so it doesn't get repeatedly recomputed.
-
-  ;; See my lifecycle of `:result_metadata` in Logseq - it's the predictable shambles.
-  ;; To unify on that as a safety check before we commit to writing the idents into appdbs(!):
-  ;; - Refactor all of the call sites to pass through one function - `qp.metadata/legacy-result-metadata`?
-  ;; - Ensure that function is only called from outside the QP, on real, card-holding queries.
-  ;; - Put the safety checks for idents into it.
-
-  ;; If the tests are passing and that doesn't explode in stats, we can be reasonably confident that the idents are
-  ;; working globally!
-
-  ;; Cases to test: new/updated X native/MBQL plain/MBQL with summaries X query/model.
-  )
-
 (mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
   [query]
   (log/debug "Querying for metadata")

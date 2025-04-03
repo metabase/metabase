@@ -244,8 +244,6 @@
                    (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options))))
             (is (=? {:status    :completed
                      :row_count 156
-                     ;; XXX: START HERE: The "incorrect :field ID refs" case is broken. The original column idents get
-                     ;; used instead of the breakout idents. Needs fixing in annotate.
                      :data {:cols [{:ident (get-in query [:query :breakout-idents 0])}
                                    {:ident (get-in query [:query :breakout-idents 1])}
                                    {:name  "pivot-grouping"}

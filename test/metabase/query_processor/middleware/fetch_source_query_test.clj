@@ -160,10 +160,6 @@
      :query    {:source-table "card__1"
                 :limit        50}}]))
 
-(comment
-  (def mp (nested-nested-provider))
-  (lib.metadata/card mp 1))
-
 (deftest ^:parallel nested-nested-queries-test
   (testing "make sure that nested nested queries work as expected"
     (qp.store/with-metadata-provider (nested-nested-provider)

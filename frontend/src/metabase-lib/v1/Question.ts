@@ -607,7 +607,6 @@ class Question {
     if (!other) {
       return false;
     }
-
     if (this.id() !== other.id()) {
       return false;
     }
