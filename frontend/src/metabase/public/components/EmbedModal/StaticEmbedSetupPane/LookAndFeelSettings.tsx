@@ -62,6 +62,7 @@ export const LookAndFeelSettings = ({
   const availableFonts = useSelector((state) =>
     getSetting(state, "available-fonts"),
   );
+  const isDashboard = resourceType === "dashboard";
 
   return (
     <>
@@ -176,11 +177,9 @@ export const LookAndFeelSettings = ({
           />
 
           {canWhitelabel && (
-            <DisplayOptionSection
-              title={resourceType === "dashboard" ? t`Downloads` : null}
-            >
-              <Stack gap="md" mt={resourceType === "dashboard" ? "md" : 0}>
-                {resourceType === "dashboard" && (
+            <DisplayOptionSection title={isDashboard ? t`Downloads` : null}>
+              <Stack gap="md" mt={isDashboard ? "md" : 0}>
+                {isDashboard && (
                   <Switch
                     label={t`Export to PDF`}
                     labelPosition="left"
@@ -201,7 +200,7 @@ export const LookAndFeelSettings = ({
 
                 <Switch
                   label={
-                    resourceType === "dashboard"
+                    isDashboard
                       ? t`Results (csv, xlsx, json, png)`
                       : t`Download (csv, xlsx, json, png)`
                   }
@@ -215,10 +214,13 @@ export const LookAndFeelSettings = ({
                       downloads: {
                         ...displayOptions.downloads,
                         dashcard: e.target.checked,
+
+                        // PDF downloads are not supported for questions, so we set it to match
+                        // the dashcard's value. For dashboards, we maintain the existing PDF setting.
                         pdf:
-                          resourceType === "dashboard"
-                            ? (displayOptions.downloads?.pdf ?? true)
-                            : e.target.checked,
+                          resourceType === "question"
+                            ? e.target.checked
+                            : (displayOptions.downloads?.pdf ?? true),
                       },
                     })
                   }
