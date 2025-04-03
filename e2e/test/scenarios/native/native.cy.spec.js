@@ -433,7 +433,10 @@ describe("scenarios > question > native", () => {
       cy.log("open editor on a normal screen size");
       cy.findByTestId("visibility-toggler").click();
 
-      dataReferenceSidebar().should("be.visible");
+      dataReferenceSidebar()
+        .should("be.visible")
+        // means data is loaded
+        .should("contain", "Sample Database");
 
       cy.findByTestId("visibility-toggler").click();
 
