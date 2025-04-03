@@ -83,17 +83,14 @@ redirect_from:
   },
   "components" : {
     "schemas" : {
-      "api.tiles/field-id-or-name" : {
-        "type" : "string"
-      },
       "api.tiles/route-params" : {
         "type" : "object",
         "properties" : {
           "lat-field" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           },
           "lon-field" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           },
           "x" : {
             "description" : "value must be an integer.",
@@ -914,6 +911,10 @@ redirect_from:
             "type" : {
               "type" : "string",
               "enum" : [ "notification-subscription/cron", "notification-subscription/system-event" ]
+            },
+            "ui_display_type" : {
+              "type" : "string",
+              "enum" : [ "cron/raw", "cron/builder" ]
             }
           },
           "required" : [ "type", "cron_schedule" ]
@@ -7461,14 +7462,14 @@ redirect_from:
           "name" : "lat-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
           "name" : "lon-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
@@ -7522,14 +7523,14 @@ redirect_from:
           "name" : "lat-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
           "name" : "lon-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
@@ -10223,14 +10224,14 @@ redirect_from:
           "name" : "lat-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
           "name" : "lon-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
@@ -10286,14 +10287,14 @@ redirect_from:
           "name" : "lat-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
           "name" : "lon-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
@@ -11934,14 +11935,14 @@ redirect_from:
           "name" : "lat-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
           "name" : "lon-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
@@ -11997,14 +11998,14 @@ redirect_from:
           "name" : "lat-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
           "name" : "lon-field",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/api.tiles~1field-id-or-name"
+            "type" : "string"
           }
         }, {
           "in" : "path",
