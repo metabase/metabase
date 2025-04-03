@@ -1,25 +1,31 @@
+import {
+  skipToken,
+  useGetTableQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import { Flex, Group, Icon } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
 interface Props {
   className?: string;
-  hideTableCrumb?: boolean;
+  hideTableName?: boolean;
   tableId: TableId;
 }
 
-// TODO: separators
-// TODO: remove css file
-
 export const TableBreadcrumbs = ({
   className,
-  hideTableCrumb,
+  hideTableName,
   tableId,
 }: Props) => {
-  const databaseName = "Sample DB"; // TODO
-  const databaseId = 1; // TODO
-  const schemaName = "Schema"; // TODO
-  const schemaId = "Domestic"; // TODO
-  const tableName = "Table name"; // TODO
+  const { data: table } = useGetTableQuery({ id: tableId });
+
+  const { data: schemas } = useListDatabaseSchemasQuery(
+    table && table.db_id ? { id: table.db_id } : skipToken,
+  );
+
+  if (!table || !table.db || !schemas) {
+    return null;
+  }
 
   return (
     <Group align="center" className={className} gap="sm">
@@ -28,10 +34,10 @@ export const TableBreadcrumbs = ({
           <Icon name="database" />
         </Flex>
 
-        {databaseName}
+        {table.db.name}
       </Group>
 
-      {schemaName && (
+      {schemas.length > 1 && table.schema && (
         <>
           <Separator />
 
@@ -40,12 +46,12 @@ export const TableBreadcrumbs = ({
               <Icon name="folder" />
             </Flex>
 
-            {schemaName}
+            {table.schema}
           </Group>
         </>
       )}
 
-      {!hideTableCrumb && (
+      {!hideTableName && (
         <>
           <Separator />
 
@@ -54,18 +60,12 @@ export const TableBreadcrumbs = ({
               <Icon name="table" />
             </Flex>
 
-            {tableName}
+            {table.display_name}
           </Group>
         </>
       )}
     </Group>
   );
 };
-
-// const Separator = () => (
-//   <Flex c="text-medium">
-//     <Icon name="chevronright" />
-//   </Flex>
-// );
 
 const Separator = () => <span>/</span>;

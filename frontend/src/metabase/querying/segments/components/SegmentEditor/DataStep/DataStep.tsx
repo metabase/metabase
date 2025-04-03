@@ -55,7 +55,7 @@ export function DataStep({
   return (
     <ClauseStep label={t`Data`}>
       <Box>
-        {tableId && <TableBreadcrumbs hideTableCrumb tableId={tableId} />}
+        {tableId && <TableBreadcrumbs hideTableName tableId={tableId} />}
 
         {isNew ? (
           <Button
@@ -73,6 +73,7 @@ export function DataStep({
           </Text>
         )}
       </Box>
+
       {isOpened && (
         <DataPickerModal
           title={t`Select a table`}
