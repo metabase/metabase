@@ -939,44 +939,6 @@ export class UnconnectedDataSelector extends Component {
     }
   };
 
-  getSearchInputPlaceholder = () => {
-    const { activeStep, selectedDataBucketId, isSavedEntityPickerShown } =
-      this.state;
-    if (activeStep === DATA_BUCKET_STEP) {
-      return t`Search for some data…`;
-    }
-    if (selectedDataBucketId === DATA_BUCKET.MODELS) {
-      return t`Search for a model…`;
-    }
-    return isSavedEntityPickerShown
-      ? t`Search for a question…`
-      : t`Search for a table…`;
-  };
-
-  getSearchModels = () => {
-    const { selectedDataBucketId, isSavedEntityPickerShown } = this.state;
-    if (!this.props.hasNestedQueriesEnabled) {
-      return ["table"];
-    }
-    if (!this.hasUsableModelsOrMetrics()) {
-      return isSavedEntityPickerShown ? ["card"] : ["card", "table"];
-    }
-    if (!selectedDataBucketId) {
-      return [
-        "card",
-        "dataset",
-        "table",
-        ...(this.props.canSelectMetric ? ["metric"] : []),
-      ];
-    }
-    return {
-      [DATA_BUCKET.MODELS]: ["dataset"],
-      [DATA_BUCKET.RAW_DATA]: ["table"],
-      [DATA_BUCKET.SAVED_QUESTIONS]: ["card"],
-      [DATA_BUCKET.METRICS]: ["metric"],
-    }[selectedDataBucketId];
-  };
-
   hasDataAccess = () => {
     const { hasDataAccess, databases } = this.props;
     return hasDataAccess || databases?.length > 0;
