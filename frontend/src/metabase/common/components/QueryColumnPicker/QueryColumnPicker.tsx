@@ -72,12 +72,12 @@ export function QueryColumnPicker({
       columnGroups.map((group) => {
         const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-        const items = Lib.getColumnsFromColumnGroup(group, tc).map(
-          (column) => ({
-            ...Lib.displayInfo(query, stageIndex, column),
+        const items = Lib.getColumnsFromColumnGroup(group, tc)
+          .map((column) => ({
+            ...Lib.displayInfo(query, stageIndex, column, tc),
             column,
-          }),
-        );
+          }))
+          .toSorted((a, b) => a.displayName.localeCompare(b.displayName));
 
         return {
           name: groupInfo.displayName,
@@ -194,6 +194,7 @@ export function QueryColumnPicker({
     ),
     [query, stageIndex],
   );
+  console.log("@m92076vs", "sections", sections);
 
   return (
     <DelayGroup>
