@@ -133,19 +133,17 @@ function compileLogicalOr(node: Node, opts: Options): Lib.ExpressionParts {
 function compileComparisonOp(node: Node, opts: Options): Lib.ExpressionParts {
   assert(node.type === COMPARISON, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
+  assert(isOperator(node.token.text, opts), t`Invalid operator`);
 
-  const operator = node.token?.text;
-  // TODO: remove this cast
-  return compileInfixOp(operator as Lib.ExpressionOperator, node, opts);
+  return compileInfixOp(node.token.text, node, opts);
 }
 
 function compileEqualityOp(node: Node, opts: Options): Lib.ExpressionParts {
   assert(node.type === EQUALITY, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
+  assert(isOperator(node.token.text, opts), t`Invalid operator`);
 
-  const operator = node.token?.text;
-  // TODO: remove this cast
-  return compileInfixOp(operator as Lib.ExpressionOperator, node, opts);
+  return compileInfixOp(node.token.text, node, opts);
 }
 
 function compileFunctionCall(node: Node, opts: Options): Lib.ExpressionParts {
@@ -157,10 +155,12 @@ function compileFunctionCall(node: Node, opts: Options): Lib.ExpressionParts {
   );
 
   const text = node.token?.text.trim().toLowerCase();
-  const name = opts.getMBQLName(text) ?? text;
+  const operator = opts.getMBQLName(text) ?? text;
+
+  assert(isOperator(operator, opts), t`Invalid operator`);
+
   return withNode(node, {
-    // TODO: remove this cast
-    operator: name as Lib.ExpressionOperator,
+    operator,
     options: {},
     args: compileArgList(node.children[0], opts),
   });
@@ -214,10 +214,9 @@ function compileAdditionOp(node: Node, opts: Options): Lib.ExpressionParts {
 function compileMulDivOp(node: Node, opts: Options): Lib.ExpressionParts {
   assert(node.type === MULDIV_OP, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
+  assert(isOperator(node.token.text, opts), t`Invalid operator`);
 
-  const operator = node.token?.text;
-  // TODO: remove this cast
-  return compileInfixOp(operator as Lib.ExpressionOperator, node, opts);
+  return compileInfixOp(node.token.text, node, opts);
 }
 
 function compileSubtractionOp(node: Node, opts: Options): Lib.ExpressionParts {
@@ -294,6 +293,11 @@ function withNode<T>(node: Node, expressionParts: T): T {
     });
   }
   return expressionParts;
+}
+
+function isOperator(op: string, opts: Options): op is Lib.ExpressionOperator {
+  const res = opts.getMBQLName(op);
+  return res != null;
 }
 
 const COMPILE = new Map<NodeType, CompileFn>([
