@@ -29,6 +29,7 @@ const setup = ({ value }: { value: boolean }) => {
   setupSettingsEndpoints([
     createMockSettingDefinition({
       key: "anon-tracking-enabled",
+      description: "Enable the collection of anonymous usage data",
       value: false,
     }),
   ]);

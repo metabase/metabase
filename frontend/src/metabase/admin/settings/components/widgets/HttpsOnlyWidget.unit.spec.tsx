@@ -6,12 +6,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/containers/UndoListing";
 import {
   createMockSettingDefinition,
@@ -72,10 +67,6 @@ const mockNotAccessible = () => {
 };
 
 describe("HttpsOnlyWidget", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   it("should render a HttpsOnlyWidget", async () => {
     mockAccessible();
     setup();
