@@ -4,9 +4,7 @@ import _ from "underscore";
 import { isCartesianChart } from "metabase/visualizations";
 import {
   getDefaultDimensionFilter,
-  getDefaultDimensions,
   getDefaultMetricFilter,
-  getDefaultMetrics,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -227,23 +225,10 @@ export function addColumnToCartesianChart(
     ownDimensions.length === 0 ||
     isCompatibleWithCartesianChart(state, series)
   ) {
-    const [{ card }] = series;
-
-    const metrics = getDefaultMetrics(series, card.visualization_settings);
-    const dimensions = getDefaultDimensions(
-      series,
-      card.visualization_settings,
-    );
-
-    const isMetric = metrics.includes(columnRef.originalName);
-    const isDimension = dimensions.includes(columnRef.originalName);
-
-    if (isMetric) {
-      state.settings["graph.metrics"] = [...ownMetrics, column.name];
-    }
-
-    if (isDimension) {
+    if (isDimension(column)) {
       state.settings["graph.dimensions"] = [...ownDimensions, column.name];
+    } else if (isMetric(column)) {
+      state.settings["graph.metrics"] = [...ownMetrics, column.name];
     }
   }
 }
@@ -362,7 +347,7 @@ export function isCompatibleWithCartesianChart(
   state: VisualizerHistoryItem,
   series: RawSeries,
 ) {
-  const [{ card, data }] = series;
+  const [{ data }] = series;
 
   const ownDimensions = state.settings["graph.dimensions"] ?? [];
   const ownDimensionColumns = state.columns.filter(col =>
@@ -373,22 +358,21 @@ export function isCompatibleWithCartesianChart(
     col => isDate(col),
   );
 
-  const dimensions = getDefaultDimensions(series, card.visualization_settings);
-  const dimensionColumns = data.cols.filter(col =>
-    dimensions.includes(col.name),
+  const dimensionColumns = data.cols.filter(
+    col => isDimension(col) && !isMetric(col),
   );
   const [timeDimensions, otherDimensions] = _.partition(dimensionColumns, col =>
     isDate(col),
   );
 
   let isCompatible = false;
+  if (ownTimeDimensions.length > 0) {
+    isCompatible = timeDimensions.some(col => isDate(col));
+  }
   if (ownOtherDimensions.length > 0) {
     isCompatible = otherDimensions.every(col =>
       ownOtherDimensions.some(ownCol => ownCol.id === col.id),
     );
-  }
-  if (ownTimeDimensions.length > 0) {
-    isCompatible = timeDimensions.some(col => isDate(col));
   }
 
   return isCompatible;
@@ -399,17 +383,14 @@ export function combineWithCartesianChart(
   series: RawSeries,
   dataSource: VisualizerDataSource,
 ) {
-  const [{ card, data }] = series;
+  const [{ data }] = series;
 
-  const metrics = getDefaultMetrics(series, card.visualization_settings);
-  const metricColumns = data.cols.filter(col => metrics.includes(col.name));
-
-  const dimensions = getDefaultDimensions(series, card.visualization_settings);
-  const dimensionColumns = data.cols.filter(col =>
-    dimensions.includes(col.name),
+  const metrics = data.cols.filter(col => isMetric(col));
+  const dimensions = data.cols.filter(
+    col => isDimension(col) && !isMetric(col),
   );
 
-  metricColumns.forEach(column => {
+  metrics.forEach(column => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,
@@ -418,7 +399,7 @@ export function combineWithCartesianChart(
     addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
   });
 
-  dimensionColumns.forEach(column => {
+  dimensions.forEach(column => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,
