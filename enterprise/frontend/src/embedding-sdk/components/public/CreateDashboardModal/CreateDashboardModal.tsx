@@ -1,6 +1,7 @@
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
+import { useCollectionQuery } from "metabase/common/hooks";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 import type { Dashboard } from "metabase-types/api";
 
@@ -17,9 +18,16 @@ const CreateDashboardModalInner = ({
   onCreate,
   onClose,
 }: CreateDashboardModalProps) => {
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: initialCollectionId,
+  const { id, isLoading: isTranslateCollectionLoading } =
+    useTranslatedCollectionId({
+      id: initialCollectionId,
+    });
+
+  const { isLoading: isCollectionQueryLoading } = useCollectionQuery({
+    id,
   });
+
+  const isLoading = isTranslateCollectionLoading && isCollectionQueryLoading;
 
   if (isLoading) {
     return null;
