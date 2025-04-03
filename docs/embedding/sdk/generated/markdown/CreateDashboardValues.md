@@ -4,8 +4,8 @@
 
 #### Properties
 
-| Property                                 | Type                                             | Inherited from     |
-| ---------------------------------------- | ------------------------------------------------ | ------------------ |
-| <a id="collectionid"></a> `collectionId` | [`SdkCollectionId`](internal/SdkCollectionId.md) | -                  |
-| <a id="description"></a> `description`   | `null` \| `string`                               | `Omit.description` |
-| <a id="name"></a> `name`                 | `string`                                         | `Omit.name`        |
+| Property                                 | Type                                             | Description                                                                                                    | Inherited from     |
+| ---------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ------------------ |
+| <a id="collectionid"></a> `collectionId` | [`SdkCollectionId`](internal/SdkCollectionId.md) | Collection in which to create a new dashboard. You can use predefined system values like `root` or `personal`. | -                  |
+| <a id="description"></a> `description`   | `null` \| `string`                               | Dashboard description                                                                                          | `Omit.description` |
+| <a id="name"></a> `name`                 | `string`                                         | Dashboard title                                                                                                | `Omit.name`        |

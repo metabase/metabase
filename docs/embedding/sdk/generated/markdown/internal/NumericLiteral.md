@@ -1,3 +1,3 @@
 ```ts
-type NumericLiteral = number;
+type NumericLiteral = number | bigint;
 ```

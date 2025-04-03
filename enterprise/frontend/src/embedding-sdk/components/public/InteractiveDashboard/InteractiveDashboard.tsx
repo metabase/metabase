@@ -187,6 +187,9 @@ const InteractiveDashboardInner = ({
   );
 };
 
+/**
+ * A dashboard component with drill downs, click behaviors, and the ability to view and click into questions.
+ */
 export const InteractiveDashboard = renderOnlyInSdkProvider(
   InteractiveDashboardInner,
 );

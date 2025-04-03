@@ -29,7 +29,7 @@ export const RenderOnlyInSdkProvider = ({
 
 export function renderOnlyInSdkProvider<P extends object>(
   Component: React.ComponentType<P>,
-) {
+): React.FC<P> {
   const WithRenderOnlyInSdkProvider = (props: P) => (
     <RenderOnlyInSdkProvider>
       <Component {...props} />

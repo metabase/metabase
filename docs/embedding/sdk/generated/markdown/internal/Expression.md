@@ -7,5 +7,6 @@ type Expression =
   | CaseOrIfExpression
   | CallExpression
   | ConcreteFieldReference
-  | Filter;
+  | Filter
+  | ValueExpression;
 ```

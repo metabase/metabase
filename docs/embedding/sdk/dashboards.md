@@ -14,36 +14,36 @@ You can embed an interactive, editable, or static dashboard.
 
 You can embed a dashboard using the one of the dashboard components:
 
-- `StaticDashboard`
+### `StaticDashboard`
 
 A lightweight dashboard component. Use this component when you want to display results without letting people interact with the data.
 
-- `InteractiveDashboard`
+Docs: [StaticDashboard](./generated/html/StaticDashboard.html)
+
+### `InteractiveDashboard`
 
 A dashboard component with drill downs, click behaviors, and the ability to view and click into questions. Use this component when you want to allow people to explore their data.
 
-- `EditableDashboard`
+Docs: [InteractiveDashboard](./generated/html/InteractiveDashboard.html)
+
+### `EditableDashboard`
 
 A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard. Use this component when you want to give people the ability to modify your dashboards, for example in an admin panel in your app.
 
-## Dashboard component props
-
-[EditableDashboardProps](./generated/html/EditableDashboardProps.html)
-
-{% include_file "{{ dirname }}/generated/markdown/EditableDashboardProps.md" %}
-
-_\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParameters` to declutter the user interface is fine._
-
-By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
-
-```tsx
-{% include_file "{{ dirname }}/snippets/dashboards/custom-height.tsx" snippet="example" %}
-```
+Docs: [EditableDashboard](./generated/html/EditableDashboard.html)
 
 ## Example embedded dashboard with `InteractiveDashboard` component
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/dashboards/interactive-dashboard.tsx" %}
+```
+
+## Customizing dashboard height
+
+By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
+
+```tsx
+{% include_file "{{ dirname }}/snippets/dashboards/custom-height.tsx" snippet="example" %}
 ```
 
 ## Customizing drill-through question layout
@@ -114,28 +114,16 @@ Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateD
 
 ### Hook
 
+Docs: [useCreateDashboardApi](./generated/html/useCreateDashboardApi.html)
+
 ```typescript
 {% include_file "{{ dirname }}/snippets/dashboards/create-dashboard.tsx" snippet="example-hook" %}
 ```
 
-Props:
-
-| Prop         | Type                             | Description                                                                                                    |
-| ------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| name         | `string`                         | (required) Dashboard title                                                                                     |
-| description  | `string \| null`                 | Optional dashboard description                                                                                 |
-| collectionId | `number \| 'root' \| 'personal'` | Collection in which to create a new dashboard. You can use predefined system values like `root` or `personal`. |
-
 ### Component
+
+Docs: [CreateDashboardModal](./generated/html/CreateDashboardModal.html)
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/dashboards/create-dashboard.tsx" snippet="example-component" %}
 ```
-
-Supported component props:
-
-| Prop          | Type                             | Description                                                                                                        |
-| ------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| collectionId? | `number \| 'root' \| 'personal'` | Initial collection in which to create a dashboard. You can use predefined system values like `root` or `personal`. |
-| onCreate      | `(dashboard: Dashboard) => void` | Handler to react on dashboard creation.                                                                            |
-| onClose       | `() => void`                     | Handler to close modal component                                                                                   |

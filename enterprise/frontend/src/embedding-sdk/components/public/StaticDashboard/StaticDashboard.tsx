@@ -90,6 +90,9 @@ export const StaticDashboardInner = ({
   );
 };
 
+/**
+ * A lightweight dashboard component.
+ */
 const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
   ({ dashboardId: initialDashboardId, ...rest }) => {
     const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({

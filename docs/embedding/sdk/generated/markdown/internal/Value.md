@@ -1,3 +1,8 @@
 ```ts
-type Value = null | boolean | StringLiteral | NumericLiteral | DatetimeLiteral;
+type Value =
+  | null
+  | BooleanLiteral
+  | StringLiteral
+  | NumericLiteral
+  | DatetimeLiteral;
 ```

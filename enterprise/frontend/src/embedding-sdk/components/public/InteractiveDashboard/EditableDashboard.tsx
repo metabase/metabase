@@ -30,7 +30,6 @@ import { InteractiveDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 /**
- * @public
  * @interface
  */
 export type EditableDashboardProps = {
@@ -52,6 +51,12 @@ export type EditableDashboardProps = {
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
+/**
+ * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.
+ *
+ * @function
+ * @param props
+ */
 export const EditableDashboard = ({
   dashboardId: initialDashboardId,
   initialParameters = {},

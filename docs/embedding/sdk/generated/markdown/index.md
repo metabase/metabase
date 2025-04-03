@@ -42,8 +42,18 @@
 
 #### Variables
 
-| Variable                                                | Description                     |
-| ------------------------------------------------------- | ------------------------------- |
-| [~~CreateQuestion~~](CreateQuestion.md)                 | -                               |
-| [defineMetabaseAuthConfig](defineMetabaseAuthConfig.md) | Defines a Metabase auth config. |
-| [~~ModifyQuestion~~](ModifyQuestion.md)                 | -                               |
+| Variable                                                | Description                                                                                                |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [CreateDashboardModal](CreateDashboardModal.md)         | Creates a dashboard                                                                                        |
+| [~~CreateQuestion~~](CreateQuestion.md)                 | -                                                                                                          |
+| [defineMetabaseAuthConfig](defineMetabaseAuthConfig.md) | Defines a Metabase auth config.                                                                            |
+| [InteractiveDashboard](InteractiveDashboard.md)         | A dashboard component with drill downs, click behaviors, and the ability to view and click into questions. |
+| [StaticDashboard](StaticDashboard.md)                   | A lightweight dashboard component.                                                                         |
+
+#### Functions
+
+| Function                                          | Description                                                                                                                                                                               |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [EditableDashboard](EditableDashboard.md)         | A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard. |
+| [~~ModifyQuestion~~](ModifyQuestion.md)           | -                                                                                                                                                                                         |
+| [useCreateDashboardApi](useCreateDashboardApi.md) | Creates a dashboard                                                                                                                                                                       |

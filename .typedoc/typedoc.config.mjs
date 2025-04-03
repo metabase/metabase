@@ -128,7 +128,7 @@ const config = {
   disableSources: true,
   validation: {
     notExported: true,
-    invalidLink: false,
+    invalidLink: true,
     rewrittenLink: true,
     notDocumented: false,
     unusedMergeModuleWith: true,

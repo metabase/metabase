@@ -1,24 +1,16 @@
 ```ts
-const ModifyQuestion: ({
-  questionId,
-  plugins,
-  onSave,
-  onBeforeSave,
-  entityTypeFilter,
-  isSaveEnabled,
-  targetCollection,
-}: InteractiveQuestionProps) => JSX_2.Element;
+function ModifyQuestion(props: InteractiveQuestionProps): Element;
 ```
 
 #### Parameters
 
-| Parameter                                                                                           | Type                                                      |
-| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `{ questionId, plugins, onSave, onBeforeSave, entityTypeFilter, isSaveEnabled, targetCollection, }` | [`InteractiveQuestionProps`](InteractiveQuestionProps.md) |
+| Parameter | Type                                                      | Description |
+| --------- | --------------------------------------------------------- | ----------- |
+| `props`   | [`InteractiveQuestionProps`](InteractiveQuestionProps.md) |             |
 
 #### Returns
 
-`JSX_2.Element`
+`Element`
 
 #### Deprecated
 

@@ -40,7 +40,12 @@ The ID of the dashboard. This is either: <br>- the numerical ID when accessing a
 optional hiddenParameters: string[];
 ```
 
-A list of parameters to hide ../../embedding/public-links.md#appearance-parameters.
+A list of [parameters to hide](../public-links.md#appearance-parameters).
+
+###### Remarks
+
+* Combining [initialParameters](../InteractiveDashboardProps.md#initialparameters) and [hiddenParameters](../InteractiveDashboardProps.md#hiddenparameters) to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account).
+* Combining [initialParameters](../InteractiveDashboardProps.md#initialparameters) and [hiddenParameters](../InteractiveDashboardProps.md#hiddenparameters) to declutter the user interface is fine.
 
 ***
 
@@ -50,7 +55,12 @@ A list of parameters to hide ../../embedding/public-links.md#appearance-paramete
 optional initialParameters: Query;
 ```
 
-Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.\\
+
+###### Remarks
+
+* Combining [initialParameters](../InteractiveDashboardProps.md#initialparameters) and [hiddenParameters](../InteractiveDashboardProps.md#hiddenparameters) to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account).
+* Combining [initialParameters](../InteractiveDashboardProps.md#initialparameters) and [hiddenParameters](../InteractiveDashboardProps.md#hiddenparameters) to declutter the user interface is fine.
 
 ***
 

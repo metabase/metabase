@@ -1,7 +1,6 @@
 #### Properties
 
-| Property                                   | Type                              |
-| ------------------------------------------ | --------------------------------- |
-| <a id="collection_id"></a> `collection_id` | [`CollectionId`](CollectionId.md) |
-| <a id="description"></a> `description`     | `null` \| `string`                |
-| <a id="name"></a> `name`                   | `string`                          |
+| Property                               | Type               | Description           |
+| -------------------------------------- | ------------------ | --------------------- |
+| <a id="description"></a> `description` | `null` \| `string` | Dashboard description |
+| <a id="name"></a> `name`               | `string`           | Dashboard title       |
