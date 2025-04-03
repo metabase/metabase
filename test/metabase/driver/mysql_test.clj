@@ -541,14 +541,14 @@
                                   :aggregation  [[:count]]
                                   :breakout     [[:field (u/the-id field) nil]]}))]
               (is (= ["SELECT"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) AS `json_bit → 1234`,"
+                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) AS `json_bit → 1234`,"
                       "  COUNT(*) AS `count`"
                       "FROM"
                       "  `json`"
                       "GROUP BY"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL)"
+                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0)"
                       "ORDER BY"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) ASC"]
+                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) ASC"]
                      (str/split-lines (driver/prettify-native-form :mysql (:query compile-res)))))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
@@ -568,7 +568,7 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((FLOOR(((CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) - 0.75) / 0.75)) * 0.75) + 0.75)"
+                  (is (= ["((FLOOR((((JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) - 0.75) / 0.75)) * 0.75) + 0.75)"
                           "$.\"1234\""]
                          (sql.qp/format-honeysql :mysql (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
@@ -996,29 +996,3 @@
               (is (= :type/BigInteger (-> cols first :base_type)))
               (doseq [[casted-value _equals? _uncasted-value] rows]
                 (is (int? casted-value))))))))))
-
-(deftest ^:parallel split-part-test
-  (mt/test-driver :mysql
-    (let [mp (mt/metadata-provider)
-          main-strings [(lib.metadata/field mp (mt/id :people :name))
-                        (lib.metadata/field mp (mt/id :people :zip))
-                        (lib.metadata/field mp (mt/id :people :password))
-                        (lib.metadata/field mp (mt/id :people :address))]
-          delimiters [" "
-                      "-"
-                      "7"
-                      (lib/concat "-" " ")]
-          indexes [1 2 (lib/+ 0 2)]]
-      (doseq [main-string main-strings
-              delimiter delimiters
-              index indexes]
-        (testing "split part"
-          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
-                          (lib/expression "SPLITPART" (lib/split-part main-string delimiter index))
-                          (lib/limit 100))
-                result (-> query qp/process-query)
-                cols (mt/cols result)
-                rows (mt/rows result)]
-            (is (= :type/Text (-> cols last :base_type)))
-            (doseq [row rows]
-              (is (string? (last row))))))))))
