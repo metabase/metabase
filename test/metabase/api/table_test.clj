@@ -255,7 +255,7 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count :id]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -339,7 +339,7 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count :id]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -596,7 +596,7 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id] :id (mt/id :categories))
+            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id :id] :id (mt/id :categories))
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
