@@ -105,7 +105,7 @@ WHERE
 LIMIT 0
 ```
 
-This query runs against your database during setup, and again every hour by default. This scanning query is fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/partner-and-community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
+This query runs against your database during setup, and again every hour by default. This scanning query is fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
 
 ## How database scans work
 

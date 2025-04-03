@@ -79,7 +79,9 @@
                               :uuid-type                true
                               :split-part               true
                               :uploads                  true
-                              :cast                     true}]
+                              :expressions/text         true
+                              :expressions/integer      true
+                              :expressions/date         true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -661,7 +663,13 @@
 
 (defmethod sql.qp/->honeysql [:postgres :split-part]
   [driver [_ text divider position]]
-  [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
+  (let [position (sql.qp/->honeysql driver position)]
+    [:case
+     [:< position 1]
+     ""
+
+     :else
+     [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
 (defmethod sql.qp/->honeysql [:postgres :text]
   [driver [_ value]]
