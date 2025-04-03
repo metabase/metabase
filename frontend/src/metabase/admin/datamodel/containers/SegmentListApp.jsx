@@ -29,8 +29,6 @@ class SegmentListAppInner extends Component {
           <thead className={CS.textBold}>
             <tr>
               <th style={{ minWidth: "320px" }}>{t`Name`}</th>
-              <th>{t`Database`}</th>
-              <th>{t`Schema`}</th>
               <th>{t`Table`}</th>
               <th className={CS.full}>{t`Definition`}</th>
               <th>{t`Actions`}</th>

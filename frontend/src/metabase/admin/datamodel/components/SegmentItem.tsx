@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 
+import { TableBreadcrumbs } from "metabase/metadata/components";
 import { Box, Flex, Group, Icon } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
@@ -30,16 +31,8 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
         </Link>
       </Box>
 
-      <Box component="td" className={S.cell} p="sm">
-        Database
-      </Box>
-
-      <Box component="td" className={S.cell} p="sm">
-        Schema
-      </Box>
-
-      <Box component="td" className={S.cell} p="sm">
-        Table
+      <Box component="td" className={S.cell} p="sm" maw={150}>
+        <TableBreadcrumbs tableId={segment.table_id} />
       </Box>
 
       <Box component="td" className={S.cell} p="sm">
