@@ -2,7 +2,6 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import _ from "underscore";
 
 import { isCartesianChart } from "metabase/visualizations";
-import { getDatasetMetricsAndDimensions } from "metabase/visualizations/lib/utils";
 import {
   getDefaultDimensionFilter,
   getDefaultDimensions,
@@ -17,7 +16,12 @@ import {
   isDraggedColumnItem,
   shouldSplitVisualizerSeries,
 } from "metabase/visualizer/utils";
-import { isCategory, isDate } from "metabase-lib/v1/types/utils/isa";
+import {
+  isCategory,
+  isDate,
+  isDimension,
+  isMetric,
+} from "metabase-lib/v1/types/utils/isa";
 import type { Dataset, DatasetColumn, RawSeries } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
@@ -328,11 +332,10 @@ export function maybeImportDimensionsFromOtherDataSources(
 
     let matchingDimension: DatasetColumn | undefined = undefined;
     if (isDate(newDimension)) {
-      const { dimensions } = getDatasetMetricsAndDimensions(dataset);
-      const dimensionColumns = dataset.data.cols.filter(col =>
-        dimensions.includes(col.name),
+      const dimensions = dataset.data.cols.filter(
+        col => isDimension(col) && !isMetric(col),
       );
-      matchingDimension = dimensionColumns.find(isDate);
+      matchingDimension = dimensions.find(isDate);
     } else if (newDimension.id) {
       matchingDimension = dataset.data.cols.find(
         col => col.id === newDimension.id,
