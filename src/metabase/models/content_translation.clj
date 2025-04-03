@@ -6,6 +6,7 @@
   "A model representing dictionary entries for translations."
   (:require
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -54,3 +55,25 @@
   []
   (t2/query {:select [:*]
              :from [[(t2/table-name :model/ContentTranslation) :t]]}))
+
+; (defn translate-string
+;   [msgid]
+;   (let [translations (get-translations)
+;         translation (some (fn [entry]
+;                             (when (= msgid (:msgid entry))
+;                               (:translation entry)))
+;                           translations)]
+;     (or translation msgid)))
+
+(defn translate-string
+  "Return the translation of the given string from the database, or if there is no translation, return the string itself. Currently the locale is hard-coded to French"
+  [msgid]
+  (let [result (t2/query {:select [:translation]
+                          :from [[(t2/table-name :model/ContentTranslation) :t]]
+                          :where [:and
+                                  [:= :msgid msgid]
+                                  [:= :language "fr"]]})
+        translation (first result)
+        ret (or (:translation translation) msgid)]
+    (log/info (str "Translation lookup for msgid \"" msgid "\" resulted in: \"" ret "\""))
+    ret))
