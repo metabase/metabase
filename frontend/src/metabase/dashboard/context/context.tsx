@@ -9,9 +9,12 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject } from "underscore";
 
+import { useDispatch } from "metabase/lib/redux";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import type { DashboardId } from "metabase-types/api";
 
+import { navigateToNewCardFromDashboard } from "../actions";
+import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
 import { SIDEBAR_NAME } from "../constants";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
@@ -38,6 +41,9 @@ type OwnProps = {
   parameterQueryParams: Record<string, string>;
   onLoad: (result: SuccessfulFetchDashboardResult) => void;
   onError: (result: FailedFetchDashboardResult) => void;
+  navigateToNewCardFromDashboard: (
+    opts?: NavigateToNewCardFromDashboardOpts,
+  ) => void;
 };
 
 type OwnResult = {
@@ -112,8 +118,11 @@ const DashboardContextProviderInner = ({
   toggleSidebar,
   reset,
   closeDashboard,
+  navigateToNewCardFromDashboard: _navigateToNewCardFromDashboard,
   ...reduxProps
 }: PropsWithChildren<ContextProps>) => {
+  const dispatch = useDispatch();
+
   const [isInitialized, setIsInitialized] = useState(false);
 
   const previousDashboard = usePrevious(dashboard);
@@ -262,6 +271,9 @@ const DashboardContextProviderInner = ({
         toggleSidebar,
         reset,
         closeDashboard,
+        navigateToNewCardFromDashboard:
+          _navigateToNewCardFromDashboard ??
+          (() => dispatch(navigateToNewCardFromDashboard())),
         ...reduxProps,
       }}
     >
