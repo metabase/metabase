@@ -43,7 +43,7 @@ type CompileFn = (
 export function compile(
   node: Node,
   { getMBQLName = defaultGetMBQLName }: CompileOptions = {},
-): Lib.ExpressionParts | Lib.ExpressionArg {
+) {
   return compileRoot(node, { getMBQLName });
 }
 
@@ -61,7 +61,11 @@ function compileNode(
 function compileRoot(
   node: Node,
   opts: Options,
-): Lib.ExpressionParts | Lib.ExpressionArg {
+):
+  | Lib.ExpressionParts
+  | Lib.SegmentMetadata
+  | Lib.MetricMetadata
+  | Lib.ColumnMetadata {
   assert(node.type === ROOT, t`Must be root node`);
   assert(node.children.length === 1, t`Root must have one child`);
 
@@ -74,7 +78,7 @@ function compileRoot(
     };
   }
 
-  return compileNode(node.children[0], opts);
+  return result;
 }
 
 function compileField(node: Node): Lib.ExpressionParts {
