@@ -27,7 +27,11 @@ function FormattedParameterValue({
   placeholder,
   isPopoverOpen = false,
 }: FormattedParameterValueProps) {
+  console.log("fpv");
+console.log("@m91r5600", "value", value)
+
   if (parameterHasNoDisplayValue(value)) {
+    console.log('returning placeholder');
     return placeholder;
   }
 

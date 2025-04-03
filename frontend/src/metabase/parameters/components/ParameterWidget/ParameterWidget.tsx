@@ -15,6 +15,7 @@ import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
 import { ParameterValueWidget } from "../ParameterValueWidget";
 
 import S from "./ParameterWidget.module.css";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 type ParameterWidgetProps = PropsWithChildren<
   {
@@ -99,10 +100,13 @@ export const ParameterWidget = ({
   children,
   dragHandle,
 }: ParameterWidgetProps) => {
+  const tc = useTranslateContent2();
+
   const [isFocused, setIsFocused] = useState(false);
   const isEditingParameter = editingParameter?.id === parameter.id;
   const fieldHasValueOrFocus = parameter.value != null || isFocused;
-  const legend = fieldHasValueOrFocus ? parameter.name : "";
+
+  const legend = fieldHasValueOrFocus ? tc(parameter.name) : "";
 
   if (!isEditing || !setEditingParameter) {
     return (
@@ -133,7 +137,7 @@ export const ParameterWidget = ({
             value={parameter.value}
             setValue={(value) => setValue?.(value)}
             isEditing={isEditingParameter}
-            placeholder={parameter.name}
+            placeholder={tc(parameter.name)}
             focusChanged={setIsFocused}
             isFullscreen={isFullscreen}
             commitImmediately={commitImmediately}
