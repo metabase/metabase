@@ -29,13 +29,16 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { partitions } from "./partitions";
+import { partitions, partitions2 } from "./partitions";
 import {
   addMissingCardBreakouts,
   isColumnValid,
   isFormattablePivotColumn,
   updateValueWithCurrentColumns,
 } from "./utils";
+import { getDefaultColumns, getDefaultDimensionFilter, getDefaultDimensions } from "metabase/visualizations/shared/settings/cartesian-chart";
+import { getDefaultDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
+import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 
 export const getTitleForColumn = (
   column: DatasetColumn,
@@ -141,6 +144,48 @@ export const settings = {
       }
 
       return addMissingCardBreakouts(setting, columnsToPartition);
+    },
+  },
+  "pivot.rows": {
+    section: t`Columns`,
+    title: t`Pivot rows`,
+    widget: "fields",
+    addAnother: t`Add pivot row breakout`,
+    getDefault: () => {
+      return [null]
+    },
+    getProps: ([{ card, data }]: [{ card: Card, data: DatasetData }]) => {
+      const cols = data?.cols ?? [];
+      const options = cols
+        .filter(getDefaultDimensionFilter(card.display))
+        .map(getOptionFromColumn);
+      return {
+        options,
+        addAnother: t`Add pivot breakout`,
+        columns: data.cols,
+        fieldSettingWidgets: [],
+      };
+    },
+  },
+  "pivot.cols": {
+    section: t`Columns`,
+    title: t`Pivot columns`,
+    widget: "fields",
+    addAnother: t`Add pivot column breakout`,
+    getDefault: () => {
+      return [null]
+    },
+    getProps: ([{ card, data }]: [{ card: Card, data: DatasetData }]) => {
+      const cols = data?.cols ?? [];
+      const options = cols
+        .filter(getDefaultDimensionFilter(card.display))
+        .map(getOptionFromColumn);
+      return {
+        options,
+        addAnother: t`Add pivot breakout`,
+        columns: data.cols,
+        fieldSettingWidgets: [],
+      };
     },
   },
   "pivot.show_row_totals": {
