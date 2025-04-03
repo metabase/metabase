@@ -10,7 +10,6 @@ import {
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
-  canCombineCard,
   copyColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
@@ -18,12 +17,7 @@ import {
   shouldSplitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import { isCategory, isDate } from "metabase-lib/v1/types/utils/isa";
-import type {
-  Card,
-  Dataset,
-  DatasetColumn,
-  RawSeries,
-} from "metabase-types/api";
+import type { Dataset, DatasetColumn, RawSeries } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerDataSource,
@@ -191,8 +185,8 @@ export function addColumnToCartesianChart(
   state: VisualizerHistoryItem,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
+  series: RawSeries,
   dataSource: VisualizerDataSource,
-  card?: Card,
 ) {
   if (
     !state.display ||
@@ -223,19 +217,20 @@ export function addColumnToCartesianChart(
     }
   }
 
-  if (!card) {
-    return;
-  }
-
   const ownMetrics = state.settings["graph.metrics"] ?? [];
   const ownDimensions = state.settings["graph.dimensions"] ?? [];
 
   if (
     ownDimensions.length === 0 ||
-    canCombineCard(state.display, state.columns, state.settings, card)
+    isCompatibleWithCartesianChart(state, series)
   ) {
-    const metrics = card.visualization_settings["graph.metrics"] ?? [];
-    const dimensions = card.visualization_settings["graph.dimensions"] ?? [];
+    const [{ card }] = series;
+
+    const metrics = getDefaultMetrics(series, card.visualization_settings);
+    const dimensions = getDefaultDimensions(
+      series,
+      card.visualization_settings,
+    );
 
     const isMetric = metrics.includes(columnRef.originalName);
     const isDimension = dimensions.includes(columnRef.originalName);

@@ -14,12 +14,7 @@ import {
   isMetric,
   isNumeric,
 } from "metabase-lib/v1/types/utils/isa";
-import type {
-  Card,
-  Dataset,
-  DatasetColumn,
-  RawSeries,
-} from "metabase-types/api";
+import type { DatasetColumn, RawSeries } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerDataSource,
@@ -151,18 +146,14 @@ export function addColumnToFunnel(
   state: VisualizerHistoryItem,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
+  series: RawSeries,
   dataSource: VisualizerDataSource,
-  dataset: Dataset,
-  card?: Card,
 ) {
   const isEmpty = state.columns.length === 0;
 
-  if (
-    (isEmpty || isScalarFunnel(state)) &&
-    card &&
-    canCombineCardWithFunnel([{ card, ...dataset }])
-  ) {
-    addScalarToFunnel(state, dataSource, dataset.data.cols[0]);
+  if ((isEmpty || isScalarFunnel(state)) && canCombineCardWithFunnel(series)) {
+    const [{ data }] = series;
+    addScalarToFunnel(state, dataSource, data.cols[0]);
     return;
   }
 

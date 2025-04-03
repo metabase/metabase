@@ -228,25 +228,25 @@ const visualizerHistoryItemSlice = createSlice({
     addColumnInner: (
       state,
       action: PayloadAction<{
-        dataSource: VisualizerDataSource;
-        dataset: Dataset;
         column: DatasetColumn;
+        series: RawSeries;
+        dataSource: VisualizerDataSource;
         dataSourceMap: Record<VisualizerDataSourceId, VisualizerDataSource>;
         datasetMap: Record<VisualizerDataSourceId, Dataset>;
-        card?: Card;
       }>,
     ) => {
       const {
-        dataSource,
-        dataset,
         column: originalColumn,
+        series,
+        dataSource,
         dataSourceMap,
         datasetMap,
-        card,
       } = action.payload;
+
       if (!state.display) {
         return;
       }
+
       const columnRef = createVisualizerColumnReference(
         dataSource,
         originalColumn,
@@ -258,27 +258,26 @@ const visualizerHistoryItemSlice = createSlice({
         dataSource.name,
         state.columns,
       );
+
       if (state.display === "funnel") {
-        addColumnToFunnel(state, column, columnRef, dataSource, dataset, card);
+        addColumnToFunnel(state, column, columnRef, series, dataSource);
         return;
       }
+
       state.columns.push(column);
       state.columnValuesMapping[column.name] = [columnRef];
+
       if (isCartesianChart(state.display)) {
-        addColumnToCartesianChart(state, column, columnRef, dataSource, card);
+        addColumnToCartesianChart(state, column, columnRef, series, dataSource);
 
         const dimension = state.settings["graph.dimensions"] ?? [];
         const isDimension = dimension.includes(column.name);
 
         if (isDimension && column.id) {
-          const datasets = card
-            ? _.omit(datasetMap, `card:${card.id}`)
-            : datasetMap;
-
           maybeImportDimensionsFromOtherDataSources(
             state,
             column.id,
-            datasets,
+            _.omit(datasetMap, dataSource.id),
             dataSourceMap,
           );
         }
@@ -339,7 +338,8 @@ const visualizerHistoryItemSlice = createSlice({
       })
       .addCase(addDataSource.fulfilled, (state, action) => {
         const { card, dataset } = action.payload;
-        Object.assign(state, maybeCombineDataset(state, card, dataset));
+        const series = [{ card, ...dataset }];
+        Object.assign(state, maybeCombineDataset(state, series));
       })
       .addCase(removeDataSource, (state, action) => {
         const source = action.payload;
@@ -541,7 +541,12 @@ const visualizerSlice = createSlice({
         const { column, dataSource } = action.payload;
 
         const card = cards.find(card => card.id === dataSource.sourceId);
+        if (!card) {
+          return;
+        }
+
         const dataset = datasets[dataSource.id];
+        const series = [{ card, ...dataset }];
 
         const dataSourceMap = Object.fromEntries(
           cards.map(card => {
@@ -553,12 +558,11 @@ const visualizerSlice = createSlice({
         maybeUpdateHistory(
           state,
           addColumnInner({
-            dataSource,
-            dataset,
             column,
+            series,
+            dataSource,
             dataSourceMap,
             datasetMap: datasets,
-            card,
           }),
         );
       })
