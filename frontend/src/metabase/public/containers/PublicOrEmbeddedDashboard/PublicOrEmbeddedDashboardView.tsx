@@ -28,7 +28,10 @@ import type {
 import { isActionDashCard } from "metabase/dashboard/utils";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
-import type { DisplayTheme } from "metabase/public/lib/types";
+import type {
+  DisplayTheme,
+  EmbedResourceDownloadOptions,
+} from "metabase/public/lib/types";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
@@ -70,7 +73,7 @@ interface InnerPublicOrEmbeddedDashboardViewProps {
   ) => void;
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
-  downloadsEnabled: { pdf: boolean; cardResult: boolean };
+  downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
 export type PublicOrEmbeddedDashboardViewProps =

@@ -1,6 +1,7 @@
 import { P, match } from "ts-pattern";
 
 import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 if (hasPremiumFeature("whitelabel")) {
@@ -13,7 +14,7 @@ if (hasPremiumFeature("whitelabel")) {
   }: {
     hide_download_button?: boolean | null;
     downloads?: string | boolean | null;
-  }): { pdf: boolean; cardResult: boolean } => {
+  }): EmbedResourceDownloadOptions => {
     return (
       match({ hide_download_button, downloads })
         // `downloads` has priority over `hide_download_button`
