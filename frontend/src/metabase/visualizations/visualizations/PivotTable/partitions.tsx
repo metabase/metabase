@@ -38,3 +38,20 @@ export const partitions: Partition[] = [
     ),
   },
 ];
+
+export const partitions2: Partition[] = [
+  {
+    name: "rows",
+    columnFilter: isDimension,
+    title: (
+      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Rows`}</PivotTableSettingLabel>
+    ),
+  },
+  {
+    name: "columns",
+    columnFilter: isDimension,
+    title: (
+      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Columns`}</PivotTableSettingLabel>
+    ),
+  },
+];
