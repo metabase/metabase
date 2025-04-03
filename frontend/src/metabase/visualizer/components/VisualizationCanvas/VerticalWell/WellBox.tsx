@@ -9,12 +9,13 @@ interface WellBoxProps {
 }
 
 export const WellBox = forwardRef<HTMLDivElement, WellBoxProps>(
-  function WellBox({ children, isHighlighted, isOver }, ref) {
+  function WellBox({ children, isHighlighted, isOver, ...props }, ref) {
     const borderColor = isHighlighted
       ? "var(--mb-color-brand)"
       : "var(--mb-color-border)";
     return (
       <Box
+        {...props}
         bg={isHighlighted ? "var(--mb-color-brand-light)" : "bg-light"}
         p="sm"
         mih="120px"

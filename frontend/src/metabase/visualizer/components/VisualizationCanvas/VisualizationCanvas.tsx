@@ -78,7 +78,7 @@ export function VisualizationCanvas({ className }: { className?: string }) {
   return (
     <>
       <Box className={`${Styles.Container} ${className}`}>
-        <Box style={{ gridArea: "left" }}>
+        <Box style={{ gridArea: "left" }} data-testid="vertical-well">
           <VerticalWell display={display} />
         </Box>
 
@@ -103,7 +103,7 @@ export function VisualizationCanvas({ className }: { className?: string }) {
           </Tooltip>
         </Flex>
 
-        <Box style={{ gridArea: "bottom" }}>
+        <Box style={{ gridArea: "bottom" }} data-testid="horizontal-well">
           <HorizontalWell display={display} />
         </Box>
         {display === "scatter" && (

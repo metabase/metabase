@@ -47,6 +47,7 @@ import {
   PublicApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -102,7 +103,20 @@ function isNewDashcard(dashcard: DashboardCard) {
 function isNewAdditionalSeriesCard(
   card: Card,
   dashcard: QuestionDashboardCard,
+  dashcardBeforeEditing?: DashboardCard,
 ) {
+  if (isVisualizerDashboardCard(dashcard)) {
+    const prevSeries =
+      (dashcardBeforeEditing as QuestionDashboardCard)?.series ?? [];
+    const newSeries = dashcard.series ?? [];
+
+    return (
+      card.id !== dashcard.card_id &&
+      !prevSeries.some(s => s.id === card.id) &&
+      newSeries.some(s => s.id === card.id)
+    );
+  }
+
   return (
     card.id !== dashcard.card_id &&
     !dashcard.series?.some(s => s.id === card.id)
@@ -347,7 +361,7 @@ export const fetchCardDataAction = createAsyncThunk<
       const shouldUseCardQueryEndpoint =
         isNewDashcard(dashcard) ||
         (isQuestionDashCard(dashcard) &&
-          isNewAdditionalSeriesCard(card, dashcard)) ||
+          isNewAdditionalSeriesCard(card, dashcard, dashcardBeforeEditing)) ||
         hasReplacedCard;
 
       // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
