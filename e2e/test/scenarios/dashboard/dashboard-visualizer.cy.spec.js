@@ -392,7 +392,6 @@ describe("scenarios > dashboard > visualizer", () => {
       createDashboardWithVisualizerDashcards();
       H.editDashboard();
 
-      // Cartesian chart
       H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
       H.modal().within(() => {
         cy.button("Settings").click();
@@ -416,27 +415,6 @@ describe("scenarios > dashboard > visualizer", () => {
       H.getDashboardCard(0).within(() => {
         H.goalLine().should("exist");
         chartLegend().findByText("Series B").should("exist");
-      });
-
-      // Pie chart
-      H.findDashCardAction(H.getDashboardCard(2), "Edit visualization").click();
-      H.modal().within(() => {
-        cy.button("Settings").click();
-        cy.findByText("Display").click();
-
-        H.echartsContainer().within(() => {
-          cy.findByText("200").should("exist");
-          cy.findByText("TOTAL").should("exist");
-        });
-        cy.findByTestId("chartsettings-sidebar")
-          .findByText("Show total")
-          .click();
-        H.echartsContainer().within(() => {
-          cy.findByText("200").should("not.exist");
-          cy.findByText("TOTAL").should("not.exist");
-        });
-
-        cy.button("Save").click();
       });
     });
 
@@ -645,6 +623,34 @@ describe("scenarios > dashboard > visualizer", () => {
             .should("have.length", 1);
           chartLegend().should("not.exist");
         });
+      });
+    });
+  });
+
+  describe("pie charts", () => {
+    it("should allow to change viz settings", () => {
+      createDashboardWithVisualizerDashcards();
+      H.editDashboard();
+
+      // Pie chart
+      H.findDashCardAction(H.getDashboardCard(2), "Edit visualization").click();
+      H.modal().within(() => {
+        cy.button("Settings").click();
+        cy.findByText("Display").click();
+
+        H.echartsContainer().within(() => {
+          cy.findByText("200").should("exist");
+          cy.findByText("TOTAL").should("exist");
+        });
+        cy.findByTestId("chartsettings-sidebar")
+          .findByText("Show total")
+          .click();
+        H.echartsContainer().within(() => {
+          cy.findByText("200").should("not.exist");
+          cy.findByText("TOTAL").should("not.exist");
+        });
+
+        cy.button("Save").click();
       });
     });
   });
