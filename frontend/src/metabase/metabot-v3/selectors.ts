@@ -23,7 +23,7 @@ export const getVisualizationMetabotContext = createSelector(
     if (typeof hydratedVisualizationSettings.series === "function") {
       const seriesSettings: ComputedVisualizationSettings["series_settings"] =
         {};
-      transformedSeries.forEach(series => {
+      transformedSeries.forEach((series) => {
         seriesSettings[keyForSingleSeries(series)] =
           hydratedVisualizationSettings.series(series);
       });
@@ -34,8 +34,8 @@ export const getVisualizationMetabotContext = createSelector(
       const columnSettings: ComputedVisualizationSettings["column_settings"] = {
         ...hydratedVisualizationSettings.column_settings,
       };
-      rawSeries.forEach(series => {
-        series.data.cols.forEach(col => {
+      rawSeries.forEach((series) => {
+        series.data.cols.forEach((col) => {
           const columnSetting = hydratedVisualizationSettings.column?.(col);
 
           if (columnSetting) {

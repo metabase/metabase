@@ -33,7 +33,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     resetInput();
     metabot
       .submitInput(trimmedInput)
-      .catch(err => console.error(err))
+      .catch((err) => console.error(err))
       .finally(() => textareaRef.current?.focus());
   };
 
@@ -124,10 +124,10 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
             metabot.isDoingScience && Styles.textareaLoading,
           )}
           placeholder={placeholder}
-          onChange={e => handleInputChange(e.target.value)}
+          onChange={(e) => handleInputChange(e.target.value)}
           // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
           onHeightChange={handleMaybeExpandInput}
-          onKeyDown={e => {
+          onKeyDown={(e) => {
             if (e.key === "Enter") {
               // prevent event from inserting new line + interacting with other content
               e.preventDefault();

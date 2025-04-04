@@ -22,7 +22,7 @@ export const Metabot = () => {
     }
 
     return tinykeys(window, {
-      "$mod+b": e => {
+      "$mod+b": (e) => {
         e.preventDefault(); // prevent FF from opening bookmark menu
         setVisible(!visible);
       },

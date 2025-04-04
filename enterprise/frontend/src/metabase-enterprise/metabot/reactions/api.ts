@@ -18,7 +18,7 @@ const apiEndpointToRTKQueryMap: Record<
   "POST /api/user": userApi.endpoints.createUser,
 };
 
-export const apiCall: ReactionHandler<MetabotApiCallReaction> = reaction => {
+export const apiCall: ReactionHandler<MetabotApiCallReaction> = (reaction) => {
   return async ({ dispatch }) => {
     const { method, url, body } = reaction.api_call;
 

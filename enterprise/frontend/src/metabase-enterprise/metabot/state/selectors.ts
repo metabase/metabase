@@ -7,40 +7,40 @@ export const getMetabot = (state: MetabotStoreState) =>
 
 export const getMetabotVisisble = createSelector(
   getMetabot,
-  metabot => metabot.visible,
+  (metabot) => metabot.visible,
 );
 
 export const getUserMessages = createSelector(
   getMetabot,
-  metabot => metabot.userMessages,
+  (metabot) => metabot.userMessages,
 );
 
 export const getConfirmationOptions = createSelector(
   getMetabot,
-  metabot => metabot.confirmationOptions,
+  (metabot) => metabot.confirmationOptions,
 );
 
 export const getIsProcessing = createSelector(
   getMetabot,
-  metabot => metabot.isProcessing,
+  (metabot) => metabot.isProcessing,
 );
 
 export const getLastSentContext = createSelector(
   getMetabot,
-  metabot => metabot.lastSentContext,
+  (metabot) => metabot.lastSentContext,
 );
 
 export const getLastHistoryValue = createSelector(
   getMetabot,
-  metabot => metabot.lastHistoryValue,
+  (metabot) => metabot.lastHistoryValue,
 );
 
 export const getMetabotConversationId = createSelector(
   getMetabot,
-  metabot => metabot.conversationId,
+  (metabot) => metabot.conversationId,
 );
 
 export const getMetabotState = createSelector(
   getMetabot,
-  metabot => metabot.state,
+  (metabot) => metabot.state,
 );

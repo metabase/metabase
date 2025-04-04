@@ -5,7 +5,7 @@ import type { MetabotRunQueryReaction } from "metabase-types/api";
 import type { ReactionHandler } from "./types";
 
 export const runQuery: ReactionHandler<MetabotRunQueryReaction> =
-  reaction =>
+  (reaction) =>
   async ({ dispatch, getState }) => {
     const question = getQuestion(getState());
     if (!question) {

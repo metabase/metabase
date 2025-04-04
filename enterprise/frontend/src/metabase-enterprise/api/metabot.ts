@@ -6,9 +6,9 @@ import type {
 import { EnterpriseApi } from "./api";
 
 export const metabotApi = EnterpriseApi.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     metabotAgent: builder.mutation<MetabotAgentResponse, MetabotAgentRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/ee/metabot-v3/v2/agent",
         body,

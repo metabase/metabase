@@ -46,5 +46,5 @@ export function getFixedQuery(query: Lib.Query, fixes: SqlQueryFix[]) {
 }
 
 export function getFixedLineNumbers(fixes: SqlQueryFix[]) {
-  return fixes.map(fix => fix.line_number);
+  return fixes.map((fix) => fix.line_number);
 }

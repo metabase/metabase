@@ -20,7 +20,7 @@ import type { ReactionHandler } from "./types";
 export const changeTableVisualizationSettings: ReactionHandler<
   MetabotChangeVisiualizationSettingsReaction
 > =
-  reaction =>
+  (reaction) =>
   async ({ dispatch, getState }) => {
     const queryResults = getQueryResults(getState());
     const queryResultCols = queryResults?.[0]?.data?.cols ?? [];
@@ -41,7 +41,7 @@ export const changeTableVisualizationSettings: ReactionHandler<
 export const changeDisplayType: ReactionHandler<
   MetabotChangeDisplayTypeReaction
 > =
-  reaction =>
+  (reaction) =>
   async ({ dispatch, getState }) => {
     {
       const question = getQuestion(getState());
@@ -61,14 +61,14 @@ export const changeDisplayType: ReactionHandler<
 export const changeSeriesSettings: ReactionHandler<
   MetabotChangeSeriesSettingsReaction
 > =
-  reaction =>
+  (reaction) =>
   async ({ dispatch, getState }) => {
     const seriesSettings =
       getQuestion(getState())?.settings().series_settings ?? {};
 
     const newSeriesSettings = { ...seriesSettings };
 
-    reaction.series_settings.forEach(settings => {
+    reaction.series_settings.forEach((settings) => {
       const onlyIncludedSettings = Object.fromEntries(
         Object.entries(settings).filter(([_key, value]) => value !== null),
       );
@@ -87,14 +87,14 @@ export const changeSeriesSettings: ReactionHandler<
 export const changeColumnSettings: ReactionHandler<
   MetabotChangeColumnSettingsReaction
 > =
-  reaction =>
+  (reaction) =>
   async ({ dispatch, getState }) => {
     const columnSettings =
       getQuestion(getState())?.settings().column_settings ?? {};
 
     const newColumnSettings = { ...columnSettings };
 
-    reaction.column_settings.forEach(settings => {
+    reaction.column_settings.forEach((settings) => {
       const columnKey = getColumnKey({ name: settings.key });
       const onlyIncludedSettings = Object.fromEntries(
         Object.entries(settings).filter(([_key, value]) => value !== null),
