@@ -68,15 +68,15 @@
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
                      (is (=? {:body {:type "system_event",
-                                     :payload {:action :row/create,
+                                     :payload {:action :row/create
                                                :invocation_id (mt/malli=? :string)
-                                               :actor_id 3,
-                                               :result    {:table_id (mt/id :categories)
-                                                           :created_row {"ID" (mt/malli=? int?), "NAME" "New Category"}
-                                                           :table {:name "CATEGORIES"}}
-                                               :actor     {:first_name "Crowberto"
-                                                           :last_name "Corv"
-                                                           :email "crowberto@metabase.com"
+                                               :actor_id  (mt/user->id :crowberto)
+                                               :result    {:table_id    (mt/id :categories)
+                                                           :created_row {"ID" (mt/malli=? int?) "NAME" "New Category"}
+                                                           :table       {:name "CATEGORIES"}}
+                                               :actor     {:first_name  "Crowberto"
+                                                           :last_name   "Corv"
+                                                           :email       "crowberto@metabase.com"
                                                            :common_name "Crowberto Corv"}
                                                :event_name :event/action.success
                                                :custom {}}}}
@@ -117,9 +117,9 @@
                                                :invocation_id (mt/malli=? :string)
                                                :actor_id      (mt/user->id :crowberto)
                                                :result        {:table_id   (mt/id :categories)
-                                                               :after      {:ID 1 :NAME "Updated Category"}
-                                                               :before     {:ID 1 :NAME "African"}
-                                                               :raw_update {:ID 1 :NAME "Updated Category"}
+                                                               :after      {:ID (mt/malli=? int?) :NAME "Updated Category"}
+                                                               :before     {:ID (mt/malli=? int?) :NAME "African"}
+                                                               :raw_update {:ID (mt/malli=? int?) :NAME "Updated Category"}
                                                                :table      {:name "CATEGORIES"}}
                                                :actor         {:first_name  "Crowberto"
                                                                :last_name   "Corv"
