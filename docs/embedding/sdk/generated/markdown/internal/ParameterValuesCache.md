@@ -1,3 +1,3 @@
 ```ts
-type ParameterValuesCache = Record<string, ParameterValues>;
+type ParameterValuesCache = Record<string, ParameterValues_2>;
 ```

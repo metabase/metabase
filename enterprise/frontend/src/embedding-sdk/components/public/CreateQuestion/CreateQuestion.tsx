@@ -1,13 +1,20 @@
 import {
+  type BaseInteractiveQuestionProps,
   InteractiveQuestion,
-  type InteractiveQuestionProps,
 } from "../InteractiveQuestion";
 
+/**
+ * @interface
+ */
 export type CreateQuestionProps = Partial<
-  Omit<InteractiveQuestionProps, "questionId" | "children">
+  Omit<BaseInteractiveQuestionProps, "questionId" | "children">
 >;
 
-/** @deprecated Use `<InteractiveQuestion questionId="new" />` instead. */
+/**
+ * @deprecated Use `<InteractiveQuestion questionId="new" />` instead.
+ *
+ * @function
+ * */
 export const CreateQuestion = (props: CreateQuestionProps = {}) => (
   <InteractiveQuestion {...props} questionId="new" />
 );

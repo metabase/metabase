@@ -15,12 +15,17 @@ import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionContext } from "../context";
 
+/**
+ * @interface
+ */
+export type InteractiveQuestionQuestionVisualizationProps = FlexibleSizeProps;
+
 export const QuestionVisualization = ({
   height,
   width,
   className,
   style,
-}: FlexibleSizeProps) => {
+}: InteractiveQuestionQuestionVisualizationProps) => {
   const {
     question,
     queryResults,

@@ -1,15 +1,13 @@
-import type { CSSProperties } from "react";
-
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
+import type { CommonElementProps } from "embedding-sdk/types/props";
 
-export const Title = ({
-  className,
-  style,
-}: {
-  className?: string;
-  style?: CSSProperties;
-}) => {
+/**
+ * @interface
+ */
+export type InteractiveQuestionTitleProps = CommonElementProps;
+
+export const Title = ({ className, style }: InteractiveQuestionTitleProps) => {
   const { question } = useInteractiveQuestionContext();
 
   return (

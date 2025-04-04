@@ -8,13 +8,17 @@ import type { StackProps } from "metabase/ui";
 import { useInteractiveQuestionContext } from "../../context";
 
 // TODO: Add props for formatting, file type, etc
-export interface DownloadWidgetProps extends StackProps {}
+/**
+ * @remarks
+ * Uses [Mantine Stack props](https://v7.mantine.dev/core/stack/?t=props) under the hood
+ */
+export type InteractiveQuestionDownloadWidgetProps = StackProps;
 
 const DownloadWidgetInner = ({
   question,
   result,
   ...rest
-}: DownloadWidgetProps &
+}: InteractiveQuestionDownloadWidgetProps &
   Pick<UseDownloadDataParams, "question" | "result">) => {
   const { withDownloads } = useInteractiveQuestionContext();
   const [, handleDownload] = useDownloadData({
@@ -34,7 +38,9 @@ const DownloadWidgetInner = ({
   );
 };
 
-export const DownloadWidget = (props: DownloadWidgetProps) => {
+export const DownloadWidget = (
+  props: InteractiveQuestionDownloadWidgetProps,
+) => {
   const { question, queryResults } = useInteractiveQuestionContext();
   const [result] = queryResults ?? [];
 

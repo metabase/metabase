@@ -7,10 +7,17 @@ import * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../context";
 
+/**
+ * @interface
+ * @remarks
+ * Uses [Mantine Button props](https://v7.mantine.dev/core/button/?t=props) under the hood
+ */
+export type InteractiveQuestionResetButtonProps = ButtonProps;
+
 export const QuestionResetButton = ({
   onClick,
   ...buttonProps
-}: ButtonProps = {}) => {
+}: InteractiveQuestionResetButtonProps = {}) => {
   const { question, originalQuestion, onReset } =
     useInteractiveQuestionContext();
 

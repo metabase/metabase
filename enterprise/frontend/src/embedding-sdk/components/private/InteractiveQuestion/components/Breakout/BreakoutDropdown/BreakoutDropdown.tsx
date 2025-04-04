@@ -15,7 +15,11 @@ import { BreakoutBadgeList } from "../BreakoutBadgeList";
 import { BreakoutPicker } from "../BreakoutPicker";
 import { type SDKBreakoutItem, useBreakoutData } from "../use-breakout-data";
 
-type BreakoutDropdownProps = Omit<
+/**
+ * @remarks
+ * Uses [Mantine Popover props](https://v7.mantine.dev/core/popover/) under the hood
+ */
+export type InteractiveQuestionBreakoutDropdownProps = Omit<
   PopoverProps,
   "children" | "onClose" | "opened"
 >;
@@ -24,7 +28,7 @@ export const BreakoutDropdownInner = ({
   question,
   updateQuestion,
   ...popoverProps
-}: QuestionStateParams & BreakoutDropdownProps) => {
+}: QuestionStateParams & InteractiveQuestionBreakoutDropdownProps) => {
   const items = useBreakoutData({ question, updateQuestion });
 
   const [step, setStep] = useState<MultiStepState<"picker" | "list">>(null);
@@ -90,7 +94,9 @@ export const BreakoutDropdownInner = ({
   );
 };
 
-export const BreakoutDropdown = (props: BreakoutDropdownProps) => {
+export const BreakoutDropdown = (
+  props: InteractiveQuestionBreakoutDropdownProps,
+) => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 
   if (!question) {

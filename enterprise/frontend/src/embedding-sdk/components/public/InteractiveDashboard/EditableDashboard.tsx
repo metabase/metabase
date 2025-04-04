@@ -1,9 +1,5 @@
 import { useEffect } from "react";
 
-import type {
-  InteractiveQuestionProps,
-  MetabasePluginsConfig,
-} from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import type { InteractiveQuestionDefaultViewProps } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
@@ -21,9 +17,12 @@ import {
   SDK_DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { getIsEditing } from "metabase/dashboard/selectors";
+import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
+
+import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
 
 import { ConnectedDashboard } from "./ConnectedDashboard";
 import { InteractiveDashboardProvider } from "./context";
@@ -46,7 +45,7 @@ export type EditableDashboardProps = {
   /**
    * Props for the drill-through question
    */
-  drillThroughQuestionProps?: Omit<InteractiveQuestionProps, "questionId"> &
+  drillThroughQuestionProps?: Omit<BaseInteractiveQuestionProps, "questionId"> &
     InteractiveQuestionDefaultViewProps;
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   PublicOrEmbeddedDashboardEventHandlersProps;

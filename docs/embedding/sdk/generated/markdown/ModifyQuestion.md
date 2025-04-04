@@ -1,12 +1,12 @@
 ```ts
-function ModifyQuestion(props: InteractiveQuestionProps): Element;
+function ModifyQuestion(props: BaseInteractiveQuestionProps): Element;
 ```
 
 #### Parameters
 
-| Parameter | Type                                                      | Description |
-| --------- | --------------------------------------------------------- | ----------- |
-| `props`   | [`InteractiveQuestionProps`](InteractiveQuestionProps.md) |             |
+| Parameter | Type                                                              | Description |
+| --------- | ----------------------------------------------------------------- | ----------- |
+| `props`   | [`BaseInteractiveQuestionProps`](BaseInteractiveQuestionProps.md) |             |
 
 #### Returns
 

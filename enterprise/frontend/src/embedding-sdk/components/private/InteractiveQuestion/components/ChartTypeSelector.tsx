@@ -5,7 +5,15 @@ import type { StackProps } from "metabase/ui";
 
 import { useSensibleVisualizations } from "../hooks/use-sensible-visualizations";
 
-export const ChartTypeSelector = (stackProps: StackProps) => {
+/**
+ * @remarks
+ * Uses [Mantine Stack props](https://v7.mantine.dev/core/stack/?t=props) under the hood
+ */
+export type InteractiveQuestionChartTypeSelectorProps = StackProps;
+
+export const ChartTypeSelector = (
+  stackProps: InteractiveQuestionChartTypeSelectorProps,
+) => {
   const { sensibleVisualizations, nonSensibleVisualizations } =
     useSensibleVisualizations();
 

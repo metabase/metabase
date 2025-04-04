@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import type { ReactNode } from "react";
 
 import {
   BackButton,
@@ -31,26 +31,32 @@ import {
   type InteractiveQuestionDefaultViewProps,
 } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { SdkQuestionId } from "embedding-sdk/types/question";
+import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/components/public/InteractiveQuestion/types";
+
+export type BaseInteractiveQuestionProps =
+  InteractiveQuestionQuestionIdProps & {
+    /**
+     * The children of the MetabaseProvider component.s
+     */
+    children?: ReactNode;
+    plugins?: InteractiveQuestionProviderProps["componentPlugins"];
+  } & Pick<
+      InteractiveQuestionProviderProps,
+      | "onBeforeSave"
+      | "onSave"
+      | "entityTypeFilter"
+      | "isSaveEnabled"
+      | "initialSqlParameters"
+      | "withDownloads"
+      | "targetCollection"
+    >;
 
 /**
  * @interface
+ * @group InteractiveQuestion
  */
-export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId: SdkQuestionId;
-  plugins?: InteractiveQuestionProviderProps["componentPlugins"];
-}> &
-  Pick<
-    InteractiveQuestionProviderProps,
-    | "questionId"
-    | "onBeforeSave"
-    | "onSave"
-    | "entityTypeFilter"
-    | "isSaveEnabled"
-    | "initialSqlParameters"
-    | "withDownloads"
-    | "targetCollection"
-  >;
+export type InteractiveQuestionProps = BaseInteractiveQuestionProps &
+  InteractiveQuestionDefaultViewProps;
 
 export const _InteractiveQuestion = ({
   questionId,
@@ -70,8 +76,7 @@ export const _InteractiveQuestion = ({
   withChartTypeSelector = true,
   withDownloads = false,
   initialSqlParameters,
-}: InteractiveQuestionProps &
-  InteractiveQuestionDefaultViewProps): JSX.Element | null => (
+}: InteractiveQuestionProps): JSX.Element | null => (
   <InteractiveQuestionProvider
     questionId={questionId}
     componentPlugins={plugins}
@@ -97,6 +102,13 @@ export const _InteractiveQuestion = ({
   </InteractiveQuestionProvider>
 );
 
+/**
+ * A component that renders an interactive question.
+ *
+ * @function
+ * @group InteractiveQuestion
+ * @param props
+ */
 const InteractiveQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
 ) as typeof _InteractiveQuestion & {
@@ -107,10 +119,8 @@ const InteractiveQuestion = withPublicComponentWrapper(
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeDropdown: typeof SummarizeDropdown;
-  /** @deprecated Use `InteractiveQuestion.Editor` instead */
   Notebook: typeof Editor;
   Editor: typeof Editor;
-  /** @deprecated Use `InteractiveQuestion.EditorButton` instead */
   NotebookButton: typeof EditorButton;
   EditorButton: typeof EditorButton;
   QuestionVisualization: typeof QuestionVisualization;
@@ -126,28 +136,116 @@ const InteractiveQuestion = withPublicComponentWrapper(
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
 };
 
+/**
+ * @function
+ */
 InteractiveQuestion.BackButton = BackButton;
+
+/**
+ * @function
+ */
 InteractiveQuestion.Filter = Filter;
+
+/**
+ * @function
+ */
 InteractiveQuestion.FilterDropdown = FilterDropdown;
+
+/**
+ * @function
+ */
 InteractiveQuestion.ResetButton = QuestionResetButton;
+
+/**
+ * @function
+ */
 InteractiveQuestion.Title = Title;
+
+/**
+ * @function
+ */
 InteractiveQuestion.Summarize = Summarize;
+
+/**
+ * @function
+ */
 InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
-/** @deprecated Use `InteractiveQuestion.Editor` instead */
+
+/**
+ * @function
+ * @deprecated Use `InteractiveQuestion.Editor` instead
+ */
 InteractiveQuestion.Notebook = Editor;
+
+/**
+ * @function
+ */
 InteractiveQuestion.Editor = Editor;
-/** @deprecated Use `InteractiveQuestion.EditorButton` instead */
+
+/**
+ * @function
+ * @deprecated Use `InteractiveQuestion.EditorButton` instead
+ **/
 InteractiveQuestion.NotebookButton = EditorButton;
+
+/**
+ * @function
+ */
 InteractiveQuestion.EditorButton = EditorButton;
+
+/**
+ * @function
+ */
 InteractiveQuestion.QuestionVisualization = QuestionVisualization;
+
+/**
+ * @function
+ */
 InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
+
+/**
+ * @function
+ */
 InteractiveQuestion.SaveButton = SaveButton;
+
+/**
+ * @function
+ */
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
+
+/**
+ * @function
+ */
 InteractiveQuestion.QuestionSettings = QuestionSettings;
+
+/**
+ * @function
+ */
 InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
+
+/**
+ * @function
+ */
 InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
+
+/**
+ * @function
+ */
 InteractiveQuestion.Breakout = Breakout;
+
+/**
+ * @function
+ */
 InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
+
+/**
+ * @function
+ */
 InteractiveQuestion.DownloadWidget = DownloadWidget;
+
+/**
+ * @function
+ */
 InteractiveQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
+
 export { InteractiveQuestion };

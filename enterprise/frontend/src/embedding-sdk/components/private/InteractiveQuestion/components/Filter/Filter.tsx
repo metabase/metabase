@@ -7,7 +7,13 @@ import { AddBadgeListItem } from "../util/BadgeList/AddBadgeListItem";
 
 import { DropdownFilterBadgeList } from "./DropdownFilterBadgeList";
 import { FilterPicker } from "./FilterPicker";
-import type { FilterProps } from "./types";
+
+export type InteractiveQuestionFilterProps = {
+  /**
+   * Whether to show the icon for the column item
+   */
+  withColumnItemIcon?: boolean;
+};
 
 const AddFilterPopover = () => {
   const [opened, { close, toggle }] = useDisclosure();
@@ -24,7 +30,9 @@ const AddFilterPopover = () => {
   );
 };
 
-export const Filter = ({ withColumnItemIcon }: FilterProps) => (
+export const Filter = ({
+  withColumnItemIcon,
+}: InteractiveQuestionFilterProps) => (
   <Group>
     <DropdownFilterBadgeList withColumnItemIcon={withColumnItemIcon} />
     <AddFilterPopover />

@@ -5,8 +5,17 @@ import {
 
 import { useInteractiveQuestionContext } from "../../context";
 
+/**
+ * @remarks
+ * Uses [Mantine ActionIcon props](https://v7.mantine.dev/core/action-icon/) under the hood
+ */
+export type InteractiveQuestionBackButtonProps = Omit<
+  DashboardBackButtonProps,
+  "noLink" | "onClick"
+>;
+
 export const BackButton = (
-  actionIconProps: Omit<DashboardBackButtonProps, "noLink" | "onClick">,
+  actionIconProps: InteractiveQuestionBackButtonProps,
 ) => {
   const { onNavigateBack } = useInteractiveQuestionContext();
 

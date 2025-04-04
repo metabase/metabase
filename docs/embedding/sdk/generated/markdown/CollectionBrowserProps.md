@@ -1,86 +1,12 @@
-```ts
-type CollectionBrowserProps = {
-  className: string;
-  collectionId: SdkCollectionId;
-  EmptyContentComponent: ComponentType | null;
-  onClick: (item: CollectionItem) => void;
-  pageSize: number;
-  style: CSSProperties;
-  visibleColumns: CollectionBrowserListColumns[];
-  visibleEntityTypes: UserFacingEntityName[];
-};
-```
-
 #### Properties
 
-##### className?
-
-```ts
-optional className: string;
-```
-
-***
-
-##### collectionId?
-
-```ts
-optional collectionId: SdkCollectionId;
-```
-
-***
-
-##### EmptyContentComponent?
-
-```ts
-optional EmptyContentComponent: ComponentType | null;
-```
-
-***
-
-##### onClick()?
-
-```ts
-optional onClick: (item: CollectionItem) => void;
-```
-
-###### Parameters
-
-| Parameter | Type                                           |
-| --------- | ---------------------------------------------- |
-| `item`    | [`CollectionItem`](internal/CollectionItem.md) |
-
-###### Returns
-
-`void`
-
-***
-
-##### pageSize?
-
-```ts
-optional pageSize: number;
-```
-
-***
-
-##### style?
-
-```ts
-optional style: CSSProperties;
-```
-
-***
-
-##### visibleColumns?
-
-```ts
-optional visibleColumns: CollectionBrowserListColumns[];
-```
-
-***
-
-##### visibleEntityTypes?
-
-```ts
-optional visibleEntityTypes: UserFacingEntityName[];
-```
+| Property                                                    | Type                                                                          | Description                                                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <a id="classname"></a> `className?`                         | `string`                                                                      | A custom class name to be added to the root element.                                                                                                                                                                                                                                                                                   |
+| <a id="collectionid"></a> `collectionId?`                   | [`SdkCollectionId`](internal/SdkCollectionId.md)                              | The numerical ID of the collection, "personal" for the user's personal collection, or "root" for the root collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. Defaults to "personal" |
+| <a id="emptycontentcomponent"></a> `EmptyContentComponent?` | `null` \| `ComponentType`                                                     | A component to display when there are no items in the collection.                                                                                                                                                                                                                                                                      |
+| <a id="onclick"></a> `onClick?`                             | (`item`: [`CollectionItem`](internal/CollectionItem.md)) => `void`            | A function to call when an item is clicked.                                                                                                                                                                                                                                                                                            |
+| <a id="pagesize"></a> `pageSize?`                           | `number`                                                                      | The number of items to display per page. The default is 25.                                                                                                                                                                                                                                                                            |
+| <a id="style"></a> `style?`                                 | `CSSProperties`                                                               | A custom style object to be added to the root element.                                                                                                                                                                                                                                                                                 |
+| <a id="visiblecolumns"></a> `visibleColumns?`               | [`CollectionBrowserListColumns`](internal/CollectionBrowserListColumns.md)\[] | The columns to display in the collection items table. If not provided, all columns will be shown.                                                                                                                                                                                                                                      |
+| <a id="visibleentitytypes"></a> `visibleEntityTypes?`       | (`"collection"` \| `"dashboard"` \| `"question"` \| `"model"`)\[]             | The types of entities that should be visible. If not provided, all entities will be shown.                                                                                                                                                                                                                                             |

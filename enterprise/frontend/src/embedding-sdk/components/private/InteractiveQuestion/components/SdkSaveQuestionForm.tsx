@@ -8,11 +8,19 @@ import { Stack, Title } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../context";
 
-export type SdkSaveQuestionFormProps = {
+/**
+ * @interface
+ */
+export type InteractiveQuestionSaveQuestionFormProps = {
+  /**
+   * Callback function executed when save is cancelled
+   */
   onCancel?: () => void;
 };
 
-export const SdkSaveQuestionForm = ({ onCancel }: SdkSaveQuestionFormProps) => {
+export const SdkSaveQuestionForm = ({
+  onCancel,
+}: InteractiveQuestionSaveQuestionFormProps) => {
   const { question, originalQuestion, onSave, onCreate, targetCollection } =
     useInteractiveQuestionContext();
 

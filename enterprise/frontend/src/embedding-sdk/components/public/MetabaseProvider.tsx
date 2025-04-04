@@ -18,6 +18,7 @@ import type {
 } from "embedding-sdk/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
+import type { CommonElementProps } from "embedding-sdk/types/props";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
@@ -39,13 +40,32 @@ import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 import "metabase/css/index.module.css";
 import "metabase/css/vendor.css";
 
-export interface MetabaseProviderProps {
+export interface MetabaseProviderProps
+  extends Omit<CommonElementProps, "style"> {
+  /**
+   * The children of the MetabaseProvider component.
+   */
   children: ReactNode;
+
+  /**
+   * Defines how to authenticate with Metabase.
+   */
   authConfig: MetabaseAuthConfig;
-  pluginsConfig?: MetabasePluginsConfig;
-  eventHandlers?: SdkEventHandlersConfig;
+
+  /**
+   * See [Appearance](./appearance.md).
+   */
   theme?: MetabaseTheme;
-  className?: string;
+
+  /**
+   * See [Plugins](./plugins.md).
+   */
+  pluginsConfig?: MetabasePluginsConfig;
+
+  /**
+   * See [Global event handlers](#global-event-handlers).
+   */
+  eventHandlers?: SdkEventHandlersConfig;
 
   /**
    * Defines the display language. Accepts an ISO language code such as `en` or `de`.
@@ -53,13 +73,19 @@ export interface MetabaseProviderProps {
    **/
   locale?: string;
 
-  /** A custom loader component to display while the SDK is loading. */
+  /**
+   * A custom loader component to display while the SDK is loading.
+   **/
   loaderComponent?: () => JSX.Element;
 
-  /** A custom error component to display when the SDK encounters an error. */
+  /**
+   * A custom error component to display when the SDK encounters an error.
+   **/
   errorComponent?: SdkErrorComponent;
 
-  /** Whether to allow logging to the DevTools console. Defaults to true. */
+  /**
+   * Whether to allow logging to the DevTools console. Defaults to true.
+   **/
   allowConsoleLog?: boolean;
 }
 

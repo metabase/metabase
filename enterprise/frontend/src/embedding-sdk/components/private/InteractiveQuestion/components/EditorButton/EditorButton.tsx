@@ -6,7 +6,15 @@ import { ActionIcon, type ActionIconProps, Icon } from "metabase/ui";
 
 import S from "./EditorButton.module.css";
 
-export type EditorButtonProps = {
+/**
+ * @interface
+ * @remarks
+ * Uses [Mantine ActionIcon props](https://v7.mantine.dev/core/action-icon/) under the hood
+ */
+export type InteractiveQuestionEditorButtonProps = {
+  /**
+   * Whether the editor is currently open
+   */
   isOpen?: boolean;
 } & ActionIconProps &
   HTMLAttributes<HTMLButtonElement>;
@@ -14,7 +22,7 @@ export type EditorButtonProps = {
 export const EditorButton = ({
   isOpen = false,
   ...actionIconProps
-}: EditorButtonProps) => {
+}: InteractiveQuestionEditorButtonProps) => {
   const { question } = useInteractiveQuestionContext();
   return (
     question &&

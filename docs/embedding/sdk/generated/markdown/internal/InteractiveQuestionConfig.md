@@ -2,7 +2,7 @@
 type InteractiveQuestionConfig = {
   componentPlugins: MetabasePluginsConfig;
   entityTypeFilter: EntityTypeFilterKeys[];
-  initialSqlParameters: ParameterValues_2;
+  initialSqlParameters: ParameterValues;
   isSaveEnabled: boolean;
   onBeforeSave: (
     question: MetabaseQuestion | undefined,
@@ -30,6 +30,8 @@ type InteractiveQuestionConfig = {
 optional componentPlugins: MetabasePluginsConfig;
 ```
 
+Additional mapper function to override or add drill-down menu
+
 ***
 
 ##### entityTypeFilter?
@@ -38,15 +40,17 @@ optional componentPlugins: MetabasePluginsConfig;
 optional entityTypeFilter: EntityTypeFilterKeys[];
 ```
 
+An array that specifies which entity types are available in the data picker
+
 ***
 
 ##### initialSqlParameters?
 
 ```ts
-optional initialSqlParameters: ParameterValues_2;
+optional initialSqlParameters: ParameterValues;
 ```
 
-Initial values for the SQL parameters
+Initial values for the SQL parameters.
 
 ***
 
@@ -56,7 +60,7 @@ Initial values for the SQL parameters
 optional isSaveEnabled: boolean;
 ```
 
-Is the save question button visible?
+Whether to show the save button.
 
 ***
 
@@ -67,6 +71,8 @@ optional onBeforeSave: (question: MetabaseQuestion | undefined, context: {
   isNewQuestion: boolean;
 }) => Promise<void>;
 ```
+
+A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`
 
 ###### Parameters
 
@@ -88,6 +94,8 @@ optional onBeforeSave: (question: MetabaseQuestion | undefined, context: {
 optional onNavigateBack: () => void;
 ```
 
+A callback function that triggers when a user clicks the back button.
+
 ###### Returns
 
 `void`
@@ -101,6 +109,8 @@ optional onSave: (question: MetabaseQuestion | undefined, context: {
   isNewQuestion: boolean;
  }) => void;
 ```
+
+A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`
 
 ###### Parameters
 
@@ -122,6 +132,8 @@ optional onSave: (question: MetabaseQuestion | undefined, context: {
 optional targetCollection: SdkCollectionId;
 ```
 
+The collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.
+
 ***
 
 ##### withDownloads?
@@ -129,3 +141,5 @@ optional targetCollection: SdkCollectionId;
 ```ts
 optional withDownloads: boolean;
 ```
+
+Enables the ability to download results in the interactive question.

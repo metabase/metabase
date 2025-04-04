@@ -4,7 +4,15 @@ import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 import { useInteractiveQuestionContext } from "../../context";
 import { ToolbarButton } from "../util/ToolbarButton";
 
-export const DownloadWidgetDropdown = (popoverProps: PopoverProps) => {
+/**
+ * @remarks
+ * Uses [Popover props](https://v7.mantine.dev/core/popover/?t=props) except `onClose` and `opened` under the hood
+ */
+export type InteractiveQuestionDownloadWidgetDropdownProps = PopoverProps;
+
+export const DownloadWidgetDropdown = (
+  popoverProps: InteractiveQuestionDownloadWidgetDropdownProps,
+) => {
   const { withDownloads } = useInteractiveQuestionContext();
   return (
     <Popover

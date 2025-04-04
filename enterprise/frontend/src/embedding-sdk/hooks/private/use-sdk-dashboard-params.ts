@@ -1,8 +1,8 @@
 import type { Query } from "history";
-import type { CSSProperties } from "react";
 import { pick } from "underscore";
 
 import type { SdkDashboardId } from "embedding-sdk/types/dashboard";
+import type { CommonElementProps } from "embedding-sdk/types/props";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import {
   useDashboardFullscreen,
@@ -58,17 +58,7 @@ export type SdkDashboardDisplayProps = {
    * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
    **/
   hiddenParameters?: string[];
-
-  /**
-   * A custom class name to be added to the root element.
-   */
-  className?: string;
-
-  /**
-   * A custom style object to be added to the root element.
-   */
-  style?: CSSProperties;
-};
+} & CommonElementProps;
 
 export const useSdkDashboardParams = ({
   dashboardId: initialDashboardId,

@@ -12,9 +12,19 @@ import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-type EditorProps = { onApply?: () => void };
+/**
+ * @interface
+ */
+export type InteractiveQuestionEditorProps = {
+  /**
+   * Callback function executed when changes are applied
+   */
+  onApply?: () => void;
+};
 
-export const Editor = ({ onApply = () => {} }: EditorProps) => {
+export const Editor = ({
+  onApply = () => {},
+}: InteractiveQuestionEditorProps) => {
   // Loads databases and metadata so we can show notebook steps for the selected data source
   useDatabaseListQuery();
 

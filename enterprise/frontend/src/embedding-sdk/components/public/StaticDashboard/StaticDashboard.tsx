@@ -22,6 +22,9 @@ import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
 
+/**
+ * @interface
+ */
 export type StaticDashboardProps = SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
@@ -92,6 +95,8 @@ export const StaticDashboardInner = ({
 
 /**
  * A lightweight dashboard component.
+ *
+ * @function
  */
 const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
   ({ dashboardId: initialDashboardId, ...rest }) => {

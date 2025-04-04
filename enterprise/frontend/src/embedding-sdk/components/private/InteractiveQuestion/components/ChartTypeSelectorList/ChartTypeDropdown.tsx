@@ -12,7 +12,15 @@ import { useSensibleVisualizations } from "../../hooks/use-sensible-visualizatio
 import ToolbarButtonS from "../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../util/ToolbarButton";
 
-export const ChartTypeDropdown = (menuProps: MenuProps) => {
+/**
+ * @remarks
+ * Uses [Mantine Menu props](https://v7.mantine.dev/core/menu/?t=props) under the hood
+ */
+export type InteractiveQuestionChartTypeDropdownProps = MenuProps;
+
+export const ChartTypeDropdown = (
+  menuProps: InteractiveQuestionChartTypeDropdownProps,
+) => {
   const { selectedVisualization, updateQuestionVisualization } =
     useQuestionVisualization();
 

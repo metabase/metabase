@@ -79,6 +79,8 @@ const config = {
     "Reference",
     "Project",
     "Namespace",
+    "Function",
+    "Variable",
     "Enum",
     "EnumMember",
     "Class",
@@ -86,8 +88,6 @@ const config = {
     "TypeAlias",
     "Constructor",
     "Property",
-    "Variable",
-    "Function",
     "Accessor",
     "Method",
     "Parameter",
@@ -137,6 +137,12 @@ const config = {
     gfm: true,
     frontmatter: true,
     mdx: false,
+  },
+  externalSymbolLinkMappings: {
+    "external-lib": {
+      SomeObject: "https://external-lib.site/docs/SomeObject",
+      "*": "https://external-lib.site/docs",
+    },
   },
 };
 

@@ -14,6 +14,12 @@ import {
   useInteractiveQuestionContext,
 } from "../../context";
 
+/**
+ * @remarks
+ * Uses [Mantine Stack props](https://v7.mantine.dev/core/stack/?t=props) under the hood
+ */
+export type InteractiveQuestionQuestionSettingsProps = StackProps;
+
 const QuestionSettingsContent = ({
   question,
   queryResults,
@@ -67,7 +73,9 @@ const QuestionSettingsContent = ({
   );
 };
 
-export const QuestionSettings = (stackProps: StackProps) => {
+export const QuestionSettings = (
+  stackProps: InteractiveQuestionQuestionSettingsProps,
+) => {
   const { question, queryResults, updateQuestion } =
     useInteractiveQuestionContext();
 

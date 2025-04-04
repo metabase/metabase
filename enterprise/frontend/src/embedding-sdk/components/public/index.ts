@@ -18,10 +18,7 @@ export {
   type EditableDashboardProps,
   type InteractiveDashboardProps,
 } from "./InteractiveDashboard";
-export {
-  InteractiveQuestion,
-  type InteractiveQuestionProps,
-} from "./InteractiveQuestion";
+export * from "./InteractiveQuestion";
 export {
   MetabaseProvider,
   type MetabaseProviderProps,
@@ -38,6 +35,8 @@ export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
 // IDE configuration.
 /**
  * Defines a Metabase auth config.
+ *
+ * @function
  */
 export const defineMetabaseAuthConfig = (
   config: MetabaseAuthConfig,

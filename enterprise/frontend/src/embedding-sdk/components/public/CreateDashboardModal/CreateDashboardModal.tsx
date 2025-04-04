@@ -67,6 +67,8 @@ const CreateDashboardModalCoreWithLoading = _.compose(
 
 /**
  * Creates a dashboard
+ *
+ * @function
  */
 export const CreateDashboardModal = withPublicComponentWrapper(
   CreateDashboardModalInner,

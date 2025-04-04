@@ -1,16 +1,20 @@
 ```ts
-const CreateQuestion: (props?: CreateQuestionProps) => JSX_2.Element;
+function CreateQuestion(
+  props?: Partial<
+    Omit<BaseInteractiveQuestionProps, "questionId" | "children">
+  >,
+): Element;
 ```
 
 #### Parameters
 
-| Parameter | Type                                            |
-| --------- | ----------------------------------------------- |
-| `props`?  | [`CreateQuestionProps`](CreateQuestionProps.md) |
+| Parameter | Type                                                                                                                 |
+| --------- | -------------------------------------------------------------------------------------------------------------------- |
+| `props`?  | `Partial`<`Omit`<[`BaseInteractiveQuestionProps`](BaseInteractiveQuestionProps.md), `"questionId"` \| `"children"`>> |
 
 #### Returns
 
-`JSX_2.Element`
+`Element`
 
 #### Deprecated
 

@@ -16,8 +16,17 @@ import {
   useSummarizeData,
 } from "../use-summarize-data";
 
+/**
+ * @remarks
+ * Uses [Mantine Popover props](https://v7.mantine.dev/core/popover/) under the hood
+ */
+export type InteractiveQuestionSummarizeDropdownProps = Omit<
+  PopoverProps,
+  "children" | "onClose" | "opened"
+>;
+
 export const SummarizeDropdown = (
-  popoverProps: Omit<PopoverProps, "children" | "onClose" | "opened">,
+  popoverProps: InteractiveQuestionSummarizeDropdownProps,
 ) => {
   const aggregationItems = useSummarizeData();
 

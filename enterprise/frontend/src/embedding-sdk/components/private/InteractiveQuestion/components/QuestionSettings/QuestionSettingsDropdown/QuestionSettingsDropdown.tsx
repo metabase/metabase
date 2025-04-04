@@ -7,12 +7,22 @@ import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 import ToolbarButtonS from "../../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../../util/ToolbarButton";
 
+/**
+ * @interface
+ * @remarks
+ * Uses [Popover props](https://v7.mantine.dev/core/popover/?t=props) under the hood
+ */
+export type InteractiveQuestionQuestionSettingsDropdownProps = {
+  /**
+   * Height for the dropdown menu
+   */
+  height?: CSSProperties["height"];
+} & Omit<PopoverProps, "children">;
+
 export const QuestionSettingsDropdown = ({
   height,
   ...popoverProps
-}: {
-  height?: CSSProperties["height"];
-} & Omit<PopoverProps, "children"> = {}) => (
+}: InteractiveQuestionQuestionSettingsDropdownProps = {}) => (
   <Popover position="bottom-end" {...popoverProps}>
     <Popover.Target>
       <ToolbarButton
