@@ -9,7 +9,6 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
-import { useDispatch } from "metabase/lib/redux";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import type { DashboardId } from "metabase-types/api";
 
@@ -31,6 +30,7 @@ import type {
 } from "../types";
 
 import { type ReduxProps, connector } from "./redux";
+import { useDispatch } from "metabase/lib/redux";
 
 type DashboardLoadingState = {
   isLoading: boolean;
