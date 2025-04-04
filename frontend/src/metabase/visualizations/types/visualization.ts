@@ -117,7 +117,6 @@ export interface VisualizationProps {
   errorIcon?: IconName | null;
   actionButtons?: ReactNode;
   fontFamily: string;
-  isPlaceholder?: boolean;
   isFullscreen: boolean;
   isQueryBuilder: boolean;
   isEmbeddingSdk: boolean;
