@@ -526,7 +526,7 @@ describe("issue 45410", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should not overflow the last filter value with a chevron icon (metabase#45410)", () => {
+  it("should not overflow the last filter value with the info icon (metabase#45410)", () => {
     H.openPeopleTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
     H.clauseStepPopover().within(() => {
@@ -537,10 +537,10 @@ describe("issue 45410", () => {
       cy.findByText("abc2@example.com")
         .next("button")
         .then(([removeButton]) => {
-          cy.get("[data-combobox-chevron]").then(([chevronIcon]) => {
+          cy.icon("info_filled").then(([infoIcon]) => {
             const removeButtonRect = removeButton.getBoundingClientRect();
-            const chevronIconRect = chevronIcon.getBoundingClientRect();
-            expect(removeButtonRect.right).to.be.lte(chevronIconRect.left);
+            const infoIconRect = infoIcon.getBoundingClientRect();
+            expect(removeButtonRect.right).to.be.lte(infoIconRect.left);
           });
         });
     });
