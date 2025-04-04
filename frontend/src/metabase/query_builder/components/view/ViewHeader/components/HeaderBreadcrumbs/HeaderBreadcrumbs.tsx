@@ -12,7 +12,6 @@ import { Box, Flex } from "metabase/ui";
 import type { DataSourcePart } from "../QuestionDataSource/utils";
 
 import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 const HeaderBadge = (props: ComponentProps<typeof Badge>) => (
   <Badge
@@ -48,7 +47,6 @@ export function HeadBreadcrumbs({
   inactiveColor,
   ...props
 }: HeadBreadcrumbsProps) {
-  const tc = useTranslateContent2();
   return (
     <Flex
       align="center"
@@ -63,7 +61,6 @@ export function HeadBreadcrumbs({
         const isLast = index === parts.length - 1;
         const badgeInactiveColor =
           inactiveColor || getBadgeInactiveColor({ variant, isLast });
-
         return (
           <Fragment key={index}>
             {isDataSourceReactElement(part) ? (
@@ -74,7 +71,7 @@ export function HeadBreadcrumbs({
                 icon={part.icon}
                 inactiveColor={badgeInactiveColor}
               >
-                {tc(part.name)}
+                {part.name}
               </HeaderBadge>
             )}
             {!isLast &&
