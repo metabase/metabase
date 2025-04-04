@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       # Add additional steps here to process docs changes
       - name: Print changed docs files
@@ -21,12 +21,10 @@ jobs:
           echo "A change in the docs directory was detected."
 
       - name: Prepare to trigger slurp_branches workflow in metabase/docs.metabase.github.io
-      # Extract the branch name from the GITHUB_REF environment variable
-      - name: Set Branch Name Variable
         run: echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
 
       # Trigger the repository_dispatch event in the target repo
-      - name: Trigger Workflow in Target Repository
+      - name: Trigger Workflow in `metabase/docs.metabase.github.io`
         env:
           # Replace with the target repository owner and name
           TARGET_REPO: "metabase/docs.metabase.github.io"
