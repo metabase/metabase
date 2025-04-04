@@ -749,16 +749,20 @@
   [_]
   #{"INFORMATION_SCHEMA"})
 
+(defn- adjust-host-and-port
+  [{:keys [account host port] :as db-details}]
+  (cond-> db-details
+    (not host) (assoc :host (str account ".snowflakecomputing.com"))
+    (not port) (assoc :port 443)))
+
 (defmethod driver/incorporate-ssh-tunnel-details :snowflake
-  [_driver {:keys [account host port] :as db-details}]
-  (let [details (cond-> db-details
-                  (not host) (assoc :host (str account ".snowflakecomputing.com"))
-                  (not port) (assoc :port 443))]
+  [_driver db-details]
+  (let [details (adjust-host-and-port db-details)]
     (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))
 
 (defmethod driver/can-connect? :snowflake
   [driver {:keys [db], :as details}]
-  (let [details (driver/incorporate-ssh-tunnel-details driver details)]
+  (let [details (adjust-host-and-port details)]
     (and ((get-method driver/can-connect? :sql-jdbc) driver details)
          (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
            ;; jdbc/query is used to see if we throw, we want to ignore the results
