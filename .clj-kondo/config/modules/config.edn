@@ -612,7 +612,7 @@
 
   util
   {:api :any
-   :uses #{config driver legacy-mbql lib models plugins premium-features public-settings}}
+   :uses #{config db driver legacy-mbql lib models plugins premium-features public-settings}}
 
   xrays
   {:api  #{metabase.xrays.api metabase.xrays.core}
