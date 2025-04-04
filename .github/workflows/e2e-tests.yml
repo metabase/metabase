@@ -49,25 +49,15 @@ jobs:
             };
 
   build:
-    name: Build ${{ matrix.edition }} for e2e tests
+    name: Build Uberjar
     needs: [get-build-requirements]
     if: ${{ !cancelled() && !inputs.skip }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        edition: [ee, oss]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build uberjar
-        uses: ./.github/actions/build-uberjar
-        with:
-          edition: ${{ matrix.edition }}
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-          m2-cache-key: uberjar
-          artifact-name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          skip-licenses: ${{ github.event_name == 'pull_request' }}
+    uses: ./.github/workflows/build-uberjar.yml
+    with:
+      java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
+      node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+      skip-licenses: ${{ github.event_name == 'pull_request' }}
+    secrets: inherit
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
@@ -120,6 +110,7 @@ jobs:
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
+      artifact_name: ${{ needs.build.outputs.artifact-name }}
 
   # run this separately to make it non-blocking
   flaky-e2e-tests:

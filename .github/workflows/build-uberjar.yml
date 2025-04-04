@@ -1,0 +1,216 @@
+name: Build Metabase Uberjar
+
+on:
+  workflow_call:
+    inputs:
+      edition:
+        description: "Metabase edition (ee or oss)"
+        required: false
+        type: string
+        default: "ee"
+      java-version:
+        description: "Java version to use for the build"
+        required: false
+        type: string
+        default: "21"
+      node-version:
+        description: "Node version to use for the build"
+        required: false
+        type: string
+      commit:
+        description: "Commit SHA to build"
+        required: false
+        type: string
+      version:
+        description: "Version to set for the build"
+        required: false
+        type: string
+      build-process:
+        description: "Build process to use (legacy or new)"
+        required: false
+        type: string
+        default: "new"
+      skip-licenses:
+        description: "Whether to skip license generation"
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      artifact-name:
+        description: "Name of the artifact containing the uberjar"
+        value: ${{ jobs.build-uberjar.outputs.artifact-name }}
+
+jobs:
+  build-uberjar:
+    name: Build ${{ inputs.edition }} uberjar
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    outputs:
+      artifact-name: ${{ steps.set-artifact-name.outputs.name }}
+    env:
+      MB_EDITION: ${{ inputs.edition }}
+      INTERACTIVE: false
+      SKIP_LICENSES: ${{ inputs.skip-licenses }}
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+
+      - name: Calculate source hash
+        id: source-hash
+        run: |
+          # hash all the files that might change the uberjar build
+          HASH=$(
+            (
+              find src deps.edn resources/sample-database.db.mv.db -type f -print0 | xargs -0 shasum ;
+              find resources -type f \( -iname \*.clj -o -iname \*.edn -o -iname \*.yaml -o -iname \*.properties -o -iname \*.html \) -not -name "version.properties" -print0 | xargs -0 shasum ;
+              find frontend/src -type f -not -path "*/node_modules/*" -print0 | xargs -0 shasum ;
+              find enterprise/frontend/src -type f -not -path "*/node_modules/*" -print0 | xargs -0 shasum 2>/dev/null || true ;
+            ) | shasum | awk '{ print $1 }'
+          )
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          echo "Source hash: $HASH"
+
+      - name: Set artifact name
+        id: set-artifact-name
+        run: |
+          ARTIFACT_NAME="metabase-${{ inputs.edition }}-${{ steps.source-hash.outputs.hash }}-uberjar"
+          echo "name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+          echo "Artifact name: $ARTIFACT_NAME"
+
+      - name: Check if uberjar already exists
+        id: check-artifact
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifactName = "${{ steps.set-artifact-name.outputs.name }}";
+            console.log(`Checking if artifact '${artifactName}' exists`);
+
+            try {
+              const artifacts = await github.rest.actions.listArtifactsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100
+              });
+
+              const found = artifacts.data.artifacts.find(a => a.name === artifactName);
+
+              if (found) {
+                console.log(`Found existing artifact: ${found.id}`);
+                return true;
+              } else {
+                console.log(`No existing artifact found: ${artifactName}`);
+                return false;
+              }
+            } catch (error) {
+              console.error(`Error checking for artifacts: ${error}`);
+              return false;
+            }
+
+      - name: Download existing uberjar
+        if: ${{ steps.check-artifact.outputs.result == 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifactName = "${{ steps.set-artifact-name.outputs.name }}";
+            console.log(`Downloading existing artifact: ${artifactName}`);
+
+            try {
+              const artifacts = await github.rest.actions.listArtifactsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100
+              });
+
+              const found = artifacts.data.artifacts.find(a => a.name === artifactName);
+
+              if (found) {
+                const download = await github.rest.actions.downloadArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: found.id,
+                  archive_format: 'zip'
+                });
+
+                const fs = require('fs');
+                fs.writeFileSync('artifact.zip', Buffer.from(download.data));
+
+                console.log('Artifact downloaded, extracting...');
+                const { execSync } = require('child_process');
+                execSync('mkdir -p target/uberjar');
+                execSync('unzip -o artifact.zip -d .');
+
+                return true;
+              }
+            } catch (error) {
+              console.error(`Error downloading artifact: ${error}`);
+              return false;
+            }
+
+      - name: Reupload existing artifact for current run
+        if: ${{ steps.check-artifact.outputs.result == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.set-artifact-name.outputs.name }}
+          path: |
+            ./target/uberjar/metabase.jar
+            ./COMMIT-ID
+            ./SHA256.sum
+
+      - name: Prepare front-end environment
+        if: ${{ steps.check-artifact.outputs.result != 'true' }}
+        uses: ./.github/actions/prepare-frontend
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Prepare back-end environment
+        if: ${{ steps.check-artifact.outputs.result != 'true' }}
+        uses: ./.github/actions/prepare-backend
+        with:
+          java-version: ${{ inputs.java-version }}
+          m2-cache-key: uberjar
+
+      # Build with modern process
+      - name: Build uberjar
+        if: ${{ steps.check-artifact.outputs.result != 'true' }}
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            ./bin/build.sh :edition :${{ inputs.edition }} :version ${{ inputs.version }}
+          else
+            ./bin/build.sh :edition :${{ inputs.edition }}
+          fi
+
+          # Add source hash to version.properties so we can verify it later
+          echo "src_hash=${{ steps.source-hash.outputs.hash }}" >> resources/version.properties
+
+      - name: Upload uberjar artifact
+        if: ${{ steps.check-artifact.outputs.result != 'true' }}
+        uses: ./.github/actions/prepare-uberjar-artifact
+        with:
+          name: ${{ steps.set-artifact-name.outputs.name }}
+
+  check-jar-health:
+    name: Check ${{ inputs.edition }} jar health
+    needs: build-uberjar
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Prepare JRE
+        uses: actions/setup-java@v4
+        with:
+          java-package: jre
+          java-version: ${{ inputs.java-version }}
+          distribution: "temurin"
+
+      - name: Retrieve uberjar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-uberjar.outputs.artifact-name }}
+
+      - name: Launch uberjar
+        run: >-
+          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
+
+      - name: Wait for Metabase to start
+        run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done

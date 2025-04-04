@@ -8,9 +8,8 @@ on:
         required: true
         type: string
       edition: # oss | ee
-        required: false
+        required: true
         type: string
-        default: ee
       specs:
         required: false
         default: ./e2e/test/scenarios/**/*.cy.spec.*
@@ -28,6 +27,10 @@ on:
       split_index: # index of the chunk
         required: false
         type: number
+      artifact_name:
+        required: false
+        type: string
+        description: "Name of the artifact containing the uberjar"
 
 jobs:
   e2e-tests:
@@ -84,7 +87,7 @@ jobs:
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: actions/download-artifact@v4
         with:
-          name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: ${{ inputs.artifact_name || format('metabase-{0}-{1}-uberjar', inputs.edition, github.event.pull_request.head.sha || github.sha) }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend

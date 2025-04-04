@@ -152,24 +152,32 @@ jobs:
       !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'true' &&
       fromJSON(needs.get-sample-apps-data.outputs.matrix)[0] != null
+    uses: ./.github/workflows/build-uberjar.yml
+    with:
+      edition: ee
+      java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
+      node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+      skip-licenses: ${{ github.event_name == 'pull_request' }}
+    secrets: inherit
+
+  build-embedding-sdk:
+    needs: [files-changed, get-build-requirements, get-sample-apps-data]
+    if: |
+      !cancelled() &&
+      needs.files-changed.outputs.e2e_all == 'true' &&
+      fromJSON(needs.get-sample-apps-data.outputs.matrix)[0] != null
     runs-on: ubuntu-22.04
-    timeout-minutes: 25
-    env:
-      MB_EDITION: ee
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Build uberjar
-        uses: ./.github/actions/build-uberjar
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
         with:
-          edition: ee
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-          m2-cache-key: uberjar
-          artifact-name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          skip-licenses: ${{ github.event_name == 'pull_request' }}
+          m2-cache-key: "cljs"
 
       - name: Compile CLJS
         run: yarn build-pure:cljs
@@ -219,7 +227,7 @@ jobs:
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: ${{ needs.build.outputs.artifact-name }}
 
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
