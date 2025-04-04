@@ -17,14 +17,10 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-;; We enforce and rely on the following invariants for the data in the Undo table:
-
-;; - `undone` is monotonic in `batch_num`, for each table_id, row_pk combination.
-;;      i.e., it can only change from `false` to `true`, as `batch_num` increases.
-;; - at most one of `row_before` and `row_after` are `nil`
-
-;; invariants
-;; for a given field, "undone" is monotonic in batch_num (cannot go from true to false)
+;; We must enforce the following invariant for the data in the Undo table:
+;;
+;; undone` is monotonic in `batch_num`, for each `table_id`, `row_pk` combination.
+;;  i.e., it can only change from `false` to `true` for any logical "cell", as `batch_num` increases.
 
 ;; TODO not serialized (yaml)
 
@@ -46,29 +42,38 @@
 (defn- track-change! [user-id table-id->row-pk->old-new-values]
   (t2/insert!
    :model/Undo
-   (for [[table-id stuff] table-id->row-pk->old-new-values
-         [row-pk [old new]] stuff]
+   (for [[table-id table-updates] table-id->row-pk->old-new-values
+         [row-pk [old new]] table-updates]
      {:batch_num  [:+ [:inline 1] [:coalesce {:from [:data_edit_undo_chain] :select [[[:max :batch_num]]]} 0]]
       :table_id   table-id
       :user_id    user-id
       :row_pk     row-pk
       :raw_before old
-      :raw_after  new}
-     ;; TODO delete any orphaned or conflicting "undone" changes
-     )))
+      :raw_after  new}))
+  ;; TODO delete any orphaned or conflicting "undone" changes (keep in sync with conflict? if we fix false positives)
+  ;; We do this in multiple statements because:
+  ;; - it's much simpler
+  ;; - typically there is only one table, and this is more efficient in that case
+  (doseq [[table-id table-updates] table-id->row-pk->old-new-values
+          :let [row-pks (keys table-updates)]]
+    ;; TODO This is the wrong batch number
+    ;; - we need to scope ourselves just to these row-pks
+    ;; - we want to look across all users
+    ;; - we can't rely on `undone` being monotonic if we're searching across multiple row-pks
+    (when-let [{:keys [batch_num]} (first (next-batch true user-id table-id))]
+      (t2/delete! :model/Undo
+                  :table_id table-id
+                  :row_pk [:in row-pks]
+                  :batch_num [:> batch_num]
+                  :undone true))))
 
-(defn- has-undo?
-  "Return whether we have any saved modifications that could be undone.
-  NOTE: this does not check whether there is a conflict preventing us from actually undoing it."
-  [user-id table-id]
-  (boolean (seq (next-batch true user-id table-id))))
+(defn has-undo?
+  "Return whether we have any saved modifications to (un-)revert.
+  NOTE: this does not check whether there is a conflict preventing us from actually performing it."
+  [undo? user-id table-id]
+  (boolean (seq (next-batch undo? user-id table-id))))
 
-(defn- has-redo?
-  "Return whether we have any saved modifications that could be undone.
-  NOTE: this does not check whether there is a conflict preventing us from actually undoing it."
-  [user-id table-id]
-  (boolean (seq (next-batch false user-id table-id))))
-
+;; This will be used to fix conflict false positives
 (defn- diff-keys
   "Give the sorted list of keys on which m1 and m2 differ."
   [m1 m2]
@@ -81,10 +86,12 @@
   (let [row-pks   (into #{} (map :row_pk) batch)
         table-ids (into #{} (map :table_id) batch)
         {:keys [batch_num]} (first batch)]
-    ;; TODO fix false positive conflicts when different columns were changed
+    ;; TODO fix false positives in multi-table case where row-pks are ambiguous
+    ;; PRODUCT: We probably also want to fix false positive conflicts when different columns were changed
     ;; Idea: Select all potential conflicting undos, check for any whose changed keys overlap with ours.
     ;; Can store a precalculated [[diff-keys]] on each :model/Undo row, or even normalize into its own table and do
     ;; conflict detection completely in SQL.
+    ;; This normal form may make maintenance of the history a bit too expensive however.
     (t2/exists? :model/Undo
                 :table_id [:in table-ids]
                 :row_pk [:in row-pks]
@@ -102,103 +109,57 @@
    :update :update
    :delete :create})
 
-(defn- batch->rows [undo? batch]
+(defn- batch->rows
+  "Given the undo snapshots for some batch update, return the corresponding row updates."
+  [undo? batch]
   (let [k (if undo? :raw_before :raw_after)]
     (for [b batch]
       (when-let [body (k b)]
         (merge (:row_pk b) body)))))
 
-(defn undo*!
+(defn- update-table-data!
   "Revert the underlying table data."
   [undo? batch]
   (doseq [[[table-id category] sub-batch] (u/group-by (juxt :table_id categorize) batch)
           :let [rows (batch->rows undo? sub-batch)]]
-    #p [category rows]
-    #_(case (if redo? (invert category) category)
-        :create (data-editing/perform-bulk-action! :bulk/create table-id rows)
-        :update (data-editing/perform-bulk-action! :bulk/update table-id rows)
-        :delete (data-editing/perform-bulk-action! :bulk/delete table-id rows))))
+    (case (if undo? (invert category) category)
+      :create (try (data-editing/perform-bulk-action! :bulk/create table-id rows)
+                   (catch Exception e
+                     ;; Sometimes cols don't support a custom value being provided, e.g., GENERATED ALWAYS AS IDENTITY
+                     (throw (ex-info "Failed to un-delete row(s)"
+                                     {:error     :undo/cannot-undelete
+                                      :batch-num (:batch_num (first batch))
+                                      :table-id  table-id
+                                      :pks       (map :row_pk batch)}
+                                     e))))
+      :update (data-editing/perform-bulk-action! :bulk/update table-id rows)
+      :delete (data-editing/perform-bulk-action! :bulk/delete table-id (map :row_pk batch)))))
 
-(defn- undo! [user-id table-id]
-  (let [undo? true
-        batch (next-batch undo? user-id table-id)]
+(defn- undo*! [undo? user-id table-id]
+  (let [batch (next-batch undo? user-id table-id)]
     (cond
-      (not (seq batch)) (throw (ex-info "No previous versions found"
+      (not (seq batch)) (throw (ex-info (if undo?
+                                          "No previous versions found"
+                                          "No subsequent versions found")
                                         {:error    :undo/none
                                          :user-id  user-id
                                          :table-id table-id}))
-      (conflict? undo? batch) (throw (ex-info "Conflicting versions found"
+      (conflict? undo? batch) (throw (ex-info "Blocked by other changes"
+                                              ;; It would be nice if we gave the batch_num for the first conflict.
                                               {:error    :undo/conflict
                                                :user-id  user-id
                                                :table-id table-id}))
       :else
-      (do (undo*! undo? batch)
+      (do (update-table-data! undo? batch)
           (t2/update! :model/Undo
                       {:batch_num (:batch_num (first batch))}
-                      {:undone true})
+                      {:undone undo?})
           (batch->rows undo? batch)))))
 
-(defn- redo! [user-id table-id]
-  (let [undo? false
-        batch (next-batch undo? user-id table-id)]
-    (cond
-      (not (seq batch)) (throw (ex-info "No subsequent versions found"
-                                        {:error    :undo/none
-                                         :user-id  user-id
-                                         :table-id table-id}))
-      (conflict? undo? batch) (throw (ex-info "Conflicting versions found"
-                                              {:error    :undo/conflict
-                                               :user-id  user-id
-                                               :table-id table-id}))
-      :else
-      (do (undo*! undo? batch)
-          (t2/update! :model/Undo
-                      {:batch_num (:batch_num (first batch))}
-                      {:undone false})
-          (batch->rows undo? batch)))))
+(defn undo! [user-id table-id]
+  (undo*! true user-id table-id))
 
-;-> table batch edit action (inv id 1) -> bulk action -> row/update (inv id 1)
-;                                                        row/update (inv id 3)
-;                                                               |
-;                                                               -> action.success -> audit log
-;                                                               -> undo snapshots (row level)
+(defn redo! [user-id table-id]
+  (undo*! false user-id table-id))
 
-; (open problem: how to atomically give them all the same batch number)
-;
-; do an undo -> bulk action -> row/update -> DO NOT create snapshot
-;
-;              {:skip-undo-snapshot true} -> use that option
-;
-; change 1 (not undone)
-; change 2 (not undone)
-; change 3 (undone)
-; change 4 - same entity
-; change 5 (not undone)
 
-;; undo until nothing to undo.
-;; redo until nothing to redo.
-;; conflict when the same field and row.
-;; no conflict for a different field.
-;; no conflict for a different row.
-
-(comment
-  (t2/delete! :model/Undo)
-  (do
-    (track-change! 1 {1 {{:id 1} [nil {:name "Chris"}]}})
-    (track-change! 1 {1 {{:id 1} [{:name "Chris"} {:name "Ngoc"}]}})
-    (track-change! 1 {1 {{:id 1} [{:name "Ngoc"} nil]}})
-
-    (track-change! 2 {2 {{:id 1} [nil {:name "Chris" :age 2}]}})
-    (track-change! 2 {2 {{:id 1} [{:name "Chris" :age 2} {:name "Ngoc" :age 9000}]}})
-    (track-change! 3 {2 {{:id 1} [{:name "Ngoc" :age 9000} {:name "Ngoc" :age 9001}]}})
-    (track-change! 2 {2 {{:id 1} [{:name "Ngoc" :age 9001} nil]}}))
-
-  (undo! 1 1)
-  (redo! 1 1)
-
-  (undo! 2 2)
-  (undo! 3 2)
-  (redo! 2 2)
-  (redo! 3 2)
-
-  (t2/select :model/Undo))
