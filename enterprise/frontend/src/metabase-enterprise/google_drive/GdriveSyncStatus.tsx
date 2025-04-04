@@ -4,46 +4,60 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import StatusLarge from "metabase/status/components/StatusLarge";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
-import type { DatabaseId, Settings } from "metabase-types/api";
+import { EnterpriseApi } from "metabase-enterprise/api/api";
+import type { DatabaseId, GdrivePayload } from "metabase-types/api";
 
-type GsheetsStatus = Settings["gsheets"]["status"];
+import { SYNC_POLL_INTERVAL } from "./constants";
+import { useShowGdrive } from "./utils";
+
+type GsheetsStatus = GdrivePayload["status"];
 type ErrorPayload = { data?: { message: string } };
 
 export const GdriveSyncStatus = () => {
-  const gsheetsSetting = useSetting("gsheets");
-  const settingStatus = gsheetsSetting?.status;
-  const previousSettingStatus = usePrevious(settingStatus);
   const dispatch = useDispatch();
-  const isAdmin = useSelector(getUserIsAdmin);
-  const currentUser = useSelector(getCurrentUser);
-  const isCurrentAdmin =
-    isAdmin &&
-    gsheetsSetting?.["created-by-id"] &&
-    currentUser.id === gsheetsSetting?.["created-by-id"];
-  const [forceHide, setForceHide] = useState(
-    !isCurrentAdmin || settingStatus !== "loading",
-  );
+  const showGdrive = useShowGdrive();
+
+  const [forceHide, setForceHide] = useState(true);
   const [syncError, setSyncError] = useState({ error: false, message: "" });
   const [dbId, setDbId] = useState<DatabaseId | undefined>();
 
-  const shouldPoll = isCurrentAdmin && settingStatus === "loading";
+  const res = useGetGsheetsFolderQuery(!showGdrive ? skipToken : undefined);
+  const { currentData: gdriveFolder, error: apiError } = res;
 
-  const { currentData: folderSync, error: apiError } = useGetGsheetsFolderQuery(
-    shouldPoll ? undefined : skipToken,
-    { pollingInterval: 3000 },
-  );
+  const currentUser = useSelector(getCurrentUser);
+  const isCurrentUser = currentUser?.id === gdriveFolder?.created_by_id;
 
-  // if our polling endpoint changes away from loading, refresh the settings and show error, if any
+  const status = match({
+    apiStatus: gdriveFolder?.status,
+    folderSyncError: syncError.error,
+  })
+    .returnType<GsheetsStatus>()
+    .with({ folderSyncError: true }, () => "error")
+    .with({ apiStatus: "active" }, () => "active")
+    .with({ apiStatus: "syncing" }, () => "syncing")
+    .otherwise(() => "not-connected");
+
+  const previousStatus = usePrevious(status);
+
   useEffect(() => {
-    if (folderSync?.status !== "loading" || apiError) {
-      if (apiError) {
+    if (status === "syncing") {
+      const timeout = setTimeout(() => {
+        dispatch(EnterpriseApi.util.invalidateTags(["gsheets-status"]));
+      }, SYNC_POLL_INTERVAL);
+      return () => {
+        clearTimeout(timeout);
+      };
+    }
+  }, [res, status, dispatch]); // need res so this runs on every refetch
+
+  // if our polling endpoint changes away from loading
+  useEffect(() => {
+    if (status !== "syncing") {
+      if (status === "error") {
         console.error((apiError as ErrorPayload)?.data?.message);
 
         setSyncError({
@@ -53,17 +67,15 @@ export const GdriveSyncStatus = () => {
         });
       }
 
-      if (folderSync?.db_id) {
-        setDbId(folderSync.db_id);
+      if (gdriveFolder?.db_id) {
+        setDbId(gdriveFolder.db_id);
       }
-
-      dispatch(reloadSettings());
     }
-  }, [folderSync, dispatch, settingStatus, apiError]);
+  }, [status, gdriveFolder, apiError]);
 
   useEffect(() => {
     // if our setting changed to loading from something else, reset the force hide and clear any errors
-    if (settingStatus === "loading" && previousSettingStatus !== "loading") {
+    if (status === "syncing" && previousStatus !== "syncing") {
       setForceHide(false);
       setSyncError({
         error: false,
@@ -73,34 +85,21 @@ export const GdriveSyncStatus = () => {
 
     // if our setting changed to not-connected from loading and we don't have an error, force hide
     if (
-      settingStatus === "not-connected" &&
-      previousSettingStatus === "loading" &&
+      status === "not-connected" &&
+      previousStatus === "syncing" &&
       !syncError.error
     ) {
       setForceHide(true);
     }
-  }, [settingStatus, previousSettingStatus, syncError]);
+  }, [status, previousStatus, syncError]);
 
-  if (forceHide || !isCurrentAdmin) {
+  if (forceHide || !isCurrentUser) {
     return null;
   }
 
-  const displayStatus = match({
-    folderSyncStatus: folderSync?.status,
-    folderSyncError: syncError.error,
-    settingStatus,
-  })
-    .returnType<GsheetsStatus>()
-    .with({ folderSyncError: true }, () => "error")
-    .with({ folderSyncStatus: "complete" }, () => "complete")
-    .with({ settingStatus: "complete" }, () => "complete")
-    .with({ folderSyncStatus: "loading" }, () => "loading")
-    .with({ settingStatus: "loading" }, () => "loading")
-    .otherwise(() => "loading");
-
   return (
     <GsheetsSyncStatusView
-      status={displayStatus}
+      status={status}
       db_id={dbId}
       onClose={() => setForceHide(true)}
     />
@@ -117,16 +116,16 @@ function GsheetsSyncStatusView({
   onClose: () => void;
 }) {
   const title = match(status)
-    .with("complete", () => t`Imported Google Sheets`)
+    .with("active", () => t`Imported Google Sheets`)
     .with("error", () => t`Error importing Google Sheets`)
     .otherwise(() => t`Importing Google Sheets...`);
 
   const itemTitle = match(status)
-    .with("complete", () => t`Start exploring`)
+    .with("active", () => t`Start exploring`)
     .otherwise(() => t`Google Sheets`);
 
   const description = match(status)
-    .with("complete", () => t`Files sync every 15 minutes`)
+    .with("active", () => t`Files sync every 15 minutes`)
     .with(
       "error",
       () =>
@@ -143,11 +142,11 @@ function GsheetsSyncStatusView({
           {
             title: itemTitle,
             href:
-              status === "complete" ? `/browse/databases/${db_id}` : undefined,
+              status === "active" ? `/browse/databases/${db_id}` : undefined,
             icon: "google_drive",
             description,
-            isInProgress: status === "loading",
-            isCompleted: status === "complete",
+            isInProgress: status === "syncing",
+            isCompleted: status === "active",
             isAborted: status === "error",
           },
         ],
