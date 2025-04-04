@@ -411,8 +411,8 @@ const createDefaultArgs = (
     slowCards: {},
     selectedTabId: TAB_ID,
     parameterType: "text",
-    downloadsEnabled: { pdf: true, dashcard: true },
     ...args,
+    downloadsEnabled: { pdf: true, dashcard: false },
   };
 };
 
