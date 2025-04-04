@@ -32,46 +32,47 @@
 
 (deftest table-operations-test
   (mt/with-premium-features #{:table-data-editing}
-    (with-open [table-ref (data-editing.tu/open-test-table!)]
-      (let [table-id @table-ref
-            url      (data-editing.tu/table-url table-id)]
-        (data-editing.tu/toggle-data-editing-enabled! true)
-        (testing "Initially the table is empty"
-          (is (= [] (table-rows table-id))))
+    (mt/with-empty-h2-app-db
+      (with-open [table-ref (data-editing.tu/open-test-table!)]
+        (let [table-id @table-ref
+              url      (data-editing.tu/table-url table-id)]
+          (data-editing.tu/toggle-data-editing-enabled! true)
+          (testing "Initially the table is empty"
+            (is (= [] (table-rows table-id))))
 
-        (testing "POST should insert new rows"
-          (is (= {:created-rows [{:id 1 :name "Pidgey" :song "Car alarms"}
-                                 {:id 2 :name "Spearow" :song "Hold music"}
-                                 {:id 3 :name "Farfetch'd" :song "The land of lisp"}]}
-                 (mt/user-http-request :crowberto :post 200 url
-                                       {:rows [{:name "Pidgey" :song "Car alarms"}
-                                               {:name "Spearow" :song "Hold music"}
-                                               {:name "Farfetch'd" :song "The land of lisp"}]})))
+          (testing "POST should insert new rows"
+            (is (= {:created-rows [{:id 1 :name "Pidgey" :song "Car alarms"}
+                                   {:id 2 :name "Spearow" :song "Hold music"}
+                                   {:id 3 :name "Farfetch'd" :song "The land of lisp"}]}
+                   (mt/user-http-request :crowberto :post 200 url
+                                         {:rows [{:name "Pidgey" :song "Car alarms"}
+                                                 {:name "Spearow" :song "Hold music"}
+                                                 {:name "Farfetch'd" :song "The land of lisp"}]})))
 
-          (is (= [[1 "Pidgey" "Car alarms"]
-                  [2 "Spearow" "Hold music"]
-                  [3 "Farfetch'd" "The land of lisp"]]
-                 (table-rows table-id))))
+            (is (= [[1 "Pidgey" "Car alarms"]
+                    [2 "Spearow" "Hold music"]
+                    [3 "Farfetch'd" "The land of lisp"]]
+                   (table-rows table-id))))
 
-        (testing "PUT should update the relevant rows and columns"
-          (is (= {:updated [{:id 1, :name "Pidgey", :song "Join us now and share the software"}
-                            {:id 2, :name "Speacolumn", :song "Hold music"}]}
-                 (mt/user-http-request :crowberto :put 200 url
-                                       {:rows [{:id 1 :song "Join us now and share the software"}
-                                               {:id 2 :name "Speacolumn"}]})))
+          (testing "PUT should update the relevant rows and columns"
+            (is (= {:updated [{:id 1, :name "Pidgey", :song "Join us now and share the software"}
+                              {:id 2, :name "Speacolumn", :song "Hold music"}]}
+                   (mt/user-http-request :crowberto :put 200 url
+                                         {:rows [{:id 1 :song "Join us now and share the software"}
+                                                 {:id 2 :name "Speacolumn"}]})))
 
-          (is (= [[1 "Pidgey" "Join us now and share the software"]
-                  [2 "Speacolumn" "Hold music"]
-                  [3 "Farfetch'd" "The land of lisp"]]
-                 (table-rows table-id))))
+            (is (= [[1 "Pidgey" "Join us now and share the software"]
+                    [2 "Speacolumn" "Hold music"]
+                    [3 "Farfetch'd" "The land of lisp"]]
+                   (table-rows table-id))))
 
-        (testing "DELETE should remove the corresponding rows"
-          (is (= {:success true}
-                 (mt/user-http-request :crowberto :post 200 (str url "/delete")
-                                       {:rows [{:id 1}
-                                               {:id 2}]})))
-          (is (= [[3 "Farfetch'd" "The land of lisp"]]
-                 (table-rows table-id))))))))
+          (testing "DELETE should remove the corresponding rows"
+            (is (= {:success true}
+                   (mt/user-http-request :crowberto :post 200 (str url "/delete")
+                                         {:rows [{:id 1}
+                                                 {:id 2}]})))
+            (is (= [[3 "Farfetch'd" "The land of lisp"]]
+                   (table-rows table-id)))))))))
 
 (deftest editing-allowed-test
   (mt/with-premium-features #{:table-data-editing}
