@@ -145,21 +145,9 @@ export const getVisualizerDatasetColumns = createSelector(
   data => data.cols,
 );
 
-export const getVisualizerRawSeries = createSelector(
-  [
-    getVisualizationType,
-    getVisualizerColumnValuesMapping,
-    getVisualizerRawSettings,
-    getVisualizerDatasetData,
-    getIsMultiseriesCartesianChart,
-  ],
-  (
-    display,
-    columnValuesMapping,
-    settings,
-    data,
-    isMultiseriesCartesianChart,
-  ): RawSeries => {
+const getVisualizerFlatRawSeries = createSelector(
+  [getVisualizationType, getVisualizerRawSettings, getVisualizerDatasetData],
+  (display, settings, data): RawSeries => {
     if (!display) {
       return [];
     }
@@ -168,8 +156,10 @@ export const getVisualizerRawSeries = createSelector(
       {
         card: {
           display,
+          dataset_query: {},
           visualization_settings: settings,
         } as Card,
+
         data,
 
         // Certain visualizations memoize settings computation based on series keys
@@ -178,11 +168,20 @@ export const getVisualizerRawSeries = createSelector(
       } as SingleSeries,
     ];
 
-    if (isMultiseriesCartesianChart) {
-      return splitVisualizerSeries(series, columnValuesMapping);
-    }
-
     return series;
+  },
+);
+
+export const getVisualizerRawSeries = createSelector(
+  [
+    getVisualizerFlatRawSeries,
+    getVisualizerColumnValuesMapping,
+    getIsMultiseriesCartesianChart,
+  ],
+  (flatSeries, columnValuesMapping, isMultiseriesCartesianChart): RawSeries => {
+    return isMultiseriesCartesianChart
+      ? splitVisualizerSeries(flatSeries, columnValuesMapping)
+      : flatSeries;
   },
 );
 
@@ -206,7 +205,7 @@ export const getVisualizerComputedSettings = createSelector(
 );
 
 export const getTabularPreviewSeries = createSelector(
-  [getVisualizerRawSeries],
+  [getVisualizerFlatRawSeries],
   rawSeries => {
     if (rawSeries.length === 0) {
       return [];
@@ -220,6 +219,7 @@ export const getTabularPreviewSeries = createSelector(
         ...rest,
         card: {
           display: "table",
+          dataset_query: {},
           visualization_settings: {},
         } as Card,
       },
