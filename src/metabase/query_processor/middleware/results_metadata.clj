@@ -89,8 +89,8 @@
   "Post-processing middleware that records metadata about the columns returned when running the query. Returns an rff."
   [{{:keys [skip-results-metadata?]} :middleware, :as query} :- ::qp.schema/query
    rff                                                       :- ::qp.schema/rff]
-  (if skip-results-metadata?
-    rff
-    (let [record! (partial record-metadata! query)]
-      (fn record-and-return-metadata!-rff* [metadata]
-        (insights-xform metadata record! (rff metadata))))))
+  (let [record! (if skip-results-metadata?
+                  (partial record-metadata! query)
+                  (fn [_metadata] (log/debug "skipping recording metadata")))]
+    (fn record-and-return-metadata!-rff* [metadata]
+      (insights-xform metadata record! (rff metadata)))))
