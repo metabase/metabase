@@ -16,8 +16,6 @@ import type { TableId } from "metabase-types/api";
 
 import { ClauseStep } from "../ClauseStep";
 
-import S from "./DataStep.module.css";
-
 type DataStepProps = {
   query: Lib.Query | undefined;
   stageIndex: number;
@@ -59,7 +57,7 @@ export function DataStep({
       <Box>
         {tableId && (
           <Flex maw={300} wrap="nowrap">
-            <Text c="text-medium" className={S.breadcrumbsContainer} size="sm">
+            <Text c="text-medium" size="sm" w="100%">
               <TableBreadcrumbs hideTableName tableId={tableId} />
             </Text>
           </Flex>
