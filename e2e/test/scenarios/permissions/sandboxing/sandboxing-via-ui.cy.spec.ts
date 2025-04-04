@@ -162,12 +162,18 @@ describe(
     describe("we expect an error - and no data to be shown - when applying a sandbox policy...", () => {
       (
         [
-          ["Question", "boolean", "true"],
-          ["Question", "string", "Category is Gizmo"],
-          ["Question", "number", "11"],
-          ["Model", "boolean", "true"],
-          ["Model", "string", "Category is Gizmo"],
-          ["Model", "number", "11"],
+          ["Question", "booleanExpr", "true"],
+          ["Question", "booleanLiteral", "true"],
+          ["Question", "stringExpr", "Category is Gizmo"],
+          ["Question", "stringLiteral", "fixed literal string"],
+          ["Question", "numberExpr", "1"],
+          ["Question", "numberLiteral", "1"],
+          ["Model", "booleanExpr", "true"],
+          ["Model", "booleanLiteral", "true"],
+          ["Model", "stringExpr", "Category is Gizmo"],
+          ["Model", "stringLiteral", "fixed literal string"],
+          ["Model", "numberExpr", "1"],
+          ["Model", "numberLiteral", "1"],
         ] as const
       ).forEach(([customViewType, customColumnType, customColumnValue]) => {
         it(`...to a table filtered by a custom ${customColumnType} column in a ${customViewType}`, () => {
