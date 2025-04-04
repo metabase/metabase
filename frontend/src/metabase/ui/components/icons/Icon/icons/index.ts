@@ -361,6 +361,8 @@ import star_filled_component from "./star_filled.svg?component";
 import star_filled_source from "./star_filled.svg?source";
 import stepped_component from "./stepped.svg?component";
 import stepped_source from "./stepped.svg?source";
+import stop_component from "./stop.svg?component";
+import stop_source from "./stop.svg?source";
 import store_component from "./store.svg?component";
 import store_source from "./store.svg?source";
 import straight_component from "./straight.svg?component";
@@ -1152,6 +1154,10 @@ export const Icons = {
   star: {
     component: star_component,
     source: star_source,
+  },
+  stop: {
+    component: stop_component,
+    source: stop_source,
   },
   store: {
     component: store_component,
