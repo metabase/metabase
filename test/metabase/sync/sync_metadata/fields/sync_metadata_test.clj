@@ -36,14 +36,18 @@
              :base-type                  :type/Integer
              :database-position          0
              :database-required          false
-             :database-is-auto-increment false}
+             :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false}
             {:name                       "My Field"
              :database-type              "NULL"
              :base-type                  :type/Integer
              :id                         1
              :database-position          0
              :database-required          false
-             :database-is-auto-increment false})))))
+             :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false})))))
 
 (def ^:private default-metadata
   {:name                       "My Field"
@@ -52,6 +56,8 @@
    :database-position          0
    :database-required          false
    :database-is-auto-increment false
+   :database-is-generated      false
+   :database-is-nullable       false
    :database-partitioned       nil})
 
 (deftest database-position-changed-test
@@ -82,7 +88,9 @@
              :base-type                  :type/Integer
              :database-position          0
              :database-required          false
-             :database-is-auto-increment false}
+             :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false}
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
@@ -90,7 +98,9 @@
              :position                   0
              :database-position          0
              :database-required          true
-             :database-is-auto-increment false})))))
+             :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false})))))
 
 (deftest database-is-auto-increment-changed-test
   (testing "test that if database-required changes we will update it in the DB"
@@ -101,29 +111,37 @@
              :base-type                  :type/Integer
              :database-position          0
              :database-required          false
-             :database-is-auto-increment true}
+             :database-is-auto-increment true
+             :database-is-generated      false
+             :database-is-nullable       false}
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
              :id                         1
              :database-position          0
              :database-required          false
-             :database-is-auto-increment false})))
+             :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false})))
     (is (= [["Field" 1 {:database_is_auto_increment false}]]
            (updates-that-will-be-performed!
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :database-position 0
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :database-position          0
              ;; no :database-is-auto-increment key to test case where describe-table does not not return it
-             :database-required false}
+             :database-required          false
+             :database-is-generated      false
+             :database-is-nullable       false}
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
              :id                         1
              :database-position          0
              :database-required          false
-             :database-is-auto-increment true})))))
+             :database-is-auto-increment true
+             :database-is-generated      false
+             :database-is-nullable       false})))))
 
 (deftest json-unfolding-test
   (testing "test that if json-unfolding changes the DB doesn't get updated"
@@ -135,7 +153,9 @@
              :database-position          0
              :database-required          false
              :json-unfolding             true
-             :database-is-auto-increment false}
+             :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false}
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
@@ -143,7 +163,9 @@
              :database-position          0
              :database-required          false
              :json-unfolding             false
-             :database-is-auto-increment false})))))
+             :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false})))))
 
 (deftest no-op-test
   (testing "no changes should be made (i.e., no calls to `update!`) if nothing changes"
@@ -155,6 +177,8 @@
              :database-position          0
              :database-required          false
              :database-is-auto-increment true
+             :database-is-generated      false
+             :database-is-nullable       false
              :json-unfolding             false}
             {:name                       "My Field"
              :database-type              "Integer"
@@ -163,6 +187,8 @@
              :database-position          0
              :database-required          false
              :database-is-auto-increment true
+             :database-is-generated      false
+             :database-is-nullable       false
              :json-unfolding             false})))))
 
 (deftest update-database-partitioned-test
@@ -190,6 +216,8 @@
              :database-position          0
              :database-required          false
              :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false
              :json-unfolding             false}
             {:name                       "My Field"
              :database-type              "Integer"
@@ -198,6 +226,8 @@
              :id                         1
              :database-required          false
              :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false
              :json-unfolding             false}))))
 
   (testing (str "if `database-type` comes back as `nil` and was already saved in application DB as `NULL` no changes "
@@ -210,6 +240,8 @@
              :database-position          0
              :database-required          false
              :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false
              :json-unfolding             false}
             {:name                       "My Field"
              :database-type              "NULL"
@@ -218,6 +250,8 @@
              :database-position          0
              :database-required          false
              :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false
              :json-unfolding             false})))))
 
 (deftest dont-overwrite-semantic-type-test
@@ -231,7 +265,9 @@
              :database-position 0
              :json-unfolding    false
              :database-required false
-             :database-is-auto-increment false}
+             :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false}
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
@@ -240,7 +276,9 @@
              :database-position 0
              :json-unfolding    false
              :database-required false
-             :database-is-auto-increment false})))))
+             :database-is-auto-increment false
+             :database-is-generated      false
+             :database-is-nullable       false})))))
 
 (deftest base-type-change-will-trigger-fingerprint-and-analyze-test
   (testing "A base type of a field changes only when the field is dropped then a new field with the name is created (#37047).

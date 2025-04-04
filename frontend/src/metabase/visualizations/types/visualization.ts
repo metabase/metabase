@@ -314,6 +314,7 @@ export type VisualizationDefinition = {
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
   supportsSeries?: boolean;
+  disableReplaceCard?: boolean;
 
   minSize: VisualizationGridSize;
   defaultSize: VisualizationGridSize;
@@ -333,4 +334,6 @@ export type VisualizationDefinition = {
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
   placeholderSeries: RawSeries;
+
+  additionalDashcardActionButtons?: React.FC<{ dashcard?: DashboardCard }>[];
 };

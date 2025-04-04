@@ -126,7 +126,7 @@ describe("scenarios > account > notifications", () => {
         .findByText("Successfully unsubscribed.")
         .should("exist");
 
-      cy.findByTestId("alert-delete").within(() => {
+      cy.findByTestId("delete-confirm").within(() => {
         cy.findByText("You’re unsubscribed. Delete this alert as well?");
         cy.findByText("Delete it").click();
       });

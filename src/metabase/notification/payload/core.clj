@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.core
   (:require
+   [metabase.notification.condition :as notification.condition]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
@@ -143,16 +144,18 @@
 (mu/defn notification-payload :- ::NotificationPayload
   "Realize notification-info with :context and :payload."
   [notification :- ::Notification]
-  (assoc (select-keys notification [:payload_type])
+  (assoc (select-keys notification [:payload_type :condition])
          :creator (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
          :payload (payload notification)
          :context (default-context)))
 
 (defmulti skip-reason
-  "Determine whether a notification should be sent. Default to true."
+  "Return the reason to skip the notification, or nil if it should be sent."
   {:arglists '([notification-payload])}
   :payload_type)
 
 (defmethod skip-reason :default
-  [_notification-payload]
-  nil)
+  [notification-payload]
+  (when-let [condition (not-empty (:condition notification-payload))]
+    (when-not (notification.condition/evaluate-expression condition notification-payload)
+      :condition-not-met)))

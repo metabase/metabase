@@ -205,12 +205,11 @@
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/delete]
   [driver action database {database-id :database, :as query}]
-  (let [raw-hsql    (mbql-query->raw-hsql driver query)
-        delete-hsql (-> raw-hsql
-                        (dissoc :select :limit)
-                        (assoc :delete [])
-                        (prepare-query driver action))
-        sql-args    (sql.qp/format-honeysql driver delete-hsql)]
+  (let [{:keys [from where]} (mbql-query->raw-hsql driver query)
+        delete-hsql       (-> {:delete-from (first from)
+                               :where       where}
+                              (prepare-query driver action))
+        sql-args             (sql.qp/format-honeysql driver delete-hsql)]
     (with-jdbc-transaction [conn database-id]
       ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
       (let [rows-deleted (with-auto-parse-sql-exception driver database action
@@ -220,18 +219,17 @@
                             (tru "Sorry, the row you''re trying to delete doesn''t exist")
                             (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
                           {:staus-code 400})))
-        {:rows-deleted [1]}))))
+        {:rows-deleted 1}))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [driver action database {database-id :database :keys [update-row] :as query}]
-  (let [raw-hsql     (mbql-query->raw-hsql driver query)
-        target-table (first (:from raw-hsql))
-        update-hsql  (-> raw-hsql
-                         (select-keys [:where])
-                         (assoc :update target-table
-                                :set (cast-values driver update-row database-id (get-in query [:query :source-table])))
-                         (prepare-query driver action))
-        sql-args     (sql.qp/format-honeysql driver update-hsql)]
+  (let [source-table         (get-in query [:query :source-table])
+        {:keys [from where]} (mbql-query->raw-hsql driver query)
+        update-hsql          (-> {:update (first from)
+                                  :set    (cast-values driver update-row database-id source-table)
+                                  :where  where}
+                                 (prepare-query driver action))
+        sql-args             (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn database-id]
       ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
       (let [rows-updated (with-auto-parse-sql-exception driver database action
@@ -240,8 +238,8 @@
           (throw (ex-info (if (zero? rows-updated)
                             (tru "Sorry, the row you''re trying to update doesn''t exist")
                             (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
-                          {:staus-code 400})))
-        {:rows-updated [1]}))))
+                          {:status-code 400})))
+        {:rows-updated 1}))))
 
 (defmulti select-created-row
   "Multimethod for converting the result of an insert into the created row.
@@ -279,13 +277,11 @@
    action
    database
    {database-id :database :keys [create-row] :as query} :- ::mbql.s/Query]
-  (let [raw-hsql    (mbql-query->raw-hsql driver query)
-        create-hsql (-> raw-hsql
-                        (assoc :insert-into (first (:from raw-hsql)))
-                        (assoc :values [(cast-values driver create-row database-id (get-in query [:query :source-table]))])
-                        (dissoc :select :from :limit)
-                        (prepare-query driver action))
-        sql-args    (sql.qp/format-honeysql driver create-hsql)]
+  (let [{:keys [from]} (mbql-query->raw-hsql driver query)
+        create-hsql    (-> {:insert-into (first from)
+                            :values      [(cast-values driver create-row database-id (get-in query [:query :source-table]))]}
+                           (prepare-query driver action))
+        sql-args       (sql.qp/format-honeysql driver create-hsql)]
     (log/tracef ":row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
     (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
     (with-jdbc-transaction [conn database-id]
@@ -542,7 +538,7 @@
                                                        {:status-code 400, :errors errors})))
                                      ;; `:bulk/update` returns {:rows-updated <number-of-rows-updated>} on success.
                                      (transduce
-                                      (map (comp first :rows-updated))
+                                      (map :rows-updated)
                                       (completing +
                                                   (fn [num-rows-updated]
                                                     {:rows-updated num-rows-updated}))

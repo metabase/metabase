@@ -51,7 +51,8 @@
     :notification/testing})
 
 (t2/deftransforms :model/Notification
-  {:payload_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-types))})
+  {:payload_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-types))
+   :condition    mi/transform-json})
 
 (t2/define-after-select :model/Notification
   [notification]
@@ -113,7 +114,7 @@
       ;; optional during creation
       [:payload_id {:optional true} int?]
       [:creator_id {:optional true} int?]]]
-    [:notification/testing :any]]])
+    [:notification/testing :map]]])
 
 (defn- validate-notification
   [notification]
@@ -493,7 +494,7 @@
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/card [:map
                          [:payload ::NotificationCard]]]
-    [::mc/default       :any]]])
+    [::mc/default       :map]]])
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
@@ -501,7 +502,7 @@
   (t2/hydrate notification-or-notifications
               :creator
               :payload
-              :subscriptions
+              [:subscriptions :table]
               [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
@@ -516,15 +517,18 @@
 
 (defn notifications-for-event
   "Find all active notifications for a given event."
-  [event-name]
+  [event-name additional-filters]
   (t2/select :model/Notification
              {:select    [:n.*]
               :from      [[:notification :n]]
               :left-join [[:notification_subscription :ns] [:= :n.id :ns.notification_id]]
-              :where     [:and
-                          [:= :n.active true]
-                          [:= :ns.event_name (u/qualified-name event-name)]
-                          [:= :ns.type (u/qualified-name :notification-subscription/system-event)]]}))
+              :where     (->> (conj
+                               [[:= :n.active true]
+                                [:= :ns.event_name (u/qualified-name event-name)]
+                                [:= :ns.type (u/qualified-name :notification-subscription/system-event)]]
+                               additional-filters)
+                              (filter some?)
+                              (into [:and]))}))
 
 (defn create-notification!
   "Create a new notification with `subsciptions`.
@@ -543,11 +547,15 @@
           notification-id (:id instance)]
       (when (seq subscriptions)
         (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id notification-id) subscriptions)))
-      (doseq [handler handlers+recipients]
-        (let [recipients (:recipients handler)
+      (doseq [{:keys [recipients template] :as handler} handlers+recipients]
+        ;; assert can either template_id exists, then template but be nil, and vice versa
+        (let [template-id (if template
+                            (t2/insert-returning-pk! :model/ChannelTemplate template)
+                            (:template_id handler))
               handler    (-> handler
-                             (dissoc :recipients)
-                             (assoc :notification_id notification-id))
+                             (dissoc :recipients :template)
+                             (assoc :notification_id notification-id
+                                    :template_id template-id))
               handler-id (t2/insert-returning-pk! :model/NotificationHandler handler)]
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
@@ -555,14 +563,14 @@
 (models.u.spec-update/define-spec notification-update-spec
   "Spec for updating a notification."
   {:model        :model/Notification
-   :compare-cols [:active]
+   :compare-cols [:active :condition]
    :extra-cols   [:payload_type :internal_id :payload_id]
    :nested-specs {:payload       {:model        :model/NotificationCard
                                   :compare-cols [:send_condition :send_once]
                                   :extra-cols   [:card_id]}
                   :subscriptions {:model        :model/NotificationSubscription
                                   :fk-column    :notification_id
-                                  :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
+                                  :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type :table_id]
                                   :multi-row?   true}
                   :handlers      {:model        :model/NotificationHandler
                                   :fk-column    :notification_id
@@ -571,7 +579,10 @@
                                   :nested-specs {:recipients {:model        :model/NotificationRecipient
                                                               :fk-column    :notification_handler_id
                                                               :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
-                                                              :multi-row?   true}}}}})
+                                                              :multi-row?   true}
+                                                 :template   {:model         :model/ChannelTemplate
+                                                              :ref-in-parent :template_id
+                                                              :compare-cols  [:channel_type :name :details]}}}}})
 
 (defn update-notification!
   "Update an existing notification with `new-notification`."

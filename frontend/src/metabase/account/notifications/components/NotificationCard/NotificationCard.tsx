@@ -9,7 +9,10 @@ import {
   NotificationMessage,
 } from "metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.styled";
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
-import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
+import type {
+  QuestionNotificationListItem,
+  TableNotificationListItem,
+} from "metabase/account/notifications/types";
 import Link from "metabase/core/components/Link/Link";
 import {
   canArchive,
@@ -17,32 +20,32 @@ import {
   formatTitle,
   getNotificationEnabledChannelsMap,
 } from "metabase/lib/notifications";
-import * as Urls from "metabase/lib/urls";
 import { Group, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
-type NotificationCardProps = {
-  listItem: QuestionNotificationListItem;
+type NotificationCardProps<
+  T extends QuestionNotificationListItem | TableNotificationListItem,
+> = {
+  listItem: T;
   user: User;
-  onUnsubscribe: (listItem: QuestionNotificationListItem) => void;
-  onArchive: (listItem: QuestionNotificationListItem) => void;
+  onUnsubscribe: (listItem: T) => void;
+  onArchive: (listItem: T) => void;
   isEditable: boolean;
+  entityLink: string;
 };
 
-export const NotificationCard = ({
+export const NotificationCard = <
+  T extends QuestionNotificationListItem | TableNotificationListItem,
+>({
   listItem,
   user,
   isEditable,
   onUnsubscribe,
   onArchive,
-}: NotificationCardProps): JSX.Element => {
+  entityLink,
+}: NotificationCardProps<T>): JSX.Element => {
   const { item } = listItem;
-  const hasArchive = canArchive(listItem.item, user);
-
-  const entityLink = Urls.question({
-    id: item.payload.card_id,
-    card_id: item.payload.card_id,
-  });
+  const hasArchive = canArchive(item, user);
 
   const enabledChannelsMap = getNotificationEnabledChannelsMap(item);
 
@@ -73,9 +76,10 @@ export const NotificationCard = ({
                 <Icon name="webhook" size={16} />
               )}
               <Group gap="0.25rem" align="center" c="text-medium">
-                {subscription && (
-                  <span>{formatNotificationSchedule(subscription)}</span>
-                )}
+                {subscription &&
+                  subscription.type === "notification-subscription/cron" && (
+                    <span>{formatNotificationSchedule(subscription)}</span>
+                  )}
                 {" · "}
                 {<span>{formatCreatorMessage(item, user.id)}</span>}
               </Group>

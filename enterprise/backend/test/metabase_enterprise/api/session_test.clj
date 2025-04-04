@@ -65,6 +65,7 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
+            :table_data_editing             false
             :upload_management              false
             :whitelabel                     true
             :collection_cleanup             true}

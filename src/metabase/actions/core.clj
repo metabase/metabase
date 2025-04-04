@@ -19,6 +19,7 @@
  [metabase.actions.actions
   cached-value
   check-actions-enabled!
+  check-data-editing-enabled-for-database!
   perform-action!
   perform-action!*]
  [metabase.actions.error

@@ -10876,6 +10876,55 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v54.2025-03-13T16:14:34
+      author: wotbrew
+      comment: Add metabase_field.database_is_nullable
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_nullable
+                  type: ${boolean.type}
+                  remarks: "Indicates whether the column is nullable"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+  - changeSet:
+      id: v54.2025-03-13T16:14:35
+      author: wotbrew
+      comment: Add metabase_field.database_is_generated
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_generated
+                  type: ${boolean.type}
+                  remarks: "Indicates whether the column is generated/computed"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
+  - changeSet:
+      id: v54.2025-03-13T16:14:36
+      author: wotbrew
+      comment: Add metabase_field.database_default
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_default
+                  type: ${text.type}
+                  remarks: "The columns DEFAULT expression as a dialect specific SQL string."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v54.2025-03-17T18:52:44
       author: noahmoss
       comment: Migrating zh site locales to zh_CN
@@ -10907,6 +10956,79 @@ databaseChangeLog:
       rollback: # nothing to do; zh_CN is backwards compatible
 
   - changeSet:
+      id: v54.2025-03-19T16:00:00
+      author: qnkhuat
+      comment: Add `notification.condition` column
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: condition
+                  type: ${text.type}
+                  remarks: Condition for the notification
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-03-19T16:01:00
+      validCheckSum:
+        - 9:f9ef48517975631bf92a57fb07dd6f5d
+        - 9:5268197f771915386c95802e7d9eda62
+      author: qnkhuat
+      comment: Add `notification_subscription.table_id` column
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: The table id of the subscription, used for filtering system events
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-03-19T16:01:10
+      author: qnkhuat
+      comment: add fk constraint to notification_subscription.table_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_subscription_table_id
+              foreignKeyTableName: notification_subscription
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: notification_subscription
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_notification_subscription_table_id
+            onDelete: CASCADE
+            nullable: true
+
+  - changeSet:
+      id: v54.2025-03-19T16:02:00
+      author: qnkhuat
+      comment: Index notification_subscription.table_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification_subscription
+                indexName: idx_notification_subscription_table_id
+      rollback: #cannot rollback an index on a fk in mysql
+      changes:
+        - createIndex:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: table_id
+            indexName: idx_notification_subscription_table_id
+
+  - changeSet:
       id: v54.2025-03-25T16:34:12
       author: edpaget
       comment: Add index to field_usage query_execution_id column to support faster deletes
@@ -10924,7 +11046,6 @@ databaseChangeLog:
               - column:
                   name: query_execution_id
             indexName: idx_field_usage_query_execution_id
-
   - changeSet:
       id: v54.2025-03-27T17:52:01
       author: luizarakaki
@@ -11020,6 +11141,98 @@ databaseChangeLog:
               - column:
                   name: card_schema
             indexName: idx_report_card_card_schema
+
+  - changeSet:
+      id: v55.2025-03-31T11:01:55
+      author: wotbrew
+      comment: Add table webhook token
+      preConditions:
+      rollback:
+        dropTable:
+            tableName: table_webhook_token
+      changes:
+        - createTable:
+            tableName: table_webhook_token
+            remarks: Table containing webhook tokens, that permit writing or modifying tables without a metabase admin session
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The table the token permits edits for
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_table_webhook_token_table_id
+                    deleteCascade: true
+              - column:
+                  remarks: The token value
+                  name: token
+                  type: varchar(254)
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the token was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The user that created the token
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_table_webhook_token_creator_id
+                    deleteCascade: true
+  - changeSet:
+      id: v55.2025-04-02T10:52:01
+      author: wotbrew
+      comment: Add an index for `table_webhook_token.table_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: table_webhook_token
+                indexName: idx_table_webhook_token_table_id
+      changes:
+        - createIndex:
+            indexName: idx_table_webhook_token_table_id
+            tableName: table_webhook_token
+            columns:
+              - column:
+                  name: table_id
+  - changeSet:
+      id: v55.2025-04-02T10:52:02
+      author: wotbrew
+      comment: Add an index for `table_webhook_token.creator_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: table_webhook_token
+                indexName: idx_table_webhook_token_creator_id
+      changes:
+        - createIndex:
+            indexName: idx_table_webhook_token_creator_id
+            tableName: table_webhook_token
+            columns:
+              - column:
+                  name: creator_id
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -553,7 +553,14 @@
   (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))
         invalid? (or (and (contains? card :collection_id)
                           (not= correct-collection-id (:collection_id card)))
-                     (not (contains? #{:question "question" nil} (:type card)))
+                     ;(not (contains? #{:question "question" nil} (:type card)))
+                     (case (some-> (:type card) name)
+                       nil false
+                       "question" false
+                       ;; We support "editables", a special case of "enhanced tables"
+                       ;; TODO there may be other places to relax in dashboard-question code
+                       "model" (not= "table-editable" (:display card))
+                       true)
                      (some? (:collection_position card)))]
     (when invalid?
       (throw (ex-info (tru "Invalid dashboard-internal card")
@@ -1389,7 +1396,12 @@
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
-   :where        [:= :collection.namespace nil]
+   :where        [:and
+                  [:= :collection.namespace nil]
+                  [:or
+                   ;; Leaving the door open to editable models (e.g., joining read-only and editable columns)
+                   [:not= :this.display "table-editable"]
+                   [:= :this.dashboard_id nil]]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]
