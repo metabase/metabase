@@ -181,7 +181,7 @@
 
 (defmulti hash-fields
   "Returns a seq of functions which will be transformed into a seq of values for hash calculation by calling each
-   function on an entity map.  If you update an method of this function, you will likely need to update has-required-fields as well."
+   function on an entity map.  If you update a method of this function, you will likely need to update has-required-fields as well."
   {:arglists '([model-or-instance])}
   mi/dispatch-on-model)
 
