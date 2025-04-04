@@ -51,10 +51,13 @@ export function useMultiAutocomplete({
     onSearchChange?.(fieldValue);
   };
 
-  const handleFieldInput = (newFieldValue: string) => {
+  const handleFieldInput = (
+    newFieldValue: string,
+    newParsedValues: string[],
+  ) => {
     const newFieldValues = getUniqueFieldValues(
       values,
-      parseCsv(newFieldValue).filter(shouldCreate),
+      newParsedValues.filter(shouldCreate),
       fieldSelection,
     );
     const newValues = getValuesAfterChange(
@@ -73,13 +76,17 @@ export function useMultiAutocomplete({
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newFieldValue = event.target.value;
-    handleFieldInput(newFieldValue);
+    const newParsedValues = parseCsv(newFieldValue);
+    handleFieldInput(newFieldValue, newParsedValues);
   };
 
   const handleFieldPaste = (event: ClipboardEvent<HTMLInputElement>) => {
-    event.preventDefault();
     const newFieldValue = event.clipboardData.getData("text");
-    handleFieldInput(newFieldValue);
+    const newParsedValues = parseCsv(newFieldValue);
+    if (newParsedValues.length > 1) {
+      event.preventDefault();
+      handleFieldInput(newFieldValue, newParsedValues);
+    }
   };
 
   const handleFieldKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -131,6 +138,10 @@ export function useMultiAutocomplete({
     });
   };
 
+  const handlePillsInputClick = () => {
+    combobox.openDropdown();
+  };
+
   const handleOptionSubmit = (value: string) => {
     const newFieldValues = getUniqueFieldValues(
       values,
@@ -150,6 +161,7 @@ export function useMultiAutocomplete({
         length: 0,
       },
     });
+    combobox.closeDropdown();
     combobox.resetSelectedOption();
   };
 
@@ -165,6 +177,7 @@ export function useMultiAutocomplete({
     handleFieldBlur,
     handlePillDoubleClick,
     handlePillRemoveClick,
+    handlePillsInputClick,
     handleOptionSubmit,
   };
 }

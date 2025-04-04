@@ -51,6 +51,7 @@ export function MultiAutocomplete({
     handleFieldBlur,
     handlePillDoubleClick,
     handlePillRemoveClick,
+    handlePillsInputClick,
     handleOptionSubmit,
   } = useMultiAutocomplete({
     values,
@@ -81,7 +82,10 @@ export function MultiAutocomplete({
         onOptionSubmit={handleOptionSubmit}
       >
         <Combobox.DropdownTarget>
-          <PillsInput rightSection={rightSection ?? infoIcon}>
+          <PillsInput
+            rightSection={rightSection ?? infoIcon}
+            onClick={handlePillsInputClick}
+          >
             <Pill.Group>
               {pillValues.map((value, valueIndex) =>
                 value !== null ? (
