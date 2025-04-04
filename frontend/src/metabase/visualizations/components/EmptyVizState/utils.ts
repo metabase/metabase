@@ -69,7 +69,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
   },
   map: {
     imgSrc: mapEmptyState,
-    primaryText: t`Use a location-based column to plot data on a map. Add coordinates for precise pin placement, region names for shaded areas, or numerical values to create density overlays.`,
+    primaryText: t`Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column.`,
     secondaryText: t`Read the docs`,
     docsLink: "questions/visualizations/map",
   },
