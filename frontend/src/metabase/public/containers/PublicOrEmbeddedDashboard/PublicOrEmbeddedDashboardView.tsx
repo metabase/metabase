@@ -26,10 +26,7 @@ import type {
   EmbedHideParameters,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
-import {
-  useTranslateContent,
-  useTranslateContent2,
-} from "metabase/i18n/components/ContentTranslationContext";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import type {
