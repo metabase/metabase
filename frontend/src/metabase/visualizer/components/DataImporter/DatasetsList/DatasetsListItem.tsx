@@ -102,31 +102,39 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
       }}
     >
       <Icon
+        className={S.TableIcon}
         name="table2"
         mr="xs"
         style={{
           flexShrink: 0,
         }}
       />
-      <Ellipsified style={{ flexGrow: 1 }}>{item.name}</Ellipsified>
-      {mode === "both" && (
-        <div className={S.DatasetsListItemActions}>
-          <Icon name="refresh" className={S.refreshIcon} />
-
-          <Button
-            variant={selected ? "filled" : "inverse"}
-            size="xs"
-            rightSection={<Icon name="add" />}
-            onClick={e => {
-              e.stopPropagation();
-              onAdd?.(item);
-            }}
-            style={{
-              opacity: selected ? 0 : isCompatible ? 1 : 0.5,
-              pointerEvents: isCompatible ? "auto" : "none",
-            }}
-          />
-        </div>
+      <Icon
+        className={S.InfoIcon}
+        name="info_filled"
+        mr="xs"
+        style={{
+          flexShrink: 0,
+        }}
+      />
+      <Ellipsified style={{ flexGrow: 1, paddingBottom: 1 }}>
+        {item.name}
+      </Ellipsified>
+      {mode === "both" && !selected && isCompatible && (
+        <Button
+          data-testid="add-dataset-button"
+          className={S.AddButton}
+          variant="inverse"
+          size="xs"
+          rightSection={<Icon name="add" />}
+          onClick={e => {
+            e.stopPropagation();
+            onAdd?.(item);
+          }}
+          style={{
+            flexShrink: 0,
+          }}
+        />
       )}
     </Flex>
   );
