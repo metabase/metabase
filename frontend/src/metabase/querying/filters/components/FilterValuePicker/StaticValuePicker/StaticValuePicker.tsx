@@ -30,10 +30,7 @@ export function StaticValuePicker({
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
       shouldCreate={shouldCreate}
-      //fixme revert
-      onChange={values => {
-        onChange(values);
-      }}
+      onChange={onChange}
       onFocus={onFocus}
       onBlur={onBlur}
     />
