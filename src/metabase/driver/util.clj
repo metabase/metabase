@@ -43,7 +43,7 @@
    {:message (deferred-tru
               (str "Hmm, we couldn''t connect to the database."
                    " "
-                   "Make sure your Host and Port settings are correct"))
+                   "Make sure your Host and Port settings are correct."))
     :errors  {:host (deferred-tru "check your host settings")
               :port (deferred-tru "check your port settings")}}
 
@@ -500,6 +500,7 @@
   "The set of all official drivers"
   #{"athena"
     "bigquery-cloud-sdk"
+    "clickhouse"
     "databricks"
     "druid"
     "druid-jdbc"
@@ -514,11 +515,12 @@
     "sparksql"
     "sqlite"
     "sqlserver"
+    "starburst"
     "vertica"})
 
 (def partner-drivers
   "The set of other drivers in the partnership program"
-  #{"clickhouse" "firebolt" "materialize" "starburst"})
+  #{"firebolt" "materialize"})
 
 (defn driver-source
   "Return the source type of the driver: official, partner, or community"

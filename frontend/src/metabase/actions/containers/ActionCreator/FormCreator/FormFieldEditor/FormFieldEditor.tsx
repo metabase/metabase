@@ -53,7 +53,7 @@ function cleanFieldValue(
 
 function cleanOptionValues(values: FieldValueOptions, fieldType: FieldType) {
   return values
-    .map(value => cleanFieldValue(value, fieldType))
+    .map((value) => cleanFieldValue(value, fieldType))
     .filter(isNotNull);
 }
 
@@ -71,7 +71,7 @@ function FormFieldEditor({
     const { inputType, valueOptions } = fieldSettings;
 
     const inputTypesForNextFieldType = inputTypeOptions[nextFieldType].map(
-      option => option.value,
+      (option) => option.value,
     );
 
     // Allows to preserve dropdown/radio input types across number/string field types

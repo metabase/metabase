@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { updateSettings } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
@@ -49,7 +49,7 @@ export const SettingsJWTForm = ({
   }, [elements]);
 
   const fields = useMemo(() => {
-    return _.mapObject(settings, setting => ({
+    return _.mapObject(settings, (setting) => ({
       name: setting.key,
       label: setting.display_name,
       description: setting.description,
@@ -92,7 +92,10 @@ export const SettingsJWTForm = ({
           <Stack gap={rem(12)} m={`${rem(40)} 0`}>
             <SettingHeader
               id="jwt-user-provisioning-enabled?"
-              setting={settings["jwt-user-provisioning-enabled?"]}
+              title={settings["jwt-user-provisioning-enabled?"].display_name}
+              description={
+                settings["jwt-user-provisioning-enabled?"].description
+              }
             />
             <FormSwitch
               id="jwt-user-provisioning-enabled?"
@@ -163,7 +166,7 @@ const getAttributeValues = (
   values: SettingValues,
 ) => {
   return Object.fromEntries(
-    JWT_ATTRS.map(key => [
+    JWT_ATTRS.map((key) => [
       key,
       DEFAULTABLE_JWT_ATTRS.has(key)
         ? (values[key] ?? settings[key]?.default)

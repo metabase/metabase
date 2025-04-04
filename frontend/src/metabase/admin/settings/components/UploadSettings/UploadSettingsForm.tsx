@@ -23,7 +23,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { UploadsSettings } from "metabase-types/api/settings";
 import type { State } from "metabase-types/store";
 
-import SettingHeader from "../SettingHeader";
+import { SettingHeader } from "../SettingHeader";
 
 import { ColorText, PaddedForm, SectionTitle } from "./UploadSetting.styled";
 import { dbHasSchema, getDatabaseOptions, getSchemaOptions } from "./utils";
@@ -60,16 +60,14 @@ const mapDispatchToProps = {
 const Header = () => (
   <SettingHeader
     id="upload-settings"
-    setting={{
-      display_name: t`Allow people to upload data to Collections`,
-      description: jt`People will be able to upload CSV files that will be stored in the ${(
-        <Link
-          className={CS.link}
-          key="db-link"
-          to="/admin/databases"
-        >{t`database`}</Link>
-      )} you choose and turned into models.`,
-    }}
+    title={t`Allow people to upload data to Collections`}
+    description={jt`People will be able to upload CSV files that will be stored in the ${(
+      <Link
+        className={CS.link}
+        key="db-link"
+        to="/admin/databases"
+      >{t`database`}</Link>
+    )} you choose and turned into models.`}
   />
 );
 
@@ -161,7 +159,7 @@ export function UploadSettingsFormView({
 
   const hasValidDatabases = databaseOptions.length > 0;
   const isH2db = Boolean(
-    dbId && databases.find(db => db.id === dbId)?.engine === "h2",
+    dbId && databases.find((db) => db.id === dbId)?.engine === "h2",
   );
 
   const {
@@ -229,7 +227,7 @@ export function UploadSettingsFormView({
             <Input
               value={tablePrefix ?? ""}
               placeholder={t`upload_`}
-              onChange={e => {
+              onChange={(e) => {
                 resetButtons();
                 setTablePrefix(e.target.value);
               }}

@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 
 import NativeQueryEditorS from "./ViewNativeQueryEditor.module.css";
 
-export const ViewNativeQueryEditor = props => {
+export const ViewNativeQueryEditor = (props) => {
   const {
     question,
     height,
@@ -16,7 +16,7 @@ export const ViewNativeQueryEditor = props => {
     onSetDatabaseId,
   } = props;
 
-  const legacyQuery = question.legacyQuery();
+  const legacyNativeQuery = question.legacyNativeQuery();
 
   // Normally, when users open native models,
   // they open an ad-hoc GUI question using the model as a data source
@@ -34,9 +34,9 @@ export const ViewNativeQueryEditor = props => {
     <Box className={NativeQueryEditorS.NativeQueryEditorContainer}>
       <NativeQueryEditor
         {...props}
-        query={legacyQuery}
+        query={legacyNativeQuery}
         viewHeight={height}
-        isOpen={legacyQuery.isEmpty() || isDirty}
+        isOpen={legacyNativeQuery.isEmpty() || isDirty}
         isInitiallyOpen={isNativeEditorOpen}
         datasetQuery={card && card.dataset_query}
         setParameterValueToDefault={setParameterValueToDefault}

@@ -1,19 +1,28 @@
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseFeature } from "metabase-types/api";
+import type { DatabaseFeature, Expression } from "metabase-types/api";
 
-import type { OPERATOR, TOKEN } from "./tokenizer";
+export type MBQLClauseCategory =
+  | "logical"
+  | "math"
+  | "string"
+  | "date"
+  | "conversion"
+  | "window"
+  | "aggregation";
 
 export interface HelpText {
   name: string;
+  category: MBQLClauseCategory;
   args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
   description: string;
-  example: string;
+  example: Expression;
   structure: string;
   docsPage?: string;
 }
 
 export interface HelpTextConfig {
   name: string;
+  category: MBQLClauseCategory;
   args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
   description: (database: Database, reportTimezone?: string) => string;
   structure: string;
@@ -23,8 +32,11 @@ export interface HelpTextConfig {
 interface HelpTextArg {
   name: string;
   description: string;
-  example: string;
+  example: Expression | ["args", Expression[]];
+  template?: string;
 }
+
+export type StartRule = "expression" | "boolean" | "aggregation";
 
 type MBQLClauseFunctionReturnType =
   | "aggregation"
@@ -48,40 +60,3 @@ export type MBQLClauseFunctionConfig = {
   validator?: (...args: any) => string | undefined;
 };
 export type MBQLClauseMap = Record<string, MBQLClauseFunctionConfig>;
-
-export type ErrorWithMessage = {
-  message: string;
-  pos?: number | null;
-  len?: number | null;
-};
-
-export type Token =
-  | {
-      type: TOKEN.Operator;
-      start: number;
-      end: number;
-      op: OPERATOR;
-    }
-  | {
-      type: TOKEN.Number;
-      start: number;
-      end: number;
-    }
-  | {
-      type: TOKEN.String;
-      start: number;
-      end: number;
-      value: string;
-    }
-  | {
-      type: TOKEN.Identifier;
-      start: number;
-      end: number;
-      isReference: boolean;
-    }
-  | {
-      type: TOKEN.Boolean;
-      start: number;
-      end: number;
-      op: "true" | "false";
-    };

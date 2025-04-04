@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.driver :as driver]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
@@ -12,6 +13,15 @@
   (:import
    (clojure.lang ISeq)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+
+(defn export-filename-timestamp
+  "Generates the current timestamp as a string to use in export filenames."
+  []
+  (let [timezone (or (driver/report-timezone)
+                     (qp.timezone/system-timezone-id)
+                     "UTC")
+        zone-id (t/zone-id timezone)]
+    (u.date/format (t/zoned-date-time (t/instant) zone-id))))
 
 (defn in-result-time-zone
   "Set the time zone of a temporal value `t` to result timezone without changing the actual moment in time. e.g.
@@ -187,16 +197,24 @@
   "Get the unified viz settings for a column based on the column's metadata (if any) and user settings (⚙)."
   [{column-name :name metadata-column-settings :settings :keys [field_ref] :as col} viz-settings]
   (let [{::mb.viz/keys [global-column-settings] :as viz-settings} (ensure-global-viz-settings viz-settings)
-        [_ field-id-or-name] field_ref
-        all-cols-settings (-> viz-settings
-                              ::mb.viz/column-settings
-                              ;; update the keys so that they will have only the :field-id or :column-name
-                              ;; and not have any metadata. Since we don't know the metadata, we can never
-                              ;; match a key with metadata, even if we do have the correct name or id
-                              (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
-        column-settings (or (get all-cols-settings {::mb.viz/field-id field-id-or-name})
-                            (get all-cols-settings {::mb.viz/column-name column-name})
-                            (get all-cols-settings {::mb.viz/column-name field-id-or-name}))]
+        [ref-type field-id-or-name] field_ref
+        all-cols-settings           (-> viz-settings
+                                        ::mb.viz/column-settings
+                                        ;; update the keys so that they will have only the :field-id or :column-name
+                                        ;; and not have any metadata. Since we don't know the metadata, we can never
+                                        ;; match a key with metadata, even if we do have the correct name or id
+                                        (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
+        ;; field_ref can be a few different things, i.e.:
+        ;;   [:field <col_id> _]
+        ;;   [:field <col_name> _]
+        ;;   [:aggregation <col_name> _]
+        ;; Only merge the column settings keyed by field-id when field_ref is of type :field
+        column-settings (merge (when (= ref-type :field)
+                                 (get all-cols-settings {::mb.viz/field-id field-id-or-name}))
+                               ;; For custom columns whose name colides with another column, field-id-or-name comes in non-disambiguated (e.g. CREATED_AT)
+                               ;; but column-name does (e.g. CREATED_AT_2) - so prefer column name keyed settings
+                               (or (get all-cols-settings {::mb.viz/column-name column-name})
+                                   (get all-cols-settings {::mb.viz/column-name field-id-or-name})))]
     (merge
      ;; The default global settings based on the type of the column
      (try

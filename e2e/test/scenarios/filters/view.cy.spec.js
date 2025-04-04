@@ -51,8 +51,8 @@ describe("scenarios > question > view", () => {
         { wrapId: true },
       );
 
-      cy.get("@questionId").then(questionId => {
-        cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@questionId").then((questionId) => {
+        cy.get("@dashboardId").then((dashboardId) => {
           H.addOrUpdateDashboardCard({
             dashboard_id: dashboardId,
             card_id: questionId,
@@ -131,7 +131,7 @@ describe("scenarios > question > view", () => {
 
       cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
         "have.length",
-        2,
+        1,
       );
       cy.get(".CardVisualization").within(() => {
         cy.findByText("Widget");

@@ -23,6 +23,8 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
+    expression-idents:
+      Days since last view: expression_UEK1JfYa3ZBp6W7F-Ui5i@0__Days since last view
     expressions:
       Days since last view:
       - datetime-diff
@@ -94,6 +96,7 @@ dataset_query:
         - base-type: type/Text
           join-alias: Last content viewed at - Entity Qualified
       fields: none
+      ident: join_UEK1JfYa3ZBp6W7F-Ui5i@0__Last content viewed at - Entity Qualified
       source-table: tKEl86EXMyTDIoO9nyFTV
       strategy: left-join
     limit: 100
@@ -201,6 +204,7 @@ serdes/meta:
   label: questions_without_recent_views
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: BHyad8ZHCbeiBZpQxDwsP
 metabase_version: vUNKNOWN (901f705)
 source_card_id: AxSackBiyXVRUzM_TyyQY

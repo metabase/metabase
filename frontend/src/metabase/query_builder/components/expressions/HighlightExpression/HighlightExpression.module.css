@@ -1,10 +1,19 @@
 .highlight {
   font-family: var(--mb-default-monospace-font-family);
-  padding: 1rem 0.65rem;
-  background-color: var(--mb-color-bg-medium);
-  color: var(--mb-color-text-primary);
-  border-radius: var(--mantine-radius-sm);
   font-size: 0.85em;
-  line-height: 1.1em;
   overflow: auto;
+
+  &.block {
+    padding: var(--mantine-spacing-sm);
+    background-color: var(--mb-color-bg-medium);
+    color: var(--mb-color-text-primary);
+    border-radius: var(--mantine-radius-sm);
+    white-space: pre;
+    display: block;
+  }
+
+  &.inline {
+    display: inline;
+    background-color: none;
+  }
 }

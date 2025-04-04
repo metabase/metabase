@@ -35,7 +35,7 @@ export const ChartSettingsTableFormatting = ({
         rule={value[editingRule]}
         cols={cols}
         isNew={!!editingRuleIsNew}
-        onChange={rule => {
+        onChange={(rule) => {
           onChange([
             ...value.slice(0, editingRule),
             rule,
@@ -61,7 +61,7 @@ export const ChartSettingsTableFormatting = ({
       <RuleListing
         rules={value}
         cols={cols}
-        onEdit={index => {
+        onEdit={(index) => {
           setEditingRule(index);
           setEditingRuleIsNew(false);
         }}
@@ -79,7 +79,7 @@ export const ChartSettingsTableFormatting = ({
           setEditingRuleIsNew(true);
           setEditingRule(0);
         }}
-        onRemove={index => {
+        onRemove={(index) => {
           onChange([...value.slice(0, index), ...value.slice(index + 1)]);
         }}
         onMove={(from, to) => {

@@ -64,7 +64,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  ["month", "month-of-year"].forEach(granularity => {
+  ["month", "month-of-year"].forEach((granularity) => {
     it(`brush filter should work post-aggregation for ${granularity} granularity (metabase#18011)`, () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -503,7 +503,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.findByText("See these People").click();
 
         // We should see the resulting dataset of that drill-through
-        cy.wait("@dataset").then(xhr => {
+        cy.wait("@dataset").then((xhr) => {
           expect(xhr.response.body.error).not.to.exist;
         });
         cy.findByText("Macy Olson");
@@ -528,11 +528,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       display: "table",
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^10 –/)
-      .closest(".test-TableInteractive-cellWrapper")
-      .next()
-      .contains("85")
-      .click();
+    cy.findByText(/^10 –/).parent().parent().next().contains("85").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See these Orders").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

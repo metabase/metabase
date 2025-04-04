@@ -21,7 +21,11 @@ export type DatabaseFeature =
   | "datetime-diff"
   | "dynamic-schema"
   | "expression-aggregations"
+  | "expression-literals"
   | "expressions"
+  | "expressions/date"
+  | "expressions/integer"
+  | "expressions/text"
   | "native-parameters"
   | "nested-queries"
   | "standard-deviation-aggregations"
@@ -40,7 +44,9 @@ export type DatabaseFeature =
   | "connection-impersonation"
   | "connection-impersonation-requires-role"
   | "native-requires-specified-collection"
-  | "window-functions/offset";
+  | "window-functions/offset"
+  | "distinct-where"
+  | "split-part";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -102,6 +108,10 @@ export interface GetDatabaseRequest {
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
 }
+
+export type GetDatabaseHealthResponse =
+  | { status: "ok" }
+  | { status: "error"; message: string; errors: unknown };
 
 export interface ListDatabasesRequest {
   include?: "table";

@@ -15,8 +15,8 @@ import {
 } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { useStore } from "metabase/lib/redux";
-import { QueryDownloadPopover } from "metabase/query_builder/components/QueryDownloadPopover";
-import { useDownloadData } from "metabase/query_builder/components/QueryDownloadPopover/use-download-data";
+import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
+import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import {
   ActionIcon,
   Icon,
@@ -26,7 +26,7 @@ import {
 } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
-import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
+import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type {
   DashCardId,
   DashboardId,
@@ -113,10 +113,10 @@ export const DashCardMenu = ({
 
     if (menuView === "download") {
       return (
-        <QueryDownloadPopover
+        <QuestionDownloadWidget
           question={question}
           result={result}
-          onDownload={opts => {
+          onDownload={(opts) => {
             close();
             handleDownload(opts);
           }}
@@ -155,7 +155,7 @@ export const DashCardMenu = ({
   );
 };
 
-interface QueryDownloadWidgetOpts {
+interface ShouldRenderDashcardMenuProps {
   question: Question;
   result?: Dataset;
   isXray?: boolean;
@@ -172,7 +172,7 @@ DashCardMenu.shouldRender = ({
   isPublicOrEmbedded,
   isEditing,
   downloadsEnabled,
-}: QueryDownloadWidgetOpts) => {
+}: ShouldRenderDashcardMenuProps) => {
   // Do not remove this check until we completely remove the old code related to Audit V1!
   // MLv2 doesn't handle `internal` queries used for Audit V1.
   const isInternalQuery = InternalQuery.isDatasetQueryType(

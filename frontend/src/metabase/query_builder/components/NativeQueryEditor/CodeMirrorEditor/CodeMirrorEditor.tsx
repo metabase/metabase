@@ -20,6 +20,7 @@ export type CodeMirrorEditorProps = {
   query: Lib.Query;
   onChange?: (queryText: string) => void;
   readOnly?: boolean;
+  onRunQuery?: () => void;
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
   onSelectionChange?: (range: SelectionRange) => void;
@@ -32,7 +33,11 @@ export interface CodeMirrorEditorRef {
 
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions } from "./extensions";
-import { convertSelectionToRange, matchCardIdAtCursor } from "./util";
+import {
+  convertSelectionToRange,
+  getPlaceholderText,
+  matchCardIdAtCursor,
+} from "./util";
 
 export const CodeMirrorEditor = forwardRef<
   CodeMirrorEditorRef,
@@ -43,12 +48,16 @@ export const CodeMirrorEditor = forwardRef<
     query,
     onChange,
     readOnly,
+    onRunQuery,
     onSelectionChange,
     onRightClickSelection,
     onCursorMoveOverCardTag,
   } = props;
 
-  const extensions = useExtensions(query);
+  const extensions = useExtensions({ query, onRunQuery });
+
+  const engine = Lib.engine(query);
+  const placeholder = getPlaceholderText(engine);
 
   useImperativeHandle(ref, () => {
     return {
@@ -108,7 +117,7 @@ export const CodeMirrorEditor = forwardRef<
         document.querySelectorAll(".cm-selectionBackground"),
       );
 
-      if (selections.some(selection => isEventOverElement(evt, selection))) {
+      if (selections.some((selection) => isEventOverElement(evt, selection))) {
         evt.preventDefault();
         onRightClickSelection?.();
       }
@@ -129,6 +138,7 @@ export const CodeMirrorEditor = forwardRef<
       height="100%"
       onUpdate={handleUpdate}
       autoFocus
+      placeholder={placeholder}
     />
   );
 });

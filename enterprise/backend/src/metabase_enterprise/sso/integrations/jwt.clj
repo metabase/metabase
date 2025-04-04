@@ -131,7 +131,7 @@
                :status-code 402}))
     (response/response
      {:status :ok
-      :id     (:id session)
+      :id     (:key session)
       :exp    (:exp jwt-data)
       :iat    (:iat jwt-data)})))
 

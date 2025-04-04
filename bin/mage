@@ -1,55 +1,238 @@
-#! /usr/bin/env bb
+#!/usr/bin/env bash
 
-;; Getting env: bb: No such file or directory ?
-;; Install bb with: brew install borkdude/brew/babashka
+set -euo pipefail
 
-;; you may want to set an alias for mage:
-;; alias mage='cd ~/your/repo/metabase && ./bin/mage'
+_REL_BINDIR=$(dirname "$0")
+BINDIR=$(cd -- "${_REL_BINDIR}" > /dev/null 2>&1 && pwd)
+# echo "BINDIR" "${BINDIR}"
+MB="$BINDIR/.."
 
-(ns mage
-  (:require
-   [babashka.tasks :as bt]
-   [mage.color :as c]
-   [mage.shell :as sh]
-   [mage.util :as u]))
+BB_BIN_DIR="${BINDIR}"
+BB_EXEC="${BB_BIN_DIR}/bb"
 
-(set! *warn-on-reflection* true)
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-(defn lolcat [f]
-  (if (try (u/sh "command -v lolcat")
-           (catch Exception _ false))
-    (bt/shell (str "lolcat " f))
-    (println (slurp f))))
+log_info() {
+  echo -e "${BLUE}[INFO]${NC} $*" >&2
+}
 
-(defn invalid-task? []
-  (let [task-name (first *command-line-args*)]
-    (when-not (contains? (set (u/all-bb-tasks-list)) task-name)
-      (println (c/red (str "Unknown task: " task-name)))
-      true)))
+log_success() {
+  echo -e "${GREEN}[SUCCESS]${NC} $*" >&2
+}
 
-(defn- print-help []
-  (do
-    (lolcat "./mage/resource.txt")
-    (flush)
-    (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
-    (println "")
-    (println (u/sh "bb tasks"))))
+log_warning() {
+  echo -e "${YELLOW}[WARNING]${NC} $*" >&2
+}
 
-(defn -main [& _]
-  (cond
-    ;; help
-    (or
-     (nil? *command-line-args*)
-     (= *command-line-args* ["-h"])
-     (= *command-line-args* ["--help"]))
-    (print-help)
+log_error() {
+  echo -e "${RED}[ERROR]${NC} $*" >&2
+}
 
-    ;; errors
-    (invalid-task?)
-    (do (print-help) (System/exit 1))
+dbg_info() {
+  if [[ -n "${MAGE_DEBUG:-}" ]]; then
+    echo -e "${BLUE}[INFO]${NC} $*" >&2
+  fi
+}
 
-    :else
-    (apply sh/sh (into ["bb"] *command-line-args*))))
+dbg_success() {
+  if [[ -n "${MAGE_DEBUG:-}" ]]; then
+    echo -e "${GREEN}[SUCCESS]${NC} $*" >&2
+  fi
+}
 
-(when (= *file* (System/getProperty "babashka.file"))
-  (-main))
+dbg_warning() {
+  if [[ -n "${MAGE_DEBUG:-}" ]]; then
+    echo -e "${YELLOW}[WARNING]${NC} $*" >&2
+  fi
+}
+
+dbg_error() {
+  if [[ -n "${MAGE_DEBUG:-}" ]]; then
+    echo -e "${RED}[ERROR]${NC} $*" >&2
+  fi
+}
+
+
+# Debug function to see file content
+dbg_file_content() {
+  if [ -n "${MAGE_DEBUG:-}" ]; then
+    local file="$1"
+    echo "Content of $file:" >&2
+    cat "$file" >&2
+    echo "" >&2
+  fi
+}
+
+# Get Babashka version from bb.edn
+get_min_bb_version() {
+  local edn_file="${BB_EDN_PATH:-$MB/bb.edn}"
+  local default_version="1.3.186"  # Fallback version
+  dbg_warning "Path to bb.edn '${edn_file}'"
+
+  if [ ! -f "$edn_file" ]; then
+    log_warning "bb.edn not found at ${edn_file}, using default version: ${default_version}"
+    echo "$default_version"
+    return
+  fi
+
+  # Debug: print file content when in debug mode
+  # dbg_file_content "$edn_file"
+
+  # Simple approach for the specific format :min-bb-version "x.y.z"
+  bb_version=$(grep -o ':min-bb-version "[0-9]\+\.[0-9]\+\.[0-9]\+"' "$edn_file" | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+
+  if [ -z "$bb_version" ]; then
+    log_warning "Could not parse min-bb-version from bb.edn, using default: ${default_version}"
+    echo "$default_version"
+  else
+    dbg_info "Found Babashka version ${bb_version} in bb.edn"
+    echo "$bb_version"
+  fi
+}
+
+# Detect OS and architecture
+detect_platform() {
+  local os arch
+
+  case "$(uname -s)" in
+    Linux*)  os="linux" ;;
+    Darwin*) os="macos" ;;
+    *) log_error "Unsupported OS: $(uname -s)"; exit 1 ;;
+  esac
+
+  case "$(uname -m)" in
+    x86_64|amd64) arch="amd64" ;;
+    arm64|aarch64) arch="aarch64" ;;
+    *) log_error "Unsupported architecture: $(uname -m)"; exit 1 ;;
+  esac
+
+  echo "${os}-${arch}"
+}
+
+# Download babashka if not found
+install_babashka() {
+  local platform tmp_dir download_url min_bb_version
+
+  # Get required Babashka version
+  min_bb_version=$(get_min_bb_version)
+
+  dbg_info "Babashka not found at ${BB_EXEC}. Installing version ${min_bb_version}..."
+
+  platform=$(detect_platform)
+  log_info "Detected platform: ${platform}"
+
+  tmp_dir=$(mktemp -d)
+  dbg_info "Created temporary directory: ${tmp_dir}"
+
+  download_url="https://github.com/babashka/babashka/releases/download/v${min_bb_version}/babashka-${min_bb_version}-${platform}.tar.gz"
+  log_info "Download URL: ${download_url}"
+
+  # Download the file first
+  curl -#L "${download_url}" -o "${tmp_dir}/babashka.tar.gz"
+
+  if [ ! -f "${tmp_dir}/babashka.tar.gz" ]; then
+    log_error "Download failed! Could not find downloaded file"
+    exit 1
+  fi
+
+  log_info "Download complete. Extracting archive..."
+  tar xf "${tmp_dir}/babashka.tar.gz" -C "${tmp_dir}" "bb"
+
+  if [ ! -f "${tmp_dir}/bb" ]; then
+    log_error "Extraction failed! Could not find bb executable!"
+    exit 1
+  fi
+
+  dbg_info "Moving bb to ${BB_EXEC}"
+  mv -f "${tmp_dir}/bb" "${BB_EXEC}"
+  chmod +x "${BB_EXEC}"
+
+  # Verify installation
+  if [ ! -x "${BB_EXEC}" ]; then
+    log_error "Installation failed! ${BB_EXEC} is not executable"
+    exit 1
+  fi
+
+  dbg_info "Testing installed binary..."
+  "${BB_EXEC}" --version
+  log_success "Babashka ${min_bb_version} successfully installed at ${BB_EXEC}"
+
+  dbg_info "Cleanup"
+  rm -rf "${tmp_dir}"
+}
+
+# Check if babashka is available at ./bin/bb
+check_babashka() {
+  dbg_info "Checking for Babashka at ${BB_EXEC}"
+
+  if [ -x "${BB_EXEC}" ]; then
+    dbg_info "Found executable at ${BB_EXEC}"
+    # Check if installed version meets minimum requirements
+    local installed_version min_bb_version
+    min_bb_version=$(get_min_bb_version)
+
+    installed_version=$("${BB_EXEC}" --version 2>/dev/null | head -n 1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+
+    if [ -z "${installed_version}" ]; then
+      log_warning "Could not determine installed Babashka version"
+      return 1
+    fi
+
+    dbg_info "Installed version: ${installed_version}, Required: ${min_bb_version}"
+
+    if [ "$installed_version" != "$min_bb_version" ]; then
+      log_warning "Installed Babashka version ${installed_version} is not the same as required ${min_bb_version}"
+      log_info "Installing Babashka version ${min_bb_version} ..."
+      return 1
+    fi
+
+    dbg_success "Using Babashka ${installed_version} at ${BB_EXEC}"
+    return 0
+  else
+    dbg_error "Babashka not found at ${BB_EXEC}"
+    return 1
+  fi
+}
+
+# Main execution
+main() {
+  # First, ensure babashka is installed in the local ./bin directory
+  if ! check_babashka; then
+    log_info "Babashka not found or version doesn't match, installing..."
+    install_babashka
+  fi
+
+  # Check if BB_EXEC exists now
+  if [ ! -x "${BB_EXEC}" ]; then
+    dbg_error "Babashka binary not found at ${BB_EXEC} after installation attempt!"
+    exit 1
+  fi
+
+  # Construct the path to ./bin/mage_core (sibling file to this script)
+  MAGE_CORE_PATH="${BINDIR}/mage.bb"
+  # log_info "mage_core path: ${MAGE_CORE_PATH}"
+
+  # Ensure mage_core exists and is executable
+  if [ ! -x "$MAGE_CORE_PATH" ]; then
+    log_error "mage_core executable not found or not executable: $MAGE_CORE_PATH"
+    exit 1
+  fi
+
+  # # Export BB_EXEC so mage_core can find babashka
+  # export BB_EXEC
+  # dbg_info "Exported BB_EXEC=${BB_EXEC}"
+
+  # Execute mage_core with all arguments
+  dbg_info "Running mage_core with args: '$*'"
+  # log_info $MAGE_CORE_PATH
+  # log_info "${BB_EXEC} ${MAGE_CORE_PATH}"
+  (cd "${MB}" && exec "${BB_EXEC}" "${MAGE_CORE_PATH}" "$@")
+}
+
+# Run the main function with all arguments
+main "$@"

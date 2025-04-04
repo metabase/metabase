@@ -31,7 +31,7 @@ describe("scenarios > question > snippets", () => {
 
     cy.log("Add a snippet of that text");
     cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Give your snippet a name").type("stuff-snippet");
@@ -178,7 +178,7 @@ describe("scenarios > question > snippets (EE)", () => {
     H.setTokenFeatures("all");
   });
 
-  ["admin", "normal"].forEach(user => {
+  ["admin", "normal"].forEach((user) => {
     it(`${user} user can create a snippet (metabase#21581)`, () => {
       cy.intercept("POST", "/api/native-query-snippet").as("snippetCreated");
 
@@ -186,7 +186,7 @@ describe("scenarios > question > snippets (EE)", () => {
 
       H.startNewNativeQuestion();
       cy.icon("snippet").click();
-      cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+      cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
       H.modal().within(() => {
         cy.findByLabelText(
@@ -292,7 +292,7 @@ describe("scenarios > question > snippets (EE)", () => {
     });
   });
 
-  ["admin", "nocollection"].map(user => {
+  ["admin", "nocollection"].map((user) => {
     it("should display nested snippets in their folder", () => {
       createNestedSnippet();
 

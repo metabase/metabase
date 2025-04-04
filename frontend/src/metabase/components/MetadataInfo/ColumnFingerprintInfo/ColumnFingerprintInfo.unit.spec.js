@@ -1,7 +1,6 @@
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
-import Dimension from "metabase-lib/v1/Dimension";
 import {
   PRODUCTS,
   createSampleDatabase,
@@ -31,12 +30,7 @@ function setup(field) {
 
 describe("FieldFingerprintInfo", () => {
   describe("without fingerprint", () => {
-    const field = Dimension.parseMBQL(
-      ["field", PRODUCTS.CREATED_AT, null],
-      metadata,
-    )
-      .field()
-      .clone();
+    const field = metadata.field(PRODUCTS.CREATED_AT).clone();
 
     delete field.fingerprint;
 
@@ -47,12 +41,7 @@ describe("FieldFingerprintInfo", () => {
   });
 
   describe("Date field", () => {
-    const dateField = Dimension.parseMBQL(
-      ["field", PRODUCTS.CREATED_AT, null],
-      metadata,
-    )
-      .field()
-      .clone();
+    const dateField = metadata.field(PRODUCTS.CREATED_AT);
 
     describe("without type/DateTime fingerprint", () => {
       const field = dateField.clone();
@@ -98,10 +87,7 @@ describe("FieldFingerprintInfo", () => {
   });
 
   describe("Number field", () => {
-    const numberField = Dimension.parseMBQL(
-      ["field", PRODUCTS.RATING, null],
-      metadata,
-    ).field();
+    const numberField = metadata.field(PRODUCTS.RATING).clone();
 
     numberField.semantic_type = null;
 
@@ -182,11 +168,7 @@ describe("FieldFingerprintInfo", () => {
   });
 
   describe("Other field types", () => {
-    const idField = Dimension.parseMBQL(
-      ["field", PRODUCTS.ID, null],
-      metadata,
-    ).field();
-
+    const idField = metadata.field(PRODUCTS.ID);
     const field = idField.clone();
     field.fingerprint = {
       type: {

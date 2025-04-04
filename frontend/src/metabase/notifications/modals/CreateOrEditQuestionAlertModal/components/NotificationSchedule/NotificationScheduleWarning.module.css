@@ -1,0 +1,16 @@
+.warningContainer {
+  width: 100%;
+  background-color: var(
+    --notification-warning-bg,
+    var(--mb-base-color-orion-10)
+  );
+  padding: var(
+    --notification-warning-padding,
+    var(--mantine-spacing-md) var(--mantine-spacing-xl)
+  );
+}
+
+.warningText {
+  color: var(--notification-warning-text-color, var(--mb-color-text-secondary));
+  line-height: var(--mantine-line-height-sm);
+}

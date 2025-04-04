@@ -1,16 +1,14 @@
 import { useCallback } from "react";
 
 import { useSdkStore } from "embedding-sdk/store";
-import {
-  type SDKCollectionReference,
-  getCollectionNumericIdFromReference,
-} from "embedding-sdk/store/collections";
+import { getCollectionNumericIdFromReference } from "embedding-sdk/store/collections";
+import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import { useCreateDashboardMutation } from "metabase/api";
 import type { CreateDashboardProperties } from "metabase/dashboard/containers/CreateDashboardForm";
 
 export interface CreateDashboardValues
   extends Omit<CreateDashboardProperties, "collection_id"> {
-  collectionId: SDKCollectionReference;
+  collectionId: SdkCollectionId;
 }
 
 export const useCreateDashboardApi = () => {

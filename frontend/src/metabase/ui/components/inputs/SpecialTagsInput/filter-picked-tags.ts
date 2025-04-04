@@ -6,14 +6,14 @@ interface FilterPickedTagsInput {
 }
 
 export function filterPickedTags({ data, value }: FilterPickedTagsInput) {
-  const normalizedValue = value.map(item => item.trim().toLowerCase());
+  const normalizedValue = value.map((item) => item.trim().toLowerCase());
 
   const filtered = data.reduce<ComboboxParsedItem[]>((acc, item) => {
     if (isOptionsGroup(item)) {
       acc.push({
         group: item.group,
         items: item.items.filter(
-          option =>
+          (option) =>
             normalizedValue.indexOf(option.value.toLowerCase().trim()) === -1,
         ),
       });

@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 
 import { CollectionBrowser } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { collectionIdArgType } from "embedding-sdk/test/storybook-id-args";
 
 export default {
   title: "EmbeddingSDK/CollectionBrowser",
@@ -13,14 +14,20 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: StoryFn<ComponentProps<typeof CollectionBrowser>> = args => {
+const Template: StoryFn<ComponentProps<typeof CollectionBrowser>> = (args) => {
   return <CollectionBrowser {...args} />;
 };
 
 export const Default = {
   render: Template,
 
-  args: {},
+  parameters: {
+    layout: "fullscreen",
+  },
+  decorators: [CommonSdkStoryWrapper],
+  argTypes: {
+    collectionId: collectionIdArgType,
+  },
 };
 
 export const WithTypeAndNameColumn = {

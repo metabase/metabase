@@ -22,9 +22,11 @@
       [notification {:card              {:dataset_query (mt/mbql-query users)}
                      :notification_card {:creator_id (mt/user->id :crowberto)}
                      :subscriptions     [{:type          :notification-subscription/cron
-                                          :cron_schedule "0 0 0 * * ?"}
+                                          :cron_schedule "0 0 0 * * ?"
+                                          :ui_display_type :cron/builder}
                                          {:type          :notification-subscription/cron
-                                          :cron_schedule "1 1 1 * * ?"}]
+                                          :cron_schedule "1 1 1 * * ?"
+                                          :ui_display_type :cron/raw}]
                      :handlers          [{:channel_type notification.tu/test-channel-type
                                           :channel_id   chn-id
                                           :active       false}
@@ -42,10 +44,12 @@
                                    :card    {:id (-> notification :payload :card_id)}}
                    :subscriptions [{:notification_id notification-id
                                     :type            "notification-subscription/cron"
-                                    :cron_schedule   "0 0 0 * * ?"}
+                                    :cron_schedule   "0 0 0 * * ?"
+                                    :ui_display_type "cron/builder"}
                                    {:notification_id notification-id
                                     :type            "notification-subscription/cron"
-                                    :cron_schedule   "1 1 1 * * ?"}]
+                                    :cron_schedule   "1 1 1 * * ?"
+                                    :ui_display_type "cron/raw"}]
                    :handlers      [{:template_id     nil
                                     :channel_type    "channel/metabase-test"
                                     :channel         {:id chn-id}
@@ -83,7 +87,8 @@
                                             :send_condition "goal_above"
                                             :send_once      true}
                             :subscriptions [{:type          "notification-subscription/cron"
-                                             :cron_schedule "0 0 0 * * ?"}]
+                                             :cron_schedule "0 0 0 * * ?"
+                                             :ui_display_type "cron/raw"}]
                             :handlers      [{:channel_type "channel/email"
                                              :recipients   [{:type    "notification-recipient/user"
                                                              :user_id (mt/user->id :crowberto)}]}]}]
@@ -94,7 +99,14 @@
         (let [notification {:payload_type  "notification/card"
                             :active        true
                             :creator_id    (mt/user->id :crowberto)
-                            :payload       {:card_id card-id}}]
+                            :payload       {:card_id card-id
+                                            :send_condition "has_result"}
+                            :subscriptions [{:type          "notification-subscription/cron"
+                                             :cron_schedule "0 0 0 * * ?"
+                                             :ui_display_type "cron/raw"}]
+                            :handlers      [{:channel_type "channel/email"
+                                             :recipients   [{:type    "notification-recipient/user"
+                                                             :user_id (mt/user->id :crowberto)}]}]}]
           (is (=? (assoc notification :id (mt/malli=? int?))
                   (mt/user-http-request :crowberto :post 200 "notification" notification))))))))
 
@@ -132,7 +144,7 @@
                                                           (notification.tu/with-mock-inbox-email!
                                                             (with-send-messages-sync!
                                                               (mt/user-http-request :crowberto :post 200 "notification" notification))))
-                a-card-url (format "<a href=\"https://testmb.com/question/%d\">My Card</a>." card-id)]
+                a-card-url (format "<a href=\".*/question/%d\">My Card</a>." card-id)]
             (testing (format "send email with %s condition" send_condition)
               (testing "recipients will get you were added to a card email"
                 (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com"}
@@ -207,9 +219,11 @@
                    :creator_id)))))))
 
 (defn- update-cron-subscription
-  [{:keys [subscriptions] :as notification} new-schedule]
+  [{:keys [subscriptions] :as notification} new-schedule ui-display-type]
   (assert (= 1 (count subscriptions)))
-  (assoc notification :subscriptions [(assoc (first subscriptions) :cron_schedule new-schedule)]))
+  (assoc notification :subscriptions [(assoc (first subscriptions)
+                                             :cron_schedule new-schedule
+                                             :ui_display_type ui-display-type)]))
 
 (deftest update-notification-test
   (mt/with-temp [:model/ChannelTemplate {tmpl-id :id} notification.tu/channel-template-email-with-handlebars-body]
@@ -217,7 +231,8 @@
       [notification {:card              {:dataset_query (mt/mbql-query users)}
                      :notification_card {:creator_id (mt/user->id :crowberto)}
                      :subscriptions     [{:type          :notification-subscription/cron
-                                          :cron_schedule "0 0 0 * * ?"}]
+                                          :cron_schedule "0 0 0 * * ?"
+                                          :ui_display_type :cron/raw}]
                      :handlers          [{:channel_type :channel/email
                                           :recipients   [{:type    :notification-recipient/user
                                                           :user_id (mt/user->id :crowberto)}
@@ -233,8 +248,9 @@
                                                                 new-notification)))]
         (testing "can update subscription schedule"
           (is (=? [{:type          "notification-subscription/cron"
-                    :cron_schedule "1 1 1 * * ?"}]
-                  (:subscriptions (update-notification (update-cron-subscription @notification "1 1 1 * * ?"))))))
+                    :cron_schedule "1 1 1 * * ?"
+                    :ui_display_type "cron/builder"}]
+                  (:subscriptions (update-notification (update-cron-subscription @notification "1 1 1 * * ?" "cron/builder"))))))
 
         (testing "can update payload info"
           (is (= "has_result" (get-in @notification [:payload :send_condition])))
@@ -299,7 +315,8 @@
                             :new      {:subscriptions [{:notification_id (:id notification)
                                                         :type "notification-subscription/cron"
                                                         :event_name nil
-                                                        :cron_schedule "0 0 0 * * ?"}]
+                                                        :cron_schedule "0 0 0 * * ?"
+                                                        :ui_display_type nil}]
                                        :active false}}}
                  (mt/latest-audit-log-entry))))))))
 
@@ -873,7 +890,7 @@
           (let [[email] (notification.tu/with-mock-inbox-email!
                           (with-send-messages-sync!
                             (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
-                a-href (format "<a href=\"https://testmb.com/question/%d\">My Card</a>."
+                a-href (format "<a href=\".*/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
             (testing "sends unsubscribe confirmation email"
               (is (=? {:bcc     #{"lucky@metabase.com"}
@@ -913,7 +930,7 @@
                                                                 {:type    :notification-recipient/raw-value
                                                                  :details {:value "test@metabase.com"}}]}]}
               make-card-url-tag (fn [notification]
-                                  (format "<a href=\"https://testmb.com/question/%d\">Test Card</a>."
+                                  (format "<a href=\".*/question/%d\">Test Card</a>."
                                           (-> notification :payload :card_id)))
               update-notification! (fn [noti-id notification updates]
                                      (notification.tu/with-mock-inbox-email!

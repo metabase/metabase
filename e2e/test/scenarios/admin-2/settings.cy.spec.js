@@ -21,20 +21,18 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     "should prompt admin to migrate to a hosted instance",
     { tags: "@OSS" },
     () => {
-      cy.visit("/admin/settings/setup");
+      cy.visit("/admin/settings/cloud");
 
-      cy.findByTestId("upsell-card").findByText(/Migrate to Metabase Cloud/);
-      H.expectGoodSnowplowEvent({
-        event: "upsell_viewed",
-        promoted_feature: "hosting",
-      });
-      cy.findByTestId("upsell-card")
+      cy.findByTestId("upsell-big-card").findByText(
+        /Migrate to Metabase Cloud/,
+      );
+      cy.findByTestId("upsell-big-card")
         .findAllByRole("link", { name: "Learn more" })
         .click();
       // link opens in new tab
       H.expectGoodSnowplowEvent({
-        event: "upsell_clicked",
-        promoted_feature: "hosting",
+        event: "upsell_viewed",
+        promoted_feature: "cloud",
       });
       H.expectNoBadSnowplowEvents();
     },
@@ -128,7 +126,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
   it("should display an error if the https redirect check fails", () => {
     cy.visit("/admin/settings/general");
 
-    cy.intercept("GET", "**/api/health", req => {
+    cy.intercept("GET", "**/api/health", (req) => {
       req.reply({ forceNetworkError: true });
     }).as("httpsCheck");
     // switch site url to use https
@@ -210,7 +208,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     // Open the orders table
     H.openOrdersTable({ limit: 2 });
 
-    cy.get("#main-data-grid").within(() => {
+    H.tableInteractiveBody().within(() => {
       // Items in the total column should have a leading dollar sign
       cy.findByText("$39.72");
       cy.findByText("$117.03");
@@ -240,7 +238,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     // 1. Get the array of ALL available settings
     cy.request("GET", "/api/setting").then(({ body }) => {
       // 2. Create a stubbed version of that array by passing modified "site-url" settings
-      const STUBBED_BODY = body.map(setting => {
+      const STUBBED_BODY = body.map((setting) => {
         if (setting.key === "site-url") {
           const STUBBED_SITE_URL = Object.assign({}, setting, {
             is_env_setting: true,
@@ -253,7 +251,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       });
 
       // 3. Stub the whole response
-      cy.intercept("GET", "/api/setting", req => {
+      cy.intercept("GET", "/api/setting", (req) => {
         req.reply({ body: STUBBED_BODY });
       }).as("appSettings");
     });
@@ -301,9 +299,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Metabase on Slack");
       cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
-      cy.findByLabelText("Public channel to store image files").type(
-        "metabase_files",
-      );
       cy.button("Save changes").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -407,8 +402,8 @@ describe.skip(
 
       refresh();
 
-      getCellText().then(res => {
-        cy.get("@tempResult").then(temp => {
+      getCellText().then((res) => {
+        cy.get("@tempResult").then((temp) => {
           if (res === temp) {
             cy.wrap(res).as("cachedResult");
           } else {
@@ -446,7 +441,7 @@ describe.skip(
         H.NativeEditor.type(nativeQuery);
         H.runNativeQuery();
 
-        getCellText().then(res => {
+        getCellText().then((res) => {
           cy.wrap(res).as("tempResult");
         });
 
@@ -456,7 +451,7 @@ describe.skip(
       it("should respect previously set cache duration (metabase#18458)", () => {
         refreshUntilCached();
 
-        cy.get("@cachedResult").then(cachedValue => {
+        cy.get("@cachedResult").then((cachedValue) => {
           /**
            * 5s is longer than what we set the cache to last:
            * Approx 2s for an Average Runtime x multiplier of 2.
@@ -467,7 +462,7 @@ describe.skip(
 
           refresh();
 
-          getCellText().then(newValue => {
+          getCellText().then((newValue) => {
             expect(newValue).to.not.eq(cachedValue);
           });
         });
@@ -650,7 +645,7 @@ describe("scenarios > admin > license and billing", () => {
   const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";
   const NO_UPSELL_FEATURE_HEY = "no-upsell";
   // mocks data the will be returned by enterprise useLicense hook
-  const mockBillingTokenFeatures = features => {
+  const mockBillingTokenFeatures = (features) => {
     return cy.intercept("GET", "/api/premium-features/token/status", {
       "valid-thru": "2099-12-31T12:00:00",
       valid: true,
@@ -690,10 +685,10 @@ describe("scenarios > admin > license and billing", () => {
       // create an admin user who is also connected to our test harbormaster account
       cy.request("GET", "/api/permissions/group")
         .then(({ body: groups }) => {
-          const adminGroup = groups.find(g => g.name === "Administrators");
+          const adminGroup = groups.find((g) => g.name === "Administrators");
           return cy
             .createUserFromRawData(harborMasterConnectedAccount)
-            .then(user => Promise.resolve([adminGroup.id, user]));
+            .then((user) => Promise.resolve([adminGroup.id, user]));
         })
         .then(([adminGroupId, user]) => {
           const data = { user_id: user.id, group_id: adminGroupId };
@@ -701,7 +696,7 @@ describe("scenarios > admin > license and billing", () => {
             .request("POST", "/api/permissions/membership", data)
             .then(() => Promise.resolve(user));
         })
-        .then(user => {
+        .then((user) => {
           cy.signOut(); // stop being normal admin user and be store connected admin user
           return cy.request("POST", "/api/session", {
             username: user.email,
@@ -734,7 +729,7 @@ describe("scenarios > admin > license and billing", () => {
         NO_UPSELL_FEATURE_HEY,
       ]);
       // force an error
-      cy.intercept("GET", "/api/ee/billing", req => {
+      cy.intercept("GET", "/api/ee/billing", (req) => {
         req.reply({ statusCode: 500 });
       });
       cy.visit("/admin/settings/license");
@@ -858,7 +853,7 @@ describe("scenarios > admin > localization", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("TableInteractive-root").as("resultTable");
+    H.tableInteractive().as("resultTable");
 
     cy.get("@resultTable").within(() => {
       // The third cell in the first row (CREATED_AT_DAY)
@@ -970,7 +965,7 @@ describe("scenarios > admin > localization", () => {
     cy.findByTestId("loading-indicator").should("not.exist");
 
     // verify that the correct row is displayed
-    cy.findByTestId("TableInteractive-root").within(() => {
+    H.tableInteractive().within(() => {
       cy.findByText("2024/5/15, 19:56");
       cy.findByText("127.52");
     });
@@ -1023,7 +1018,7 @@ describe("scenarios > admin > settings > map settings", () => {
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
-    cy.wait("@load").then(interception => {
+    cy.wait("@load").then((interception) => {
       expect(interception.response.statusCode).to.eq(200);
     });
   });
@@ -1072,7 +1067,7 @@ describe("scenarios > admin > settings > map settings", () => {
 
   it("should show an informative error when adding a calid URL that contains GeoJSON that does not use lat/lng coordinates", () => {
     //intercept call to api/geojson and return projected.geojson. Call to load file actually happens in the BE
-    cy.fixture("../../e2e/support/assets/projected.geojson").then(data => {
+    cy.fixture("../../e2e/support/assets/projected.geojson").then((data) => {
       cy.intercept("GET", "/api/geojson*", data);
     });
 
@@ -1103,7 +1098,7 @@ describe("notifications", { tags: "@external" }, () => {
       failOnStatusCode: false,
       url: `${H.WEBHOOK_TEST_HOST}/api/session/${H.WEBHOOK_TEST_SESSION_ID}/requests`,
       method: "DELETE",
-    }).then(response => {
+    }).then((response) => {
       cy.log("Deleted requests.");
     });
   });
@@ -1166,13 +1161,13 @@ describe("notifications", { tags: "@external" }, () => {
       },
     ];
 
-    AUTH_METHODS.forEach(auth => {
+    AUTH_METHODS.forEach((auth) => {
       it(`${auth.display} Auth`, () => {
         cy.visit("/admin/settings/notifications");
         cy.findByRole("heading", { name: "Add a webhook" }).click();
 
         H.modal().within(() => {
-          COMMON_FIELDS.forEach(field => {
+          COMMON_FIELDS.forEach((field) => {
             cy.findByLabelText(field.label).type(field.value);
           });
 
@@ -1289,7 +1284,7 @@ describe("admin > settings > updates", () => {
     cy.visit("/admin/settings/updates");
 
     cy.intercept("GET", "/api/session/properties", (req, res) => {
-      req.continue(res => {
+      req.continue((res) => {
         res.body["version-info"] = versionInfo;
         res.body.version.tag = currentVersion;
         return res.body;

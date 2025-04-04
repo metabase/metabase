@@ -23,5 +23,5 @@ export const getFields = (parameter: UiParameter): Field[] => {
 };
 
 export const getNonVirtualFields = (parameter: UiParameter) => {
-  return getFields(parameter).filter(field => !field.isVirtual());
+  return getFields(parameter).filter((field) => !field.isVirtual());
 };

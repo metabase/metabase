@@ -77,7 +77,12 @@
                               :schemas                  true
                               :identifiers-with-spaces  true
                               :uuid-type                true
-                              :uploads                  true}]
+                              :split-part               true
+                              :uploads                  true
+                              :expression-literals      true
+                              :expressions/text         true
+                              :expressions/integer      true
+                              :expressions/date         true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -638,6 +643,10 @@
   (let [seconds (h2x/- (extract-from-timestamp :epoch y) (extract-from-timestamp :epoch x))]
     (h2x/->integer [:trunc seconds])))
 
+(defmethod sql.qp/->honeysql [:postgres :integer]
+  [driver [_ value]]
+  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
+
 (defn- format-regex-match-first [_fn [identifier pattern]]
   (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})
         [pattern-sql & pattern-args]       (sql/format-expr pattern {:nested true})]
@@ -652,6 +661,24 @@
   [driver [_ arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
+
+(defmethod sql.qp/->honeysql [:postgres :split-part]
+  [driver [_ text divider position]]
+  (let [position (sql.qp/->honeysql driver position)]
+    [:case
+     [:< position 1]
+     ""
+
+     :else
+     [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
+
+(defmethod sql.qp/->honeysql [:postgres :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:postgres :date]
+  [driver [_ value]]
+  [:to_date (sql.qp/->honeysql driver value) [:inline "YYYY-MM-DD"]])
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]

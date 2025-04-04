@@ -186,12 +186,11 @@
                (log/error e (u/format-color :red "Health check: failure with error %s {:id %d}" (:name database) (:id database)))
                (analytics/inc! :metabase-database/unhealthy {:driver engine} 1)))))))))
 
-(defn check-health-and-schedule-tasks!
-  "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
+(defn check-health!
+  "Health checks databases connected to metabase asynchronously using a thread pool."
   []
   (doseq [database (t2/select :model/Database)]
-    (health-check-database! database)
-    (check-and-schedule-tasks-for-db! database)))
+    (health-check-database! database)))
 
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
 ;; implement behavior when an object is deleted can do it without having to put code here
@@ -436,12 +435,13 @@
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :entity_id :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
                :metadata_sync_schedule :name :points_of_interest :refingerprint :settings :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field
                :cache_ttl]
    :transform {:created_at          (serdes/date)
+               :entity_id           (serdes/backfill-entity-id-transformer)
                ;; details should be imported if available regardless of options
                :details             {:export-with-context
                                      (fn [current _ details]

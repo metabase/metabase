@@ -6,19 +6,23 @@ redirect_from:
 
 # Custom expressions
 
-[Custom expressions][expression-list] are like formulas in spreadsheet software like Excel, Google Sheets, and LibreOffice Calc. They are the power tools in the notebook editor of the query builder that allow you to ask more complicated questions.
+![Custom expression editor](../images/custom-expression-editor.png)
+
+[Custom expressions][expression-list] are like formulas in spreadsheet software like Excel, Google Sheets, and LibreOffice Calc. They are the power tools in the query builder's editor that allow you to ask more complicated questions.
 
 You can also skip to the [complete list of expressions][expression-list].
 
 ## Custom expressions to create filters, metrics, and custom columns
 
-To use custom expression, create a **Custom Column** (where the custom expression is used as a Field Formula to calculate values for the new column), or click on **Filter** or **Summarize** and select **Custom Expression**.
+To use the custom expression editor, create a **Custom Column** (where the custom expression is used as a Field Formula to calculate values for the new column), or click on **Filter** or **Summarize** and select **Custom Expression**.
 
 When using the query builder, you can use expressions to create new:
 
-- **Custom columns**. You could use `= [Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
-- **Filters**. The expression `= contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
-- **Summaries**. Also known as metrics or aggregations. `= Share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
+- **Custom columns**. You could use `[Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
+- **Filters**. The expression `contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
+- **Summaries**. Also known as metrics or aggregations. `Share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
+
+Type in your expression, give it a name, and click **Done**. If the Done button is grayed out, check that your expression is valid, and that you've given the expression a name (which you enter at the bottom of the expression editor).
 
 This page covers the basics of expressions. You can check out a [full list of expressions][expression-list] in Metabase, or walk through a tutorial that shows you how you can use [custom expressions in the notebook editor][custom-expressions].
 
@@ -34,19 +38,39 @@ There are two basic types of expressions, **Aggregations** and **Functions**. Ch
 
 [Functions][functions], by contrast, do something to each value in a column, like searching for a word in each value (`contains`), rounding each value up to the nearest integer (the `ceil` function), and so on.
 
+## Function browser
+
+![Function browser](../images/function-browser.png)
+
+The expression editor includes a function browser to help you find the function you need. To view the browser, flick on the **f** on the right of the expression editor. See also a [list of functions and aggregations](./expressions-list.md).
+
+## Auto-format
+
+![Auto-format expression](../images/auto-format.png)
+
+To format expressions, click on the auto-format button on the right side of the expression editor (the lightning bolt wrapped in braces).
+
 ## Basic mathematical operators
 
 Use `+`, `-`, `*` (multiply), `/` (divide) on numeric columns with numeric values, like integers, floats, and double. You can use parentheses, `(` and `)`, to group parts of your expression.
 
-For example, you could create a new column that calculates the difference between the total and subtotal of a order: `= [Total] - [Subtotal]`.
+For example, you could create a new column that calculates the difference between the total and subtotal of a order: `[Total] - [Subtotal]`.
 
 To do math on timestamp columns, you can use [Date functions](expressions-list.md#date-functions) like [dateDiff](./expressions/datetimediff.md).
 
 ## Conditional operators
 
-`AND`, `OR`, `NOT`, `>`, `>=` (greater than or equal to), `<`, `<=` (less than or equal to), `=`, `!=` (not equal to).
+- `AND`
+- `OR`  
+- `NOT`
+- `>` 
+- `>=` (greater than or equal to)
+- `<`
+- `<=` (less than or equal to) 
+- `=`
+- `!=` (not equal to)
 
-For example, you could create a filter for customers from California or Vermont: `= [State] = "CA" OR [State] = "VT"`.
+For example, you could create a filter for customers from California or Vermont: `[State] = "CA" OR [State] = "VT"`.
 
 You can also use conditionals with the `case` function (alias `if`):
 

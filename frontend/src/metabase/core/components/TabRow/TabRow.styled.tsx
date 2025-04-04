@@ -1,9 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { SortableDiv } from "metabase/core/components/Sortable";
-import { TabButton } from "metabase/core/components/TabButton";
-import TabLink from "metabase/core/components/TabLink";
 import BaseTabList from "metabase/core/components/TabList";
 import { alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -23,18 +20,6 @@ export const TabList = styled(BaseTabList)`
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
   }
-
-  ${TabLink.Root}:not(:last-child) {
-    margin-right: 0.75rem;
-  }
-
-  ${TabButton.Root}:not(:last-child) {
-    margin-right: 0.75rem;
-  }
-
-  ${SortableDiv}:not(:last-child) {
-    margin-right: 0.75rem;
-  }
 `;
 
 interface ScrollButtonProps {
@@ -47,16 +32,16 @@ export const ScrollButton = styled.button<ScrollButtonProps>`
   height: 100%;
   width: 3rem;
   padding-bottom: ${space(2)};
-  text-align: ${props => props.direction};
+  text-align: ${(props) => props.direction};
   color: var(--mb-color-text-light);
 
   &:hover {
     color: var(--mb-color-brand);
   }
-  ${props => props.direction}: 0;
+  ${(props) => props.direction}: 0;
 
   background: linear-gradient(
-    to ${props => props.direction},
+    to ${(props) => props.direction},
     ${() => alpha("bg-white", 0.1)},
     ${() => alpha("bg-white", 0.5)},
     30%,

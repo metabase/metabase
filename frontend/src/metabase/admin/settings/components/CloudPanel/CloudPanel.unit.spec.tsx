@@ -1,5 +1,3 @@
-/* eslint-disable jest/expect-expect */
-
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type MockResponse } from "fetch-mock";
 

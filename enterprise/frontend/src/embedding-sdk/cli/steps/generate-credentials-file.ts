@@ -4,7 +4,7 @@ import { SAMPLE_CREDENTIALS_FILE_NAME } from "../constants/config";
 import type { CliStepMethod } from "../types/cli";
 import { addFileToGitIgnore } from "../utils/add-file-to-git-ignore";
 
-export const generateCredentialsFile: CliStepMethod = async state => {
+export const generateCredentialsFile: CliStepMethod = async (state) => {
   await addFileToGitIgnore(SAMPLE_CREDENTIALS_FILE_NAME);
 
   const credentials = {

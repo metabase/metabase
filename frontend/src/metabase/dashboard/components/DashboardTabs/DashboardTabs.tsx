@@ -59,23 +59,29 @@ export function DashboardTabs({
       <TabRow<SelectedTabId>
         value={selectedTabId}
         onChange={selectTab}
-        itemIds={tabs.map(tab => tab.id)}
+        itemIds={tabs.map((tab) => tab.id)}
         handleDragEnd={moveTab}
       >
         {showPlaceholder ? (
           <TabButton
+            className={S.tabButton}
             label={t`Tab 1`}
             value={null}
             showMenu
             menuItems={menuItems}
           />
         ) : (
-          tabs.map(tab => (
-            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
+          tabs.map((tab) => (
+            <Sortable
+              key={tab.id}
+              id={tab.id}
+              className={S.tabButton}
+              disabled={!isEditing}
+            >
               <TabButton.Renameable
                 value={tab.id}
                 label={tab.name}
-                onRename={name => renameTab(tab.id, name)}
+                onRename={(name) => renameTab(tab.id, name)}
                 canRename={isEditing && hasMultipleTabs}
                 showMenu={isEditing}
                 menuItems={menuItems}
@@ -89,7 +95,7 @@ export function DashboardTabs({
             iconSize={12}
             onClick={createNewTab}
             aria-label={t`Create new tab`}
-            className={S.CreateTabButton}
+            className={S.createTabButton}
           />
         )}
       </TabRow>

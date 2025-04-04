@@ -68,13 +68,13 @@
   (u.secret/secret
    (str "mb_" (crypto-random/base64 bytes-key-length))))
 
-(def ^:private string-key-length (count (u.secret/expose (generate-key))))
+(def ^:private string-key-length (delay (count (u.secret/expose (generate-key)))))
 
 (defn mask
   "Given an API key, returns a string of the same length with all but the prefix masked with `*`s"
   [key]
   (->> (concat (prefix key) (repeat "*"))
-       (take string-key-length)
+       (take @string-key-length)
        (apply str)))
 
 (defn- add-key

@@ -646,6 +646,9 @@
                [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
                (cast-temporal-byte driver coercion-strategy honeysql-form)
 
+               [:type/Text (:isa? :Coercion/String->Float)]
+               (->float driver honeysql-form)
+
                :else honeysql-form)
       (when-not (= <> honeysql-form)
         (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
@@ -1054,6 +1057,12 @@
   [driver [_ pred]]
   [:/ (->honeysql driver [:count-where pred]) :%count.*])
 
+(defmethod ->honeysql [:sql :distinct-where]
+  [driver [_ arg pred]]
+  [::h2x/distinct-count
+   [:case
+    (->honeysql driver pred) (->honeysql driver arg)]])
+
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]
   [:trim (->honeysql driver arg)])
@@ -1425,6 +1434,16 @@
              (map? (field 2)))
     (select-keys (field 2) [:base-type])))
 
+(defn- parent-honeysql-col-effective-type-map
+  [field]
+  (when-let [field-id (and (vector? field)
+                           (= 3 (count field))
+                           (= :field (first field))
+                           (integer? (second field))
+                           (second field))]
+    (select-keys (lib.metadata/field (qp.store/metadata-provider) field-id)
+                 [:effective-type])))
+
 (def ^:dynamic *parent-honeysql-col-type-info*
   "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. Its value should be
   `{:base-type keyword? :database-type string?}`. The value is used in `->honeysql <driver> :relative-datetime`,
@@ -1437,6 +1456,7 @@
   (let [field-honeysql (->honeysql driver field)]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
+                                                     (parent-honeysql-col-effective-type-map field)
                                                      (parent-honeysql-col-base-type-map field))]
       [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
@@ -1446,15 +1466,17 @@
     (let [field-honeysql (->honeysql driver field)]
       (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                          {:database-type database-type})
+                                                       (parent-honeysql-col-effective-type-map field)
                                                        (parent-honeysql-col-base-type-map field))]
         [operator field-honeysql (->honeysql driver value)]))))
 
 (defmethod ->honeysql [:sql :=]
   [driver [_ field value]]
-  (assert field)
+  (assert (some? field))
   (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
+                                                     (parent-honeysql-col-effective-type-map field)
                                                      (parent-honeysql-col-base-type-map field))]
       [:= field-honeysql (->honeysql driver value)])))
 

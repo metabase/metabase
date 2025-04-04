@@ -181,19 +181,16 @@ describe("scenarios > visualizations > bar chart", () => {
       H.queryBuilderHeader()
         .button(/Filter/)
         .click();
-      H.modal().within(() => {
+      H.popover().within(() => {
         cy.findByText("Product").click();
-        cy.findByTestId("filter-column-Category")
-          .findByLabelText("Filter operator")
-          .click();
+        cy.findByText("Category").click();
       });
-      H.popover().findByText("Is not").click();
-      H.modal().within(() => {
-        cy.findByText("Product").click();
-        cy.findByTestId("filter-column-Category").findByText("Gadget").click();
-        cy.button("Apply filters").click();
+      H.selectFilterOperator("Is not");
+      H.popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
       });
-
+      H.runButtonOverlay().click();
       H.getDraggableElements().should("have.length", 2);
       H.getDraggableElements().eq(0).should("have.text", "Doohickey");
       H.getDraggableElements().eq(1).should("have.text", "Widget");
@@ -496,7 +493,7 @@ describe("scenarios > visualizations > bar chart", () => {
       questions: [multiMetric],
     }).then(({ dashboard }) => {
       H.createQuestion(sumTotalByMonth, { wrapId: true }).then(() => {
-        cy.get("@questionId").then(questionId => {
+        cy.get("@questionId").then((questionId) => {
           H.cypressWaitAll([
             H.createQuestionAndAddToDashboard(avgTotalByMonth, dashboard.id, {
               series: [
@@ -586,9 +583,9 @@ describe("scenarios > visualizations > bar chart", () => {
       "#88BF4D",
       "#98D9D9",
     ]);
-    firstMetric.then($metricOne => {
+    firstMetric.then(($metricOne) => {
       const { height: heightMetricOne } = $metricOne[0].getBoundingClientRect();
-      secondMetric.then($metricTwo => {
+      secondMetric.then(($metricTwo) => {
         const { height: heightMetricTwo } =
           $metricTwo[0].getBoundingClientRect();
 
@@ -662,7 +659,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(1).realHover();
     H.assertEChartsTooltip({
@@ -686,7 +683,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(2).realHover();
     H.assertEChartsTooltip({
@@ -710,7 +707,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(3).realHover();
     H.assertEChartsTooltip({
@@ -734,7 +731,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(4).realHover();
     H.assertEChartsTooltip({
@@ -758,7 +755,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
   });
 
   it.skip("should allow grouping series into a single 'Other' series", () => {
@@ -962,7 +959,3 @@ describe("scenarios > visualizations > bar chart", () => {
     H.assertEChartsTooltip({ rows: [{ name: "Max", value: "3" }] });
   });
 });
-
-function resetHoverState() {
-  cy.findByTestId("main-logo").realHover();
-}

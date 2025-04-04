@@ -45,7 +45,6 @@ import SettingCommaDelimitedInput from "../components/widgets/SettingCommaDelimi
 import SiteUrlWidget from "../components/widgets/SiteUrlWidget";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import { updateSetting } from "../settings";
-import SetupCheckList from "../setup/components/SetupCheckList";
 import SlackSettings from "../slack/containers/SlackSettings";
 
 import {
@@ -76,13 +75,6 @@ function updateSectionsWithPlugins(sections) {
 }
 
 export const ADMIN_SETTINGS_SECTIONS = {
-  setup: {
-    name: t`Setup`,
-    order: 10,
-    settings: [],
-    component: SetupCheckList,
-    adminOnly: true,
-  },
   general: {
     name: t`General`,
     order: 20,
@@ -97,7 +89,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Site URL`,
         type: "string",
         widget: SiteUrlWidget,
-        warningMessage: t`Only change this if you know what you're doing!`,
+        description: (
+          <>
+            <strong>{t`Only change this if you know what you're doing!`}</strong>{" "}
+            {t`This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance.`}
+          </>
+        ),
       },
       {
         key: "custom-homepage",
@@ -123,7 +120,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
             }),
           refreshCurrentUser,
         ],
-        getProps: setting => ({
+        getProps: (setting) => ({
           value: setting.value,
         }),
         onChanged: (oldVal, newVal) => {
@@ -308,7 +305,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     tabs:
       PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length <= 1
         ? undefined
-        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map(tab => ({
+        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map((tab) => ({
             ...tab,
             isActive: tab.key === "authentication",
           })),
@@ -322,7 +319,14 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "map-tile-server-url",
         display_name: t`Map tile server URL`,
-        note: t`Metabase uses OpenStreetMaps by default.`,
+        description: (
+          <>
+            <div>
+              {t`URL of the map tile server to use for rendering maps. If you're using a custom map tile server, you can set it here.`}
+            </div>
+            <div>{t`Metabase uses OpenStreetMaps by default.`}</div>
+          </>
+        ),
         type: "string",
       },
       {
@@ -361,7 +365,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
           { name: t`Database Default`, value: "" },
           ...(MetabaseSettings.get("available-timezones") || []),
         ],
-        note: t`Not all databases support timezones, in which case this setting won't take effect.`,
+        description: (
+          <>
+            <div>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</div>
+            <div>{t`Not all databases support timezones, in which case this setting won't take effect.`}</div>
+          </>
+        ),
         allowValueCollection: true,
         searchProp: "name",
         defaultValue: "",
@@ -466,14 +475,19 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   llm: {
     name: t`AI Features`,
-    getHidden: settings =>
+    getHidden: (settings) =>
       !PLUGIN_LLM_AUTODESCRIPTION.isEnabled() || settings["airgap-enabled"],
     order: 131,
     settings: [
       {
         key: "ee-ai-features-enabled",
         display_name: t`AI features enabled`,
-        note: t`You must supply an API key before AI features can be enabled.`,
+        description: (
+          <>
+            <div>{t`Enable AI features.`}</div>
+            <div>{t`You must supply an API key before AI features can be enabled.`}</div>
+          </>
+        ),
         type: "boolean",
       },
       {
@@ -486,7 +500,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   cloud: {
     name: t`Cloud`,
-    getHidden: settings =>
+    getHidden: (settings) =>
       settings["token-features"]?.hosting === true ||
       settings["airgap-enabled"],
     order: 132,
@@ -496,9 +510,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   whitelabel: {
     name: t`Appearance`,
-    getHidden: settings => settings["token-features"]?.whitelabel === true,
+    getHidden: (settings) => settings["token-features"]?.whitelabel === true,
     order: 133,
-    component: props => (
+    component: (props) => (
       <UpsellWhitelabel {...props} source="settings-appearance" />
     ),
     settings: [],
@@ -514,7 +528,7 @@ export const getSettings = createSelector(
   getAdminSettingDefinitions,
   getAdminSettingWarnings,
   (settings, warnings) =>
-    settings.map(setting =>
+    settings.map((setting) =>
       warnings[setting.key]
         ? { ...setting, warning: warnings[setting.key] }
         : setting,
@@ -524,9 +538,9 @@ export const getSettings = createSelector(
 // getSettings selector returns settings for admin setting page and values specified by
 // environment variables set to "null". Actual applied setting values are coming from
 // /api/session/properties API handler and getDerivedSettingValues returns them.
-export const getDerivedSettingValues = state => state.settings?.values ?? {};
+export const getDerivedSettingValues = (state) => state.settings?.values ?? {};
 
-export const getSettingValues = createSelector(getSettings, settings => {
+export const getSettingValues = createSelector(getSettings, (settings) => {
   const settingValues = {};
   for (const setting of settings) {
     settingValues[setting.key] = setting.value;
@@ -536,14 +550,14 @@ export const getSettingValues = createSelector(getSettings, settings => {
 
 export const getCurrentVersion = createSelector(
   getDerivedSettingValues,
-  settings => {
+  (settings) => {
     return settings.version?.tag;
   },
 );
 
 export const getLatestVersion = createSelector(
   getDerivedSettingValues,
-  settings => {
+  (settings) => {
     const updateChannel = settings["update-channel"] ?? "latest";
     return settings["version-info"]?.[updateChannel]?.version;
   },

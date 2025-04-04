@@ -18,8 +18,8 @@ describe("command palette", () => {
     cy.intercept(
       "GET",
       "**/search?q=Company&context=command-palette&include_dashboard_questions=true&limit=20",
-      req => {
-        req.reply(res => {
+      (req) => {
+        req.reply((res) => {
           const orderedNames = ["Products", "Orders", "Reviews", "People"];
           res.body.data = res.body.data.sort((a, b) => {
             return orderedNames.indexOf(a.name) - orderedNames.indexOf(b.name);
@@ -184,13 +184,13 @@ describe("command palette", () => {
       H.commandPalette().within(() => {
         H.commandPaletteInput().type("Settings -");
         cy.log("check admin sees all settings links");
-        H.commandPaletteAction("Settings - Setup").should("exist");
-        H.commandPaletteAction("Settings - General").should("exist");
+        H.commandPaletteAction("Settings - General").should("be.visible");
+        H.commandPaletteAction("Settings - Email").should("be.visible");
         H.commandPaletteInput().clear();
 
-        cy.log("shouldsee admin links");
+        cy.log("should see admin links");
         H.commandPaletteInput().type("Performance");
-        H.commandPaletteAction("Performance").should("exist");
+        H.commandPaletteAction("Performance").should("be.visible");
       });
     });
 

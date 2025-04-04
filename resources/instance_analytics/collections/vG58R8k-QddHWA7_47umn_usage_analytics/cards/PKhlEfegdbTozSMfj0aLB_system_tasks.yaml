@@ -31,6 +31,7 @@ dataset_query:
 result_metadata:
 - base_type: type/Integer
   coercion_strategy: null
+  database_type: int4
   description: ''
   display_name: ID
   effective_type: type/Integer
@@ -53,6 +54,7 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
+  database_type: varchar
   description: null
   display_name: Task
   effective_type: type/Text
@@ -75,6 +77,30 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
+  database_type: varchar
+  description: null
+  display_name: Status
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tasks
+    - status
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tasks
+  - status
+  name: status
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  database_type: text
   description: null
   display_name: Database Qualified ID
   effective_type: type/Text
@@ -101,6 +127,7 @@ result_metadata:
   visibility_type: normal
 - base_type: type/DateTimeWithLocalTZ
   coercion_strategy: null
+  database_type: timestamptz
   description: null
   display_name: Started At
   effective_type: type/DateTimeWithLocalTZ
@@ -110,7 +137,7 @@ result_metadata:
     - public
     - v_tasks
     - started_at
-  - temporal-unit: default
+  - null
   fk_target_field_id: null
   id:
   - Internal Metabase Database
@@ -120,10 +147,10 @@ result_metadata:
   name: started_at
   semantic_type: type/CreationTimestamp
   settings: null
-  unit: default
   visibility_type: normal
 - base_type: type/DateTimeWithLocalTZ
   coercion_strategy: null
+  database_type: timestamptz
   description: null
   display_name: Ended At
   effective_type: type/DateTimeWithLocalTZ
@@ -133,7 +160,7 @@ result_metadata:
     - public
     - v_tasks
     - ended_at
-  - temporal-unit: default
+  - null
   fk_target_field_id: null
   id:
   - Internal Metabase Database
@@ -143,10 +170,10 @@ result_metadata:
   name: ended_at
   semantic_type: null
   settings: null
-  unit: default
   visibility_type: normal
 - base_type: type/Float
   coercion_strategy: null
+  database_type: float8
   description: null
   display_name: Duration Seconds
   effective_type: type/Float
@@ -169,6 +196,7 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
+  database_type: text
   description: null
   display_name: Details
   effective_type: type/Text
@@ -197,6 +225,7 @@ serdes/meta:
   label: system_tasks
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: null
 metabase_version: vUNKNOWN (1308cef)
 source_card_id: null

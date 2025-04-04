@@ -1,4 +1,4 @@
-import xlsx from "xlsx";
+import xlsx, { type Sheet } from "xlsx";
 
 import { getDashboardCardMenu } from "./e2e-dashboard-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
@@ -53,7 +53,7 @@ export function downloadAndAssert(
     enableFormatting = true,
     pivoting,
   }: DownloadAndAssertParams,
-  callback: (data: unknown) => void,
+  callback: (data: Sheet) => void,
 ) {
   const { method, endpoint } = downloadUrl
     ? { method: downloadMethod, endpoint: downloadUrl }
@@ -69,7 +69,7 @@ export function downloadAndAssert(
    * https://github.com/cypress-io/cypress-example-recipes/blob/master/examples/testing-dom__download/cypress/integration/form-submission-spec.js
    */
 
-  cy.intercept(method, endpoint, req => {
+  cy.intercept(method, endpoint, (req) => {
     /**
      * We must redirect in order to avoid Cypress being stuck on waiting for the new page to load.
      * Intentionally redirecting to a non-existing page.
@@ -107,7 +107,7 @@ export function downloadAndAssert(
     if (pivoting != null) {
       cy.findByTestId("keep-data-pivoted")
         .as("keep-data-pivoted")
-        .then($checkbox => {
+        .then(($checkbox) => {
           const isChecked = $checkbox.prop("checked");
 
           const shouldPivot = pivoting === "pivoted";
@@ -122,7 +122,7 @@ export function downloadAndAssert(
 
   cy.wait("@fileDownload")
     .its("request")
-    .then(req => {
+    .then((req) => {
       // The payload for the xlsx is in the binary form
       fileType === "xlsx" && Object.assign(req, { encoding: "binary" });
 

@@ -6,7 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import CS from "metabase/css/core/index.css";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { DisplayTheme } from "metabase/public/lib/types";
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import QuestionDownloadPopover from "metabase/query_builder/components/QuestionDownloadPopover";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Question from "metabase-lib/v1/Question";
@@ -61,7 +61,7 @@ export function PublicOrEmbeddedQuestionView({
   const question = new Question(card, metadata);
   const actionButtons =
     result && downloadsEnabled ? (
-      <QueryDownloadWidget
+      <QuestionDownloadPopover
         className={cx(CS.m1, CS.textMediumHover)}
         question={question}
         result={result}
@@ -87,7 +87,8 @@ export function PublicOrEmbeddedQuestionView({
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}
-      downloadsEnabled={downloadsEnabled}
+      // We don't support PDF downloads on questions
+      pdfDownloadsEnabled={false}
     >
       <LoadingAndErrorWrapper
         className={CS.flexFull}
@@ -104,11 +105,11 @@ export function PublicOrEmbeddedQuestionView({
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,
             ) => {
-              setCard(prevCard =>
+              setCard((prevCard) =>
                 updateIn(
                   prevCard,
                   ["visualization_settings"],
-                  previousSettings => ({ ...previousSettings, ...settings }),
+                  (previousSettings) => ({ ...previousSettings, ...settings }),
                 ),
               );
             }}

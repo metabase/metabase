@@ -8,11 +8,17 @@
   application goes through normal startup procedures. Inside this function you can do any work needed and add your
   task to the scheduler as usual via `schedule-task!`.
 
+  ## Documentation
+
+  For more detailed information about using Quartz in Metabase, including examples and best practices,
+  see the [QUARTZ.md](src/metabase/task/QUARTZ.md) documentation.
+
   ## Quartz JavaDoc
 
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
   (:require
    [clojure.string :as str]
+   [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.db :as mdb]
@@ -92,7 +98,7 @@
                        (ex-message (.getCause e)))
             (qs/delete-job scheduler job-key)))))))
 
-(defn- init-scheduler!
+(defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []
@@ -323,3 +329,11 @@
        (catch Exception e#
          (log/error e# msg#)
          (throw (JobExecutionException. msg# e# true))))))
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmacro defjob
+  "Like `clojurewerkz.quartzite.task/defjob` but with a log context."
+  [jtype args & body]
+  `(jobs/defjob ~jtype ~args
+     (log/with-context {:quartz-job-type (quote ~jtype)}
+       ~@body)))

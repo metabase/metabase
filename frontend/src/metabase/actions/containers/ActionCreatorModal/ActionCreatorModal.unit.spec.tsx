@@ -56,7 +56,7 @@ async function setup({
     <>
       <Route
         path="/model/:slug/detail/actions/:actionId"
-        component={routeProps => (
+        component={(routeProps) => (
           <ActionCreatorModal
             {...routeProps}
             onClose={() => history?.push(`/model/${MODEL.id}/detail/actions`)}

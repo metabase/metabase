@@ -152,8 +152,8 @@
   - content (a hiccup form suitable for rendering on rich clients or rendering into an image)
   - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
     scalar results where text is preferable to an image of a div of a single result."
-  ([render-type timezone-id  card dashcard results]
-   (render-pulse-card render-type timezone-id  card dashcard results nil))
+  ([render-type timezone-id card dashcard results]
+   (render-pulse-card render-type timezone-id card dashcard results nil))
 
   ([render-type
     timezone-id :- [:maybe :string]
@@ -207,14 +207,15 @@
   ([timezone-id
     {card :card, dashcard :dashcard, result :result, :as _part}
     options :- [:maybe ::options]]
-   (let [options                       (merge {:channel.render/include-title?       true
-                                               :channel.render/include-description? true}
-                                              options)
-         {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
-     {:attachments attachments
-      :content     [:div {:style (style/style {:margin-top    :20px
-                                               :margin-bottom :20px})}
-                    content]})))
+   (log/with-context {:card_id (:id card)}
+     (let [options                       (merge {:channel.render/include-title?       true
+                                                 :channel.render/include-description? true}
+                                                options)
+           {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
+       {:attachments attachments
+        :content     [:div {:style (style/style {:margin-top    :20px
+                                                 :margin-bottom :20px})}
+                      content]}))))
 
 (mu/defn render-pulse-card-to-png :- bytes?
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."

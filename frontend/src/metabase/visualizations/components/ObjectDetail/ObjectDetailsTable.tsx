@@ -9,6 +9,7 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import type { ClickObject } from "metabase-lib";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
@@ -17,7 +18,11 @@ import {
   isImageURL,
   isa,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type {
+  DatasetData,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   FitImage,
@@ -33,6 +38,7 @@ export interface DetailsTableCellProps {
   isColumnName: boolean;
   settings: any;
   className?: string;
+  clicked?: ClickObject;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
 }
@@ -42,12 +48,12 @@ export function DetailsTableCell({
   value,
   isColumnName,
   settings,
+  clicked,
   className = "",
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableCellProps): JSX.Element {
   let cellValue;
-  const clicked = { column: null, value: null };
   let isLink;
 
   const columnSettings = settings?.column?.(column) ?? {};
@@ -57,7 +63,6 @@ export function DetailsTableCell({
   if (isColumnName) {
     const title = column !== null ? columnTitle : null;
     cellValue = <Ellipsified lines={8}>{title}</Ellipsified>;
-    clicked.column = column;
     isLink = false;
   } else {
     if (value === null || value === undefined || value === "") {
@@ -80,6 +85,7 @@ export function DetailsTableCell({
     } else {
       cellValue = formatValue(value, {
         ...columnSettings,
+        clicked,
         jsx: true,
         rich: true,
       });
@@ -87,8 +93,6 @@ export function DetailsTableCell({
         cellValue = <ExpandableString str={cellValue} length={140} />;
       }
     }
-    clicked.column = column;
-    clicked.value = value;
     isLink = isID(column);
   }
 
@@ -111,7 +115,6 @@ export function DetailsTableCell({
       <span
         className={cx(
           {
-            [CS.cursorPointer]: onVisualizationClick,
             link: isClickable && isLink,
           },
           className,
@@ -131,7 +134,7 @@ export function DetailsTableCell({
 
 export interface DetailsTableProps {
   data: DatasetData;
-  zoomedRow: unknown[];
+  zoomedRow: RowValue[];
   settings: VisualizationSettings;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
@@ -161,6 +164,11 @@ export function DetailsTable({
       row: columnIndexes.map((i: number) => zoomedRow[i]),
     };
   }, [columnSettings, columns, zoomedRow]);
+
+  const clickedData = useMemo(
+    () => row.map((value, i) => ({ value, col: cols[i] })),
+    [cols, row],
+  );
 
   if (!cols?.length) {
     return (
@@ -197,6 +205,13 @@ export function DetailsTable({
                   value={columnValue}
                   isColumnName={false}
                   settings={settings}
+                  clicked={{
+                    value: columnValue,
+                    column,
+                    settings,
+                    origin: { row, cols },
+                    data: clickedData,
+                  }}
                   className={cx(
                     CS.textBold,
                     CS.textPrimary,

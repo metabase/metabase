@@ -2,6 +2,7 @@
   (:require
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
+   [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
    [metabase.public-settings :as public-settings]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -12,7 +13,10 @@
 (p/import-vars
  [notification.payload.execute
   execute-dashboard
-  process-virtual-dashcard])
+  process-virtual-dashcard]
+ [notification.payload.temp-storage
+  cleanup!
+  is-cleanable?])
 
 (mr/def ::Notification
   "Schema for the notification."
@@ -21,11 +25,13 @@
    [:map
     [:payload_type                   (into [:enum] models.notification/notification-types)]
     ;; allow unsaved notification to be sent
-    [:id            {:optional true} [:maybe ms/PositiveInt]]
-    [:active        {:optional true} :boolean]
-    [:created_at    {:optional true} :any]
-    [:updated_at    {:optional true} :any]
-    [:subscriptions {:optional true} [:sequential ::models.notification/NotificationSubscription]]]
+    [:id                      {:optional true} [:maybe ms/PositiveInt]]
+    [:active                  {:optional true} :boolean]
+    [:created_at              {:optional true} :any]
+    [:updated_at              {:optional true} :any]
+    [:subscriptions           {:optional true} [:sequential ::models.notification/NotificationSubscription]]
+    ;;  the subscription that triggered this notification
+    [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]]
    [:multi {:dispatch :payload_type}
     ;; system event is a bit special in that part of the payload comes from the event itself
     [:notification/system-event
@@ -142,11 +148,11 @@
          :payload (payload notification)
          :context (default-context)))
 
-(defmulti should-send-notification?
+(defmulti skip-reason
   "Determine whether a notification should be sent. Default to true."
   {:arglists '([notification-payload])}
   :payload_type)
 
-(defmethod should-send-notification? :default
+(defmethod skip-reason :default
   [_notification-payload]
-  true)
+  nil)

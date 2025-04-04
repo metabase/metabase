@@ -19,7 +19,7 @@ To manage upload settings, admins can hit cmd/ctrl + K and search for "Settings 
 - [PostgreSQL](../databases/connections/postgresql.md)
 - [MySQL](../databases/connections/mysql.md)
 - [Redshift](../databases/connections/redshift.md)
-- [ClickHouse](../developers-guide/partner-and-community-drivers.md#partner-drivers)
+- [ClickHouse](../databases/connections/clickhouse.md)
 
 ## Setting up uploads
 
@@ -77,7 +77,7 @@ CSV files cannot exceed 50 MB in size.
 
 > While Metabase limits uploads to 50 MB, the server you use to run your Metabase may impose a lower limit. For example, the default client upload limit for [NGINX is 1 MB](https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size). So you may need to change your server settings to allow uploads up to 50 MB. People on Metabase Cloud don't have to worry about this.
 
-If you have a file larger than 50 MB, the workaround here is to split the data into multiple and [append those files to an existing model](../exploration-and-organization/uploads.md#appending-to-a-model-created-by-an-upload)
+If you have a file larger than 50 MB, the workaround here is to split the data into multiple files and [append those files to an existing model](../exploration-and-organization/uploads.md#appending-to-a-model-created-by-an-upload). Each file that you upload to Metabase must have a header row (the names of the columns), so if you're splitting one file into multiple files, you'll need to add header rows to each file.
 
 ## Date formats
 

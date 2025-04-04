@@ -74,14 +74,6 @@ describe("resolve", () => {
       expect(filter(["or", P, [">", Q, 3]]).dimensions).toEqual(["Q"]);
     });
 
-    it("should reject a number literal", () => {
-      expect(() => filter("3.14159")).toThrow();
-    });
-
-    it("should reject a string literal", () => {
-      expect(() => filter('"TheAnswer"')).toThrow();
-    });
-
     it("should catch mismatched number of function parameters", () => {
       expect(() => filter(["between"])).toThrow();
       expect(() => filter(["between", Y])).toThrow();
@@ -140,6 +132,8 @@ describe("resolve", () => {
       expect(expr(["coalesce", P]).dimensions).toEqual(["P"]);
       expect(expr(["coalesce", P, Q, R]).dimensions).toEqual(["P", "Q", "R"]);
       expect(expr(["in", A, B, C]).dimensions).toEqual(["A", "B", "C"]);
+      expect(expr(["text", A]).dimensions).toEqual(["A"]);
+      expect(expr(["integer", A]).dimensions).toEqual(["A"]);
     });
 
     it("should allow any number of arguments in a variadic function", () => {
@@ -175,7 +169,7 @@ describe("resolve", () => {
 
       it.each(["in", "not-in"])(
         "should reject multi-arg function calls without options when there is not enough arguments",
-        tag => {
+        (tag) => {
           expect(() => expr([tag])).toThrow();
           expect(() => expr([tag, A])).toThrow();
           expect(() => expr([tag, A, B])).not.toThrow();
@@ -185,7 +179,7 @@ describe("resolve", () => {
 
       it.each(["contains", "does-not-contain", "starts-with", "ends-with"])(
         "should reject multi-arg function calls with options when there is not enough arguments",
-        tag => {
+        (tag) => {
           const options: CallOptions = { "case-sensitive": true };
           expect(() => expr([tag])).toThrow();
           expect(() => expr([tag, A])).toThrow();
@@ -241,21 +235,6 @@ describe("resolve", () => {
             "a string",
           ]),
         ).not.toThrow();
-      });
-
-      it("should throw if chaining datetime functions onto functions of incompatible types", () => {
-        expect(() =>
-          expr(["trim", ["datetime-add", "2022-01-01", 1, "month"]]),
-        ).toThrow();
-      });
-
-      it("should throw if passing numbers as arguments expected to be datetime", () => {
-        expect(() => expr(["get-day", 15])).toThrow();
-        expect(() => expr(["get-day-of-week", 6])).toThrow();
-        expect(() => expr(["get-week", 52])).toThrow();
-        expect(() => expr(["get-month", 12])).toThrow();
-        expect(() => expr(["get-quarter", 3])).toThrow();
-        expect(() => expr(["get-year", 2025])).toThrow();
       });
     });
   });
@@ -349,19 +328,6 @@ describe("resolve", () => {
     it("should reject a CASE expression with only one argument", () => {
       // CASE(X)
       expect(() => expr(["case", [], { default: Y }])).toThrow();
-    });
-
-    it("should reject a CASE expression with incorrect argument type", () => {
-      // CASE(X, 1, 2, 3)
-      expect(() =>
-        expr([
-          "case",
-          [
-            [X, 1],
-            [2, 3],
-          ],
-        ]),
-      ).toThrow();
     });
 
     it("should accept a CASE expression with complex arguments", () => {

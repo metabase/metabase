@@ -1,15 +1,15 @@
 (ns metabase.channel.email.result-attachment
   (:require
    [clojure.java.io :as io]
-   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.performance :as perf])
@@ -36,6 +36,7 @@
                                                                      [:database_id ::lib.schema.id/database]]]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
+  (log/debugf "Streaming results to %s with %d rows" export-format (:row_count results))
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-metadata-provider database-id
       (let [w                           (qp.si/streaming-results-writer export-format os)
@@ -76,7 +77,7 @@
      :content-type content-type
      :file-name    (format "%s_%s.%s"
                            (or card-name "query_result")
-                           (u.date/format (t/zoned-date-time))
+                           (streaming.common/export-filename-timestamp)
                            (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
@@ -87,8 +88,8 @@
     result :result
     :as part}]
   (when (pos-int? (:row_count result))
-    (let [realize-data-rows (requiring-resolve 'metabase.channel.shared/realize-data-rows)
-          result (:result (realize-data-rows part))]
+    (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
+          result            (:result (maybe-realize-data-rows part))]
       (->>
        [(when-let [temp-file (and (:include_csv card)
                                   (create-temp-file-or-throw "csv"))]

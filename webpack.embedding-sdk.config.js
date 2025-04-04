@@ -117,12 +117,17 @@ module.exports = env => {
       ],
     },
 
-    externals: {
-      ...mainConfig.externals,
-      react: "react",
-      "react-dom": "react-dom",
-      "react/jsx-runtime": "react/jsx-runtime",
-    },
+    // Prevent these dependencies from being included in the JavaScript bundle.
+    externals: [
+      mainConfig.externals,
+
+      // We intend to support multiple React versions in the SDK,
+      // so the SDK itself should not pre-bundle react and react-dom
+      "react",
+      /^react\//i,
+      "react-dom",
+      /^react-dom\//i,
+    ],
 
     optimization: {
       // The default `moduleIds: 'named'` setting breaks Cypress tests when `development` mode is enabled,
@@ -170,6 +175,8 @@ module.exports = env => {
             memoryLimit: 4096,
           },
         }),
+      // we don't want to fail the build on type errors, we have a dedicated type check step for that
+      new TypescriptConvertErrorsToWarnings(),
       shouldAnalyzeBundles &&
         new BundleAnalyzerPlugin({
           analyzerMode: "static",
@@ -194,3 +201,14 @@ module.exports = env => {
 
   return config;
 };
+
+// https://github.com/TypeStrong/fork-ts-checker-webpack-plugin/issues/232#issuecomment-1322651312
+class TypescriptConvertErrorsToWarnings {
+  apply(compiler) {
+    const hooks = ForkTsCheckerWebpackPlugin.getCompilerHooks(compiler);
+
+    hooks.issues.tap("TypeScriptWarnOnlyWebpackPlugin", issues =>
+      issues.map(issue => ({ ...issue, severity: "warning" })),
+    );
+  }
+}

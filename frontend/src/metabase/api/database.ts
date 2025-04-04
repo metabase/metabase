@@ -7,6 +7,7 @@ import type {
   Database,
   DatabaseId,
   Field,
+  GetDatabaseHealthResponse,
   GetDatabaseMetadataRequest,
   GetDatabaseRequest,
   ListDatabaseIdFieldsRequest,
@@ -33,17 +34,17 @@ import {
 } from "./tags";
 
 export const databaseApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listDatabases: builder.query<
       ListDatabasesResponse,
       ListDatabasesRequest | void
     >({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/database",
         params,
       }),
-      providesTags: response => provideDatabaseListTags(response?.data ?? []),
+      providesTags: (response) => provideDatabaseListTags(response?.data ?? []),
     }),
     getDatabase: builder.query<Database, GetDatabaseRequest>({
       query: ({ id, ...params }) => ({
@@ -51,7 +52,16 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
         params,
       }),
-      providesTags: database => (database ? provideDatabaseTags(database) : []),
+      providesTags: (database) =>
+        database ? provideDatabaseTags(database) : [],
+    }),
+    getDatabaseHealth: builder.query<GetDatabaseHealthResponse, DatabaseId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/database/${id}/healthcheck`,
+      }),
+      // invalidate health check in the case db connection info changes
+      providesTags: (_, __, id) => [idTag("database", id)],
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -59,7 +69,8 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}/metadata`,
         params,
       }),
-      providesTags: database => (database ? provideDatabaseTags(database) : []),
+      providesTags: (database) =>
+        database ? provideDatabaseTags(database) : [],
     }),
     listDatabaseSchemas: builder.query<
       SchemaName[],
@@ -72,17 +83,17 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (schemas = []) => [
         listTag("schema"),
-        ...schemas.map(schema => idTag("schema", schema)),
+        ...schemas.map((schema) => idTag("schema", schema)),
       ],
     }),
     listSyncableDatabaseSchemas: builder.query<SchemaName[], DatabaseId>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/database/${id}/syncable_schemas`,
       }),
       providesTags: (schemas = []) => [
         listTag("schema"),
-        ...schemas.map(schema => idTag("schema", schema)),
+        ...schemas.map((schema) => idTag("schema", schema)),
       ],
     }),
     listDatabaseSchemaTables: builder.query<
@@ -96,7 +107,7 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (tables = []) => [
         listTag("table"),
-        ...tables.map(table => idTag("table", table.id)),
+        ...tables.map((table) => idTag("table", table.id)),
       ],
     }),
     listVirtualDatabaseTables: builder.query<
@@ -110,7 +121,7 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (tables = []) => [
         listTag("table"),
-        ...tables.map(table => idTag("table", table.id)),
+        ...tables.map((table) => idTag("table", table.id)),
       ],
     }),
     listDatabaseIdFields: builder.query<Field[], ListDatabaseIdFieldsRequest>({
@@ -122,7 +133,7 @@ export const databaseApi = Api.injectEndpoints({
       providesTags: [listTag("field")],
     }),
     createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/database",
         body,
@@ -147,7 +158,7 @@ export const databaseApi = Api.injectEndpoints({
         ]),
     }),
     deleteDatabase: builder.mutation<void, DatabaseId>({
-      query: id => ({
+      query: (id) => ({
         method: "DELETE",
         url: `/api/database/${id}`,
       }),
@@ -162,7 +173,7 @@ export const databaseApi = Api.injectEndpoints({
         ]),
     }),
     syncDatabaseSchema: builder.mutation<void, DatabaseId>({
-      query: databaseId => ({
+      query: (databaseId) => ({
         method: "POST",
         url: `/api/database/${databaseId}/sync_schema`,
       }),
@@ -176,7 +187,7 @@ export const databaseApi = Api.injectEndpoints({
         ]),
     }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
-      query: databaseId => ({
+      query: (databaseId) => ({
         method: "POST",
         url: `/api/database/${databaseId}/rescan_values`,
       }),
@@ -184,7 +195,7 @@ export const databaseApi = Api.injectEndpoints({
         invalidateTags(error, [tag("field-values")]),
     }),
     discardDatabaseFieldValues: builder.mutation<void, DatabaseId>({
-      query: databaseId => ({
+      query: (databaseId) => ({
         method: "POST",
         url: `/api/database/${databaseId}/discard_values`,
       }),
@@ -227,6 +238,7 @@ export const databaseApi = Api.injectEndpoints({
 export const {
   useListDatabasesQuery,
   useGetDatabaseQuery,
+  useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
   useListDatabaseSchemasQuery,
   useListSyncableDatabaseSchemasQuery,

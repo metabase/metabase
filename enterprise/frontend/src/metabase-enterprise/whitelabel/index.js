@@ -45,7 +45,7 @@ import { updateColors } from "./lib/whitelabel";
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(
-    sections => ({
+    (sections) => ({
       ...sections,
       whitelabel: {
         name: t`Appearance`,
@@ -92,7 +92,7 @@ if (hasPremiumFeature("whitelabel")) {
           {
             key: "application-logo-url",
             display_name: t`Logo`,
-            note: (
+            description: (
               <Text size="sm" color="text-light">
                 {t`For best results, use an SVG file with a transparent
               background.`}
@@ -109,7 +109,7 @@ if (hasPremiumFeature("whitelabel")) {
           {
             key: "application-font-files",
             widget: FontFilesWidget,
-            getHidden: settings => settings["application-font-files"] == null,
+            getHidden: (settings) => settings["application-font-files"] == null,
           },
           {
             key: "loading-message",
@@ -284,10 +284,10 @@ if (hasPremiumFeature("whitelabel")) {
         ],
       },
     }),
-    sections => {
-      return updateIn(sections, ["general", "settings"], settings => {
+    (sections) => {
+      return updateIn(sections, ["general", "settings"], (settings) => {
         const customHomepageIndex = settings.findIndex(
-          setting => setting.key === "custom-homepage-dashboard",
+          (setting) => setting.key === "custom-homepage-dashboard",
         );
         return [
           ...settings.slice(0, customHomepageIndex + 1),

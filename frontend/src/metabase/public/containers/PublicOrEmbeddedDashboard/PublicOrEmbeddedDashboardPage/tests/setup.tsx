@@ -58,7 +58,7 @@ export async function setup(
   const tabs: DashboardTab[] = [];
   const dashcards: DashboardCard[] = [];
 
-  _.times(numberOfTabs, i => {
+  _.times(numberOfTabs, (i) => {
     const tabId = i + 1;
 
     tabs.push(createMockDashboardTab({ id: tabId, name: `Tab ${tabId}` }));

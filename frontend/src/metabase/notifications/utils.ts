@@ -10,12 +10,12 @@ import type {
 
 import type { NotificationTriggerOption } from "./modals/CreateOrEditQuestionAlertModal/types";
 
-export const DEFAULT_ALERT_CRON_SCHEDULE = "0 0 9 * * ?";
+export const DEFAULT_ALERT_CRON_SCHEDULE = "0 0 8 * * ? *";
 export const DEFAULT_ALERT_SCHEDULE: ScheduleSettings = {
   schedule_type: "daily",
   schedule_day: null,
   schedule_frame: null,
-  schedule_hour: 10,
+  schedule_hour: 8,
   schedule_minute: 0,
 };
 
@@ -113,6 +113,7 @@ export const getDefaultQuestionAlertRequest = ({
         type: "notification-subscription/cron",
         event_name: null,
         cron_schedule: DEFAULT_ALERT_CRON_SCHEDULE,
+        ui_display_type: "cron/builder",
       },
     ],
   };

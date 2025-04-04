@@ -11,7 +11,7 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
   position: fixed;
   bottom: 0;
   left: 50%;
-  margin-left: ${props =>
+  margin-left: ${(props) =>
     props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : "0"};
   margin-bottom: ${space(2)};
   transform: translateX(-50%);

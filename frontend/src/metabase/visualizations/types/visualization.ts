@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type React from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
@@ -14,7 +15,7 @@ import type {
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Query from "metabase-lib/v1/queries/Query";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   Dashboard,
@@ -22,13 +23,14 @@ import type {
   DatasetColumn,
   DatasetData,
   RawSeries,
+  RowValue,
   Series,
   TimelineEvent,
   TimelineEventId,
   TransformedSeries,
-  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api/visualization";
 import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
@@ -42,6 +44,7 @@ export interface Padding {
 }
 
 export type Formatter = (value: unknown, options?: OptionsType) => string;
+export type TableCellFormatter = (value: RowValue) => React.ReactNode;
 
 export type ColorGetter = (colorName: string) => string;
 
@@ -85,6 +88,7 @@ export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ColumnSettings = OptionsType & {
   "pivot_table.column_show_totals"?: boolean;
+  text_align?: "left" | "middle" | "right";
   [key: string]: unknown;
 };
 
@@ -113,7 +117,6 @@ export interface VisualizationProps {
   errorIcon?: IconName | null;
   actionButtons?: ReactNode;
   fontFamily: string;
-  isPlaceholder?: boolean;
   isFullscreen: boolean;
   isQueryBuilder: boolean;
   isEmbeddingSdk: boolean;
@@ -124,18 +127,25 @@ export interface VisualizationProps {
   isNightMode: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
+  isRawTable?: boolean;
+  scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
   clicked?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];
+  queryBuilderMode?: QueryBuilderMode;
+  uuid?: string;
+  token?: string;
 
   gridSize?: VisualizationGridSize;
   width: number;
   height: number;
 
-  visualizationIsClickable: (clickObject?: ClickObject) => boolean;
-  getExtraDataForClick?: (clickObject?: ClickObject) => Record<string, unknown>;
+  visualizationIsClickable: (clickObject: ClickObject | null) => boolean;
+  getExtraDataForClick?: (
+    clickObject: ClickObject | null,
+  ) => Record<string, unknown>;
 
   onRender: ({
     yAxisSplit,
@@ -148,7 +158,7 @@ export interface VisualizationProps {
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
-  onVisualizationClick: (clickObject?: ClickObject) => void;
+  onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
     settings: VisualizationSettings,
     question?: Question,
@@ -182,8 +192,7 @@ export type VisualizationPassThroughProps = {
   hasMetadataPopovers?: boolean;
   tableHeaderHeight?: number;
   scrollToColumn?: number;
-  renderTableHeaderWrapper?: (
-    children: ReactNode,
+  renderTableHeader?: (
     column: number,
     index: number,
     theme: unknown,
@@ -205,6 +214,8 @@ export type VisualizationPassThroughProps = {
   showAllLegendItems?: boolean;
   onRemoveSeries?: (event: MouseEvent, removedIndex: number) => void;
 
+  onHeaderColumnReorder?: (columnName: string) => void;
+
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
 
@@ -221,8 +232,9 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   props?: TProps;
   inline?: boolean;
   readDependencies?: string[];
-  getDefault?: (col: DatasetColumn) => TValue;
+  getDefault?: (col: DatasetColumn, settings: OptionsType) => TValue;
   getHidden?: (col: DatasetColumn, settings: OptionsType) => boolean;
+  isValid?: (col: DatasetColumn, settings: OptionsType) => boolean;
   getProps?: (
     col: DatasetColumn,
     settings: OptionsType,
@@ -290,6 +302,7 @@ export type VisualizationDefinition = {
   identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;
+  hasEmptyState?: boolean;
 
   maxMetricsSupported?: number;
   maxDimensionsSupported?: number;
@@ -307,17 +320,14 @@ export type VisualizationDefinition = {
 
   settings: VisualizationSettingsDefinitions;
 
-  placeHolderSeries?: Series;
-
   transformSeries?: (series: Series) => TransformedSeries;
   isSensible: (data: DatasetData) => boolean;
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable: (
     series: Series,
     settings: VisualizationSettings,
-    query?: Query | null,
+    query?: NativeQuery | null,
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
-  placeholderSeries: RawSeries;
 };

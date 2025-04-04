@@ -190,23 +190,29 @@ describe("scenarios > collection pinned items overview", () => {
     cy.findByText(DASHBOARD_NAME).should("not.exist");
   });
 
-  it("should be able to hide the visualization for a pinned question", () => {
-    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
-      collection_position: 1,
-    });
+  it(
+    "should be able to hide the visualization for a pinned question",
+    { tags: "@flaky" },
+    () => {
+      cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+        collection_position: 1,
+      });
 
-    openRootCollection();
-    H.openPinnedItemMenu(QUESTION_NAME);
-    H.popover().findByText("Don’t show visualization").click();
-    cy.wait("@getPinnedItems");
+      openRootCollection();
+      cy.log("wait for data to be loaded and displayed");
+      H.getPinnedSection().should("contain", "18,760");
+      H.openPinnedItemMenu(QUESTION_NAME);
+      H.popover().findByText("Don’t show visualization").click();
+      cy.wait("@getPinnedItems");
 
-    H.getPinnedSection().within(() => {
-      cy.findByText("18,760").should("not.exist");
-      cy.findByText("A question").should("be.visible");
-      cy.findByText(QUESTION_NAME).click();
-      cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
-    });
-  });
+      H.getPinnedSection().within(() => {
+        cy.findByText("18,760").should("not.exist");
+        cy.findByText("A question").should("be.visible");
+        cy.findByText(QUESTION_NAME).click();
+        cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
+      });
+    },
+  );
 
   it("should be able to show the visualization for a pinned question", () => {
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
@@ -289,24 +295,6 @@ describe("scenarios > collection pinned items overview", () => {
     cy.findByTestId("pinned-items")
       .findByText("Orders, Count, Grouped by Created At (year)")
       .should("exist");
-  });
-
-  it("should allow switching between different pages for a pinned question (metabase#23515)", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-      collection_position: 1,
-    });
-
-    cy.visit("/collection/root");
-    cy.wait("@getPinnedItems");
-    cy.wait("@getCardQuery");
-
-    cy.findByLabelText("Next page").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rows 4-6 of first 2000").should("be.visible");
-
-    cy.findByLabelText("Previous page").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rows 1-3 of first 2000").should("be.visible");
   });
 });
 

@@ -113,9 +113,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("TableInteractive-root")
-      .findByText("abbey-heidenreich")
-      .click();
+    H.tableInteractive().findByText("abbey-heidenreich").click();
 
     H.popover().within(() => {
       cy.findByText("Is abbey-heidenreich").should("be.visible");
@@ -239,7 +237,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.get("[data-testid=cell-data]").contains(drillCellText).first().click();
       H.popover().within(() => {
         cy.findByText("Break out by…").click();
-        menuItems.forEach(item => {
+        menuItems.forEach((item) => {
           cy.findByText(item).click();
         });
       });
@@ -398,9 +396,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         { visitQuestion: true },
       );
 
-      cy.findByTestId("TableInteractive-root")
-        .findByText("abbey-heidenreich")
-        .click();
+      H.tableInteractive().findByText("abbey-heidenreich").click();
 
       H.popover().within(() => {
         cy.findByText("Is abbey-heidenreich").should("be.visible");

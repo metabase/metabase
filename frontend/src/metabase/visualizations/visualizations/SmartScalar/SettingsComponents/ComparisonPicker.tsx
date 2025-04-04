@@ -100,7 +100,7 @@ export function ComparisonPicker({
               : undefined
           }
           columns={comparableColumns}
-          onChange={nextValue => {
+          onChange={(nextValue) => {
             handleEditedValueChange(
               { id: selectedValue.id, ...nextValue },
               true,
@@ -118,7 +118,7 @@ export function ComparisonPicker({
               ? selectedValue
               : undefined
           }
-          onChange={nextValue => {
+          onChange={(nextValue) => {
             handleEditedValueChange(
               { id: selectedValue.id, ...nextValue },
               true,
@@ -130,7 +130,7 @@ export function ComparisonPicker({
     }
     return (
       <Stack gap="sm">
-        {options.map(optionArgs =>
+        {options.map((optionArgs) =>
           renderMenuOption({
             editedValue,
             selectedValue,

@@ -35,7 +35,7 @@ import FunnelNormal from "../../components/FunnelNormal";
 import type { FunnelRow } from "./types";
 
 const getUniqueFunnelRows = (rows: FunnelRow[]) => {
-  return [...new Map(rows.map(row => [row.key, row])).values()];
+  return [...new Map(rows.map((row) => [row.key, row])).values()];
 };
 
 Object.assign(Funnel, {
@@ -73,38 +73,7 @@ Object.assign(Funnel, {
     }
   },
 
-  placeholderSeries: [
-    {
-      card: {
-        display: "funnel",
-        visualization_settings: {
-          "funnel.type": "funnel",
-          "funnel.dimension": "Total Sessions",
-          "funnel.metric": "Sessions",
-        },
-        dataset_query: { type: "null" },
-      },
-      data: {
-        rows: [
-          ["Homepage", 1000],
-          ["Product Page", 850],
-          ["Tiers Page", 700],
-          ["Trial Form", 200],
-          ["Trial Confirmation", 40],
-        ],
-        cols: [
-          {
-            name: "Total Sessions",
-            base_type: "type/Text",
-          },
-          {
-            name: "Sessions",
-            base_type: "type/Integer",
-          },
-        ],
-      },
-    },
-  ],
+  hasEmptyState: true,
 
   settings: {
     ...columnSettings({ hidden: true }),
@@ -133,16 +102,16 @@ Object.assign(Funnel, {
         settings: ComputedVisualizationSettings,
       ) => {
         const dimensionIndex = cols.findIndex(
-          col => col.name === settings["funnel.dimension"],
+          (col) => col.name === settings["funnel.dimension"],
         );
         const orderDimension = settings["funnel.order_dimension"];
         const dimension = settings["funnel.dimension"];
 
         const rowsOrder = settings["funnel.rows"];
-        const rowsKeys = rows.map(row => formatNullable(row[dimensionIndex]));
+        const rowsKeys = rows.map((row) => formatNullable(row[dimensionIndex]));
 
         const getDefault = (keys: RowValue[]) =>
-          keys.map(key => ({
+          keys.map((key) => ({
             key,
             name: key,
             enabled: true,
@@ -150,7 +119,7 @@ Object.assign(Funnel, {
         if (
           !rowsOrder ||
           !_.isArray(rowsOrder) ||
-          !rowsOrder.every(setting => setting.key !== undefined) ||
+          !rowsOrder.every((setting) => setting.key !== undefined) ||
           orderDimension !== dimension
         ) {
           return getUniqueFunnelRows(getDefault(rowsKeys));
@@ -159,7 +128,7 @@ Object.assign(Funnel, {
         const removeMissingOrder = (keys: RowValue[], order: any) =>
           order.filter((o: any) => keys.includes(o.key));
         const newKeys = (keys: RowValue[], order: any) =>
-          keys.filter(key => !order.find((o: any) => o.key === key));
+          keys.filter((key) => !order.find((o: any) => o.key === key));
 
         const funnelRows = [
           ...removeMissingOrder(rowsKeys, rowsOrder),
@@ -212,6 +181,8 @@ export function Funnel(props: VisualizationProps) {
     rawSeries,
     fontFamily,
     getHref,
+    isDashboard,
+    isEditing,
   } = props;
   const hasTitle = showTitle && settings["card.title"];
 
@@ -242,6 +213,7 @@ export function Funnel(props: VisualizationProps) {
           icon={headerIcon}
           getHref={getHref}
           actionButtons={actionButtons}
+          hasInfoTooltip={!isDashboard || !isEditing}
           onChangeCardAndRun={onChangeCardAndRun}
         />
       )}

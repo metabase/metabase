@@ -163,7 +163,6 @@
     (cond-> {"results"    [{"$match" {"result" true}}]
              "newResults" [{"$match" {"result" false}}
                            {"$group" {"_id"   {"type"       "$type"
-                                               "type-alias" "$type-alias"
                                                "path"       "$path"}
                                       ;; count is zero if type is "null" so we only select "null" as the type if there
                                       ;; is no other type for the path
@@ -174,11 +173,9 @@
                            {"$sort" {"count" -1}}
                            {"$group" {"_id"        "$_id.path"
                                       "type"       {"$first" "$_id.type"}
-                                      "type-alias" {"$first" "$_id.type-alias"}
                                       "index"      {"$min" "$index"}}}
                            {"$project" {"path"      "$_id"
                                         "type"       1
-                                        "type-alias" 1
                                         "result"     {"$literal" true}
                                         "object"     nil
                                         "index"      1}}]}
@@ -192,14 +189,10 @@
                                                                 "object"     {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
                                                                                        "then" "$$item.v"
                                                                                        "else" nil}}
-                                                                "type"       {"$type" "$$item.v"}
-                                                                "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
-                                                                                           "args" ["$$item.v" {"$type" "$$item.v"}]
-                                                                                           "lang" "js"}}}}}}}
+                                                                "type"       {"$type" "$$item.v"}}}}}}
                           {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
                           {"$project" {"path"       {"$concat" ["$path" "." "$kvs.k"]}
                                        "type"       "$kvs.type"
-                                       "type-alias" "$kvs.type-alias"
                                        "result"     {"$literal" false}
                                        "index"      1
                                        "object"     "$kvs.object"}}]))}
@@ -227,21 +220,17 @@
                                                             "object"     {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
                                                                                    "then" "$$item.v"
                                                                                    "else" nil}}
-                                                            "type"       {"$type" "$$item.v"}
-                                                            "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
-                                                                                       "args" ["$$item.v" {"$type" "$$item.v"}]
-                                                                                       "lang" "js"}}}}}}}
+                                                            "type"       {"$type" "$$item.v"}}}}}}
                        {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
                        {"$project" {"path"       "$kvs.k"
                                     "result"     {"$literal" false}
                                     "type"       "$kvs.type"
-                                    "type-alias" "$kvs.type-alias"
                                     "index"      1
                                     "object"     "$kvs.object"}}]]
     (concat sample
             initial-items
             (mapcat #(describe-table-query-step max-depth %) (range (inc max-depth)))
-            [{"$project" {"_id" 0, "path" "$path", "type" "$type", "type-alias" "$type-alias", "index" "$index"}}])))
+            [{"$project" {"_id" 0, "path" "$path", "type" "$type", "index" "$index"}}])))
 
 (comment
   ;; `describe-table-clojure` is a reference implementation for [[describe-table-query]] in Clojure.
@@ -309,7 +298,6 @@
                              [:map {:closed true}
                               [:path  ::lib.schema.common/non-blank-string]
                               [:type  ::lib.schema.common/non-blank-string]
-                              [:type-alias  ::lib.schema.common/non-blank-string]
                               [:index :int]]]
   "Queries the database, returning a list of maps with metadata for each field in the table (aka collection).
   Like `driver/describe-table` but the data is directly from the [[describe-table-query]] and needs further processing."
@@ -324,14 +312,14 @@
         cols  (map (comp keyword :name) (:cols data))]
     (map #(zipmap cols %) (:rows data))))
 
-(defn- type-alias->base-type [type-alias]
+(defn- db-type->base-type [db-type]
   ;; Mongo types from $type aggregation operation
   ;; https://www.mongodb.com/docs/manual/reference/operator/aggregation/type/#available-types
   (get {"double"     :type/Float
         "string"     :type/Text
         "object"     :type/Dictionary
         "array"      :type/Array
-        "binData"    :type/*
+        "binData"    :type/MongoBinData
         ;; "uuid" is not a database type like the rest here
         ;; it's determined by the subtype of binData fields in describe-table
         "uuid"       :type/UUID
@@ -349,7 +337,7 @@
         "timestamp"  :type/Instant
         "long"       :type/Integer
         "decimal"    :type/Decimal}
-       type-alias :type/*))
+       db-type :type/*))
 
 (defn- add-database-position
   "Adds :database-position to all fields. It starts at 0 and is ordered by a depth-first traversal of nested fields."
@@ -390,7 +378,7 @@
                                  name (last path)]
                              (cond-> {:name              name
                                       :database-type     (:type field)
-                                      :base-type         (type-alias->base-type (:type-alias field))
+                                      :base-type         (db-type->base-type (:type field))
                                       ; index is used by `set-database-position`, and not present in final result
                                       :index             (:index field)
                                       ; path is used to nest fields, and not present in final result

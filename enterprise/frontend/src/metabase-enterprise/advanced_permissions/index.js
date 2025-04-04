@@ -85,10 +85,10 @@ if (hasPremiumFeature("advanced_permissions")) {
     />,
   );
 
-  PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission = value =>
+  PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission = (value) =>
     value === BLOCK_PERMISSION_OPTION.value;
 
-  PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission = value => {
+  PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission = (value) => {
     if (value === IMPERSONATED_PERMISSION_OPTION.value) {
       return DataPermissionValue.UNRESTRICTED;
     }
@@ -103,7 +103,7 @@ if (hasPremiumFeature("advanced_permissions")) {
     }
   };
 
-  PLUGIN_ADVANCED_PERMISSIONS.isRestrictivePermission = value => {
+  PLUGIN_ADVANCED_PERMISSIONS.isRestrictivePermission = (value) => {
     return value === DataPermissionValue.BLOCKED;
   };
 
@@ -121,13 +121,13 @@ if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(
     (state, data) => {
       const impersonations = getImpersonations(state);
-      const impersonationGroupIds = impersonations.map(i => `${i.group_id}`);
+      const impersonationGroupIds = impersonations.map((i) => `${i.group_id}`);
       return [{ impersonations }, impersonationGroupIds];
     },
   );
 
   PLUGIN_DATA_PERMISSIONS.hasChanges.push(
-    state => getImpersonations(state).length > 0,
+    (state) => getImpersonations(state).length > 0,
   );
 
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS[

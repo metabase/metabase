@@ -11,6 +11,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
@@ -143,32 +144,37 @@
    (lib/metadata query stage clause)))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test
-  (are [clause expected] (=? expected
-                             (col-info-for-aggregation-clause clause))
-    ;; :count, no field
-    [:/ {} [:count {}] 2]
-    {:base-type    :type/Float
-     :name         "expression"
-     :display-name "Count ÷ 2"}
+  (let [ident (u/generate-nano-id)]
+    (are [clause expected] (=? expected
+                               (col-info-for-aggregation-clause clause))
+      ;; :count, no field
+      [:/ {:ident ident} [:count {}] 2]
+      {:base-type    :type/Float
+       :name         "expression"
+       :ident        ident
+       :display-name "Count ÷ 2"}
 
-    ;; :sum
-    [:sum {} [:+ {} (lib.tu/field-clause :venues :price) 1]]
-    {:base-type    :type/Integer
-     :name         "sum"
-     :display-name "Sum of Price + 1"}
+      ;; :sum
+      [:sum {:ident ident} [:+ {} (lib.tu/field-clause :venues :price) 1]]
+      {:base-type    :type/Integer
+       :name         "sum"
+       :ident        ident
+       :display-name "Sum of Price + 1"}
 
-    ;; options map
-    [:sum
-     {:name "sum_2", :display-name "My custom name", :base-type :type/BigInteger}
-     (lib.tu/field-clause :venues :price)]
-    {:base-type    :type/BigInteger
-     :name         "sum_2"
-     :display-name "My custom name"}))
+      ;; options map
+      [:sum
+       {:name "sum_2", :display-name "My custom name", :base-type :type/BigInteger, :ident ident}
+       (lib.tu/field-clause :venues :price)]
+      {:base-type    :type/BigInteger
+       :name         "sum_2"
+       :ident        ident
+       :display-name "My custom name"})))
 
 (deftest ^:parallel col-info-named-aggregation-test
   (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
     (is (=? {:base-type    :type/Integer
              :name         "sum"
+             :ident        string?
              :display-name "Sum of double-price"}
             (col-info-for-aggregation-clause
              (lib.tu/venues-query-with-last-stage
@@ -179,7 +185,8 @@
                               (lib.tu/field-clause :venues :price {:base-type :type/Integer})
                               2]]})
              [:sum
-              {:lib/uuid (str (random-uuid))}
+              {:lib/uuid (str (random-uuid))
+               :ident    (u/generate-nano-id)}
               [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} "double-price"]])))))
 
 (deftest ^:parallel aggregate-test
@@ -445,6 +452,15 @@
                   :display-name   "Sum of Price"
                   :lib/source     :source/aggregations}]
                 (lib/aggregations-metadata agg-query)))))))
+
+(deftest ^:parallel available-aggregation-operators-missing-feature-test
+  (let [provider-without-feature  (meta/updated-metadata-provider
+                                   update :features disj :basic-aggregations :percentile-aggregations)
+        query-without-feature     (lib/query provider-without-feature (meta/table-metadata :venues))
+        operators-without-feature (lib/available-aggregation-operators query-without-feature)]
+    (is (=? [{:short :stddev
+              :driver-feature :standard-deviation-aggregations}]
+            operators-without-feature))))
 
 (deftest ^:parallel selected-aggregation-operator-test
   (let [query (-> (lib.tu/venues-query)
@@ -782,23 +798,17 @@
                           (lib/expression "Total of Zero" (lib/coalesce (meta/field-metadata :orders :total) 0)))
           converted-query (lib/query meta/metadata-provider
                                      (lib.convert/->pMBQL
-                                      {:database (meta/id)
-                                       :type :query
-                                       :query {:source-table (meta/id :orders) ,
-                                               :expressions {"Zero" [:+ 0 0]
-                                                             "Total of Zero" [:coalesce
-                                                                              [:field
-                                                                               (meta/id :orders :total) ,
-                                                                               nil],
-                                                                              0]}}}))]
-      (is (= (->> built-query
-                  lib/available-aggregation-operators
-                  (m/find-first #(= (:short %) :sum))
-                  lib/aggregation-operator-columns)
-             (->> converted-query
-                  lib/available-aggregation-operators
-                  (m/find-first #(= (:short %) :sum))
-                  lib/aggregation-operator-columns))))))
+                                      (lib.tu.macros/mbql-query orders
+                                        {:expressions {"Zero"          [:+ 0 0]
+                                                       "Total of Zero" [:coalesce $total 0]}})))
+          clean (fn [query]
+                  (->> query
+                       lib/available-aggregation-operators
+                       (m/find-first #(= (:short %) :sum))
+                       lib/aggregation-operator-columns
+                       (map #(dissoc % :ident))))]
+      (is (= (clean built-query)
+             (clean converted-query))))))
 
 (deftest ^:parallel aggregation-at-index-test
   (let [query (-> (lib.tu/venues-query)

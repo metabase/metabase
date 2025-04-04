@@ -1,4 +1,12 @@
-import { interceptIfNotPreviouslyDefined, popover } from "e2e/support/helpers";
+import {
+  interceptIfNotPreviouslyDefined,
+  popover,
+  tableInteractive,
+} from "e2e/support/helpers";
+
+export function datasetEditBar() {
+  return cy.findByTestId("dataset-edit-bar");
+}
 
 export function saveMetadataChanges() {
   interceptIfNotPreviouslyDefined({
@@ -18,27 +26,44 @@ export function saveMetadataChanges() {
 export function openColumnOptions(column) {
   const columnNameRegex = new RegExp(`^${column}$`);
 
-  cy.findAllByTestId("header-cell")
+  tableInteractive()
+    .findAllByTestId("header-cell")
     .contains(columnNameRegex)
-    .should("be.visible")
+    .scrollIntoView()
+    .should("be.visible");
+
+  // Query element again to ensure it's not unmounted
+  tableInteractive()
+    .findAllByTestId("header-cell")
+    .contains(columnNameRegex)
     .click();
 }
 
 export function renameColumn(oldName, newName) {
-  cy.findByDisplayValue(oldName).clear().type(newName).blur();
+  cy.findByLabelText("Display name")
+    .should("have.value", oldName)
+    .clear()
+    .type(newName)
+    .blur();
+
+  tableInteractive()
+    .findAllByTestId("header-cell")
+    .contains(newName)
+    .scrollIntoView()
+    .should("be.visible");
 }
 
 export function setColumnType(oldType, newType) {
   cy.findByTestId("sidebar-right")
-    .findAllByTestId("select-button")
-    .contains(oldType)
+    .findByLabelText("Column type")
+    .should("have.value", oldType)
     .click();
 
-  popover().within(() => {
-    cy.findByText(oldType).closest(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordionList virtualization
-    cy.findByPlaceholderText("Search for a special type").realType(newType);
-    cy.findByLabelText(newType).click();
-  });
+  popover().findByText(newType).click();
+
+  cy.findByTestId("sidebar-right")
+    .findByLabelText("Column type")
+    .should("have.value", newType);
 }
 
 export function mapColumnTo({ table, column } = {}) {
@@ -53,7 +78,7 @@ export function mapColumnTo({ table, column } = {}) {
 }
 
 export function setModelMetadata(modelId, callback) {
-  return cy.request("GET", `/api/card/${modelId}`).then(response => {
+  return cy.request("GET", `/api/card/${modelId}`).then((response) => {
     const { result_metadata } = response.body;
     return cy.request("PUT", `/api/card/${modelId}`, {
       result_metadata: result_metadata.map(callback),

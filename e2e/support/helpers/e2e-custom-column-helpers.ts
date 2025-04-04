@@ -13,6 +13,7 @@ export function enterCustomColumnDetails({
   formula,
   name,
   blur = true,
+  format = false,
   allowFastSet = false,
 }: {
   formula: string;
@@ -26,6 +27,12 @@ export function enterCustomColumnDetails({
    * true by default. However, if you need to examine the popover in the test, it should be set to false so the popover is not dismissed.
    */
   blur?: boolean;
+
+  /**
+   * false by default. If set to true, the formula will be formatted
+   * after being typed.
+   */
+  format?: boolean;
 
   /**
    *   Because CodeMirror uses a contenteditable div, and it is not possible to use cy.type() on it, we emulate .type with realPress.
@@ -43,19 +50,20 @@ export function enterCustomColumnDetails({
     CustomExpressionEditor.blur();
   }
 
+  if (format) {
+    CustomExpressionEditor.format();
+  }
+
   if (name) {
-    cy.findByPlaceholderText("Something nice and descriptive")
-      .clear()
-      .type(name)
-      .blur();
+    cy.findByTestId("expression-name").clear().type(name).blur();
   }
 }
 
 export function checkExpressionEditorHelperPopoverPosition() {
-  expressionEditorTextfield().then($target => {
+  expressionEditorTextfield().then(($target) => {
     const textfieldPosition = $target[0].getBoundingClientRect();
 
-    cy.findByTestId("expression-helper-popover").then($target => {
+    cy.findByTestId("expression-helper-popover").then(($target) => {
       const popoverPosition = $target[0].getBoundingClientRect();
 
       expect(textfieldPosition.top - popoverPosition.top).to.be.lessThan(
@@ -87,9 +95,11 @@ export const CustomExpressionEditor = {
     {
       allowFastSet = false,
       focus = true,
+      delay = 0,
     }: {
       focus?: boolean;
       allowFastSet?: boolean;
+      delay?: number;
     } = {},
   ) {
     if (focus) {
@@ -107,7 +117,8 @@ export const CustomExpressionEditor = {
 
     const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
-    parts.forEach(part => {
+    parts.forEach((part) => {
+      cy.wait(delay);
       switch (part.toLowerCase()) {
         case "":
           return;
@@ -171,14 +182,14 @@ export const CustomExpressionEditor = {
       const unexpanded = part.replaceAll(/→/g, "->");
 
       const alphabet =
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789^[]()-,.;_!@#$%&*+=/<>\" ':;\\";
-      if (unexpanded.split("").some(char => !alphabet.includes(char))) {
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789^[]()-,.;_!@#$%&*+=/<>\" ':;\\\n";
+      if (unexpanded.split("").some((char) => !alphabet.includes(char))) {
         throw new Error(
           `unknown character in CustomExpressionEditor.type in ${part}`,
         );
       }
 
-      cy.realType(unexpanded);
+      cy.realType(unexpanded, { delay });
     });
     return CustomExpressionEditor;
   },
@@ -188,7 +199,14 @@ export const CustomExpressionEditor = {
   },
   blur() {
     // click outside the expression editor
-    cy.get("label[for='expression-content']").click();
+    cy.findByTestId("expression-editor").click("bottomRight", { force: true });
+    return CustomExpressionEditor;
+  },
+  formatButton() {
+    return cy.findByLabelText("Auto-format");
+  },
+  format() {
+    CustomExpressionEditor.formatButton().click();
     return CustomExpressionEditor;
   },
   selectAll() {
@@ -205,7 +223,21 @@ export const CustomExpressionEditor = {
     return CustomExpressionEditor.get().get("[role='textbox']");
   },
   value() {
-    return CustomExpressionEditor.textbox().invoke("text");
+    // Get the multiline text content of the editor
+    return CustomExpressionEditor.textbox()
+      .get(".cm-line")
+      .then((lines) => {
+        const text: string[] = [];
+        lines.each((_, line) => {
+          text.push(line.textContent ?? "");
+        });
+        const value = text.join("\n");
+        const placeholder = "Type your expression, press '[' for columns…";
+        if (value === placeholder) {
+          return "";
+        }
+        return value;
+      });
   },
   completions() {
     return cy.findByTestId("custom-expression-editor-suggestions");
@@ -237,7 +269,7 @@ export const CustomExpressionEditor = {
     return cy.findByTestId("expression-helper");
   },
   paste(content: string) {
-    CustomExpressionEditor.textbox().then(el => {
+    CustomExpressionEditor.textbox().then((el) => {
       const clipboardData = new DataTransfer();
       clipboardData.setData("text/plain", content);
 
@@ -249,5 +281,11 @@ export const CustomExpressionEditor = {
 
       el[0].dispatchEvent(pasteEvent);
     });
+  },
+  nameInput() {
+    return cy.findByTestId("expression-name");
+  },
+  functionBrowser() {
+    return cy.findByTestId("expression-editor-function-browser");
   },
 };
