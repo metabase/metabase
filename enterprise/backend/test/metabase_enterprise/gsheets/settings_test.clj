@@ -2,7 +2,15 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.gsheets.settings :as gsettings]
-   [metabase.models.setting :as setting]))
+   [metabase.models.setting :as setting]
+   [toucan2.core :as t2]))
+
+(defmacro with-sample-db-as-dwh [& body]
+  "We need an attached dwh for these tests, so let's have the sample db fill in for us:"
+  `(try
+     (t2/update! :model/Database :id 1 {:is_attached_dwh true})
+     ~@body
+     (finally (t2/update! :model/Database :id 1 {:is_attached_dwh false}))))
 
 (deftest migrate-gsheet-value
   (let [test-uuid (str (random-uuid))
@@ -12,7 +20,8 @@
         (let [current-format {:url            "https://example.com"
                               :created-at     1234567890
                               :created-by-id  1
-                              :gdrive/conn-id test-uuid}]
+                              :gdrive/conn-id test-uuid
+                              :db-id          2}]
           (is (= current-format
                  (#'gsettings/migrate-gsheet-value current-format)))
           (is (= nil @value-updated)))
@@ -30,7 +39,8 @@
         (let [expected-value {:url            "https://example.com"
                               :created-at     1234567890
                               :gdrive/conn-id test-uuid
-                              :created-by-id  1}]
+                              :created-by-id  1
+                              :db-id          3}]
           (is (= expected-value
                  (#'gsettings/migrate-gsheet-value
                   {:status             "loading"
@@ -44,12 +54,27 @@
         (let [expected-value {:url            "https://example.com"
                               :created-at     1234567890
                               :gdrive/conn-id test-uuid
-                              :created-by-id  1}]
+                              :created-by-id  1
+                              :db-id          3}]
           (is (= expected-value
                  (#'gsettings/migrate-gsheet-value
                   {:status             "complete"
                    :folder_url         "https://example.com"
                    :folder-upload-time 1234567890
                    :gdrive/conn-id     test-uuid
-                   :created-by-id      1})))
-          (is (= expected-value @value-updated)))))))
+                   :created-by-id      1
+                   :db-id              3})))
+          (is (= expected-value @value-updated))))
+      (testing "missing db-id gets added"
+        (with-sample-db-as-dwh
+          (let [expected-value {:url            "https://example.com"
+                                :created-at     1234567890
+                                :gdrive/conn-id test-uuid
+                                :created-by-id  1
+                                :db-id          1}]
+            (is (= expected-value
+                   (#'gsettings/migrate-gsheet-value
+                    {:url            "https://example.com"
+                     :created-at     1234567890
+                     :gdrive/conn-id test-uuid
+                     :created-by-id  1})))))))))

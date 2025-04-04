@@ -208,30 +208,39 @@
   "Returns the data in the setting which should be returned in API responses, correctly formatted"
   [setting]
   {:url           (:url setting)
-   :created_at    (:created-by-id setting)
-   :created_by_id (:created-by-id setting)})
+   :created_at    (:created-at setting)
+   :created_by_id (:created-by-id setting)
+   :db_id         (:db-id setting)})
 
-(api.macros/defendpoint :post "/folder" :- :gsheets/gsheets-response
+(api.macros/defendpoint :post "/folder" :- :gsheets/response
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
-  (let [[status response] (hm-create-gdrive-conn! url)
-        created-at (seconds-from-epoch-now)
-        created-by-id api/*current-user-id*]
-    (if (= status :ok)
-      (u/prog1 {:status          "syncing"
-                :url             url
-                :created_at      created-at
-                :created_by_id   created-by-id
-                :sync_started_at created-at}
-        (gsheets! {:url            url
-                   :created-at     created-at
-                   :gdrive/conn-id (-> response :body :id)
-                   :created-by-id  created-by-id})
-        (analytics/inc! :metabase-gsheets/connection-creation-began))
-      (do
-        (reset-gsheets-status!)
-        (error-response-in-body
-         (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions."))))))
+  (let [attached-dwh (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
+    (when-not (some? attached-dwh)
+      (snowplow/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
+      (reset-gsheets-status!)
+      (error-response-in-body (tru "No attached dwh found.")))
+
+    (let [[status response] (hm-create-gdrive-conn! url)
+          created-at (seconds-from-epoch-now)
+          created-by-id api/*current-user-id*]
+      (if (= status :ok)
+        (u/prog1 {:status          "syncing"
+                  :url             url
+                  :created_at      created-at
+                  :created_by_id   created-by-id
+                  :sync_started_at created-at
+                  :db_id           attached-dwh}
+          (gsheets! {:url            url
+                     :created-at     created-at
+                     :gdrive/conn-id (-> response :body :id)
+                     :created-by-id  created-by-id
+                     :db-id          attached-dwh})
+          (analytics/inc! :metabase-gsheets/connection-creation-began))
+        (do
+          (reset-gsheets-status!)
+          (error-response-in-body
+           (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions.")))))))
 
 (defn- gsheets-safe
   "Return the gsheets setting, or fetch it from the db if it's not in the cache."
@@ -242,11 +251,11 @@
                   :value
                   json/decode+kw))))
 
-(defn- handle-get-folder [attached-dwh]
+(defn- handle-get-folder []
   (let [saved-setting (gsheets-safe)
         conn-id (:gdrive/conn-id saved-setting)
         hm-response (if (empty? saved-setting)
-                      nil
+                      [:error nil]
                       (try (hm-get-gdrive-conn conn-id)
                            (catch Exception _
                              (reset-gsheets-status!)
@@ -257,26 +266,25 @@
     (if (= :ok hm-status)
       (let [{:keys [status last-sync-at last-sync-started-at]
              :as   _} (normalize-gdrive-conn hm-body)]
-        (-> (cond
-              (= "error" status)
-              (do
-                (reset-gsheets-status!)
-                (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
-                (error-response-in-body (tru "Problem syncing google drive folder, please recreate the connection.")))
+        (cond
+          (= "error" status)
+          (do
+            (reset-gsheets-status!)
+            (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
+            (error-response-in-body (tru "Problem syncing google drive folder, please recreate the connection.")))
 
-              (= "active" status)
-              (assoc (setting->response saved-setting)
-                     :status "active"
-                     :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
-                     :next_sync_at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15))))
+          (= "active" status)
+          (assoc (setting->response saved-setting)
+                 :status "active"
+                 :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
+                 :next_sync_at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15))))
 
-              (or (= "syncing" status) (= "initializing" status))
-              (assoc (setting->response saved-setting)
-                     :status "syncing"
-                     :sync_started_at (.getEpochSecond ^Instant (t/instant (or last-sync-started-at (t/instant)))))
+          (or (= "syncing" status) (= "initializing" status))
+          (assoc (setting->response saved-setting)
+                 :status "syncing"
+                 :sync_started_at (.getEpochSecond ^Instant (t/instant (or last-sync-started-at (t/instant)))))
 
-              :else (throw (ex-info "Unexpected status" {:status status})))
-            (assoc :db_id (:id attached-dwh))))
+          :else (throw (ex-info "Unexpected status" {:status status}))))
       (if (empty? saved-setting)
         {:status "not-connected"}
         (do
@@ -285,18 +293,13 @@
            (tru "Unable to find google drive connection.")
            {:status-code 404}))))))
 
-(api.macros/defendpoint :get "/folder" :- :gsheets/gsheets-response
+(api.macros/defendpoint :get "/folder" :- :gsheets/response
   "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
   stop showing the setup widget.
 
   Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
-  [] :- :gsheets/gsheets-response
-  (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
-    (when-not (some? attached-dwh)
-      (snowplow/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
-      (reset-gsheets-status!)
-      (error-response-in-body (tru "No attached dwh found.")))
-    (handle-get-folder attached-dwh)))
+  [] :- :gsheets/response
+  (handle-get-folder))
 
 (mu/defn- hm-sync-conn! :- :hm-client/http-reply
   "Sync a (presumably a gdrive) connection on HM."
@@ -316,7 +319,7 @@
       (do
         (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync"})
         (analytics/inc! :metabase-gsheets/connection-manually-synced)
-        (hm-sync-conn! (:conn-id sheet-config))
+        (hm-sync-conn! (:gdrive/conn-id sheet-config))
         (assoc (setting->response sheet-config)
                :status "syncing"
                :sync_started_at (seconds-from-epoch-now))))))
