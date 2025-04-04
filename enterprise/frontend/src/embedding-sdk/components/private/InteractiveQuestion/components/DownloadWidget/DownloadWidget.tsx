@@ -9,6 +9,7 @@ import { useInteractiveQuestionContext } from "../../context";
 
 // TODO: Add props for formatting, file type, etc
 /**
+ * @category InteractiveQuestion
  * @remarks
  * Uses [Mantine Stack props](https://v7.mantine.dev/core/stack/?t=props) under the hood
  */

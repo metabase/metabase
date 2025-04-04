@@ -33,6 +33,9 @@ import {
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/components/public/InteractiveQuestion/types";
 
+/**
+ * @hidden
+ */
 export type BaseInteractiveQuestionProps =
   InteractiveQuestionQuestionIdProps & {
     /**
@@ -53,7 +56,7 @@ export type BaseInteractiveQuestionProps =
 
 /**
  * @interface
- * @group InteractiveQuestion
+ * @category InteractiveQuestion
  */
 export type InteractiveQuestionProps = BaseInteractiveQuestionProps &
   InteractiveQuestionDefaultViewProps;
@@ -106,7 +109,7 @@ export const _InteractiveQuestion = ({
  * A component that renders an interactive question.
  *
  * @function
- * @group InteractiveQuestion
+ * @category InteractiveQuestion
  * @param props
  */
 const InteractiveQuestion = withPublicComponentWrapper(

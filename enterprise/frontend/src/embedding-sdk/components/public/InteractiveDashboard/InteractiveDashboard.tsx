@@ -31,6 +31,7 @@ import { InteractiveDashboardProvider } from "./context";
 
 /**
  * @interface
+ * @category InteractiveDashboard
  */
 export type InteractiveDashboardProps = {
   /**
@@ -189,6 +190,7 @@ const InteractiveDashboardInner = ({
  * A dashboard component with drill downs, click behaviors, and the ability to view and click into questions.
  *
  * @function
+ * @category InteractiveDashboard
  */
 export const InteractiveDashboard = renderOnlyInSdkProvider(
   InteractiveDashboardInner,

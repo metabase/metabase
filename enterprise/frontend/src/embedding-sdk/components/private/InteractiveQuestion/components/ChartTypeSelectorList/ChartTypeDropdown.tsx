@@ -13,6 +13,7 @@ import ToolbarButtonS from "../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../util/ToolbarButton";
 
 /**
+ * @category InteractiveQuestion
  * @remarks
  * Uses [Mantine Menu props](https://v7.mantine.dev/core/menu/?t=props) under the hood
  */

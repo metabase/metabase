@@ -18,6 +18,7 @@ export interface CreateDashboardValues
  * Creates a dashboard
  *
  * @function
+ * @category CreateDashboardModal
  */
 export const useCreateDashboardApi = () => {
   const store = useSdkStore();

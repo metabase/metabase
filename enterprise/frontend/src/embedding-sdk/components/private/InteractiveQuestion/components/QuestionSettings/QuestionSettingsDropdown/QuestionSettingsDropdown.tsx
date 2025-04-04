@@ -9,6 +9,7 @@ import { ToolbarButton } from "../../util/ToolbarButton";
 
 /**
  * @interface
+ * @category InteractiveQuestion
  * @remarks
  * Uses [Popover props](https://v7.mantine.dev/core/popover/?t=props) under the hood
  */

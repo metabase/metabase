@@ -16,6 +16,7 @@ import { BreakoutPicker } from "../BreakoutPicker";
 import { type SDKBreakoutItem, useBreakoutData } from "../use-breakout-data";
 
 /**
+ * @category InteractiveQuestion
  * @remarks
  * Uses [Mantine Popover props](https://v7.mantine.dev/core/popover/) under the hood
  */

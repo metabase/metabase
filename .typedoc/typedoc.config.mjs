@@ -131,12 +131,7 @@ const config = {
     notDocumented: false,
     unusedMergeModuleWith: true,
   },
-  externalSymbolLinkMappings: {
-    "external-lib": {
-      SomeObject: "https://external-lib.site/docs/SomeObject",
-      "*": "https://external-lib.site/docs",
-    },
-  },
+  defaultCategory: "misc",
 };
 
 export default config;

@@ -4,6 +4,7 @@ import type { CommonElementProps } from "embedding-sdk/types/props";
 
 /**
  * @interface
+ * @category InteractiveQuestion
  */
 export type InteractiveQuestionTitleProps = CommonElementProps;
 

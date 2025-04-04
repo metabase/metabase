@@ -10,6 +10,7 @@ import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/
 
 /**
  * @interface
+ * @category StaticQuestion
  */
 export type StaticQuestionProps = InteractiveQuestionQuestionIdProps & {
   withChartTypeSelector?: boolean;
@@ -44,5 +45,6 @@ const StaticQuestionInner = ({
  * A component that renders a static question.
  *
  * @function
+ * @category StaticQuestion
  */
 export const StaticQuestion = withPublicComponentWrapper(StaticQuestionInner);

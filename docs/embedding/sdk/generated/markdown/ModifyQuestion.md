@@ -4,9 +4,9 @@ function ModifyQuestion(props: BaseInteractiveQuestionProps): Element;
 
 ## Parameters
 
-| Parameter | Type                                                              | Description |
-| --------- | ----------------------------------------------------------------- | ----------- |
-| `props`   | [`BaseInteractiveQuestionProps`](BaseInteractiveQuestionProps.md) |             |
+| Parameter | Type                           | Description |
+| --------- | ------------------------------ | ----------- |
+| `props`   | `BaseInteractiveQuestionProps` |             |
 
 ## Returns
 

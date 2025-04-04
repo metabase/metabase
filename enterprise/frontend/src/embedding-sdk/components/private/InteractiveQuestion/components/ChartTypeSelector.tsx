@@ -6,6 +6,7 @@ import type { StackProps } from "metabase/ui";
 import { useSensibleVisualizations } from "../hooks/use-sensible-visualizations";
 
 /**
+ * @category InteractiveQuestion
  * @remarks
  * Uses [Mantine Stack props](https://v7.mantine.dev/core/stack/?t=props) under the hood
  */

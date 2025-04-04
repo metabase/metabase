@@ -11,6 +11,9 @@ import Collections from "metabase/entities/collections";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+/**
+ * @category CreateDashboardModal
+ */
 export interface CreateDashboardModalProps {
   /**
    * Initial collection in which to create a dashboard. You can use predefined system values like `root` or `personal`.
@@ -69,6 +72,7 @@ const CreateDashboardModalCoreWithLoading = _.compose(
  * Creates a dashboard
  *
  * @function
+ * @category CreateDashboardModal
  */
 export const CreateDashboardModal = withPublicComponentWrapper(
   CreateDashboardModalInner,

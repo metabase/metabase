@@ -6,6 +6,7 @@ import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
  * @deprecated Use `InteractiveQuestion` with `isSaveEnabled={true}` instead.
  *
  * @function
+ * @category ModifyQuestion
  * @param props
  **/
 export const ModifyQuestion = ({

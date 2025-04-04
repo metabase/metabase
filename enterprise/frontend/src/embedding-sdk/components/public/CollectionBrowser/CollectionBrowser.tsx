@@ -55,6 +55,7 @@ const ENTITY_NAME_MAP: Partial<
 
 /**
  * @interface
+ * @category CollectionBrowser
  */
 export type CollectionBrowserProps = {
   /**
@@ -171,6 +172,7 @@ const CollectionBrowserWrapper = ({
  * A component that allows you to browse collections and their items.
  *
  * @function
+ * @category CollectionBrowser
  */
 export const CollectionBrowser = withPublicComponentWrapper(
   CollectionBrowserWrapper,

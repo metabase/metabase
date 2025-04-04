@@ -24,6 +24,7 @@ import { Box } from "metabase/ui";
 
 /**
  * @interface
+ * @category StaticDashboard
  */
 export type StaticDashboardProps = SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
@@ -97,6 +98,7 @@ export const StaticDashboardInner = ({
  * A lightweight dashboard component.
  *
  * @function
+ * @category StaticDashboard
  */
 const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
   ({ dashboardId: initialDashboardId, ...rest }) => {

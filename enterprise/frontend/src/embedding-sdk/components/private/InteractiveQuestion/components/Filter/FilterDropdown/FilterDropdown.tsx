@@ -16,6 +16,9 @@ import { ToolbarButton } from "../../util/ToolbarButton";
 import { FilterBadgeList } from "../FilterBadgeList";
 import { FilterPicker } from "../FilterPicker/FilterPicker";
 
+/**
+ * @category InteractiveQuestion
+ */
 export type InteractiveQuestionFilterDropdownProps = {
   /**
    * Whether to show the icon for the column item

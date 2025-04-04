@@ -40,6 +40,9 @@ import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 import "metabase/css/index.module.css";
 import "metabase/css/vendor.css";
 
+/**
+ * @category MetabaseProvider
+ */
 export interface MetabaseProviderProps
   extends Omit<CommonElementProps, "style"> {
   /**
@@ -156,6 +159,11 @@ export const MetabaseProviderInternal = ({
   );
 };
 
+/**
+ * A component that provides the Metabase SDK context and theme.
+ *
+ * @category MetabaseProvider
+ */
 export const MetabaseProvider = memo(function MetabaseProvider(
   props: MetabaseProviderProps,
 ) {

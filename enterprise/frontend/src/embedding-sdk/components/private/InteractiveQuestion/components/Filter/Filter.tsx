@@ -8,6 +8,9 @@ import { AddBadgeListItem } from "../util/BadgeList/AddBadgeListItem";
 import { DropdownFilterBadgeList } from "./DropdownFilterBadgeList";
 import { FilterPicker } from "./FilterPicker";
 
+/**
+ * @category InteractiveQuestion
+ */
 export type InteractiveQuestionFilterProps = {
   /**
    * Whether to show the icon for the column item

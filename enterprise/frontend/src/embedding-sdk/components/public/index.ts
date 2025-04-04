@@ -37,6 +37,7 @@ export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
  * Defines a Metabase auth config.
  *
  * @function
+ * @category MetabaseProvider
  */
 export const defineMetabaseAuthConfig = (
   config: MetabaseAuthConfig,

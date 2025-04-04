@@ -8,9 +8,9 @@ function CreateQuestion(
 
 ## Parameters
 
-| Parameter | Type                                                                                                                     |
-| --------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `props`?  | `Partial`\<`Omit`\<[`BaseInteractiveQuestionProps`](BaseInteractiveQuestionProps.md), `"questionId"` \| `"children"`\>\> |
+| Parameter | Type                                                                                  |
+| --------- | ------------------------------------------------------------------------------------- |
+| `props`?  | `Partial`\<`Omit`\<`BaseInteractiveQuestionProps`, `"questionId"` \| `"children"`\>\> |
 
 ## Returns
 

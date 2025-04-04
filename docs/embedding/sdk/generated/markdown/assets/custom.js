@@ -3,7 +3,7 @@ const SECTIONS_TO_HIDE = ["Modules"];
 /**
  * Hides a section with the given name
  */
-const hideSection = sectionName => {
+const hideSection = (sectionName) => {
   const summarySelector = `.tsd-accordion-summary[data-key="section-${sectionName}"]`;
   const sectionsToHide = document.querySelectorAll(
     `
@@ -12,7 +12,7 @@ const hideSection = sectionName => {
     `,
   );
 
-  sectionsToHide.forEach(section => {
+  sectionsToHide.forEach((section) => {
     section.remove();
   });
 };
@@ -38,18 +38,40 @@ const adjustInternalMenuItems = () => {
     internalModuleItem.remove();
   }
 
-  const internalItemsToHide = document.querySelectorAll(
+  const nestedNavigationInternalItemsToHide = document.querySelectorAll(
     ".tsd-accordion .tsd-nested-navigation > li:not(:has(a.current))",
   );
+  const pageNavigationInternalItemsToHide = document.querySelectorAll(
+    ".tsd-accordion .tsd-page-navigation-section > div > a[href='#internal']",
+  );
 
-  internalItemsToHide.forEach(item => {
+  [
+    ...nestedNavigationInternalItemsToHide,
+    ...pageNavigationInternalItemsToHide,
+  ].forEach((item) => {
     item.remove();
   });
+};
+
+/**
+ * Removes the "internal" item from the `misc` category
+ */
+const adjustInternalCategoryItem = () => {
+  const internalCategoryItem = document.querySelector(
+    ".tsd-member-summaries > #internal",
+  );
+
+  if (!internalCategoryItem) {
+    return;
+  }
+
+  internalCategoryItem.remove();
 };
 
 const adjustPage = () => {
   SECTIONS_TO_HIDE.forEach(hideSection);
   adjustInternalMenuItems();
+  adjustInternalCategoryItem();
 };
 
 const observer = new MutationObserver(adjustPage);
