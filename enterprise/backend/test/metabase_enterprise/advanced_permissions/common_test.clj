@@ -20,7 +20,7 @@
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :scheduler :test-users))
 
 (deftest current-user-test
   (testing "GET /api/user/current returns additional fields if advanced-permissions is enabled"

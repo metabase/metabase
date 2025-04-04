@@ -18,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 ;; make sure we attempt to reschedule tasks so changes made in source are propogated to JDBC backend
 

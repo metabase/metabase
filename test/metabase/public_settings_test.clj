@@ -11,7 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (deftest site-url-settings
   (testing "double-check that setting the `site-url` setting will automatically strip off trailing slashes"

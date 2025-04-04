@@ -11,7 +11,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (defn- query-results->header+rows
   "Makes pulse header and data rows with no bar-width. Including bar-width just adds extra HTML that will be ignored."

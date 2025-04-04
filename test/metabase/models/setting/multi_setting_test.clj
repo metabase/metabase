@@ -5,7 +5,7 @@
    [metabase.models.setting.multi-setting :as multi-setting]
    [metabase.test.fixtures :as fixtures]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (def ^:dynamic ^:private *parakeet* :green-friend)
 

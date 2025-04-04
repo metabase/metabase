@@ -8,7 +8,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db :test-users :web-server))
+(use-fixtures :once (fixtures/initialize :db :scheduler :test-users :web-server))
 
 (def ^:private rasta-revision-info
   (delay

@@ -10,7 +10,7 @@
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (deftest audit-max-retention-days-test
   (mt/with-temp-env-var-value! [mb-audit-max-retention-days nil]

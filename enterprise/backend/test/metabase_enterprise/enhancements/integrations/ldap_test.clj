@@ -11,7 +11,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :scheduler :test-users))
 
 (deftest find-test
   (mt/with-premium-features #{:sso-ldap}
