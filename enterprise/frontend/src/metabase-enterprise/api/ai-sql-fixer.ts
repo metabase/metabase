@@ -6,9 +6,9 @@ import type {
 import { EnterpriseApi } from "./api";
 
 export const aiSqlFixerApi = EnterpriseApi.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getFixedSqlQuery: builder.query<FixSqlQueryResponse, FixSqlQueryRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/ee/ai-sql-fixer/fix",
         body,

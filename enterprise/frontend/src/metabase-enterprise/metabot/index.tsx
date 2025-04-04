@@ -35,7 +35,7 @@ if (hasPremiumFeature("metabot_v3")) {
           section: "metabot",
           keywords: searchText,
           icon: "metabot",
-          perform: _currentActionImpl => {
+          perform: (_currentActionImpl) => {
             setVisible(true);
             if (searchText) {
               submitInput(searchText);
@@ -49,7 +49,7 @@ if (hasPremiumFeature("metabot_v3")) {
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 
-  PLUGIN_GO_MENU.getMenuItems = dispatch => [
+  PLUGIN_GO_MENU.getMenuItems = (dispatch) => [
     {
       title: (
         <Flex align="center" justify="space-between" gap="md">

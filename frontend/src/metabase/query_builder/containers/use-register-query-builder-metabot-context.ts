@@ -3,7 +3,7 @@ import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { getQuestion } from "../selectors";
 
 export const useRegisterQueryBuilderMetabotContext = () => {
-  useRegisterMetabotContextProvider(state => {
+  useRegisterMetabotContextProvider((state) => {
     const question = getQuestion(state);
     if (!question) {
       return {};

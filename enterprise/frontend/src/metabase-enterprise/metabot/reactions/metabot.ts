@@ -9,15 +9,17 @@ import { sendWritebackMessageRequest } from "../state";
 
 import type { ReactionHandler } from "./types";
 
-export const writeBack: ReactionHandler<
-  MetabotWriteBackReaction
-> = reaction => {
+export const writeBack: ReactionHandler<MetabotWriteBackReaction> = (
+  reaction,
+) => {
   return async ({ dispatch }) => {
     await dispatch(sendWritebackMessageRequest(reaction.message));
   };
 };
 
-export const redirect: ReactionHandler<MetabotRedirectReaction> = reaction => {
+export const redirect: ReactionHandler<MetabotRedirectReaction> = (
+  reaction,
+) => {
   const redirectUrl = new URL(`${window.location.origin}${reaction.url}`);
 
   return async ({ dispatch }) => {

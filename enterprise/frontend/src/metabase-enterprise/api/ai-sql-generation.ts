@@ -6,12 +6,12 @@ import type {
 import { EnterpriseApi } from "./api";
 
 export const aiSqlGenerationApi = EnterpriseApi.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     generateSqlQuery: builder.mutation<
       GenerateSqlQueryResponse,
       GenerateSqlQueryRequest
     >({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/ee/ai-sql-generation/generate",
         body,

@@ -7,9 +7,9 @@ import { addUserMessage, setConfirmationOptions } from "../state";
 
 import type { ReactionHandler } from "./types";
 
-export const showMessage: ReactionHandler<
-  MetabotMessageReaction
-> = reaction => {
+export const showMessage: ReactionHandler<MetabotMessageReaction> = (
+  reaction,
+) => {
   return ({ dispatch }) => {
     dispatch(addUserMessage(reaction.message));
   };
@@ -17,7 +17,7 @@ export const showMessage: ReactionHandler<
 
 export const requireUserConfirmation: ReactionHandler<
   MetabotConfirmationReaction
-> = reaction => {
+> = (reaction) => {
   return ({ dispatch }) => {
     dispatch(addUserMessage(reaction.description));
     dispatch(setConfirmationOptions(reaction.options));

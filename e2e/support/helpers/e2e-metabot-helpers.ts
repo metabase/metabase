@@ -71,7 +71,7 @@ export function userMessages() {
 
 export const mockMetabotResponse = (response: StaticResponse) => {
   return cy
-    .intercept("POST", "/api/ee/metabot-v3/agent", req => {
+    .intercept("POST", "/api/ee/metabot-v3/agent", (req) => {
       req.reply(response);
     })
     .as("metabotAgent");

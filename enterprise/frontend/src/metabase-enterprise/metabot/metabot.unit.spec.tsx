@@ -249,7 +249,7 @@ describe("metabot", () => {
       // suppress expected console error
       const consoleErrorSpy = jest
         .spyOn(console, "error")
-        .mockImplementation(message => {
+        .mockImplementation((message) => {
           if (
             message ===
             "Metabot can not be opened while there is no signed in user"
