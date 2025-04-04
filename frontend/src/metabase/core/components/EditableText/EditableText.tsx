@@ -11,7 +11,6 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 
 import Markdown from "metabase/core/components/Markdown";
-import { MaybeTranslationCannotBeEditedHoverCard } from "metabase/i18n/MaybeTranslationCannotBeEditedHoverCard";
 import { Box } from "metabase/ui";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
@@ -23,7 +22,6 @@ export type EditableTextAttributes = Omit<
 
 export interface EditableTextProps extends EditableTextAttributes {
   initialValue?: string | null;
-  isLocalized?: boolean;
   placeholder?: string;
   maxLength?: number;
   isEditing?: boolean;
@@ -40,7 +38,6 @@ export interface EditableTextProps extends EditableTextAttributes {
 const EditableText = forwardRef(function EditableText(
   {
     initialValue,
-    isLocalized = false,
     placeholder,
     maxLength,
     isEditing = false,
@@ -59,8 +56,7 @@ const EditableText = forwardRef(function EditableText(
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const [submitValue, setSubmitValue] = useState(initialValue ?? "");
   const [isInFocus, setIsInFocus] = useState(isEditing);
-  const displayValue = initialValue || placeholder || "";
-
+  const displayValue = inputValue ? inputValue : placeholder;
   const submitOnBlur = useRef(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const previousInitialValue = usePrevious(initialValue);
@@ -128,65 +124,51 @@ const EditableText = forwardRef(function EditableText(
   };
 
   const shouldShowMarkdown = isMarkdown && !isInFocus && inputValue;
-  // NOTE: Idea: have the EditableText show a warning when editing a localized
-  // value, "You are about to edit the untranslated string. To edit the
-  // translated string, contact your administrator."
-
-  // For now, disable editing of localized values
-  if (isLocalized) {
-    isDisabled = true;
-  }
 
   return (
-    <MaybeTranslationCannotBeEditedHoverCard isLocalized={isLocalized}>
-      <Box
-        component={EditableTextRoot}
-        onClick={isMarkdown ? handleRootElementClick : undefined}
-        {...props}
-        ref={ref}
-        isEditing={isEditing}
-        isDisabled={isDisabled}
-        isEditingMarkdown={!shouldShowMarkdown}
-        data-value={`${displayValue}\u00A0`}
-        data-testid="editable-text"
-        tabIndex={0}
-        // For a11y, allow typing to activate the textarea
-        onKeyDown={(e: React.KeyboardEvent) => {
-          if (shouldPassKeyToTextarea(e.key)) {
-            (e.currentTarget as HTMLTextAreaElement).click();
-          }
-        }}
-        onKeyUp={(e: React.KeyboardEvent) => {
-          if (!shouldPassKeyToTextarea(e.key)) {
-            (e.currentTarget as HTMLTextAreaElement).click();
-          }
-        }}
-        lh={1.57}
-      >
-        {shouldShowMarkdown ? (
-          <Markdown>{inputValue}</Markdown>
-        ) : (
-          <EditableTextArea
-            ref={inputRef}
-            value={
-              inputRef.current === document.activeElement
-                ? inputValue
-                : displayValue
-            }
-            placeholder={placeholder}
-            maxLength={maxLength}
-            disabled={isDisabled}
-            data-testid={dataTestId}
-            onFocus={onFocus}
-            onBlur={handleBlur}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            // This is used to stop sidesheets from closing when escape is pressed
-            data-mantine-stop-propagation
-          />
-        )}
-      </Box>
-    </MaybeTranslationCannotBeEditedHoverCard>
+    <Box
+      component={EditableTextRoot}
+      onClick={isMarkdown ? handleRootElementClick : undefined}
+      {...props}
+      ref={ref}
+      isEditing={isEditing}
+      isDisabled={isDisabled}
+      isEditingMarkdown={!shouldShowMarkdown}
+      data-value={`${displayValue}\u00A0`}
+      data-testid="editable-text"
+      tabIndex={0}
+      // For a11y, allow typing to activate the textarea
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (shouldPassKeyToTextarea(e.key)) {
+          (e.currentTarget as HTMLTextAreaElement).click();
+        }
+      }}
+      onKeyUp={(e: React.KeyboardEvent) => {
+        if (!shouldPassKeyToTextarea(e.key)) {
+          (e.currentTarget as HTMLTextAreaElement).click();
+        }
+      }}
+      lh={1.57}
+    >
+      {shouldShowMarkdown ? (
+        <Markdown>{inputValue}</Markdown>
+      ) : (
+        <EditableTextArea
+          ref={inputRef}
+          value={inputValue}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          disabled={isDisabled}
+          data-testid={dataTestId}
+          onFocus={onFocus}
+          onBlur={handleBlur}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          // This is used to stop sidesheets from closing when escape is pressed
+          data-mantine-stop-propagation
+        />
+      )}
+    </Box>
   );
 });
 
