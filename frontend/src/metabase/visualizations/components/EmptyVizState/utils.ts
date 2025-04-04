@@ -22,8 +22,11 @@ import type { CardDisplayType } from "metabase-types/api";
  * The "table" and the "object" (detail) charts can always display the data
  * using the raw table alone, so they don't need an empty state.
  */
-type ExcludedDisplayTypes = "table" | "object";
-type SupportedDisplayType = Exclude<CardDisplayType, ExcludedDisplayTypes>;
+export type ExcludedEmptyVizDisplayTypes = "table" | "object";
+type SupportedDisplayType = Exclude<
+  CardDisplayType,
+  ExcludedEmptyVizDisplayTypes
+>;
 
 type EmptyVizConfig = {
   imgSrc: string;

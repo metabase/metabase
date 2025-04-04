@@ -51,7 +51,7 @@ export const EmptyVizState = ({
     onEditSummary();
   };
 
-  if (!chartType) {
+  if (!isValidChartType) {
     return null;
   }
 
@@ -59,7 +59,14 @@ export const EmptyVizState = ({
   const isSummarizeCTA = !isDocsCTA;
 
   return (
-    <Flex w="100%" h="100%" direction="column" align="center" justify="center">
+    <Flex
+      w="100%"
+      h="100%"
+      direction="column"
+      align="center"
+      justify="center"
+      data-testid="visualization-placeholder"
+    >
       <Box maw="20rem" mb="3rem">
         <img
           src={imgSrc}
