@@ -10,7 +10,8 @@ import Fields from "metabase/entities/fields";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
-import { Button, Icon } from "metabase/ui";
+import { Button, Icon, Text } from "metabase/ui";
+import { getThemeOverrides } from "metabase/ui/theme";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
@@ -148,23 +149,17 @@ const MetadataTableColumn = ({
   );
 };
 
-const Label = ({ children = " " }: { children?: ReactNode }) => (
-  <div className={cx(CS.textMonospace, CS.mb1)} style={{ fontSize: "12px" }}>
-    {children}
-  </div>
-);
+const Label = ({ children }: { children: ReactNode }) => {
+  const { fontFamilyMonospace } = getThemeOverrides();
 
-const LabelPlaceholder = () => (
-  <div
-    className={cx(CS.textMonospace, CS.mb1)}
-    style={{
-      minHeight: "1em",
-      fontSize: "12px",
-    }}
-  >
-    &nbsp;
-  </div>
-);
+  return (
+    <Text ff={fontFamilyMonospace} mb="xs" mih="1em" size="sm">
+      {children}
+    </Text>
+  );
+};
+
+const LabelPlaceholder = () => <Label>&nbsp;</Label>;
 
 export const getFieldRawName = (field: Field) => {
   return field.nfc_path ? field.nfc_path.join(".") : field.name;
