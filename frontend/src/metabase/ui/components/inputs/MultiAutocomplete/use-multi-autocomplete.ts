@@ -122,7 +122,15 @@ export function useMultiAutocomplete({
     });
   };
 
-  const handlePillClick = (valueIndex: number) => {
+  const handleFieldClick = (event: MouseEvent<HTMLInputElement>) => {
+    event.stopPropagation();
+  };
+
+  const handlePillClick = (
+    event: MouseEvent<HTMLDivElement>,
+    valueIndex: number,
+  ) => {
+    event.stopPropagation();
     setFieldState({
       fieldValue: escapeCsv(values[valueIndex]),
       fieldSelection: { index: valueIndex, length: 1 },
@@ -139,8 +147,12 @@ export function useMultiAutocomplete({
     });
   };
 
-  const handlePillsInputClick = (_event: MouseEvent<HTMLDivElement>) => {
+  const handlePillsInputClick = () => {
     combobox.openDropdown();
+    setFieldState({
+      fieldValue: "",
+      fieldSelection: undefined,
+    });
   };
 
   const handleOptionSubmit = (value: string) => {
@@ -176,6 +188,7 @@ export function useMultiAutocomplete({
     handleFieldKeyDown,
     handleFieldFocus,
     handleFieldBlur,
+    handleFieldClick,
     handlePillClick,
     handlePillRemoveClick,
     handlePillsInputClick,

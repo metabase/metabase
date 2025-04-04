@@ -50,6 +50,7 @@ export function MultiAutocomplete({
     handleFieldKeyDown,
     handleFieldFocus,
     handleFieldBlur,
+    handleFieldClick,
     handlePillClick,
     handlePillRemoveClick,
     handlePillsInputClick,
@@ -94,7 +95,7 @@ export function MultiAutocomplete({
                     key={valueIndex}
                     className={S.pill}
                     withRemoveButton
-                    onClick={() => handlePillClick(valueIndex)}
+                    onClick={(event) => handlePillClick(event, valueIndex)}
                     onRemove={() => handlePillRemoveClick(valueIndex)}
                   >
                     {value}
@@ -113,6 +114,7 @@ export function MultiAutocomplete({
                       onKeyDown={handleFieldKeyDown}
                       onFocus={handleFieldFocus}
                       onBlur={handleFieldBlur}
+                      onClick={handleFieldClick}
                     />
                   </Combobox.EventsTarget>
                 ),
