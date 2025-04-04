@@ -1205,9 +1205,9 @@ describe("issue 49160", () => {
       display: "pie",
     });
 
-    // Shows pie placeholder
-    H.echartsContainer().findByText("18,760").should("be.visible");
-    cy.findByTestId("qb-header-action-panel").findByText("Summarize").click();
+    cy.log("Shows an empty state that can open the summarize sidebar");
+    cy.findByAltText("pie chart example illustration").should("be.visible");
+    cy.findByLabelText("Open summarize sidebar").click();
 
     cy.findByLabelText("Rating").click();
     H.echartsContainer().findByText("200").should("be.visible");

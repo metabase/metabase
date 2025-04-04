@@ -73,38 +73,7 @@ Object.assign(Funnel, {
     }
   },
 
-  placeholderSeries: [
-    {
-      card: {
-        display: "funnel",
-        visualization_settings: {
-          "funnel.type": "funnel",
-          "funnel.dimension": "Total Sessions",
-          "funnel.metric": "Sessions",
-        },
-        dataset_query: { type: "null" },
-      },
-      data: {
-        rows: [
-          ["Homepage", 1000],
-          ["Product Page", 850],
-          ["Tiers Page", 700],
-          ["Trial Form", 200],
-          ["Trial Confirmation", 40],
-        ],
-        cols: [
-          {
-            name: "Total Sessions",
-            base_type: "type/Text",
-          },
-          {
-            name: "Sessions",
-            base_type: "type/Integer",
-          },
-        ],
-      },
-    },
-  ],
+  hasEmptyState: true,
 
   settings: {
     ...columnSettings({ hidden: true }),
