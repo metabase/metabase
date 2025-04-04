@@ -157,6 +157,73 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.get("@targetCell").click({ force: true });
     cy.location("pathname").should("eq", "/test/18/CO/Organic");
   });
+  
+  it("should maintain dashboard filter when clicking on a pivot table cell with the same value (metabase#54560)", () => {
+    const query =
+      "SELECT STATE, SOURCE, COUNT(*) AS CNT from PEOPLE GROUP BY STATE, SOURCE";
+    const questionSettings = {
+      "table.pivot": true,
+      "table.pivot_column": "SOURCE",
+      "table.cell_column": "CNT",
+    };
+    const columnKey = JSON.stringify(["name", "CNT"]);
+    const dashCardSettings = {
+      column_settings: {
+        [columnKey]: {
+          click_behavior: {
+            type: "crossfilter",
+            parameterMapping: {
+              "e8f79be9": {
+                source: {
+                  type: "column",
+                  id: "SOURCE",
+                  name: "SOURCE",
+                },
+                target: {
+                  type: "parameter",
+                  id: "e8f79be9",
+                },
+                id: "e8f79be9",
+              },
+            },
+          },
+        },
+      },
+    };
+    
+    createQuestion(
+      { query, visualization_settings: questionSettings },
+      (questionId) => {
+        createDashboard(
+          { questionId, visualization_settings: dashCardSettings },
+          (dashboardIdA) => H.visitDashboard(dashboardIdA),
+        );
+      },
+    );
+
+    // Set an initial filter value
+    setParamValue("My Param", "Organic");
+    
+    // Verify the filter is set
+    cy.findByText("My Param").parent().within(() => {
+      cy.findByText("Organic");
+    });
+    
+    // Find and click on a pivot cell with the same value that's already in the filter
+    H.tableInteractiveBody()
+      .findAllByRole("row")
+      .eq(5)
+      .findByText("18")
+      .click({ force: true });
+    
+    // Verify the filter is still set (not cleared)
+    cy.findByText("My Param").parent().within(() => {
+      cy.findByText("Organic");
+    });
+    
+    // Filter should still be applied, URL should contain the parameter
+    cy.location("search").should("include", "my_param=Organic");
+  });
 
   it("should handle question click through on a table", () => {
     createDashboardWithQuestion({}, (dashboardId) =>

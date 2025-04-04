@@ -387,6 +387,37 @@ export function formatSourceForTarget(
   const datum = data[source.type][source.id.toLowerCase()] || {};
   const parameter = getParameter(target, { extraData, clickBehavior });
 
+  // If there's no value, we shouldn't update the filter
+  if (datum.value === undefined || datum.value === null) {
+    return datum.value;
+  }
+
+  // For parameters, check if the value is the same as the current value
+  // If so, return the value (don't clear it)
+  if (target.type === "parameter" && parameter) {
+    const { slug } = parameter;
+    const currentParameterValuesBySlug = extraData?.parameterValuesBySlug || {};
+    const currentValue = currentParameterValuesBySlug[slug];
+    
+    let newValue;
+    if (parameter.type === "temporal-unit") {
+      newValue = parseParameterValue(datum.value, parameter);
+    } else if ("column" in datum && datum.column && isDate(datum.column) && typeof datum.value === "string") {
+      const sourceDateUnit = datum.column.unit || null;
+      newValue = formatDateForParameterType(datum.value, parameter.type, sourceDateUnit);
+    } else {
+      newValue = parseParameterValue(datum.value, parameter);
+    }
+
+    // If the new value matches the current value, return the current value
+    // This ensures clicking on the same value doesn't clear the filter
+    if (String(currentValue) === String(newValue)) {
+      return currentValue;
+    }
+    
+    return newValue;
+  }
+
   if (parameter?.type === "temporal-unit") {
     return parseParameterValue(datum.value, parameter);
   }
