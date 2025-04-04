@@ -40,7 +40,9 @@
             match (some #(when (re-matches re-pattern (get % :tag_name)) (get % :tag_name))
                         releases)]
         (cond
-          match (str/replace match #"v" "")
+          match (do
+                  (println (str (c/green "Found latest version of " major-version) ": " (c/cyan match)))
+                  (str/replace match #"v" ""))
           (empty? releases) nil
           :else (recur (inc page)))))))
 
