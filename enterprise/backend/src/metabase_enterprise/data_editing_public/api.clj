@@ -23,7 +23,7 @@
     (api/check-400 (seq rows) "Please supply at least one row.")
     (api/check-400 (every? seq rows) "Every row should not be empty.")
     (binding [api/*current-user-id* (:creator_id hook)]
-      (data-editing/insert! (:table_id hook) rows))))
+      {:created (count (:created-rows (data-editing/insert! (:table_id hook) rows)))})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
