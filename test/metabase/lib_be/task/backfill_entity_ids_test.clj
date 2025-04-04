@@ -4,8 +4,7 @@
    [metabase.lib-be.task.backfill-entity-ids :as backfill-entity-ids]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (defn with-sample-data!
   "Run f in a context where a specific set of 5 rows exist in the application db and every row for a given model that
@@ -51,7 +50,8 @@
   (testing "Can backfill fields"
     (with-sample-data! :model/Field
       (fn [{:keys [db-id table-id field1-id field2-id field3-id]}]
-        (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
+        (binding [backfill-entity-ids/*backfill-batch-size* 5000]
+          (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Field))
         (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Field field1-id]))))
         (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Field field2-id]))))
         (is (not (contains? (:model/Field @serdes/entity-id-cache) field3-id)))
