@@ -1,4 +1,3 @@
-import type { Query } from "history";
 import type { CSSProperties } from "react";
 import { pick } from "underscore";
 
@@ -15,7 +14,7 @@ import { isNotNull } from "metabase/lib/types";
 
 export type SdkDashboardDisplayProps = {
   dashboardId: SdkDashboardId;
-  initialParameters?: Query;
+  initialParameters?: Record<string, string>;
   withTitle?: boolean;
   withCardTitle?: boolean;
   withDownloads?: boolean;

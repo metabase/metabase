@@ -118,7 +118,6 @@ export const EditableDashboard = ({
         >
           <ConnectedDashboard
             dashboardId={dashboardId}
-            isLoading={isLoading}
             parameterQueryParams={initialParameters}
             refreshPeriod={refreshPeriod}
             onRefreshPeriodChange={onRefreshPeriodChange}

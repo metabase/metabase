@@ -37,6 +37,7 @@ import type { LinkProps } from "metabase/core/components/Link";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -608,5 +609,5 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   areDownloadsEnabled: (_args: {
     hide_download_button?: boolean | null;
     downloads?: string | boolean | null;
-  }) => ({ pdf: true, dashcard: true }),
+  }): EmbedResourceDownloadOptions => ({ pdf: true, dashcard: true }),
 };

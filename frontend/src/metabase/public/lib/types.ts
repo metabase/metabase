@@ -36,7 +36,7 @@ export type EmbeddingParametersValues = Record<string, string>;
  */
 export type EmbeddingDisplayOptions = {
   font: null | string;
-  theme: DisplayTheme;
+  theme?: DisplayTheme;
   background: boolean;
   bordered: boolean;
   titled: boolean;
