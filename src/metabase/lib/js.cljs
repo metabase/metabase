@@ -366,19 +366,11 @@
 
 (defn- display-info*
   "Inner implementation of [[display-info]], which caches this function's results. See there for documentation."
-  ([a-query stage-number x]
-   (log/info "display-info* called with" (pr-str x))
-   (-> a-query
-       (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
-       (lib.core/display-info stage-number x)
-       display-info->js))
-
-  ([a-query stage-number x translations]
-   (log/info "display-info* called with 377" (pr-str x) (pr-str translations))
-   (-> a-query
-       (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
-       (lib.core/display-info stage-number x translations)
-       display-info->js)))
+  [a-query stage-number x]
+  (-> a-query
+      (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
+      (lib.core/display-info stage-number x)
+      display-info->js))
 
 (defn ^:export display-info
   "Given an opaque CLJS value (in the context of `a-query` and `stage-number`), return a plain JS object with the info
@@ -393,21 +385,13 @@
   > **Code health:** Healthy
 
   Caches the result on `x`, in case this gets called again for the same object."
-  ( [a-query stage-number x]
+  [a-query stage-number x]
   ;; Attaches a cached display-info blob to `x`, in case it gets called again for the same object.
   ;; TODO: Keying by stage is probably unnecessary - if we eg. fetched a column from different stages, it would be a
   ;; different object. Test that idea and remove the stage from the cache key.
   (lib.cache/side-channel-cache
    (keyword "display-info-outer" (str "stage-" stage-number)) x
    #(display-info* a-query stage-number %)))
-
-  ( [a-query stage-number x translations]
-   ;; Attaches a cached display-info blob to `x`, in case it gets called again for the same object.
-   ;; TODO: Keying by stage is probably unnecessary - if we eg. fetched a column from different stages, it would be a
-   ;; different object. Test that idea and remove the stage from the cache key.
-   (lib.cache/side-channel-cache
-     (keyword "display-info-outer" (str "stage-" stage-number)) x
-     #(display-info* a-query stage-number % translations))))
 
 (defn ^:export order-by-clause
   "Create an `ORDER BY` clause and return it, independently of a query.
@@ -2574,7 +2558,6 @@
   > **Code health:** Healthy, Single use. Only called when creating a new card/query."
   []
   (lib.core/random-ident))
-
 
 (defn ^:export set-content-translations
   "Set the current content-translation dictionary."

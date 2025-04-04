@@ -215,7 +215,7 @@ export const displayInfo: typeof DisplayInfoFn = (...args) => {
         : {}),
     };
   }
-  return { ...info, displayName: info.displayName + "_altered" };
+  return info;
 };
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {

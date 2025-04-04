@@ -1,4 +1,4 @@
-import { type ReactNode, createContext, useContext } from "react";
+import { type ReactNode, createContext, useContext, useEffect } from "react";
 import * as Lib from "metabase-lib";
 
 import { useListContentTranslationsQuery } from "metabase/api/content-translation";
@@ -20,14 +20,8 @@ export const ContentTranslationProvider = ({
   children: ReactNode;
 }) => {
   const locale = useLocale();
-  console.log("@m91rnpfs", "locale", locale);
 
-  const {
-    data,
-    error,
-    // TODO: the loading state is not represented
-    isLoading: _isLoading,
-  } = useListContentTranslationsQuery({
+  const { data, error, isLoading } = useListContentTranslationsQuery({
     locale,
   });
 
@@ -41,15 +35,16 @@ export const ContentTranslationProvider = ({
     shouldLocalize: true,
   };
 
-  const dictionaryForLocale = Object.fromEntries(
-    data?.data
-      .filter((item) => item.locale === locale)
-      .map((item) => [item.msgid, item.msgstr]) || [],
-  );
-
   useEffect(() => {
-    Lib.setContentTranslations(dictionaryForLocale);
-  }, [dictionaryForLocale]);
+    if (!isLoading) {
+      const dictionaryForLocale = Object.fromEntries(
+        data?.data
+          .filter((item) => item.locale === locale)
+          .map((item) => [item.msgid, item.msgstr]) || [],
+      );
+      Lib.setContentTranslations(dictionaryForLocale);
+    }
+  }, [isLoading, data?.data, locale]);
 
   return (
     <ContentTranslationContext.Provider value={contextValue}>

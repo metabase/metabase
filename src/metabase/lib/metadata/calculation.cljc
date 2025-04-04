@@ -74,26 +74,6 @@
       (catch #?(:clj Throwable :cljs js/Error) e
         (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
                         {:query query, :x x}
-                        e))))))
-
-;column names
-;field values (categorical ones)
-;table names
-;database names
-
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    x
-    style        :- DisplayNameStyle
-    translations :- [:maybe [:map [:string :string]]]]
-   (or
-    ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
-    ((some-fn :display-name :lib/expression-name) (lib.options/options x))
-    (try
-      (display-name-method query stage-number x style translations)
-      (catch #?(:clj Throwable :cljs js/Error) e
-        (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
-                        {:query query, :x x}
                         e)))))))
 
 (mu/defn column-name :- ::lib.schema.common/non-blank-string
@@ -369,29 +349,7 @@
                                     (lib.dispatch/dispatch-value x)
                                     (ex-message e))
                           {:query query, :stage-number stage-number, :x x}
-                          e)))))))
-
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    x
-    translations :- [:maybe [:map [:string :string]]]]
-   ; FIXME: I've removed caching temporarily for exploratory purposes because it was erroring
-   ; (lib.cache/side-channel-cache
-   ;   ;; TODO: Caching by stage here is probably unnecessary - it's already a mistake to have an `x` from a different
-   ;   ;; stage than `stage-number`. But it also doesn't hurt much, since a given `x` will only ever have `display-info`
-   ;   ;; called with one `stage-number` anyway.
-    (keyword "display-info" (str "stage-" stage-number)) x
-    (log/info "display-info-translated 392!" (pr-str x) (pr-str translations))
-    (fn [x]
-      (try
-        (display-info-method query stage-number x translations)
-        (catch #?(:clj Throwable :cljs js/Error) e
-          (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
-                                    (lib.dispatch/dispatch-value x)
-                                    (ex-message e))
-                          {:query query, :stage-number stage-number, :x x}
-                          e)))))))
-    ; )
+                          e))))))))
 
 (defn default-display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different

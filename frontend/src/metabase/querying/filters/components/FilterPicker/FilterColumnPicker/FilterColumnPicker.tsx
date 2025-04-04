@@ -221,7 +221,6 @@ function renderItemWrapper(content: ReactNode) {
 /** Sort an array by display name, since some display names may be translated */
 const sortedByDisplayName = (arr: { displayName: string }[]) => {
   return arr.toSorted((a, b) =>
-    // FIXME: Remove locale
-    a.displayName.localeCompare(b.displayName, "fr"),
+    (a.displayName || "").localeCompare(b.displayName),
   );
 };

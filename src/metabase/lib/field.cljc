@@ -240,7 +240,7 @@
                        hide-bin-bucket?    :lib/hide-bin-bucket?
                        :as                 field-metadata} style]
   (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
-        humanized-name (get (lib.content-translation/get-content-translations) humanized-name humanized-name)
+        ;humanized-name (get (lib.content-translation/get-content-translations) humanized-name humanized-name)
         field-display-name (or simple-display-name
                                (when (and parent-id
                                           ;; check that we haven't nested yet
