@@ -25,10 +25,13 @@
          states states]
     (when (seq states)
       (let [[user-id value] (first states)]
-        (#'undo/track-change! user-id {table-id {pk [prior value]}})
+        (undo/track-change! user-id {table-id {pk [prior value]}})
         (recur value (rest states))))))
 
-(deftest undo-redo-integration-test
+;; I'm OK reducing this scenario's scope once we have e2e tests.
+;; Until then, I think this is ideal.
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
+(deftest undo-redo-single-user-single-table-single-record-integration-test
   (mt/with-premium-features #{:table-data-editing}
     (testing "Single-user chain, non-generated pk"
       ;; TODO test with a real PK
@@ -93,8 +96,13 @@
                (undo/redo! user-id table-id)))
 
           (is (undo/has-undo? true user-id table-id))
-          (is (not (undo/has-undo? false user-id table-id))))))
+          (is (not (undo/has-undo? false user-id table-id))))))))
 
+;; I'm OK reducing this scenario's scope once we have e2e tests.
+;; Until then, I think this is ideal.
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
+(deftest undo-redo-multi-user-single-table-single-record-integration-test
+  (mt/with-premium-features #{:table-data-editing}
     (testing "Multi-user chain"
       (with-open [table-ref (data-editing.tu/open-test-table! {:id    [:int]
                                                                :name  [:text]
