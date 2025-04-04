@@ -88,9 +88,7 @@ export const MetabotChatEmbedding = ({
     setMessage(value);
   };
 
-  const inputPlaceholder = metabot.confirmationOptions
-    ? Object.keys(metabot.confirmationOptions).join(" or ")
-    : t`Tell me to do something, or ask a question`;
+  const inputPlaceholder = t`Tell me to do something, or ask a question`;
   const placeholder = metabot.isDoingScience
     ? t`Doing science...`
     : inputPlaceholder;
