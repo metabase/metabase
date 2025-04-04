@@ -183,7 +183,7 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
 
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
-  (dashboard, dashcards) => {
+  (dashboard, dashcards): Dashboard | null => {
     if (!dashboard) {
       return null;
     }

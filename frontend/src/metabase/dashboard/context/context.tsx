@@ -105,7 +105,7 @@ const DashboardContextProviderInner = ({
   theme = "light",
   setTheme = noop,
   hideParameters = null,
-  downloadsEnabled = true,
+  downloadsEnabled = { pdf: true, dashcard: true },
   autoScrollToDashcardId = undefined,
   reportAutoScrolledToDashcard = noop,
 
