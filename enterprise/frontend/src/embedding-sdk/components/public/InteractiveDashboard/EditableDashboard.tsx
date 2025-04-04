@@ -1,7 +1,11 @@
 import { type CSSProperties, useEffect } from "react";
 
-import type { MetabasePluginsConfig } from "embedding-sdk";
+import type {
+  InteractiveQuestionProps,
+  MetabasePluginsConfig,
+} from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
+import type { InteractiveQuestionDefaultViewProps } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   SdkLoader,
@@ -30,6 +34,8 @@ export type EditableDashboardProps = {
   plugins?: MetabasePluginsConfig;
   className?: string;
   style?: CSSProperties;
+  drillThroughQuestionProps?: Omit<InteractiveQuestionProps, "questionId"> &
+    InteractiveQuestionDefaultViewProps;
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
@@ -43,6 +49,11 @@ export const EditableDashboard = ({
   onLoadWithoutCards,
   className,
   style,
+  drillThroughQuestionProps = {
+    title: true,
+    height: drillThroughQuestionHeight,
+    plugins: plugins,
+  },
 }: EditableDashboardProps) => {
   const {
     ref,
@@ -96,10 +107,8 @@ export const EditableDashboard = ({
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
-          title={true}
-          height={drillThroughQuestionHeight}
-          plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
+          {...drillThroughQuestionProps}
         />
       ) : (
         <InteractiveDashboardProvider
