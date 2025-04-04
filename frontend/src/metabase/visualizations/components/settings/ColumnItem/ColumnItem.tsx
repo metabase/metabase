@@ -25,6 +25,7 @@ export interface ColumnItemProps {
   onEnable?: (target: HTMLElement) => void;
   onColorChange?: (newColor: string) => void;
   accentColorOptions?: AccentColorOptions;
+  additionalActions?: React.ReactNode;
 }
 
 export const ColumnItem = ({
@@ -42,6 +43,7 @@ export const ColumnItem = ({
   onEnable,
   onColorChange,
   accentColorOptions,
+  additionalActions,
 }: ColumnItemProps) => (
   <Flex
     w="100%"
@@ -89,6 +91,7 @@ export const ColumnItem = ({
       </Text>
     </Group>
     <Group wrap="nowrap" gap="sm" p="xs">
+      {additionalActions}
       {onEdit && (
         <ChartSettingActionIcon
           icon="ellipsis"
