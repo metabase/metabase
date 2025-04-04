@@ -2,10 +2,11 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.gsheets.settings :refer [gsheets]]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.test :as mt]
-   [metabase.util.string :as string]
+   [metabase.util.string :as u.string]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -124,17 +125,17 @@
                  result))
             (is (pos-int? (:sync_started_at result))))
           (let [saved (gsheets)]
-            (is (partial= {:url "<expected-gdrive-link>", :created-by-id (mt/user->id :crowberto)}
+            (is (partial= {:url "https://drive.google.com/drive/expected-gdrive-link", :created-by-id (mt/user->id :crowberto)}
                           saved))
             (is (pos-int? (:created-at saved)))
-            (is (string/valid-uuid? (:gdrive/conn-id saved)))))))))
+            (is (u.string/valid-uuid? (:gdrive/conn-id saved)))))))))
 
 (deftest post-sheet-test
   (with-sample-db-as-dwh
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
       (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
         (is (partial=
-             {:status "loading", :folder_url gsheet-link}
+             {:status "syncing", :url gsheet-link}
              (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gsheet-link})))))))
 
 (deftest folder-syncing-test
@@ -157,7 +158,8 @@
   (with-sample-db-as-dwh
     (let [mock-gsheet {:created-by-id 2
                        :url           "test-url",
-                       :created-at    15}]
+                       :created-at    15
+                       :db-id         1}]
       (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
         (testing "when no config exists, return not-connected"
           (mt/with-temporary-setting-values [gsheets nil]
