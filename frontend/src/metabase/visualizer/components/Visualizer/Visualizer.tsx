@@ -6,19 +6,17 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
-import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect } from "react";
 import { usePrevious, useUnmount } from "react-use";
-import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Button, Flex, Icon, Title } from "metabase/ui";
+import { Box } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import {
   getDraggedItem,
+  getIsDataSidebarOpen,
   getIsDirty,
-  getIsFullscreenModeEnabled,
   getIsVizSettingsSidebarOpen,
 } from "metabase/visualizer/selectors";
 import {
@@ -26,11 +24,11 @@ import {
   isValidDraggedItem,
 } from "metabase/visualizer/utils";
 import {
+  closeDataSidebar,
   closeVizSettingsSidebar,
   handleDrop,
   resetVisualizer,
   setDraggedItem,
-  turnOffFullscreenMode,
 } from "metabase/visualizer/visualizer.slice";
 import type {
   DraggedItem,
@@ -38,7 +36,6 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
-import { DataManager } from "../DataManager";
 import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";
 import { Footer } from "../Footer";
 import { Header } from "../Header";
@@ -82,7 +79,7 @@ export const Visualizer = (props: VisualizerProps) => {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const draggedItem = useSelector(getDraggedItem);
-  const isFullscreen = useSelector(getIsFullscreenModeEnabled);
+  const isDataSidebarOpen = useSelector(getIsDataSidebarOpen);
   const isVizSettingsSidebarOpen = useSelector(getIsVizSettingsSidebarOpen);
 
   const isDirty = useSelector(getIsDirty);
@@ -97,7 +94,7 @@ export const Visualizer = (props: VisualizerProps) => {
   useEffect(() => {
     if (wasDirty && !isDirty) {
       dispatch(closeVizSettingsSidebar());
-      dispatch(turnOffFullscreenMode());
+      dispatch(closeDataSidebar());
     }
   }, [isDirty, wasDirty, dispatch]);
 
@@ -155,14 +152,12 @@ export const Visualizer = (props: VisualizerProps) => {
 
   const classNames = [
     S.Container,
-    isFullscreen ? S.fullscreen : undefined,
+    isDataSidebarOpen ? S.dataSidebarOpen : undefined,
     isVizSettingsSidebarOpen ? S.vizSettingsOpen : undefined,
     className,
   ]
     .filter(Boolean)
     .join(" ");
-
-  const [dataImporterOpen, handlers] = useDisclosure(false);
 
   return (
     <DndContext
@@ -181,58 +176,7 @@ export const Visualizer = (props: VisualizerProps) => {
       <Box className={classNames}>
         {/* left side bar */}
         <Box className={S.dataSidebar}>
-          {dataImporterOpen ? (
-            <Flex direction="column" miw={320} h="100%">
-              <Box p="md" h="91%">
-                <Flex align="center">
-                  <Title order={4} mb="xs">{t`Add data`}</Title>
-                  <Button
-                    size="xs"
-                    variant="transparent"
-                    ml="auto"
-                    onClick={() => handlers.toggle()}
-                  >{t`Done`}</Button>
-                </Flex>
-                <DataImporter />
-              </Box>
-              <Flex
-                bg="white"
-                p="md"
-                align="center"
-                justify="center"
-                flex={1}
-                style={{
-                  borderTop: "1px solid var(--mb-color-border)",
-                  cursor: "pointer",
-                }}
-              >
-                <Button
-                  variant="transparent"
-                  onClick={() => handlers.toggle()}
-                >{t`Adjust columns`}</Button>
-                <Icon name="chevrondown" />
-              </Flex>
-            </Flex>
-          ) : (
-            <Flex direction="column" miw={320} p="md" h="100%">
-              <Flex align="center">
-                <Box px={12} py={8}>
-                  <Title order={4}>{t`Manage data`}</Title>
-                </Box>
-
-                <Button
-                  variant="transparent"
-                  leftSection={<Icon name="add" />}
-                  aria-label={t`Add more data`}
-                  onClick={() => handlers.toggle()}
-                  ml="auto"
-                >
-                  {t`Add more data`}
-                </Button>
-              </Flex>
-              <DataManager />
-            </Flex>
-          )}
+          <DataImporter className={S.dataSidebarContent} />
         </Box>
 
         {/* top header bar */}

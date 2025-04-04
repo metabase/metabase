@@ -21,6 +21,8 @@ import type {
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
 
+import { removeColumnfromStateUnlessUsedElseWhere } from "./utils";
+
 export const funnelDropHandler = (
   state: VisualizerHistoryItem,
   { active, over }: DragEndEvent,
@@ -203,6 +205,11 @@ export function removeColumnFromFunnel(
       delete state.settings["funnel.dimension"];
     }
   }
+
+  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+    "funnel.metric",
+    "funnel.dimension",
+  ]);
 }
 
 function createMetricColumn(

@@ -1,6 +1,7 @@
 import { type MouseEvent, forwardRef } from "react";
 import { t } from "ttag";
 
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import {
   ActionIcon,
@@ -8,21 +9,20 @@ import {
   type FlexProps,
   Icon,
   type IconName,
-  Text,
 } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type { DatasetColumn } from "metabase-types/api";
 
-import S from "./ColumnListItem.module.css";
+import S from "./ColumnsListItem.module.css";
 
-export interface ColumnListItemProps extends FlexProps {
+export interface ColumnsListItemProps extends FlexProps {
   column: DatasetColumn;
   onRemove?: () => void;
   highlightedForDrag?: boolean;
 }
 
-export const ColumnListItem = forwardRef<HTMLDivElement, ColumnListItemProps>(
-  function ColumnListItem(
+export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
+  function ColumnsListItem(
     { column, onRemove, highlightedForDrag, ...props },
     ref,
   ) {
@@ -53,10 +53,10 @@ export const ColumnListItem = forwardRef<HTMLDivElement, ColumnListItemProps>(
             : {}
         }
       >
-        <Flex align="center">
+        <Flex align="center" miw={0}>
           <Icon className={S.grabber} name="grabber" mr={4} size={16} />
           <Icon name={getIconForField(column) as IconName} mr={4} size={16} />
-          <Text truncate>{displayNameForColumn(column)}</Text>
+          <Ellipsified>{displayNameForColumn(column)}</Ellipsified>
         </Flex>
         {!!onRemove && (
           <ActionIcon aria-label={t`Remove`} onClick={handleRemoveClick}>
