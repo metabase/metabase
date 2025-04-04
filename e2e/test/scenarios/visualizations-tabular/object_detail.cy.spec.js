@@ -300,6 +300,16 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail").findByText("Searsboro").click();
   });
 
+  it("should open the object detail modal when navigating back and forward (metabase#55487)", () => {
+    H.openPeopleTable({ limit: 5 });
+    H.openObjectDetail(0);
+    cy.findByTestId("object-detail").findByText("9611-9809 West Rosedale Road");
+    cy.go("back");
+    cy.findByTestId("object-detail").should("not.exist");
+    cy.go("forward");
+    cy.findByTestId("object-detail").findByText("9611-9809 West Rosedale Road");
+  });
+
   it("should work with non-numeric IDs (metabase#22768)", () => {
     cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
       semantic_type: null,
