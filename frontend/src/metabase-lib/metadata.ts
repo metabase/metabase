@@ -178,7 +178,27 @@ declare function DisplayInfoFn(
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
 export const displayInfo: typeof DisplayInfoFn = (...args) => {
-  const info = ML.display_info(...args);
+  console.log("displayInfo called with args", args);
+
+  const info = ML.display_info(...args, { "Artist Name": "ARTIST NAME!" });
+  console.log("@m932ynrk", "args", args);
+
+  const cache: any = [];
+  // Stringify with circularity avoidance
+  const stringifiedArgs = JSON.stringify(args, (key, value) => {
+    if (typeof value === "object" && value !== null) {
+      if (cache.includes(value)) {
+        return;
+      }
+      cache.push(value);
+    }
+    return value;
+  });
+
+  // if (stringifiedArgs.includes("Artist")) {
+  //   debugger;
+  // }
+
   if (args.length === 4 && typeof args[3] === "function") {
     const tc = args[3] as TCFunc;
     return {
@@ -195,7 +215,7 @@ export const displayInfo: typeof DisplayInfoFn = (...args) => {
         : {}),
     };
   }
-  return info;
+  return { ...info, displayName: info.displayName + "_altered" };
 };
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
