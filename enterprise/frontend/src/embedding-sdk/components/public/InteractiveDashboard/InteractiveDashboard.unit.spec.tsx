@@ -175,6 +175,12 @@ const setup = async ({
 };
 
 describe("InteractiveDashboard", () => {
+  it("should render dashboard cards", async () => {
+    await setup();
+    expect(screen.getByText("Here is a card title")).toBeInTheDocument();
+    expect(screen.getByText("Some card text")).toBeInTheDocument();
+  });
+
   it("should allow to navigate to a question from dashboard", async () => {
     await setup();
 
