@@ -247,7 +247,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       };
       H.visitQuestionAdhoc(testQuestion);
 
-      H.chartPathWithFillColor("#A989C5").eq(3).realHover();
+      showTooltipForBarInSeries("#A989C5", 3);
       H.echartsTooltip()
         .findByText("155 – 160") // bottom row
         .scrollIntoView()

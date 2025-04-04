@@ -1,6 +1,5 @@
 import type { PropsWithChildren } from "react";
 
-import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import {
   BackButton,
   Breakout,
@@ -24,7 +23,6 @@ import {
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
 import {
-  type InteractiveQuestionId,
   InteractiveQuestionProvider,
   type InteractiveQuestionProviderProps,
 } from "embedding-sdk/components/private/InteractiveQuestion/context";
@@ -33,17 +31,12 @@ import {
   type InteractiveQuestionDefaultViewProps,
 } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { SDKCollectionReference } from "embedding-sdk/store/collections";
-import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
+import type { SdkQuestionId } from "embedding-sdk/types/question";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId: InteractiveQuestionId;
+  questionId: SdkQuestionId;
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
 }> &
-  Pick<
-    SaveQuestionProps<SDKCollectionReference>,
-    "targetCollection" | "saveToCollection"
-  > &
   Pick<
     InteractiveQuestionProviderProps,
     | "questionId"
@@ -53,6 +46,8 @@ export type InteractiveQuestionProps = PropsWithChildren<{
     | "isSaveEnabled"
     | "initialSqlParameters"
     | "withDownloads"
+    | "saveToCollection"
+    | "targetCollection"
   >;
 
 export const _InteractiveQuestion = ({
@@ -75,8 +70,7 @@ export const _InteractiveQuestion = ({
   withDownloads = false,
   initialSqlParameters,
 }: InteractiveQuestionProps &
-  InteractiveQuestionDefaultViewProps &
-  FlexibleSizeProps): JSX.Element | null => (
+  InteractiveQuestionDefaultViewProps): JSX.Element | null => (
   <InteractiveQuestionProvider
     questionId={questionId}
     componentPlugins={plugins}
