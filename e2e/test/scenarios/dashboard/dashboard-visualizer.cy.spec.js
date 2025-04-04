@@ -402,19 +402,51 @@ describe("scenarios > dashboard > visualizer", () => {
           .click();
         H.goalLine().should("exist");
 
-        // TODO Fix multi-series chart settings and extend the test
-        chartLegend().findByText("Series B").should("not.exist");
-        cy.findAllByTestId("series-name-input")
-          .eq(1)
-          .type("{selectall}{del}Series B")
-          .blur();
-        chartLegend().findByText("Series B").should("exist");
+        // Ensure the chart legend contains original series name
+        chartLegend().within(() => {
+          cy.findByText("Count (Products by Created At (Month))").should(
+            "exist",
+          );
+        });
 
+        // Edit series settings
+        cy.findAllByTestId("series-settings").within(() => {
+          // Update series name
+          cy.findAllByTestId("series-name-input")
+            .eq(1)
+            .type("{selectall}{del}Series B")
+            .blur();
+
+          // Update series display type
+          cy.icon("chevrondown").eq(1).click();
+          cy.icon("bar").click();
+
+          // Update series color
+          cy.findAllByTestId("color-selector-button").eq(1).click();
+        });
+      });
+
+      H.popover().findByLabelText("#DCDFE0").click();
+
+      const assertUpdatedVizSettingsApplied = () => {
+        H.goalLine().should("exist");
+        // Ensure the chart legend contains renamed series
+        chartLegend().within(() => {
+          cy.findByText("Series B").should("exist");
+          cy.findByText("Count (Products by Created At (Month))").should(
+            "not.exist",
+          );
+        });
+        H.chartPathWithFillColor("#DCDFE0");
+      };
+
+      H.modal().within(() => {
+        assertUpdatedVizSettingsApplied();
         cy.button("Save").click();
       });
+
       H.getDashboardCard(0).within(() => {
-        H.goalLine().should("exist");
-        chartLegend().findByText("Series B").should("exist");
+        assertUpdatedVizSettingsApplied();
       });
     });
 
