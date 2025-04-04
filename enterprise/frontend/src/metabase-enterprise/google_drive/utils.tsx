@@ -1,24 +1,22 @@
 import { skipToken } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useGetServiceAccountQuery } from "metabase-enterprise/api";
 
 export function useShowGdrive() {
-  const gSheetsSetting = useSetting("gsheets");
   const gSheetsEnabled = useSetting("show-google-sheets-integration");
+  const hasDwh = useHasTokenFeature("attached_dwh");
   const userIsAdmin = useSelector(getUserIsAdmin);
 
-  const shouldGetServiceAccount = gSheetsEnabled && userIsAdmin;
+  const shouldGetServiceAccount = gSheetsEnabled && userIsAdmin && hasDwh;
 
-  const { data: { email: serviceAccountEmail } = {} } =
-    useGetServiceAccountQuery(shouldGetServiceAccount ? undefined : skipToken);
+  const { data: serviceAccount } = useGetServiceAccountQuery(
+    shouldGetServiceAccount ? undefined : skipToken,
+  );
 
   const showGdrive = Boolean(
-    gSheetsEnabled &&
-      gSheetsSetting?.status &&
-      userIsAdmin &&
-      serviceAccountEmail,
+    hasDwh && gSheetsEnabled && userIsAdmin && serviceAccount?.email,
   );
 
   return showGdrive;
