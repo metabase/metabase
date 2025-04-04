@@ -19,13 +19,26 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO -
-;;
-;; 1. Is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current Card
-;;    metadata as part of the query context so we can compare for changes
-;;
-;; 2. Consider whether the actual save operation should be async as with
-;;    [[metabase.query-processor.middleware.process-userland-query]]
+(defn- standardize-metadata [metadata]
+  (let [skip-keys #{:coercion_strategy :settings :fk_target_field_id :semantic_type}]
+    (cond
+      (map? metadata)
+      (let [m (into {} (for [[k v] metadata
+                             :when (or (not (skip-keys k))
+                                       (some? v))]
+                         [k (standardize-metadata v)]))]
+        (reduce (fn [m k]
+                  (cond-> m
+                    (nil? (get m k)) (dissoc k)))
+                m
+                skip-keys))
+
+      (sequential? metadata)
+      (mapv standardize-metadata metadata)
+
+      :else
+      metadata)))
+
 (defn- record-metadata! [{{:keys [card-id]} :info, :as query} metadata]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
@@ -34,10 +47,16 @@
                driver/*driver*
                (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
                card-id
-               ;; don't want to update metadata when we use a Card as a source Card.
+            ;; don't want to update metadata when we use a Card as a source Card.
                (not (:qp/source-card-id query)))
-      (t2/update! :model/Card card-id {:result_metadata metadata
-                                       :updated_at      :updated_at}))
+      ;; Don't update the metadata if it hasn't changed
+      (let [original-metadata (:metadata/model-metadata (:info query))
+            standardized-metadata (standardize-metadata metadata)]
+        (when (and standardized-metadata original-metadata
+                   (not= standardized-metadata original-metadata))
+          (t2/update! :model/Card card-id
+                      {:result_metadata metadata
+                       :updated_at      :updated_at}))))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e
@@ -60,7 +79,7 @@
                               :remapped_from :remapped_to :coercion_strategy :visibility_type
                               :was_binned])
       insights-col
-      {:name (:name final-col)} ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
+      {:name (:name final-col)}                           ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
       (when (= our-base-type :type/*)
         {:base_type final-base-type})))
    final-col-metadata
@@ -68,8 +87,8 @@
 
 (mu/defn- insights-xform :- fn?
   [orig-metadata :- [:maybe :map]
-   record!       :- ifn?
-   rf            :- ifn?]
+   record! :- ifn?
+   rf :- ifn?]
   (qp.reducible/combine-additional-reducing-fns
    rf
    [(analyze/insights-rf orig-metadata)]
@@ -80,15 +99,15 @@
              (map? result)
              (update :data
                      assoc
-                     ;; TODO: We agreed on the name `:result_metadata` everywhere, and this needs updating.
-                     ;; It'll definitely break things on the FE, so a coordinated change is needed.
+                ;; TODO: We agreed on the name `:result_metadata` everywhere, and this needs updating.
+                ;; It'll definitely break things on the FE, so a coordinated change is needed.
                      :results_metadata {:columns metadata}
-                     :insights         insights)))))))
+                     :insights insights)))))))
 
 (mu/defn record-and-return-metadata! :- ::qp.schema/rff
   "Post-processing middleware that records metadata about the columns returned when running the query. Returns an rff."
   [{{:keys [skip-results-metadata?]} :middleware, :as query} :- ::qp.schema/query
-   rff                                                       :- ::qp.schema/rff]
+   rff :- ::qp.schema/rff]
   (if skip-results-metadata?
     rff
     (let [record! (partial record-metadata! query)]
