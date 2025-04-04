@@ -65,7 +65,7 @@ export const EmptyVizState = ({
             {showMetabaseLinks && (
               <ExternalLink href={url}>
                 <Group gap="xs">
-                  <b>{secondaryText}</b>
+                  <strong>{secondaryText}</strong>
                   <Icon name="external" color="brand" />
                 </Group>
               </ExternalLink>
