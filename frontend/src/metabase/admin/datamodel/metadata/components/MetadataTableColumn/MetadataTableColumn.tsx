@@ -74,55 +74,52 @@ const MetadataTableColumn = ({
       data-testid={`column-${field.name}`}
     >
       <div className={cx(CS.flex, CS.flexColumn, CS.flexAuto)}>
-        <div
-          className={cx(CS.textMonospace, CS.mb1)}
-          style={{ fontSize: "12px" }}
-        >
-          {getFieldRawName(field)}
-        </div>
         <div className={cx(CS.flex, CS.flexColumn)}>
-          <div>
-            <ColumnInput
-              style={{ minWidth: 420 }}
-              className={cx(CS.floatLeft, CS.inlineBlock)}
-              type="text"
-              value={field.displayName()}
-              onBlurChange={handleChangeName}
-            />
-            <div className={CS.clearfix}>
-              <div className={cx(CS.flex, CS.flexAuto)}>
-                <div className={cx(CS.pl1, CS.flexAuto)}>
-                  <FieldVisibilityPicker
-                    className={CS.block}
-                    field={field}
-                    onUpdateField={onUpdateField}
-                  />
-                </div>
-                <div className={cx(CS.flexAuto, CS.px1)}>
-                  <SemanticTypeAndTargetPicker
-                    className={CS.block}
-                    field={field}
-                    idFields={idFields}
-                    onUpdateField={onUpdateField}
-                  />
-                </div>
-                <Button
-                  aria-label={t`Field settings`}
-                  component={Link}
-                  justify="center"
-                  mr="sm"
-                  p="10"
-                  to={Urls.dataModelField(
-                    selectedDatabaseId,
-                    selectedSchemaId,
-                    selectedTableId,
-                    Number(field.id),
-                  )}
-                  w="40"
-                >
-                  <Icon name="gear" />
-                </Button>
-              </div>
+          <div className={cx(CS.flex, CS.flexAuto)}>
+            <div>
+              <Label>{getFieldRawName(field)}</Label>
+              <ColumnInput
+                style={{ minWidth: 420 }}
+                type="text"
+                value={field.displayName()}
+                onBlurChange={handleChangeName}
+              />
+            </div>
+            <div className={cx(CS.pl1, CS.flexAuto)}>
+              <LabelPlaceholder />
+              <FieldVisibilityPicker
+                className={CS.block}
+                field={field}
+                onUpdateField={onUpdateField}
+              />
+            </div>
+            <div className={cx(CS.flexAuto, CS.px1)}>
+              <Label>{field.base_type}</Label>
+              <SemanticTypeAndTargetPicker
+                className={CS.block}
+                field={field}
+                idFields={idFields}
+                onUpdateField={onUpdateField}
+              />
+            </div>
+            <div>
+              <LabelPlaceholder />
+              <Button
+                aria-label={t`Field settings`}
+                component={Link}
+                justify="center"
+                mr="sm"
+                p="10"
+                to={Urls.dataModelField(
+                  selectedDatabaseId,
+                  selectedSchemaId,
+                  selectedTableId,
+                  Number(field.id),
+                )}
+                w="40"
+              >
+                <Icon name="gear" />
+              </Button>
             </div>
           </div>
           <div
@@ -150,6 +147,24 @@ const MetadataTableColumn = ({
     </ColumnContainer>
   );
 };
+
+const Label = ({ children = " " }: { children?: ReactNode }) => (
+  <div className={cx(CS.textMonospace, CS.mb1)} style={{ fontSize: "12px" }}>
+    {children}
+  </div>
+);
+
+const LabelPlaceholder = () => (
+  <div
+    className={cx(CS.textMonospace, CS.mb1)}
+    style={{
+      minHeight: "1em",
+      fontSize: "12px",
+    }}
+  >
+    &nbsp;
+  </div>
+);
 
 export const getFieldRawName = (field: Field) => {
   return field.nfc_path ? field.nfc_path.join(".") : field.name;
