@@ -225,6 +225,19 @@
     (when (every? some? path)
       (str/join ": " path))))
 
+; TODO: This is probably not ideal
+(defn get-field-value
+  "Retrieve a value from a map-like JavaScript object."
+  [obj field default-value]
+  (try
+    (let [field-str (name (keyword field))]
+      (if (and (some? obj) (.hasOwnProperty obj field-str))
+        (aget obj field-str)
+        default-value))
+    (catch js/Error e
+      (log/info "Error accessing property:" (pr-str e))
+      default-value)))
+
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/column
@@ -240,7 +253,9 @@
                        hide-bin-bucket?    :lib/hide-bin-bucket?
                        :as                 field-metadata} style]
   (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
-        ;humanized-name (get (lib.content-translation/get-content-translations) humanized-name humanized-name)
+        translations (lib.content-translation/get-content-translations)
+        humanized-name (get-field-value translations humanized-name humanized-name)
+        simple-display-name (get-field-value translations simple-display-name simple-display-name)
         field-display-name (or simple-display-name
                                (when (and parent-id
                                           ;; check that we haven't nested yet
@@ -259,26 +274,29 @@
                                       ;;    Products → Products → Category
                                       (not (str/includes? field-display-name " → ")))
                              (or
-                              (when fk-field-id
-                                ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
-                                ;; "ID" dropped instead.
-                                ;; This is very intentional: one table might have several FKs to one foreign table, each with different
-                                ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
-                                ;; See #30109 for more details.
-                                (if-let [field (lib.metadata/field query fk-field-id)]
-                                  (-> (lib.metadata.calculation/display-info query stage-number field)
-                                      :display-name
-                                      lib.util/strip-id)
-                                  (let [table (lib.metadata/table-or-card query table-id)]
-                                    (lib.metadata.calculation/display-name query stage-number table style))))
-                              join-alias
-                              (lib.join.util/current-join-alias field-metadata)))
+                               (when fk-field-id
+                                 ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+                                 ;; "ID" dropped instead.
+                                 ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+                                 ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+                                 ;; See #30109 for more details.
+                                 (if-let [field (lib.metadata/field query fk-field-id)]
+                                   (-> (lib.metadata.calculation/display-info query stage-number field)
+                                       :display-name
+                                       lib.util/strip-id)
+                                   (let [table (lib.metadata/table-or-card query table-id)]
+                                     (lib.metadata.calculation/display-name query stage-number table style))))
+                               join-alias
+                               (lib.join.util/current-join-alias field-metadata)))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)
         temporal-format    #(lib.temporal-bucket/ensure-ends-with-temporal-unit % temporal-unit)
         bin-format         #(lib.binning/ensure-ends-with-binning % binning (:semantic-type field-metadata))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
+    (log/info "field-display-name in field.cljc" field-display-name)
+    (log/info "humanized-name in field.cljc" humanized-name)
+    (log/info "second lookup in field.cljc" (get-field-value translations humanized-name "Not Found"))
     (cond
       (and (not= style :long) hide-bin-bucket?) display-name
       (and temporal-unit (not= display-name (temporal-format humanized-name))) (temporal-format display-name)
@@ -295,7 +313,10 @@
                             temporal-unit (assoc :unit temporal-unit)
                             binning       (assoc ::binning binning)
                             source-field  (assoc :fk-field-id source-field))]
-    (lib.metadata.calculation/display-name query stage-number field-metadata style)
+    (let
+      [translations (lib.content-translation/get-content-translations)
+      display-name (lib.metadata.calculation/display-name query stage-number field-metadata style)]
+      (get-field-value translations display-name display-name))
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
 
