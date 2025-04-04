@@ -31,6 +31,7 @@ import barMaxCategoriesDefault from "./bar-max-categories-default.json";
 import barMaxCategoriesStackedNormalized from "./bar-max-categories-stacked-normalized.json";
 import barMaxCategoriesStacked from "./bar-max-categories-stacked.json";
 import barMinHeightLimit from "./bar-min-height-limit.json";
+import barNonLinearNumericXAxis from "./bar-non-linear-numeric-x-axis.json";
 import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotated-labels.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
@@ -248,4 +249,5 @@ export const data = {
   barStackedAllLabelsTimeseriesWithGap45717,
   offsetBasedTimezone47835,
   noDimensionColumn54755,
+  barNonLinearNumericXAxis,
 };

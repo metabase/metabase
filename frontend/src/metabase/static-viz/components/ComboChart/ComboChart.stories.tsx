@@ -1024,6 +1024,14 @@ export const NoDimensionColumn54755 = {
   },
 };
 
+export const BarNonLinearNumericXAxis = {
+  render: Template,
+  args: {
+    rawSeries: data.barNonLinearNumericXAxis as any,
+    renderingContext,
+  },
+};
+
 export const Default = {
   render: Template,
   args: {
