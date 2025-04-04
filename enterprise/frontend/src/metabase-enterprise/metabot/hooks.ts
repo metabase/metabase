@@ -46,7 +46,7 @@ export const useMetabotAgent = () => {
     dismissUserMessage: (messageIndex: number) =>
       dispatch(dismissUserMessage(messageIndex)),
     submitInput: useCallback(
-      (message: string, metabotId: string) => {
+      (message: string, metabotId?: string) => {
         const context = getChatContext();
         const history = sendMessageReq.data?.history || [];
         const state = sendMessageReq.data?.state || {};
