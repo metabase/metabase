@@ -10,7 +10,6 @@ import {
   getVisualizerPrimaryColumn,
 } from "metabase/visualizer/selectors";
 import { parseDataSourceId } from "metabase/visualizer/utils";
-import { isNumber, isString } from "metabase-lib/v1/types/utils/isa";
 import type { Field, VisualizationDisplay } from "metabase-types/api";
 import type {
   VisualizerDataSource,
@@ -18,6 +17,7 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import S from "./DatasetsListItem.module.css";
+import { getIsCompatible } from "./getIsCompatible";
 
 interface DatasetsListItemProps {
   item: VisualizerDataSource;
@@ -64,23 +64,16 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const isCompatible = useMemo(() => {
     const { display, fields } = metadata;
 
-    if (currentDisplay === "pie") {
-      return false;
-    }
-
-    if (currentDisplay === "scalar") {
-      return display === "scalar";
-    }
-
-    if (!primaryColumn || !metadata) {
-      return true;
-    }
-
-    if (isNumber(primaryColumn) || isString(primaryColumn)) {
-      return fields?.some(field => field.id === primaryColumn.id);
-    }
-
-    return fields?.some(field => field.base_type === primaryColumn?.base_type);
+    return getIsCompatible({
+      currentDataset: {
+        display: currentDisplay,
+        primaryColumn,
+      },
+      targetDataset: {
+        display,
+        fields,
+      },
+    });
   }, [metadata, primaryColumn, currentDisplay]);
 
   if (mode === "add" && !isCompatible) {
