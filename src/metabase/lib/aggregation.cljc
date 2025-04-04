@@ -326,8 +326,7 @@
 
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (let [db-features (or (:features (lib.metadata/database query)) #{})
-         stage (lib.util/query-stage query stage-number)
+   (let [stage (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
          with-columns (fn [{:keys [requires-column? supported-field] :as operator}]
                         (cond
@@ -346,7 +345,7 @@
       (into []
             (comp (filter (fn [op]
                             (let [feature (:driver-feature op)]
-                              (or (nil? feature) (db-features feature)))))
+                              (or (nil? feature) (lib.metadata/database-supports? query feature)))))
                   (keep with-columns)
                   (map #(assoc % :lib/type :operator/aggregation)))
             lib.schema.aggregation/aggregation-operators)))))

@@ -54,6 +54,14 @@ export function isNumberLiteral(expr: unknown): expr is NumericLiteral {
   return typeof expr === "number" || typeof expr === "bigint";
 }
 
+export function isIntegerLiteral(expr: unknown): expr is NumericLiteral {
+  return typeof expr === "number" && Number.isInteger(expr);
+}
+
+export function isFloatLiteral(expr: unknown): expr is NumericLiteral {
+  return typeof expr === "number" && !Number.isInteger(expr);
+}
+
 export function isValue(expr: unknown): expr is ValueExpression {
   return Array.isArray(expr) && expr[0] === "value";
 }

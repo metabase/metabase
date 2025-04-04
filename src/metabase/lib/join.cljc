@@ -607,12 +607,10 @@
   ;; stage number is not currently used, but it is taken as a parameter for consistency with the rest of MLv2
   ([query         :- ::lib.schema/query
     _stage-number :- :int]
-   (let [database (lib.metadata/database query)
-         features (:features database)]
-     (into []
-           (comp (filter (partial contains? features))
-                 (map raw-join-strategy->strategy-option))
-           [:left-join :right-join :inner-join :full-join]))))
+   (into []
+         (comp (filter (partial lib.metadata/database-supports? query))
+               (map raw-join-strategy->strategy-option))
+         [:left-join :right-join :inner-join :full-join])))
 
 (mu/defn join-clause :- lib.join.util/PartialJoin
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A

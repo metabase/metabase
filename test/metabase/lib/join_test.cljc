@@ -427,6 +427,13 @@
           {:lib/type :option/join.strategy, :strategy :inner-join}]
          (lib/available-join-strategies (lib.tu/query-with-join)))))
 
+(deftest ^:parallel available-join-strategies-missing-features-test
+  (is (= [{:lib/type :option/join.strategy, :strategy :inner-join}]
+         (lib/available-join-strategies
+          (-> (lib.tu/query-with-join)
+              (assoc :lib/metadata
+                     (meta/updated-metadata-provider update :features disj :left-join :right-join)))))))
+
 (deftest ^:parallel join-strategy-display-name-test
   (let [query (lib.tu/query-with-join)]
     (is (= ["Left outer join" "Right outer join" "Inner join"]
