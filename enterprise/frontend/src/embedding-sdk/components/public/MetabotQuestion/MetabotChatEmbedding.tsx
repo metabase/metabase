@@ -6,6 +6,7 @@ import {
   Box,
   Flex,
   Icon,
+  Loader,
   Textarea,
   Tooltip,
   UnstyledButton,
@@ -44,7 +45,6 @@ export const MetabotChatEmbedding = ({
     if (!trimmedInput.length || metabot.isDoingScience) {
       return;
     }
-    resetInput();
     const metabotRequestPromise = metabot.submitInput(
       trimmedInput,
       EMBEDDING_METABOT_ID,
@@ -116,9 +116,20 @@ export const MetabotChatEmbedding = ({
         )}
         gap="sm"
       >
-        <Box w="33px" h="24px">
-          <MetabotIcon isLoading={metabot.isDoingScience} />
-        </Box>
+        <Flex
+          w="33px"
+          h="24px"
+          style={{
+            flexShrink: 0,
+          }}
+          justify="center"
+        >
+          {metabot.isDoingScience ? (
+            <Loader size="sm" />
+          ) : (
+            <MetabotIcon isLoading={false} />
+          )}
+        </Flex>
         <Textarea
           data-testid="metabot-chat-input"
           w="100%"
@@ -147,18 +158,28 @@ export const MetabotChatEmbedding = ({
             }
           }}
         />
-        <UnstyledButton
-          h="1rem"
-          data-testid="metabot-cancel-request"
-          style={{
-            visibility: metabot.isDoingScience ? "visible" : "hidden",
-          }}
-          onClick={cancelRequest}
-        >
-          <Tooltip label={t`Stop generation`}>
-            <Icon name="stop" c="var(--mb-color-text-primary)" size="1rem" />
-          </Tooltip>
-        </UnstyledButton>
+        {metabot.isDoingScience ? (
+          <UnstyledButton
+            h="1rem"
+            data-testid="metabot-cancel-request"
+            onClick={cancelRequest}
+          >
+            <Tooltip label={t`Stop generation`}>
+              <Icon name="stop" c="var(--mb-color-text-primary)" size="1rem" />
+            </Tooltip>
+          </UnstyledButton>
+        ) : (
+          <UnstyledButton
+            h="1rem"
+            onClick={resetInput}
+            data-testid="metabot-close-chat"
+            style={{
+              visibility: input.length > 0 ? "visible" : "hidden",
+            }}
+          >
+            <Icon name="close" c="text-light" size="1rem" />
+          </UnstyledButton>
+        )}
       </Flex>
     </Box>
   );
