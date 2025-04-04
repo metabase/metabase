@@ -33,8 +33,6 @@ import {
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkQuestionId } from "embedding-sdk/types/question";
 
-import type { FlexibleSizeProps } from "../FlexibleSizeComponent";
-
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId: SdkQuestionId;
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
@@ -72,8 +70,7 @@ export const _InteractiveQuestion = ({
   withDownloads = false,
   initialSqlParameters,
 }: InteractiveQuestionProps &
-  InteractiveQuestionDefaultViewProps &
-  FlexibleSizeProps): JSX.Element | null => (
+  InteractiveQuestionDefaultViewProps): JSX.Element | null => (
   <InteractiveQuestionProvider
     questionId={questionId}
     componentPlugins={plugins}
