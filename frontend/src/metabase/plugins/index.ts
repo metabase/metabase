@@ -615,8 +615,8 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
    */
   areDownloadsEnabled: (_args: {
     hide_download_button?: boolean | null;
-    downloads?: boolean | null;
-  }) => true,
+    downloads?: string | boolean | null;
+  }) => ({ pdf: true, dashcard: true }),
 };
 
 const defaultMetabotContextValue: MetabotContext = {
