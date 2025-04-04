@@ -1,12 +1,14 @@
 (ns metabase.events.schema
   (:require
    [malli.core :as mc]
+   [malli.generator :as mg]
    [malli.util :as mut]
    [metabase.lib.schema.common :as common]
    [metabase.models.view-log-impl :as view-log-impl]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (mu/defn event-schema
@@ -215,7 +217,6 @@
 (mr/def ::action-events
   [:map #_{:closed true}
    [:action :keyword]
-   ;; TODO ... this shouldn't be snake
    [:invocation_id ::nano-id]
    (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))])
 
@@ -238,20 +239,3 @@
                                                        [::mc/default :map]]])
 
 (mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])
-
-;(mr/def :row/create [:merge
-;                     ::data-editing-events
-;                     [:map
-;                      [:created_row :map]]])
-;(mr/def :row/update [:merge
-;                     ::data-editing-events
-;                     [:map
-;                      ;; there could be no changes when update
-;                      [:update [:maybe :map]]
-;                      [:after [:maybe :map]]
-;                      [:before :map]]])
-;(mr/def :row/delete [:merge
-;                     ::data-editing-events
-;                     [:map
-;                      [:deleted_row :map]]])
-

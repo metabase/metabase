@@ -285,14 +285,14 @@
   {:name         "Email template"
    :channel_type :channel/email
    :details      {:type    :email/handlebars-text
-                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
-                  :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}})
+                  :subject "Welcome {{payload.object.first_name}} to {{context.site_name}}"
+                  :body    "Hello {{payload.object.first_name}}! Welcome to {{context.site_name}}!"}})
 
 (def channel-template-slack-with-handlebars-body
   "A :model/ChannelTemplate for slack channels that has a :slack/handlebars-text template."
   {:channel_type :channel/slack
    :details      {:type    :slack/handlebars-text
-                  :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}})
+                  :body    "Hello {{payload.object.first_name}}! Welcome to {{context.site_name}}!"}})
 
 (def default-email-handler
   (delay {:channel_type :channel/email

@@ -424,6 +424,13 @@
   {:event_name (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))
    :action     mi/transform-keyword})
 
+(mr/def ::NotificationSystemEvent
+  "Schema for :model/NotificationSystemEvent"
+  [:map
+   [:event_name :keyword]
+   [:action     {:optional true} [:maybe :keyword]]
+   [:table_id   {:optional true} [:maybe ms/PositiveInt]]])
+
 ;;------------------------------------------------------------------------------------------------;;
 ;;                                         Permissions                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -531,6 +538,17 @@
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(mr/def ::NotificationWithPayload
+  "Fully hydrated notification."
+  [:merge
+   ::Notification
+   [:multi {:dispatch (comp keyword :payload_type)}
+    [:notification/card [:map
+                         [:payload ::NotificationCard]]]
+    [:notification/system-event [:map
+                                 [:payload ::NotificationSystemEvent]]]
+    [::mc/default       :map]]])
+
 (mr/def ::FullyHydratedNotification
   "Fully hydrated notification."
   [:merge
@@ -547,6 +565,8 @@
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/card [:map
                          [:payload ::NotificationCard]]]
+    [:notification/system-event [:map
+                                 [:payload ::NotificationSystemEvent]]]
     [::mc/default       :map]]])
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]

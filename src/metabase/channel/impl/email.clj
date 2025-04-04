@@ -309,15 +309,15 @@
 (def ^:private action->template
   {:row/create {:channel_type :channel/email
                 :details      {:type    :email/handlebars-resource
-                               :subject "Table {{payload.event_info.result.table.name}} has a new row"
+                               :subject "Table {{payload.result.table.name}} has a new row"
                                :path    "metabase/channel/email/data_editing_row_create.hbs"}}
    :row/update {:channel_type :channel/email
                 :details      {:type    :email/handlebars-resource
-                               :subject "Table {{payload.event_info.result.table.name}} has been updated"
+                               :subject "Table {{payload.result.table.name}} has been updated"
                                :path    "metabase/channel/email/data_editing_row_update.hbs"}}
    :row/delete {:channel_type :channel/email
                 :details      {:type    :email/handlebars-resource
-                               :subject "Table {{payload.event_info.result.table.name}} has a row deleted"
+                               :subject "Table {{payload.result.table.name}} has a row deleted"
                                :path    "metabase/channel/email/data_editing_row_delete.hbs"}}})
 
 (mu/defmethod channel/render-notification
@@ -326,11 +326,11 @@
    notification-payload #_:- #_notification/NotificationPayload
    template             :- [:maybe ::models.channel/ChannelTemplate]
    recipients           :- [:sequential ::models.notification/NotificationRecipient]]
-  (let [event-topic (get-in notification-payload [:payload :event_topic])
+  (let [event-name  (get-in notification-payload [:payload :event_name])
         template    (or template
-                        (when (= :event/action.success event-topic)
-                          (get action->template (get-in notification-payload [:payload :event_info :action]))))]
-    #_(assert template (str "No template found for event " event-topic))
+                        (when (= :event/action.success event-name)
+                          (get action->template (get-in notification-payload [:payload :action]))))]
+    (assert template (str "No template found for event " event-name))
     (if-not template
       []
       [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)

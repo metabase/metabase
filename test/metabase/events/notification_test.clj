@@ -37,10 +37,10 @@
           (with-redefs [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
                         events.notification/supported-topics #{:event/test-notification}]
             (events/publish-event! topic {::hi true})
-            (is (=? [[(:id n-1) {:event_info {::hi true}}]
-                     [(:id n-2) {:event_info {::hi true}}]]
+            (is (=? [[(:id n-1) {::hi true}]
+                     [(:id n-2) {::hi true}]]
                     (->> @sent-notis
-                         (map (juxt :id :payload))
+                         (map (juxt :id :event_info))
                          (sort-by first))))))))))
 
 (deftest unsupported-events-will-not-send-notification-test
