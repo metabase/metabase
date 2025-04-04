@@ -1,8 +1,7 @@
 import path from "path";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { checkNotNull } from "metabase/lib/types";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 const { H } = cy;
@@ -36,30 +35,14 @@ describe("scenarios > admin > localization > content translation", () => {
         },
         { force: true },
       );
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Dictionary uploaded/g).should("be.visible");
 
-      cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, { locale: "es" });
-
-      cy.log("Create a collection");
-      H.createCollection({
-        name: "An interesting collection",
-        alias: "collectionId",
-      });
+      cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, { locale: "de" });
 
       cy.get<number>("@collectionId").then((collection_id) => {
         cy.log("Create a model");
-        H.createQuestion(
-          {
-            name: "Count of products",
-            type: "model",
-            query: {
-              "source-table": PRODUCTS_ID,
-              aggregation: [["count"]],
-            },
-            collection_id,
-          },
-          { wrapId: true, idAlias: "modelId" },
-        );
 
         H.createQuestion(
           {
@@ -71,60 +54,8 @@ describe("scenarios > admin > localization > content translation", () => {
           },
           { wrapId: true, idAlias: "productsQuestionId" },
         );
-
-        cy.log("Create a metric");
-        H.createQuestion({
-          name: "Metric about products",
-          database: SAMPLE_DB_ID,
-          type: "metric",
-          query: {
-            "source-table": PRODUCTS_ID,
-            aggregation: [["count"]],
-          },
-          collection_id,
-        });
       });
     });
-
-    // describe("context: query builder", () => {
-    //   before(() => {
-    //     cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
-
-    //     cy.log("Can see translation of table name in Browse databases");
-    //     cy.findByText("Productos").click();
-    //   });
-
-    //   it("a database name in the question breadcrumb header", () => {
-    //     cy.findByTestId("head-crumbs-container")
-    //       .findByText("Base de Datos de Ejemplo")
-    //       .should("be.visible");
-    //   });
-
-    //   it("a table name in the question breadcrumb header", () => {
-    //     cy.findByTestId("head-crumbs-container")
-    //       .findByText("Productos")
-    //       .should("be.visible");
-    //   });
-
-    //   it("cell data", () => {
-    //     cy.findAllByTestId("cell-data").should(
-    //       "contain",
-    //       "Enorme Camisa de Aluminio",
-    //     );
-    //   });
-    // });
-
-    // describe("Context: Browse models", () => {
-    //   before(() => {
-    //     cy.visit("/browse/models");
-    //   });
-    //   it("model name", () => {
-    //     cy.findByText("Conteo de productos").should("be.visible");
-    //   });
-    //   it("collection name", () => {
-    //     cy.findByText("Una colección interesante").should("be.visible");
-    //   });
-    // });
 
     describe("On the question page", () => {
       before(() => {
@@ -132,12 +63,19 @@ describe("scenarios > admin > localization > content translation", () => {
           cy.visitQuestion(productsQuestionId);
         });
       });
+
       it("column names are localized", () => {
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Titel").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Anbieter").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Bewertung").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Kategorie").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Erstellt am").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Preis").should("be.visible");
       });
     });
