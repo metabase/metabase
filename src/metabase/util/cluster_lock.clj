@@ -1,6 +1,7 @@
 (ns metabase.util.cluster-lock
   "Utility for taking a cluster wide lock using the application database"
   (:require
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
@@ -70,21 +71,22 @@
                                                    [:randomization-factor    {:optional true} :int]
                                                    [:max-interval-millis     {:optional true} :int]]]]]
    thunk :- ifn?]
-  (if (keyword? opts)
-    (do-with-cluster-lock {:lock-name opts} thunk)
-    (let [{:keys [timeout-seconds retry-config lock-name] :or {timeout-seconds cluster-lock-timeout-seconds}} opts
-          lock-name-str (str (namespace lock-name) "/" (name lock-name))
-          do-with-cluster-lock** (fn [] (do-with-cluster-lock* lock-name-str timeout-seconds thunk))
-          config (merge default-retry-config retry-config)
-          retrier (retry/make config)]
-      (try
-        (retrier do-with-cluster-lock**)
-        (catch Throwable e
-          (if (is-canceled-statement? e)
-            (throw (ex-info "Failed to run statement with cluster lock"
-                            {:retries (:max-attempts config)}
-                            e))
-            (throw e)))))))
+  (cond
+    (= (mdb/db-type) :h2) (thunk) ;; h2 does not respect the query timeout when taking
+    (keyword? opts) (do-with-cluster-lock {:lock-name opts} thunk)
+    :else (let [{:keys [timeout-seconds retry-config lock-name] :or {timeout-seconds cluster-lock-timeout-seconds}} opts
+                lock-name-str (str (namespace lock-name) "/" (name lock-name))
+                do-with-cluster-lock** (fn [] (do-with-cluster-lock* lock-name-str timeout-seconds thunk))
+                config (merge default-retry-config retry-config)
+                retrier (retry/make config)]
+            (try
+              (retrier do-with-cluster-lock**)
+              (catch Throwable e
+                (if (is-canceled-statement? e)
+                  (throw (ex-info "Failed to run statement with cluster lock"
+                                  {:retries (:max-attempts config)}
+                                  e))
+                  (throw e)))))))
 
 (defmacro with-cluster-lock
   "Run `body` in a tranactions that tries to take a lock from the metabase_cluster_lock table of
