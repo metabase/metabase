@@ -34,12 +34,12 @@ export function getUrlProtocol(url: string) {
 }
 
 export function formatUrl(value: string, options: OptionsType = {}) {
-  const { jsx, rich } = options;
+  const { jsx, rich, column } = options;
 
   const url = getLinkUrl(value, options);
-  const text = getLinkText(value, options);
 
   if (jsx && rich && url) {
+    const text = getLinkText(value, options);
     const className = cx(CS.link, CS.linkWrappable);
 
     // (metabase#51099) prevent url from being rendered as a link when in sdk
@@ -59,10 +59,11 @@ export function formatUrl(value: string, options: OptionsType = {}) {
         {text}
       </ExternalLink>
     );
+  } else if (!url && !isURL(column)) {
+    // Even when no URL is found, return a formatted value
+    return formatValue(value, { ...options, view_as: null });
   } else {
-    // Even when no URL is found, return the formatted text value
-    // rather than the raw value to preserve other formatting options
-    return text;
+    return value;
   }
 }
 
@@ -81,10 +82,7 @@ function getLinkText(value: string, options: OptionsType) {
 
   return (
     getRemappedValue(value, options) ||
-    formatValue(value, {
-      ...options,
-      view_as: null,
-    })
+    formatValue(value, { ...options, view_as: null })
   );
 }
 
