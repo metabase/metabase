@@ -71,44 +71,25 @@ These components are available via the `InteractiveQuestion` namespace (e.g., `<
 
 Docs:
 - [InteractiveQuestion.BackButton](./generated/html/InteractiveQuestion.html#backbutton)
-
-- [InteractiveQuestion.Breakout](./generated/html/InteractiveQuestion.html#Breakout)
-
-- [InteractiveQuestion.BreakoutDropdown](./generated/html/InteractiveQuestion.html#BreakoutDropdown)
-
-- [InteractiveQuestion.ChartTypeDropdown](./generated/html/InteractiveQuestion.html#ChartTypeDropdown)
-
-- [InteractiveQuestion.ChartTypeSelector](./generated/html/InteractiveQuestion.html#ChartTypeSelector)
-
-- [InteractiveQuestion.Editor](./generated/html/InteractiveQuestion.html#Editor)
-
-- [InteractiveQuestion.EditorButton](./generated/html/InteractiveQuestion.html#EditorButton)
-
-- [InteractiveQuestion.Filter](./generated/html/InteractiveQuestion.html#Filter)
-
-- [InteractiveQuestion.FilterDropdown](./generated/html/InteractiveQuestion.html#FilterDropdown)
-
-- [InteractiveQuestion.QuestionSettings](./generated/html/InteractiveQuestion.html#QuestionSettings)
-
-- [InteractiveQuestion.QuestionSettingsDropdown](./generated/html/InteractiveQuestion.html#QuestionSettingsDropdown)
-
-- [InteractiveQuestion.QuestionVisualization](./generated/html/InteractiveQuestion.html#QuestionVisualization)
-
-- [InteractiveQuestion.ResetButton](./generated/html/InteractiveQuestion.html#ResetButton)
-
-- [InteractiveQuestion.SaveButton](./generated/html/InteractiveQuestion.html#SaveButton)
-
-- [InteractiveQuestion.SaveQuestionForm](./generated/html/InteractiveQuestion.html#SaveQuestionForm)
-
-- [InteractiveQuestion.Summarize](./generated/html/InteractiveQuestion.html#Summarize)
-
-- [InteractiveQuestion.SummarizeDropdown](./generated/html/InteractiveQuestion.html#SummarizeDropdown)
-
-- [InteractiveQuestion.DownloadWidget](./generated/html/InteractiveQuestion.html#DownloadWidget)
-
-- [InteractiveQuestion.DownloadWidgetDropdown](./generated/html/InteractiveQuestion.html#DownloadWidgetDropdown)
-
-- [InteractiveQuestion.Title](./generated/html/InteractiveQuestion.html#Title)
+- [InteractiveQuestion.Breakout](./generated/html/InteractiveQuestion.html#breakout)
+- [InteractiveQuestion.BreakoutDropdown](./generated/html/InteractiveQuestion.html#breakoutdropdown)
+- [InteractiveQuestion.ChartTypeDropdown](./generated/html/InteractiveQuestion.html#charttypedropdown)
+- [InteractiveQuestion.ChartTypeSelector](./generated/html/InteractiveQuestion.html#charttypeselector)
+- [InteractiveQuestion.Editor](./generated/html/InteractiveQuestion.html#editor)
+- [InteractiveQuestion.EditorButton](./generated/html/InteractiveQuestion.html#editorbutton)
+- [InteractiveQuestion.Filter](./generated/html/InteractiveQuestion.html#filter)
+- [InteractiveQuestion.FilterDropdown](./generated/html/InteractiveQuestion.html#filterdropdown)
+- [InteractiveQuestion.QuestionSettings](./generated/html/InteractiveQuestion.html#questionsettings)
+- [InteractiveQuestion.QuestionSettingsDropdown](./generated/html/InteractiveQuestion.html#questionsettingsdropdown)
+- [InteractiveQuestion.QuestionVisualization](./generated/html/InteractiveQuestion.html#questionvisualization)
+- [InteractiveQuestion.ResetButton](./generated/html/InteractiveQuestion.html#resetbutton)
+- [InteractiveQuestion.SaveButton](./generated/html/InteractiveQuestion.html#savebutton)
+- [InteractiveQuestion.SaveQuestionForm](./generated/html/InteractiveQuestion.html#savequestionform)
+- [InteractiveQuestion.Summarize](./generated/html/InteractiveQuestion.html#summarize)
+- [InteractiveQuestion.SummarizeDropdown](./generated/html/InteractiveQuestion.html#summarizedropdown)
+- [InteractiveQuestion.DownloadWidget](./generated/html/InteractiveQuestion.html#downloadwidget)
+- [InteractiveQuestion.DownloadWidgetDropdown](./generated/html/InteractiveQuestion.html#downloadwidgetdropdown)
+- [InteractiveQuestion.Title](./generated/html/InteractiveQuestion.html#title)
 
 ## Interactive question plugins
 

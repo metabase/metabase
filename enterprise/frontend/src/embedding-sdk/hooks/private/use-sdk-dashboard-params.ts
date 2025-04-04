@@ -25,7 +25,7 @@ export type SdkDashboardDisplayProps = {
    * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.\
    *
    * @remarks
-   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account).
+   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](../../authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
    * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
    */
   initialParameters?: Query;
@@ -51,10 +51,10 @@ export type SdkDashboardDisplayProps = {
   withFooter?: boolean;
 
   /**
-   * A list of [parameters to hide](../public-links.md#appearance-parameters).
+   * A list of [parameters to hide](../../../public-links.html#appearance-parameters).
    *
    * @remarks
-   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account).
+   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](../../authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
    * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
    **/
   hiddenParameters?: string[];
