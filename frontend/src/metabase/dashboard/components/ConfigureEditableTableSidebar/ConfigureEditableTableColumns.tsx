@@ -12,6 +12,7 @@ import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import { useDispatch } from "metabase/lib/redux";
 import { ChartSettingActionIcon } from "metabase/visualizations/components/settings/ChartSettingActionIcon";
 import { ColumnItem } from "metabase/visualizations/components/settings/ColumnItem";
+import { mergeSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type {
   DashboardCard,
   Field,
@@ -50,7 +51,7 @@ export function ConfigureEditableTableColumns({
     [dispatch, dashcard.id, items],
   );
 
-  const handleEnableDisable = useCallback(
+  const handleShowHide = useCallback(
     (name: string, enabled: boolean) => {
       dispatch(
         onUpdateDashCardVisualizationSettings(dashcard.id, {
@@ -58,6 +59,23 @@ export function ConfigureEditableTableColumns({
             name: it.name,
             enabled: it.name === name ? enabled : it.enabled,
           })),
+        }),
+      );
+    },
+    [dashcard.id, dispatch, items],
+  );
+
+  const handleUpdateEditable = useCallback(
+    (name: string, editable: boolean) => {
+      dispatch(
+        onUpdateDashCardVisualizationSettings(dashcard.id, {
+          "table.editableColumns": items
+            .filter(
+              editable
+                ? (it) => it.editable || it.name === name
+                : (it) => it.editable && it.name !== name,
+            )
+            .map((it) => it.name),
         }),
       );
     },
@@ -81,24 +99,23 @@ export function ConfigureEditableTableColumns({
         <ColumnItem
           title={item.title}
           onRemove={
-            item.enabled
-              ? () => handleEnableDisable(item.name, false)
-              : undefined
+            item.enabled ? () => handleShowHide(item.name, false) : undefined
           }
           onEnable={
-            !item.enabled
-              ? () => handleEnableDisable(item.name, true)
-              : undefined
+            !item.enabled ? () => handleShowHide(item.name, true) : undefined
           }
           draggable={!isDragDisabled}
           icon={item.icon}
           additionalActions={
-            <ChartSettingActionIcon icon="pencil" onClick={() => {}} />
+            <ChartSettingActionIcon
+              icon={item.editable ? "pencil" : "line_style_solid"}
+              onClick={() => handleUpdateEditable(item.name, !item.editable)}
+            />
           }
         />
       </Sortable>
     ),
-    [isDragDisabled, handleEnableDisable],
+    [isDragDisabled, handleShowHide, handleUpdateEditable],
   );
 
   return (
@@ -119,14 +136,15 @@ type EditableTableColumnSettingItem = ReturnType<
 function useEditableTableColumnSettingItems(dashcard: DashboardCard) {
   return useMemo(() => {
     const fields = dashcard.card.result_metadata ?? [];
-    // const columnSettings =
-    //   dashcard.card.visualization_settings?.["table.columns"] ?? [];
-    const columnSettings =
-      (dashcard.visualization_settings?.[
-        "table.columns"
-      ] as TableColumnOrderSetting[]) ?? [];
+    const settings = mergeSettings(
+      dashcard.card.visualization_settings,
+      dashcard.visualization_settings,
+    );
 
-    const nameToSettingMap: Record<string, TableColumnOrderSetting> = {};
+    const columnDisplaySettings = settings["table.columns"] ?? [];
+    const columnEditableSettings = settings["table.editableColumns"] ?? [];
+
+    const nameToDisplaySettingMap: Record<string, TableColumnOrderSetting> = {};
     const nameToFieldMap: Record<string, Field> = {};
     const nameOrder: string[] = [];
 
@@ -135,10 +153,10 @@ function useEditableTableColumnSettingItems(dashcard: DashboardCard) {
       nameToFieldMap[field.name] = field;
     }
 
-    for (let i = 0; i < columnSettings.length; i++) {
-      const setting = columnSettings[i];
+    for (let i = 0; i < columnDisplaySettings.length; i++) {
+      const setting = columnDisplaySettings[i];
 
-      nameToSettingMap[setting.name] = setting;
+      nameToDisplaySettingMap[setting.name] = setting;
 
       // If column is deleted and settings are preserved, we need to exclude it
       // from the list of items to be displayed in the sidebar
@@ -151,13 +169,21 @@ function useEditableTableColumnSettingItems(dashcard: DashboardCard) {
       const field = fields[i];
 
       // If the field is not in the settings, we need to add it to the list of items
-      if (!nameToSettingMap[field.name]) {
+      if (!nameToDisplaySettingMap[field.name]) {
         nameOrder.push(field.name);
       }
     }
 
+    // By default all columns are editable if no settings are provided
+    // If settings are provided, we preserve them even if a new column is added
+    const editableColumnSet = new Set(
+      columnEditableSettings.length > 0
+        ? columnEditableSettings
+        : fields.map((it) => it.name),
+    );
+
     return nameOrder.map((name) => {
-      const setting = nameToSettingMap[name];
+      const setting = nameToDisplaySettingMap[name];
       const field = nameToFieldMap[name];
 
       return {
@@ -165,10 +191,15 @@ function useEditableTableColumnSettingItems(dashcard: DashboardCard) {
         name: field.name,
         title: field.display_name,
         enabled: setting?.enabled ?? true,
+        editable: editableColumnSet.has(field.name),
         icon: field.semantic_type
           ? FIELD_SEMANTIC_TYPES_MAP[field.semantic_type].icon
           : "string",
       };
     });
-  }, [dashcard.card.result_metadata, dashcard.visualization_settings]);
+  }, [
+    dashcard.card.result_metadata,
+    dashcard.visualization_settings,
+    dashcard.card.visualization_settings,
+  ]);
 }
