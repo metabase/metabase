@@ -415,7 +415,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       },
     });
 
-    H.openObjectDetail(0);
+    H.tableInteractive().findAllByTestId("detail-shortcut").first().click();
 
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("Link to review 1")
