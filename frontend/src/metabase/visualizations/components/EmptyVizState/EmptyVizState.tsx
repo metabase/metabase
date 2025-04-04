@@ -49,6 +49,9 @@ export const EmptyVizState = ({
     return null;
   }
 
+  const isDocsCTA = !!docsLink;
+  const isSummarizeCTA = !isDocsCTA;
+
   return (
     <Flex w="100%" h="100%" direction="column" align="center" justify="center">
       <Box maw="20rem" mb="3rem">
@@ -59,7 +62,7 @@ export const EmptyVizState = ({
         />
       </Box>
       <Stack gap="0.75rem" maw="25rem" ta="center" align="center">
-        {docsLink ? (
+        {isDocsCTA && (
           <>
             <Text>{primaryText}</Text>
             {showMetabaseLinks && (
@@ -71,7 +74,9 @@ export const EmptyVizState = ({
               </ExternalLink>
             )}
           </>
-        ) : (
+        )}
+
+        {isSummarizeCTA && (
           <>
             <Text>{c(
               "{0} refers to the 'Summarize'. {1} refers to the follow up instructions.",
