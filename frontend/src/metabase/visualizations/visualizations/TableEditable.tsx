@@ -14,6 +14,8 @@ import LoadingView from "metabase/visualizations/components/Visualization/Loadin
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { Card, DashboardCard, DatasetData } from "metabase-types/api";
 
+import { mergeSettings } from "../lib/settings/typed-utils";
+
 interface EditableTableState {
   data: DatasetData | null;
   card: Card | null;
@@ -117,12 +119,18 @@ export class TableEditable extends Component<
       return <LoadingView isSlow={false} />;
     }
 
+    const visualizationSettings = mergeSettings(
+      card.visualization_settings,
+      dashcard.visualization_settings,
+    );
+
     return (
       <EditTableDataWithUpdate
         className={className}
         data={data}
         tableId={card.table_id}
         refetchTableDataQuery={this.handleCardDataRefresh}
+        visualizationSettings={visualizationSettings}
       />
     );
   }

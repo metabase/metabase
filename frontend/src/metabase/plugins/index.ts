@@ -66,6 +66,7 @@ import type {
   Revision,
   TableId,
   User,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
@@ -636,5 +637,6 @@ export const PLUGIN_DATA_EDITING = {
     tableId: ConcreteTableId;
     className?: string;
     refetchTableDataQuery: () => void;
+    visualizationSettings?: VisualizationSettings;
   }>,
 };
