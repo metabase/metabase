@@ -2,10 +2,10 @@ import {
   type ChangeEvent,
   type Dispatch,
   type SetStateAction,
+  useCallback,
   useMemo,
   useRef,
   useState,
-  useCallback,
 } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -47,7 +47,7 @@ export const ContentTranslationConfiguration = () => {
       } catch (error) {
         setDidFileUploadFail(true);
       }
-      setUploadInputReactKey(n => n + 1);
+      setUploadInputReactKey((n) => n + 1);
     }
   };
 
@@ -212,8 +212,8 @@ const DownloadDictionaryModal = ({
             selectedLocales={selectedLocales}
             availableLocales={availableLocales}
             style={{ overflowY: "auto" }}
-            h="25rem"
             p="md"
+            h="25rem"
             bd="1px solid var(--mb-color-border)"
           />
         </Stack>
