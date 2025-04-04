@@ -15,39 +15,6 @@ const config = {
   favicon: "../resources/frontend_client/favicon.ico",
   outputs: [
     {
-      name: "markdown",
-      path: "../docs/embedding/sdk/generated/markdown",
-      options: {
-        entryFileName: "index",
-        flattenOutputFiles: false,
-        hideBreadcrumbs: true,
-        useCodeBlocks: true,
-        expandObjects: true,
-        expandParameters: true,
-        formatWithPrettier: true,
-        prettierConfigFile: "../.prettierrc",
-        hidePageHeader: true,
-        hidePageTitle: true,
-        hideGroupHeadings: true,
-        indexFormat: "table",
-        parametersFormat: "table",
-        interfacePropertiesFormat: "table",
-        classPropertiesFormat: "table",
-        enumMembersFormat: "table",
-        propertyMembersFormat: "table",
-        typeDeclarationFormat: "table",
-        tableColumnSettings: {
-          hideDefaults: false,
-          hideInherited: false,
-          hideModifiers: false,
-          hideOverrides: false,
-          hideSources: true,
-          hideValues: false,
-          leftAlignHeaders: false,
-        },
-      },
-    },
-    {
       name: "html",
       path: "../docs/embedding/sdk/generated/html",
       options: {
@@ -73,6 +40,7 @@ const config = {
       },
     },
   ],
+  defaultCategory: "other",
   kindSortOrder: [
     "Reference",
     "Project",
@@ -131,7 +99,6 @@ const config = {
     notDocumented: false,
     unusedMergeModuleWith: true,
   },
-  defaultCategory: "misc",
 };
 
 export default config;
