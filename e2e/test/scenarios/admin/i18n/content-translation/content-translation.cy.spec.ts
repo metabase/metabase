@@ -39,20 +39,15 @@ describe("scenarios > admin > localization > content translation", () => {
 
       cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, { locale: "de" });
 
-      cy.get<number>("@collectionId").then((collection_id) => {
-        cy.log("Create a model");
-
-        H.createQuestion(
-          {
-            name: "Products",
-            query: {
-              "source-table": PRODUCTS_ID,
-            },
-            collection_id,
+      H.createQuestion(
+        {
+          name: "Products",
+          query: {
+            "source-table": PRODUCTS_ID,
           },
-          { wrapId: true, idAlias: "productsQuestionId" },
-        );
-      });
+        },
+        { wrapId: true, idAlias: "productsQuestionId" },
+      );
     });
 
     describe("On the question page", () => {
