@@ -109,6 +109,7 @@ const MetadataTableColumn = ({
                 <Button
                   aria-label={t`Field settings`}
                   component={Link}
+                  flex="0 0 auto"
                   justify="center"
                   mr="sm"
                   p="10"
