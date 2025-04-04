@@ -554,7 +554,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                downloads: true,
+                downloads: { pdf: true, dashcard: true },
               },
             });
 
@@ -573,7 +573,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                downloads: true,
+                downloads: { pdf: true, dashcard: true },
               },
             });
 
@@ -599,7 +599,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                downloads: true,
+                downloads: { pdf: true, dashcard: true },
               },
             });
 
@@ -628,7 +628,7 @@ describe("#39152 sharing an unsaved question", () => {
             H.popover().findByText("Oswald").click();
 
             cy.log(
-              "Assert that it sends `downloads: false` when downloads are disabled",
+              "Assert that it sends `downloads: { pdf: false, dashcard: false }` when both are disabled",
             );
             H.modal()
               .findByLabelText(
@@ -637,6 +637,10 @@ describe("#39152 sharing an unsaved question", () => {
                   : "Download (csv, xlsx, json, png)",
               )
               .click({ force: true });
+
+            if (resource === "dashboard") {
+              cy.findByLabelText("Export to PDF").click({ force: true });
+            }
 
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
@@ -653,7 +657,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: false,
                 font: "custom",
                 theme: "night",
-                downloads: false,
+                downloads: { pdf: false, dashcard: false },
               },
             });
           });
