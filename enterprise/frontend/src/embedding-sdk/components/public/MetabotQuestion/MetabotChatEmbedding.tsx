@@ -14,6 +14,8 @@ interface MetabotChatEmbeddingProps {
   onResult: (result: Record<string, any> | null) => void;
 }
 
+const EMBEDDING_METABOT_ID = "c61bf5f5-1025-47b6-9298-bf1827105bb6";
+
 export const MetabotChatEmbedding = ({
   onResult,
 }: MetabotChatEmbeddingProps) => {
@@ -35,9 +37,9 @@ export const MetabotChatEmbedding = ({
     }
     resetInput();
     metabot
-      .submitInput(trimmedInput)
+      .submitInput(trimmedInput, EMBEDDING_METABOT_ID)
       .then(onResult)
-      .catch(err => console.error(err))
+      .catch((err) => console.error(err))
       .finally(() => textareaRef.current?.focus());
   };
 
@@ -119,10 +121,10 @@ export const MetabotChatEmbedding = ({
             metabot.isDoingScience && Styles.textareaLoading,
           )}
           placeholder={placeholder}
-          onChange={e => handleInputChange(e.target.value)}
+          onChange={(e) => handleInputChange(e.target.value)}
           // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
           onHeightChange={handleMaybeExpandInput}
-          onKeyDown={e => {
+          onKeyDown={(e) => {
             if (e.key === "Enter") {
               // prevent event from inserting new line + interacting with other content
               e.preventDefault();

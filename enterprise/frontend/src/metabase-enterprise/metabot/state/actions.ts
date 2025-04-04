@@ -62,6 +62,7 @@ export const submitInput = createAsyncThunk(
       context: MetabotChatContext;
       history: any[];
       state: any;
+      metabot_id?: string;
     },
     { dispatch, getState },
   ) => {
@@ -91,6 +92,7 @@ export const sendMessageRequest = createAsyncThunk(
       context: MetabotChatContext;
       history: any[];
       state: any;
+      metabot_id?: string;
     },
     { dispatch, getState },
   ) => {
@@ -142,7 +144,7 @@ export const selectUserConfirmationOption = createAsyncThunk(
     const confirmationOption = userConfirmationOptions[message];
     if (!confirmationOption) {
       const options = Object.keys(userConfirmationOptions);
-      const quotedOptions = options.map(option => `“${option}”`).join(" or ");
+      const quotedOptions = options.map((option) => `“${option}”`).join(" or ");
       dispatch(addUserMessage(t`Sorry, could you give me a ${quotedOptions}?`));
     } else {
       dispatch(clearUserMessages());
