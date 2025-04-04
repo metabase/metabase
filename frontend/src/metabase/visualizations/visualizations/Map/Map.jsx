@@ -3,7 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
+import { ColorRangeSelector } from "metabase/core/components/ColorRangeSelector";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import MetabaseSettings from "metabase/lib/settings";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";

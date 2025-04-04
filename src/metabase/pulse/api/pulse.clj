@@ -3,6 +3,7 @@
   see [[metabase.pulse.api.unsubscribe]].
 
   Deprecated: will soon be migrated to notification APIs."
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.set :refer [difference]]
    [hiccup.core :refer [html]]
@@ -19,7 +20,7 @@
    [metabase.integrations.slack :as slack]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.notification.core :as notification]
+   [metabase.notification.send :as notification.send]
    [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
@@ -374,7 +375,7 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (binding [notification/*default-options* {:notification/sync? true}]
+  (binding [notification.send/*default-options* {:notification/sync? true}]
     (pulse.send/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 

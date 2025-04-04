@@ -2,16 +2,16 @@ import classNames from "classnames";
 import type { ComponentProps, LegacyRef } from "react";
 
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
+import { Tooltip } from "metabase/ui";
 
 import Markdown from "../Markdown";
-import Tooltip from "../Tooltip";
 
 import C from "./MarkdownPreview.module.css";
 
 export interface MarkdownPreviewProps {
   children: string;
   className?: string;
-  tooltipMaxWidth?: ComponentProps<typeof Tooltip>["maxWidth"];
+  tooltipMaxWidth?: ComponentProps<typeof Tooltip>["maw"];
   lineClamp?: number;
   allowedElements?: string[];
   oneLine?: boolean;
@@ -40,10 +40,10 @@ export const MarkdownPreview = ({
 
   return (
     <Tooltip
-      maxWidth={tooltipMaxWidth}
-      placement="bottom"
-      isEnabled={isTruncated}
-      tooltip={
+      maw={tooltipMaxWidth}
+      position="bottom"
+      disabled={!isTruncated}
+      label={
         <Markdown dark disallowHeading unstyleLinks lineClamp={lineClamp}>
           {children}
         </Markdown>

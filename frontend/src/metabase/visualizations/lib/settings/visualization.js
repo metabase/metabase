@@ -45,7 +45,7 @@ const COMMON_SETTINGS = {
   click_behavior: {},
 };
 
-function getSettingDefintionsForSeries(series) {
+function getSettingDefinitionsForSeries(series) {
   if (!series) {
     return {};
   }
@@ -92,7 +92,7 @@ export function getComputedSettingsForSeries(series) {
   if (!series) {
     return {};
   }
-  const settingsDefs = getSettingDefintionsForSeries(series);
+  const settingsDefs = getSettingDefinitionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
   return getComputedSettings(settingsDefs, series, storedSettings);
 }
@@ -100,7 +100,7 @@ export function getComputedSettingsForSeries(series) {
 export function getPersistableDefaultSettingsForSeries(series) {
   // A complete set of settings (not only defaults) is loaded because
   // some persistable default settings need other settings as dependency for calculating the default value
-  const settingsDefs = getSettingDefintionsForSeries(series);
+  const settingsDefs = getSettingDefinitionsForSeries(series);
   const computedSettings = getComputedSettingsForSeries(series);
   return getPersistableDefaultSettings(settingsDefs, computedSettings);
 }
@@ -111,7 +111,7 @@ export function getSettingsWidgetsForSeries(
   isDashboard = false,
   extra = {},
 ) {
-  const settingsDefs = getSettingDefintionsForSeries(series);
+  const settingsDefs = getSettingDefinitionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
   const computedSettings = getComputedSettingsForSeries(series);
 

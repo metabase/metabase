@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
@@ -49,9 +48,10 @@
          (lib.metadata/bulk-metadata-or-throw query :metadata/card)
          (into {}
                (map (fn [card-metadata]
-                      (let [metric-query (lib.convert/->pMBQL
-                                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
-                                           (lib/query query (:dataset-query card-metadata))))
+                      (let [metric-query (->> (:dataset-query card-metadata)
+                                              (lib/query query)
+                                              ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
+                                              (lib/query query))
                             metric-name (:name card-metadata)]
                         (if-let [aggregation (first (lib/aggregations metric-query))]
                           [(:id card-metadata)
@@ -125,7 +125,6 @@
                          (fetch-referenced-metrics query))]
       (let [temp-query (temp-query-at-stage-path query path)
             unique-name-fn (lib.util/unique-name-generator
-                            (:lib/metadata query)
                             (map
                              (comp :lib/expression-name second)
                              (lib/expressions temp-query)))

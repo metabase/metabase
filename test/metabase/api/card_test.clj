@@ -10,7 +10,6 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.macros :as api.macros]
-   [metabase.api.notification-test :as api.notification-test]
    [metabase.api.open-api :as open-api]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
@@ -23,6 +22,7 @@
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
+   [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -40,6 +40,7 @@
    [metabase.test.util :as tu]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -2539,7 +2540,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-        ;; testing that we aren't just adding a nil moderation each time we update a card
+       ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -3346,8 +3347,8 @@
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
                                   (lib/limit 2))]
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
-          (is (=? {:data {:rows [["1" "Red Medicine" "4" 10.0646 -165.374 3]
-                                 ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]]}}
+          (is (=? {:data {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
                   (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id)))))))))
 
 (deftest ^:parallel validate-template-tags-test
@@ -4052,9 +4053,9 @@
                                      :collection_id coll-id
                                      :dashboard_id dash-id)))
       (testing "Specifying both fails if they're different"
-        (is (= (format "Mismatch detected between Dashboard's `collection_id` (%d) and `collection_id` (%d)"
-                       coll-id
-                       nil)
+        (is (= (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
+                    coll-id
+                    nil)
                (mt/user-http-request :rasta :post 400 "card/"
                                      (assoc (card-with-name-and-query)
                                             :collection_id nil

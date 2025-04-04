@@ -231,6 +231,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
         >
           <CloseButton
             onClick={() => setActionToastCount(c => c - 1)}
+            // eslint-disable-next-line no-color-literals
             c="#fff"
             bg="transparent"
           />

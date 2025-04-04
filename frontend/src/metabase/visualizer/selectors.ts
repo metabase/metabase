@@ -2,10 +2,20 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { utf8_to_b64 } from "metabase/lib/encoding";
-import { isCartesianChart } from "metabase/visualizations";
+import {
+  extractRemappings,
+  getVisualization,
+  getVisualizationTransformed,
+  isCartesianChart,
+} from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { DatasetData, RawSeries } from "metabase-types/api";
+import type {
+  Card,
+  DatasetData,
+  RawSeries,
+  SingleSeries,
+} from "metabase-types/api";
 import type {
   VisualizerHistoryItem,
   VisualizerState,
@@ -16,6 +26,8 @@ import {
   extractReferencedColumns,
   getDefaultVisualizationName,
   mergeVisualizerData,
+  shouldSplitVisualizerSeries,
+  splitVisualizerSeries,
 } from "./utils";
 
 type State = { visualizer: VisualizerState };
@@ -24,24 +36,10 @@ type State = { visualizer: VisualizerState };
 
 const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 
-const getCards = (state: State) => state.visualizer.cards;
+export const getCards = (state: State) => state.visualizer.cards;
 
-const getRawSettings = (state: State) => getCurrentHistoryItem(state).settings;
-
-const getSettings = createSelector(
-  [getVisualizationType, getRawSettings],
-  (display, rawSettings) => {
-    if (display && isCartesianChart(display)) {
-      // Visualizer wells display labels
-      return {
-        ...rawSettings,
-        "graph.x_axis.labels_enabled": false,
-        "graph.y_axis.labels_enabled": false,
-      };
-    }
-    return rawSettings;
-  },
-);
+export const getVisualizerRawSettings = (state: State) =>
+  getCurrentHistoryItem(state).settings;
 
 const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
@@ -52,7 +50,7 @@ const getVisualizerColumnValuesMapping = (state: State) =>
 // Public selectors
 
 export function getVisualizationTitle(state: State) {
-  const settings = getRawSettings(state);
+  const settings = getVisualizerRawSettings(state);
   return settings["card.title"] ?? getDefaultVisualizationName();
 }
 
@@ -86,7 +84,8 @@ export const getIsFullscreenModeEnabled = (state: State) =>
 export const getIsVizSettingsSidebarOpen = (state: State) =>
   state.visualizer.isVizSettingsSidebarOpen;
 
-export const getCanUndo = (state: State) => state.visualizer.past.length > 0;
+// #0 is state before its actually initialized, hence the > 1
+export const getCanUndo = (state: State) => state.visualizer.past.length > 1;
 export const getCanRedo = (state: State) => state.visualizer.future.length > 0;
 
 export const getReferencedColumns = createSelector(
@@ -113,6 +112,18 @@ export const getUsedDataSources = createSelector(
   },
 );
 
+export const getIsMultiseriesCartesianChart = createSelector(
+  [
+    getVisualizationType,
+    getVisualizerColumnValuesMapping,
+    getVisualizerRawSettings,
+  ],
+  (display, columnValuesMapping, settings) =>
+    display &&
+    isCartesianChart(display) &&
+    shouldSplitVisualizerSeries(columnValuesMapping, settings),
+);
+
 const getVisualizerDatasetData = createSelector(
   [
     getUsedDataSources,
@@ -126,7 +137,7 @@ const getVisualizerDatasetData = createSelector(
       columnValuesMapping,
       datasets,
       dataSources,
-    }),
+    }) as DatasetData,
 );
 
 export const getVisualizerDatasetColumns = createSelector(
@@ -135,31 +146,63 @@ export const getVisualizerDatasetColumns = createSelector(
 );
 
 export const getVisualizerRawSeries = createSelector(
-  [getVisualizationType, getSettings, getVisualizerDatasetData],
-  (display, settings, data): RawSeries => {
+  [
+    getVisualizationType,
+    getVisualizerColumnValuesMapping,
+    getVisualizerRawSettings,
+    getVisualizerDatasetData,
+    getIsMultiseriesCartesianChart,
+  ],
+  (
+    display,
+    columnValuesMapping,
+    settings,
+    data,
+    isMultiseriesCartesianChart,
+  ): RawSeries => {
     if (!display) {
       return [];
     }
-    return [
+
+    const series: RawSeries = [
       {
         card: {
           display,
           visualization_settings: settings,
-        },
+        } as Card,
         data,
 
         // Certain visualizations memoize settings computation based on series keys
         // This guarantees a visualization always rerenders on changes
         started_at: new Date().toISOString(),
-      },
+      } as SingleSeries,
     ];
+
+    if (isMultiseriesCartesianChart) {
+      return splitVisualizerSeries(series, columnValuesMapping);
+    }
+
+    return series;
+  },
+);
+
+export const getVisualizerTransformedSeries = createSelector(
+  [getVisualizerRawSeries],
+  rawSeries => {
+    if (rawSeries.length === 0) {
+      return [];
+    }
+    const { series } = getVisualizationTransformed(
+      extractRemappings(rawSeries),
+    );
+    return series;
   },
 );
 
 export const getVisualizerComputedSettings = createSelector(
-  [getVisualizerRawSeries],
-  (rawSeries): ComputedVisualizationSettings =>
-    rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
+  [getVisualizerTransformedSeries],
+  (series): ComputedVisualizationSettings =>
+    series.length > 0 ? getComputedSettingsForSeries(series) : {},
 );
 
 export const getTabularPreviewSeries = createSelector(
@@ -178,7 +221,7 @@ export const getTabularPreviewSeries = createSelector(
         card: {
           display: "table",
           visualization_settings: {},
-        },
+        } as Card,
       },
     ];
   },
@@ -220,3 +263,25 @@ function checkIfStateDirty(state: VisualizerHistoryItem) {
     Object.keys(state.columnValuesMapping).length > 0
   );
 }
+
+export const getIsRenderable = createSelector(
+  [getVisualizationType, getVisualizerRawSeries, getVisualizerComputedSettings],
+  (display, rawSeries, settings) => {
+    if (!display) {
+      return false;
+    }
+
+    const visualization = getVisualization(display);
+
+    if (!visualization) {
+      return false;
+    }
+
+    try {
+      visualization.checkRenderable(rawSeries, settings);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
+);

@@ -2,7 +2,7 @@
   ;; TODO this should be moved to notification
   (:require
    [metabase.events :as events]
-   [metabase.models.notification :as models.notification]
+   [metabase.notification.models :as models.notification]
    [toucan2.core :as t2]))
 
 (defn- card-archived? [old-card new-card]

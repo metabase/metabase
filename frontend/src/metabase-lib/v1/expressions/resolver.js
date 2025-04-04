@@ -1,15 +1,9 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { ResolverError } from "metabase-lib/v1/expressions/pratt/types";
-
+import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { ResolverError } from "./errors";
+import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
 import { OPERATOR as OP } from "./tokenizer";
-
-import {
-  MBQL_CLAUSES,
-  getMBQLName,
-  isCaseOrIfOperator,
-  isOptionsObject,
-} from "./index";
 
 const FIELD_MARKERS = ["dimension", "segment", "metric"];
 export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
@@ -94,7 +88,10 @@ export function resolve({
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
 
-    if (FIELD_MARKERS.includes(op)) {
+    if (op === "value") {
+      const [value] = operands;
+      return [op, resolve({ expression: value, type, fn, database })];
+    } else if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;
       if (fn) {
@@ -233,14 +230,10 @@ export function resolve({
       return resolve({ expression: operand, type: args[i], fn, database });
     });
     return [op, ...resolvedOperands];
-  } else if (
-    !isCompatible(
-      type,
-      typeof expression === "boolean" ? "expression" : typeof expression,
-    )
-  ) {
-    throw new Error(
+  } else if (!isCompatible(type, typeof expression)) {
+    throw new ResolverError(
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,
+      expression.node,
     );
   }
   return expression;

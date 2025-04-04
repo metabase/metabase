@@ -137,7 +137,7 @@ const EngineSearch = ({
   );
 
   return (
-    <EngineSearchRoot role="combobox" aria-expanded="true">
+    <EngineSearchRoot role="combobox">
       <Input
         value={searchText}
         placeholder={t`Search for a database…`}

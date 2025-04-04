@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { isMac } from "metabase/lib/browser";
 import { canFormatForEngine } from "metabase/query_builder/components/NativeQueryEditor/utils";
@@ -10,7 +9,7 @@ import { NativeVariablesButton } from "metabase/query_builder/components/view/Na
 import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
 import { SnippetSidebarButton } from "metabase/query_builder/components/view/SnippetSidebarButton";
 import type { QueryModalType } from "metabase/query_builder/constants";
-import { Box } from "metabase/ui";
+import { Box, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
@@ -97,12 +96,12 @@ export const NativeQueryEditorSidebar = (
       data-testid="native-query-editor-sidebar"
     >
       {canFormatQuery && (
-        <Tooltip tooltip={t`Format query`}>
+        <Tooltip label={t`Auto-format`}>
           <Button
             className={NativeQueryEditorSidebarS.SidebarButton}
-            aria-label={t`Format query`}
+            aria-label={t`Auto-format`}
             onClick={onFormatQuery}
-            icon="document"
+            icon="format_code"
             iconSize={20}
             onlyIcon
           />
@@ -128,7 +127,6 @@ export const NativeQueryEditorSidebar = (
           isDirty={isResultDirty}
           onRun={runQuery}
           onCancel={cancelQuery}
-          compact
           getTooltip={getTooltip}
         />
       )}

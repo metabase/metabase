@@ -199,15 +199,18 @@ function getParameterValuesBySlug(
   parameterMapping,
   { data, extraData, clickBehavior },
 ) {
-  return _.chain(parameterMapping)
-    .values()
-    .map(({ source, target }) => [
-      getTargetForQueryParams(target, { extraData, clickBehavior }),
-      formatSourceForTarget(source, target, { data, extraData, clickBehavior }),
-    ])
-    .filter(([key, value]) => value != null)
-    .object()
-    .value();
+  return Object.fromEntries(
+    Object.values(parameterMapping)
+      .map(({ source, target }) => [
+        getTargetForQueryParams(target, { extraData, clickBehavior }),
+        formatSourceForTarget(source, target, {
+          data,
+          extraData,
+          clickBehavior,
+        }),
+      ])
+      .filter(([key, value]) => key != null && value != null),
+  );
 }
 
 function getTypeForSource(source, data, extraData) {

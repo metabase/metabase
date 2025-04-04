@@ -6,6 +6,10 @@
 // can use this flag to enable it. This is set to true in CI
 const shouldLintCssModules =
   process.env.LINT_CSS_MODULES === "true" || process.env.CI;
+const plugins = ["react", "no-only-tests"];
+if (shouldLintCssModules) {
+  plugins.push("postcss-modules");
+}
 
 module.exports = {
   rules: {
@@ -134,7 +138,7 @@ module.exports = {
     "jest/globals": true,
   },
   parser: "babel-eslint",
-  plugins: ["react", "no-only-tests", "postcss-modules"],
+  plugins,
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",
@@ -171,6 +175,7 @@ module.exports = {
       files: ["*.js", "*.jsx", "*.ts", "*.tsx"],
       rules: {
         "no-unconditional-metabase-links-render": "error",
+        "no-color-literals": "error",
         "no-literal-metabase-strings": "error",
         "depend/ban-dependencies": [
           "error",
@@ -192,11 +197,13 @@ module.exports = {
         "frontend/src/metabase/setup/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
+        "stories-data.*",
         "e2e/**/*",
         "**/tests/*",
         "release/**/*",
       ],
       rules: {
+        "no-color-literals": "off",
         "no-unconditional-metabase-links-render": "off",
         "no-literal-metabase-strings": "off",
       },
@@ -277,13 +284,20 @@ module.exports = {
             selector: "Literal[value=/mb-base-color-/]",
             message:
               "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
-          },
-          {
-            selector:
-              "CallExpression[callee.property.name='legacyQuery'] > ObjectExpression > Property[key.name='useStructuredQuery'][value.value=true]",
-            message: "StructuredQuery usage is forbidden. Use MLv2",
-          },
+          }
         ],
+      },
+    },
+    {
+      files: ["docs/**/snippets/**/*.{ts,tsx,js,jsx}"],
+      rules: {
+        "@typescript-eslint/no-unused-vars": "off",
+        "@typescript-eslint/no-var-requires": "off",
+        "import/no-commonjs": "off",
+        "import/no-default-export": "off",
+        "import/order": "off",
+        "import/no-unresolved": "off",
+        "no-color-literals": "off",
       },
     },
   ],

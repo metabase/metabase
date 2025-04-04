@@ -77,6 +77,7 @@ export interface DatasetData {
   native_form: {
     query: string;
   };
+  is_sandboxed?: boolean;
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -146,7 +147,7 @@ export interface NativeDatasetResponse {
 
 export type SingleSeries = {
   card: Card;
-} & Pick<Dataset, "data" | "error">;
+} & Pick<Dataset, "data" | "error" | "started_at">;
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };

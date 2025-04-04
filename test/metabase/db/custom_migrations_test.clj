@@ -35,7 +35,6 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.task :as task]
-   [metabase.task.notification :as task.notification]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -2551,104 +2550,68 @@
                   {}]
                  (query-viz-settings))))))))
 
-(defn- send-pulse-triggers
-  []
-  (:triggers (task/job-info "metabase.task.send-pulses.send-pulse.job")))
-
-(defn- send-notification-triggers
-  []
-  (:triggers (task/job-info "metabase.task.notification.send.job")))
-
 ;; see [[custom-migrations/MigrateAlertToNotification]] for info about how this migration works
 (deftest migrate-alert-to-notification-test
   (testing "v53.2024-12-12T08:06:00: migrate alerts from pulse to notification"
     (mt/with-temp-scheduler!
       (impl/test-migrations ["v53.2024-12-12T08:05:00"] [migrate!]
-        (with-redefs [;; redefs so that the init tasks that run in a separate with use this temp scheduler and temp connection
-                      task/*quartz-scheduler*         (atom @task/*quartz-scheduler*)
-                      mdb.connection/*application-db* mdb.connection/*application-db*]
-          (let [user-id     (:id (new-instance-with-default :core_user))
-                database-id (:id (new-instance-with-default :metabase_database))
-                card-id     (:id (new-instance-with-default :report_card
-                                                            {:creator_id  user-id
-                                                             :database_id database-id}))
-                pulse-id    (:id (new-instance-with-default :pulse
-                                                            {:name             "My Alert"
-                                                             :creator_id       user-id
-                                                             :alert_condition  "rows"
-                                                             :alert_first_only false
-                                                             :archived        false}))
-                _pc-id     (:id (new-instance-with-default :pulse_card
-                                                           {:pulse_id pulse-id
-                                                            :card_id  card-id
-                                                            :position 0}))
-                schedule   {:schedule_type "daily"
-                            :schedule_hour  18
-                            :schedule_day   nil
-                            :schedule_frame nil}
-                _pc-ch-id  (:id (new-instance-with-default :pulse_channel
-                                                           (merge schedule
-                                                                  {:pulse_id     pulse-id
-                                                                   :channel_type "email"
-                                                                   :details      (json/encode {:emails ["test@test.com"]})
-                                                                   :enabled      true})))]
+        (let [user-id     (:id (new-instance-with-default :core_user))
+              database-id (:id (new-instance-with-default :metabase_database))
+              card-id     (:id (new-instance-with-default :report_card
+                                                          {:creator_id  user-id
+                                                           :database_id database-id}))
+              pulse-id    (:id (new-instance-with-default :pulse
+                                                          {:name             "My Alert"
+                                                           :creator_id       user-id
+                                                           :alert_condition  "rows"
+                                                           :alert_first_only false
+                                                           :archived        false}))
+              _pc-id     (:id (new-instance-with-default :pulse_card
+                                                         {:pulse_id pulse-id
+                                                          :card_id  card-id
+                                                          :position 0}))
+              schedule   {:schedule_type "daily"
+                          :schedule_hour  18
+                          :schedule_day   nil
+                          :schedule_frame nil}
+              _pc-ch-id  (:id (new-instance-with-default :pulse_channel
+                                                         (merge schedule
+                                                                {:pulse_id     pulse-id
+                                                                 :channel_type "email"
+                                                                 :details      (json/encode {:emails ["test@test.com"]})
+                                                                 :enabled      true})))]
 
-            (testing "before migration there should be a trigger for the send pulse task"
-              (task/init! ::task.send-pulses/SendPulses)
-              (is (=? [{:key (format "metabase.task.send-pulse.trigger.%d.0_0_18_*_*_?_*" pulse-id)}]
-                      (u/poll {:thunk       send-pulse-triggers
-                               :done?       seq
-                               :interval-ms 20}))))
+          (testing "after migration"
+            (migrate!)
+            (testing "pulse is migrated to notification"
+              (let [notification (t2/select-one :notification)
+                    notification-card (t2/select-one :notification_card :id (:payload_id notification))
+                    subscription (t2/select-one :notification_subscription :notification_id (:id notification))
+                    handler      (t2/select-one :notification_handler :notification_id (:id notification))
+                    recipient    (t2/select-one :notification_recipient :notification_handler_id (:id handler))]
+                (is (= {:payload_type "notification/card"
+                        :active       true
+                        :creator_id   user-id}
+                       (select-keys notification [:payload_type :active :creator_id])))
 
-            (testing "after migration"
-              (migrate!)
-              (testing "pulse is migrated to notification"
-                (let [notification (t2/select-one :notification)
-                      notification-card (t2/select-one :notification_card :id (:payload_id notification))
-                      subscription (t2/select-one :notification_subscription :notification_id (:id notification))
-                      handler      (t2/select-one :notification_handler :notification_id (:id notification))
-                      recipient    (t2/select-one :notification_recipient :notification_handler_id (:id handler))]
-                  (is (= {:payload_type "notification/card"
-                          :active       true
-                          :creator_id   user-id}
-                         (select-keys notification [:payload_type :active :creator_id])))
+                (is (= {:card_id        card-id
+                        :send_once      false
+                        :send_condition "has_result"}
+                       (select-keys notification-card [:card_id :send_once :send_condition])))
 
-                  (is (= {:card_id        card-id
-                          :send_once      false
-                          :send_condition "has_result"}
-                         (select-keys notification-card [:card_id :send_once :send_condition])))
+                (is (= {:type          "notification-subscription/cron"
+                        :cron_schedule "0 0 18 * * ? *"}
+                       (select-keys subscription [:type :cron_schedule])))
 
-                  (is (= {:type          "notification-subscription/cron"
-                          :cron_schedule "0 0 18 * * ? *"}
-                         (select-keys subscription [:type :cron_schedule])))
+                (is (= {:channel_type "channel/email"}
+                       (select-keys handler [:channel_type])))
+                (is (= {:type    "notification-recipient/raw-value"
+                        :details "{\"value\":\"test@test.com\"}"}
+                       (select-keys recipient [:type :details])))
+                (is (= {:type    "notification-recipient/raw-value"
+                        :details "{\"value\":\"test@test.com\"}"}
+                       (select-keys recipient [:type :details]))))))
 
-                  (is (= {:channel_type "channel/email"}
-                         (select-keys handler [:channel_type])))
-                  (is (= {:type    "notification-recipient/raw-value"
-                          :details "{\"value\":\"test@test.com\"}"}
-                         (select-keys recipient [:type :details])))
-                  (is (= {:type    "notification-recipient/raw-value"
-                          :details "{\"value\":\"test@test.com\"}"}
-                         (select-keys recipient [:type :details])))
-
-                  (testing "send pulse trigger is deleted"
-                    (is (empty? (send-pulse-triggers))))
-
-                  (testing "init send notification creates new triggers"
-                    ;; simulate start up
-                    (task/init! ::task.notification/SendNotifications)
-                    (is (empty? (send-notification-triggers)))
-                    (is (=? [{:key (format "metabase.task.notification.trigger.subscription.%d" (:id subscription))}]
-                            (u/poll {:thunk       send-notification-triggers
-                                     :done?       seq
-                                     :interval-ms 20})))))))
-
-            (testing "after downgrade"
-              (migrate! :down 52)
-              (testing "init send pulse creates new trigger"
-                (task/init! ::task.send-pulses/SendPulses)
-                (is (=? [{:key (format "metabase.task.send-pulse.trigger.%d.0_0_18_*_*_?_*" pulse-id)}]
-                        (u/poll {:thunk       send-pulse-triggers
-                                 :done?       seq
-                                 :interval-ms 20})))
-                (is (zero? (t2/count :notification :payload_type "notification/card")))))))))))
+          (testing "after downgrade"
+            (migrate! :down 52)
+            (is (zero? (t2/count :notification :payload_type "notification/card")))))))))

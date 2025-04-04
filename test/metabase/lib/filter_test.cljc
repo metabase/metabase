@@ -717,14 +717,17 @@
       {:clause [:starts-with nam "ABC"], :name "Name starts with ABC"}
       {:clause [:starts-with nam "ABC" "HJK" "XYZ"], :name "Name starts with 3 selections"}
       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}
-      {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}])))
+      {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}
+      {:clause [:value "ABC"], :options {:effective-type :type/Text}, :name "\"ABC\""}])))
 
 (deftest ^:parallel boolean-frontend-filter-display-names-test
   (check-display-names
    [{:clause [:= is-active true], :name "Is Active is true"}
     {:clause [:= is-active false], :name "Is Active is false"}
     {:clause [:is-null is-active], :name "Is Active is empty"}
-    {:clause [:not-null is-active], :name "Is Active is not empty"}]))
+    {:clause [:not-null is-active], :name "Is Active is not empty"}
+    {:clause [:value false], :options {:effective-type :type/Boolean}, :name "false"}
+    {:clause [:value true], :options {:effective-type :type/Boolean}, :name "true"}]))
 
 (deftest ^:parallel number-frontend-filter-display-names-test
   (let [tax (meta/field-metadata :orders :tax)]
@@ -743,7 +746,10 @@
       {:clause [:>= tax 1], :name "Tax is greater than or equal to 1"}
       {:clause [:<= tax 1], :name "Tax is less than or equal to 1"}
       {:clause [:is-null tax], :name "Tax is empty"}
-      {:clause [:not-null tax], :name "Tax is not empty"}])))
+      {:clause [:not-null tax], :name "Tax is not empty"}
+      {:clause [:value 0], :options {:effective-type :type/Number}, :name "0"}
+      {:clause [:value 10], :options {:effective-type :type/Integer}, :name "10"}
+      {:clause [:value -10.15], :options {:effective-type :type/Float}, :name "-10.15"}])))
 
 (deftest ^:parallel bigint-frontend-filter-display-names-test
   (let [id        (meta/field-metadata :orders :id)
@@ -791,6 +797,11 @@
       {:clause [:time-interval created-at :current :quarter],
        :name "Created At is this quarter"}
       {:clause [:time-interval created-at :current :year], :name "Created At is this year"}
+      {:clause [:time-interval created-at 0 :day], :name "Created At is today"}
+      {:clause [:time-interval created-at 0 :week], :name "Created At is this week"}
+      {:clause [:time-interval created-at 0 :month], :name "Created At is this month"}
+      {:clause [:time-interval created-at 0 :quarter], :name "Created At is this quarter"}
+      {:clause [:time-interval created-at 0 :year], :name "Created At is this year"}
       {:clause [:time-interval created-at 1 :minute], :name "Created At is in the next minute"}
       {:clause [:time-interval created-at 3 :minute], :name "Created At is in the next 3 minutes"}
       {:clause [:time-interval created-at 1 :hour], :name "Created At is in the next hour"}

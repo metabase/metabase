@@ -12,15 +12,21 @@ import {
 export type ViewFooterButtonProps = {
   icon: IconName;
   tooltipLabel?: string | null;
+  disableTooltip?: boolean;
 } & ActionIconProps &
   HTMLAttributes<HTMLButtonElement>;
 
 export const ViewFooterButton = forwardRef(function _ViewFooterButton(
-  { icon, tooltipLabel, ...actionIconProps }: ViewFooterButtonProps,
+  {
+    icon,
+    tooltipLabel,
+    disableTooltip,
+    ...actionIconProps
+  }: ViewFooterButtonProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (
-    <Tooltip label={tooltipLabel}>
+    <Tooltip label={tooltipLabel} disabled={disableTooltip}>
       <Center ref={ref}>
         <ActionIcon variant="viewFooter" {...actionIconProps}>
           <Icon size={18} name={icon} />

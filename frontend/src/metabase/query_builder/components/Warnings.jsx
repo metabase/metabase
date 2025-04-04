@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 
 const Warnings = ({ warnings, className = "", size = 16 }) => {
   if (!warnings || warnings.length === 0) {
@@ -20,7 +19,7 @@ const Warnings = ({ warnings, className = "", size = 16 }) => {
   );
 
   return (
-    <Tooltip tooltip={tooltip}>
+    <Tooltip label={tooltip}>
       <Icon className={className} name="warning" size={size} />
     </Tooltip>
   );

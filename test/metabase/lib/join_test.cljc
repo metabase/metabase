@@ -9,6 +9,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -217,6 +218,9 @@
           metadata (lib/returned-columns query)]
       (is (=? [(merge (meta/field-metadata :categories :name)
                       {:display-name         "Name"
+                       :ident                (lib.metadata.ident/explicitly-joined-ident
+                                              #_col-ident  "RDOjlMfV-Fg8UwZMPWiq3"
+                                              #_join-ident "dJbULfDmVAyTENMCo7q1q")
                        :lib/source           :source/fields
                        ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
               metadata))
@@ -1493,3 +1497,26 @@
           (testing "but when editing the first join, Orders.USER_ID is not visible and no condition is suggested"
             (is (=? nil
                     (lib/suggested-join-conditions query -1 (meta/table-metadata :people) 0)))))))))
+
+(deftest ^:parallel join-and-summary-ordering-test
+  (let [has-fields? #(-> % lib/joins first (contains? :fields))]
+    (testing "adding an aggregation or breakout removes :fields from any joins"
+      (let [base       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/join (meta/table-metadata :products)))
+            aggregated (lib/aggregate base (lib/count))
+            broken-out (lib/breakout base (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))]
+        (is (=? [{:fields :all}]
+                (lib/joins base)))
+        (is (has-fields? base))
+        (is (not (has-fields? aggregated)))
+        (is (not (has-fields? broken-out)))))
+    (testing "a join added with an existing breakout has no :fields clause"
+      (is (not (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                   (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                   (lib/join (meta/table-metadata :products))
+                   has-fields?))))
+    (testing "a join added with an existing aggregation has no :fields clause"
+      (is (not (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                   (lib/aggregate (lib/count))
+                   (lib/join (meta/table-metadata :products))
+                   has-fields?))))))

@@ -32,7 +32,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
@@ -40,7 +40,6 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     getSdkRoot().contains("Pick your starting data");
 
     popover().within(() => {
-      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 
@@ -49,6 +48,11 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
       // Should not show a loading indicator again as the question has not changed (metabase#47564)
       cy.findByTestId("loading-indicator").should("not.exist");
+
+      // Should show a visualization after clicking "Visualize"
+      // and should not show an error message (metabase#55398)
+      cy.findByText("Question not found").should("not.exist");
+      cy.findByText("110.93").should("be.visible"); // table data
 
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();
@@ -98,7 +102,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
@@ -106,7 +110,6 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     getSdkRoot().contains("Pick your starting data");
 
     popover().within(() => {
-      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 
@@ -115,6 +118,11 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
       // Should not show a loading indicator again as the question has not changed (metabase#47564)
       cy.findByTestId("loading-indicator").should("not.exist");
+
+      // Should show a visualization after clicking "Visualize"
+      // and should not show an error message (metabase#55398)
+      cy.findByText("Question not found").should("not.exist");
+      cy.findByText("110.93").should("be.visible"); // table data
 
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();

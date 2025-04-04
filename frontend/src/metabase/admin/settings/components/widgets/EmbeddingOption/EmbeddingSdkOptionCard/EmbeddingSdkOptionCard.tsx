@@ -31,7 +31,7 @@ export function EmbeddingSdkOptionCard({
   return (
     <EmbeddingOption
       icon={<SdkIcon disabled={!isEmbeddingSdkEnabled} />}
-      title={t`Embedded analytics SDK`}
+      title={t`Embedded analytics SDK for React`}
       label={
         <Flex gap="sm">
           <Badge

@@ -135,31 +135,31 @@
 
 (deftest ^:parallel named-aggregations-name-only-test
   (testing "w/ `:name` only"
-    (is (= [{:name          "some_generated_name"
-             :display_name  "Average of ID"
-             :base_type     :type/Float
-             :semantic_type :type/PK
-             :settings      nil
-             :field_ref     [:aggregation 0]}]
-           (source-metadata
-            (add-source-metadata
-             (lib.tu.macros/mbql-query venues
-               {:source-query {:source-table $$venues
-                               :aggregation  [[:aggregation-options [:avg $id] {:name "some_generated_name"}]]}})))))))
+    (is (=? [{:name          "some_generated_name"
+              :display_name  "Average of ID"
+              :base_type     :type/Float
+              :semantic_type :type/PK
+              :settings      nil
+              :field_ref     [:aggregation 0]}]
+            (source-metadata
+             (add-source-metadata
+              (lib.tu.macros/mbql-query venues
+                {:source-query {:source-table $$venues
+                                :aggregation  [[:aggregation-options [:avg $id] {:name "some_generated_name"}]]}})))))))
 
 (deftest ^:parallel named-aggregations-display-name-only-test
   (testing "w/ `:display-name` only"
-    (is (= [{:name          "avg"
-             :display_name  "My Cool Ag"
-             :base_type     :type/Float
-             :semantic_type :type/PK
-             :settings      nil
-             :field_ref     [:aggregation 0]}]
-           (source-metadata
-            (add-source-metadata
-             (lib.tu.macros/mbql-query venues
-               {:source-query {:source-table $$venues
-                               :aggregation  [[:aggregation-options [:avg $id] {:display-name "My Cool Ag"}]]}})))))))
+    (is (=? [{:name          "avg"
+              :display_name  "My Cool Ag"
+              :base_type     :type/Float
+              :semantic_type :type/PK
+              :settings      nil
+              :field_ref     [:aggregation 0]}]
+            (source-metadata
+             (add-source-metadata
+              (lib.tu.macros/mbql-query venues
+                {:source-query {:source-table $$venues
+                                :aggregation  [[:aggregation-options [:avg $id] {:display-name "My Cool Ag"}]]}})))))))
 
 (deftest ^:parallel nested-sources-test
   (testing (str "Can we automatically add source metadata to the parent level of a query? If the source query has a "

@@ -372,12 +372,13 @@
 ;; test that added information about aggregations looks the way we'd expect
 (defn- aggregation-names
   ([ag-clause]
-   (aggregation-names {:source-table (meta/id :venues)} ag-clause))
-
-  ([inner-query ag-clause]
-   (binding [driver/*driver* :h2]
-     (qp.store/with-metadata-provider meta/metadata-provider
-       (select-keys (#'annotate/col-info-for-aggregation-clause inner-query ag-clause) [:name :display_name])))))
+   (let [inner-query {:source-table (meta/id :venues)
+                      :aggregation  [ag-clause]}]
+     (binding [driver/*driver* :h2]
+       (qp.store/with-metadata-provider meta/metadata-provider
+         (-> (#'annotate/col-info-for-aggregation-clauses inner-query)
+             first
+             (select-keys [:name :display_name])))))))
 
 (deftest ^:parallel aggregation-names-test
   (testing "basic aggregations"
@@ -443,8 +444,9 @@
    (col-info-for-aggregation-clause {:source-table (meta/id :venues)} clause))
 
   ([inner-query clause]
-   (binding [driver/*driver* :h2]
-     (#'annotate/col-info-for-aggregation-clause inner-query clause))))
+   (let [inner-query (update inner-query :aggregation (fnil conj []) clause)]
+     (binding [driver/*driver* :h2]
+       (first (#'annotate/col-info-for-aggregation-clauses inner-query))))))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test
   (qp.store/with-metadata-provider meta/metadata-provider
@@ -485,7 +487,14 @@
                    [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))))))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test-3
-  (qp.store/with-metadata-provider meta/metadata-provider
+  (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                    meta/metadata-provider
+                                    {:cards [{:id            1
+                                              :database-id   (meta/id)
+                                              :name          "Some metric"
+                                              :type          :metric
+                                              :dataset-query (lib.tu.macros/mbql-query orders
+                                                               {:aggregation [[:sum $subtotal]]})}]})
     (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
                   "should include that information in the results. Their information should be preferred over ours")
       (is (=? {:cols [{:display_name   "Total Events"

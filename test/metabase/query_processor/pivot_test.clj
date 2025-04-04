@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -306,38 +307,39 @@
 
 (deftest nested-models-with-expressions-pivot-breakout-names-test
   (testing "#43993 again - breakouts on an expression from the inner model should pass"
-    (mt/with-temp [:model/Card model1 {:type :model
-                                       :dataset_query
-                                       (mt/mbql-query products
-                                         {:source-table $$products
-                                          :expressions  {"Rating Bucket" [:floor $products.rating]}})}
-                   :model/Card model2 {:type :model
-                                       :dataset_query
-                                       (mt/mbql-query orders
-                                         {:source-table $$orders
-                                          :joins        [{:source-table (str "card__" (u/the-id model1))
-                                                          :alias        "model A - Product"
-                                                          :fields       :all
-                                                          :condition    [:= $orders.product_id
-                                                                         [:field %products.id
-                                                                          {:join-alias "model A - Product"}]]}]})}]
-      (testing "Column aliasing works when joining an expression in an inner model"
-        (let [query        (mt/mbql-query
-                             orders {:source-table (str "card__" (u/the-id model2))
-                                     :aggregation  [[:sum [:field "SUBTOTAL" {:base-type :type/Number}]]]
-                                     :breakout     [[:field "Rating Bucket" {:base-type  :type/Number
-                                                                             :join-alias "model A - Product"}]]})
-              viz-settings {:pivot_table.column_split
-                            {:columns ["Rating Bucket"]}}]
-          (testing "for a regular query"
-            (is (=? {:status :completed}
-                    (qp/process-query query))))
-          (testing "and a pivot query"
-            (is (=? {:status    :completed
-                     :row_count 6}
-                    (-> query
-                        (assoc :info {:visualization-settings viz-settings})
-                        qp.pivot/run-pivot-query)))))))))
+    (binding [lib.metadata.ident/*enforce-idents-present* false]
+      (mt/with-temp [:model/Card model1 {:type :model
+                                         :dataset_query
+                                         (mt/mbql-query products
+                                           {:source-table $$products
+                                            :expressions  {"Rating Bucket" [:floor $products.rating]}})}
+                     :model/Card model2 {:type :model
+                                         :dataset_query
+                                         (mt/mbql-query orders
+                                           {:source-table $$orders
+                                            :joins        [{:source-table (str "card__" (u/the-id model1))
+                                                            :alias        "model A - Product"
+                                                            :fields       :all
+                                                            :condition    [:= $orders.product_id
+                                                                           [:field %products.id
+                                                                            {:join-alias "model A - Product"}]]}]})}]
+        (testing "Column aliasing works when joining an expression in an inner model"
+          (let [query        (mt/mbql-query
+                               orders {:source-table (str "card__" (u/the-id model2))
+                                       :aggregation  [[:sum [:field "SUBTOTAL" {:base-type :type/Number}]]]
+                                       :breakout     [[:field "Rating Bucket" {:base-type  :type/Number
+                                                                               :join-alias "model A - Product"}]]})
+                viz-settings {:pivot_table.column_split
+                              {:columns ["Rating Bucket"]}}]
+            (testing "for a regular query"
+              (is (=? {:status :completed}
+                      (qp/process-query query))))
+            (testing "and a pivot query"
+              (is (=? {:status    :completed
+                       :row_count 6}
+                      (-> query
+                          (assoc :info {:visualization-settings viz-settings})
+                          qp.pivot/run-pivot-query))))))))))
 
 (deftest ^:parallel dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
@@ -431,6 +433,14 @@
              :row_count 137}
             (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
 
+(defn- clean-pivot-results [results]
+  (let [no-uuid #(dissoc % :lib/source_uuid)]
+    (-> results
+        (dissoc :running_time :started_at :json_query)
+        (m/dissoc-in [:data :results_metadata :checksum])
+        (m/dissoc-in [:data :native_form])
+        (update-in [:data :cols] #(mapv no-uuid %)))))
+
 (deftest ^:parallel pivots-should-not-return-expressions-test
   (mt/dataset test-data
     (let [query (assoc (mt/mbql-query orders
@@ -441,13 +451,9 @@
       (testing (str "Pivots should not return expression columns in the results if they are not explicitly included in "
                     "`:fields` (#14604)")
         (is (= (-> (qp.pivot/run-pivot-query query)
-                   (dissoc :running_time :started_at :json_query)
-                   (m/dissoc-in [:data :results_metadata :checksum])
-                   (m/dissoc-in [:data :native_form]))
+                   clean-pivot-results)
                (-> (qp.pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))
-                   (dissoc :running_time :started_at :json_query)
-                   (m/dissoc-in [:data :results_metadata :checksum])
-                   (m/dissoc-in [:data :native_form]))))))))
+                   clean-pivot-results)))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-2
   (mt/dataset test-data

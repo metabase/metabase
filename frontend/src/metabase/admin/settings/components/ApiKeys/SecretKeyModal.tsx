@@ -29,7 +29,7 @@ export const SecretKeyModal = ({
         disabled
         styles={{
           input: {
-            color: `black !important`,
+            color: `black`,
             fontFamily: fontFamilyMonospace as string,
           },
         }}

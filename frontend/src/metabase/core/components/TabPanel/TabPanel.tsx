@@ -24,7 +24,6 @@ const TabPanel = forwardRef(function TabPanel<T>(
       id={panelId}
       role="tabpanel"
       hidden={!isSelected}
-      aria-expanded={isSelected}
       aria-labelledby={tabId}
     >
       {isSelected && children}

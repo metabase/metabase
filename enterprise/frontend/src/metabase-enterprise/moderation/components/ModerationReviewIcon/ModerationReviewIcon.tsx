@@ -1,7 +1,6 @@
-import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { getRelativeTime } from "metabase/lib/time";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 import type { ModerationReview, User } from "metabase-types/api";
 
 import { getIconForReview, getModeratorDisplayText } from "../../service";
@@ -30,7 +29,7 @@ const ModerationReviewIcon = ({
   );
 
   return (
-    <Tooltip tooltip={tooltip}>
+    <Tooltip label={tooltip} disabled={!tooltip}>
       <Icon name={iconName} color={color(iconColor)} />
     </Tooltip>
   );

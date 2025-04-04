@@ -79,7 +79,7 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "date/relative",
         value: "past30days",
-        expected: "Previous 30 Days",
+        expected: "Previous 30 days",
       },
       {
         type: "date/month-year",
@@ -89,7 +89,7 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "date/month-year",
         value: "thisweek",
-        expected: "This Week",
+        expected: "This week",
       },
       {
         type: "date/month-year",
@@ -99,7 +99,7 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "date/month-year",
         value: "past1weeks",
-        expected: "Previous Week",
+        expected: "Previous week",
       },
       {
         type: "date/month-year",

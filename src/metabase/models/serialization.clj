@@ -50,12 +50,15 @@
   - Put it in `:skip` if this column shouldn't be synchronized
   - You have to make decisions inside `:transform` column `:export` function (or `:import`)
   - To prevent value being serialized, return `::serdes/skip` instead of `nil` (the reason being that serialization
-    format distinguishes between `nil` and absence)"
+    format distinguishes between `nil` and absence)
+  - If your data is coming in watered down by YAML (like strings instead of keywords), take a look at `:coerce`"
   (:refer-clojure :exclude [descendants])
   (:require
    [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -182,6 +185,13 @@
   {:arglists '([model-or-instance])}
   mi/dispatch-on-model)
 
+(defn- increment-hash-values
+  "Potenially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
+  [values increment]
+  (if (= increment 0)
+    values
+    (conj values (str "metabase-increment-" increment))))
+
 (defn identity-hash
   "Returns an identity hash string (8 hex digits) from an `entity` map.
 
@@ -190,20 +200,25 @@
   - passing the `entity` to each function it returns
   - calling [[hash]] on that list
   - converting to an 8-character hex string"
-  [entity]
-  {:pre [(some? entity)]}
-  (-> (for [f (hash-fields entity)]
-        (f entity))
-      raw-hash))
+  ([entity]
+   (identity-hash entity 0))
+  ([entity increment]
+   {:pre [(some? entity)]}
+   (-> (for [f (hash-fields entity)]
+         (f entity))
+       (increment-hash-values increment)
+       raw-hash)))
 
 (defn backfill-entity-id
   "Given an entity with a (possibly empty) `:entity_id` field:
   - Return the `:entity_id` if it's set.
   - Compute the backfill `:entity_id` based on the [[identity-hash]]."
-  [entity]
-  (or (:entity_id entity)
-      (:entity-id entity)
-      (u/generate-nano-id (identity-hash entity))))
+  ([entity]
+   (backfill-entity-id entity 0))
+  ([entity increment]
+   (or (:entity_id entity)
+       (:entity-id entity)
+       (u/generate-nano-id (identity-hash entity increment)))))
 
 (defn identity-hash?
   "Returns true if s is a valid identity hash string."
@@ -385,19 +400,20 @@
 ;;; *Note:* "descendants" and "dependencies" are quite different things!
 
 (defmulti make-spec
-  "Return specification for serialization. This should be a map of three keys: `:copy`, `:skip`, `:transform`.
+  "Return specification for serialization, should be a map of:
 
-  `:copy` and `:skip` are vectors of field names. `:skip` is only used in tests to check that all fields were
-  mentioned. `:transform` is a map from field name to an `{:import (fn [v] ...) :export (fn [v] ...)}` map.
+  - `:copy`: a vector of field names, to directly copy from db into output and ingest back with no changes.
+  - `:skip`: a vector of field names, used it tests to check if all fields were specified (`:id` and `:updated_at`
+    are always skipped, no need to mention them).
+  - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
+    on `extract-one` and `xform-one`. There are a number of transfomers, see this field for `fk` and similar.
+  - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
 
-  For behavior, see `extract-one` and `xform-one`. Two fields - `id` and `updated_at` - are always skipped, no need to
-  mention them in `:skip`.
-
-  Example:
+  Example (search codebase for more examples):
 
   (defmethod serdes/make-spec \"ModelName\" [_model-name _opts]
     {:copy [:name :description]
-     :skip [;; it's nice to comment why it's skipped
+     :skip [;; please leave a comment why a field is skipped
             :internal_data]
      :transform {:card_id (serdes/fk :model/Card)}})"
   {:arglists '([model-name opts])}
@@ -737,6 +753,11 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
+(defn- coerce-keys [data schemas]
+  (reduce (fn [data [k schema]] (update data k #(mc/coerce schema % mtx/string-transformer)))
+          data
+          schemas))
+
 (defn- xform-one [model-name ingested]
   (let [spec (make-spec model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
@@ -752,7 +773,8 @@
                     :when (and (not= res ::skip)
                                (or (some? res)
                                    (contains? ingested import-k)))]
-                [k res])))))
+                [k res]))
+        (coerce-keys (:coerce spec)))))
 
 (defn- spec-nested! [model-name ingested instance]
   (let [spec (make-spec model-name nil)]

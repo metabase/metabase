@@ -22,6 +22,10 @@
                 (create-channel [user status]
                   (testing (format "create channel setting with %s user" (mt/user-descriptor user))
                     (mt/user-http-request user :post status "channel" (assoc notification.tu/default-can-connect-channel :name (mt/random-name)))))
+                (get-channel [user status]
+                  (testing (format "get user with %s user" (mt/user-descriptor user))
+                    (mt/with-temp [:model/Channel {id :id} notification.tu/default-can-connect-channel]
+                      (mt/user-http-request user :get status (str "channel/" id)))))
                 (include-details [user include-details?]
                   (mt/with-temp [:model/Channel {id :id} notification.tu/default-can-connect-channel]
                     (testing (format "GET /api/channel/:id with %s user" (mt/user-descriptor user))
@@ -34,20 +38,20 @@
             (mt/with-premium-features #{}
               (create-channel user 403)
               (update-channel user 403)
+              (get-channel user 403)
               (create-channel :crowberto 200)
               (update-channel :crowberto 200)
-              (include-details :crowberto true)
-              (include-details user false)))
+              (include-details :crowberto true)))
 
           (testing "if `advanced-permissions` is enabled"
             (mt/with-premium-features #{:advanced-permissions}
               (testing "still fail if user's group doesn't have `setting` permission"
                 (create-channel user 403)
                 (update-channel user 403)
+                (get-channel user 403)
                 (create-channel :crowberto 200)
                 (update-channel :crowberto 200)
-                (include-details :crowberto true)
-                (include-details user false))
+                (include-details :crowberto true))
 
               (testing "succeed if user's group has `setting` permission"
                 (perms/grant-application-permissions! group :setting)

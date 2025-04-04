@@ -19,6 +19,12 @@
       z-index: 0;
     }
 
+    &:has(.input[data-indeterminate="true"]) {
+      .icon {
+        color: var(--mb-color-text-secondary);
+      }
+    }
+
     .input {
       &:after {
         content: "";
@@ -53,6 +59,11 @@
   cursor: pointer;
   border: 1px solid var(--mb-color-bg-dark);
   background-color: var(--mb-color-background);
+
+  &[data-indeterminate="true"] {
+    border-color: var(--mb-color-bg-dark);
+    background-color: var(--mb-color-background);
+  }
 
   &:checked {
     border-color: var(--mb-color-background-brand);

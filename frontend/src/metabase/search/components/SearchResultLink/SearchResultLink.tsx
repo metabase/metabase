@@ -1,8 +1,7 @@
 import type { MouseEvent } from "react";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
-import { Anchor, Text } from "metabase/ui";
+import { Anchor, Text, Tooltip } from "metabase/ui";
 
 import { ResultLink, ResultLinkWrapper } from "./SearchResultLink.styled";
 
@@ -31,7 +30,7 @@ export const SearchResultLink = ({
       };
 
   return (
-    <Tooltip isEnabled={isTruncated} tooltip={children}>
+    <Tooltip disabled={!isTruncated || !children} label={children}>
       <ResultLinkWrapper
         data-testid="result-link-wrapper"
         gap="xs"

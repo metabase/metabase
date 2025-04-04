@@ -92,7 +92,7 @@ if (hasPremiumFeature("whitelabel")) {
           {
             key: "application-logo-url",
             display_name: t`Logo`,
-            note: (
+            description: (
               <Text size="sm" color="text-light">
                 {t`For best results, use an SVG file with a transparent
               background.`}

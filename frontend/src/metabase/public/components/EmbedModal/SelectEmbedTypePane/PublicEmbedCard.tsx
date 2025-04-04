@@ -40,7 +40,6 @@ export const PublicEmbedCard = ({
     post.`}
       </Text>
       <Popover
-        width={200}
         position="bottom"
         withArrow
         shadow="md"

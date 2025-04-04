@@ -32,7 +32,7 @@
       (testing "Valid hash but not email"
         (mt/with-temp [:model/Pulse        {pulse-id :id} {}
                        :model/PulseChannel _              {:pulse_id pulse-id}]
-          (is (= "Email for pulse-id doesnt exist."
+          (is (= "Email for pulse-id doesn't exist."
                  (mt/client :post 400 "pulse/unsubscribe" {:pulse-id pulse-id
                                                            :email    email
                                                            :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))

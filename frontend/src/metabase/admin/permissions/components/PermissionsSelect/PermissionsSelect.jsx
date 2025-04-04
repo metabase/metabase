@@ -3,9 +3,8 @@ import { Fragment, memo, useState } from "react";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Toggle from "metabase/core/components/Toggle";
-import Tooltip from "metabase/core/components/Tooltip";
 import { lighten } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 
 import {
   ActionsList,
@@ -74,7 +73,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
       )}
 
       {warning && (
-        <Tooltip tooltip={warning}>
+        <Tooltip label={warning}>
           <WarningIcon />
         </Tooltip>
       )}

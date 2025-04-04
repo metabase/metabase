@@ -47,6 +47,11 @@
   (or (mi/superuser?)
       (perms/current-user-has-application-permissions? :setting)))
 
+(defmethod mi/can-read? :model/Channel
+  [_channel]
+  (or (mi/superuser?)
+      (perms/current-user-has-application-permissions? :setting)))
+
 (t2/define-before-update :model/Channel
   [instance]
   (let [deactivation? (false? (:active (t2/changes instance)))]

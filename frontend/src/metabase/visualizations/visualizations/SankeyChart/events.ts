@@ -101,7 +101,7 @@ export const useChartEvents = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   onVisualizationClick: VisualizationProps["onVisualizationClick"],
-  clicked?: ClickObject,
+  clicked?: ClickObject | null,
 ) => {
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [

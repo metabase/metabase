@@ -54,7 +54,7 @@ Metabase will only export the following entities:
 - Actions
 - Models
 - Metrics
-- SQL Snippets
+- Snippets
 - Data model and table metadata
 - Segments
 - Public sharing settings for questions and dashboards

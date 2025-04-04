@@ -282,22 +282,6 @@ describe("Field", () => {
     });
   });
 
-  describe("dimension", () => {
-    it("should return the field's dimension when the id is not an mbql field", () => {
-      const field = setup({
-        fields: [
-          createMockField({
-            id: FIELD_ID,
-            display_name: "field id",
-          }),
-        ],
-      });
-
-      const dimension = field.dimension();
-      expect(dimension.fieldIdOrName()).toBe(FIELD_ID);
-    });
-  });
-
   describe("getDefaultDateTimeUnit", () => {
     describe("when the field is of type `type/DateTime`", () => {
       it("should return 'day'", () => {

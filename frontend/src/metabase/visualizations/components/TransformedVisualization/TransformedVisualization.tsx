@@ -64,7 +64,7 @@ export const TransformedVisualization = ({
         previousCard,
       };
 
-      onChangeCardAndRun(transformedOptions);
+      onChangeCardAndRun?.(transformedOptions);
     },
     [onChangeCardAndRun, rawSeries],
   );

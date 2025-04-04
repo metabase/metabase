@@ -183,10 +183,10 @@
   with-dynamic-fn-redefs]
 
  [premium-features.test-util
+  assert-has-premium-feature-error
   with-premium-features
   with-additional-premium-features
-  when-ee-evailable
-  assert-has-premium-feature-error]
+  when-ee-evailable]
 
  [perms.test-util
   with-restored-data-perms!

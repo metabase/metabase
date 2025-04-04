@@ -2,7 +2,6 @@
 import cx from "classnames";
 import Color from "color";
 import { Component, createRef } from "react";
-import ReactDOM from "react-dom";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -29,6 +28,7 @@ export default class Progress extends Component {
   constructor(props) {
     super(props);
 
+    this.rootRef = createRef();
     this.containerRef = createRef();
     this.labelRef = createRef();
     this.pointerRef = createRef();
@@ -88,7 +88,7 @@ export default class Progress extends Component {
   }
 
   componentDidUpdate() {
-    const component = ReactDOM.findDOMNode(this);
+    const root = this.rootRef.current;
     const pointer = this.pointerRef.current;
     const label = this.labelRef.current;
     const container = this.containerRef.current;
@@ -99,7 +99,7 @@ export default class Progress extends Component {
     bar.style.height = 0;
     bar.style.height = computeBarHeight({
       cardHeight: this.props?.gridSize?.height,
-      componentHeight: component.clientHeight,
+      componentHeight: root.clientHeight,
       isMobile: this.props.isMobile,
     });
 
@@ -175,7 +175,10 @@ export default class Progress extends Component {
     };
 
     return (
-      <div className={cx(this.props.className, CS.flex, CS.layoutCentered)}>
+      <div
+        ref={this.rootRef}
+        className={cx(this.props.className, CS.flex, CS.layoutCentered)}
+      >
         <div
           className={cx(
             CS.flexFull,

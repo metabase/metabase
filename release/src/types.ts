@@ -51,11 +51,11 @@ export type Issue = {
   pull_request?: { html_url: string }; // only present on PRs
   milestone?: Milestone;
   labels: string | { name?: string }[];
-  assignee: null |  { login: string };
+  assignee: null | { login: string };
   created_at: string;
 };
 
-export type Milestone =  {
+export type Milestone = {
   url: string;
   html_url: string;
   labels_url: string;
@@ -76,13 +76,13 @@ export type Commit = {
 
 export type Tag = {
   ref: string;
-  node_id: string,
-  url: string,
+  node_id: string;
+  url: string;
   object: {
-    sha: string,
-    type: string,
-    url: string,
-  }
+    sha: string;
+    type: string;
+    url: string;
+  };
 };
 
 export type GithubCheck = {
@@ -94,8 +94,22 @@ export type GithubCheck = {
   url: string | null;
   html_url: string | null;
   details_url: string | null;
-  status: "queued" | "in_progress" | "completed";
-  conclusion: "success" | "failure" | "neutral" | "cancelled" | "timed_out" | "action_required" | "skipped" | null;
+  status:
+    | "completed"
+    | "in_progress"
+    | "queued"
+    | "requested"
+    | "waiting"
+    | "pending";
+  conclusion:
+    | "success"
+    | "failure"
+    | "neutral"
+    | "cancelled"
+    | "timed_out"
+    | "action_required"
+    | "skipped"
+    | null;
   started_at: string | null;
   completed_at: string | null;
 };

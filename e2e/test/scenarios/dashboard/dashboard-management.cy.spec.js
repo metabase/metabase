@@ -2,6 +2,7 @@ import { onlyOn } from "@cypress/skip-test";
 
 const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
@@ -72,6 +73,61 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               cy.findByDisplayValue(`${dashboardName}1`);
             });
 
+            it("should shallow duplicate a dashboard but not its cards", () => {
+              cy.get("@originalDashboardId").then(id => {
+                cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
+                  "copyDashboard",
+                );
+
+                const newDashboardName = `${dashboardName} - Duplicate`;
+                const { name: originalQuestionName } = questionDetails;
+                const newQuestionName = `${originalQuestionName} - Duplicate`;
+                const newDashboardId = id + 1;
+
+                cy.log(
+                  "add virtual card to check shallow copy checkbox plays nicely",
+                );
+                H.addTextBox("Foo bar baz");
+                H.saveDashboard();
+                H.openDashboardMenu();
+
+                H.popover()
+                  .findByText("Duplicate")
+                  .should("be.visible")
+                  .click();
+                cy.location("pathname").should("eq", `/dashboard/${id}/copy`);
+
+                H.modal().within(() => {
+                  cy.findByRole("heading", {
+                    name: `Duplicate "${dashboardName}" and its questions`,
+                  });
+                  cy.findByDisplayValue(newDashboardName);
+                  cy.findByLabelText("Only duplicate the dashboard")
+                    .as("shallowCopyCheckbox")
+                    .should("not.be.checked")
+                    .should("not.be.disabled")
+                    .click();
+                  cy.get("@shallowCopyCheckbox").should("be.checked");
+                  cy.findByRole("heading", {
+                    name: `Duplicate "${dashboardName}"`,
+                  });
+                  cy.button("Duplicate").click();
+                  assertOnRequest("copyDashboard");
+                });
+
+                cy.url().should("contain", `/dashboard/${newDashboardId}`);
+
+                cy.findByDisplayValue(newDashboardName);
+                H.appBar().findByText("Our analytics").click();
+
+                cy.findAllByTestId("collection-entry-name")
+                  .should("contain", dashboardName)
+                  .and("contain", newDashboardName)
+                  .and("contain", originalQuestionName)
+                  .and("not.contain", newQuestionName);
+              });
+            });
+
             it("should deep duplicate a dashboard and its cards", () => {
               cy.get("@originalDashboardId").then(id => {
                 cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
@@ -93,6 +149,9 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                     name: `Duplicate "${dashboardName}" and its questions`,
                   });
                   cy.findByDisplayValue(newDashboardName);
+                  cy.findByLabelText("Only duplicate the dashboard").should(
+                    "not.be.checked",
+                  );
                   cy.button("Duplicate").click();
                   assertOnRequest("copyDashboard");
                 });
@@ -131,6 +190,9 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                     name: `Duplicate "${dashboardName}" and its questions`,
                   });
                   cy.findByDisplayValue(newDashboardName);
+                  cy.findByLabelText("Only duplicate the dashboard").should(
+                    "not.be.checked",
+                  );
                   cy.findByTestId("collection-picker-button").click();
                 });
 
@@ -271,6 +333,45 @@ describe("managing dashboard from the dashboard's edit menu", () => {
         });
       });
     });
+  });
+
+  it("should be prevented from doing a shallow copy if the dashboard contains a dashboard question", () => {
+    cy.signInAsAdmin();
+
+    H.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails: { name: dashboardName },
+    }).then(({ body: { dashboard_id } }) => {
+      H.createQuestion({
+        name: "Foo dashboard question",
+        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID, limit: 5 },
+        dashboard_id,
+      }).then(({ body: card }) => {
+        cy.wrap(card.id).as("dashboardQuestionId");
+        H.addOrUpdateDashboardCard({ card_id: card.id, dashboard_id });
+        H.visitDashboard(dashboard_id);
+      });
+    });
+
+    H.openDashboardMenu();
+    H.popover().findByText("Duplicate").should("be.visible").click();
+
+    H.modal().within(() => {
+      cy.findByRole("heading", {
+        name: `Duplicate "${dashboardName}" and its questions`,
+      });
+      cy.findByLabelText("Only duplicate the dashboard")
+        .as("shallowCopyCheckbox")
+        .should("not.be.checked")
+        .should("be.disabled");
+
+      cy.icon("info").realHover();
+    });
+
+    H.tooltip().should(
+      "contain.text",
+      "Only available when none of the questions are saved to the dashboard.",
+    );
   });
 });
 

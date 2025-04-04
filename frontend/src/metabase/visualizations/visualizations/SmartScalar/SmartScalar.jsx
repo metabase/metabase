@@ -5,7 +5,6 @@ import innerText from "react-innertext";
 import { jt, t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Tooltip from "metabase/core/components/Tooltip";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getIsNightMode } from "metabase/dashboard/selectors";
 import { color, lighten } from "metabase/lib/colors";
@@ -14,7 +13,7 @@ import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Box, Flex, Text, Title, useMantineTheme } from "metabase/ui";
+import { Box, Flex, Text, Title, Tooltip, useMantineTheme } from "metabase/ui";
 import ScalarValue, {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
@@ -258,7 +257,9 @@ function PreviousValueComparison({
       return comparisonDescStr;
     }
 
-    const descColor = "var(--mb-color-text-secondary)";
+    const descColor = inTooltip
+      ? "var(--mb-color-tooltip-text-secondary)"
+      : "var(--mb-color-text-secondary)";
 
     if (isEmpty(comparisonDescStr)) {
       return (
@@ -313,10 +314,12 @@ function PreviousValueComparison({
       return null;
     }
 
-    const detailColor = "var(--mb-color-text-secondary)";
+    const detailColor = inTooltip
+      ? "var(--mb-color-tooltip-text-secondary)"
+      : "var(--mb-color-text-secondary)";
 
     return (
-      <Title order={4} c={detailColor} style={{ whiteSpace: "pre" }}>
+      <Title order={4} style={{ whiteSpace: "pre", color: detailColor }}>
         <Separator inTooltip={inTooltip} />
         {children}
       </Title>
@@ -325,9 +328,9 @@ function PreviousValueComparison({
 
   return (
     <Tooltip
-      isEnabled={fullDetailDisplay !== fittedDetailDisplay}
-      placement="bottom"
-      tooltip={
+      disabled={fullDetailDisplay === fittedDetailDisplay}
+      position="bottom"
+      label={
         <Flex align="center">
           <VariationPercent iconSize={TOOLTIP_ICON_SIZE} inTooltip>
             {display.percentChange}

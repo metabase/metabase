@@ -22,9 +22,6 @@ type LoadQuestionResult = Promise<
 >;
 
 export interface LoadQuestionHookResult {
-  // The ID provided to the question component.
-  originalId?: number | string;
-
   question?: Question;
   originalQuestion?: Question;
 
@@ -52,7 +49,7 @@ export interface LoadQuestionHookResult {
 }
 
 export function useLoadQuestion({
-  cardId,
+  questionId,
   options,
   // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
@@ -83,7 +80,7 @@ export function useLoadQuestion({
   // Avoid re-running the query if the parameters haven't changed.
   const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
 
-  const shouldLoadQuestion = cardId != null || deserializedCard != null;
+  const shouldLoadQuestion = questionId != null || deserializedCard != null;
   const [isQuestionLoading, setIsQuestionLoading] =
     useState(shouldLoadQuestion);
 
@@ -95,7 +92,7 @@ export function useLoadQuestion({
       loadQuestionSdk({
         options,
         deserializedCard,
-        cardId,
+        questionId: questionId,
         initialSqlParameters,
       }),
     ).finally(() => {
@@ -113,7 +110,7 @@ export function useLoadQuestion({
     mergeQuestionState(results);
 
     return { ...results, originalQuestion };
-  }, [dispatch, options, deserializedCard, cardId, sqlParameterKey]);
+  }, [dispatch, options, deserializedCard, questionId, sqlParameterKey]);
 
   const [runQuestionState, queryQuestion] = useAsyncFn(async () => {
     if (!question) {

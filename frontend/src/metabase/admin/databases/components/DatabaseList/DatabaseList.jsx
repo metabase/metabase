@@ -12,7 +12,6 @@ import CS from "metabase/css/core/index.css";
 import { FormMessage } from "metabase/forms";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Button, Flex, Modal, Text } from "metabase/ui";
 
 import {
   AddSampleDatabaseLink,
@@ -32,14 +31,8 @@ export default class DatabaseList extends Component {
       this["deleteDatabaseModal_" + database.id] = createRef();
     });
 
-    this.state = {
-      isPermissionModalOpened: (props.created && props.createdDbId) || false,
-    };
+    this.state = {};
   }
-
-  onPermissionModalClose = () => {
-    this.setState({ isPermissionModalOpened: false });
-  };
 
   static propTypes = {
     databases: PropTypes.array,
@@ -47,11 +40,10 @@ export default class DatabaseList extends Component {
     engines: PropTypes.object,
     deletes: PropTypes.array,
     deletionError: PropTypes.object,
-    created: PropTypes.string,
-    createdDbId: PropTypes.string,
     showSyncingModal: PropTypes.bool,
     closeSyncingModal: PropTypes.func,
     isAdmin: PropTypes.bool,
+    location: PropTypes.object,
   };
 
   render() {
@@ -63,130 +55,108 @@ export default class DatabaseList extends Component {
       engines,
       deletionError,
       isAdmin,
-      createdDbId,
     } = this.props;
-    const { isPermissionModalOpened } = this.state;
 
     const error = deletionError || addSampleDatabaseError;
 
     return (
-      <div className={CS.wrapper} data-testid="database-list">
-        <section className={cx(AdminS.PageHeader, CS.px2, CS.clearfix)}>
-          {isAdmin && (
-            <Link
-              to="/admin/databases/create"
-              className={cx(
-                ButtonsS.Button,
-                ButtonsS.ButtonPrimary,
-                CS.floatRight,
-              )}
-            >{t`Add database`}</Link>
-          )}
-          <h2 className={CS.m0}>{t`Databases`}</h2>
-        </section>
-        {error && (
-          <section>
-            <FormMessage formError={error} />
-          </section>
-        )}
-        <section>
-          <table className={AdminS.ContentTable}>
-            <thead>
-              <tr>
-                <th>{t`Name`}</th>
-                <th>{t`Engine`}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {databases ? (
-                [
-                  databases.map(database => {
-                    const isDeleting =
-                      this.props.deletes.indexOf(database.id) !== -1;
-                    return (
-                      <tr
-                        key={database.id}
-                        className={cx({ disabled: isDeleting })}
-                      >
-                        <td>
-                          <TableCellContent>
-                            {!isSyncCompleted(database) && (
-                              <TableCellSpinner size={16} borderWidth={2} />
-                            )}
-                            <Link
-                              to={"/admin/databases/" + database.id}
-                              className={cx(CS.textBold, CS.link)}
-                            >
-                              {database.name}
-                            </Link>
-                          </TableCellContent>
-                        </td>
-                        <td>
-                          {engines && engines[database.engine]
-                            ? engines[database.engine]["driver-name"]
-                            : database.engine}
-                        </td>
-                      </tr>
-                    );
-                  }),
-                ]
-              ) : (
-                <tr>
-                  <td colSpan={4}>
-                    <LoadingSpinner />
-                    <h3>{t`Loading ...`}</h3>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          {!hasSampleDatabase && isAdmin ? (
-            <div className={CS.pt4}>
-              <span
-                className={cx(CS.p2, CS.textItalic, {
-                  [CS.borderTop]: databases && databases.length > 0,
-                })}
-              >
-                {isAddingSampleDatabase ? (
-                  <span className={cx(CS.textLight, CS.noDecoration)}>
-                    {t`Restoring the sample database...`}
-                  </span>
-                ) : (
-                  <AddSampleDatabaseLink
-                    onClick={() => this.props.addSampleDatabase(query)}
-                  >
-                    {t`Bring the sample database back`}
-                  </AddSampleDatabaseLink>
+      <>
+        <div className={CS.wrapper} data-testid="database-list">
+          <section className={cx(AdminS.PageHeader, CS.px2, CS.clearfix)}>
+            {isAdmin && (
+              <Link
+                to="/admin/databases/create"
+                className={cx(
+                  ButtonsS.Button,
+                  ButtonsS.ButtonPrimary,
+                  CS.floatRight,
                 )}
-              </span>
-            </div>
-          ) : null}
-        </section>
+              >{t`Add database`}</Link>
+            )}
+            <h2 className={CS.m0}>{t`Databases`}</h2>
+          </section>
+          {error && (
+            <section>
+              <FormMessage formError={error} />
+            </section>
+          )}
+          <section>
+            <table className={AdminS.ContentTable}>
+              <thead>
+                <tr>
+                  <th>{t`Name`}</th>
+                  <th>{t`Engine`}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {databases ? (
+                  [
+                    databases.map(database => {
+                      const isDeleting =
+                        this.props.deletes.indexOf(database.id) !== -1;
+                      return (
+                        <tr
+                          key={database.id}
+                          className={cx({ disabled: isDeleting })}
+                        >
+                          <td>
+                            <TableCellContent>
+                              {!isSyncCompleted(database) && (
+                                <TableCellSpinner size={16} borderWidth={2} />
+                              )}
+                              <Link
+                                to={"/admin/databases/" + database.id}
+                                className={cx(CS.textBold, CS.link)}
+                              >
+                                {database.name}
+                              </Link>
+                            </TableCellContent>
+                          </td>
+                          <td>
+                            {engines && engines[database.engine]
+                              ? engines[database.engine]["driver-name"]
+                              : database.engine}
+                          </td>
+                        </tr>
+                      );
+                    }),
+                  ]
+                ) : (
+                  <tr>
+                    <td colSpan={4}>
+                      <LoadingSpinner />
+                      <h3>{t`Loading ...`}</h3>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            {!hasSampleDatabase && isAdmin ? (
+              <div className={CS.pt4}>
+                <span
+                  className={cx(CS.p2, CS.textItalic, {
+                    [CS.borderTop]: databases && databases.length > 0,
+                  })}
+                >
+                  {isAddingSampleDatabase ? (
+                    <span className={cx(CS.textLight, CS.noDecoration)}>
+                      {t`Restoring the sample database...`}
+                    </span>
+                  ) : (
+                    <AddSampleDatabaseLink
+                      onClick={() => this.props.addSampleDatabase(query)}
+                    >
+                      {t`Bring the sample database back`}
+                    </AddSampleDatabaseLink>
+                  )}
+                </span>
+              </div>
+            ) : null}
+          </section>
+        </div>
 
-        <Modal
-          opened={isPermissionModalOpened}
-          size={620}
-          withCloseButton={false}
-          title={t`Your database was added! Want to configure permissions?`}
-          padding="2rem"
-        >
-          <Text
-            mb="1.5rem"
-            mt="1rem"
-          >{t`You can change these settings later in the Permissions tab. Do you want to configure it?`}</Text>
-          <Flex justify="end">
-            <Button
-              mr="0.5rem"
-              onClick={this.onPermissionModalClose}
-            >{t`Maybe later`}</Button>
-            <Button
-              component={Link}
-              variant="filled"
-              to={`/admin/permissions/data/database/${createdDbId}`}
-            >{t`Configure permissions`}</Button>
-          </Flex>
-        </Modal>
-      </div>
+        {this.props.children}
+      </>
     );
   }
 }

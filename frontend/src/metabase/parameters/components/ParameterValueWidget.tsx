@@ -91,7 +91,10 @@ export const ParameterValueWidget = ({
           className={S.widgetStatus}
           highlighted={fieldHasValueOrFocus}
           status="reset"
-          onClick={() => setParameterValueToDefault?.(parameter.id)}
+          onClick={() => {
+            close();
+            setParameterValueToDefault?.(parameter.id);
+          }}
         />
       );
     }
@@ -237,6 +240,7 @@ export const ParameterValueWidget = ({
       opened={isOpen}
       onChange={toggle}
       position="bottom-start"
+      trapFocus
       {...popoverProps}
     >
       <Popover.Target>

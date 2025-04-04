@@ -417,10 +417,14 @@
     (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
 
-    (isa? base-type :type/UUID)
-    (-> (str value)
-        java.util.UUID/fromString
-        uuid->bsonbinary)
+    (= base-type :type/*)
+    (try
+      (-> (str value)
+          java.util.UUID/fromString
+          uuid->bsonbinary)
+      (catch IllegalArgumentException _
+        ;; Allow comparison with non-UUID values for things like string search
+        value))
 
     :else value))
 

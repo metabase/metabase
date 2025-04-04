@@ -24,11 +24,7 @@ export default {
 };
 
 const Template: StoryFn<ComponentProps<typeof CreateDashboardModal>> = args => (
-  <CreateDashboardModal
-    onClose={action("onClose")}
-    onCreate={action("onCreate")}
-    {...args}
-  />
+  <CreateDashboardModal {...args} />
 );
 
 export const Default = {

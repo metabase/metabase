@@ -18,7 +18,7 @@
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
    :display-name (deferred-tru "Host")
-   :helper-text  (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
+   :helper-text  (deferred-tru "Your database''s IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
    :placeholder  "name.database.com"})
 
 (def default-port-details

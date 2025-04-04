@@ -368,7 +368,7 @@
   "Inner implementation of [[display-info]], which caches this function's results. See there for documentation."
   [a-query stage-number x]
   (-> a-query
-      (lib.stage/ensure-previous-stages-have-metadata stage-number)
+      (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
       (lib.core/display-info stage-number x)
       display-info->js))
 
@@ -678,7 +678,9 @@
                                         ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
                                         (assoc :fields (frequencies fields))
                                         ;; Remove the randomized idents, which are of course not going to match.
-                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))))
+                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
+      ;; Ignore :info since it contains the randomized :card-entity-id.
+      (dissoc :info)))
 
 (defn- prep-query-for-equals-pMBQL
   [a-query field-ids]
@@ -1126,7 +1128,7 @@
    created expression with [[relative-date-filter-parts]]."
   [column value unit offset-value offset-unit options]
   (lib.core/relative-date-filter-clause column
-                                        (if (string? value) (keyword value) value)
+                                        value
                                         (keyword unit)
                                         offset-value
                                         (some-> offset-unit keyword)
@@ -1139,7 +1141,7 @@
   (when-let [filter-parts (lib.core/relative-date-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [column value unit offset-value offset-unit options]} filter-parts]
       #js {:column      column
-           :value       (if (keyword? value) (name value) value)
+           :value       value
            :unit        (name unit)
            :offsetValue offset-value
            :offsetUnit  (some-> offset-unit name)
@@ -1304,7 +1306,7 @@
   "Inner implementation for [[returned-columns]], which wraps this with caching."
   [a-query stage-number]
   (let [stage          (lib.util/query-stage a-query stage-number)
-        unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider a-query))]
+        unique-name-fn (lib.util/unique-name-generator)]
     (->> (lib.metadata.calculation/returned-columns a-query stage-number stage)
          (map #(-> %
                    (assoc :selected? true)
@@ -2341,7 +2343,7 @@
     (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
       (clj->js (cond-> legacy-expr
                  (and (vector? legacy-expr)
-                      (#{:aggregation-options :value} (first legacy-expr)))
+                      (#{:aggregation-options} (first legacy-expr)))
                  (get 1))
                :keyword-fn u/qualified-name))))
 
@@ -2549,3 +2551,10 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
+
+(defn ^:export random-ident
+  "Returns a randomly generated `ident` string, suitable for a Card's `entity_id` or a query.
+
+  > **Code health:** Healthy, Single use. Only called when creating a new card/query."
+  []
+  (lib.core/random-ident))

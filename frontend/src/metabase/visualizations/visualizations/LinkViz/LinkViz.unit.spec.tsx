@@ -202,9 +202,9 @@ describe("LinkViz", () => {
   });
 
   describe("entity links", () => {
-    it("wraps the dashboard's description", async () => {
-      const longDescription =
-        "This is a very very very very very very very very very very long dashboard description. Boy, I sure hope it does not overflow the screen when it's displayed in a tooltip. The only thing that would make it worse is if the text didn't wrap.";
+    it("renders markdown in entity description tooltip", async () => {
+      const markdownDescription =
+        "**Bold text** and _italic text_ and [link](https://example.com)";
 
       const settings = {
         link: {
@@ -213,7 +213,7 @@ describe("LinkViz", () => {
             db_id: 20,
             name: "Table Une",
             model: "table",
-            description: longDescription,
+            description: markdownDescription,
           },
         },
       } as LinkCardVizSettings;
@@ -227,16 +227,57 @@ describe("LinkViz", () => {
       });
 
       const infoIcon = screen.getByLabelText("info icon");
-
       await userEvent.hover(infoIcon);
 
       await waitFor(() => {
-        expect(screen.getByText(longDescription)).toBeInTheDocument();
+        expect(screen.getByText("Bold text")).toHaveStyle({
+          "font-weight": "bold",
+        });
       });
 
-      expect(screen.getByText(longDescription)).toBe(
-        screen.getByTestId("wrapped-tooltip"),
-      );
+      await waitFor(() => {
+        expect(screen.getByText("italic text")).toHaveStyle({
+          "font-style": "italic",
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("link")).toHaveAttribute(
+          "href",
+          "https://example.com",
+        );
+      });
+    });
+
+    it("disallows headings in markdown tooltip", async () => {
+      const markdownDescription = "# Heading\nRegular text";
+
+      const settings = {
+        link: {
+          entity: {
+            id: 1,
+            db_id: 20,
+            name: "Table Une",
+            model: "table",
+            description: markdownDescription,
+          },
+        },
+      } as LinkCardVizSettings;
+
+      setup({
+        isEditing: false,
+        dashcard: createMockLinkDashboardCard({
+          visualization_settings: settings,
+        }),
+        settings,
+      });
+
+      const infoIcon = screen.getByLabelText("info icon");
+      await userEvent.hover(infoIcon);
+
+      const tooltip = await screen.findByTestId("icon-tooltip");
+      expect(tooltip).not.toContainHTML("<h1>");
+      expect(tooltip).toHaveTextContent("Heading");
     });
 
     it("shows a link to a pie chart question", () => {

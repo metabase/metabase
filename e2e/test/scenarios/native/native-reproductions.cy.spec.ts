@@ -1,4 +1,5 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { IconName } from "metabase/ui";
 
@@ -32,9 +33,7 @@ describe("issue 11727", { tags: "@external" }, () => {
       H.runNativeQuery({ wait: false });
       cy.findByText("Doing science...").should("be.visible");
       cy.get("body").type("{cmd}{enter}");
-      cy.findByText("Here's where your results will appear").should(
-        "be.visible",
-      );
+      cy.findByText("Query results will appear here.").should("be.visible");
     });
   });
 });
@@ -131,8 +130,10 @@ describe("issue 33327", () => {
     getRunQueryButton().click();
     cy.wait("@dataset");
 
-    cy.findByTestId("visualization-root").icon("warning").should("be.visible");
-    cy.findByTestId("scalar-value").should("not.exist");
+    cy.findByTestId("visualization-root").within(() => {
+      cy.icon("warning").should("be.visible");
+      cy.findByTestId("scalar-value").should("not.exist");
+    });
 
     H.NativeEditor.get().should("contain", "SELECT --1");
     H.NativeEditor.type("{leftarrow}{backspace}{backspace}");
@@ -225,7 +226,6 @@ describe("issue 53194", () => {
 
   it("should not enter an infinite loop when browsing table fields (metabase#53194)", () => {
     H.startNewNativeQuestion();
-    cy.icon("reference").click();
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("REVIEWS").click(); // the infinite loop used to start with this action
@@ -341,21 +341,33 @@ describe("issue 54124", () => {
   });
 });
 
-describe("issue 52811", () => {
+describe("issues 52811, 52812", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
   });
 
-  it("popovers should close when clicking outside (metabase#52811)", () => {
+  it("popovers should close when clicking outside (metabase#52811, metabase#52812)", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("{{x");
     cy.findByLabelText("Variable type").click();
 
+    cy.log("popover should close when clicking away (metabase#52811)");
     H.popover().findByText("Field Filter").click();
     clickAway();
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
+    cy.log(
+      "the default value input should not be rendered when 'Field to map to' is not set yet (metabase#52812)",
+    );
+    H.rightSidebar()
+      .findByText("Default filter widget value")
+      .should("not.exist");
+    cy.findByLabelText("Always require a value").should("not.exist");
+
+    cy.log(
+      "existing popover should close when opening a new one (metabase#52811)",
+    );
     cy.findByTestId("sidebar-content").findByText("Select...").click();
     cy.findByLabelText("Variable type").click();
     H.popover()
@@ -367,4 +379,39 @@ describe("issue 52811", () => {
   function clickAway() {
     cy.get("body").click(0, 0);
   }
+});
+
+describe("issue 52806", () => {
+  const questionDetails = {
+    name: "SQL",
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      type: "native",
+      native: {
+        query: "SELECT * FROM ORDERS WHERE ID = {{id}}",
+        "template-tags": {
+          id: {
+            id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+            name: "id",
+            "display-name": "ID",
+            type: "number",
+            default: "1",
+          },
+        },
+      },
+    },
+    visualization_settings: {},
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
+    H.visitQuestionAdhoc(questionDetails);
+    cy.findByTestId("main-logo-link").click();
+    H.modal().button("Discard changes").click();
+    cy.location().should(location => expect(location.search).to.eq(""));
+  });
 });

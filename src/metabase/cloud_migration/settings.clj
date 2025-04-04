@@ -73,7 +73,7 @@
 
 (defsetting read-only-mode
   (deferred-tru
-   (str "Boolean indicating whether a Metabase's is in read-only mode with regards to its app db. "
+   (str "Boolean indicating whether a Metabase instance is in read-only mode with regards to its app db. "
         "Will take up to 1m to propagate to other Metabase instances in a cluster."
         "Audit tables are excluded from read-only-mode mode."))
   :type       :boolean

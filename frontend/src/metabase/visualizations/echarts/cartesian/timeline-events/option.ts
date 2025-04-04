@@ -114,6 +114,7 @@ export const getTimelineEventsSeries = (
       symbol: "none",
       lineStyle: {
         type: "solid",
+        // eslint-disable-next-line no-color-literals
         color: "rgba(105, 110, 123, 0.2)",
         width: 2,
       },

@@ -241,7 +241,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
     deserialize: () => {
       return {
         type: "relative",
-        value: "current",
+        value: 0,
         unit: "day",
       };
     },
@@ -263,7 +263,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
   {
     regex: /^this(\w+)$/,
     serialize: value => {
-      if (value.type === "relative" && value.value === "current") {
+      if (value.type === "relative" && value.value === 0) {
         return `this${value.unit}`;
       }
     },
@@ -272,7 +272,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
       if (isDatePickerTruncationUnit(unit)) {
         return {
           type: "relative",
-          value: "current",
+          value: 0,
           unit,
         };
       }
@@ -300,7 +300,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
     serialize: value => {
       if (
         value.type === "relative" &&
-        value.value !== "current" &&
+        value.value !== 0 &&
         value.value < 0 &&
         value.offsetValue == null &&
         value.offsetUnit == null
@@ -329,7 +329,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
     serialize: value => {
       if (
         value.type === "relative" &&
-        value.value !== "current" &&
+        value.value !== 0 &&
         value.value > 0 &&
         value.offsetValue == null &&
         value.offsetUnit == null
@@ -358,7 +358,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
     serialize: value => {
       if (
         value.type === "relative" &&
-        value.value !== "current" &&
+        value.value !== 0 &&
         value.value < 0 &&
         value.offsetValue != null &&
         value.offsetValue < 0 &&
@@ -394,7 +394,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
     serialize: value => {
       if (
         value.type === "relative" &&
-        value.value !== "current" &&
+        value.value !== 0 &&
         value.value > 0 &&
         value.offsetValue != null &&
         value.offsetValue > 0 &&

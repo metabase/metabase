@@ -260,7 +260,10 @@ describe("scenarios > question > native subquery", () => {
     );
 
     H.visitQuestion("@toplevelQuestionId");
-    cy.get("#main-data-grid [data-testid=cell-data]").should("have.text", "41");
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .eq(0)
+      .should("have.text", "41");
   });
 
   it("should be able to reference a nested question (metabase#25988)", () => {

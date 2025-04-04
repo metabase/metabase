@@ -42,7 +42,6 @@ To qualify as a partner driver, the driver must:
 
 Current partner drivers:
 
-- [ClickHouse](https://github.com/ClickHouse/metabase-clickhouse-driver)
 - [DuckDB](https://github.com/MotherDuck-Open-Source/metabase_duckdb_driver) (for now, only available for self-hosted Metabases)
 - [Materialize](https://github.com/MaterializeInc/metabase-materialize-driver)
 - [Starburst (compatible with Trino)](https://github.com/starburstdata/metabase-driver)
@@ -76,7 +75,7 @@ If you don't see a driver for your database, try looking in the comments of the 
 
 If you are having problems installing or using a community driver, your best bet is to contact the author of the driver.
 
-[Metabase Cloud](https://www.metabase.com/start/) doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported drivers](../databases/connecting.md#connecting-to-supported-databases), and the partner drivers listed above.
+[Metabase Cloud](https://www.metabase.com/cloud/) doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported drivers](../databases/connecting.md#connecting-to-supported-databases), and the partner drivers listed above.
 
 ## Write your own driver
 

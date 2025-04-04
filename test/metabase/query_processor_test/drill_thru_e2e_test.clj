@@ -5,12 +5,14 @@
    [metabase.lib.core :as lib]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel quick-filter-on-bucketed-date-test
   (testing "a quick-filter drill on a bucketed DATE should produce valid results (#18769)"
@@ -50,7 +52,9 @@
       (let [metadata-provider  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             card-query         (lib/native-query metadata-provider "SELECT * FROM PEOPLE ORDER BY ID DESC LIMIT 100;")
             results            (qp/process-query card-query)
-            results-metadata   (get-in results [:data :results_metadata :columns])
+            card-eid           (u/generate-nano-id)
+            results-metadata   (for [col (get-in results [:data :results_metadata :columns])]
+                                 (assoc col :ident (lib.metadata.ident/native-ident (:name col) card-eid)))
             _                  (is (seq results-metadata))
             metadata-provider  (lib.tu/mock-metadata-provider
                                 metadata-provider

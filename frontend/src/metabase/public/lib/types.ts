@@ -1,3 +1,4 @@
+import type { CodeLanguage } from "metabase/components/CodeBlock";
 import type { Card, Dashboard } from "metabase-types/api";
 
 export type DisplayTheme = "light" | "night" | "transparent";
@@ -65,7 +66,7 @@ export type ClientCodeSampleConfig = {
   id: string;
   name: string;
   source: string;
-  mode: string;
+  language: CodeLanguage;
 };
 
 export type ServerCodeSampleConfig = {
@@ -74,8 +75,8 @@ export type ServerCodeSampleConfig = {
   source: string;
   parametersSource: string;
   getIframeQuerySource: string;
-  mode: string;
   embedOption?: string;
+  language: CodeLanguage;
 };
 
 export type CodeSampleOption = ClientCodeSampleConfig | ServerCodeSampleConfig;

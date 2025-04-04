@@ -92,17 +92,17 @@
   (let [[k & more] (combine-adjacent-strings parsed)]
     (when (or (seq more)
               (not (string? k)))
-      (throw (ex-info (tru "Invalid '{{...}}' clause: expected a param name")
+      (throw (ex-info (tru "Invalid '''{{...}}''' clause: expected a param name")
                       {:type qp.error-type/invalid-query})))
     (let [k (str/trim k)]
       (when (empty? k)
-        (throw (ex-info (tru "'{{...}}' clauses cannot be empty.")
+        (throw (ex-info (tru "'''{{...}}''' clauses cannot be empty.")
                         {:type qp.error-type/invalid-query})))
       (params/->Param k))))
 
 (defn- optional [& parsed]
   (when-not (some params/Param? parsed)
-    (throw (ex-info (tru "'[[...]]' clauses must contain at least one '{{...}}' clause.")
+    (throw (ex-info (tru "[[...]] clauses must contain at least one '''{{...}}''' clause.")
                     {:type qp.error-type/invalid-query})))
   (params/->Optional (combine-adjacent-strings parsed)))
 
@@ -120,7 +120,7 @@
     (cond
       (nil? string-or-token)
       (if (or (pos? optional-level) (pos? param-level))
-        (throw (ex-info (tru "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'")
+        (throw (ex-info (tru "Invalid query: found ''[['' or '''{{''' with no matching '']]'' or ''}}''")
                         {:type qp.error-type/invalid-query}))
         [acc nil])
 

@@ -1104,14 +1104,12 @@ describe("issue 31769", () => {
     cy.findAllByTestId("header-cell").should("have.length", 4);
 
     cy.get("@card_id_q2").then(cardId => {
-      cy.findByTestId("TableInteractive-root")
+      H.tableInteractive()
         .findByText("Q2 - Products → Category → Category")
         .should("exist");
     });
 
-    cy.findByTestId("TableInteractive-root")
-      .findByText("Products → Category")
-      .should("exist");
+    H.tableInteractive().findByText("Products → Category").should("exist");
   });
 });
 
@@ -1153,7 +1151,7 @@ describe.skip("issue 27521", () => {
     H.openOrdersTable({ mode: "notebook" });
 
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").click();
+    H.popover().findByText("Select all").click();
 
     H.join();
 
@@ -1169,7 +1167,7 @@ describe.skip("issue 27521", () => {
       .button("Pick columns")
       .click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("ID").click();
     });
 
@@ -1190,7 +1188,7 @@ describe.skip("issue 27521", () => {
     });
 
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").click();
+    H.popover().findByText("Select all").click();
 
     H.join();
 
@@ -1295,7 +1293,7 @@ describe("issue 45300", () => {
     cy.signInAsNormalUser();
   });
 
-  it("joins using the foreign key only should not break the filter modal (metabase#45300)", () => {
+  it("joins using the foreign key only should not break the filter picker (metabase#45300)", () => {
     H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -1328,23 +1326,14 @@ describe("issue 45300", () => {
     });
 
     H.filter();
-
-    H.modal().within(() => {
-      // sidebar
-      cy.findByRole("tablist").within(() => {
-        cy.findAllByRole("tab", { name: "Product" }).eq(0).click();
-      });
-
-      // main panel
-      cy.findAllByTestId("filter-column-Category")
-        .should("have.length", 1)
-        .within(() => {
-          cy.findByText("Doohickey").click();
-        });
-
-      cy.button("Apply filters").click();
-      cy.wait("@dataset");
+    H.popover().within(() => {
+      cy.findAllByText("Product").should("have.length", 2).first().click();
+      cy.findByText("Category").click();
+      cy.findByText("Doohickey").click();
+      cy.button("Add filter").click();
     });
+    H.runButtonOverlay().click();
+    cy.wait("@dataset");
 
     cy.findByTestId("filter-pill").should(
       "have.text",

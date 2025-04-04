@@ -63,7 +63,7 @@ describe("PublicApp", () => {
   it("renders description", async () => {
     setup({ name: "My Title", description: "My Description" });
     await userEvent.hover(getIcon("info"));
-    expect(screen.getByText("My Description")).toBeInTheDocument();
+    expect(await screen.findByText("My Description")).toBeInTheDocument();
   });
 
   it("renders action buttons", () => {

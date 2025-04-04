@@ -8,6 +8,7 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
+   [metabase.config :as config]
    [metabase.formatter :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.public-settings :as public-settings]
@@ -65,6 +66,9 @@
 (defn- number [num-str num-value]
   (formatter/map->NumericWrapper {:num-str   (str num-str)
                                   :num-value num-value}))
+
+(defn- textwrap [text-str]
+  (formatter/->TextWrapper text-str text-str))
 
 (def ^:private default-header-result
   [{:row       [(number "ID" "ID") (number "Latitude" "Latitude") "Last Login" "Name" "Description Column"]
@@ -164,20 +168,20 @@
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
-          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
-          {:bar-width nil, :row [(number "4" 4)  "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]}
+          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]}
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]}
+          {:bar-width nil, :row [(number "4" 4)  "0.00000000° N" "September 1, 2018, 7:32 PM" (textwrap "The Tipsy Tardigrade") (textwrap "Desc 4")]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" (textwrap "The Bungalow") (textwrap "Desc 5")]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
-  (is (= [{:bar-width (float 85.249), :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
-          {:bar-width (float 85.1015), :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
-          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
-          {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
+  (is (= [{:bar-width (float 85.249), :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]}
+          {:bar-width (float 85.1015), :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]}
+          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]}
+          {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" (textwrap "The Tipsy Tardigrade") (textwrap "Desc 4")]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" (textwrap "The Bungalow") (textwrap "Desc 5")]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data}
                                                {:bar-column second, :min-value 0, :max-value 40})))))
 
@@ -218,9 +222,9 @@
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1" 1) "34.09960000° N" "Bad" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]
-          [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]
-          [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]]
+  (is (= [[(number "1" 1) "34.09960000° N" "Bad" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]
+          [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]
+          [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]]
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
                                                          {}
                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
@@ -242,11 +246,11 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
-          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
-          {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]}
+          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]}
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]}
+          {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" (textwrap "The Tipsy Tardigrade") (textwrap "Desc 4")]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" (textwrap "The Bungalow") (textwrap "Desc 5")]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
                                                {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
@@ -441,6 +445,45 @@
            :rows         [[nil 1] [11.0 nil] [nil nil] [2.50 20] [1.25 30]]
            :viz-settings {}})))))
 
+(deftest render-funnel-visualizer
+  (testing "Visualizer funnel charts render"
+    (let [test-card-1 {:id 192 :name "SCALAR 3"}
+          test-card-2 {:id 191 :name "SCALAR 2"}
+          test-card-3 {:id 190 :name "SCALAR 1"}
+          test-dashcard {:series-results
+                         [{:result {:data {:rows [[420]] :cols [{:name "count"}]}}
+                           :card test-card-2}
+                          {:result {:data {:rows [[2495]] :cols [{:name "count"}]}}
+                           :card test-card-3}]
+                         :visualization_settings
+                         {:visualization
+                          {:display "funnel",
+                           :columns
+                           [{:name "COLUMN_1",
+                             :display_name "Count"}
+                            {:name "DIMENSION",
+                             :display_name "DIMENSION"}],
+                           :columnValuesMapping
+                           {:COLUMN_1
+                            [{:sourceId "card:192", :originalName "count", :name "COLUMN_1"}
+                             {:sourceId "card:191", :originalName "count", :name "COLUMN_2"}
+                             {:sourceId "card:190", :originalName "count", :name "COLUMN_3"}],
+                            :DIMENSION
+                            ["$_card:192_name" "$_card:191_name" "$_card:190_name"]},
+                           :settings
+                           {:card.title "My new visualization",
+                            :funnel.metric "COLUMN_1",
+                            :funnel.dimension "DIMENSION",
+                            :funnel.order_dimension "DIMENSION",
+                            :funnel.rows
+                            [{:key "SCALAR 1" :name "SCALAR 1" :enabled true}
+                             {:key "SCALAR 2" :name "SCALAR 2" :enabled true}
+                             {:key "SCALAR 3" :name "SCALAR 3" :enabled true}]}}}}
+          test-data {:rows [[168]]
+                     :cols [{:name "count" :display_name "Count"}]}]
+      (is (has-inline-image?
+           (body/render :funnel :inline pacific-tz test-card-1 test-dashcard test-data))))))
+
 (defn- render-error?
   [pulse-body]
   (let [content (get-in pulse-body [0 :content 0 :content])]
@@ -615,7 +658,7 @@
                                                                                          [:avg $subtotal]]})
                                                          :creator_id    (mt/user->id :crowberto)}]
           (let [data                   (qp/process-query dataset-query)
-                combined-cards-results [(notification.execute/execute-card (:creator_id card) (:id card) nil)]
+                combined-cards-results [(notification.execute/execute-card (:creator_id card) (:id card))]
                 cards-with-data        (map
                                         (comp
                                          #'body/add-dashcard-timeline-events
@@ -1031,3 +1074,23 @@
                               first)]
               (testing "Renders with correct day of week first"
                 (is (= "2017/1" label))))))))))
+
+(deftest render-correct-whitelabel-colors
+  (when config/ee-available?
+    (testing "The static-viz respects custom whitelabel colors"
+      (mt/with-premium-features #{:whitelabel}
+        (mt/with-temporary-setting-values [public-settings/application-colors {:accent0 "#0005FF"}]
+          (mt/dataset test-data
+            (let [q    (mt/mbql-query products
+                         {:aggregation [[:count]]
+                          :breakout    [!month.created_at]})
+                  card {:name                   "bar-test"
+                        :display                :bar
+                        :dataset_query          q
+                        :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                                 :graph.metrics ["count"]}}]
+              (mt/with-temp [:model/Card {card-id :id} card]
+                (let [doc    (render.tu/render-card-as-hickory! card-id)
+                      svg    (html doc)]
+                  (testing "Renders with custom whitelabel color"
+                    (is (str/includes? svg "#0005FF"))))))))))))

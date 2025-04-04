@@ -1,3 +1,5 @@
+/* eslint-disable no-color-literals */
+
 import { match } from "ts-pattern";
 
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";

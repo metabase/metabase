@@ -69,12 +69,12 @@ const TEST_NATIVE_QUESTION_NAME = "GithubUptimeisMagnificentlyHigh";
 const TEST_CREATED_AT_FILTERS = [
   ["Today", "thisday"],
   ["Yesterday", "past1days"],
-  ["Previous Week", "past1weeks"],
-  ["Previous 7 Days", "past7days"],
-  ["Previous 30 Days", "past30days"],
-  ["Previous Month", "past1months"],
-  ["Previous 3 Months", "past3months"],
-  ["Previous 12 Months", "past12months"],
+  ["Previous week", "past1weeks"],
+  ["Previous 7 days", "past7days"],
+  ["Previous 30 days", "past30days"],
+  ["Previous month", "past1months"],
+  ["Previous 3 months", "past3months"],
+  ["Previous 12 months", "past12months"],
 ];
 
 describe("scenarios > search", () => {

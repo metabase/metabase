@@ -117,13 +117,13 @@ describe("[EE, with token] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         ).toBeInTheDocument();
         expect(
@@ -145,16 +145,16 @@ describe("[EE, with token] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedded analytics SDK",
+              name: "Embedded analytics SDK for React",
             }),
           ).getByRole("button", { name: "Configure" }),
         );
 
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).not.toBeChecked();
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).toBeEnabled();
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
@@ -350,13 +350,13 @@ describe("[EE, with token] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         ).toBeInTheDocument();
         expect(
@@ -376,16 +376,16 @@ describe("[EE, with token] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedded analytics SDK",
+              name: "Embedded analytics SDK for React",
             }),
           ).getByRole("button", { name: "Configure" }),
         );
 
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).toBeChecked();
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).toBeEnabled();
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
@@ -537,7 +537,7 @@ describe("[EE, with token] embedding settings", () => {
 
     expect(screen.queryByText("Static embedding")).not.toBeInTheDocument();
     expect(
-      screen.queryByText("Embedded analytics SDK"),
+      screen.queryByText("Embedded analytics SDK for React"),
     ).not.toBeInTheDocument();
   });
 
@@ -552,7 +552,7 @@ describe("[EE, with token] embedding settings", () => {
       await userEvent.click(
         within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         ).getByRole("button", { name: "Configure" }),
       );
@@ -645,7 +645,7 @@ describe("[EE, with token] embedding settings", () => {
       await userEvent.click(
         within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         ).getByRole("button", { name: "Configure" }),
       );
@@ -771,7 +771,7 @@ describe("[EE, with token] embedding settings", () => {
 
       const withinEmbeddingSdkCard = within(
         screen.getByRole("article", {
-          name: "Embedded analytics SDK",
+          name: "Embedded analytics SDK for React",
         }),
       );
 
@@ -816,7 +816,7 @@ describe("[EE, with token] embedding settings", () => {
 
       const withinEmbeddingSdkCard = within(
         screen.getByRole("article", {
-          name: "Embedded analytics SDK",
+          name: "Embedded analytics SDK for React",
         }),
       );
       expect(

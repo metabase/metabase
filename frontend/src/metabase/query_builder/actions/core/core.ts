@@ -17,13 +17,14 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
-import Query from "metabase-lib/v1/queries/Query";
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
+  DashboardTabId,
   Database,
   DatasetQuery,
   ParameterId,
@@ -175,7 +176,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
 // DEPRECATED, still used in a couple places
 export const setDatasetQuery =
   (datasetQuery: DatasetQuery) => (dispatch: Dispatch, getState: GetState) => {
-    if (datasetQuery instanceof Query) {
+    if (datasetQuery instanceof NativeQuery) {
       datasetQuery = datasetQuery.datasetQuery();
     }
 
@@ -188,13 +189,19 @@ export const setDatasetQuery =
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
   };
 
+type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
+
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
-export const apiCreateQuestion = (question: Question) => {
+export const apiCreateQuestion = (
+  question: Question,
+  options?: OnCreateOptions,
+) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     const submittableQuestion = getSubmittableQuestion(getState(), question);
     const createdQuestion = await reduxCreateQuestion(
       submittableQuestion,
       dispatch,
+      options,
     );
 
     const databases: Database[] = Databases.selectors.getList(getState());
@@ -332,8 +339,17 @@ export const revertToRevision = createThunkAction(
   },
 );
 
-async function reduxCreateQuestion(question: Question, dispatch: Dispatch) {
-  const action = await dispatch(Questions.actions.create(question.card()));
+async function reduxCreateQuestion(
+  question: Question,
+  dispatch: Dispatch,
+  options?: OnCreateOptions,
+) {
+  const action = await dispatch(
+    Questions.actions.create({
+      ...question.card(),
+      dashboard_tab_id: options?.dashboardTabId,
+    }),
+  );
   return question.setCard(Questions.HACK_getObjectFromAction(action));
 }
 

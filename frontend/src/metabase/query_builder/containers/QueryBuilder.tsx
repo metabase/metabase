@@ -1,3 +1,4 @@
+import { useHotkeys } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
@@ -7,7 +8,7 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
 import Bookmark from "metabase/entities/bookmarks";
 import Timelines from "metabase/entities/timelines";
 import title from "metabase/hoc/Title";
@@ -41,7 +42,6 @@ import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDataReferenceStack,
-  getDatabaseFields,
   getDatabasesList,
   getDocumentTitle,
   getEmbeddedParameterVisibility,
@@ -60,7 +60,6 @@ import {
   getIsResultDirty,
   getIsRunnable,
   getIsTimeseries,
-  getIsVisualized,
   getLastRunCard,
   getModalSnippet,
   getMode,
@@ -81,7 +80,6 @@ import {
   getSnippetCollectionId,
   getTableForeignKeyReferences,
   getTableForeignKeys,
-  getTables,
   getTimeseriesXDomain,
   getUiControls,
   getVisibleTimelineEventIds,
@@ -138,7 +136,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     card: getCard(state),
     originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
-    tables: getTables(state),
 
     metadata: getMetadata(state),
 
@@ -162,7 +159,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
-    isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
     isHeaderVisible: getIsHeaderVisible(state),
@@ -170,7 +166,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
-    databaseFields: getDatabaseFields(state),
     sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
@@ -229,6 +224,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB,
     locationChanged,
     setUIControls,
+    runQuestionOrSelectedQuery,
     cancelQuery,
     isBookmarked,
     createBookmark,
@@ -239,6 +235,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isLoadingComplete,
     closeQB,
     route,
+    queryBuilderMode,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -279,7 +276,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   };
 
   /**
-   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * Navigation is scheduled so that LeaveRouteConfirmModal's isEnabled
    * prop has a chance to re-compute on re-render
    */
   const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
@@ -406,6 +403,14 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     [question, isNewQuestion],
   );
 
+  const handleCmdEnter = () => {
+    if (queryBuilderMode !== "notebook") {
+      runQuestionOrSelectedQuery();
+    }
+  };
+
+  useHotkeys([["mod+Enter", handleCmdEnter]]);
+
   return (
     <>
       <View
@@ -423,7 +428,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         isShowingToaster={isShowingToaster}
       />
 
-      <LeaveConfirmationModal
+      <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
         route={route}

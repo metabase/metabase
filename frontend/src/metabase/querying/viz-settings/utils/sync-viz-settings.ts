@@ -137,9 +137,14 @@ function syncColumns<T>({
     }
     return settings;
   }, []);
+  const remappedNames = new Set(remappedSettings.map(getColumnName));
   const addedSettings = newColumns
-    .filter(column => !oldNameByKey[column.key])
-    .filter(shouldCreateSetting)
+    .filter(
+      column =>
+        !oldNameByKey[column.key] &&
+        !remappedNames.has(column.name) &&
+        shouldCreateSetting(column),
+    )
     .map(createSetting);
 
   return [...remappedSettings, ...addedSettings];

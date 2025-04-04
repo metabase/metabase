@@ -1,38 +1,72 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 
+import EditableText from "metabase/core/components/EditableText";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import {
   getCurrentVisualizerState,
   getIsDirty,
+  getIsRenderable,
+  getVisualizationTitle,
 } from "metabase/visualizer/selectors";
 import {
+  setTitle,
   toggleFullscreenMode,
-  toggleVizSettingsSidebar,
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+
+import S from "./Header.module.css";
 
 interface HeaderProps {
   onSave?: (visualization: VisualizerHistoryItem) => void;
   saveLabel?: string;
+  allowSaveWhenPristine?: boolean;
+  className?: string;
 }
 
-export function Header({ onSave, saveLabel }: HeaderProps) {
+export function Header({
+  onSave,
+  saveLabel,
+  allowSaveWhenPristine = false,
+  className,
+}: HeaderProps) {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
-  const visualization = useSelector(getCurrentVisualizerState);
+  const visualizerState = useSelector(getCurrentVisualizerState);
+
   const isDirty = useSelector(getIsDirty);
+  const isRenderable = useSelector(getIsRenderable);
+  const title = useSelector(getVisualizationTitle);
 
   const dispatch = useDispatch();
 
   const handleSave = () => {
-    onSave?.(visualization);
+    onSave?.(visualizerState);
   };
 
+  const handleChangeTitle = useCallback(
+    (nextTitle: string) => {
+      dispatch(setTitle(nextTitle));
+    },
+    [dispatch],
+  );
+
+  const saveButtonEnabled = isRenderable && (isDirty || allowSaveWhenPristine);
+
   return (
-    <Flex p="md" pb="sm" justify="space-between">
-      <Flex align="center">
+    <Flex p="md" pb="sm" align="center" className={className}>
+      <ActionIcon onClick={() => dispatch(toggleFullscreenMode())}>
+        <Icon name="sidebar_open" />
+      </ActionIcon>
+      <EditableText
+        initialValue={title}
+        onChange={handleChangeTitle}
+        className={S.title}
+      />
+
+      <Flex align="center" gap="sm" ml="auto">
         <Tooltip label={t`Back`}>
           <ActionIcon disabled={!canUndo} onClick={undo}>
             <Icon name="chevronleft" />
@@ -43,26 +77,11 @@ export function Header({ onSave, saveLabel }: HeaderProps) {
             <Icon name="chevronright" />
           </ActionIcon>
         </Tooltip>
-      </Flex>
-
-      <Flex align="center" gap="sm">
-        <Tooltip label={t`Settings`}>
-          <ActionIcon
-            disabled={!isDirty}
-            onClick={() => dispatch(toggleVizSettingsSidebar())}
-          >
-            <Icon name="gear" />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label={t`Fullscreen`}>
-          <ActionIcon
-            disabled={!isDirty}
-            onClick={() => dispatch(toggleFullscreenMode())}
-          >
-            <Icon name="expand" />
-          </ActionIcon>
-        </Tooltip>
-        <Button variant="filled" disabled={!isDirty} onClick={handleSave}>
+        <Button
+          variant="filled"
+          disabled={!saveButtonEnabled}
+          onClick={handleSave}
+        >
           {saveLabel ?? t`Add to dashboard`}
         </Button>
       </Flex>

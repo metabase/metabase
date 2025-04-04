@@ -1,6 +1,10 @@
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
-import type { RowValues, SmartScalarComparison } from "metabase-types/api";
+import type {
+  RowValues,
+  Series,
+  SmartScalarComparison,
+} from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 
@@ -51,5 +55,5 @@ export const mockSeries = ({
       },
       data: { cols, rows, insights },
     },
-  ];
+  ] as Series;
 };

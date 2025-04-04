@@ -8,7 +8,7 @@
 //------------------------------------------------------------------------------
 
 const COLOR_REGEX =
-  /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?\b|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\))/g;
+  /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?\b|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\))/;
 const LINT_MESSAGE =
   "Color literals forbidden. Import colors from 'metabase/lib/colors'.";
 

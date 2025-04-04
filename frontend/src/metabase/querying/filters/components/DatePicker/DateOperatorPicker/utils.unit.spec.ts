@@ -34,7 +34,7 @@ const SPECIFIC_VALUES: SpecificDatePickerValue[] = [
 const RELATIVE_VALUES: RelativeDatePickerValue[] = [
   { type: "relative", value: -1, unit: "minute" },
   { type: "relative", value: 1, unit: "hour" },
-  { type: "relative", value: "current", unit: "day" },
+  { type: "relative", value: 0, unit: "day" },
 ];
 
 const EXCLUDE_VALUES: ExcludeDatePickerValue[] = [
@@ -293,11 +293,11 @@ describe("setOptionType", () => {
       "quarter",
       "year",
     ])(
-      'should preserve "%s" unit and use default value for "current" value',
+      'should preserve "%s" unit and use default value for "0" value',
       unit => {
         const value: DatePickerValue = {
           type: "relative",
-          value: "current",
+          value: 0,
           unit,
         };
         expect(setOptionType(value, "last")).toEqual({
@@ -351,11 +351,11 @@ describe("setOptionType", () => {
       "quarter",
       "year",
     ])(
-      'should preserve "%s" unit and use default value for "current" value',
+      'should preserve "%s" unit and use default value for "0" value',
       unit => {
         const value: DatePickerValue = {
           type: "relative",
-          value: "current",
+          value: 0,
           unit,
         };
         expect(setOptionType(value, "next")).toEqual({
@@ -394,7 +394,7 @@ describe("setOptionType", () => {
       value => {
         expect(setOptionType(value, "current")).toEqual({
           type: "relative",
-          value: "current",
+          value: 0,
           unit: "day",
         });
       },
@@ -411,7 +411,7 @@ describe("setOptionType", () => {
           };
           expect(setOptionType(value, "current")).toEqual({
             type: "relative",
-            value: "current",
+            value: 0,
             unit: "day",
           });
         });
@@ -433,7 +433,7 @@ describe("setOptionType", () => {
         };
         expect(setOptionType(value, "current")).toEqual({
           type: "relative",
-          value: "current",
+          value: 0,
           unit,
         });
       });

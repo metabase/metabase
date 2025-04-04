@@ -627,3 +627,34 @@
            #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
            (qp/process-query
             (mt/mbql-query times {:fields [$t]})))))))
+
+;; TODO: Re-enable this test if it becomes possible to determine type/UUID without using JavaScript
+#_(deftest ^:parallel filter-uuids-with-string-patterns-test
+    (mt/test-driver :mongo
+      (mt/dataset uuid-dogs
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              dogs (lib.metadata/table mp (mt/id :dogs))
+              person-id (lib.metadata/field mp (mt/id :dogs :person_id))]
+          (if (-> (driver/dbms-version :mongo (mt/db)) :semantic-version (driver.u/semantic-version-gte [8]))
+            (do
+              (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+                      [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]]
+                     (-> (lib/query mp dogs)
+                         (lib/filter (lib/starts-with person-id "d6"))
+                         qp/process-query
+                         mt/rows)))
+              (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+                     (-> (lib/query mp dogs)
+                         (lib/filter (lib/ends-with person-id "9b"))
+                         qp/process-query
+                         mt/rows)))
+              (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+                     (-> (lib/query mp dogs)
+                         (lib/filter (lib/contains person-id "e"))
+                         qp/process-query
+                         mt/rows))))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"String searching on UUIDs is only supported in Mongo v8.0+"
+                                  (-> (lib/query mp dogs)
+                                      (lib/filter (lib/contains person-id "e"))
+                                      qp/process-query))))))))

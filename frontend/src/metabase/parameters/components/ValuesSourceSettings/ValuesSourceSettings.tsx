@@ -2,8 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import Modal from "metabase/components/Modal";
-import Tooltip from "metabase/core/components/Tooltip";
-import { Box, Button, Flex, Radio, Stack } from "metabase/ui";
+import { Box, Button, Flex, Radio, Stack, Tooltip } from "metabase/ui";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type {
   Parameter,
@@ -105,9 +104,9 @@ function RadioContainer({
       <Radio checked={isChecked} label={label} value={ownValue} />
       {isChecked && !hideEdit && (
         <Tooltip
-          tooltip={t`You can’t customize selectable values for this filter because it is linked to another one.`}
-          placement="top"
-          isEnabled={disableEdit}
+          label={t`You can’t customize selectable values for this filter because it is linked to another one.`}
+          position="top"
+          disabled={!disableEdit}
         >
           {/* This div is needed to make the tooltip work when the button is disabled */}
           <div data-testid="values-source-settings-edit-btn">

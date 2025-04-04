@@ -169,7 +169,7 @@ describe("time-series chrome filter widget", () => {
         "Created At is in the next 30 years",
       );
       cy.findByTestId("timeseries-filter-button")
-        .should("have.text", "Next 30 Years")
+        .should("have.text", "Next 30 years")
         .click();
     });
 

@@ -129,15 +129,10 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     cy.log("Change the frequency of the alert to weekly");
 
-    H.modal()
-      .findByText("When do you want to check this?")
-      .parent()
-      .findAllByTestId("select-button")
-      .should("have.length", 2)
-      .eq(0)
-      .click();
+    H.modal().findByTestId("select-frequency").click();
 
-    cy.findByRole("option", { name: "Weekly" })
+    cy.findByRole("option", { name: /weekly/i })
+      .should("have.attr", "value", "weekly")
       .should("have.attr", "aria-selected", "false")
       .click();
     cy.button("Save changes").click();

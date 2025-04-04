@@ -10,8 +10,9 @@
        (["moment" :as moment]))
    [clojure.string :as str]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs trsn]])
+   [metabase.util.i18n :refer [trs]])
   (:import
    #?@(:clj
        ((java.time.format DateTimeFormatter)))))
@@ -64,39 +65,22 @@
            (formatted-value :date/single end locale))
       "")))
 
-(defn- translated-interval
-  [interval n]
-  (case interval
-    "minutes"  (trsn "Minute" "Minutes" n)
-    "hours"    (trsn "Hour" "Hours" n)
-    "days"     (trsn "Day" "Days" n)
-    "weeks"    (trsn "Week" "Weeks" n)
-    "months"   (trsn "Month" "Months" n)
-    "quarters" (trsn "Quarter" "Quarters" n)
-    "years"    (trsn "Year" "Years" n)))
-
 (defn- format-relative-date
   [prefix n interval]
-  (let [n        #?(:clj (Integer/valueOf ^String n) :cljs (js/parseInt n))
-        interval (translated-interval interval n)]
-    (case [prefix (= n 1)]
-      ["past" true]  (trs "Previous {0}" interval)
-      ["past" false] (trs "Previous {0} {1}" n interval)
-      ["next" true]  (trs "Next {0}" interval)
-      ["next" false] (trs "Next {0} {1}" n interval))))
+  (let [n #?(:clj (Integer/valueOf ^String n) :cljs (js/parseInt n))
+        n (if (= prefix "past") (- n) n)]
+    (lib/describe-temporal-interval n (keyword interval))))
 
 (defmethod formatted-value :date/relative
   [_ value _]
   (condp (fn [re value] (->> (re-find re value) next)) value
-    #"^today$"                             (trs "Today")
-    #"^thisday$"                           (trs "Today")
-    #"^thisweek$"                          (trs "This Week")
-    #"^thismonth$"                         (trs "This Month")
-    #"^thisquarter$"                       (trs "This Quarter")
-    #"^thisyear$"                          (trs "This Year")
-    #"^past1days$"                         (trs "Yesterday")
-    #"^next1days$"                         (trs "Tomorrow")
-    #"^(past|next)([0-9]+)([a-z]+)~?$" :>> (fn [matches] (apply format-relative-date matches))))
+    #"^today$"                              (lib/describe-temporal-interval 0 :day)
+    #"^thisday$"                            (lib/describe-temporal-interval 0 :day)
+    #"^thisweek$"                           (lib/describe-temporal-interval 0 :week)
+    #"^thismonth$"                          (lib/describe-temporal-interval 0 :month)
+    #"^thisquarter$"                        (lib/describe-temporal-interval 0 :quarter)
+    #"^thisyear$"                           (lib/describe-temporal-interval 0 :year)
+    #"^(past|next)([0-9]+)([a-z]+)s~?$" :>> (fn [matches] (apply format-relative-date matches))))
 
 (defmethod formatted-value :date/all-options
   [_ value locale]

@@ -65,6 +65,9 @@
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
 
+(defmethod mi/non-timestamped-fields :model/Dashboard [_]
+  #{:last_viewed_at})
+
 (t2/deftransforms :model/Dashboard
   {:parameters       mi/transform-card-parameters-list
    :embedding_params mi/transform-json})
@@ -407,7 +410,8 @@
                :made_public_by_id      (serdes/fk :model/User)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
-               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}})
+               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}
+   :coerce {:parameters [:maybe [:sequential ms/Parameter]]}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]

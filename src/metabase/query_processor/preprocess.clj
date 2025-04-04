@@ -1,8 +1,8 @@
 (ns metabase.query-processor.preprocess
   (:require
+   [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.convert :as lib.convert]
-   [metabase.lib.query :as lib.query]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -55,7 +55,7 @@
 
 (mu/defn- ->legacy :- mbql.s/Query
   [query]
-  (lib.convert/->legacy-MBQL query))
+  (lib/->legacy-MBQL query))
 
 (defn- ^:deprecated ensure-legacy [middleware-fn]
   (-> (fn [query]
@@ -68,7 +68,7 @@
 (defn- ensure-pmbql [middleware-fn]
   (-> (fn [query]
         (let [query (cond->> query
-                      (not (:lib/type query)) (lib.query/query (qp.store/metadata-provider)))]
+                      (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))]
           (vary-meta (middleware-fn query)
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
@@ -88,12 +88,12 @@
   [middleware-fn]
   (-> (fn [query]
         (mu/disable-enforcement
-          (binding [lib.convert/*clean-query* false]
-            (let [query' (-> (cond->> query
-                               (not (:lib/type query))
-                               (lib.query/query (qp.store/metadata-provider)))
-                             (copy-unconverted-properties query))]
-              (-> query' middleware-fn ->legacy)))))
+          (lib/without-cleaning
+           (fn []
+             (let [query' (-> (cond->> query
+                                (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))
+                              (copy-unconverted-properties query))]
+               (-> query' middleware-fn ->legacy))))))
       (with-meta (meta middleware-fn))))
 
 (def ^:private middleware
@@ -116,6 +116,7 @@
    (ensure-pmbql #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
    (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
+   (ensure-pmbql #'qp.middleware.enterprise/apply-impersonation)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)
@@ -201,5 +202,5 @@
            ;; remove MLv2 columns so we don't break a million tests. Once the whole QP is updated to use MLv2 metadata
            ;; directly we can stop stripping these out
            (mapv (fn [col]
-                   (dissoc col :lib/external_remap :lib/internal_remap)))
+                   (m/remove-keys #(= "lib" (namespace %)) col)))
            not-empty))))

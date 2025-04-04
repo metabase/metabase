@@ -9,6 +9,19 @@ describe("ModalHeader", () => {
     render(<ModalHeader title="Events" />);
 
     expect(screen.getByText("Events")).toBeInTheDocument();
+    expect(screen.queryByText("Foo")).not.toBeInTheDocument();
+  });
+
+  it("should render title with path", () => {
+    const pathOptions = {
+      showPath: true,
+      collectionName: "Foo",
+    };
+
+    render(<ModalHeader title="Events" pathOptions={pathOptions} />);
+
+    expect(screen.getByText("Events")).toBeInTheDocument();
+    expect(screen.getByText(/^in.*Foo$/)).toBeInTheDocument();
   });
 
   it("should render with actions", () => {

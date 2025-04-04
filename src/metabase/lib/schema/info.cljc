@@ -33,7 +33,8 @@
    :embedded-question
    :embedded-csv-download
    :embedded-xlsx-download
-   :embedded-json-download])
+   :embedded-json-download
+   :table-grid])
 
 (mr/def ::hash
   #?(:clj bytes?
@@ -57,6 +58,8 @@
    [:executed-by             {:optional true} [:maybe ::lib.schema.id/user]]
    [:action-id               {:optional true} [:maybe ::lib.schema.id/action]]
    [:card-id                 {:optional true} [:maybe ::lib.schema.id/card]]
+   ;; NanoID for the card. Gets set on the client even for ad-hoc queries.
+   [:card-entity-id          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:alias/escaped->original {:optional true} [:maybe [:map-of :any :any]]]

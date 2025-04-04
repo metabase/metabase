@@ -13,7 +13,7 @@ type TestCase = {
 const TEST_CASES: TestCase[] = [
   {
     label: "Today",
-    value: { type: "relative", value: "current", unit: "day" },
+    value: { type: "relative", value: 0, unit: "day" },
   },
   {
     label: "Yesterday",

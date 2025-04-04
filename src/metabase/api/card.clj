@@ -11,7 +11,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.events :as events]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -103,14 +102,17 @@
 
 (defn- cards-for-segment-or-metric
   [model-type model-id]
-  (->> (t2/select :model/Card (merge order-by-name
-                                     {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]}))
-       ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
-       (filter (fn [card]
-                 (when-let [query (some-> card :dataset_query lib.convert/->pMBQL)]
-                   (case model-type
-                     :segment (lib/uses-segment? query model-id)
-                     :metric  (lib/uses-metric? query model-id)))))))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (->> (t2/select :model/Card (merge order-by-name
+                                       {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]}))
+         ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
+         (filter (fn [card]
+                   (when-let [legacy-query (some-> card :dataset_query)]
+                     (let [mp    (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
+                           query (lib/query mp legacy-query)]
+                       (case model-type
+                         :segment (lib/uses-segment? query model-id)
+                         :metric  (lib/uses-metric? query model-id)))))))))
 
 (defmethod cards-for-filter-option* :using_metric
   [_filter-option model-id]

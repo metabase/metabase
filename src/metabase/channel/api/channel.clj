@@ -28,9 +28,11 @@
    _query-params
    {:keys [include_inactive]} :- [:map
                                   [:include_inactive {:optional true} [:maybe {:default false} :boolean]]]]
-  (map remove-details-if-needed (if include_inactive
-                                  (t2/select :model/Channel)
-                                  (t2/select :model/Channel :active true))))
+  (->> (if include_inactive
+         (t2/select :model/Channel)
+         (t2/select :model/Channel :active true))
+       (filter mi/can-read?)
+       (map remove-details-if-needed)))
 
 (def ^:private ChannelType
   (mu/with-api-error-message
@@ -59,7 +61,7 @@
   "Get a channel"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Channel id) api/check-404 remove-details-if-needed))
+  (-> (t2/select-one :model/Channel id) api/read-check remove-details-if-needed))
 
 (api.macros/defendpoint :put "/:id"
   "Update a channel"
@@ -72,8 +74,7 @@
             [:type        {:optional true} [:maybe ChannelType]]
             [:details     {:optional true} [:maybe :map]]
             [:active      {:optional true} [:maybe :boolean]]]]
-  (validation/check-has-application-permission :setting)
-  (let [channel-before-update (api/check-404 (t2/select-one :model/Channel id))]
+  (let [channel-before-update (api/write-check (t2/select-one :model/Channel id))]
     (t2/update! :model/Channel id body)
     (u/prog1 (t2/select-one :model/Channel id)
       (events/publish-event! :event/channel-update {:object          <>

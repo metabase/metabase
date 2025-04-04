@@ -31,7 +31,7 @@ describe("TimelineListModal", () => {
 
     setup(props);
 
-    expect(screen.getByText("Add an event")).toBeInTheDocument();
+    expect(screen.getByText("Create event")).toBeInTheDocument();
   });
 });
 

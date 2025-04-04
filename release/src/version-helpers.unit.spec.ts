@@ -260,6 +260,7 @@ describe("version-helpers", () => {
       expect(getBuildRequirements("v1.47.2.1")).toEqual({
         node: 18,
         java: 11,
+        platforms: "linux/amd64",
       });
     });
 
@@ -267,6 +268,7 @@ describe("version-helpers", () => {
       expect(getBuildRequirements("v0.47.2.1")).toEqual({
         node: 18,
         java: 11,
+        platforms: "linux/amd64",
       });
     });
 
@@ -274,6 +276,7 @@ describe("version-helpers", () => {
       expect(getBuildRequirements("v0.47.0")).toEqual({
         node: 18,
         java: 11,
+        platforms: "linux/amd64",
       });
     });
 
@@ -281,6 +284,7 @@ describe("version-helpers", () => {
       expect(getBuildRequirements("v0.47.0-RC7")).toEqual({
         node: 18,
         java: 11,
+        platforms: "linux/amd64",
       });
     });
 
@@ -293,6 +297,7 @@ describe("version-helpers", () => {
       expect(getBuildRequirements("v0.99.0")).toEqual({
         node: 22,
         java: 21,
+        platforms: "linux/amd64,linux/arm64",
       });
     });
   });

@@ -16,10 +16,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
-import {
-  field_semantic_types,
-  field_visibility_types,
-} from "metabase/lib/core";
+import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Box, Radio, Tabs } from "metabase/ui";
 import ColumnSettings, {
@@ -31,9 +28,10 @@ import { isFK } from "metabase-lib/v1/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 
+import { DatasetFieldMetadataFkTargetPicker } from "./DatasetFieldMetadataFkTargetPicker";
+import { DatasetFieldMetadataSemanticTypePicker } from "./DatasetFieldMetadataSemanticTypePicker";
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
 import MappedFieldPicker from "./MappedFieldPicker";
-import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 
 const propTypes = {
   dataset: PropTypes.object.isRequired,
@@ -55,23 +53,12 @@ function getVisibilityTypeName(visibilityType) {
   return visibilityType.name;
 }
 
-function getSemanticTypeOptions() {
-  return [
-    ...field_semantic_types,
-    {
-      id: null,
-      name: t`No special type`,
-      section: t`Other`,
-    },
-  ];
-}
-
-const visibilityTypeOptions = field_visibility_types
-  .filter(type => type.id !== "sensitive")
-  .map(type => ({
-    name: getVisibilityTypeName(type),
-    value: type.id,
-  }));
+const visibilityTypeOptions = FIELD_VISIBILITY_TYPES.filter(
+  type => type.id !== "sensitive",
+).map(type => ({
+  name: getVisibilityTypeName(type),
+  value: type.id,
+}));
 
 const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
 
@@ -197,7 +184,7 @@ function DatasetFieldMetadataSidebar({
     [onFieldMetadataChange],
   );
 
-  const handleFKTargetChange = useCallback(
+  const handleFkTargetChange = useCallback(
     value =>
       onFieldMetadataChange({
         fk_target_field_id: value,
@@ -254,9 +241,6 @@ function DatasetFieldMetadataSidebar({
                       },
                     },
                     input: {
-                      paddingTop: "1.375rem",
-                      paddingBottom: "0.5rem",
-                      height: "auto",
                       fontWeight: "bold",
                     },
                   }}
@@ -281,22 +265,20 @@ function DatasetFieldMetadataSidebar({
                   </Box>
                 )}
                 <Box mb="1.5rem">
-                  <SemanticTypePicker
+                  <DatasetFieldMetadataSemanticTypePicker
                     className={DatasetFieldMetadataSidebarS.SelectButton}
-                    name="semantic_type"
-                    label={t`Column type`}
+                    field={field}
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                    onKeyDown={onLastEssentialFieldKeyDown}
-                    options={getSemanticTypeOptions()}
                     onChange={handleSemanticTypeChange}
+                    onKeyDown={onLastEssentialFieldKeyDown}
                   />
                 </Box>
                 {isFK(formFieldValues) && (
                   <Box mb="1.5rem">
-                    <FKTargetPicker
-                      name="fk_target_field_id"
+                    <DatasetFieldMetadataFkTargetPicker
                       databaseId={dataset.databaseId()}
-                      onChange={handleFKTargetChange}
+                      field={field}
+                      onChange={handleFkTargetChange}
                     />
                   </Box>
                 )}

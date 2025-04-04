@@ -51,7 +51,7 @@
   :audit      :getter)
 
 (defsetting ldap-user-filter
-  (deferred-tru "User lookup filter. The placeholder '{login'} will be replaced by the user supplied login.")
+  (deferred-tru "User lookup filter. The placeholder '''{login}''' will be replaced by the user supplied login.")
   :default    "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"
   :encryption :no
   :audit      :getter)

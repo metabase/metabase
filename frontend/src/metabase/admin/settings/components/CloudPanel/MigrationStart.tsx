@@ -23,36 +23,35 @@ export const MigrationStart = ({
         <UpsellCloud onOpenModal={openModal} source="settings-cloud" />
       </Box>
 
-      <Modal.Root
+      <Modal
         opened={isModalOpen}
         onClose={closeModal}
         size="36rem"
         data-testid="new-cloud-migration-confirmation"
+        styles={{
+          body: {
+            padding: 0,
+          },
+        }}
       >
-        <Modal.Overlay />
-        <Modal.Content pt="1rem" pb="4rem">
-          <Modal.Header py="0" px="1rem">
-            <Modal.CloseButton />
-          </Modal.Header>
-          <Modal.Body mt="md" py="0" px="6rem" ta="center">
-            <Icon name="cloud_filled" size="3rem" color="brand" />
-            <Modal.Title mt="1.5rem">{t`Get started with Metabase Cloud`}</Modal.Title>
+        <Box mt="md" pb="4rem" px="6rem" ta="center">
+          <Icon name="cloud_filled" size="3rem" color="brand" />
+          <Modal.Title mt="1.5rem">{t`Get started with Metabase Cloud`}</Modal.Title>
 
-            <Text mt="1.5rem">
-              {t`Just a heads up: your Metabase will be read-only for up to 30
+          <Text mt="1.5rem">
+            {t`Just a heads up: your Metabase will be read-only for up to 30
               minutes while we prep it for migration.`}{" "}
-              <ExternalLink href="https://www.metabase.com/cloud/">{t`Learn More.`}</ExternalLink>
-            </Text>
+            <ExternalLink href="https://www.metabase.com/cloud/">{t`Learn More.`}</ExternalLink>
+          </Text>
 
-            <Button
-              variant="filled"
-              disabled={isStarting}
-              onClick={startNewMigration}
-              mt="2rem"
-            >{t`Migrate now`}</Button>
-          </Modal.Body>
-        </Modal.Content>
-      </Modal.Root>
+          <Button
+            variant="filled"
+            disabled={isStarting}
+            onClick={startNewMigration}
+            mt="2rem"
+          >{t`Migrate now`}</Button>
+        </Box>
+      </Modal>
     </>
   );
 };

@@ -8,6 +8,11 @@
   application goes through normal startup procedures. Inside this function you can do any work needed and add your
   task to the scheduler as usual via `schedule-task!`.
 
+  ## Documentation
+
+  For more detailed information about using Quartz in Metabase, including examples and best practices,
+  see the [QUARTZ.md](src/metabase/task/QUARTZ.md) documentation.
+
   ## Quartz JavaDoc
 
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
@@ -36,7 +41,7 @@
   *quartz-scheduler*
   (atom nil))
 
-(defn- scheduler
+(defn scheduler
   "Fetch the instance of our Quartz scheduler."
   ^Scheduler []
   @*quartz-scheduler*)
@@ -92,7 +97,7 @@
                        (ex-message (.getCause e)))
             (qs/delete-job scheduler job-key)))))))
 
-(defn- init-scheduler!
+(defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []
@@ -209,6 +214,12 @@
   [trigger-key :- (ms/InstanceOfClass TriggerKey)]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
+
+(mu/defn delete-all-triggers-of-job!
+  "Delete all triggers for a given job key."
+  [job-key :- (ms/InstanceOfClass JobKey)]
+  (when-let [scheduler (scheduler)]
+    (qs/delete-triggers scheduler (map #(.getKey ^Trigger %) (qs/get-triggers-of-job scheduler job-key)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Scheduler Info                                                 |

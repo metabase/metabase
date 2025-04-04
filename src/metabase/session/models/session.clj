@@ -1,7 +1,9 @@
 (ns metabase.session.models.session
   (:require
    [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [buddy.core.nonce :as nonce]
+   [clojure.core.memoize :as memo]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -13,8 +15,11 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as string]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (mu/defn- random-anti-csrf-token :- [:re {:error/message "valid anti-CSRF token"} #"^[0-9a-f]{32}$"]
   []
@@ -31,6 +36,10 @@
 
 (t2/define-before-insert :model/Session
   [session]
+  (when (or (uuid? (:id session)) (string/valid-uuid? (:id session)))
+    (throw (RuntimeException. "Session id should not be stored plaintext in the session table.")))
+  (when (or (uuid? (:key_hashed session)) (string/valid-uuid? (:key_hashed session)))
+    (throw (RuntimeException. "Session key should not be stored plaintext in the session table.")))
   (cond-> session
     (some-> (request/current-request) request/embedded?) (assoc :anti_csrf_token (random-anti-csrf-token))))
 
@@ -49,21 +58,38 @@
   [:and
    [:map-of :keyword :any]
    [:map
-    [:id uuid?]
+    [:key string?]
     [:type [:enum :normal :full-app-embed]]]])
 
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is currently either `:password` (for email + password login) or
-  `:sso` (for other login types). Returns the newly generated Session."
+  `:sso` (for other login types). Returns the newly generated Session with the id as the plain-text session-key."
   {:arglists '([session-type user device-info])}
   (fn [session-type & _]
     session-type))
 
+(def ^{:arglists '([session-key])} hash-session-key
+  "Hash the session-key for storage in the database"
+  (memo/lru (fn [^String session-key] (codecs/bytes->hex (buddy-hash/sha512 (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)))) {} :lru/threshold 100))
+
+(defn generate-session-key
+  "Generate a new session key."
+  []
+  (str (random-uuid)))
+
+(defn generate-session-id
+  "Generate a new id for the session table."
+  []
+  (string/random-string 12))
+
 (mu/defmethod create-session! :sso :- SessionSchema
   [_ user :- CreateSessionUserInfo device-info :- request/DeviceInfo]
-  (let [session-id (random-uuid)
+  (let [session-key (generate-session-key)
+        session-key-hashed (hash-session-key session-key)
+        session-id (generate-session-id)
         session (first (t2/insert-returning-instances! :model/Session
-                                                       :id (str session-id)
+                                                       :id session-id
+                                                       :key_hashed session-key-hashed
                                                        :user_id (u/the-id user)))]
     (assert (map? session))
     (let [event {:user-id (u/the-id user)}]
@@ -71,7 +97,7 @@
       (when (nil? (:last_login user))
         (events/publish-event! :event/user-joined event)))
     (login-history/record-login-history! session-id user device-info)
-    (assoc session :id session-id)))
+    (assoc session :key session-key)))
 
 (mu/defmethod create-session! :password :- SessionSchema
   [session-type

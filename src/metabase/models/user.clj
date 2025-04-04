@@ -434,7 +434,7 @@
 ;; NB: Settings are also defined where they're used, such as in [[metabase.events.view-log]]
 
 (defsetting last-acknowledged-version
-  (deferred-tru "The last version for which a user dismissed the 'What's new?' modal.")
+  (deferred-tru "The last version for which a user dismissed the ''What''s new?'' modal.")
   :encryption :no
   :user-local :only
   :type :string)
@@ -489,7 +489,7 @@
   :default    nil)
 
 (defsetting expand-browse-in-nav
-  (deferred-tru "User preference for whether the 'Browse' section of the nav is expanded.")
+  (deferred-tru "User preference for whether the ''Browse'' section of the nav is expanded.")
   :user-local :only
   :export?    false
   :visibility :authenticated
@@ -497,7 +497,7 @@
   :default    true)
 
 (defsetting expand-bookmarks-in-nav
-  (deferred-tru "User preference for whether the 'Bookmarks' section of the nav is expanded.")
+  (deferred-tru "User preference for whether the ''Bookmarks'' section of the nav is expanded.")
   :user-local :only
   :export?    false
   :visibility :authenticated
@@ -505,7 +505,7 @@
   :default    true)
 
 (defsetting browse-filter-only-verified-models
-  (deferred-tru "User preference for whether the 'Browse models' page should be filtered to show only verified models.")
+  (deferred-tru "User preference for whether the ''Browse models'' page should be filtered to show only verified models.")
   :user-local :only
   :export?    false
   :visibility :authenticated
@@ -513,7 +513,7 @@
   :default    true)
 
 (defsetting browse-filter-only-verified-metrics
-  (deferred-tru "User preference for whether the 'Browse metrics' page should be filtered to show only verified metrics.")
+  (deferred-tru "User preference for whether the ''Browse metrics'' page should be filtered to show only verified metrics.")
   :user-local :only
   :export?    false
   :visibility :authenticated

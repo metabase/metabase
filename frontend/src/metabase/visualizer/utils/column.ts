@@ -1,5 +1,5 @@
 import { isDate } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, FieldLiteral } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerColumnValueSource,
@@ -67,22 +67,36 @@ export function createVisualizerColumnReference(
   };
 }
 
-export function copyColumn(name: string, column: DatasetColumn): DatasetColumn {
+export function copyColumn(
+  name: string,
+  column: DatasetColumn,
+  dataSourceName: string,
+  existingColumns: DatasetColumn[],
+): DatasetColumn {
   const copy: DatasetColumn = {
     ...column,
     name,
-    // @ts-expect-error TODO name is supposed to be a number (FieldId) but here it's a string?
-    field_ref: ["field", name, { "base-type": column.base_type }],
+    field_ref: [
+      "field",
+      name,
+      { "base-type": column.base_type },
+    ] as FieldLiteral,
   };
+
+  if (existingColumns.some(col => col.display_name === copy.display_name)) {
+    copy.display_name = `${copy.display_name} (${dataSourceName})`;
+  }
 
   // TODO Remove manual MBQL manipulation
   if (isDate(column)) {
     const opts = copy.field_ref?.[2];
     const temporalUnit = maybeGetTemporalUnit(column);
     if (temporalUnit && opts) {
-      opts["temporal-unit"] = temporalUnit;
+      // TODO fix type
+      (opts as any)["temporal-unit"] = temporalUnit;
     }
-    copy.field_ref = ["field", name, opts];
+    // TODO fix type
+    copy.field_ref = ["field", name, opts as any];
   }
 
   return copy;

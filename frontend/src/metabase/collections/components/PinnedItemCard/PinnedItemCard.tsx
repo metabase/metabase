@@ -8,10 +8,10 @@ import type {
   DeleteBookmark,
 } from "metabase/collections/types";
 import EventSandbox from "metabase/components/EventSandbox";
-import Tooltip from "metabase/core/components/Tooltip";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { Tooltip } from "metabase/ui";
 import { Flex, type IconName, Skeleton } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -141,10 +141,10 @@ function PinnedItemCard({
           {item ? (
             <>
               <Tooltip
-                tooltip={item.name}
-                placement="bottom"
-                maxWidth={TOOLTIP_MAX_WIDTH}
-                isEnabled={showTitleTooltip}
+                label={item.name}
+                position="bottom"
+                disabled={!showTitleTooltip}
+                maw={TOOLTIP_MAX_WIDTH}
               >
                 <Title
                   onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}

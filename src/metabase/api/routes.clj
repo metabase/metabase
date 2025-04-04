@@ -17,8 +17,6 @@
    [metabase.api.geojson]
    [metabase.api.macros :as api.macros]
    [metabase.api.native-query-snippet]
-   [metabase.api.notification]
-   [metabase.api.notification.unsubscribe]
    [metabase.api.open-api :as open-api]
    [metabase.api.premium-features]
    [metabase.api.preview-embed]
@@ -38,6 +36,7 @@
    [metabase.indexed-entities.api]
    [metabase.login-history.api]
    [metabase.model-persistence.api]
+   [metabase.notification.api]
    [metabase.permissions.api]
    [metabase.public-sharing.api]
    [metabase.pulse.api]
@@ -127,12 +126,6 @@
 ;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-(def ^:private ^{:arglists '([request respond raise])} notification-routes
-  (handlers/routes
-   (handlers/route-map-handler
-    {"/unsubscribe" 'metabase.api.notification.unsubscribe})
-   (+auth 'metabase.api.notification)))
-
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions.api)
@@ -160,7 +153,7 @@
    "/login-history"        (+auth 'metabase.login-history.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
-   "/notification"         notification-routes
+   "/notification"         metabase.notification.api/notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)
    "/persist"              (+auth 'metabase.model-persistence.api)

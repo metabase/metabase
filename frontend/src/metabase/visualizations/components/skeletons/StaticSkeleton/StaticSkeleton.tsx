@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import type { IconName } from "metabase/ui";
+import { Tooltip } from "metabase/ui";
 
 import {
   SkeletonDescription,
@@ -36,7 +36,7 @@ const StaticSkeleton = ({
   return (
     <SkeletonRoot {...props}>
       {icon && (
-        <Tooltip tooltip={tooltip}>
+        <Tooltip label={tooltip} disabled={!tooltip}>
           <SkeletonIconContainer>
             <SkeletonIcon {...icon} />
             {tooltip && (

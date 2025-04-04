@@ -5,7 +5,6 @@ import {
 } from "@codemirror/autocomplete";
 import { indentMore } from "@codemirror/commands";
 import {
-  HighlightStyle,
   foldService,
   indentUnit,
   syntaxHighlighting,
@@ -19,7 +18,6 @@ import {
   drawSelection,
   keymap,
 } from "@codemirror/view";
-import { type Tag, tags } from "@lezer/highlight";
 import type {
   EditorState,
   Extension,
@@ -31,6 +29,7 @@ import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
+import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import * as Lib from "metabase-lib";
 
 import {
@@ -44,7 +43,12 @@ import {
 import { language } from "./language";
 import { getReferencedCardIds } from "./util";
 
-export function useExtensions(query: Lib.Query): Extension[] {
+type Options = {
+  query: Lib.Query;
+  onRunQuery?: () => void;
+};
+
+export function useExtensions({ query, onRunQuery }: Options): Extension[] {
   const { databaseId, engine, referencedCardIds } = useMemo(
     () => ({
       databaseId: Lib.databaseID(query),
@@ -90,7 +94,7 @@ export function useExtensions(query: Lib.Query): Extension[] {
       highlighting(),
       tagDecorator(),
       folds(),
-      disableCmdEnter(),
+      keyboardShortcuts({ onRunQuery }),
     ]
       .flat()
       .filter(isNotNull);
@@ -102,17 +106,25 @@ export function useExtensions(query: Lib.Query): Extension[] {
     referencedCardCompletion,
     localsCompletion,
     keywordsCompletion,
+    onRunQuery,
   ]);
 }
 
-function disableCmdEnter() {
+type KeyboardShortcutOptions = {
+  onRunQuery?: () => void;
+};
+
+function keyboardShortcuts({ onRunQuery }: KeyboardShortcutOptions) {
   // Stop Cmd+Enter in CodeMirror from inserting a newline
   // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
   return Prec.highest(
     keymap.of([
       {
         key: "Mod-Enter",
-        run: () => true,
+        run: () => {
+          onRunQuery?.();
+          return true;
+        },
       },
       {
         key: "Tab",
@@ -221,19 +233,8 @@ function fonts() {
   });
 }
 
-const metabaseStyle = HighlightStyle.define(
-  // Map all tags to CSS variables with the same name
-  // See ./CodeMirrorEditor.module.css for the colors
-  Object.entries(tags)
-    .filter((item): item is [string, Tag] => typeof item[1] !== "function")
-    .map(([name, tag]: [string, Tag]) => ({
-      tag,
-      class: `cm-token-${name}`,
-    })),
-);
-
 function highlighting() {
-  return syntaxHighlighting(metabaseStyle);
+  return syntaxHighlighting(metabaseSyntaxHighlighting);
 }
 
 function tagDecorator() {

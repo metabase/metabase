@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-restricted-imports -- legacy usage
 import type { Moment } from "moment-timezone";
+import { forwardRef } from "react";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
@@ -15,7 +16,10 @@ type DateTimeProps = {
  * note: this component intentionally doesn't let you pick a custom date format
  * because that is an instance setting and should be respected globally
  */
-function DateTime({ value, unit = "default", ...props }: DateTimeProps) {
+const DateTime = forwardRef<HTMLSpanElement, DateTimeProps>(function DateTime(
+  { value, unit = "default", ...props }: DateTimeProps,
+  ref,
+) {
   const options = MetabaseSettings.formattingOptions();
   const formattedTime = formatDateTimeWithUnit(
     value,
@@ -23,8 +27,12 @@ function DateTime({ value, unit = "default", ...props }: DateTimeProps) {
     options,
   );
 
-  return <span {...props}>{formattedTime}</span>;
-}
+  return (
+    <span ref={ref} {...props}>
+      {formattedTime}
+    </span>
+  );
+});
 
 // eslint-disable-next-line import/no-default-export -- legacy usage
 export default DateTime;

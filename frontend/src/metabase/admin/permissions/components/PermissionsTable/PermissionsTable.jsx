@@ -2,11 +2,10 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { useRef, useState } from "react";
 
-import ConfirmContent from "metabase/components/ConfirmContent";
-import Modal from "metabase/components/Modal";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { Tooltip } from "metabase/ui";
 
 import { PermissionsSelect } from "../PermissionsSelect";
 
@@ -89,7 +88,7 @@ export function PermissionsTable({
                   <ColumnName>
                     {name}{" "}
                     {hint && (
-                      <Tooltip placement="right" tooltip={hint}>
+                      <Tooltip position="right" label={hint}>
                         <HintIcon />
                       </Tooltip>
                     )}
@@ -147,15 +146,12 @@ export function PermissionsTable({
         </tbody>
       </PermissionsTableRoot>
       {!hasItems && emptyState}
-      {confirmations?.length > 0 && (
-        <Modal>
-          <ConfirmContent
-            {...confirmations[0]}
-            onAction={handleConfirm}
-            onCancel={handleCancelConfirm}
-          />
-        </Modal>
-      )}
+      <ConfirmModal
+        opened={confirmations?.length > 0}
+        {...confirmations[0]}
+        onConfirm={handleConfirm}
+        onClose={handleCancelConfirm}
+      />
     </>
   );
 }

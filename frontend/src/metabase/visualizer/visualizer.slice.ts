@@ -9,10 +9,12 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { copy } from "metabase/lib/utils";
 import {
   getColumnVizSettings,
   isCartesianChart,
 } from "metabase/visualizations";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardId,
@@ -41,19 +43,27 @@ import {
   getInitialStateForCardDataSource,
   parseDataSourceId,
 } from "./utils";
+import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
 import {
+  addColumnToCartesianChart,
+  addDimensionColumnToCartesianChart,
   addMetricColumnToCartesianChart,
   cartesianDropHandler,
+  maybeImportDimensionsFromOtherDataSources,
   removeColumnFromCartesianChart,
 } from "./visualizations/cartesian";
 import {
+  addColumnToFunnel,
   addScalarToFunnel,
   canCombineCardWithFunnel,
   funnelDropHandler,
   removeColumnFromFunnel,
 } from "./visualizations/funnel";
-import { mapDropHandler, removeColumnFromMap } from "./visualizations/map";
-import { pieDropHandler, removeColumnFromPieChart } from "./visualizations/pie";
+import {
+  addColumnToPieChart,
+  pieDropHandler,
+  removeColumnFromPieChart,
+} from "./visualizations/pie";
 
 const initialCommonState: VisualizerCommonState = {
   cards: [],
@@ -119,7 +129,7 @@ export const initializeVisualizer = createAsyncThunk(
         })
         .flat(),
     );
-    return initialState;
+    return copy(initialState);
   },
 );
 
@@ -140,6 +150,11 @@ export const addDataSource = createAsyncThunk<
   }
   throw new Error(`Unsupported data source type: ${type}`);
 });
+
+export const addColumn = createAction<{
+  dataSource: VisualizerDataSource;
+  column: DatasetColumn;
+}>("metabase/visualizer/addColumn");
 
 export const removeDataSource = createAction<VisualizerDataSource>(
   "metabase/visualizer/removeDataSource",
@@ -179,14 +194,31 @@ const visualizerHistoryItemSlice = createSlice({
   name: "present",
   initialState: getInitialVisualizerHistoryItem(),
   reducers: {
+    setDisplay: (state, action: PayloadAction<VisualizationDisplay>) => {
+      const display = action.payload;
+
+      const updatedSettings = getUpdatedSettingsForDisplay(
+        state.columnValuesMapping,
+        state.columns,
+        state.settings,
+        state.display,
+        display,
+      );
+
+      if (updatedSettings) {
+        const { columnValuesMapping, columns, settings } = updatedSettings;
+        state.columnValuesMapping = columnValuesMapping;
+        state.columns = columns;
+        state.settings = settings;
+      }
+
+      state.display = display;
+    },
     setTitle: (state, action: PayloadAction<string>) => {
       if (!state.settings) {
         state.settings = {};
       }
       state.settings["card.title"] = action.payload;
-    },
-    setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
-      state.display = action.payload;
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
       state.settings = {
@@ -194,28 +226,66 @@ const visualizerHistoryItemSlice = createSlice({
         ...action.payload,
       };
     },
-    addColumn: (
+    addColumnInner: (
       state,
       action: PayloadAction<{
         dataSource: VisualizerDataSource;
+        dataset: Dataset;
         column: DatasetColumn;
+        dataSourceMap: Record<VisualizerDataSourceId, VisualizerDataSource>;
+        datasetMap: Record<VisualizerDataSourceId, Dataset>;
+        card?: Card;
       }>,
     ) => {
-      const { dataSource, column } = action.payload;
-
+      const {
+        dataSource,
+        dataset,
+        column: originalColumn,
+        dataSourceMap,
+        datasetMap,
+        card,
+      } = action.payload;
       if (!state.display) {
         return;
       }
-
       const columnRef = createVisualizerColumnReference(
         dataSource,
-        column,
+        originalColumn,
         extractReferencedColumns(state.columnValuesMapping),
       );
+      const column = copyColumn(
+        columnRef.name,
+        originalColumn,
+        dataSource.name,
+        state.columns,
+      );
+      if (state.display === "funnel") {
+        addColumnToFunnel(state, column, columnRef, dataSource, dataset, card);
+        return;
+      }
+      state.columns.push(column);
+      state.columnValuesMapping[column.name] = [columnRef];
+      if (isCartesianChart(state.display)) {
+        addColumnToCartesianChart(state, column, columnRef, dataSource, card);
 
-      const newColumn = copyColumn(columnRef.name, column);
-      state.columns.push(newColumn);
-      state.columnValuesMapping[newColumn.name] = [columnRef];
+        const dimension = state.settings["graph.dimensions"] ?? [];
+        const isDimension = dimension.includes(column.name);
+
+        if (isDimension && column.id) {
+          const datasets = card
+            ? _.omit(datasetMap, `card:${card.id}`)
+            : datasetMap;
+
+          maybeImportDimensionsFromOtherDataSources(
+            state,
+            column.id,
+            datasets,
+            dataSourceMap,
+          );
+        }
+      } else if (state.display === "pie") {
+        addColumnToPieChart(state, column);
+      }
     },
     removeColumn: (state, action: PayloadAction<{ name: string }>) => {
       const { name } = action.payload;
@@ -223,17 +293,37 @@ const visualizerHistoryItemSlice = createSlice({
         return;
       }
 
-      state.columns = state.columns.filter(col => col.name !== name);
-      delete state.columnValuesMapping[name];
-
       if (isCartesianChart(state.display)) {
         removeColumnFromCartesianChart(state, name);
       } else if (state.display === "funnel") {
         removeColumnFromFunnel(state, name);
       } else if (state.display === "pie") {
         removeColumnFromPieChart(state, name);
-      } else if (state.display === "map") {
-        removeColumnFromMap(state, name);
+      }
+
+      state.columns = state.columns.filter(col => col.name !== name);
+      delete state.columnValuesMapping[name];
+    },
+    handleDropInner: (
+      state,
+      action: PayloadAction<{
+        event: DragEndEvent;
+        datasetMap: Record<VisualizerDataSourceId, Dataset>;
+        dataSourceMap: Record<VisualizerDataSourceId, VisualizerDataSource>;
+      }>,
+    ) => {
+      if (!state.display) {
+        return;
+      }
+
+      const { event, ...ctx } = action.payload;
+
+      if (isCartesianChart(state.display)) {
+        cartesianDropHandler(state, event, ctx);
+      } else if (state.display === "funnel") {
+        funnelDropHandler(state, event);
+      } else if (state.display === "pie") {
+        pieDropHandler(state, event);
       }
     },
   },
@@ -246,23 +336,6 @@ const visualizerHistoryItemSlice = createSlice({
         }
         if (!state.settings?.["card.title"]) {
           state.settings["card.title"] = getDefaultVisualizationName();
-        }
-      })
-      .addCase(handleDrop, (state, action) => {
-        if (!state.display) {
-          return;
-        }
-
-        const event = action.payload;
-
-        if (isCartesianChart(state.display)) {
-          cartesianDropHandler(state, event);
-        } else if (state.display === "funnel") {
-          funnelDropHandler(state, event);
-        } else if (state.display === "pie") {
-          pieDropHandler(state, event);
-        } else if (state.display === "map") {
-          mapDropHandler(state, event);
         }
       })
       .addCase(addDataSource.fulfilled, (state, action) => {
@@ -330,9 +403,6 @@ const visualizerSlice = createSlice({
     },
     toggleFullscreenMode: state => {
       state.isFullscreen = !state.isFullscreen;
-      if (!state.isFullscreen) {
-        state.isVizSettingsSidebarOpen = false;
-      }
     },
     turnOffFullscreenMode: state => {
       state.isFullscreen = false;
@@ -388,7 +458,19 @@ const visualizerSlice = createSlice({
       })
       .addCase(handleDrop, (state, action) => {
         state.draggedItem = null;
-        maybeUpdateHistory(state, action);
+        maybeUpdateHistory(
+          state,
+          handleDropInner({
+            event: action.payload,
+            datasetMap: state.datasets,
+            dataSourceMap: Object.fromEntries(
+              state.cards.map(card => {
+                const dataSource = createDataSource("card", card.id, card.name);
+                return [dataSource.id, dataSource];
+              }),
+            ),
+          }),
+        );
       })
       .addCase(removeDataSource, (state, action) => {
         const source = action.payload;
@@ -455,6 +537,32 @@ const visualizerSlice = createSlice({
         }
         state.error = action.error.message || "Failed to fetch card query";
       })
+      .addCase(addColumn, (state, action) => {
+        const { cards, datasets } = state;
+        const { column, dataSource } = action.payload;
+
+        const card = cards.find(card => card.id === dataSource.sourceId);
+        const dataset = datasets[dataSource.id];
+
+        const dataSourceMap = Object.fromEntries(
+          cards.map(card => {
+            const dataSource = createDataSource("card", card.id, card.name);
+            return [dataSource.id, dataSource];
+          }),
+        );
+
+        maybeUpdateHistory(
+          state,
+          addColumnInner({
+            dataSource,
+            dataset,
+            column,
+            dataSourceMap,
+            datasetMap: datasets,
+            card,
+          }),
+        );
+      })
       .addDefaultCase((state, action) => {
         maybeUpdateHistory(state, action);
       });
@@ -483,7 +591,7 @@ function maybeCombineDataset(
     !state.display ||
     (card.display === state.display && state.columns.length === 0)
   ) {
-    return getInitialStateForCardDataSource({ card, ...dataset });
+    return getInitialStateForCardDataSource(card, dataset.data.cols);
   }
 
   if (
@@ -491,28 +599,140 @@ function maybeCombineDataset(
     canCombineCard(state.display, state.columns, state.settings, card)
   ) {
     const metrics = card.visualization_settings["graph.metrics"] ?? [];
-    const columns = dataset.data.cols.filter(col => metrics.includes(col.name));
+    const dimensions = card.visualization_settings["graph.dimensions"] ?? [];
+    const columns = dataset.data.cols.filter(
+      col => metrics.includes(col.name) || dimensions.includes(col.name),
+    );
     columns.forEach(column => {
       const columnRef = createVisualizerColumnReference(
         source,
         column,
         extractReferencedColumns(state.columnValuesMapping),
       );
-      addMetricColumnToCartesianChart(state, column, columnRef);
+      if (metrics.includes(column.name)) {
+        addMetricColumnToCartesianChart(state, column, columnRef, source);
+      } else {
+        addDimensionColumnToCartesianChart(state, column, columnRef, source);
+      }
     });
     return state;
   }
 
-  if (state.display === "funnel" && canCombineCardWithFunnel(card, dataset)) {
-    const [column] = dataset.data.cols;
-    addScalarToFunnel(state, source, column);
-    return state;
+  if (state.display === "pie") {
+    const metrics = dataset.data.cols.filter(col => isMetric(col));
+    const dimensions = dataset.data.cols.filter(
+      col => isDimension(col) && !isMetric(col),
+    );
+
+    if (!state.settings["pie.metric"] && metrics.length === 1) {
+      const [metric] = metrics;
+      const columnRef = createVisualizerColumnReference(
+        source,
+        metric,
+        extractReferencedColumns(state.columnValuesMapping),
+      );
+      const column = copyColumn(
+        columnRef.name,
+        metric,
+        source.name,
+        state.columns,
+      );
+      state.columns.push(column);
+      state.columnValuesMapping[column.name] = [columnRef];
+      addColumnToPieChart(state, column);
+    }
+
+    if (!state.settings["pie.dimension"] && dimensions.length === 1) {
+      const [dimension] = dimensions;
+      const columnRef = createVisualizerColumnReference(
+        source,
+        dimension,
+        extractReferencedColumns(state.columnValuesMapping),
+      );
+      const column = copyColumn(
+        columnRef.name,
+        dimension,
+        source.name,
+        state.columns,
+      );
+      state.columns.push(column);
+      state.columnValuesMapping[column.name] = [columnRef];
+      addColumnToPieChart(state, column);
+    }
+  }
+
+  if (state.display === "funnel") {
+    const isEmpty =
+      !state.settings["funnel.metric"] && !state.settings["funnel.dimension"];
+    const isMadeOfScalars = state.columnValuesMapping.METRIC?.length >= 1;
+
+    if (
+      (isEmpty || isMadeOfScalars) &&
+      canCombineCardWithFunnel(card, dataset)
+    ) {
+      const [column] = dataset.data.cols;
+      addScalarToFunnel(state, source, column);
+      return state;
+    }
+
+    if (!isMadeOfScalars) {
+      const metrics = dataset.data.cols.filter(col => isMetric(col));
+      const dimensions = dataset.data.cols.filter(
+        col => isDimension(col) && !isMetric(col),
+      );
+
+      if (!state.settings["funnel.metric"] && metrics.length === 1) {
+        const dataSource = createDataSource("card", card.id, card.name);
+        const [metric] = metrics;
+        const columnRef = createVisualizerColumnReference(
+          dataSource,
+          metric,
+          extractReferencedColumns(state.columnValuesMapping),
+        );
+        const newColumn = copyColumn(
+          columnRef.name,
+          metric,
+          dataSource.name,
+          state.columns,
+        );
+        state.columns = [...state.columns, newColumn];
+        state.columnValuesMapping = {
+          ...state.columnValuesMapping,
+          [newColumn.name]: [columnRef],
+        };
+        state.settings["funnel.metric"] = columnRef.name;
+      }
+
+      if (!state.settings["funnel.dimension"] && dimensions.length === 1) {
+        const dataSource = createDataSource("card", card.id, card.name);
+        const [dimension] = dimensions;
+        const columnRef = createVisualizerColumnReference(
+          dataSource,
+          dimension,
+          extractReferencedColumns(state.columnValuesMapping),
+        );
+        const newColumn = copyColumn(
+          columnRef.name,
+          dimension,
+          dataSource.name,
+          state.columns,
+        );
+        state.columns = [...state.columns, newColumn];
+        state.columnValuesMapping = {
+          ...state.columnValuesMapping,
+          [newColumn.name]: [columnRef],
+        };
+        state.settings["funnel.dimension"] = columnRef.name;
+      }
+    }
   }
 
   return state;
 }
 
-export const { setTitle, setDisplay, updateSettings, addColumn, removeColumn } =
+const { addColumnInner, handleDropInner } = visualizerHistoryItemSlice.actions;
+
+export const { setTitle, updateSettings, removeColumn, setDisplay } =
   visualizerHistoryItemSlice.actions;
 
 export const {

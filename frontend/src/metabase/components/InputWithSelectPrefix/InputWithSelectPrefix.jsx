@@ -1,11 +1,9 @@
-import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 
-import Select, { Option } from "metabase/core/components/Select";
-import AdminS from "metabase/css/admin.module.css";
 import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
+import { Flex, Select } from "metabase/ui";
 
 import { SelectPrefixInput } from "./InputWithSelectPrefix.styled";
 
@@ -69,27 +67,30 @@ export default class InputWithSelectPrefix extends Component {
     const { prefixes, defaultPrefix } = this.props;
     const { prefix, rest } = this.state;
     return (
-      <div
-        className={cx(
-          CS.flex,
-          CS.alignStretch,
-          AdminS.SettingsInput,
-          FormS.FormInput,
-          CS.p0,
-        )}
-      >
+      <Flex w="400px" p={0} className={FormS.FormInput}>
         <Select
-          className={CS.borderRight}
+          aria-label="input-prefix"
+          classNames={{
+            root: CS.borderRight,
+            input: CS.borderless,
+          }}
           value={prefix || defaultPrefix}
-          onChange={e => this.setState({ prefix: e.target.value })}
-          buttonProps={{ className: CS.borderless }}
-        >
-          {prefixes.map(p => (
-            <Option key={p} value={p}>
-              {p}
-            </Option>
-          ))}
-        </Select>
+          onChange={val => this.setState({ prefix: val })}
+          w="6.5rem"
+          styles={{
+            root: {
+              borderTopLeftRadius: "0.5rem",
+              borderBottomLeftRadius: "0.5rem",
+            },
+            wrapper: {
+              height: "100%",
+            },
+            input: {
+              height: "100%",
+            },
+          }}
+          data={prefixes}
+        />
         <SelectPrefixInput
           type="text"
           className={CS.flexFull}
@@ -98,7 +99,7 @@ export default class InputWithSelectPrefix extends Component {
           onBlurChange={e => this.setState({ rest: e.target.value })}
           size="large"
         />
-      </div>
+      </Flex>
     );
   }
 }

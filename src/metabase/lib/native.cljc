@@ -178,8 +178,10 @@
   [query :- ::lib.schema/query
    metadata-provider :- ::lib.schema.metadata/metadata-providerable]
   (assert-native-query! (lib.util/query-stage query 0))
-   ;; Changing the database should also clean up template tags, see #31926
-  (lib.query/query-with-stages metadata-provider (:stages query)))
+  (let [stages-without-fields (->> (:stages query)
+                                   (mapv (fn [stage]
+                                           (update stage :template-tags update-vals #(dissoc % :dimension)))))]
+    (lib.query/query-with-stages metadata-provider stages-without-fields)))
 
 (mu/defn native-extras :- [:maybe ::native-extras]
   "Returns the extra keys for native queries associated with this query."
@@ -256,7 +258,11 @@
   (and
    (set/subset? (required-native-extras query)
                 (set (keys (native-extras query))))
-   (not (str/blank? (raw-native-query query)))))
+   (not (str/blank? (raw-native-query query)))
+   (every? #(if (= :dimension (:type %))
+              (:dimension %)
+              true)
+           (vals (template-tags query)))))
 
 (mu/defn engine :- [:maybe :keyword]
   "Returns the database engine.

@@ -372,6 +372,7 @@
   (let [field-info-str (:_col0 raw-field-info)
         components (map (comp not-empty str/trim) (str/split field-info-str #"\t"))
         field-info (zipmap [:col_name :data_type :remark] components)]
+    (log/tracef "DESCRIBE result: %s" (pr-str field-info-str))
     (into {} (remove (fn [[_ v]] (nil? v))) field-info)))
 
 (defn- describe-table-fields-with-nested-fields [database schema table-name]
@@ -417,6 +418,8 @@
   [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog]
   (try
     (let [columns (get-columns metadata catalog schema table-name)]
+      (when (empty? columns)
+        (log/trace "Falling back to DESCRIBE due to #43980"))
       (if (or (table-has-nested-fields? columns)
                 ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
                 ; but doesn't suffer from the bug in the JDBC driver as metabase#43980

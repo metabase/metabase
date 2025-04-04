@@ -100,7 +100,6 @@ describe("QuestionActions", () => {
 
       await userEvent.hover(screen.getByRole("button", { name: label }));
       const tooltip = await screen.findByRole("tooltip", { name: tooltipText });
-      expect(tooltip).toHaveAttribute("data-placement", "top");
       expect(tooltip).toHaveTextContent(tooltipText);
     },
   );

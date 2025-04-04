@@ -12,13 +12,13 @@ import type {
 import { ChartCaptionRoot } from "./ChartCaption.styled";
 
 interface ChartCaptionProps {
-  series: Series;
+  series: Series | null;
   settings: VisualizationSettings;
-  icon?: IconProps;
+  icon?: IconProps | null;
   actionButtons?: ReactNode;
   width?: number;
   getHref?: () => string | undefined;
-  onChangeCardAndRun?: OnChangeCardAndRun;
+  onChangeCardAndRun?: OnChangeCardAndRun | null;
 }
 
 const ChartCaption = ({
@@ -30,7 +30,7 @@ const ChartCaption = ({
   getHref,
   width,
 }: ChartCaptionProps) => {
-  const title = settings["card.title"] ?? series[0].card.name;
+  const title = settings["card.title"] ?? series?.[0].card.name ?? "";
   const description = settings["card.description"];
   const data = (series as TransformedSeries)._raw || series;
   const card = data[0].card;

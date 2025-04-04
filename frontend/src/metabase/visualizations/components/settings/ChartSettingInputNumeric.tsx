@@ -22,7 +22,8 @@ const ALLOWED_CHARS = new Set([
 
 // Note: there are more props than these that are provided by the viz settings
 // code, we just don't have types for them here.
-interface ChartSettingInputProps extends ChartSettingWidgetProps<number> {
+interface ChartSettingInputProps
+  extends Omit<ChartSettingWidgetProps<number>, "onChangeSettings"> {
   options?: {
     isInteger?: boolean;
     isNonNegative?: boolean;
@@ -30,6 +31,7 @@ interface ChartSettingInputProps extends ChartSettingWidgetProps<number> {
   id?: string;
   placeholder?: string;
   getDefault?: () => string;
+  className?: string;
 }
 
 export const ChartSettingInputNumeric = ({
@@ -39,6 +41,7 @@ export const ChartSettingInputNumeric = ({
   options,
   id,
   getDefault,
+  className,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const defaultValueProps = getDefault ? { defaultValue: getDefault() } : {};
@@ -72,6 +75,7 @@ export const ChartSettingInputNumeric = ({
           setInputValue(String(num));
         }
       }}
+      className={className}
     />
   );
 };

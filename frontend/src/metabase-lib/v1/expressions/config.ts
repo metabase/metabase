@@ -2,11 +2,6 @@ import { t } from "ttag";
 
 import type { MBQLClauseMap } from "./types";
 
-export const DISPLAY_QUOTES = {
-  identifierQuoteDefault: "",
-  literalQuoteDefault: "",
-};
-
 export const EDITOR_QUOTES = {
   // specifies where different quoting is used:
   characters: {
@@ -79,6 +74,12 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "aggregation",
     args: ["boolean"],
   },
+  "distinct-where": {
+    displayName: `DistinctIf`,
+    type: "aggregation",
+    args: ["number", "boolean"],
+    requiresFeature: "distinct-where",
+  },
   "sum-where": {
     displayName: `SumIf`,
     type: "aggregation",
@@ -96,6 +97,25 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["number", "number"],
     requiresFeature: "percentile-aggregations",
   },
+  // cast functions
+  text: {
+    displayName: "text",
+    type: "string",
+    args: ["expression"],
+    requiresFeature: "cast",
+  },
+  integer: {
+    displayName: "integer",
+    type: "number",
+    args: ["expression"],
+    requiresFeature: "cast",
+  },
+  date: {
+    displayName: "date",
+    type: "datetime",
+    args: ["expression"],
+    requiresFeature: "cast",
+  },
   // string functions
   lower: { displayName: `lower`, type: "string", args: ["string"] },
   upper: { displayName: `upper`, type: "string", args: ["string"] },
@@ -109,10 +129,27 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
       }
     },
   },
+  "split-part": {
+    displayName: "splitPart",
+    type: "string",
+    args: ["string", "string", "number"],
+    validator: function (_arg: any, _delimeter: string, position: number) {
+      if (position < 1) {
+        return t`Expected positive integer but found ${position}`;
+      }
+    },
+    requiresFeature: "split-part",
+  },
   "regex-match-first": {
     displayName: `regexextract`,
     type: "string",
     args: ["string", "string"],
+    requiresFeature: "regex",
+  },
+  path: {
+    displayName: `path`,
+    type: "string",
+    args: ["string"],
     requiresFeature: "regex",
   },
   concat: {
@@ -256,6 +293,11 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "boolean",
     args: ["expression", "number", "string"],
     hasOptions: true,
+  },
+  "relative-time-interval": {
+    displayName: "intervalStartingFrom",
+    type: "boolean",
+    args: ["expression", "number", "string", "number", "string"],
   },
   "relative-datetime": {
     displayName: "relativeDateTime",
@@ -507,6 +549,7 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "sum",
   "cum-sum",
   "distinct",
+  "distinct-where",
   "stddev",
   "offset",
   "avg",
@@ -519,11 +562,17 @@ export const AGGREGATION_FUNCTIONS = new Set([
 ]);
 
 export const EXPRESSION_FUNCTIONS = new Set([
+  // cast
+  "text",
+  "integer",
+  "date",
   // string
   "lower",
   "upper",
   "substring",
+  "split-part",
   "regex-match-first",
+  "path",
   "concat",
   "replace",
   "trim",
@@ -568,6 +617,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "starts-with",
   "between",
   "time-interval",
+  "relative-time-interval",
   "relative-datetime",
   "interval",
   "is-null",
@@ -577,6 +627,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "does-not-contain",
   // other
   "if",
+  "case",
   "coalesce",
 ]);
 
@@ -585,7 +636,7 @@ const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
 // operators in which order of operands doesn't matter
 export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
 
-export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
+const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
 const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
 const LOGICAL_AND_OPERATOR = new Set(["and"]);
@@ -603,63 +654,3 @@ export const OPERATORS = new Set([
   ...LOGICAL_AND_OPERATOR,
   ...LOGICAL_OR_OPERATOR,
 ]);
-
-// "standard" filters, can be edited using UI
-export const STANDARD_FILTERS = new Set([
-  "!=",
-  "<=",
-  ">=",
-  "<",
-  ">",
-  "=",
-  "contains",
-  "does-not-contain",
-  "ends-with",
-  "starts-with",
-  "between",
-  "time-interval",
-  "is-null",
-  "not-null",
-  "is-empty",
-  "not-empty",
-  "inside",
-]);
-
-// "standard" aggregations, can be edited using UI
-export const STANDARD_AGGREGATIONS = new Set([
-  "count",
-  "cum-count",
-  "sum",
-  "cum-sum",
-  "distinct",
-  "stddev",
-  "avg",
-  "min",
-  "max",
-  "median",
-]);
-
-export const POPULAR_FUNCTIONS = [
-  "case",
-  "concat",
-  "contains",
-  "between",
-  "coalesce",
-];
-
-export const POPULAR_FILTERS = [
-  "contains",
-  "case",
-  "between",
-  "interval",
-  "concat",
-  "round",
-];
-
-export const POPULAR_AGGREGATIONS = [
-  "count",
-  "distinct",
-  "count-where",
-  "sum",
-  "avg",
-];

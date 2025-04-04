@@ -34,7 +34,7 @@ describe("ImpersonationWarning", () => {
 
     expect(screen.getByText(/edit settings/i)).toHaveAttribute(
       "href",
-      "/admin/databases/1",
+      "/admin/databases/1/edit",
     );
   });
 
@@ -56,7 +56,7 @@ describe("ImpersonationWarning", () => {
 
     expect(screen.getByText(/edit settings/i)).toHaveAttribute(
       "href",
-      "/admin/databases/1#user",
+      "/admin/databases/1/edit#user",
     );
   });
 });

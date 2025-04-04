@@ -2,8 +2,8 @@
 import { jt, msgid, ngettext, t } from "ttag";
 
 import { DataPermissionValue } from "metabase/admin/permissions/types";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { Tooltip } from "metabase/ui";
 
 const GroupName = ({ group }) => (
   <span className={CS.textBrand}>{group.name}</span>
@@ -19,7 +19,7 @@ const TableAccessChange = ({ tables, verb, colorClassName }) => {
     <span>
       {verb}
       <Tooltip
-        tooltip={
+        label={
           <div className={CS.p1}>
             {tableEntries.map(([id, table]) => (
               <div key={id}>{table.name}</div>

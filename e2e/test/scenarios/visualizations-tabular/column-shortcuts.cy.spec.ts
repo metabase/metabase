@@ -141,7 +141,7 @@ H.describeWithSnowplow("extract shortcut", () => {
         formula: "year([Created At]) + 2",
         blur: true,
       });
-      H.popover().button("Update").click();
+      H.popover().button("Update").should("not.be.disabled").click();
       H.visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
     });
@@ -240,7 +240,9 @@ H.describeWithSnowplow("extract shortcut", () => {
       option: "Host",
     });
 
-    cy.get("#main-data-grid").scrollTo("left", { duration: 2000 / 60 });
+    H.tableInteractiveScrollContainer().scrollTo("left", {
+      duration: 2000 / 60,
+    });
 
     H.tableHeaderClick("ID");
 
@@ -248,7 +250,7 @@ H.describeWithSnowplow("extract shortcut", () => {
     H.popover().findAllByRole("button").first().click();
 
     // ID should still be visible (ie. no scrolling to the end should have happened)
-    cy.findAllByRole("columnheader", { name: "ID" }).should("be.visible");
+    cy.findAllByRole("columnheader").contains("ID").should("be.visible");
   });
 
   it("should be possible to extract columns from a summarized table", () => {
@@ -450,7 +452,7 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
       },
     );
 
-    cy.findByTestId("TableInteractive-root").should("exist");
+    H.tableInteractive().should("exist");
     combineColumns({
       columns: ["Created At: Hour of day", "Count"],
       newColumn: "Combined Created At: Hour of day, Count",
@@ -480,7 +482,7 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
       },
     );
 
-    cy.findByTestId("TableInteractive-root").should("exist");
+    H.tableInteractive().should("exist");
     combineColumns({
       columns: ["Created At: Hour of day", "Category"],
       newColumn: "Combined Created At: Hour of day, Category",

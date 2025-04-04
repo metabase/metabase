@@ -102,7 +102,7 @@
 
 (defenterprise insert-impersonations!
   "OSS implementation of `insert-impersonations!`. Errors since this is an enterprise feature."
-  metabase-enterprise.advanced-permissions.models.connection-impersonation
+  metabase-enterprise.impersonation.model
   [_impersonations]
   (throw (premium-features/ee-feature-error (tru "Connection impersonation"))))
 

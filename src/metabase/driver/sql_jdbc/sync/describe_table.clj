@@ -309,9 +309,17 @@
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
     []
-    (eduction
-     (describe-fields-xf driver db)
-     (sql-jdbc.execute/reducible-query db (describe-fields-sql driver (assoc args :details (:details db)))))))
+    (let [sql (describe-fields-sql driver (assoc args :details (:details db)))]
+      (try
+        (log/debugf "`describe-fields` sql query:\n```\n%s\n```\n`describe-fields` args:\n```\n%s\n```"
+                    (driver/prettify-native-form driver (first sql))
+                    (rest sql))
+        ;; This overly defensive, but rather save than sorry.
+        (catch Throwable _
+          (log/error "Failed to prepare sql for log.")))
+      (eduction
+       (describe-fields-xf driver db)
+       (sql-jdbc.execute/reducible-query db sql)))))
 
 (defmulti describe-indexes-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-indexes]],

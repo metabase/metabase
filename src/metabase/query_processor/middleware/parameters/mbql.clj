@@ -5,7 +5,6 @@
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -38,8 +37,14 @@
   [query expression-clause]
   (lib.util.match/match-one expression-clause
     [:expression (expression-name :guard string?)]
-    (lib/type-of (lib/query (qp.store/metadata-provider) (lib.convert/->pMBQL query))
-                 (lib.convert/->pMBQL &match))))
+    (let [query (lib/query (qp.store/metadata-provider) query)]
+      (if-let [expr-clause (try
+                             (lib/resolve-expression query expression-name)
+                             (catch clojure.lang.ExceptionInfo e
+                               (when-not (:expression-name e)
+                                 (throw e))))]
+        (lib/type-of query expr-clause)
+        :type/*))))
 
 (mu/defn- parse-param-value-for-type
   "Convert `param-value` to a type appropriate for `param-type`.

@@ -7,6 +7,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDashboardEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -24,11 +25,16 @@ import * as qbSelectors from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
-import type { CollectionId } from "metabase-types/api";
+import type {
+  BaseEntityId,
+  CollectionId,
+  DashboardId,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockDashboard,
+  createMockDashboardTab,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -61,6 +67,23 @@ const ROOT_TEST_COLLECTION = createMockCollection({
   id: "root",
 });
 
+const FOO_DASH = createMockDashboard({
+  id: 1,
+  collection_id: 1,
+  name: "Foo Dashboard",
+  tabs: [
+    createMockDashboardTab({ id: 1, name: "Foo Tab 1" }),
+    createMockDashboardTab({ id: 2, name: "Foo Tab 2" }),
+  ],
+});
+
+const BAR_DASH = createMockDashboard({
+  id: 2,
+  collection_id: 1,
+  name: "Bar Dashboard",
+  tabs: [],
+});
+
 const TEST_COLLECTIONS = [ROOT_TEST_COLLECTION, BOBBY_TEST_COLLECTION];
 
 const setup = async (
@@ -72,7 +95,9 @@ const setup = async (
     collectionEndpoints?: CollectionEndpoints;
   } = {},
 ) => {
-  const onCreateMock = jest.fn(question => Promise.resolve(question));
+  const onCreateMock = jest.fn((question, _options) =>
+    Promise.resolve(question),
+  );
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
 
@@ -93,6 +118,8 @@ const setup = async (
     collection: BOBBY_TEST_COLLECTION,
     collectionItems: [],
   });
+  setupDashboardEndpoints(FOO_DASH);
+  setupDashboardEndpoints(BAR_DASH);
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupRecentViewsAndSelectionsEndpoints(
@@ -149,12 +176,14 @@ function getQuestion({
   name = "Q1",
   description = "Example",
   collection_id = null,
+  dashboard_id = null,
   can_write = true,
 }: {
   isSaved?: boolean;
   name?: string;
   description?: string;
   collection_id?: CollectionId | null;
+  dashboard_id?: DashboardId | null;
   can_write?: boolean;
 } = {}) {
   const extraCardParams: Record<string, any> = {};
@@ -164,6 +193,7 @@ function getQuestion({
     extraCardParams.name = name;
     extraCardParams.description = description;
     extraCardParams.collection_id = collection_id;
+    extraCardParams.dashboard_id = dashboard_id;
     extraCardParams.can_write = can_write;
   }
 
@@ -210,6 +240,9 @@ async function fillForm({
     await userEvent.type(input, description);
   }
 }
+
+const saveLocDropdown = () =>
+  screen.getByLabelText(/Where do you want to save this/);
 
 describe("SaveQuestionModal", () => {
   beforeAll(() => {
@@ -261,7 +294,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -285,7 +318,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -327,7 +360,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -350,7 +383,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -424,7 +457,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -449,7 +482,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -512,6 +545,55 @@ describe("SaveQuestionModal", () => {
       expect(inputEl).toHaveAttribute("aria-invalid", "true");
       expect(inputEl).toHaveAttribute("aria-describedby", alertEl.id);
       expect(alertEl).toHaveTextContent("required");
+    });
+
+    it("should not show collection input if saving directly from a dashboard", async () => {
+      await setup(
+        getQuestion({
+          isSaved: true,
+          collection_id: FOO_DASH.collection_id,
+          dashboard_id: FOO_DASH.id, // <- question already has a dashboard save location
+        }),
+      );
+
+      // value loads async here where it would already be in memory as the user is navigating
+      // through the application so we have to wait for it to unmount from the DOM
+      await waitFor(() => {
+        expect(
+          screen.queryByLabelText(/Where do you want to save this/),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("should show tab input w/ default value if select dashboard has tabs", async () => {
+      await setup(
+        getQuestion({
+          isSaved: true,
+          collection_id: FOO_DASH.collection_id,
+          dashboard_id: FOO_DASH.id, // <- question already has a dashboard save location
+        }),
+      );
+      expect(
+        await screen.findByLabelText(/Which tab should this go on/),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByLabelText(/Which tab should this go on/),
+      ).toHaveValue("Foo Tab 1");
+    });
+
+    it("should now show tab input if selected dashboard has no tabs", async () => {
+      await setup(
+        getQuestion({
+          isSaved: true,
+          collection_id: BAR_DASH.collection_id,
+          dashboard_id: BAR_DASH.id, // <- question already has a dashboard save location
+        }),
+      );
+      await waitFor(() => {
+        expect(
+          screen.queryByLabelText(/Which tab should this go on/),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -727,7 +809,7 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("Cache TTL field", () => {
-    const query = Question.create({
+    const question = Question.create({
       metadata,
       dataset_query: {
         type: "query",
@@ -737,10 +819,7 @@ describe("SaveQuestionModal", () => {
           aggregation: [["count"]],
         },
       },
-      // eslint-disable-next-line no-restricted-syntax
-    }).legacyQuery({ useStructuredQuery: true }) as StructuredQuery;
-
-    const question = query.question();
+    });
 
     describe("OSS", () => {
       it("is not shown", async () => {
@@ -768,8 +847,6 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("create new modals", () => {
-    const saveLocDropdown = () =>
-      screen.getByLabelText(/Where do you want to save this/);
     const newCollBtn = () =>
       screen.getByRole("button", {
         name: /new collection/i,
@@ -820,6 +897,7 @@ describe("SaveQuestionModal", () => {
           createMockCollectionItem({
             ...COLLECTION.PARENT,
             id: COLLECTION.PARENT.id as number,
+            entity_id: COLLECTION.PARENT.entity_id as BaseEntityId,
             location: COLLECTION.PARENT.location || "/",
             type: undefined,
             model: "collection",
@@ -832,6 +910,7 @@ describe("SaveQuestionModal", () => {
           createMockCollectionItem({
             ...COLLECTION.CHILD,
             id: COLLECTION.CHILD.id as number,
+            entity_id: COLLECTION.CHILD.entity_id as BaseEntityId,
             location: COLLECTION.CHILD.location || "/",
             type: undefined,
             model: "collection",

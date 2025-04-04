@@ -284,9 +284,7 @@ export function getDateFilterDisplayName(
       if (offsetValue != null && offsetUnit != null) {
         const prefix = Lib.describeTemporalInterval(value, unit);
         const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
-        return c(
-          "Describes a relative date interval. Example: Previous 2 months, starting 1 year ago.",
-        ).t`${prefix}, starting ${suffix}`;
+        return `${prefix}, ${suffix}`;
       } else {
         return Lib.describeTemporalInterval(value, unit);
       }

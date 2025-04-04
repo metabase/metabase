@@ -278,19 +278,19 @@
        [:+ _ x [:interval _ n unit]]
        [:relative-datetime _ n2 unit2]
        [:relative-datetime _ 0 _]]
-      (i18n/tru "{0} is in the {1}, starting {2} ago"
+      (i18n/tru "{0} is in the {1}, {2}"
                 (->display-name x)
                 (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
-                (inflections/pluralize n (name unit)))
+                (lib.temporal-bucket/describe-relative-datetime (- n) unit))
 
       [:between _
        [:+ _ x [:interval _ n unit]]
        [:relative-datetime _ 0 _]
        [:relative-datetime _ n2 unit2]]
-      (i18n/tru "{0} is in the {1}, starting {2} from now"
+      (i18n/tru "{0} is in the {1}, {2}"
                 (->display-name x)
                 (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
-                (inflections/pluralize (abs n) (name unit)))
+                (lib.temporal-bucket/describe-relative-datetime (- n) unit))
 
       [:between _ x y z]
       (i18n/tru "{0} is between {1} and {2}"
@@ -326,10 +326,15 @@
       ;; negate `expr` and then generate a description. That would require porting that stuff to pMBQL tho.
       :not       (i18n/tru "not {0}" expr))))
 
+(defmethod lib.metadata.calculation/display-name-method :value
+  [query stage-number [_value _opts expr] style]
+  (lib.metadata.calculation/display-name query stage-number expr style))
+
 (defmethod lib.metadata.calculation/display-name-method :time-interval
   [query stage-number [_tag _opts expr n unit] style]
   (if (clojure.core/or
        (clojure.core/= n :current)
+       (clojure.core/= n 0)
        (clojure.core/and
         (clojure.core/= (abs n) 1)
         (clojure.core/= unit :day)))
@@ -343,14 +348,14 @@
 (defmethod lib.metadata.calculation/display-name-method :relative-time-interval
   [query stage-number [_tag _opts column value bucket offset-value offset-bucket] style]
   (if (neg? offset-value)
-    (i18n/tru "{0} is in the {1}, starting {2} ago"
+    (i18n/tru "{0} is in the {1}, {2}"
               (lib.metadata.calculation/display-name query stage-number column style)
               (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval value bucket))
-              (inflections/pluralize (abs offset-value) (name offset-bucket)))
-    (i18n/tru "{0} is in the {1}, starting {2} from now"
+              (lib.temporal-bucket/describe-relative-datetime offset-value offset-bucket))
+    (i18n/tru "{0} is in the {1}, {2}"
               (lib.metadata.calculation/display-name query stage-number column style)
               (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval value bucket))
-              (inflections/pluralize (abs offset-value) (name offset-bucket)))))
+              (lib.temporal-bucket/describe-relative-datetime offset-value offset-bucket))))
 
 (defmethod lib.metadata.calculation/display-name-method :relative-datetime
   [_query _stage-number [_tag _opts n unit] _style]

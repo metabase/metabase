@@ -131,7 +131,7 @@ describe("scenarios > question > view", () => {
 
       cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
         "have.length",
-        2,
+        1,
       );
       cy.get(".CardVisualization").within(() => {
         cy.findByText("Widget");

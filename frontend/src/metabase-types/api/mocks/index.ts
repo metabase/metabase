@@ -21,7 +21,6 @@ export * from "./segment";
 export * from "./series";
 export * from "./session";
 export * from "./settings";
-export * from "./setup";
 export * from "./snippets";
 export * from "./store";
 export * from "./table";

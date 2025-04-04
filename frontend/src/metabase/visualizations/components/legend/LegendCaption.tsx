@@ -3,11 +3,11 @@ import { useCallback, useState } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { IconProps } from "metabase/ui";
+import { Tooltip } from "metabase/ui";
 
 import LegendActions from "./LegendActions";
 import {
@@ -35,7 +35,7 @@ interface LegendCaptionProps {
   title: string;
   description?: string;
   getHref?: () => string | undefined;
-  icon?: IconProps;
+  icon?: IconProps | null;
   actionButtons?: React.ReactNode;
   onSelectTitle?: () => void;
   width?: number;
@@ -92,12 +92,12 @@ export const LegendCaption = ({
       <LegendRightContent>
         {description && !shouldHideDescription(width) && (
           <Tooltip
-            tooltip={
+            label={
               <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
                 {description}
               </Markdown>
             }
-            maxWidth="22em"
+            maw="22em"
           >
             <LegendDescriptionIcon
               name="info"

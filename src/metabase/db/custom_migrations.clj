@@ -1242,7 +1242,8 @@
                                   :report_dashboardcard
                                   :dashboardcard_series
                                   :permissions_group
-                                  :data_permissions]]
+                                  :data_permissions
+                                  :dimension]]
                 (when-let [values (seq (table-name->rows table-name->raw-rows table-name))]
                   (t2/query {:insert-into table-name :values values})))
               (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
@@ -1284,7 +1285,8 @@
                               :parameter_card
                               :dashboard_tab
                               :dashboardcard_series
-                              :data_permissions]
+                              :data_permissions
+                              :dimension]
                   :let [query (cond-> {:select [:*] :from table-name}
                                 (= table-name :collection) (assoc :where [:and
                                                                           ;; exclude the analytics namespace
@@ -1765,13 +1767,7 @@
 ;; Migrate alerts to notifications
 ;; on migrate up:
 ;; - migrate alerts from pulse table to notification table
-;; - delete all the send pulse triggers
-;; - And then on startup new send notification triggers are created by running [[metabase.task.notification/InitNotificationTriggers]]
-;;   job once. This job is idempotent
-;; on migrate down:
-;; - we delete all the notifications
-;; - delete the [[metabase.task.send-pulses/InitSendPulseTriggers]] job so that when instance startup, this job is run
-;;   again so that it iterates all existing alerts and re-creates the send pulse triggers. This job is idempotent
-(define-reversible-migration MigrateAlertToNotification
-  (pulse-to-notification/migrate-alerts!)
-  (pulse-to-notification/remove-init-send-pulse-trigger!))
+;; - And then on startup new send notification triggers are created by running
+;; [[metabase.notification.task.send/init-send-notification-triggers!]]
+(define-migration MigrateAlertToNotification
+  (pulse-to-notification/migrate-alerts!))

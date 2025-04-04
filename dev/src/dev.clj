@@ -59,7 +59,7 @@
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
    [dev.render-png :as render-png]
-   [hashp.core :as hashp]
+   [hashp.preload :as hashp]
    [honey.sql :as sql]
    [java-time.api :as t]
    [malli.dev :as malli-dev]
