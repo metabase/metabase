@@ -110,7 +110,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.em,
-      backgroundColor: "bg-white",
+      backgroundColor: "white",
     },
   },
   pivotTable: {
