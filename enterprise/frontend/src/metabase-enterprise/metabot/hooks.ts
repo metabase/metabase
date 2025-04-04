@@ -6,7 +6,6 @@ import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
 
 import {
   dismissUserMessage,
-  getConfirmationOptions,
   getIsProcessing,
   getMetabotVisisble,
   getUserMessages,
@@ -22,9 +21,6 @@ export const useMetabotAgent = () => {
   const userMessages = useSelector(getUserMessages as any) as ReturnType<
     typeof getUserMessages
   >;
-  const confirmationOptions = useSelector(
-    getConfirmationOptions as any,
-  ) as ReturnType<typeof getConfirmationOptions>;
   const isProcessing = useSelector(getIsProcessing as any) as ReturnType<
     typeof getIsProcessing
   >;
@@ -42,7 +38,6 @@ export const useMetabotAgent = () => {
       [dispatch],
     ),
     userMessages,
-    confirmationOptions,
     dismissUserMessage: (messageIndex: number) =>
       dispatch(dismissUserMessage(messageIndex)),
     submitInput: useCallback(

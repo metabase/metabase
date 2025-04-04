@@ -15,11 +15,6 @@ export const getUserMessages = createSelector(
   (metabot) => metabot.userMessages,
 );
 
-export const getConfirmationOptions = createSelector(
-  getMetabot,
-  (metabot) => metabot.confirmationOptions,
-);
-
 export const getIsProcessing = createSelector(
   getMetabot,
   (metabot) => metabot.isProcessing,
