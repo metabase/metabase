@@ -21,6 +21,7 @@ export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
         align="center"
         bg="var(--mb-color-bg-white)"
         px="sm"
+        data-testid="well-item"
         {...props}
         style={{
           borderRadius: "var(--border-radius-xl)",

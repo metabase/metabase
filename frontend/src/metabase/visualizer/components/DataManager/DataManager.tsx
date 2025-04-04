@@ -18,6 +18,7 @@ export const DataManager = () => {
         height: "100%",
         border: `1px solid var(--mb-color-border)`,
       }}
+      data-testid="visualizer-data-manager"
     >
       {dataSources.length > 0 ? (
         <DatasetList />

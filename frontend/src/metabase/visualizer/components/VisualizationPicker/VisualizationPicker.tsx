@@ -60,11 +60,15 @@ export function VisualizationPicker({
             </Center>
           ),
         }))}
+        data-testid="viz-picker-main"
       />
       {nonsensibleOptions.length > 0 && (
         <Menu>
           <Menu.Target>
-            <IconButtonWrapper style={{ marginLeft: "4px" }}>
+            <IconButtonWrapper
+              style={{ marginLeft: "4px" }}
+              data-testid="viz-picker-menu"
+            >
               <Icon name="ellipsis" />
               <Icon name="chevrondown" size={8} />
             </IconButtonWrapper>

@@ -223,6 +223,7 @@ export const Visualizer = (props: VisualizerProps) => {
                 <Button
                   variant="transparent"
                   leftSection={<Icon name="add" />}
+                  aria-label={t`Add more data`}
                   onClick={() => handlers.toggle()}
                   ml="auto"
                 >
