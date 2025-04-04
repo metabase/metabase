@@ -129,6 +129,19 @@ saved later when it is ready."
   minutes."
   (u/minutes->ms 15))
 
+(defn- valid-ident?
+  "Validates that native queries have the right `native__CardEntityId__ColumnName` idents, and models have idents that
+  always start with `model__CardEntityId__`."
+  [column card]
+  (let [native?  (-> card :dataset_query :type (= :native))
+        model?   (= (:type card) :model)
+        valid-fn (cond
+                   (and native? model?) lib/valid-native-model-ident?
+                   native?              lib/valid-native-ident?
+                   model?               lib/valid-model-ident?
+                   :else                lib/valid-basic-ident?)]
+    (valid-fn column (:entity_id card))))
+
 (mu/defn save-metadata-async!
   "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
   to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
@@ -160,12 +173,45 @@ saved later when it is ready."
           (log/errorf e "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
 
 (defn infer-metadata
-  "Infer the default result_metadata to store for MBQL cards."
+  "Infer the default result_metadata to store for MBQL cards.
+
+  Ignores any that might be present already.
+
+  If the card is provided and is a model, this will wrap [[lib/model-ident]] around the `:ident`s from the inner query."
   [query]
   (not-empty (request/with-current-user nil
                (u/ignore-exceptions
                  (qp.preprocess/query->expected-cols query)))))
 
+(defn- xform-maybe-fix-idents-for-model
+  "Returns a transducer that will conditionally wrap `:ident`s with [[lib/model-ident]] if they are not already wrapped
+  for this model.
+
+  If the provided card is not a model, returns [[identity]]."
+  [card]
+  (if (= (:type card) :model)
+    (let [eid (:entity_id card)]
+      (map (fn [col]
+             (cond-> col
+               (not (lib/valid-model-ident? col eid))
+               (update :ident lib/model-ident eid)))))
+    identity))
+
+(defn infer-metadata-with-model-overrides
+  "Does a fresh [[infer-metadata]] for the provided query.
+
+  - If the `card` is not a model, that fresh metadata is returned directly.
+  - If the `card` **is** a model, then the fresh metadata is returned, but any existing `:result_metadata` is included
+  so model metadata overrides (eg. new display_name or field types) are preserved in the result."
+  [query card]
+  (let [model?         (= (:type card) :model)
+        model-metadata (when model? (:result_metadata card))
+        ;; If this is a model, include that model metadata so QP will infer correctly overridden metadata.
+        query          (cond-> query
+                         model-metadata (update :info merge {:metadata/model-metadata model-metadata}))]
+    (into [] (xform-maybe-fix-idents-for-model card) (infer-metadata query))))
+
+;; TODO: Refactor this to use idents rather than names, so it's more robust.
 (defn refresh-metadata
   "Update cached result metadata to reflect changes to the underlying tables.
   For now, this only handles the additional and removal of columns, and does not get into things like type changes."
@@ -176,6 +222,16 @@ saved later when it is ready."
     (vec (concat (filter (comp new-names :name) result_metadata)
                  (->> (remove (comp old-names :name) new-metadata)
                       (map update-fn))))))
+
+(defn- fix-incoming-idents
+  "Result metadata included with an insert or update should already be in its final form, but might:
+  - Have placeholders, if we didn't have an `:entity_id` for a new card when the query ran
+  - Be for an inner query, not for a model, and need to be wrapped with the [[lib/model-ident]]."
+  [results-metadata card]
+  ;; It's important that the placeholders are handled first, otherwise the check for double-wrapping will fail.
+  (into [] (comp (map #(update % :ident lib/replace-placeholder-idents (:entity_id card)))
+                 (xform-maybe-fix-idents-for-model card))
+        results-metadata))
 
 (defn populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
@@ -188,11 +244,11 @@ saved later when it is ready."
       (log/debug "Not inferring result metadata for Card: query was not updated")
       card)
 
-    ;; passing in metadata => no-op
+    ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
     metadata
     (do
       (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
-      card)
+      (update card :result_metadata fix-incoming-idents card))
 
     ;; this is an update, and dataset_query hasn't changed => no-op
     (and existing-card-id
@@ -215,4 +271,14 @@ saved later when it is ready."
     :else
     (do
       (log/debug "Attempting to infer result metadata for Card")
-      (assoc card :result_metadata (infer-metadata query)))))
+      (assoc card :result_metadata (infer-metadata-with-model-overrides query card)))))
+
+(defn assert-valid-idents!
+  "Given a card (or updates being made to a card) check the `:result_metadata` has correctly formed idents."
+  [{cols :result_metadata :as card}]
+  (when-let [missing (seq (remove :ident cols))]
+    (throw (ex-info "Some columns in :result_metadata are missing :idents; these are required"
+                    {:missing missing})))
+  (when-let [invalid (seq (remove #(valid-ident? % card) cols))]
+    (throw (ex-info "Some columns in :result_metadata have bad :idents!"
+                    {:invalid invalid}))))

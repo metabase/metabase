@@ -2,6 +2,8 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
+   [clojure.core.cache :as cache]
+   [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -75,7 +77,7 @@
 
   The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
   and including [[current-schema-version]]."
-  20)
+  21)
 
 (defmulti ^:private upgrade-card-schema-to
   "Upgrades a card on read, so that it fits the given schema version number.
@@ -568,7 +570,8 @@
 ;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
-                  :parameter_mappings []}
+                  :parameter_mappings []
+                  :card_schema        current-schema-version}
         card     (maybe-check-dashboard-internal-card
                   (merge defaults card))]
     (u/prog1 card
@@ -577,6 +580,7 @@
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
+      (card.metadata/assert-valid-idents! card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
@@ -699,6 +703,7 @@
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints changes)
+      (card.metadata/assert-valid-idents! (merge old-card-info changes))
       (assert-valid-type (merge old-card-info changes)))))
 
 (defn- add-query-description-to-metric-card
@@ -795,6 +800,84 @@
        ;; If we did have to generate the hashed entity_id, include it on the returned card as well.
        @hashed-eid (assoc :entity_id @entity-id)))))
 
+;; Schema upgrade: 20 to 21 ==========================================================================================
+;; 21 begins storing `:ident`s on all columns in `:result_metadata`.
+
+;; On reading an old card and upgrading it to 21, the idents are inferred from the query and filled in.
+;; Since this operation is expensive (and recursive when cards depend on cards!), a bounded cache is used to prevent
+;; too much repeated work being performed.
+(defn- backfill-result-metadata-idents*
+  [result-metadata {query :dataset_query, eid :entity_id, :as card}]
+  (case (:type query)
+    ;; For native queries, we only need to
+    :native (if eid
+              ;; NOTE: Deliberately prefer the field_ref name over :name here! :name is sometimes not unique, if the
+              ;; SQL contains duplicate names. Instead, using the string name from the `:field_ref`, which is
+              ;; disambiguated properly. Fall back to the :name if the :field_ref isn't provided.
+              (mapv (fn [{column-name :name, [_field ref-name] :field_ref, :as col}]
+                      (cond-> (assoc col :ident (lib/native-ident (or ref-name column-name)
+                                                                  eid))
+                        (= (:type card) :model) (update :ident lib/model-ident eid)))
+                    result-metadata)
+              (throw (ex-info (str "Cannot backfill result_metadata for a native card without an entity_id! "
+                                   "Include :entity_id in your query.")
+                              {:card card})))
+
+    ;; For MBQL queries, re-run the inference.
+    :query  (let [inferred (card.metadata/infer-metadata-with-model-overrides query card) ; These already have [[lib/model-ident]] applied.
+                  by-ref   (group-by :field_ref inferred)
+                  by-name  (group-by :name inferred)]
+              (mapv (fn [original]
+                      (let [matches (or (get by-ref (:field_ref original))
+                                        (get by-name (:name original)))]
+                        (when (> (count matches) 0)
+                          (log/warn "No match of saved result_metadata with inferred metadata."
+                                    {:column original}))
+                        (when (> (count matches) 1)
+                          (log/warn "Ambiguous match of saved result_metadata with inferred metadata."
+                                    {:column original
+                                     :candidates matches}))
+                        (or (first matches)
+                            original)))
+                    result-metadata))
+    ;; Fallback: Do nothing.
+    result-metadata))
+
+;; NOTE: This is safe to cache even with horizontal scaling, since the cache is only used when old cards are read.
+;; If any Metabase instance updates the card, it will be at version 21+ and already have :idents, so the cache will
+;; never be checked.
+(def ^:private backfill-result-metadata-idents-cache
+  "Using LIRS caching for a balance of recently-used and often-reused, with the default limits for now.
+
+  Since `:result_metadata` is written out after each card gets (directly) executed, the often-executed cards will
+  rapidly get updated to schema 21 and no longer need to run this inference.
+
+  The bad case is widely used cards/models that are never executed directly but often referenced."
+  ;; TODO: Consider feeding this cache's misses to a queue for a background job to populate often-referenced,
+  ;; never-executed cards with the results.
+  (atom (cache/lirs-cache-factory {})))
+
+(defn- backfill-result-metadata-idents
+  "Cache wrapper for [[backfill-result-metadata-idents**]]; LRU caching on the card ID."
+  [result-metadata card]
+  (cache.wrapped/lookup-or-miss backfill-result-metadata-idents-cache (:id card)
+                                (fn [_]
+                                  (backfill-result-metadata-idents* result-metadata card))))
+
+(defmethod upgrade-card-schema-to 21
+  ;; If we're fetching this card's `:result_metadata`, and it has a `:dataset_query`, we can compute the
+  ;; idents and fill them in.
+  ;; If we fetched non-empty `:result_metadata` without `:ident`s in it, but didn't fetch the `:dataset_query`,
+  ;; then throw - that query needs to be fixed.
+  [{query :dataset_query, cols :result_metadata, :as card} _schema-version]
+  (let [needs-idents? (and (seq cols) (some (complement :ident) cols))]
+    (when (and needs-idents? (not query))
+      (throw (ex-info "Cannot backfill :result_metadata without :dataset_query" {:card (:id card)})))
+    (cond-> card
+      ;; Have the query and result_metadata, and the idents are not already filled in.
+      (and query needs-idents?)
+      (update :result_metadata backfill-result-metadata-idents card))))
+
 (defn- upgrade-card-schema-to-latest [card]
   (if (and (:id card)
            (or (:dataset_query card)
@@ -830,18 +913,21 @@
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
       ensure-clause-idents
-      ;; At this point, the card should be at schema version 20.
+      ;; At this point, the card should be at schema version 20 or higher.
       upgrade-card-schema-to-latest))
 
 (t2/define-before-insert :model/Card
   [card]
   (-> card
-      (assoc :metabase_version config/mb-version-string)
+      (assoc :metabase_version config/mb-version-string
+             :card_schema current-schema-version)
       maybe-normalize-query
+      ; Add any missing idents on the query (expr, breakout, agg) before populating :result_metadata.
+      (ensure-clause-idents ::before-insert)
+      (u/assoc-default :entity_id (u/generate-nano-id)) ; Must have an entity_id before populating the metadata.
       card.metadata/populate-result-metadata
       pre-insert
-      populate-query-fields
-      (ensure-clause-idents ::before-insert)))
+      populate-query-fields))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -865,9 +951,12 @@
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
   ;; https://github.com/camsaul/toucan2/issues/145 .
   ;; TODO: ^ that's been fixed, this could be refactored
-  (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
-      (apply-dashboard-question-updates)
-
+  (-> card
+      (dissoc :verified-result-metadata?)
+      (assoc :card_schema current-schema-version)
+      t2/changes
+      (->> (into {:id (:id card)}))
+      apply-dashboard-question-updates
       maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
       ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
