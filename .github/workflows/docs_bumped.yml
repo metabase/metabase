@@ -1,0 +1,21 @@
+name: Docs Update Detected
+
+on:
+  push:
+    paths:
+      - 'docs/**'
+  pull_request:
+    paths:
+      - 'docs/**'
+
+jobs:
+  docs_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Add additional steps here to process docs changes
+      - name: Print changed docs files
+        run: |
+          echo "A change in the docs directory was detected."
