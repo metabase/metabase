@@ -1,3 +1,5 @@
+import type { MouseEventHandler } from "react";
+
 import type { ButtonProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -10,7 +12,12 @@ import { ToolbarButton } from "./util/ToolbarButton";
  * @remarks
  * Uses [Mantine Button props](https://v7.mantine.dev/core/button/?t=props) under the hood
  */
-export type InteractiveQuestionSaveButtonProps = ButtonProps;
+export type InteractiveQuestionSaveButtonProps = {
+  /**
+   * A handler function to be called when the button is clicked
+   */
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+} & ButtonProps;
 
 export const shouldShowSaveButton = ({
   question,

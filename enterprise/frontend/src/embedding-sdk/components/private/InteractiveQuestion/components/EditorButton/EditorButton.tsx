@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, MouseEventHandler } from "react";
 
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
@@ -16,6 +16,11 @@ export type InteractiveQuestionEditorButtonProps = {
    * Whether the editor is currently open
    */
   isOpen?: boolean;
+
+  /**
+   * Callback function to be called when the button is clicked
+   */
+  onClick?: MouseEventHandler<HTMLButtonElement>;
 } & ActionIconProps &
   HTMLAttributes<HTMLButtonElement>;
 
