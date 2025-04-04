@@ -37,6 +37,7 @@
                               :nested-fields                 false
                               :uuid-type                     true
                               :connection/multiple-databases true
+                              :expression-literals           true
                               :identifiers-with-spaces       false
                               :metadata/key-constraints      false
                               :test/jvm-timezone-setting     false}]
