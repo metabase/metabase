@@ -451,7 +451,7 @@
 (deftest field-values-invalidated-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/with-empty-h2-app-db
-      (toggle-data-editing-enabled! true)
+      (data-editing.tu/toggle-data-editing-enabled! true)
       (with-open [table (data-editing.tu/open-test-table! {:id 'auto-inc-type, :n [:text]} {:primary-key [:id]})]
         (let [table-id     @table
               url          (data-editing.tu/table-url table-id)
