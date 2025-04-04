@@ -55,9 +55,11 @@ function build() {
 function start() {
   print_step "Starting the uberjar..."
 
-  # todo: check for specific file?
-  if ls metabase.db* 1> /dev/null 2>&1; then
-    rm metabase.db*
+  if [ -f metabase.db.mv.db ]; then
+    rm metabase.db.mv.db
+  fi
+  if [ -f metabase.db ]; then
+    rm metabase.db
   fi
 
 
