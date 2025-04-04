@@ -5,6 +5,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.content-translation :as lib.content-translation]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -224,13 +225,6 @@
     (when (every? some? path)
       (str/join ": " path))))
 
-def translations-map (atom )
-; I can't access this directly; I have to deref it. Referencing the map gets
-; the atom not its content, so use the function deref to retrieve the current
-; value. The short hand is to use an "@". Then set it with "reset!"
-; Put functions in lib/js.cljc that let you set this atom's value. Then in the
-; js I can do ML.set_translation_map(translations)
-
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/column
@@ -246,7 +240,7 @@ def translations-map (atom )
                        hide-bin-bucket?    :lib/hide-bin-bucket?
                        :as                 field-metadata} style]
   (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
-        humanized-name (get translations humanized-name humanized-name)
+        humanized-name (get (lib.content-translation/get-content-translations) humanized-name humanized-name)
         field-display-name (or simple-display-name
                                (when (and parent-id
                                           ;; check that we haven't nested yet

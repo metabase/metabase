@@ -23,6 +23,7 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.ident :as lib.ident]
+   [metabase.lib.content-translation :as lib.content-translation]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -123,6 +124,8 @@
   group-columns]
  [lib.common
   external-op]
+ [lib.content-translation
+  set-content-translations]
  [lib.convert
   ->legacy-MBQL
   ->pMBQL
