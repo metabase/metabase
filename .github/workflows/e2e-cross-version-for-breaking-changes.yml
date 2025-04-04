@@ -63,7 +63,7 @@ jobs:
         run: |
           bash bin/embedding-sdk/backward-compatibility-test.sh \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
-            run > /dev/null & \
+            start > /dev/null & \
             bash bin/embedding-sdk/backward-compatibility-test.sh \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
             test

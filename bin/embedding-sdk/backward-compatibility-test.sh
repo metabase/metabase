@@ -1,6 +1,6 @@
 set -euo pipefail # exit the script if anything fails
 
-INSTRUCTIONS="Usage: bash bin/embedding-sdk/backward-compatibility-test.sh \$FE_GIT_REF \$BE_GIT_REF <build|run|test>"
+INSTRUCTIONS="Usage: bash bin/embedding-sdk/backward-compatibility-test.sh \$FE_GIT_REF \$BE_GIT_REF <build|start|test>"
 
 FE_GIT_REF=$1
 BE_GIT_REF=$2
@@ -52,7 +52,7 @@ function build() {
   clojure -X:drivers:build:build/all :steps '[:version :translations :licenses :drivers :uberjar]' # this command skips building the frontend, otherwise we'd overwrite the one we copied in resources/
 }
 
-function run() {
+function start() {
   print_step "Starting the uberjar..."
 
   # todo: check for specific file?
@@ -86,8 +86,8 @@ case "$3" in
   build)
     build
     ;;
-  run)
-    run
+  start)
+    start
     ;;
   test)
     test

@@ -118,5 +118,5 @@ jobs:
     uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
     secrets: inherit
     with:
-      fe-ref: ${{ github.base_ref || github.ref_name }}
-      be-ref: ${{ github.head_ref || github.ref_name }}
+      fe-ref: ${{ github.base_ref }}
+      be-ref: ${{ github.head_ref }}
