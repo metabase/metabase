@@ -68,7 +68,7 @@ export const DataStep = ({
         <NotebookDataPicker
           query={query}
           stageIndex={stageIndex}
-          table={table}
+          table={table ?? undefined}
           title={t`Pick your starting data`}
           canChangeDatabase
           hasMetrics
