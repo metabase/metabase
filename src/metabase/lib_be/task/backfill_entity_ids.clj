@@ -21,12 +21,6 @@
   *drain-batch-size* so that if the user adds a few entities to the cache, the entire thing will still drain in one
   batch."
   50)
-(def ^:dynamic *max-retries*
-  "The number of times we will retry hashing in an attempt to find a unique hash"
-  1000)
-(def ^:dynamic *retry-batch-size*
-  "The number of entity ids we will try per iteration of retries"
-  50)
 (def ^:private min-repeat-ms
   "The minimum acceptable repeat rate for the backfill entity ids job"
   1000)
@@ -41,9 +35,9 @@
 (defn- get-rows-to-drain!
   "Fetches the next *drain-batch-size* rows from serdes/entity-id-cache"
   []
-  (->> (for [[model-key inner] @serdes/entity-id-cache
+  (->> (for [[model inner] @serdes/entity-id-cache
              [id entity-id] inner]
-         [model-key id @entity-id])
+         [model id @entity-id])
        (take *drain-batch-size*)))
 
 (defn- backfill-entity-ids!-inner
@@ -64,9 +58,9 @@
   those rows from the cache."
   []
   (t2/with-transaction [^java.sql.Connection conn]
-    (let [vals (->> (for [[model-key inner] @serdes/entity-id-cache
+    (let [vals (->> (for [[model inner] @serdes/entity-id-cache
                           [id entity-id] inner]
-                      [model-key id @entity-id])
+                      [model id @entity-id])
                     (take *drain-batch-size*))
           failures (->> (for [[model id entity-id] vals]
                           (let [savepoint (.setSavepoint conn)]
@@ -87,10 +81,10 @@
       (when (seq vals)
         (swap! serdes/entity-id-cache
                (fn [cache]
-                 (reduce (fn [c [model-key id]]
-                           (if (contains? failures [model-key id])
+                 (reduce (fn [c [model id]]
+                           (if (contains? failures [model id])
                              c
-                             (update c model-key #(dissoc % id))))
+                             (update c model #(dissoc % id))))
                          cache
                          vals)))
         (log/info "Drain: Updated entity ids for " (count vals) " rows")))))
