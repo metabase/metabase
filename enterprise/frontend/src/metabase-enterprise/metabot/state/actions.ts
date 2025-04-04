@@ -64,7 +64,7 @@ export const submitInput = createAsyncThunk(
       state: any;
       metabot_id?: string;
     },
-    { dispatch, getState },
+    { dispatch, getState, signal },
   ) => {
     const isProcessing = getIsProcessing(getState() as any);
     if (isProcessing) {
@@ -79,7 +79,11 @@ export const submitInput = createAsyncThunk(
       await dispatch(selectUserConfirmationOption(data.message));
     } else {
       dispatch(clearUserMessages());
-      return await dispatch(sendMessageRequest(data));
+      const sendMessageRequestPromise = dispatch(sendMessageRequest(data));
+      signal.addEventListener("abort", () => {
+        sendMessageRequestPromise.abort();
+      });
+      return sendMessageRequestPromise;
     }
   },
 );
@@ -94,7 +98,7 @@ export const sendMessageRequest = createAsyncThunk(
       state: any;
       metabot_id?: string;
     },
-    { dispatch, getState },
+    { dispatch, getState, signal },
   ) => {
     // TODO: make enterprise store
     let sessionId = getMetabotConversationId(getState() as any);
@@ -108,12 +112,25 @@ export const sendMessageRequest = createAsyncThunk(
       dispatch(setConversationId(sessionId));
     }
 
-    const result = await dispatch(
+    const metabotRequestPromise = dispatch(
       metabotAgent.initiate(
         { ...data, conversation_id: sessionId },
         { fixedCacheKey: METABOT_TAG },
       ),
     );
+
+    let isAborted = false;
+    signal.addEventListener("abort", () => {
+      // This flag is needed, so other async actions are not dispatched
+      isAborted = true;
+      // Need to abort the request so, the hook's `isDoingScience` is false
+      metabotRequestPromise.abort();
+    });
+
+    const result = await metabotRequestPromise;
+    if (isAborted) {
+      return;
+    }
 
     if (result.error) {
       console.error("Metabot request returned error: ", result.error);

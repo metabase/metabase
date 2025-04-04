@@ -37,14 +37,21 @@ export const MetabotChatEmbedding = ({
     setInputExpanded(false);
   }, []);
 
+  const metabotRequestPromiseRef = useRef<{ abort: () => void } | null>(null);
+
   const handleSend = () => {
     const trimmedInput = input.trim();
     if (!trimmedInput.length || metabot.isDoingScience) {
       return;
     }
     resetInput();
-    metabot
-      .submitInput(trimmedInput, EMBEDDING_METABOT_ID)
+    const metabotRequestPromise = metabot.submitInput(
+      trimmedInput,
+      EMBEDDING_METABOT_ID,
+    );
+    metabotRequestPromiseRef.current = metabotRequestPromise;
+
+    metabotRequestPromise
       .then(onResult)
       .catch((err) => console.error(err))
       .finally(() => textareaRef.current?.focus());
@@ -75,6 +82,10 @@ export const MetabotChatEmbedding = ({
   const placeholder = metabot.isDoingScience
     ? t`Doing science...`
     : inputPlaceholder;
+
+  function cancelRequest() {
+    metabotRequestPromiseRef.current?.abort();
+  }
 
   return (
     <Box className={Styles.container} data-testid="metabot-chat">
@@ -142,6 +153,7 @@ export const MetabotChatEmbedding = ({
           style={{
             visibility: metabot.isDoingScience ? "visible" : "hidden",
           }}
+          onClick={cancelRequest}
         >
           <Tooltip label={t`Stop generation`}>
             <Icon name="stop" c="var(--mb-color-text-primary)" size="1rem" />
