@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import {
@@ -24,6 +25,7 @@ import type {
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
+import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
 import type {
@@ -228,6 +230,13 @@ function Dashboard(props: DashboardProps) {
   const canDelete = Boolean(dashboard?.can_delete);
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
+  
+  // Check database permissions to determine if user can create new questions
+  const { data: databasesResponse } = useListDatabasesQuery();
+  const databases = useMemo(() => databasesResponse?.data ?? [], [databasesResponse]);
+  const hasDataAccess = useMemo(() => getHasDataAccess(databases), [databases]);
+  const hasNativeWrite = useMemo(() => getHasNativeWrite(databases), [databases]);
+  const canCreateQuestions = hasDataAccess || hasNativeWrite;
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
@@ -350,7 +359,8 @@ function Dashboard(props: DashboardProps) {
 
   const renderEmptyStates = () => {
     if (!dashboardHasCards) {
-      return canWrite ? (
+      // Only show the "Add a chart" button if the user can both write to dashboards AND create questions
+      return canWrite && canCreateQuestions ? (
         <DashboardEmptyState
           addQuestion={handleAddQuestion}
           isDashboardEmpty={true}
@@ -366,7 +376,8 @@ function Dashboard(props: DashboardProps) {
     }
 
     if (dashboardHasCards && !tabHasCards) {
-      return canWrite ? (
+      // Only show the "Add a chart" button if the user can both write to dashboards AND create questions
+      return canWrite && canCreateQuestions ? (
         <DashboardEmptyState
           addQuestion={handleAddQuestion}
           isDashboardEmpty={false}
