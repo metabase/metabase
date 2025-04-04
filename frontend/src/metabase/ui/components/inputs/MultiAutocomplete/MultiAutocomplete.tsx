@@ -86,7 +86,7 @@ export function MultiAutocomplete({
             rightSection={rightSection ?? infoIcon}
             onClick={handlePillsInputClick}
           >
-            <Pill.Group>
+            <Pill.Group role="list">
               {pillValues.map((value, valueIndex) =>
                 value !== null ? (
                   <Pill
