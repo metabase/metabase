@@ -19,3 +19,24 @@ jobs:
       - name: Print changed docs files
         run: |
           echo "A change in the docs directory was detected."
+
+      - name: Prepare to trigger slurp_branches workflow in metabase/docs.metabase.github.io
+      # Extract the branch name from the GITHUB_REF environment variable
+      - name: Set Branch Name Variable
+        run: echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+      # Trigger the repository_dispatch event in the target repo
+      - name: Trigger Workflow in Target Repository
+        env:
+          # Replace with the target repository owner and name
+          TARGET_REPO: "metabase/docs.metabase.github.io"
+          # Optionally, if you need a PAT with broader permissions than the default token,
+          # store it in your secrets and reference it here (if same owner, the default GITHUB_TOKEN may suffice)
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Triggering workflow in ${TARGET_REPO} with branch: $BRANCH_NAME"
+          curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${TOKEN}" \
+            https://api.github.com/repos/${TARGET_REPO}/dispatches \
+            -d "{\"event_type\": \"trigger-workflow\", \"client_payload\": {\"branch\": \"$BRANCH_NAME\"}}"
