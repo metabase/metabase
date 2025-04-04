@@ -1,5 +1,9 @@
 .pill {
   cursor: default;
+
+  &:hover {
+    outline: 2px solid var(--mb-color-focus);
+  }
 }
 
 .field {
