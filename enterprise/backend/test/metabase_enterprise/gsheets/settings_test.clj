@@ -40,7 +40,7 @@
                               :created-at     1234567890
                               :gdrive/conn-id test-uuid
                               :created-by-id  1
-                              :db-id          3}]
+                              :db-id          1}]
           (is (= expected-value
                  (#'gsettings/migrate-gsheet-value
                   {:status             "loading"
@@ -55,7 +55,7 @@
                               :created-at     1234567890
                               :gdrive/conn-id test-uuid
                               :created-by-id  1
-                              :db-id          3}]
+                              :db-id          1}]
           (is (= expected-value
                  (#'gsettings/migrate-gsheet-value
                   {:status             "complete"
@@ -63,7 +63,7 @@
                    :folder-upload-time 1234567890
                    :gdrive/conn-id     test-uuid
                    :created-by-id      1
-                   :db-id              3})))
+                   :db-id              1})))
           (is (= expected-value @value-updated))))
       (testing "missing db-id gets added"
         (with-sample-db-as-dwh
