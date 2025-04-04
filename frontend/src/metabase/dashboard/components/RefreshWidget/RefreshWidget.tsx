@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, Popover } from "metabase/ui";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { Box, type BoxProps, Popover } from "metabase/ui";
 
 import { RefreshOption } from "./RefreshOption";
 import { RefreshWidgetTarget } from "./RefreshWidgetTarget";
@@ -18,27 +19,45 @@ const OPTIONS = [
   { name: t`60 minutes`, period: toSeconds(60) },
 ];
 
-export const RefreshWidget = ({
-  setRefreshElapsedHook,
-  period,
-  onChangePeriod,
-}: {
-  setRefreshElapsedHook?: (hook: (elapsed: number | null) => void) => void;
-  period: number | null;
-  onChangePeriod: (period: number | null) => void;
-}) => {
-  const [elapsed, setElapsed] = useState<number | null>(null);
+const RefreshPanel = ({
+  onClick,
+  ...boxProps
+}: { onClick?: () => void } & BoxProps) => {
+  const { onRefreshPeriodChange, refreshPeriod: period } =
+    useDashboardContext();
 
+  return (
+    <Box {...boxProps}>
+      <Box
+        fw="bold"
+        fz="sm"
+        tt="uppercase"
+        mb="md"
+        ml="sm"
+        c="text-medium"
+      >{t`Auto Refresh`}</Box>
+      <ul>
+        {OPTIONS.map((option) => (
+          <RefreshOption
+            key={option.period}
+            name={option.name}
+            period={option.period}
+            selected={option.period === period}
+            onClick={() => {
+              onClick?.();
+              onRefreshPeriodChange(option.period);
+            }}
+          />
+        ))}
+      </ul>
+    </Box>
+  );
+};
+
+export const RefreshWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    if (setRefreshElapsedHook) {
-      setRefreshElapsedHook((elapsed: number | null) => {
-        setElapsed(elapsed);
-      });
-    }
-  }, [setRefreshElapsedHook]);
-
+  const { refreshPeriod: period, elapsed } = useDashboardContext();
   return (
     <Popover position="bottom-end" opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
@@ -47,30 +66,7 @@ export const RefreshWidget = ({
         </Box>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box p="md" miw="12.5rem">
-          <Box
-            fw="bold"
-            fz="sm"
-            tt="uppercase"
-            mb="md"
-            ml="sm"
-            c="text-medium"
-          >{t`Auto Refresh`}</Box>
-          <ul>
-            {OPTIONS.map((option) => (
-              <RefreshOption
-                key={option.period}
-                name={option.name}
-                period={option.period}
-                selected={option.period === period}
-                onClick={() => {
-                  setIsOpen(false);
-                  onChangePeriod(option.period);
-                }}
-              />
-            ))}
-          </ul>
-        </Box>
+        <RefreshPanel p="md" miw="12.5rem" />
       </Popover.Dropdown>
     </Popover>
   );
