@@ -1,8 +1,11 @@
+import _ from "underscore";
+
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 import type {
+  CacheConfig,
   CollectionItem,
   Dashboard,
   FieldValue,
@@ -13,12 +16,14 @@ import type {
   StructuredQuery,
   User,
 } from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
 
 import type { DashcardQueryResponse, DatasetResponse } from "./types";
 
 const { H } = cy;
-const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-const { PRODUCTS_ID, ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP, READONLY_GROUP } =
+  USER_GROUPS;
 
 const customColumnTypeToFormulaUntyped = {
   booleanExpr: '[Category]="Gizmo"',
@@ -160,12 +165,15 @@ const questionData: StructuredQuestionDetails[] = [
 ];
 
 export const adhocQuestionData = {
+  name: "Adhoc question",
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
     query: {
       "source-table": PRODUCTS_ID,
+      filter: [">", ["field", PRODUCTS.PRICE, null], 50],
     },
+    limit: 20,
   },
 };
 
@@ -181,6 +189,12 @@ function addCustomColumnsToQuestion() {
   H.modal().button("Save").click();
   cy.wait("@updateQuestion");
 }
+
+export const preparePermissions = () => {
+  H.blockUserGroupPermissions(ALL_USERS_GROUP);
+  H.blockUserGroupPermissions(COLLECTION_GROUP);
+  H.blockUserGroupPermissions(READONLY_GROUP);
+};
 
 /**
  * creates all questions and models and puts them in a dashboard
@@ -259,14 +273,15 @@ export const createSandboxingDashboardAndQuestions = () => {
       });
     });
 
-    // return the collection items
+    // Provide information about the dashboard and questions that the tests
+    // can refer to
     return cy.request<{ data: CollectionItem[] }>(
       `/api/collection/${collectionId}/items`,
     );
   });
 };
 
-type NormalUser = Partial<User> & { password: string };
+type NormalUser = Partial<User> & { email: string; password: string };
 
 /** A non-admin user who should only see products that are Gizmos once the
  * sandboxing policies are applied */
@@ -294,10 +309,14 @@ export const widgetViewer: NormalUser = {
 
 export const signInAs = (user: NormalUser) => {
   cy.log(`Sign in as user via an API call: ${user.email}`);
-  return cy.request("POST", "/api/session", {
-    username: user.email,
-    password: user.password,
-  });
+  return cy
+    .request("POST", "/api/session", {
+      username: user.email,
+      password: user.password,
+    })
+    .then(() => {
+      return waitForUserToBeLoggedIn(user);
+    });
 };
 
 export const assignAttributeToUser = ({
@@ -401,18 +420,21 @@ export const configureSandboxPolicy = (policy: SandboxPolicy) => {
   H.saveChangesToPermissions();
 };
 
-const getQuestionDescription = (
+const getQuestionName = (
   response: DatasetResponse,
   questions: CollectionItem[],
 ) => {
-  // Extract the card ID from the response URL
-  const cardId = Number(response?.url?.match(/\/card\/(\d+)/)?.[1]);
-  const questionName = (questions.find((q) => q.id === cardId) as any)?.name as
-    | string
-    | undefined;
-  const query = JSON.stringify(response.body.json_query.query);
-  const questionDesc = `${questionName} (query: ${query})`;
-  return { questionDesc, questionName };
+  let questionName;
+  if (questions.length === 1) {
+    questionName = questions[0].name;
+  } else {
+    // Extract the card ID from the response URL
+    const cardId = Number(response?.url?.match(/\/card\/(\d+)/)?.[1]);
+    questionName = (questions.find((q) => q.id === cardId) as any)?.name as
+      | string
+      | undefined;
+  }
+  return { questionName };
 };
 
 export function rowsShouldContainGizmosAndWidgets({
@@ -424,19 +446,19 @@ export function rowsShouldContainGizmosAndWidgets({
 }) {
   expect(responses.length).to.equal(questions.length);
   responses.forEach((response) => {
-    const { questionDesc } = getQuestionDescription(response, questions);
+    const { questionName } = getQuestionName(response, questions);
     expect(
       JSON.stringify(response.body),
-      `No error in ${questionDesc}`,
+      `No error in ${questionName}`,
     ).not.to.contain("stacktrace");
     expect(
       response.body.data.is_sandboxed,
-      `Results are not sandboxed in ${questionDesc}`,
+      `Results are not sandboxed in ${questionName}`,
     ).to.be.false;
     const rows = response.body.data.rows;
     expect(
       rows.some((row) => row.includes("Gizmo")),
-      `Results include at least one Gizmo in ${questionDesc}`,
+      `Results include at least one Gizmo in ${questionName}`,
     ).to.be.true;
 
     expect(
@@ -446,9 +468,10 @@ export function rowsShouldContainGizmosAndWidgets({
           row.includes("Gadget") ||
           row.includes("Doohickey"),
       ),
-      `Results include at least one Widget, Gadget, or Doohickey in ${questionDesc}`,
+      `Results include at least one Widget, Gadget, or Doohickey in ${questionName}`,
     ).to.be.true;
   });
+  return cy.wrap(responses);
 }
 
 const productCategories = ["Gizmo", "Widget", "Doohickey", "Gadget"] as const;
@@ -465,30 +488,52 @@ export function rowsShouldContainOnlyOneCategory({
   expect(responses.length).to.equal(questions.length);
 
   responses.forEach((response) => {
-    const { questionDesc } = getQuestionDescription(response, questions);
-    cy.log(`Results contain only ${productCategory}s in: ${questionDesc}`);
-    expect(response?.body.data.is_sandboxed).to.be.true;
+    const { questionName } = getQuestionName(response, questions);
+
+    expect(
+      JSON.stringify(response.body),
+      `No error in ${questionName}`,
+    ).not.to.contain("stacktrace");
+
+    cy.log(`Results contain only ${productCategory}s in: ${questionName}`);
 
     const rows = response.body.data.rows;
 
-    expect(
-      rows.every(
-        (row) =>
-          row.includes(productCategory) ||
-          // With implicit joins, some rows might have a null product
-          row[0] === null,
-      ),
-      `Every result should have have a ${productCategory} in: ${questionDesc}`,
-    ).to.be.true;
-    productCategories
-      .filter((category) => category !== productCategory)
-      .forEach((otherCategory) => {
+    const groupedByCategory = _.groupBy(rows, (row) => row[3] as string);
+    productCategories.forEach((category) => {
+      if (category !== productCategory) {
         expect(
-          !rows.some((row) => row.includes(otherCategory)),
-          `No results should have ${otherCategory}s in: ${questionDesc}`,
-        ).to.be.true;
-      });
+          groupedByCategory[category] || [],
+          `No ${category}s in: ${questionName}`,
+        ).to.have.length(0);
+      }
+    });
+
+    expect(
+      groupedByCategory[productCategory],
+      `There are some ${productCategory}s in: ${questionName}`,
+    ).to.have.length.greaterThan(0);
+
+    const categoriesPresent = JSON.stringify(
+      Object.keys(groupedByCategory).toSorted(),
+    );
+
+    // With implicit joins, some rows might have a null product. That's OK.
+    const categoriesAreValid =
+      categoriesPresent === `["${productCategory}"]` ||
+      categoriesPresent === `["${productCategory}",null]`;
+
+    expect(
+      categoriesAreValid,
+      `The categories (${categoriesPresent}) are valid in: ${questionName}`,
+    ).to.be.true;
+
+    expect(
+      response?.body.data.is_sandboxed,
+      `The response is sandboxed in: ${questionName}`,
+    ).to.be.true;
   });
+  return cy.wrap(responses);
 }
 
 export const valuesShouldContainGizmosAndWidgets = (
@@ -511,6 +556,8 @@ export const getDashcardResponses = (
   dashboard: Dashboard | null,
   questions: CollectionItem[],
 ) => {
+  cy.log("Check dashcard responses");
+
   H.visitDashboard(checkNotNull(dashboard).id);
 
   expect(questions.length).to.be.greaterThan(0);
@@ -526,6 +573,7 @@ export const getDashcardResponses = (
 
 export const getCardResponses = (questions: CollectionItem[]) => {
   expect(questions.length).to.be.greaterThan(0);
+  cy.log("Check card responses");
   return H.cypressWaitAll(
     questions.map((question) =>
       cy.request<DatasetResponse>("POST", `/api/card/${question.id}/query`),
@@ -561,12 +609,20 @@ export const getParameterValuesForProductCategories = () =>
 export const assertNoResultsOrValuesAreSandboxed = (
   dashboard: Dashboard | null,
   questions: CollectionItem[],
+  shouldResultsBeCached?: boolean,
 ) => {
   checkNotNull(dashboard);
-  getDashcardResponses(dashboard, questions).then(
+  const dashcardResponses = getDashcardResponses(dashboard, questions).then(
     rowsShouldContainGizmosAndWidgets,
   );
-  getCardResponses(questions).then(rowsShouldContainGizmosAndWidgets);
+  const cardResponses = getCardResponses(questions).then(
+    rowsShouldContainGizmosAndWidgets,
+  );
+
+  if (shouldResultsBeCached) {
+    dashcardResponses.then(resultsShouldBeCached);
+    cardResponses.then(resultsShouldBeCached);
+  }
 
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
     rowsShouldContainGizmosAndWidgets({
@@ -597,18 +653,87 @@ export const assertAllResultsAndValuesAreSandboxed = (
   getCardResponses(questions).then((data) =>
     rowsShouldContainOnlyOneCategory({ ...data, productCategory }),
   );
-  H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-    rowsShouldContainOnlyOneCategory({
-      responses: [response],
-      questions: [adhocQuestionData as unknown as CollectionItem],
-      productCategory,
-    }),
-  );
-
   getFieldValuesForProductCategories().then((response) =>
     valuesShouldContainOnlyOneCategory(response.body.values, productCategory),
   );
   getParameterValuesForProductCategories().then((response) =>
     valuesShouldContainOnlyOneCategory(response.body.values, productCategory),
   );
+
+  H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) => {
+    rowsShouldContainOnlyOneCategory({
+      responses: [response],
+      questions: [adhocQuestionData as unknown as CollectionItem],
+      productCategory,
+    });
+  });
+};
+
+export const resultsShouldBeCached = (responses: DatasetResponse[]) => {
+  responses.forEach((response) => {
+    expect(response.body.cached, "response should not be cached").not.to.be
+      .null;
+    expect(response.body.json_query?.["cache-strategy"]?.type).to.equal(
+      "duration",
+    );
+  });
+  return cy.wrap(responses);
+};
+
+export const cacheUnsandboxedResults = (questions: CollectionItem[]) => {
+  const simpleCacheConfiguration: CacheConfig = {
+    model: "root",
+    model_id: 0,
+    strategy: {
+      type: "duration",
+      duration: 1,
+      unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
+    },
+  };
+
+  cy.log(
+    "We additionally want to ensure that sandboxed users see filtered results even if the unsandboxed results are cached. So let's cache the unsandboxed results",
+  );
+  return cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
+    cy.log("Populate the caches");
+    return getCardResponses(questions);
+  });
+};
+
+export const runWithoutCachingThenWithCaching = (
+  callback: (props: { isCachingEnabled?: boolean }) => void,
+  { questions }: { questions: CollectionItem[] },
+) => {
+  callback({ isCachingEnabled: false });
+  cy.signInAsAdmin().then(() => {
+    cacheUnsandboxedResults(questions).then(() => {
+      callback({ isCachingEnabled: true });
+    });
+  });
+};
+
+/** This avoids a race condition where requests intended to be made by a normal
+ * user are instead made by an admin */
+export const waitForUserToBeLoggedIn = (user: NormalUser) => {
+  cy.log("Wait for user to be logged in");
+  function check(tries: number) {
+    if (tries === 0) {
+      return cy.wrap(false);
+    }
+    return cy
+      .request("/api/user/current")
+      .then((response): Cypress.Chainable<boolean> => {
+        if (response.body.email === user.email) {
+          cy.log(`User is logged in: ${user.email}`);
+          return cy.wrap(true);
+        } else {
+          cy.wait(500);
+          return check(tries - 1);
+        }
+      });
+  }
+  return check(5).then((success) => {
+    expect(success, "User is logged in").to.be.true;
+  });
 };
