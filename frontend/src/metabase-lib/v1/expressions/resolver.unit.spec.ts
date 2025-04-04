@@ -62,6 +62,8 @@ describe("resolve", () => {
       expect(filter(["<", ["sqrt", B], 1]).segments).toEqual([]);
       expect(filter(["contains", C, "SomeString"]).segments).toEqual([]);
       expect(filter(["or", P, [">", Q, 3]]).segments).toEqual(["P"]);
+      expect(filter(["not-null", C]).segments).toEqual([]);
+      expect(filter(["not-empty", C]).segments).toEqual([]);
     });
 
     it("should resolve dimensions correctly", () => {
@@ -76,6 +78,11 @@ describe("resolve", () => {
       expect(filter(["<", ["sqrt", B], 1]).dimensions).toEqual(["B"]);
       expect(filter(["contains", C, "SomeString"]).dimensions).toEqual(["C"]);
       expect(filter(["or", P, [">", Q, 3]]).dimensions).toEqual(["Q"]);
+      expect(filter(["does-not-contain", C, "somestring"]).dimensions).toEqual([
+        "C",
+      ]);
+      expect(filter(["not-null", C]).dimensions).toEqual(["C"]);
+      expect(filter(["not-empty", C]).dimensions).toEqual(["C"]);
     });
 
     it("should work on functions with optional flag", () => {
@@ -92,6 +99,8 @@ describe("resolve", () => {
       expect(expr(["concat", A, B]).segments).toEqual([]);
       expect(expr(["coalesce", P]).segments).toEqual([]);
       expect(expr(["coalesce", P, Q, R]).segments).toEqual([]);
+      expect(expr(["not-null", A]).segments).toEqual([]);
+      expect(expr(["not-empty", A]).segments).toEqual([]);
     });
 
     it("should resolve dimensions correctly", () => {
@@ -104,6 +113,11 @@ describe("resolve", () => {
       expect(expr(["in", A, B, C]).dimensions).toEqual(["A", "B", "C"]);
       expect(expr(["text", A]).dimensions).toEqual(["A"]);
       expect(expr(["integer", A]).dimensions).toEqual(["A"]);
+      expect(expr(["does-not-contain", A, "SomeString"]).dimensions).toEqual([
+        "A",
+      ]);
+      expect(expr(["not-null", A]).dimensions).toEqual(["A"]);
+      expect(expr(["not-empty", A]).dimensions).toEqual(["A"]);
     });
 
     it("should allow nested datetime expressions", () => {
@@ -164,6 +178,12 @@ describe("resolve", () => {
       expect(aggregation(["share", [">", P, 3]]).dimensions).toEqual(["P"]);
       expect(aggregation(["max", ["*", 4, Q]]).dimensions).toEqual(["Q"]);
       expect(aggregation(["+", R, ["median", S]]).dimensions).toEqual(["S"]);
+      expect(aggregation(["count-where", ["not-null", A]]).dimensions).toEqual([
+        "A",
+      ]);
+      expect(aggregation(["count-where", ["not-empty", A]]).dimensions).toEqual(
+        ["A"],
+      );
     });
 
     it("should resolve metrics correctly", () => {
