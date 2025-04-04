@@ -4,9 +4,9 @@ type CaseOptions = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### default?
+### default?
 
 ```ts
 optional default: Expression;

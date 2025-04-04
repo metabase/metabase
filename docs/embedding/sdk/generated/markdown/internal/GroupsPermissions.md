@@ -2,7 +2,7 @@
 type GroupsPermissions = {};
 ```
 
-#### Index Signature
+## Index Signature
 
 ```ts
 [key: string | number]: GroupPermissions

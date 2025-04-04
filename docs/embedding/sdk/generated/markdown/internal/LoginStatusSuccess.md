@@ -4,9 +4,9 @@ type LoginStatusSuccess = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### status
+### status
 
 ```ts
 status: "success";

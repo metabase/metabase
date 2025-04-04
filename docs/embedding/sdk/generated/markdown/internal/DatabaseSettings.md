@@ -4,9 +4,9 @@ type DatabaseSettings = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### database-enable-actions?
+### database-enable-actions?
 
 ```ts
 optional database-enable-actions: boolean;

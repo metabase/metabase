@@ -1,4 +1,4 @@
-#### Properties
+## Properties
 
 | Property                                              | Type                                                |
 | ----------------------------------------------------- | --------------------------------------------------- |
@@ -20,7 +20,7 @@
 | <a id="remapped_to"></a> `remapped_to?`               | `string`                                            |
 | <a id="remapped_to_column"></a> `remapped_to_column?` | `DatasetColumn`                                     |
 | <a id="semantic_type"></a> `semantic_type?`           | `null` \| `string`                                  |
-| <a id="settings"></a> `settings?`                     | `Record`<`string`, `any`>                           |
+| <a id="settings"></a> `settings?`                     | `Record`\<`string`, `any`\>                         |
 | <a id="source"></a> `source`                          | `string`                                            |
 | <a id="table_id"></a> `table_id?`                     | [`TableId`](TableId.md)                             |
 | <a id="unit"></a> `unit?`                             | [`DatetimeUnit`](DatetimeUnit.md)                   |

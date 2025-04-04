@@ -5,9 +5,9 @@ type BaseMetabaseAuthConfig = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### fetchRequestToken?
+### fetchRequestToken?
 
 ```ts
 optional fetchRequestToken: MetabaseFetchRequestTokenFn;
@@ -16,9 +16,9 @@ optional fetchRequestToken: MetabaseFetchRequestTokenFn;
 Specifies a function to fetch the refresh token.
 The refresh token should be in the format of { id: string, exp: number }
 
-***
+---
 
-##### metabaseInstanceUrl
+### metabaseInstanceUrl
 
 ```ts
 metabaseInstanceUrl: string;

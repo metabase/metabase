@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* `Omit`<[`Database`](Database.md), `"tables"` | `"schemas"`>
+- `Omit`\<[`Database`](Database.md), `"tables"` \| `"schemas"`\>
 
-#### Properties
+## Properties
 
 | Property                                                 | Type                                                | Inherited from              |
 | -------------------------------------------------------- | --------------------------------------------------- | --------------------------- |
@@ -13,9 +13,9 @@
 | <a id="caveats"></a> `caveats?`                          | `string`                                            | `Omit.caveats`              |
 | <a id="created_at"></a> `created_at`                     | `string`                                            | `Omit.created_at`           |
 | <a id="creator_id"></a> `creator_id?`                    | `number`                                            | `Omit.creator_id`           |
-| <a id="details"></a> `details?`                          | `Record`<`string`, `unknown`>                       | `Omit.details`              |
+| <a id="details"></a> `details?`                          | `Record`\<`string`, `unknown`\>                     | `Omit.details`              |
 | <a id="engine"></a> `engine`                             | `undefined` \| `string`                             | `Omit.engine`               |
-| <a id="features"></a> `features?`                        | [`DatabaseFeature`](DatabaseFeature.md)\[]          | `Omit.features`             |
+| <a id="features"></a> `features?`                        | [`DatabaseFeature`](DatabaseFeature.md)[]           | `Omit.features`             |
 | <a id="id"></a> `id`                                     | `number`                                            | `Omit.id`                   |
 | <a id="initial_sync_status"></a> `initial_sync_status`   | [`LongTaskStatus`](LongTaskStatus.md)               | `Omit.initial_sync_status`  |
 | <a id="is_attached_dwh"></a> `is_attached_dwh?`          | `boolean`                                           | `Omit.is_attached_dwh`      |
@@ -29,9 +29,9 @@
 | <a id="points_of_interest"></a> `points_of_interest?`    | `string`                                            | `Omit.points_of_interest`   |
 | <a id="refingerprint"></a> `refingerprint`               | `null` \| `boolean`                                 | `Omit.refingerprint`        |
 | <a id="schedules"></a> `schedules`                       | [`DatabaseSchedules`](DatabaseSchedules.md)         | `Omit.schedules`            |
-| <a id="schemas"></a> `schemas?`                          | `string`\[]                                         | -                           |
+| <a id="schemas"></a> `schemas?`                          | `string`[]                                          | -                           |
 | <a id="settings"></a> `settings?`                        | `null` \| [`DatabaseSettings`](DatabaseSettings.md) | `Omit.settings`             |
-| <a id="tables"></a> `tables?`                            | [`TableId`](TableId.md)\[]                          | -                           |
+| <a id="tables"></a> `tables?`                            | [`TableId`](TableId.md)[]                           | -                           |
 | <a id="timezone"></a> `timezone?`                        | `string`                                            | `Omit.timezone`             |
 | <a id="updated_at"></a> `updated_at`                     | `string`                                            | `Omit.updated_at`           |
 | <a id="uploads_enabled"></a> `uploads_enabled`           | `boolean`                                           | `Omit.uploads_enabled`      |

@@ -6,12 +6,12 @@ function defineMetabaseAuthConfig(
 
 Defines a Metabase auth config.
 
-#### Parameters
+## Parameters
 
 | Parameter | Type                                          |
 | --------- | --------------------------------------------- |
 | `config`  | [`MetabaseAuthConfig`](MetabaseAuthConfig.md) |
 
-#### Returns
+## Returns
 
 [`MetabaseAuthConfig`](MetabaseAuthConfig.md)

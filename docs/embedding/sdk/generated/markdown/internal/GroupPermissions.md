@@ -2,7 +2,7 @@
 type GroupPermissions = {};
 ```
 
-#### Index Signature
+## Index Signature
 
 ```ts
 [key: number]: DatabasePermissions

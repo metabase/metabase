@@ -1,11 +1,11 @@
-#### Type Parameters
+## Type Parameters
 
 | Type Parameter                                       | Default type                          |
 | ---------------------------------------------------- | ------------------------------------- |
-| `Id` *extends* [`SearchResultId`](SearchResultId.md) | [`SearchResultId`](SearchResultId.md) |
-| `Model` *extends* [`SearchModel`](SearchModel.md)    | [`SearchModel`](SearchModel.md)       |
+| `Id` _extends_ [`SearchResultId`](SearchResultId.md) | [`SearchResultId`](SearchResultId.md) |
+| `Model` _extends_ [`SearchModel`](SearchModel.md)    | [`SearchModel`](SearchModel.md)       |
 
-#### Properties
+## Properties
 
 | Property                                                             | Type                                                                                                                                                                                                                                                         |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -20,7 +20,7 @@
 | <a id="created_at"></a> `created_at`                                 | `null` \| `string`                                                                                                                                                                                                                                           |
 | <a id="creator_common_name"></a> `creator_common_name`               | `null` \| `string`                                                                                                                                                                                                                                           |
 | <a id="creator_id"></a> `creator_id`                                 | `null` \| `number`                                                                                                                                                                                                                                           |
-| <a id="dashboard"></a> `dashboard`                                   | \| `null` \| `Pick`<[`MetabaseDashboard`](../MetabaseDashboard.md), `"name"` \| `"id"`> & { `moderation_status`: [`ModerationReviewStatus`](ModerationReviewStatus.md); }                                                                                    |
+| <a id="dashboard"></a> `dashboard`                                   | \| `null` \| `Pick`\<[`MetabaseDashboard`](../MetabaseDashboard.md), `"name"` \| `"id"`\> & \{ `moderation_status`: [`ModerationReviewStatus`](ModerationReviewStatus.md); \}                                                                                |
 | <a id="dashboard_count"></a> `dashboard_count`                       | `null` \| `number`                                                                                                                                                                                                                                           |
 | <a id="database_id"></a> `database_id`                               | `number`                                                                                                                                                                                                                                                     |
 | <a id="database_name"></a> `database_name`                           | `null` \| `string`                                                                                                                                                                                                                                           |

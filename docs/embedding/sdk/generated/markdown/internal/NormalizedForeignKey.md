@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* `Omit`<[`ForeignKey`](ForeignKey.md), `"origin"` | `"destination"`>
+- `Omit`\<[`ForeignKey`](ForeignKey.md), `"origin"` \| `"destination"`\>
 
-#### Properties
+## Properties
 
 | Property                                     | Type     | Inherited from        |
 | -------------------------------------------- | -------- | --------------------- |

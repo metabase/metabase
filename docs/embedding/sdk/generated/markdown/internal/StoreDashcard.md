@@ -6,7 +6,7 @@ type StoreDashcard = DashboardCard & {
 };
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name         | Type      |
 | ------------ | --------- |

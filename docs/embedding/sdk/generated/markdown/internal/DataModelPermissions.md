@@ -4,9 +4,9 @@ type DataModelPermissions = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### schemas
+### schemas
 
 ```ts
 schemas: SchemasPermissions;

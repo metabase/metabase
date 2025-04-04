@@ -7,7 +7,7 @@ type DashCardMenuItem = {
 } & MenuItemProps;
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name        | Type                      |
 | ----------- | ------------------------- |

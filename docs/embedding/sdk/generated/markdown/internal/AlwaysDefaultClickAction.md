@@ -5,7 +5,7 @@ type AlwaysDefaultClickAction = {
 } & AlwaysDefaultClickActionSubAction;
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name            | Type     |
 | --------------- | -------- |

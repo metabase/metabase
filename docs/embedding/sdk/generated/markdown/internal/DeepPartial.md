@@ -6,7 +6,7 @@ type DeepPartial<T> = {
 
 Makes every property in the object optional.
 
-#### Type Parameters
+## Type Parameters
 
 | Type Parameter |
 | -------------- |

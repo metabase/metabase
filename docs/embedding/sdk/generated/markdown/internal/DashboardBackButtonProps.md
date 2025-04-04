@@ -6,7 +6,7 @@ type DashboardBackButtonProps = {
   HTMLAttributes<HTMLButtonElement>;
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name       | Type         |
 | ---------- | ------------ |

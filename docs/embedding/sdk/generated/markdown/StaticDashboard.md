@@ -4,12 +4,12 @@ function StaticDashboard(props: StaticDashboardProps): ReactNode;
 
 A lightweight dashboard component.
 
-#### Parameters
+## Parameters
 
 | Parameter | Type                                              |
 | --------- | ------------------------------------------------- |
 | `props`   | [`StaticDashboardProps`](StaticDashboardProps.md) |
 
-#### Returns
+## Returns
 
 `ReactNode`

@@ -5,21 +5,21 @@ type QuestionChangeClickActionBase = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### question()
+### question()
 
 ```ts
 question: () => Question;
 ```
 
-###### Returns
+#### Returns
 
 `Question`
 
-***
+---
 
-##### questionChangeBehavior?
+### questionChangeBehavior?
 
 ```ts
 optional questionChangeBehavior: QuestionChangeClickActionBehavior;

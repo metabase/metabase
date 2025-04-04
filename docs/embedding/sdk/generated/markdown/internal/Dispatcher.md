@@ -2,13 +2,13 @@
 type Dispatcher = (dispatch: Dispatch, getState: GetState) => void;
 ```
 
-#### Parameters
+## Parameters
 
 | Parameter  | Type                      |
 | ---------- | ------------------------- |
 | `dispatch` | [`Dispatch`](Dispatch.md) |
 | `getState` | [`GetState`](GetState.md) |
 
-#### Returns
+## Returns
 
 `void`

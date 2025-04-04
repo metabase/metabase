@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* `Omit`<[`CommonElementProps`](internal/CommonElementProps.md), `"style"`>
+- `Omit`\<[`CommonElementProps`](internal/CommonElementProps.md), `"style"`\>
 
-#### Properties
+## Properties
 
 | Property                                        | Type                                                           | Description                                                                                                                                              | Inherited from   |
 | ----------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |

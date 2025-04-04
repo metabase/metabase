@@ -5,17 +5,17 @@ type DashCardVisualizationSettings = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### iframe?
+### iframe?
 
 ```ts
 optional iframe: string;
 ```
 
-***
+---
 
-##### virtual\_card?
+### virtual_card?
 
 ```ts
 optional virtual_card: VirtualCard;

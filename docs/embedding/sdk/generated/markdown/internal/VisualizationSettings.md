@@ -59,20 +59,20 @@ type VisualizationSettings = {
  } & EmbedVisualizationSettings;
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name                                   | Type                                                                  |
 | -------------------------------------- | --------------------------------------------------------------------- |
-| `column_settings?`                     | `Record`<`string`, [`ColumnSettings`](ColumnSettings.md)>             |
-| `funnel.rows?`                         | [`SeriesOrderSetting`](SeriesOrderSetting.md)\[]                      |
-| `graph.dimensions?`                    | `string`\[]                                                           |
+| `column_settings?`                     | `Record`\<`string`, [`ColumnSettings`](ColumnSettings.md)\>           |
+| `funnel.rows?`                         | [`SeriesOrderSetting`](SeriesOrderSetting.md)[]                       |
+| `graph.dimensions?`                    | `string`[]                                                            |
 | `graph.goal_label?`                    | `string`                                                              |
 | `graph.goal_value?`                    | `number`                                                              |
 | `graph.max_categories?`                | `number`                                                              |
 | `graph.max_categories_enabled?`        | `boolean`                                                             |
-| `graph.metrics?`                       | `string`\[]                                                           |
+| `graph.metrics?`                       | `string`[]                                                            |
 | `graph.other_category_aggregation_fn?` | `"sum"` \| `"avg"` \| `"min"` \| `"max"` \| `"stddev"` \| `"median"`  |
-| `graph.series_order?`                  | [`SeriesOrderSetting`](SeriesOrderSetting.md)\[]                      |
+| `graph.series_order?`                  | [`SeriesOrderSetting`](SeriesOrderSetting.md)[]                       |
 | `graph.show_goal?`                     | `boolean`                                                             |
 | `graph.show_stack_values?`             | [`StackValuesDisplay`](StackValuesDisplay.md)                         |
 | `graph.show_trendline?`                | `boolean`                                                             |
@@ -85,14 +85,14 @@ type VisualizationSettings = {
 | `graph.y_axis.min?`                    | `number`                                                              |
 | `graph.y_axis.scale?`                  | [`YAxisScale`](YAxisScale.md)                                         |
 | `graph.y_axis.title_text?`             | `string`                                                              |
-| `pie.colors?`                          | `Record`<`string`, `string`>                                          |
+| `pie.colors?`                          | `Record`\<`string`, `string`\>                                        |
 | `pie.decimal_places?`                  | `number`                                                              |
-| `pie.dimension?`                       | `string` \| `string`\[]                                               |
+| `pie.dimension?`                       | `string` \| `string`[]                                                |
 | `pie.metric?`                          | `string`                                                              |
 | `pie.middle_dimension?`                | `string`                                                              |
 | `pie.outer_dimension?`                 | `string`                                                              |
 | `pie.percent_visibility?`              | `"off"` \| `"legend"` \| `"inside"` \| `"both"`                       |
-| `pie.rows?`                            | [`PieRow`](PieRow.md)\[]                                              |
+| `pie.rows?`                            | [`PieRow`](PieRow.md)[]                                               |
 | `pie.show_labels?`                     | `boolean`                                                             |
 | `pie.show_legend?`                     | `boolean`                                                             |
 | `pie.show_total?`                      | `boolean`                                                             |
@@ -107,14 +107,14 @@ type VisualizationSettings = {
 | `sankey.target?`                       | `string`                                                              |
 | `sankey.value?`                        | `string`                                                              |
 | `scalar.compact_primary_number?`       | `boolean`                                                             |
-| `scalar.comparisons?`                  | [`SmartScalarComparison`](SmartScalarComparison.md)\[]                |
+| `scalar.comparisons?`                  | [`SmartScalarComparison`](SmartScalarComparison.md)[]                 |
 | `scalar.field?`                        | `string`                                                              |
 | `scalar.switch_positive_negative?`     | `boolean`                                                             |
 | `scatter.bubble?`                      | `string`                                                              |
-| `series_settings?`                     | `Record`<`string`, [`SeriesSettings`](SeriesSettings.md)>             |
+| `series_settings?`                     | `Record`\<`string`, [`SeriesSettings`](SeriesSettings.md)\>           |
 | `stackable.stack_type?`                | [`StackType`](StackType.md)                                           |
-| `table.column_formatting?`             | [`ColumnFormattingSetting`](ColumnFormattingSetting.md)\[]            |
-| `table.columns?`                       | [`TableColumnOrderSetting`](TableColumnOrderSetting.md)\[]            |
+| `table.column_formatting?`             | [`ColumnFormattingSetting`](ColumnFormattingSetting.md)[]             |
+| `table.columns?`                       | [`TableColumnOrderSetting`](TableColumnOrderSetting.md)[]             |
 | `waterfall.decrease_color?`            | `string`                                                              |
 | `waterfall.increase_color?`            | `string`                                                              |
 | `waterfall.show_total?`                | `boolean`                                                             |

@@ -2,16 +2,16 @@
 function ModifyQuestion(props: BaseInteractiveQuestionProps): Element;
 ```
 
-#### Parameters
+## Parameters
 
 | Parameter | Type                                                              | Description |
 | --------- | ----------------------------------------------------------------- | ----------- |
 | `props`   | [`BaseInteractiveQuestionProps`](BaseInteractiveQuestionProps.md) |             |
 
-#### Returns
+## Returns
 
 `Element`
 
-#### Deprecated
+## Deprecated
 
 Use `InteractiveQuestion` with `isSaveEnabled={true}` instead.

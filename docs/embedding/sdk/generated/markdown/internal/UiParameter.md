@@ -6,7 +6,7 @@ type UiParameter =
     });
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name      | Type      |
 | --------- | --------- |

@@ -5,17 +5,17 @@ type DateTimeFieldFingerprint = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### earliest
+### earliest
 
 ```ts
 earliest: string;
 ```
 
-***
+---
 
-##### latest
+### latest
 
 ```ts
 latest: string;

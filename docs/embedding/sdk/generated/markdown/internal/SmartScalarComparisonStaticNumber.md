@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* [`BaseSmartScalarComparison`](BaseSmartScalarComparison.md)
+- [`BaseSmartScalarComparison`](BaseSmartScalarComparison.md)
 
-#### Properties
+## Properties
 
 | Property                   | Type             | Overrides                                                                                               | Inherited from                                                                                      |
 | -------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |

@@ -5,17 +5,17 @@ type MetabaseEmbeddingSessionToken = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### exp
+### exp
 
 ```ts
 exp: number;
 ```
 
-***
+---
 
-##### id
+### id
 
 ```ts
 id: string;

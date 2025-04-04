@@ -9,83 +9,83 @@ type ClickActionPopoverProps = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### onChangeCardAndRun
+### onChangeCardAndRun
 
 ```ts
 onChangeCardAndRun: OnChangeCardAndRun;
 ```
 
-***
+---
 
-##### onClick()
+### onClick()
 
 ```ts
 onClick: (action: RegularClickAction) => void;
 ```
 
-###### Parameters
+#### Parameters
 
 | Parameter | Type                                          |
 | --------- | --------------------------------------------- |
 | `action`  | [`RegularClickAction`](RegularClickAction.md) |
 
-###### Returns
+#### Returns
 
 `void`
 
-***
+---
 
-##### onClose()
+### onClose()
 
 ```ts
 onClose: () => void;
 ```
 
-###### Returns
+#### Returns
 
 `void`
 
-***
+---
 
-##### onResize()
+### onResize()
 
 ```ts
 onResize: (...args: unknown[]) => void;
 ```
 
-###### Parameters
+#### Parameters
 
-| Parameter | Type         |
-| --------- | ------------ |
-| ...`args` | `unknown`\[] |
+| Parameter | Type        |
+| --------- | ----------- |
+| ...`args` | `unknown`[] |
 
-###### Returns
+#### Returns
 
 `void`
 
-***
+---
 
-##### onUpdateVisualizationSettings()
+### onUpdateVisualizationSettings()
 
 ```ts
 onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
 ```
 
-###### Parameters
+#### Parameters
 
 | Parameter  | Type                                                |
 | ---------- | --------------------------------------------------- |
 | `settings` | [`VisualizationSettings`](VisualizationSettings.md) |
 
-###### Returns
+#### Returns
 
 `void`
 
-***
+---
 
-##### series
+### series
 
 ```ts
 series: Series | null;

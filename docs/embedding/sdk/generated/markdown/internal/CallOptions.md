@@ -2,7 +2,7 @@
 type CallOptions = {};
 ```
 
-#### Index Signature
+## Index Signature
 
 ```ts
 [key: string]: unknown

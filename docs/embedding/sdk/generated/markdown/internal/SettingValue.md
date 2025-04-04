@@ -2,8 +2,8 @@
 type SettingValue<Key> = Settings[Key];
 ```
 
-#### Type Parameters
+## Type Parameters
 
 | Type Parameter                                | Default type                  |
 | --------------------------------------------- | ----------------------------- |
-| `Key` *extends* [`SettingKey`](SettingKey.md) | [`SettingKey`](SettingKey.md) |
+| `Key` _extends_ [`SettingKey`](SettingKey.md) | [`SettingKey`](SettingKey.md) |

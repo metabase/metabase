@@ -13,81 +13,81 @@ type SeriesSettings = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### axis?
+### axis?
 
 ```ts
 optional axis: string;
 ```
 
-***
+---
 
-##### color?
+### color?
 
 ```ts
 optional color: string;
 ```
 
-***
+---
 
-##### display?
+### display?
 
 ```ts
 optional display: string;
 ```
 
-***
+---
 
-##### line.interpolate?
+### line.interpolate?
 
 ```ts
 optional interpolate: string;
 ```
 
-***
+---
 
-##### line.marker\_enabled?
+### line.marker_enabled?
 
 ```ts
 optional marker_enabled: boolean;
 ```
 
-***
+---
 
-##### line.missing?
+### line.missing?
 
 ```ts
 optional missing: string;
 ```
 
-***
+---
 
-##### line.size?
+### line.size?
 
 ```ts
 optional size: LineSize;
 ```
 
-***
+---
 
-##### line.style?
+### line.style?
 
 ```ts
 optional style: "solid" | "dashed" | "dotted";
 ```
 
-***
+---
 
-##### show\_series\_values?
+### show_series_values?
 
 ```ts
 optional show_series_values: boolean;
 ```
 
-***
+---
 
-##### title?
+### title?
 
 ```ts
 optional title: string;

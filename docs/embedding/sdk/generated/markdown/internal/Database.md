@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* [`DatabaseData`](DatabaseData.md)
+- [`DatabaseData`](DatabaseData.md)
 
-#### Properties
+## Properties
 
 | Property                                                 | Type                                                | Overrides                                                    | Inherited from                                                                           |
 | -------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
@@ -13,9 +13,9 @@
 | <a id="caveats"></a> `caveats?`                          | `string`                                            | -                                                            | -                                                                                        |
 | <a id="created_at"></a> `created_at`                     | `string`                                            | -                                                            | -                                                                                        |
 | <a id="creator_id"></a> `creator_id?`                    | `number`                                            | -                                                            | -                                                                                        |
-| <a id="details"></a> `details?`                          | `Record`<`string`, `unknown`>                       | -                                                            | [`DatabaseData`](DatabaseData.md).[`details`](DatabaseData.md#details)                   |
+| <a id="details"></a> `details?`                          | `Record`\<`string`, `unknown`\>                     | -                                                            | [`DatabaseData`](DatabaseData.md).[`details`](DatabaseData.md#details)                   |
 | <a id="engine"></a> `engine`                             | `undefined` \| `string`                             | -                                                            | [`DatabaseData`](DatabaseData.md).[`engine`](DatabaseData.md#engine)                     |
-| <a id="features"></a> `features?`                        | [`DatabaseFeature`](DatabaseFeature.md)\[]          | -                                                            | -                                                                                        |
+| <a id="features"></a> `features?`                        | [`DatabaseFeature`](DatabaseFeature.md)[]           | -                                                            | -                                                                                        |
 | <a id="id"></a> `id`                                     | `number`                                            | [`DatabaseData`](DatabaseData.md).[`id`](DatabaseData.md#id) | -                                                                                        |
 | <a id="initial_sync_status"></a> `initial_sync_status`   | [`LongTaskStatus`](LongTaskStatus.md)               | -                                                            | -                                                                                        |
 | <a id="is_attached_dwh"></a> `is_attached_dwh?`          | `boolean`                                           | -                                                            | -                                                                                        |
@@ -30,7 +30,7 @@
 | <a id="refingerprint"></a> `refingerprint`               | `null` \| `boolean`                                 | -                                                            | [`DatabaseData`](DatabaseData.md).[`refingerprint`](DatabaseData.md#refingerprint)       |
 | <a id="schedules"></a> `schedules`                       | [`DatabaseSchedules`](DatabaseSchedules.md)         | -                                                            | [`DatabaseData`](DatabaseData.md).[`schedules`](DatabaseData.md#schedules)               |
 | <a id="settings"></a> `settings?`                        | `null` \| [`DatabaseSettings`](DatabaseSettings.md) | -                                                            | [`DatabaseData`](DatabaseData.md).[`settings`](DatabaseData.md#settings)                 |
-| <a id="tables"></a> `tables?`                            | [`Table`](Table.md)\[]                              | -                                                            | -                                                                                        |
+| <a id="tables"></a> `tables?`                            | [`Table`](Table.md)[]                               | -                                                            | -                                                                                        |
 | <a id="timezone"></a> `timezone?`                        | `string`                                            | -                                                            | -                                                                                        |
 | <a id="updated_at"></a> `updated_at`                     | `string`                                            | -                                                            | -                                                                                        |
 | <a id="uploads_enabled"></a> `uploads_enabled`           | `boolean`                                           | -                                                            | -                                                                                        |

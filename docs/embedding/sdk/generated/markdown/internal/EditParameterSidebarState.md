@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* [`BaseSidebarState`](BaseSidebarState.md)
+- [`BaseSidebarState`](BaseSidebarState.md)
 
-#### Properties
+## Properties
 
 | Property                   | Type                                                        | Overrides                                                                      |
 | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------ |

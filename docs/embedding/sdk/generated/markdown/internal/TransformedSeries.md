@@ -4,7 +4,7 @@ type TransformedSeries = RawSeries & {
 };
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name   | Type                  |
 | ------ | --------------------- |

@@ -4,9 +4,9 @@ type SdkErrorComponentProps = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### message
+### message
 
 ```ts
 message: ReactNode;

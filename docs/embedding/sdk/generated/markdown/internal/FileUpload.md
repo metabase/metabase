@@ -12,73 +12,73 @@ type FileUpload = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### collectionId?
+### collectionId?
 
 ```ts
 optional collectionId: CollectionId;
 ```
 
-***
+---
 
-##### error?
+### error?
 
 ```ts
 optional error: string;
 ```
 
-***
+---
 
-##### id
+### id
 
 ```ts
 id: number;
 ```
 
-***
+---
 
-##### message?
+### message?
 
 ```ts
 optional message: string;
 ```
 
-***
+---
 
-##### modelId?
+### modelId?
 
 ```ts
 optional modelId: string;
 ```
 
-***
+---
 
-##### name
+### name
 
 ```ts
 name: string;
 ```
 
-***
+---
 
-##### status
+### status
 
 ```ts
 status: "complete" | "in-progress" | "error";
 ```
 
-***
+---
 
-##### tableId?
+### tableId?
 
 ```ts
 optional tableId: TableId;
 ```
 
-***
+---
 
-##### uploadMode?
+### uploadMode?
 
 ```ts
 optional uploadMode: UploadMode;

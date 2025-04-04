@@ -1,14 +1,14 @@
-#### Extended by
+## Extended by
 
-* [`Database`](Database.md)
+- [`Database`](Database.md)
 
-#### Properties
+## Properties
 
 | Property                                         | Type                                                |
 | ------------------------------------------------ | --------------------------------------------------- |
 | <a id="auto_run_queries"></a> `auto_run_queries` | `null` \| `boolean`                                 |
 | <a id="cache_ttl"></a> `cache_ttl`               | `null` \| `number`                                  |
-| <a id="details"></a> `details?`                  | `Record`<`string`, `unknown`>                       |
+| <a id="details"></a> `details?`                  | `Record`\<`string`, `unknown`\>                     |
 | <a id="engine"></a> `engine`                     | `undefined` \| `string`                             |
 | <a id="id"></a> `id?`                            | `number`                                            |
 | <a id="is_full_sync"></a> `is_full_sync`         | `boolean`                                           |

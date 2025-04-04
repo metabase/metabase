@@ -4,7 +4,7 @@ type StoreDashboardTab = DashboardTab & {
 };
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name         | Type      |
 | ------------ | --------- |

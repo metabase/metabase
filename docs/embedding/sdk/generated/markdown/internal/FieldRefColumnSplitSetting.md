@@ -6,25 +6,25 @@ type FieldRefColumnSplitSetting = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### columns
+### columns
 
 ```ts
 columns: (FieldReference | null)[];
 ```
 
-***
+---
 
-##### rows
+### rows
 
 ```ts
 rows: (FieldReference | null)[];
 ```
 
-***
+---
 
-##### values
+### values
 
 ```ts
 values: (FieldReference | null)[];

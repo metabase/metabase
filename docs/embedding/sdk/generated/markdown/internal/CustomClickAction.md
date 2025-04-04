@@ -5,7 +5,7 @@ type CustomClickAction = ClickActionBase &
   };
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name       | Type                                                                                |
 | ---------- | ----------------------------------------------------------------------------------- |

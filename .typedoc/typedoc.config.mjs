@@ -5,7 +5,6 @@ const config = {
     "typedoc-plugin-missing-exports",
     "typedoc-plugin-markdown",
     "typedoc-plugin-frontmatter",
-    "typedoc-plugin-remark",
   ],
   entryPoints: ["../resources/embedding-sdk/dist/index.d.ts"],
   router: "structure",
@@ -46,7 +45,6 @@ const config = {
           hideValues: false,
           leftAlignHeaders: false,
         },
-        remarkPlugins: [["remark-behead", { minDepth: 4 }]],
       },
     },
     {
@@ -132,11 +130,6 @@ const config = {
     rewrittenLink: true,
     notDocumented: false,
     unusedMergeModuleWith: true,
-  },
-  defaultRemarkPlugins: {
-    gfm: true,
-    frontmatter: true,
-    mdx: false,
   },
   externalSymbolLinkMappings: {
     "external-lib": {

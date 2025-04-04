@@ -5,13 +5,13 @@ type MetabaseClickActionPluginsConfig = (
 ) => ClickAction[];
 ```
 
-#### Parameters
+## Parameters
 
 | Parameter          | Type                                                    |
 | ------------------ | ------------------------------------------------------- |
-| `clickActions`     | [`ClickAction`](internal/ClickAction.md)\[]             |
+| `clickActions`     | [`ClickAction`](internal/ClickAction.md)[]              |
 | `clickedDataPoint` | [`MetabaseDataPointObject`](MetabaseDataPointObject.md) |
 
-#### Returns
+## Returns
 
-[`ClickAction`](internal/ClickAction.md)\[]
+[`ClickAction`](internal/ClickAction.md)[]

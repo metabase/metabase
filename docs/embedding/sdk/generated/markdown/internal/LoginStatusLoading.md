@@ -4,9 +4,9 @@ type LoginStatusLoading = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### status
+### status
 
 ```ts
 status: "loading";

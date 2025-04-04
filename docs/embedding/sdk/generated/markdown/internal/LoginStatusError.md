@@ -5,17 +5,17 @@ type LoginStatusError = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### error
+### error
 
 ```ts
 error: Error;
 ```
 
-***
+---
 
-##### status
+### status
 
 ```ts
 status: "error";

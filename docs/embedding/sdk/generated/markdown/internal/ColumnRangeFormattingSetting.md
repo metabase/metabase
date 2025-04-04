@@ -10,57 +10,57 @@ type ColumnRangeFormattingSetting = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### colors
+### colors
 
 ```ts
 colors: string[];
 ```
 
-***
+---
 
-##### columns
+### columns
 
 ```ts
 columns: string[];
 ```
 
-***
+---
 
-##### max\_type
+### max_type
 
 ```ts
 max_type: "custom" | "all" | null;
 ```
 
-***
+---
 
-##### max\_value?
+### max_value?
 
 ```ts
 optional max_value: number;
 ```
 
-***
+---
 
-##### min\_type
+### min_type
 
 ```ts
 min_type: "custom" | "all" | null;
 ```
 
-***
+---
 
-##### min\_value?
+### min_value?
 
 ```ts
 optional min_value: number;
 ```
 
-***
+---
 
-##### type
+### type
 
 ```ts
 type: "range";

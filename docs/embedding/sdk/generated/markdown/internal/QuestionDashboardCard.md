@@ -7,11 +7,11 @@ type QuestionDashboardCard = BaseDashboardCard & {
 };
 ```
 
-#### Type declaration
+## Type declaration
 
-| Name                  | Type                                                                     |
-| --------------------- | ------------------------------------------------------------------------ |
-| `card`                | [`Card`](Card.md)                                                        |
-| `card_id`             | [`CardId`](CardId.md) \| `null`                                          |
-| `parameter_mappings?` | [`DashboardParameterMapping`](DashboardParameterMapping.md)\[] \| `null` |
-| `series?`             | [`Card`](Card.md)\[]                                                     |
+| Name                  | Type                                                                    |
+| --------------------- | ----------------------------------------------------------------------- |
+| `card`                | [`Card`](Card.md)                                                       |
+| `card_id`             | [`CardId`](CardId.md) \| `null`                                         |
+| `parameter_mappings?` | [`DashboardParameterMapping`](DashboardParameterMapping.md)[] \| `null` |
+| `series?`             | [`Card`](Card.md)[]                                                     |

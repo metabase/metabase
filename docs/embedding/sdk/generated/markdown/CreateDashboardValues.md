@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* `Omit`<[`CreateDashboardProperties`](internal/CreateDashboardProperties.md), `"collection_id"`>
+- `Omit`\<[`CreateDashboardProperties`](internal/CreateDashboardProperties.md), `"collection_id"`\>
 
-#### Properties
+## Properties
 
 | Property                                 | Type                                             | Description                                                                                                    | Inherited from     |
 | ---------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ------------------ |

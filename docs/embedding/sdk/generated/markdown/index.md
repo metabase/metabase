@@ -1,10 +1,10 @@
-#### Modules
+## Modules
 
 | Module                  | Description |
 | ----------------------- | ----------- |
 | [internal](internal.md) | -           |
 
-#### Interfaces
+## Interfaces
 
 | Interface                                                                                               | Description                                           |
 | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -30,7 +30,7 @@
 | [StaticDashboardProps](StaticDashboardProps.md)                                                         | -                                                     |
 | [StaticQuestionProps](StaticQuestionProps.md)                                                           | -                                                     |
 
-#### Type Aliases
+## Type Aliases
 
 | Type Alias                                                                                          | Description                                                                    |
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -58,7 +58,7 @@
 | [MetabasePluginsConfig](MetabasePluginsConfig.md)                                                   | -                                                                              |
 | [SdkDashboardLoadEvent](SdkDashboardLoadEvent.md)                                                   | -                                                                              |
 
-#### Functions
+## Functions
 
 | Function                                                | Description                                                                                                                                                                               |
 | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -73,7 +73,7 @@
 | [StaticQuestion](StaticQuestion.md)                     | A component that renders a static question.                                                                                                                                               |
 | [useCreateDashboardApi](useCreateDashboardApi.md)       | Creates a dashboard                                                                                                                                                                       |
 
-#### InteractiveQuestion
+## InteractiveQuestion
 
 | Name                                                    | Description                                       |
 | ------------------------------------------------------- | ------------------------------------------------- |

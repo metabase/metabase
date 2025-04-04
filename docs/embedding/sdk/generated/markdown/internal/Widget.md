@@ -9,49 +9,49 @@ type Widget = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### hidden?
+### hidden?
 
 ```ts
 optional hidden: boolean;
 ```
 
-***
+---
 
-##### id
+### id
 
 ```ts
 id: string;
 ```
 
-***
+---
 
-##### props
+### props
 
 ```ts
 props: Record<string, unknown>;
 ```
 
-***
+---
 
-##### section
+### section
 
 ```ts
 section: string;
 ```
 
-***
+---
 
-##### title?
+### title?
 
 ```ts
 optional title: string;
 ```
 
-***
+---
 
-##### widget
+### widget
 
 ```ts
 widget: () => JSX.Element | null | undefined;

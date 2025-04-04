@@ -10,57 +10,57 @@ type Join = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### alias?
+### alias?
 
 ```ts
 optional alias: JoinAlias;
 ```
 
-***
+---
 
-##### condition
+### condition
 
 ```ts
 condition: JoinCondition;
 ```
 
-***
+---
 
-##### fields?
+### fields?
 
 ```ts
 optional fields: JoinFields;
 ```
 
-***
+---
 
-##### ident?
+### ident?
 
 ```ts
 optional ident: string;
 ```
 
-***
+---
 
-##### source-query?
+### source-query?
 
 ```ts
 optional source-query: StructuredQuery;
 ```
 
-***
+---
 
-##### source-table?
+### source-table?
 
 ```ts
 optional source-table: TableId;
 ```
 
-***
+---
 
-##### strategy?
+### strategy?
 
 ```ts
 optional strategy: JoinStrategy;

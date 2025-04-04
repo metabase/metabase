@@ -14,9 +14,9 @@ type BaseInteractiveQuestionProps = InteractiveQuestionQuestionIdProps & {
   >;
 ```
 
-#### Type declaration
+## Type declaration
 
-| Name        | Type                                                                                                      | Description                                      |
-| ----------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `children?` | `ReactNode`                                                                                               | The children of the MetabaseProvider component.s |
-| `plugins?`  | [`InteractiveQuestionProviderProps`](internal/InteractiveQuestionProviderProps.md)\[`"componentPlugins"`] | -                                                |
+| Name        | Type                                                                                                       | Description                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `children?` | `ReactNode`                                                                                                | The children of the MetabaseProvider component.s |
+| `plugins?`  | [`InteractiveQuestionProviderProps`](internal/InteractiveQuestionProviderProps.md)\[`"componentPlugins"`\] | -                                                |

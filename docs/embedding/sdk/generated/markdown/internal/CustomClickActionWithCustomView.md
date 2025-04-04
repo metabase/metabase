@@ -4,7 +4,7 @@ type CustomClickActionWithCustomView = CustomClickActionBase & {
 };
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name   | Type                                                                                               |
 | ------ | -------------------------------------------------------------------------------------------------- |

@@ -4,7 +4,7 @@ type DefaultClickAction = ClickActionBase & {
 } & AlwaysDefaultClickActionSubAction;
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name      | Type   |
 | --------- | ------ |

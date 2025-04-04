@@ -5,17 +5,17 @@ type PasswordComplexity = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### digit?
+### digit?
 
 ```ts
 optional digit: number;
 ```
 
-***
+---
 
-##### total?
+### total?
 
 ```ts
 optional total: number;

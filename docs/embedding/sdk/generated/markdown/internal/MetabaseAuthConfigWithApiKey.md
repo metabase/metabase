@@ -5,7 +5,7 @@ type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
 };
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name               | Type     |
 | ------------------ | -------- |

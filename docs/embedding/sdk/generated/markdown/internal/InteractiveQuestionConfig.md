@@ -22,9 +22,9 @@ type InteractiveQuestionConfig = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### componentPlugins?
+### componentPlugins?
 
 ```ts
 optional componentPlugins: MetabasePluginsConfig;
@@ -32,9 +32,9 @@ optional componentPlugins: MetabasePluginsConfig;
 
 Additional mapper function to override or add drill-down menu
 
-***
+---
 
-##### entityTypeFilter?
+### entityTypeFilter?
 
 ```ts
 optional entityTypeFilter: EntityTypeFilterKeys[];
@@ -42,9 +42,9 @@ optional entityTypeFilter: EntityTypeFilterKeys[];
 
 An array that specifies which entity types are available in the data picker
 
-***
+---
 
-##### initialSqlParameters?
+### initialSqlParameters?
 
 ```ts
 optional initialSqlParameters: ParameterValues;
@@ -52,9 +52,9 @@ optional initialSqlParameters: ParameterValues;
 
 Initial values for the SQL parameters.
 
-***
+---
 
-##### isSaveEnabled?
+### isSaveEnabled?
 
 ```ts
 optional isSaveEnabled: boolean;
@@ -62,9 +62,9 @@ optional isSaveEnabled: boolean;
 
 Whether to show the save button.
 
-***
+---
 
-##### onBeforeSave()?
+### onBeforeSave()?
 
 ```ts
 optional onBeforeSave: (question: MetabaseQuestion | undefined, context: {
@@ -74,21 +74,21 @@ optional onBeforeSave: (question: MetabaseQuestion | undefined, context: {
 
 A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`
 
-###### Parameters
+#### Parameters
 
 | Parameter               | Type                                                        |
 | ----------------------- | ----------------------------------------------------------- |
 | `question`              | [`MetabaseQuestion`](../MetabaseQuestion.md) \| `undefined` |
-| `context`               | { `isNewQuestion`: `boolean`; }                             |
+| `context`               | \{ `isNewQuestion`: `boolean`; \}                           |
 | `context.isNewQuestion` | `boolean`                                                   |
 
-###### Returns
+#### Returns
 
-`Promise`<`void`>
+`Promise`\<`void`\>
 
-***
+---
 
-##### onNavigateBack()?
+### onNavigateBack()?
 
 ```ts
 optional onNavigateBack: () => void;
@@ -96,13 +96,13 @@ optional onNavigateBack: () => void;
 
 A callback function that triggers when a user clicks the back button.
 
-###### Returns
+#### Returns
 
 `void`
 
-***
+---
 
-##### onSave()?
+### onSave()?
 
 ```ts
 optional onSave: (question: MetabaseQuestion | undefined, context: {
@@ -112,21 +112,21 @@ optional onSave: (question: MetabaseQuestion | undefined, context: {
 
 A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`
 
-###### Parameters
+#### Parameters
 
 | Parameter               | Type                                                        |
 | ----------------------- | ----------------------------------------------------------- |
 | `question`              | [`MetabaseQuestion`](../MetabaseQuestion.md) \| `undefined` |
-| `context`               | { `isNewQuestion`: `boolean`; }                             |
+| `context`               | \{ `isNewQuestion`: `boolean`; \}                           |
 | `context.isNewQuestion` | `boolean`                                                   |
 
-###### Returns
+#### Returns
 
 `void`
 
-***
+---
 
-##### targetCollection?
+### targetCollection?
 
 ```ts
 optional targetCollection: SdkCollectionId;
@@ -134,9 +134,9 @@ optional targetCollection: SdkCollectionId;
 
 The collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.
 
-***
+---
 
-##### withDownloads?
+### withDownloads?
 
 ```ts
 optional withDownloads: boolean;

@@ -6,10 +6,10 @@ type StoreDashboard = Omit<MetabaseDashboard, "dashcards" | "tabs"> & {
 };
 ```
 
-#### Type declaration
+## Type declaration
 
-| Name        | Type                                           |
-| ----------- | ---------------------------------------------- |
-| `dashcards` | [`DashCardId`](DashCardId.md)\[]               |
-| `isDirty?`  | `boolean`                                      |
-| `tabs?`     | [`StoreDashboardTab`](StoreDashboardTab.md)\[] |
+| Name        | Type                                          |
+| ----------- | --------------------------------------------- |
+| `dashcards` | [`DashCardId`](DashCardId.md)[]               |
+| `isDirty?`  | `boolean`                                     |
+| `tabs?`     | [`StoreDashboardTab`](StoreDashboardTab.md)[] |

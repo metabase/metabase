@@ -6,25 +6,25 @@ type AdminPath = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### key
+### key
 
 ```ts
 key: AdminPathKey;
 ```
 
-***
+---
 
-##### name
+### name
 
 ```ts
 name: string;
 ```
 
-***
+---
 
-##### path
+### path
 
 ```ts
 path: string;

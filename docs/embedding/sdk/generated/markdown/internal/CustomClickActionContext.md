@@ -5,21 +5,21 @@ type CustomClickActionContext = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### closePopover()
+### closePopover()
 
 ```ts
 closePopover: () => void;
 ```
 
-###### Returns
+#### Returns
 
 `void`
 
-***
+---
 
-##### dispatch
+### dispatch
 
 ```ts
 dispatch: Dispatch;

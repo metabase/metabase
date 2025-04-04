@@ -1,12 +1,12 @@
-#### Extended by
+## Extended by
 
-* [`SmartScalarComparisonAnotherColumn`](SmartScalarComparisonAnotherColumn.md)
-* [`SmartScalarComparisonPreviousValue`](SmartScalarComparisonPreviousValue.md)
-* [`SmartScalarComparisonPreviousPeriod`](SmartScalarComparisonPreviousPeriod.md)
-* [`SmartScalarComparisonPeriodsAgo`](SmartScalarComparisonPeriodsAgo.md)
-* [`SmartScalarComparisonStaticNumber`](SmartScalarComparisonStaticNumber.md)
+- [`SmartScalarComparisonAnotherColumn`](SmartScalarComparisonAnotherColumn.md)
+- [`SmartScalarComparisonPreviousValue`](SmartScalarComparisonPreviousValue.md)
+- [`SmartScalarComparisonPreviousPeriod`](SmartScalarComparisonPreviousPeriod.md)
+- [`SmartScalarComparisonPeriodsAgo`](SmartScalarComparisonPeriodsAgo.md)
+- [`SmartScalarComparisonStaticNumber`](SmartScalarComparisonStaticNumber.md)
 
-#### Properties
+## Properties
 
 | Property                 | Type                                                        |
 | ------------------------ | ----------------------------------------------------------- |

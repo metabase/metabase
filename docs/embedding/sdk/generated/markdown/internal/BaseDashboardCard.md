@@ -14,7 +14,7 @@ type BaseDashboardCard = DashboardCardLayoutAttrs & {
 };
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name                          | Type                                                                |
 | ----------------------------- | ------------------------------------------------------------------- |

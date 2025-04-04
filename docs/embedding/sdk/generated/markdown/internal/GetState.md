@@ -2,6 +2,6 @@
 type GetState = () => State;
 ```
 
-#### Returns
+## Returns
 
 [`State`](State.md)

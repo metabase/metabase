@@ -6,16 +6,16 @@ function CreateQuestion(
 ): Element;
 ```
 
-#### Parameters
+## Parameters
 
-| Parameter | Type                                                                                                                 |
-| --------- | -------------------------------------------------------------------------------------------------------------------- |
-| `props`?  | `Partial`<`Omit`<[`BaseInteractiveQuestionProps`](BaseInteractiveQuestionProps.md), `"questionId"` \| `"children"`>> |
+| Parameter | Type                                                                                                                     |
+| --------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `props`?  | `Partial`\<`Omit`\<[`BaseInteractiveQuestionProps`](BaseInteractiveQuestionProps.md), `"questionId"` \| `"children"`\>\> |
 
-#### Returns
+## Returns
 
 `Element`
 
-#### Deprecated
+## Deprecated
 
 Use `<InteractiveQuestion questionId="new" />` instead.

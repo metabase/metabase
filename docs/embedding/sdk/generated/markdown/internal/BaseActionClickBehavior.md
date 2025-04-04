@@ -1,10 +1,10 @@
-#### Extended by
+## Extended by
 
-* [`InsertActionClickBehavior`](InsertActionClickBehavior.md)
-* [`UpdateActionClickBehavior`](UpdateActionClickBehavior.md)
-* [`DeleteActionClickBehavior`](DeleteActionClickBehavior.md)
+- [`InsertActionClickBehavior`](InsertActionClickBehavior.md)
+- [`UpdateActionClickBehavior`](UpdateActionClickBehavior.md)
+- [`DeleteActionClickBehavior`](DeleteActionClickBehavior.md)
 
-#### Properties
+## Properties
 
 | Property                             | Type       |
 | ------------------------------------ | ---------- |

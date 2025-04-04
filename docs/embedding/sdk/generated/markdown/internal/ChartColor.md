@@ -8,15 +8,15 @@ type ChartColor =
     };
 ```
 
-#### Type declaration
+## Type declaration
 
 `string`
 
-{
+\{
 `base`: `string`;
 `shade`: `string`;
 `tint`: `string`;
-}
+\}
 
 | Name     | Type     | Description                         |
 | -------- | -------- | ----------------------------------- |

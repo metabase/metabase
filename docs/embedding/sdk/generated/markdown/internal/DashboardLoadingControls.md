@@ -6,25 +6,25 @@ type DashboardLoadingControls = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### documentTitle?
+### documentTitle?
 
 ```ts
 optional documentTitle: string;
 ```
 
-***
+---
 
-##### isLoading
+### isLoading
 
 ```ts
 isLoading: boolean;
 ```
 
-***
+---
 
-##### showLoadCompleteFavicon?
+### showLoadCompleteFavicon?
 
 ```ts
 optional showLoadCompleteFavicon: boolean;

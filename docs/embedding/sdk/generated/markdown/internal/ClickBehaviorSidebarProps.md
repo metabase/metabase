@@ -4,9 +4,9 @@ type ClickBehaviorSidebarProps = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### dashcardId
+### dashcardId
 
 ```ts
 dashcardId: DashCardId;

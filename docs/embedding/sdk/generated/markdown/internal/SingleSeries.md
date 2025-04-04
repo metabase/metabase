@@ -4,7 +4,7 @@ type SingleSeries = {
 } & Pick<Dataset, "data" | "error">;
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name   | Type              |
 | ------ | ----------------- |

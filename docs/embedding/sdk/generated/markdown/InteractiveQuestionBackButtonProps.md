@@ -5,6 +5,6 @@ type InteractiveQuestionBackButtonProps = Omit<
 >;
 ```
 
-#### Remarks
+## Remarks
 
 Uses [Mantine ActionIcon props](https://v7.mantine.dev/core/action-icon/) under the hood

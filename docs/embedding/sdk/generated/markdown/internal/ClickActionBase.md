@@ -14,93 +14,93 @@ type ClickActionBase = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### buttonType
+### buttonType
 
 ```ts
 buttonType: ClickActionButtonType;
 ```
 
-***
+---
 
-##### extra()?
+### extra()?
 
 ```ts
 optional extra: () => Record<string, unknown>;
 ```
 
-###### Returns
+#### Returns
 
-`Record`<`string`, `unknown`>
+`Record`\<`string`, `unknown`\>
 
-***
+---
 
-##### icon?
+### icon?
 
 ```ts
 optional icon: IconName;
 ```
 
-***
+---
 
-##### iconText?
+### iconText?
 
 ```ts
 optional iconText: string;
 ```
 
-***
+---
 
-##### name
+### name
 
 ```ts
 name: string;
 ```
 
-***
+---
 
-##### section
+### section
 
 ```ts
 section: ClickActionSection;
 ```
 
-***
+---
 
-##### sectionDirection?
+### sectionDirection?
 
 ```ts
 optional sectionDirection: ClickActionSectionDirection;
 ```
 
-***
+---
 
-##### sectionTitle?
+### sectionTitle?
 
 ```ts
 optional sectionTitle: string;
 ```
 
-***
+---
 
-##### subTitle?
+### subTitle?
 
 ```ts
 optional subTitle: React_2.ReactNode;
 ```
 
-***
+---
 
-##### title?
+### title?
 
 ```ts
 optional title: React_2.ReactNode;
 ```
 
-***
+---
 
-##### tooltip?
+### tooltip?
 
 ```ts
 optional tooltip: string;

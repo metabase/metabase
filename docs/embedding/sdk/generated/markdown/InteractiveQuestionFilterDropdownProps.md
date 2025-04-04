@@ -4,9 +4,9 @@ type InteractiveQuestionFilterDropdownProps = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### withColumnItemIcon?
+### withColumnItemIcon?
 
 ```ts
 optional withColumnItemIcon: boolean;

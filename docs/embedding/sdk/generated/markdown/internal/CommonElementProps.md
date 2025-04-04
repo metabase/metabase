@@ -5,9 +5,9 @@ type CommonElementProps = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### className?
+### className?
 
 ```ts
 optional className: string;
@@ -15,9 +15,9 @@ optional className: string;
 
 A custom class name to be added to the root element.
 
-***
+---
 
-##### style?
+### style?
 
 ```ts
 optional style: CSSProperties;

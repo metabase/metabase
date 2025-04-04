@@ -6,25 +6,25 @@ type TabDeletion = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### id
+### id
 
 ```ts
 id: TabDeletionId;
 ```
 
-***
+---
 
-##### removedDashCardIds
+### removedDashCardIds
 
 ```ts
 removedDashCardIds: DashCardId[];
 ```
 
-***
+---
 
-##### tabId
+### tabId
 
 ```ts
 tabId: DashboardTabId;

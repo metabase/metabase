@@ -1,11 +1,11 @@
-#### Properties
+## Properties
 
 | Property                                                         | Type                                                |
 | ---------------------------------------------------------------- | --------------------------------------------------- |
 | <a id="bcc-enabled"></a> `bcc-enabled?`                          | `boolean`                                           |
 | <a id="ee-openai-api-key"></a> `ee-openai-api-key?`              | `string`                                            |
 | <a id="openai-api-key"></a> `openai-api-key`                     | `null` \| `string`                                  |
-| <a id="openai-available-models"></a> `openai-available-models?`  | [`OpenAiModel`](OpenAiModel.md)\[]                  |
+| <a id="openai-available-models"></a> `openai-available-models?`  | [`OpenAiModel`](OpenAiModel.md)[]                   |
 | <a id="openai-model"></a> `openai-model`                         | `null` \| `string`                                  |
 | <a id="openai-organization"></a> `openai-organization`           | `null` \| `string`                                  |
 | <a id="session-cookie-samesite"></a> `session-cookie-samesite`   | [`SessionCookieSameSite`](SessionCookieSameSite.md) |

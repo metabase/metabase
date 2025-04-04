@@ -2,12 +2,12 @@
 type SdkErrorComponent = ({ message }: SdkErrorComponentProps) => JSX_3.Element;
 ```
 
-#### Parameters
+## Parameters
 
 | Parameter      | Type                                                  |
 | -------------- | ----------------------------------------------------- |
 | `{ message, }` | [`SdkErrorComponentProps`](SdkErrorComponentProps.md) |
 
-#### Returns
+## Returns
 
 `JSX_3.Element`

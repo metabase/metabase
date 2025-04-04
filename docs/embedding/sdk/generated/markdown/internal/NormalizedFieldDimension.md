@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* `Omit`<[`FieldDimension`](FieldDimension.md), `"human_readable_field"`>
+- `Omit`\<[`FieldDimension`](FieldDimension.md), `"human_readable_field"`\>
 
-#### Properties
+## Properties
 
 | Property                                                        | Type                                          | Inherited from                 |
 | --------------------------------------------------------------- | --------------------------------------------- | ------------------------------ |

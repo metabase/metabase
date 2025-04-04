@@ -8,41 +8,41 @@ type DatabasePermissions = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### create-queries?
+### create-queries?
 
 ```ts
 optional create-queries: NativePermissions;
 ```
 
-***
+---
 
-##### data-model?
+### data-model?
 
 ```ts
 optional data-model: DataModelPermissions;
 ```
 
-***
+---
 
-##### details?
+### details?
 
 ```ts
 optional details: DetailsPermissions;
 ```
 
-***
+---
 
-##### download?
+### download?
 
 ```ts
 optional download: DownloadAccessPermission;
 ```
 
-***
+---
 
-##### view-data
+### view-data
 
 ```ts
 view-data: SchemasPermissions;

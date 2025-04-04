@@ -1,12 +1,12 @@
-#### Extended by
+## Extended by
 
-* [`DoNotCacheStrategy`](DoNotCacheStrategy.md)
-* [`AdaptiveStrategy`](AdaptiveStrategy.md)
-* [`DurationStrategy`](DurationStrategy.md)
-* [`InheritStrategy`](InheritStrategy.md)
-* [`ScheduleStrategy`](ScheduleStrategy.md)
+- [`DoNotCacheStrategy`](DoNotCacheStrategy.md)
+- [`AdaptiveStrategy`](AdaptiveStrategy.md)
+- [`DurationStrategy`](DurationStrategy.md)
+- [`InheritStrategy`](InheritStrategy.md)
+- [`ScheduleStrategy`](ScheduleStrategy.md)
 
-#### Properties
+## Properties
 
 | Property                 | Type                                        |
 | ------------------------ | ------------------------------------------- |

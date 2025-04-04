@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* `Omit`<[`Field_2`](Field_2.md), `"target"` | `"table"` | `"name_field"` | `"dimensions"`>
+- `Omit`\<[`Field_2`](Field_2.md), `"target"` \| `"table"` \| `"name_field"` \| `"dimensions"`\>
 
-#### Properties
+## Properties
 
 | Property                                                          | Type                                                      | Inherited from                  |
 | ----------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------- |
@@ -13,7 +13,7 @@
 | <a id="created_at"></a> `created_at`                              | `string`                                                  | `Omit.created_at`               |
 | <a id="default_dimension_option"></a> `default_dimension_option?` | [`FieldDimensionOption`](FieldDimensionOption.md)         | `Omit.default_dimension_option` |
 | <a id="description"></a> `description`                            | `null` \| `string`                                        | `Omit.description`              |
-| <a id="dimension_options"></a> `dimension_options?`               | [`FieldDimensionOption`](FieldDimensionOption.md)\[]      | `Omit.dimension_options`        |
+| <a id="dimension_options"></a> `dimension_options?`               | [`FieldDimensionOption`](FieldDimensionOption.md)[]       | `Omit.dimension_options`        |
 | <a id="dimensions"></a> `dimensions?`                             | [`NormalizedFieldDimension`](NormalizedFieldDimension.md) | -                               |
 | <a id="display_name"></a> `display_name`                          | `string`                                                  | `Omit.display_name`             |
 | <a id="effective_type"></a> `effective_type?`                     | `string`                                                  | `Omit.effective_type`           |
@@ -29,12 +29,12 @@
 | <a id="min_value"></a> `min_value?`                               | `number`                                                  | `Omit.min_value`                |
 | <a id="name"></a> `name`                                          | `string`                                                  | `Omit.name`                     |
 | <a id="name_field"></a> `name_field?`                             | `number`                                                  | -                               |
-| <a id="nfc_path"></a> `nfc_path`                                  | `null` \| `string`\[]                                     | `Omit.nfc_path`                 |
+| <a id="nfc_path"></a> `nfc_path`                                  | `null` \| `string`[]                                      | `Omit.nfc_path`                 |
 | <a id="parent_id"></a> `parent_id?`                               | `number`                                                  | `Omit.parent_id`                |
 | <a id="points_of_interest"></a> `points_of_interest?`             | `string`                                                  | `Omit.points_of_interest`       |
 | <a id="position"></a> `position`                                  | `number`                                                  | `Omit.position`                 |
 | <a id="preview_display"></a> `preview_display`                    | `boolean`                                                 | `Omit.preview_display`          |
-| <a id="remappings"></a> `remappings?`                             | [`FieldValue`](FieldValue.md)\[]                          | `Omit.remappings`               |
+| <a id="remappings"></a> `remappings?`                             | [`FieldValue`](FieldValue.md)[]                           | `Omit.remappings`               |
 | <a id="semantic_type"></a> `semantic_type`                        | `null` \| `string`                                        | `Omit.semantic_type`            |
 | <a id="settings"></a> `settings?`                                 | [`FieldFormattingSettings`](FieldFormattingSettings.md)   | `Omit.settings`                 |
 | <a id="table"></a> `table?`                                       | [`TableId`](TableId.md)                                   | -                               |
@@ -42,5 +42,5 @@
 | <a id="target"></a> `target?`                                     | `number`                                                  | -                               |
 | <a id="uniqueid"></a> `uniqueId`                                  | `string`                                                  | -                               |
 | <a id="updated_at"></a> `updated_at`                              | `string`                                                  | `Omit.updated_at`               |
-| <a id="values"></a> `values?`                                     | [`FieldValue`](FieldValue.md)\[]                          | `Omit.values`                   |
+| <a id="values"></a> `values?`                                     | [`FieldValue`](FieldValue.md)[]                           | `Omit.values`                   |
 | <a id="visibility_type"></a> `visibility_type`                    | [`FieldVisibilityType`](FieldVisibilityType.md)           | `Omit.visibility_type`          |

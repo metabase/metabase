@@ -5,17 +5,17 @@ type EditParameterSidebarProps = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### dashcardId?
+### dashcardId?
 
 ```ts
 optional dashcardId: DashCardId;
 ```
 
-***
+---
 
-##### parameterId
+### parameterId
 
 ```ts
 parameterId: ParameterId;

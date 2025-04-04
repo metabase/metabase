@@ -25,177 +25,177 @@ type Table = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### active
+### active
 
 ```ts
 active: boolean;
 ```
 
-***
+---
 
-##### caveats?
+### caveats?
 
 ```ts
 optional caveats: string;
 ```
 
-***
+---
 
-##### created\_at
+### created_at
 
 ```ts
 created_at: string;
 ```
 
-***
+---
 
-##### db?
+### db?
 
 ```ts
 optional db: Database;
 ```
 
-***
+---
 
-##### db\_id
+### db_id
 
 ```ts
 db_id: DatabaseId;
 ```
 
-***
+---
 
-##### description
+### description
 
 ```ts
 description: string | null;
 ```
 
-***
+---
 
-##### dimension\_options?
+### dimension_options?
 
 ```ts
 optional dimension_options: Record<string, FieldDimensionOption>;
 ```
 
-***
+---
 
-##### display\_name
+### display_name
 
 ```ts
 display_name: string;
 ```
 
-***
+---
 
-##### field\_order
+### field_order
 
 ```ts
 field_order: TableFieldOrder;
 ```
 
-***
+---
 
-##### fields?
+### fields?
 
 ```ts
 optional fields: Field_2[];
 ```
 
-***
+---
 
-##### fks?
+### fks?
 
 ```ts
 optional fks: ForeignKey[];
 ```
 
-***
+---
 
-##### id
+### id
 
 ```ts
 id: TableId;
 ```
 
-***
+---
 
-##### initial\_sync\_status
+### initial_sync_status
 
 ```ts
 initial_sync_status: InitialSyncStatus;
 ```
 
-***
+---
 
-##### is\_upload
+### is_upload
 
 ```ts
 is_upload: boolean;
 ```
 
-***
+---
 
-##### metrics?
+### metrics?
 
 ```ts
 optional metrics: Card[];
 ```
 
-***
+---
 
-##### name
+### name
 
 ```ts
 name: string;
 ```
 
-***
+---
 
-##### points\_of\_interest?
+### points_of_interest?
 
 ```ts
 optional points_of_interest: string;
 ```
 
-***
+---
 
-##### schema
+### schema
 
 ```ts
 schema: SchemaName;
 ```
 
-***
+---
 
-##### segments?
+### segments?
 
 ```ts
 optional segments: Segment[];
 ```
 
-***
+---
 
-##### type?
+### type?
 
 ```ts
 optional type: CardType;
 ```
 
-***
+---
 
-##### updated\_at
+### updated_at
 
 ```ts
 updated_at: string;
 ```
 
-***
+---
 
-##### visibility\_type
+### visibility_type
 
 ```ts
 visibility_type: TableVisibilityType;

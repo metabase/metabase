@@ -9,49 +9,49 @@ type IndexedEntity = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### id
+### id
 
 ```ts
 id: number;
 ```
 
-***
+---
 
-##### model
+### model
 
 ```ts
 model: "indexed-entity";
 ```
 
-***
+---
 
-##### model\_id
+### model_id
 
 ```ts
 model_id: CardId;
 ```
 
-***
+---
 
-##### model\_name
+### model_name
 
 ```ts
 model_name: string;
 ```
 
-***
+---
 
-##### name
+### name
 
 ```ts
 name: string;
 ```
 
-***
+---
 
-##### pk\_ref
+### pk_ref
 
 ```ts
 pk_ref: FieldReference;

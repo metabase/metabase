@@ -1,8 +1,8 @@
-#### Extended by
+## Extended by
 
-* [`Parameter`](Parameter.md)
+- [`Parameter`](Parameter.md)
 
-#### Properties
+## Properties
 
 | Property                                                  | Type                                          |
 | --------------------------------------------------------- | --------------------------------------------- |

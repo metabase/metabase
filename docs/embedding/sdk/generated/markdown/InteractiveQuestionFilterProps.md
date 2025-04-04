@@ -4,9 +4,9 @@ type InteractiveQuestionFilterProps = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### withColumnItemIcon?
+### withColumnItemIcon?
 
 ```ts
 optional withColumnItemIcon: boolean;

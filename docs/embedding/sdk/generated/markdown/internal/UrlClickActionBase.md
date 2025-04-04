@@ -5,22 +5,22 @@ type UrlClickActionBase = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### ignoreSiteUrl?
+### ignoreSiteUrl?
 
 ```ts
 optional ignoreSiteUrl: boolean;
 ```
 
-***
+---
 
-##### url()
+### url()
 
 ```ts
 url: () => string;
 ```
 
-###### Returns
+#### Returns
 
 `string`

@@ -4,9 +4,9 @@ type TimeIntervalFilterOptions = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### include-current?
+### include-current?
 
 ```ts
 optional include-current: boolean;

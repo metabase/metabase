@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* `Omit`<[`Segment`](Segment.md), `"table"`>
+- `Omit`\<[`Segment`](Segment.md), `"table"`\>
 
-#### Properties
+## Properties
 
 | Property                                                     | Type                                    | Inherited from                |
 | ------------------------------------------------------------ | --------------------------------------- | ----------------------------- |

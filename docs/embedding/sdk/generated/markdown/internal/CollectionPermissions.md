@@ -2,7 +2,7 @@
 type CollectionPermissions = {};
 ```
 
-#### Index Signature
+## Index Signature
 
 ```ts
 [key: string | number]: Partial<Record<CollectionId, CollectionPermission>>

@@ -5,9 +5,9 @@ type SdkEventHandlersConfig = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### onDashboardLoad?
+### onDashboardLoad?
 
 ```ts
 optional onDashboardLoad: SdkDashboardLoadEvent;
@@ -15,9 +15,9 @@ optional onDashboardLoad: SdkDashboardLoadEvent;
 
 Triggers when a dashboard loads with all visible cards and their content
 
-***
+---
 
-##### onDashboardLoadWithoutCards?
+### onDashboardLoadWithoutCards?
 
 ```ts
 optional onDashboardLoadWithoutCards: SdkDashboardLoadEvent;

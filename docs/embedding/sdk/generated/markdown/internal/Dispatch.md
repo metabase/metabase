@@ -2,18 +2,18 @@
 type Dispatch<T> = (action: T) => unknown | Promise<unknown>;
 ```
 
-#### Type Parameters
+## Type Parameters
 
 | Type Parameter | Default type |
 | -------------- | ------------ |
 | `T`            | `any`        |
 
-#### Parameters
+## Parameters
 
 | Parameter | Type |
 | --------- | ---- |
 | `action`  | `T`  |
 
-#### Returns
+## Returns
 
-`unknown` | `Promise`<`unknown`>
+`unknown` \| `Promise`\<`unknown`\>

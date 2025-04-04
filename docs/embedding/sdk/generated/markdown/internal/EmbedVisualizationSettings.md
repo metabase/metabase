@@ -4,9 +4,9 @@ type EmbedVisualizationSettings = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### iframe?
+### iframe?
 
 ```ts
 optional iframe: string;

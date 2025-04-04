@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* [`CacheStrategyBase`](CacheStrategyBase.md)
+- [`CacheStrategyBase`](CacheStrategyBase.md)
 
-#### Properties
+## Properties
 
 | Property                                                  | Type     | Overrides                                                                       |
 | --------------------------------------------------------- | -------- | ------------------------------------------------------------------------------- |

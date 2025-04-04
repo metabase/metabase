@@ -8,41 +8,41 @@ type ModerationReview = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### created\_at
+### created_at
 
 ```ts
 created_at: string;
 ```
 
-***
+---
 
-##### moderator\_id
+### moderator_id
 
 ```ts
 moderator_id: number;
 ```
 
-***
+---
 
-##### most\_recent?
+### most_recent?
 
 ```ts
 optional most_recent: boolean;
 ```
 
-***
+---
 
-##### status
+### status
 
 ```ts
 status: ModerationReviewStatus;
 ```
 
-***
+---
 
-##### user
+### user
 
 ```ts
 user: BaseUser;

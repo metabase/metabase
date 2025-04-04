@@ -1,8 +1,8 @@
-#### Extended by
+## Extended by
 
-* [`User`](User.md)
+- [`User`](User.md)
 
-#### Properties
+## Properties
 
 | Property                                 | Type               |
 | ---------------------------------------- | ------------------ |

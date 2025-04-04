@@ -1,11 +1,11 @@
-#### Type Parameters
+## Type Parameters
 
 | Type Parameter                                       |
 | ---------------------------------------------------- |
-| `Id` *extends* [`SearchResultId`](SearchResultId.md) |
-| `Model` *extends* [`SearchModel`](SearchModel.md)    |
+| `Id` _extends_ [`SearchResultId`](SearchResultId.md) |
+| `Model` _extends_ [`SearchModel`](SearchModel.md)    |
 
-#### Properties
+## Properties
 
 | Property                     | Type     |
 | ---------------------------- | -------- |

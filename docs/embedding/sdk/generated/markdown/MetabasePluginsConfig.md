@@ -5,17 +5,17 @@ type MetabasePluginsConfig = {
 };
 ```
 
-#### Properties
+## Properties
 
-##### dashboard?
+### dashboard?
 
 ```ts
 optional dashboard: MetabaseDashboardPluginsConfig;
 ```
 
-***
+---
 
-##### mapQuestionClickActions?
+### mapQuestionClickActions?
 
 ```ts
 optional mapQuestionClickActions: MetabaseClickActionPluginsConfig;

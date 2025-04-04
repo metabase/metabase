@@ -9,11 +9,11 @@ type VirtualCard = Partial<
 };
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name                     | Type                                                |
 | ------------------------ | --------------------------------------------------- |
-| `dataset_query`          | `Record`<`string`, `never`>                         |
+| `dataset_query`          | `Record`\<`string`, `never`\>                       |
 | `display`                | [`VirtualCardDisplay`](VirtualCardDisplay.md)       |
 | `name`                   | `null`                                              |
 | `visualization_settings` | [`VisualizationSettings`](VisualizationSettings.md) |

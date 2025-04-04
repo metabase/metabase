@@ -8,7 +8,7 @@ function useCreateDashboardApi(): {
 
 Creates a dashboard
 
-#### Returns
+## Returns
 
 ```ts
 {
@@ -17,6 +17,6 @@ Creates a dashboard
 }
 ```
 
-| Name              | Type                                                                                                                       | Description |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| `createDashboard` | (`options`: [`CreateDashboardValues`](CreateDashboardValues.md)) => `Promise`<[`MetabaseDashboard`](MetabaseDashboard.md)> |             |
+| Name              | Type                                                                                                                         | Description |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `createDashboard` | (`options`: [`CreateDashboardValues`](CreateDashboardValues.md)) => `Promise`\<[`MetabaseDashboard`](MetabaseDashboard.md)\> |             |

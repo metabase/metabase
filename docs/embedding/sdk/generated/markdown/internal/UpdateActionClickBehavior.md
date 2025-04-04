@@ -1,8 +1,8 @@
-#### Extends
+## Extends
 
-* [`BaseActionClickBehavior`](BaseActionClickBehavior.md)
+- [`BaseActionClickBehavior`](BaseActionClickBehavior.md)
 
-#### Properties
+## Properties
 
 | Property                                                     | Type       | Overrides                                                                                                     | Inherited from                                                                                    |
 | ------------------------------------------------------------ | ---------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |

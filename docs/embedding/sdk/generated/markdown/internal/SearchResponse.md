@@ -7,19 +7,19 @@ type SearchResponse<Id, Model, Result> = {
 } & PaginationResponse;
 ```
 
-#### Type declaration
+## Type declaration
 
 | Name               | Type                                    |
 | ------------------ | --------------------------------------- |
-| `available_models` | [`SearchModel`](SearchModel.md)\[]      |
-| `data`             | `Result`\[]                             |
-| `models`           | `Model`\[] \| `null`                    |
+| `available_models` | [`SearchModel`](SearchModel.md)[]       |
+| `data`             | `Result`[]                              |
+| `models`           | `Model`[] \| `null`                     |
 | `table_db_id`      | [`DatabaseId`](DatabaseId.md) \| `null` |
 
-#### Type Parameters
+## Type Parameters
 
-| Type Parameter                                                              | Default type                                     |
-| --------------------------------------------------------------------------- | ------------------------------------------------ |
-| `Id` *extends* [`SearchResultId`](SearchResultId.md)                        | [`SearchResultId`](SearchResultId.md)            |
-| `Model` *extends* [`SearchModel`](SearchModel.md)                           | [`SearchModel`](SearchModel.md)                  |
-| `Result` *extends* [`BaseSearchResult`](BaseSearchResult.md)<`Id`, `Model`> | [`SearchResult`](SearchResult.md)<`Id`, `Model`> |
+| Type Parameter                                                                | Default type                                       |
+| ----------------------------------------------------------------------------- | -------------------------------------------------- |
+| `Id` _extends_ [`SearchResultId`](SearchResultId.md)                          | [`SearchResultId`](SearchResultId.md)              |
+| `Model` _extends_ [`SearchModel`](SearchModel.md)                             | [`SearchModel`](SearchModel.md)                    |
+| `Result` _extends_ [`BaseSearchResult`](BaseSearchResult.md)\<`Id`, `Model`\> | [`SearchResult`](SearchResult.md)\<`Id`, `Model`\> |
