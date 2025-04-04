@@ -6,6 +6,7 @@ import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/setting
 import {
   getVisualizerComputedSettings,
   getVisualizerRawSeries,
+  getVisualizerTransformedSeries,
 } from "metabase/visualizer/selectors";
 import { updateSettings } from "metabase/visualizer/visualizer.slice";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -18,7 +19,7 @@ const HIDDEN_SETTING_WIDGETS = [
 
 export function VizSettingsSidebar({ className }: { className?: string }) {
   const series = useSelector(getVisualizerRawSeries);
-  const transformedSeries = useSelector(getVisualizerRawSeries);
+  const transformedSeries = useSelector(getVisualizerTransformedSeries);
   const settings = useSelector(getVisualizerComputedSettings);
   const dispatch = useDispatch();
 
