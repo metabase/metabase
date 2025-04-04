@@ -22,7 +22,12 @@ export default {
 
 const Template: StoryFn<MetabotQuestionProps> = () => {
   return (
-    <Box bg="var(--mb-color-background)" mih="100vh" bd="1px solid #000">
+    <Box
+      bg="var(--mb-color-background)"
+      mih="100vh"
+      bd="1px solid #000"
+      pt="2rem"
+    >
       <MetabotQuestion />
     </Box>
   );

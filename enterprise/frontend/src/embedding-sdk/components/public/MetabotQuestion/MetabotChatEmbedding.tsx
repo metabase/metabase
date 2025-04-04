@@ -2,7 +2,14 @@ import cx from "classnames";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Icon, Textarea, UnstyledButton } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  Icon,
+  Textarea,
+  Tooltip,
+  UnstyledButton,
+} from "metabase/ui";
 import { MetabotIcon } from "metabase-enterprise/metabot/components/MetabotIcon";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
@@ -42,10 +49,6 @@ export const MetabotChatEmbedding = ({
       .catch((err) => console.error(err))
       .finally(() => textareaRef.current?.focus());
   };
-
-  const handleClose = useCallback(() => {
-    resetInput();
-  }, [resetInput]);
 
   const [inputExpanded, setInputExpanded] = useState(false);
   const handleMaybeExpandInput = () => {
@@ -135,10 +138,14 @@ export const MetabotChatEmbedding = ({
         />
         <UnstyledButton
           h="1rem"
-          onClick={handleClose}
-          data-testid="metabot-close-chat"
+          data-testid="metabot-cancel-request"
+          style={{
+            visibility: metabot.isDoingScience ? "visible" : "hidden",
+          }}
         >
-          <Icon name="close" c="text-light" size="1rem" />
+          <Tooltip label={t`Stop generation`}>
+            <Icon name="stop" c="var(--mb-color-text-primary)" size="1rem" />
+          </Tooltip>
         </UnstyledButton>
       </Flex>
     </Box>
