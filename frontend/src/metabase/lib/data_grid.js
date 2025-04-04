@@ -41,18 +41,19 @@ export function multiLevelPivot(data, settings) {
   const columnSettings = columns.map((column) => settings.column(column));
 
   // pivot tables have a lot of repeated values, so we use memoized formatters for each column
-  const [valueFormatters, topIndexFormatters, leftIndexFormatters] = [
-    valueIndexes,
-    columnIndexes,
-    rowIndexes,
-  ].map((indexes) =>
-    indexes.map((index) =>
-      _.memoize(
-        (value) => formatValue(value, columnSettings[index]),
-        (value) => [value, index].join(),
-      ),
-    ),
-  );
+  // For each column, we need to ensure that date formatting settings are preserved
+  const getFormatterForColumn = (index) => {
+    const columnSetting = columnSettings[index];
+    return _.memoize(
+      (value) => formatValue(value, columnSetting),
+      (value) => [value, index].join(),
+    );
+  };
+
+  // Apply formatters consistently for each column type to ensure date formatting is preserved
+  const valueFormatters = valueIndexes.map(getFormatterForColumn);
+  const topIndexFormatters = columnIndexes.map(getFormatterForColumn);
+  const leftIndexFormatters = rowIndexes.map(getFormatterForColumn);
 
   // makeCellBackgroundGetter is wrapped in another callback because `rows` is
   // computed in CLJS by metabase.pivot.core/get-rows-from-pivot-data, and we
