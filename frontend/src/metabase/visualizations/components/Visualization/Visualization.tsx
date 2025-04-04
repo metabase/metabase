@@ -778,7 +778,6 @@ class Visualization extends PureComponent<
                   isMobile={!!isMobile}
                   isNightMode={!!isNightMode}
                   isObjectDetail={isObjectDetail}
-                  isPlaceholder={isPlaceholder}
                   isPreviewing={isPreviewing}
                   isRawTable={isRawTable}
                   isQueryBuilder={!!isQueryBuilder}

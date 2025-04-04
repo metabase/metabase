@@ -95,7 +95,6 @@ const RowChartVisualization = ({
   settings,
   visualizationIsClickable,
   onVisualizationClick,
-  isPlaceholder,
   hovered,
   headerIcon,
   actionButtons,
@@ -107,7 +106,6 @@ const RowChartVisualization = ({
   showTitle,
   onChangeCardAndRun,
   rawSeries: rawMultipleSeries,
-  series: multipleSeries,
   fontFamily,
   width: outerWidth,
   height: outerHeight,
@@ -116,9 +114,7 @@ const RowChartVisualization = ({
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
   }, []);
-  const [chartSeries] = useMemo(() => {
-    return isPlaceholder ? multipleSeries : rawMultipleSeries;
-  }, [isPlaceholder, multipleSeries, rawMultipleSeries]);
+  const [chartSeries] = rawMultipleSeries;
 
   const data = useMemo(
     () =>
@@ -151,9 +147,9 @@ const RowChartVisualization = ({
 
   useEffect(
     function warnOnRendered() {
-      !isPlaceholder && onRender({ warnings: chartWarnings });
+      onRender({ warnings: chartWarnings });
     },
-    [chartWarnings, isPlaceholder, onRender],
+    [chartWarnings, onRender],
   );
 
   const tickFormatters = useMemo(
