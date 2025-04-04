@@ -53,7 +53,7 @@ export function DashboardEmptyState({
     <EmptyStateWrapper isNightMode={isNightMode}>
       <>
         <Stack align="center" maw="25rem" gap="xs">
-          <Title ta="center" order={2}>
+          <Title ta="center" order={3}>
             {isEditing
               ? t`Create a new question or browse your collections for an existing one.`
               : defaultTitle}
@@ -87,7 +87,7 @@ export function DashboardEmptyStateWithoutAddPrompt({
   const title = getDefaultTitle(isDashboardEmpty);
   return (
     <EmptyStateWrapper isNightMode={isNightMode}>
-      <Title ta="center" order={2}>
+      <Title ta="center" order={3}>
         {title}
       </Title>
     </EmptyStateWrapper>

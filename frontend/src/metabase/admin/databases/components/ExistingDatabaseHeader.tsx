@@ -16,7 +16,7 @@ export const ExistingDatabaseHeader = ({
   return (
     <Flex mb="2.75rem" gap="1.25rem" data-testid="database-header-section">
       <Stack gap="sm">
-        <Title>{database?.name}</Title>
+        <Title order={2}>{database?.name}</Title>
         <Flex gap="sm">
           {driverName && (
             <Text size="sm" c="text-medium">

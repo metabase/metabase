@@ -63,7 +63,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
       <Flex px="xl" py="md">
         <UpsellGem size={24} />
         <Stack align="flex-start" gap={0} ml="0.75rem" maw="18.75rem">
-          <Title order={1} lh={1} mb="sm">
+          <Title order={2} lh={1} mb="sm">
             {title}
           </Title>
           <Text lh="xl" mb="lg">
