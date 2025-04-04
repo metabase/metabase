@@ -114,11 +114,13 @@ Enable the collection of anonymous usage data in order to help Metabase improve.
 - Type: string
 - Default: `null`
 
-When set, this API key is required for all API requests.
+When set, this key is required for calls to /notify/ endpoints.
 
-Middleware that enforces validation of the client via the request header X-Metabase-Apikey.
-        If the header is available, then it’s validated against MB_API_KEY.
-        When it matches, the request continues; otherwise it’s blocked with a 403 Forbidden response.
+Middleware that enforces validation of the client via the request header X-Metabase-Apikey for /notify endpoints.
+        If the header is available, then it's validated against MB_API_KEY.
+        When it matches, the request continues; otherwise it's blocked with a 403 Forbidden response.
+        MB_API_KEY is used only for /notify endpoints and isn't the same as Metabase API keys
+        used for authenticating other API requests. MP_API_KEY can be an arbitrary string.
 
 ### `MB_APPLICATION_COLORS`
 

@@ -16,10 +16,10 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.upload :as-alias upload]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.util :as u]))
+   [toucan2.core :as t2]))
 
 (doseq [topic [:event/data-editing-row-create
                :event/data-editing-row-update
