@@ -21,13 +21,13 @@ import Styles from "./MetabotChatEmbedding.module.css";
 const MIN_INPUT_HEIGHT = 42;
 
 interface MetabotChatEmbeddingProps {
-  onResult: (result: Record<string, any> | null) => void;
+  onRedirectUrl: (result: string) => void;
 }
 
 const EMBEDDING_METABOT_ID = "c61bf5f5-1025-47b6-9298-bf1827105bb6";
 
 export const MetabotChatEmbedding = ({
-  onResult,
+  onRedirectUrl,
 }: MetabotChatEmbeddingProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -54,7 +54,17 @@ export const MetabotChatEmbedding = ({
     metabotRequestPromiseRef.current = metabotRequestPromise;
 
     metabotRequestPromise
-      .then(onResult)
+      .then((result) => {
+        const redirectUrl = (
+          result.payload as any
+        )?.payload?.data?.reactions?.find(
+          (reaction: { type: string; url: string }) =>
+            reaction.type === "metabot.reaction/redirect",
+        )?.url;
+        if (redirectUrl) {
+          onRedirectUrl(redirectUrl);
+        }
+      })
       .catch((err) => console.error(err))
       .finally(() => textareaRef.current?.focus());
   };

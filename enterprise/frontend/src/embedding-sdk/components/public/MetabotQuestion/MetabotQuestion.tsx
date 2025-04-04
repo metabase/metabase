@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -8,18 +8,11 @@ import { Flex, Text } from "metabase/ui";
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 
 const MetabotQuestionInner = () => {
-  const [result, setResult] = useState<Record<string, any> | null>(null);
-
-  const redirectUrl = useMemo(() => {
-    return result?.payload?.payload?.data?.reactions?.find(
-      (reaction: { type: string; url: string }) =>
-        reaction.type === "metabot.reaction/redirect",
-    )?.url;
-  }, [result]);
+  const [redirectUrl, setRedirectUrl] = useState<string>("");
 
   return (
     <Flex direction="column" align="center" gap="3rem">
-      <MetabotChatEmbedding onResult={setResult} />
+      <MetabotChatEmbedding onRedirectUrl={setRedirectUrl} />
       {redirectUrl && (
         <InteractiveAdHocQuestion
           questionPath={redirectUrl}
