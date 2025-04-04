@@ -10,7 +10,6 @@ import {
 import { useSet } from "react-use";
 
 import { isWebkit } from "metabase/lib/browser";
-import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
@@ -81,8 +80,7 @@ function _CartesianChart(props: VisualizationProps) {
 
   const chartRef = useRef<EChartsType>();
 
-  const tc = useTranslateContent();
-  const title = settings["card.title"] || tc(card, "name");
+  const title = settings["card.title"] || card.name;
   const description = settings["card.description"];
 
   const legendItems = useMemo(
@@ -131,8 +129,6 @@ function _CartesianChart(props: VisualizationProps) {
     props,
   );
 
-  console.log("@m92432dk", "chartModel", chartModel);
-
   const handleResize = useCallback((width: number, height: number) => {
     setChartSize({ width, height });
   }, []);
@@ -144,8 +140,6 @@ function _CartesianChart(props: VisualizationProps) {
   );
 
   useCloseTooltipOnScroll(chartRef);
-
-  console.log("@m924deag", "title", title);
 
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
