@@ -48,7 +48,6 @@ export function MultiAutocomplete({
       onChange?.(val);
     },
   });
-
   const [searchValue, setSearchValue] = useUncontrolled({
     value: controlledSearchValue,
     finalValue: "",
