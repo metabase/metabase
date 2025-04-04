@@ -10,7 +10,7 @@ import { isCardDisplayType } from "metabase-types/api/visualization";
 import { getEmptyVizConfig } from "./utils";
 
 interface EmptyVizStateProps {
-  visualization: VisualizationDefinition;
+  visualization?: VisualizationDefinition | null;
   isSummarizeSidebarOpen?: boolean;
   onEditSummary?: () => void;
 }
@@ -39,7 +39,7 @@ export const EmptyVizState = ({
   isSummarizeSidebarOpen,
   onEditSummary,
 }: EmptyVizStateProps) => {
-  const chartType = visualization.identifier;
+  const chartType = visualization?.identifier;
   const validChartType = isCardDisplayType(chartType) ? chartType : "bar";
 
   const { imgSrc, primaryText, secondaryText, docsLink } =
@@ -56,6 +56,10 @@ export const EmptyVizState = ({
 
     onEditSummary();
   };
+
+  if (!visualization) {
+    return null;
+  }
 
   return (
     <Flex w="100%" h="100%" direction="column" align="center" justify="center">

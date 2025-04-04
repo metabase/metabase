@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 import cx from "classnames";
 import {
   type CSSProperties,
@@ -618,7 +617,8 @@ class Visualization extends PureComponent<
           if (
             e instanceof ChartSettingsError &&
             visualization.hasEmptyState &&
-            !isDashboard
+            !isDashboard &&
+            !isEmbeddingSdk
           ) {
             // hide the error and display the empty state instead
             error = null;
@@ -687,9 +687,6 @@ class Visualization extends PureComponent<
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard?.size_y !== 1 || isMobile) && !isAction);
 
-    const shouldShowEmptyState =
-      !isEmbeddingSdk && !isDashboard && visualization && isPlaceholder;
-
     return (
       <ErrorBoundary
         onError={this.onErrorBoundaryError}
@@ -738,7 +735,7 @@ class Visualization extends PureComponent<
               expectedDuration={expectedDuration}
               isSlow={!!isSlow}
             />
-          ) : shouldShowEmptyState ? (
+          ) : isPlaceholder ? (
             <EmptyVizState
               visualization={visualization}
               isSummarizeSidebarOpen={isShowingSummarySidebar}
