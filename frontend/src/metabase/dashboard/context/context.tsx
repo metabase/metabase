@@ -10,7 +10,10 @@ import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
-import type { DisplayTheme } from "metabase/public/lib/types";
+import type {
+  DisplayTheme,
+  EmbedResourceDownloadOptions,
+} from "metabase/public/lib/types";
 import type { DashboardId } from "metabase-types/api";
 
 import { navigateToNewCardFromDashboard } from "../actions";
@@ -59,7 +62,7 @@ type DashboardOptions = {
   font: EmbedFont;
   theme: DisplayTheme;
   setTheme: (theme: DisplayTheme) => void;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 };
 
 type DashboardControls = DashboardFullscreenControls &
