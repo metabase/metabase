@@ -85,13 +85,19 @@ export const getBarLabelLayout =
     }
 
     const barHeight = rect.height;
-    const labelOffset =
+    // Round the values to prevent fractional pixel positions
+    // which can cause the 1px jump on hover
+    const labelOffset = Math.round(
       barHeight / 2 +
-      CHART_STYLE.seriesLabels.size / 2 +
-      CHART_STYLE.seriesLabels.offset;
+        CHART_STYLE.seriesLabels.size / 2 +
+        CHART_STYLE.seriesLabels.offset,
+    );
     return {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
       dy: labelValue < 0 ? labelOffset : -labelOffset,
+      // Force the label to maintain its position during hover state
+      draggable: false,
+      cursor: "default",
     };
   };
 
@@ -147,6 +153,9 @@ export const getBarInsideLabelLayout =
     return {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
       rotate: ticksRotation === "vertical" ? 90 : 0,
+      // Force the label to maintain its position during hover state
+      draggable: false,
+      cursor: "default",
     };
   };
 
