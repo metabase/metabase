@@ -112,20 +112,21 @@
                               #"NAME: Updated Category"))))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
-                     (is (=? {:body {:event_info {:action :row/update,
-                                                  :invocation_id (mt/malli=? :string)
-                                                  :actor_id (mt/user->id :crowberto)
-                                                  :result {:table_id (mt/id :categories)
-                                                           :after {:ID 1, :NAME "Updated Category"}
-                                                           :before {:ID 1, :NAME "African"}
-                                                           :raw_update {:ID 1, :NAME "Updated Category"}
-                                                           :table {:name "CATEGORIES"}}
-                                                  :actor {:first_name  "Crowberto"
-                                                          :last_name   "Corv"
-                                                          :email       "crowberto@metabase.com"
-                                                          :common_name "Crowberto Corv"}}
-                                     :event_name :event/action.success
-                                     :type "system_event"}}
+                     (is (=? {:body {:type    "system_event"
+                                     :payload {:action        :row/update
+                                               :invocation_id (mt/malli=? :string)
+                                               :actor_id      (mt/user->id :crowberto)
+                                               :result        {:table_id   (mt/id :categories)
+                                                               :after      {:ID 1 :NAME "Updated Category"}
+                                                               :before     {:ID 1 :NAME "African"}
+                                                               :raw_update {:ID 1 :NAME "Updated Category"}
+                                                               :table      {:name "CATEGORIES"}}
+                                               :actor         {:first_name  "Crowberto"
+                                                               :last_name   "Corv"
+                                                               :email       "crowberto@metabase.com"
+                                                               :common_name "Crowberto Corv"}
+                                               :event_name     :event/action.success
+                                               :custom        {}}}}
                              req)))}))
 
 (deftest delete-row-notification-test
@@ -158,18 +159,19 @@
                               #"NAME: African"))))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
-                     (is (=? {:body {:event_info {:action        :row/delete
-                                                  :invocation_id (mt/malli=? :string)
-                                                  :actor_id      (mt/user->id :crowberto)
-                                                  :result        {:table_id    (mt/id :categories)
-                                                                  :deleted_row {:ID 1 :NAME "African"}
-                                                                  :table {:name "CATEGORIES"}}
-                                                  :actor         {:first_name  "Crowberto"
-                                                                  :last_name   "Corv"
-                                                                  :email       "crowberto@metabase.com"
-                                                                  :common_name "Crowberto Corv"}}
-                                     :event_name :event/action.success
-                                     :type "system_event"}}
+                     (is (=? {:body {:type    "system_event"
+                                     :payload {:action        :row/delete
+                                               :invocation_id (mt/malli=? :string)
+                                               :actor_id      (mt/user->id :crowberto)
+                                               :result        {:table_id    (mt/id :categories)
+                                                               :deleted_row {:ID 1 :NAME "African"}
+                                                               :table       {:name "CATEGORIES"}}
+                                               :actor         {:first_name  "Crowberto"
+                                                               :last_name   "Corv"
+                                                               :email       "crowberto@metabase.com"
+                                                               :common_name "Crowberto Corv"}
+                                               :event_name     :event/action.success
+                                               :custom        {}}}}
                              req)))}))
 
 (deftest filter-notifications-test

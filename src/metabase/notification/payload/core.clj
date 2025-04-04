@@ -39,7 +39,8 @@
       [:payload
        [:map
         [:event_name [:fn #(= "event" (-> % keyword namespace))]]
-        [:action     :keyword]]]
+        [:action     {:optional true} [:maybe :keyword]]
+        [:table_id   {:optional true} [:maybe pos-int?]]]]
       [:event_info  [:maybe :map]]]]
     [:notification/card
      [:map

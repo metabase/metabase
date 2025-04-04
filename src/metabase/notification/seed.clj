@@ -64,7 +64,7 @@
                                                           :path           "metabase/channel/email/new_user_invite.hbs"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
-                                            :details {:pattern "{{payload.event_info.object.email}}"}}]}]}
+                                            :details {:pattern "{{payload.object.email}}"}}]}]}
 
           ;; alert new confirmation
           {:internal_id   "system-event/alert-new-confirmation"
@@ -81,7 +81,7 @@
                                                           :path "metabase/channel/email/notification_card_new_confirmation.hbs"
                                                           :recipient-type "cc"}}
                             :recipients  [{:type    :notification-recipient/template
-                                           :details {:pattern "{{payload.event_info.object.creator.email}}"}}]}]}
+                                           :details {:pattern "{{payload.object.creator.email}}"}}]}]}
 
           ;; slack token invalid
           {:internal_id   "system-event/slack-token-error"

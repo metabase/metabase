@@ -197,7 +197,7 @@
 (def ^:private action->template
   {:row/create {:channel_type :channel/slack
                 :details      {:type :slack/handlebars-text
-                               :body (str "# {{payload.actor.first_name}} {{payload.actor.last_name}} has created a row for {{payload..result.table.name}}"
+                               :body (str "# {{payload.actor.first_name}} {{payload.actor.last_name}} has created a row for {{payload.result.table.name}}"
                                           "\n\n\n"
                                           "{{#each payload.result.created_row}}\n"
                                           "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"

@@ -462,10 +462,10 @@
           (get-notification third-user-id 403))))))
 
 (deftest get-system-event-permissions-test
-  (notification.tu/with-temporary-event-topics! [:mb-test/permissions]
+  (notification.tu/with-temporary-event-topics! [:event/test-permissions]
     (notification.tu/with-system-event-notification!
-      [notification {:event :mb-test/permissions
-                     :notification {:creator_id (mt/user->id :rasta)}}]
+      [notification {:notification-system-event {:event_name :event/test-permissions}
+                     :notification              {:creator_id (mt/user->id :rasta)}}]
       (let [get-notification (fn [user-or-id expected-status]
                                (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
         (testing "admin can view"

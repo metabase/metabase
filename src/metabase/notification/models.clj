@@ -428,8 +428,8 @@
   "Schema for :model/NotificationSystemEvent"
   [:map
    [:event_name :keyword]
-   [:action     {:optional true} :keyword]
-   [:table_id   {:optional true} ms/PositiveInt]])
+   [:action     {:optional true} [:maybe :keyword]]
+   [:table_id   {:optional true} [:maybe ms/PositiveInt]]])
 
 ;;------------------------------------------------------------------------------------------------;;
 ;;                                         Permissions                                             ;;

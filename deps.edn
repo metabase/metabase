@@ -835,7 +835,8 @@
   :test/notification
   {:exec-args {:only ["test/metabase/notification"
                       "test/metabase/channel"
-                      metabase.events.notification-test]}}
+                      metabase.events.notification-test
+                      metabase-enterprise.data-editing.notification-test]}}
 
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
