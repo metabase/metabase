@@ -135,7 +135,7 @@ const PublicOrEmbeddedDashboardInner = ({
   titled,
   theme,
   getClickActionMode,
-  downloadsEnabled = { pdf: true, dashcard: true },
+  downloadsEnabled,
   hideParameters,
   withFooter,
   navigateToNewCardFromDashboard,
