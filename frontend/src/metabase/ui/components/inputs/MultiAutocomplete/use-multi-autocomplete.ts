@@ -139,15 +139,8 @@ export function useMultiAutocomplete({
     });
   };
 
-  const handlePillsInputClick = (event: MouseEvent<HTMLDivElement>) => {
+  const handlePillsInputClick = (_event: MouseEvent<HTMLDivElement>) => {
     combobox.openDropdown();
-
-    if (!(event.target instanceof HTMLInputElement)) {
-      setFieldState({
-        fieldValue: "",
-        fieldSelection: undefined,
-      });
-    }
   };
 
   const handleOptionSubmit = (value: string) => {
