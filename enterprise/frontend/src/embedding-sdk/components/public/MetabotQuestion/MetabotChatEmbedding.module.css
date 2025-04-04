@@ -15,6 +15,7 @@
 }
 
 .container {
+  position: relative;
   width: 41.5rem;
   box-shadow: 0 2px 13.8px -1px #1871bf52;
   border-radius: 22px;
@@ -98,7 +99,7 @@
 @keyframes responses-slide-in {
   0% {
     opacity: 0;
-    transform: translate(0, 0.5rem);
+    transform: translate(0, -0.5rem);
     transform-origin: top;
   }
 
@@ -112,8 +113,8 @@
 .responses {
   position: absolute;
   left: 0;
-  bottom: 100%;
-  margin-bottom: 0.25rem;
+  top: 100%;
+  margin-top: 0.25rem;
   pointer-events: none; /* allow user to click through transparent area behind repsonses */
   animation: responses-slide-in 150ms ease forwards;
   transition-property: transform, opacity;
@@ -128,7 +129,7 @@
   border-radius: 1rem;
   color: white;
   pointer-events: auto;
-  margin-bottom: 0.25rem;
+  margin-top: 0.25rem;
   position: relative;
 }
 

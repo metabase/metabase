@@ -18,13 +18,14 @@ export const MetabotQuestion = () => {
 
   return (
     <MetabotProvider>
-      <Flex direction="column" align="center">
+      <Flex direction="column" align="center" gap="3rem">
         <MetabotChatEmbedding onResult={setResult} />
         {redirectUrl && (
           <InteractiveAdHocQuestion
             questionPath={redirectUrl}
             title={false}
             onNavigateBack={() => {}}
+            isSaveEnabled={false}
           />
         )}
       </Flex>
