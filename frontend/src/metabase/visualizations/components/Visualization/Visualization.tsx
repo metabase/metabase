@@ -616,7 +616,7 @@ class Visualization extends PureComponent<
             t`Could not display this chart with this data.`;
           if (
             e instanceof ChartSettingsError &&
-            visualization.hasEmptyState &&
+            visualization?.hasEmptyState &&
             !isDashboard &&
             !isEmbeddingSdk
           ) {
@@ -737,7 +737,7 @@ class Visualization extends PureComponent<
             />
           ) : isPlaceholder ? (
             <EmptyVizState
-              visualization={visualization}
+              chartType={visualization?.identifier}
               isSummarizeSidebarOpen={isShowingSummarySidebar}
               onEditSummary={onEditSummary}
             />

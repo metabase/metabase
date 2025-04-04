@@ -18,6 +18,10 @@ import smartscalarEmptyState from "assets/img/empty-states/visualizations/smarts
 import waterfallEmptyState from "assets/img/empty-states/visualizations/waterfall.svg";
 import type { CardDisplayType } from "metabase-types/api";
 
+/**
+ * The "table" and the "object" (detail) charts can always display the data
+ * using the raw table alone, so they don't need an empty state.
+ */
 type ExcludedDisplayTypes = "table" | "object";
 type SupportedDisplayType = Exclude<CardDisplayType, ExcludedDisplayTypes>;
 
@@ -114,18 +118,8 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
   },
 };
 
-/**
- * Returns the data for the empty state for supported card charts.
- * Excludes the "table" and the "object" (detail) charts because
- * they can always display the data using the raw table alone, so
- * they don't need an empty state.
- */
 export const getEmptyVizConfig = (
-  chartType: CardDisplayType,
+  chartType: SupportedDisplayType,
 ): EmptyVizConfig | Record<string, never> => {
-  if (chartType === "table" || chartType === "object") {
-    return {};
-  }
-
   return emptyVizConfig[chartType];
 };

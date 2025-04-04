@@ -4,13 +4,15 @@ import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
-import { isCardDisplayType } from "metabase-types/api/visualization";
+import {
+  type VisualizationDisplay,
+  isCardDisplayType,
+} from "metabase-types/api/visualization";
 
 import { getEmptyVizConfig } from "./utils";
 
-interface EmptyVizStateProps {
-  visualization?: VisualizationDefinition | null;
+export interface EmptyVizStateProps {
+  chartType?: VisualizationDisplay;
   isSummarizeSidebarOpen?: boolean;
   onEditSummary?: () => void;
 }
@@ -23,15 +25,19 @@ const utmTags = {
 };
 
 export const EmptyVizState = ({
-  visualization,
+  chartType,
   isSummarizeSidebarOpen,
   onEditSummary,
 }: EmptyVizStateProps) => {
-  const chartType = visualization?.identifier;
-  const validChartType = isCardDisplayType(chartType) ? chartType : "bar";
+  const isValidChartType =
+    isCardDisplayType(chartType) &&
+    chartType !== "table" &&
+    chartType !== "object";
+
+  const emptyVizChart = isValidChartType ? chartType : "bar";
 
   const { imgSrc, primaryText, secondaryText, docsLink } =
-    getEmptyVizConfig(validChartType);
+    getEmptyVizConfig(emptyVizChart);
 
   const { url, showMetabaseLinks } = useDocsUrl(docsLink ?? "", {
     utm: utmTags,
@@ -45,7 +51,7 @@ export const EmptyVizState = ({
     onEditSummary();
   };
 
-  if (!visualization) {
+  if (!chartType) {
     return null;
   }
 
@@ -58,7 +64,7 @@ export const EmptyVizState = ({
         <img
           src={imgSrc}
           alt={c("{0} refers to the chart type")
-            .t`${visualization.identifier} chart example illustration`}
+            .t`${emptyVizChart} chart example illustration`}
         />
       </Box>
       <Stack gap="0.75rem" maw="25rem" ta="center" align="center">
