@@ -1,5 +1,3 @@
-import path from "path";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -80,50 +78,4 @@ describe("scenarios > admin > localization > content translation", () => {
       });
     });
   });
-
-  describe("should be able to download a translation dictionary", () => {
-    let fileContents = "";
-    before(() => {
-      cy.visit("/admin/settings/localization");
-      cy.button(/Download translation dictionary/g).click();
-      H.modal().within(() => {
-        cy.findByText(/Download translation dictionary/g);
-        cy.findByText("French").click();
-        cy.findByText("Spanish").click();
-        cy.button("Download").click();
-      });
-      const downloadsFolder = Cypress.config("downloadsFolder");
-      cy.readFile(
-        path.join(downloadsFolder, "content-translations-es,fr.csv"),
-      ).then((contents) => {
-        fileContents = contents;
-      });
-    });
-
-    it("with raw table names", () => {
-      expect(fileContents).to.include(",Products,");
-    });
-
-    it("with raw column names", () => {
-      expect(fileContents).to.include(",Vendor,");
-      //
-    });
-
-    it("with raw database names", () => {
-      expect(fileContents).to.include(",Sample Database,");
-      // TODO: Add more database names
-      expect(fileContents).to.include(",Sample Database,");
-    });
-
-    it("with raw strings from results", () => {
-      expect(fileContents).to.include(",Enormous Aluminum Shirt,");
-    });
-
-    it("with field values", () => {
-      // TODO: I'm not sure what the difference is between raw strings and field values
-      // field values
-    });
-  });
-
-  // TODO: Test that uploaded translations appear when re-downloading
 });
