@@ -18,8 +18,7 @@ export const getItemName = (
   item: CacheableDashboard | Question,
 ) =>
   model === "dashboard"
-    ? // NOTE: We could localize the name later
-      (item as CacheableDashboard).name
+    ? (item as CacheableDashboard).name
     : ((item as Question).displayName() ?? t`Untitled question`);
 
 export const getItemUrl = (
