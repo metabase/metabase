@@ -14,7 +14,6 @@
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.middleware.pivot-export :as pivot-export]
    [metabase.query-processor.middleware.results-metadata :as results-metadata]
-   [metabase.query-processor.middleware.translate-content :as translate-content]
    [metabase.query-processor.middleware.visualization-settings :as viz-settings]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
