@@ -10990,24 +10990,24 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
-#  - changeSet:
-#      id: v54.2025-03-19T16:01:10
-#      author: qnkhuat
-#      comment: add fk constraint to notification_subscription.table_id
-#      preConditions:
-#        - not:
-#          - foreignKeyConstraintExists:
-#              foreignKeyName: fk_notification_subscription_table_id
-#              foreignKeyTableName: notification_subscription
-#      changes:
-#        - addForeignKeyConstraint:
-#            baseTableName: notification_subscription
-#            baseColumnNames: table_id
-#            referencedTableName: metabase_table
-#            referencedColumnNames: id
-#            constraintName: fk_notification_subscription_table_id
-#            onDelete: CASCADE
-#            nullable: true
+  - changeSet:
+      id: v54.2025-03-19T16:01:10
+      author: qnkhuat
+      comment: add fk constraint to notification_subscription.table_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_subscription_table_id
+              foreignKeyTableName: notification_subscription
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: notification_subscription
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_notification_subscription_table_id
+            onDelete: CASCADE
+            nullable: true
 
   - changeSet:
       id: v54.2025-03-19T16:02:00
