@@ -97,3 +97,9 @@
   (maybe-send-notification-for-topic! topic event-info))
 
 ;; TODO: move notification events schema here
+
+(defmulti event-info-example
+  "Given a topic, return an example event info."
+  {:arglists '([topic options])}
+  (fn [topic _options]
+    topic))
