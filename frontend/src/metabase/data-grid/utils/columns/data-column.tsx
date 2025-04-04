@@ -22,6 +22,7 @@ const getDefaultCellTemplate = <TRow, TValue>(
     formatter,
     cellVariant,
     wrap,
+    preserveWhitespace,
     getCellClassName,
     getCellStyle,
   }: ColumnOptions<TRow, TValue>,
@@ -49,6 +50,7 @@ const getDefaultCellTemplate = <TRow, TValue>(
         onExpand={onExpand}
         variant={cellVariant}
         wrap={wrap}
+        preserveWhitespace={preserveWhitespace}
         className={getCellClassName?.(value, row.index)}
         style={getCellStyle?.(value, row.index)}
       />
@@ -82,8 +84,15 @@ export const getDataColumn = <TRow, TValue>(
   truncateWidth: number,
   onExpand: (columnName: string, content: React.ReactNode) => void,
 ): ColumnDef<TRow, TValue> => {
-  const { id, accessorFn, wrap, cell, header, headerClickTargetSelector } =
-    columnOptions;
+  const {
+    id,
+    accessorFn,
+    wrap,
+    preserveWhitespace,
+    cell,
+    header,
+    headerClickTargetSelector,
+  } = columnOptions;
   const columnWidth = columnSizing[id] ?? 0;
   const measuredColumnWidth = measuredColumnSizing[id] ?? 0;
 
@@ -110,6 +119,7 @@ export const getDataColumn = <TRow, TValue>(
     enableResizing: true,
     meta: {
       wrap,
+      preserveWhitespace,
       enableReordering: true,
       enableSelection: true,
       headerClickTargetSelector,

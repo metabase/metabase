@@ -20,6 +20,17 @@
   text-overflow: ellipsis;
 }
 
+.preserveWhitespace {
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preserveWhitespaceWrap {
+  white-space: pre-wrap;
+  overflow: hidden;
+}
+
 .clickable {
   cursor: pointer;
 }

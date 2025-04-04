@@ -14,6 +14,7 @@ import S from "./BodyCell.module.css";
 export interface BodyCellProps<TValue> extends BodyCellBaseProps<TValue> {
   variant?: "text" | "pill";
   contentTestId?: string;
+  preserveWhitespace?: boolean;
 }
 
 export const BodyCell = memo(function BodyCell<TValue>({
@@ -30,6 +31,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
   className,
   style,
   contentTestId = "cell-data",
+  preserveWhitespace = false,
   onExpand,
 }: BodyCellProps<TValue>) {
   const theme = useDataGridTheme();
@@ -77,7 +79,9 @@ export const BodyCell = memo(function BodyCell<TValue>({
           style={contentStyle}
           data-grid-cell-content
           className={cx(S.content, {
-            [S.noWrap]: !wrap,
+            [S.noWrap]: !wrap && !preserveWhitespace,
+            [S.preserveWhitespace]: preserveWhitespace && !wrap,
+            [S.preserveWhitespaceWrap]: preserveWhitespace && wrap,
           })}
           data-testid={contentTestId}
         >
