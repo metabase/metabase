@@ -122,9 +122,9 @@ function Relationship({
             {via}
           </h5>
         </div>
-        {fkClickable && (
+        {fkClickable && foreignKeyClicked && (
           <IconBorder className={CS.flexAlignRight}>
-            <Icon name="chevronright" size={10} />
+            <Icon data-testid="click-icon" name="chevronright" size={10} />
           </IconBorder>
         )}
       </ObjectRelationContent>
