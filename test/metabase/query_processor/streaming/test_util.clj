@@ -75,7 +75,7 @@
   (let [byytes (if (= export-format :api)
                  (mt/user-real-request :crowberto :post "dataset"
                                        {:request-options {:as :byte-array}}
-                                       (assoc-in query [:middleware :js-int-to-string?] false))
+                                       {:query (assoc-in query [:middleware :js-int-to-string?] false)})
                  (mt/user-real-request :crowberto :post (format "dataset/%s" (name export-format))
                                        {:request-options {:as :byte-array}}
                                        {:query query, :format_rows true}))]

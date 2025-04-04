@@ -137,6 +137,18 @@ export interface ErrorEmbedDataset {
   status: string;
 }
 
+export type DatasetContext = "ad-hoc" | "dashboard-ad-hoc";
+
+export type DatasetRequest = {
+  query: DatasetQuery;
+  context?: DatasetContext;
+};
+
+export interface NativeDatasetRequest {
+  query: DatasetQuery;
+  pretty?: boolean;
+}
+
 export interface NativeDatasetResponse {
   query: string;
   // some engines, e.g. mongo, require a "collection", which is the name of the source table

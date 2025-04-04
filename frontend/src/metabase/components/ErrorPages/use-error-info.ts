@@ -73,7 +73,9 @@ export const useErrorInfo = (
     const queryResults =
       hasQueryData(entity) &&
       entityInfo?.dataset_query &&
-      (await MetabaseApi.dataset(entityInfo.dataset_query).catch(nullOnCatch));
+      (await MetabaseApi.dataset({ query: entityInfo.dataset_query }).catch(
+        nullOnCatch,
+      ));
 
     // if this is an ad-hoc exploration on top of a saved question, fetch the original card
     if (hasQueryData(entity) && entityInfo?.original_card_id) {
