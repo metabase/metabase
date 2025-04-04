@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import { singularize } from "metabase/lib/formatting";
 import type { NormalizedTable } from "metabase-types/api";
@@ -35,16 +33,11 @@ class Table {
 
   constructor(table: NormalizedTable) {
     this._plainObject = table;
-    this.fieldsLookup = _.memoize(this.fieldsLookup);
     Object.assign(this, table);
   }
 
   getPlainObject(): NormalizedTable {
     return this._plainObject;
-  }
-
-  getFields() {
-    return this.fields ?? [];
   }
 
   hasSchema() {
@@ -86,22 +79,6 @@ class Table {
     return singularize(this.displayName());
   }
 
-  dateFields() {
-    return this.getFields().filter((field) => field.isDate());
-  }
-
-  // FIELDS
-  fieldsLookup() {
-    return Object.fromEntries(
-      this.getFields().map((field) => [field.id, field]),
-    );
-  }
-
-  // @deprecated: use fieldsLookup
-  get fields_lookup() {
-    return this.fieldsLookup();
-  }
-
   numFields(): number {
     return this.fields?.length || 0;
   }
@@ -111,17 +88,6 @@ class Table {
     return fks
       .map((fk) => fk.origin?.table)
       .filter((table) => table != null) as Table[];
-  }
-
-  foreignTables(): Table[] {
-    const fields = this.getFields();
-    if (!fields) {
-      return [];
-    }
-    return fields
-      .filter((field) => field.isFK() && field.fk_target_field_id)
-      .map((field) => this.metadata?.field(field.fk_target_field_id)?.table)
-      .filter(Boolean) as Table[];
   }
 
   clone() {

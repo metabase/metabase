@@ -87,7 +87,7 @@ describe("metabase-lib/v1/queries/utils/native-query-table", () => {
         }),
       );
 
-      const [field] = virtualTable.getFields();
+      const [field] = virtualTable.fields ?? [];
       expect(field.getPlainObject()).toEqual(
         expect.objectContaining({
           ...modelField,

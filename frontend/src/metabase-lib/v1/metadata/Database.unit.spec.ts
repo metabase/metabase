@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
@@ -170,24 +169,6 @@ describe("Database", () => {
       });
 
       expect(database.supportsPivots()).toBe(false);
-    });
-  });
-
-  describe("nativeQuestion", () => {
-    it("should create a native question using the `metadata` found on the Database instance", () => {
-      const database = setup();
-      const question = database.nativeQuestion();
-
-      expect(question.legacyNativeQuery()).toBeInstanceOf(NativeQuery);
-      expect(question.metadata()).toBe(database.metadata);
-    });
-
-    it("should create a native question using the given Database instance's id in the question's query", () => {
-      const database = setup();
-      const question = database.nativeQuestion({ query: "SELECT 1" });
-
-      const query = question.legacyNativeQuery() as NativeQuery;
-      expect(query.queryText()).toBe("SELECT 1");
     });
   });
 

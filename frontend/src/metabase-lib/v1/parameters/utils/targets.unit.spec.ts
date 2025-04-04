@@ -212,12 +212,18 @@ describe("parameters/utils/targets", () => {
 
   describe("getParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
-      const question = db.nativeQuestion({
-        query: "select * from PRODUCTS where CATEGORY = {{foo}}",
-        "template-tags": {
-          foo: createMockTemplateTag({
-            type: "text",
-          }),
+      const question = Question.create({
+        dataset_query: {
+          database: db.id,
+          type: "native",
+          native: {
+            query: "select * from PRODUCTS where CATEGORY = {{foo}}",
+            "template-tags": {
+              foo: createMockTemplateTag({
+                type: "text",
+              }),
+            },
+          },
         },
       });
       const parameter = createMockParameter();
@@ -235,13 +241,19 @@ describe("parameters/utils/targets", () => {
         "dimension",
         ["template-tag", "foo"],
       ];
-      const question = db.nativeQuestion({
-        query: "select * from PRODUCTS where {{foo}}",
-        "template-tags": {
-          foo: createMockTemplateTag({
-            type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
-          }),
+      const question = Question.create({
+        dataset_query: {
+          database: db.id,
+          type: "native",
+          native: {
+            query: "select * from PRODUCTS where {{foo}}",
+            "template-tags": {
+              foo: createMockTemplateTag({
+                type: "dimension",
+                dimension: ["field", PRODUCTS.CATEGORY, null],
+              }),
+            },
+          },
         },
       });
       const parameter = createMockParameter();

@@ -19,10 +19,4 @@ describe("Table", () => {
   it("should have a database", () => {
     expect(table.db).toBeInstanceOf(Database);
   });
-
-  describe("date fields", () => {
-    it("should return date fields", () => {
-      expect(table.dateFields().length).toEqual(1);
-    });
-  });
 });
