@@ -22,12 +22,12 @@
   [column]
   (let [column (u/normalize-map column)]
     (cond
-      (lib.types.isa/boolean? column)                "boolean"
-      (lib.types.isa/string-or-string-like? column)  "string"
-      (lib.types.isa/numeric? column)                "number"
-      (isa? (:effective-type column) :type/DateTime) "datetime"
-      (isa? (:effective-type column) :type/Time)     "time"
-      (lib.types.isa/temporal? column)               "date")))
+      (lib.types.isa/boolean? column)                :boolean
+      (lib.types.isa/string-or-string-like? column)  :string
+      (lib.types.isa/numeric? column)                :number
+      (isa? (:effective-type column) :type/DateTime) :datetime
+      (isa? (:effective-type column) :type/Time)     :time
+      (lib.types.isa/temporal? column)               :date)))
 
 (defn table-field-id-prefix
   "Return the field ID prefix for `table-id`."
@@ -63,37 +63,37 @@
   (let [pos (if (sequential? index-or-columns)
               (first (find-column-indexes column index-or-columns))
               index-or-columns)
-        semantic-type (:semantic-type column)]
-    (-> {:field_id (str field-id-prefix pos)
+        semantic-type (some-> (:semantic-type column) name u/->snake_case_en)]
+    (-> {:field-id (str field-id-prefix pos)
          :name (lib/display-name query column)
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)
-                      :semantic-type (some-> semantic-type name u/->snake_case_en)
+                      :semantic-type semantic-type
                       :field-values (:field-values column)
                       :table-reference (:table-reference column)))))
 
 (defn resolve-column-index
   "Resolve the reference `field_id` to the index of the result columns in the entity with `field-id-prefix`."
-  [field_id field-id-prefix]
+  [field-id field-id-prefix]
   (if (string? field-id-prefix)
-    (if (str/starts-with? field_id field-id-prefix)
-      (-> field_id (subs (count field-id-prefix)) parse-long)
-      (throw (ex-info (str "field " field_id " not found") {:agent-error? true
+    (if (str/starts-with? field-id field-id-prefix)
+      (-> field-id (subs (count field-id-prefix)) parse-long)
+      (throw (ex-info (str "field " field-id " not found") {:agent-error? true
                                                             :expected-prefix field-id-prefix})))
     (if-let [id-str (when (instance? java.util.regex.Pattern field-id-prefix)
-                      (-> (re-matches field-id-prefix field_id)
+                      (-> (re-matches field-id-prefix field-id)
                           second))]
       (parse-long id-str)
-      (throw (ex-info (str "invalid field_id " field_id " for prefix " field-id-prefix)
+      (throw (ex-info (str "invalid field_id " field-id " for prefix " field-id-prefix)
                       {:agent-error? true
                        :expected-prefix (str field-id-prefix)
-                       :field_id field_id})))))
+                       :field-id field-id})))))
 
 (defn resolve-column
-  "Resolve the reference `field_id` in filter `item` by finding the column in `columns` specified by `field_id`.
+  "Resolve the reference `field-id` in filter `item` by finding the column in `columns` specified by `field-id`.
   `field-id-prefix` is used to check if the filter refers to a column from the right entity."
-  [{:keys [field_id] :as item} field-id-prefix columns]
-  (let [index (resolve-column-index field_id field-id-prefix)]
+  [{:keys [field-id] :as item} field-id-prefix columns]
+  (let [index (resolve-column-index field-id field-id-prefix)]
     (assoc item :column (nth columns index))))
 
 (defn get-table

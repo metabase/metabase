@@ -11,11 +11,10 @@
 
 (defn- apply-bucket
   [column bucket]
-  (let [bucket (keyword bucket)]
-    (case bucket
-      :week-of-year (lib/get-week column :iso)
-      :day-of-week  (lib/get-day-of-week column :iso)
-      (lib/with-temporal-bucket column bucket))))
+  (case bucket
+    :week-of-year (lib/get-week column :iso)
+    :day-of-week  (lib/get-day-of-week column :iso)
+    (lib/with-temporal-bucket column bucket)))
 
 (defn- bucketed-column
   [{:keys [column bucket]}]
@@ -26,8 +25,7 @@
 
 (defn- add-filter
   [query llm-filter]
-  (let [llm-filter (update llm-filter :operation keyword)
-        {:keys [operation value values]} llm-filter
+  (let [{:keys [operation value values]} llm-filter
         expr (bucketed-column llm-filter)
         filter
         (case operation
@@ -131,11 +129,11 @@
     (lib/filter query filter)))
 
 (defn- add-breakout
-  [query {:keys [column field_granularity]}]
+  [query {:keys [column field-granularity]}]
   (let [expr (cond-> column
-               (and field_granularity
+               (and field-granularity
                     (lib.types.isa/temporal? column))
-               (lib/with-temporal-bucket (keyword field_granularity)))]
+               (lib/with-temporal-bucket field-granularity))]
     (lib/breakout query expr)))
 
 (defn- query-metric*
@@ -157,9 +155,9 @@
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
     {:type :query
-     :query_id query-id
+     :query-id query-id
      :query (lib/->legacy-MBQL query)
-     :result_columns (into []
+     :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
 
@@ -181,22 +179,10 @@
         {:output (str "No metric found with metric_id " metric-id)}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})
-            api/*current-user-id* 2
-            api/*is-superuser?* true]
-    (query-metric* {:metric-id 135
-                    :filters
-                    [{:operation "number-greater-than",
-                      :field_id "field_[27]_[:field {:base-type :type/Float, :effective-type :type/Float} 257]",
-                      :value 35}],
-                    :group-by nil}))
-  -)
-
 (defn- add-aggregation
   [query aggregation]
   (let [expr     (bucketed-column aggregation)
-        agg-expr (case (-> aggregation :function keyword)
+        agg-expr (case (:function aggregation)
                    :count          (lib/count)
                    :count-distinct (lib/distinct expr)
                    :sum            (lib/sum expr)
@@ -228,7 +214,7 @@
         resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
         projection (map (comp (juxt bucketed-column (fn [{:keys [column bucket]}]
                                                       (let [column (cond-> column
-                                                                     bucket (assoc :unit (keyword bucket)))]
+                                                                     bucket (assoc :unit bucket))]
                                                         (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
@@ -245,9 +231,9 @@
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
     {:type :query
-     :query_id query-id
+     :query-id query-id
      :query (lib/->legacy-MBQL query)
-     :result_columns (into []
+     :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
 
@@ -265,12 +251,12 @@
 
 (defn- base-query
   [data-source]
-  (let [{:keys [table_id query query_id report_id]} data-source
-        model-id (lib.util/legacy-string-table-id->card-id table_id)
-        handle-query (fn [query query_id]
+  (let [{:keys [table-id query query-id report-id]} data-source
+        model-id (lib.util/legacy-string-table-id->card-id table-id)
+        handle-query (fn [query query-id]
                        (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database query))]
-                         [(if query_id
-                            (metabot-v3.tools.u/query-field-id-prefix query_id)
+                         [(if query-id
+                            (metabot-v3.tools.u/query-field-id-prefix query-id)
                             metabot-v3.tools.u/any-prefix-pattern)
                           (-> (lib/query mp query) lib/append-stage)]))]
     (cond
@@ -279,35 +265,35 @@
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id model))]
           [(metabot-v3.tools.u/card-field-id-prefix model-id)
            (lib/query mp (lib.metadata/card mp model-id))])
-        (throw (ex-info (str "No table found with table_id " table_id) {:agent-error? true
-                                                                        :data_source data-source})))
+        (throw (ex-info (str "No table found with table_id " table-id) {:agent-error? true
+                                                                        :data-source data-source})))
 
-      table_id
-      (let [table_id (cond-> table_id
-                       (string? table_id) parse-long)]
-        (if-let [table (metabot-v3.tools.u/get-table table_id :db_id)]
+      table-id
+      (let [table-id (cond-> table-id
+                       (string? table-id) parse-long)]
+        (if-let [table (metabot-v3.tools.u/get-table table-id :db_id)]
           (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
-            [(metabot-v3.tools.u/table-field-id-prefix table_id)
-             (lib/query mp (lib.metadata/table mp table_id))])
-          (throw (ex-info (str "No table found with table_id " table_id) {:agent-error? true
-                                                                          :data_source data-source}))))
+            [(metabot-v3.tools.u/table-field-id-prefix table-id)
+             (lib/query mp (lib.metadata/table mp table-id))])
+          (throw (ex-info (str "No table found with table_id " table-id) {:agent-error? true
+                                                                          :data-source data-source}))))
 
-      report_id
-      (if-let [card (metabot-v3.tools.u/get-card report_id)]
+      report-id
+      (if-let [card (metabot-v3.tools.u/get-card report-id)]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
-          [(metabot-v3.tools.u/card-field-id-prefix report_id)
-           (lib/query mp (cond-> (lib.metadata/card mp report_id)
+          [(metabot-v3.tools.u/card-field-id-prefix report-id)
+           (lib/query mp (cond-> (lib.metadata/card mp report-id)
                            ;; pivot questions have strange result-columns so we work with the dataset-query
                            (#{:question} (:type card)) (get :dataset-query)))])
-        (throw (ex-info (str "No report found with report_id " report_id) {:agent-error? true
-                                                                           :data_source data-source})))
+        (throw (ex-info (str "No report found with report_id " report-id) {:agent-error? true
+                                                                           :data-source data-source})))
 
       query
-      (handle-query query query_id)
+      (handle-query query query-id)
 
       :else
       (throw (ex-info "Invalid data_source" {:agent-error? true
-                                             :data_source data-source})))))
+                                             :data-source data-source})))))
 
 (defn filter-records
   "Add `filters` to the query referenced by `data-source`"
@@ -320,9 +306,9 @@
           query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
       {:structured-output
        {:type :query
-        :query_id query-id
+        :query-id query-id
         :query (lib/->legacy-MBQL query)
-        :result_columns (into []
+        :result-columns (into []
                               (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                               (lib/returned-columns query))}})
     (catch Exception ex
@@ -335,14 +321,14 @@
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
-    (-> (filter-records #_{:data-source {:table_id 3}
+    (-> (filter-records #_{:data-source {:tabl-id 3}
                            :filters [{:operation "number-greater-than"
-                                      :field_id "t3/6"
+                                      :field-id "t3/6"
                                       :value 50}]}
-         {:data-source {:table_id 1}
+         {:data-source {:table-id 1}
           :filters [{:operation "greater-than"
                      :bucket "month-of-year"
-                     :field_id "t1/3"
+                     :field-id "t1/3"
                      :value #_"2020-01-01" 1}]})
         :structured-output :query qp/process-query :data :native_form :query))
   -)

@@ -26,14 +26,14 @@
   [{:keys [metabot_id message context history conversation_id state]
     :or {metabot_id metabot-v3.tools.api/internal-metabot-id}}]
   (let [initial-message (metabot-v3.envelope/user-message message)
-        history (conj (vec history) initial-message)
-        env (-> {:context (metabot-v3.context/create-context context)
-                 :metabot-id metabot_id
-                 :conversation-id conversation_id
-                 :messages history
-                 :state state}
-                metabot-v3.tools.api/handle-envelope)
-        messages (:messages env)]
+        history         (conj (vec history) initial-message)
+        env             (metabot-v3.tools.api/handle-envelope
+                         {:context         (metabot-v3.context/create-context context)
+                          :metabot-id      metabot_id
+                          :conversation-id conversation_id
+                          :messages        history
+                          :state           state})
+        messages        (:messages env)]
     {:reactions (-> messages metabot-v3.envelope/reactions encode-reactions)
      :history   (into history messages)
      :state     (metabot-v3.envelope/state env)}))
