@@ -197,7 +197,6 @@ export const CollectionPickerInner = (
         const newSelectedItem = {
           id: currentDashboard.id,
           model: "dashboard" as const,
-          // NOTE: We could localize the name later
           name: currentDashboard.name,
         };
 
