@@ -41,7 +41,14 @@ Your joins can also include multiple conditions to refine your results. Metabase
 
 ## Joining with different operators
 
-You can join tables on comparison conditions like `=`, `≠`, `>`, `≥`, `<`, or `≤`.
+You can join tables on comparison conditions like:
+
+- `=` (equals)
+- `≠` (not equals) 
+- `>` (greater than)
+- `≥` (greater than or equal to)
+- `<` (less than)
+- `≤` (less than or equal to)
 
 ![Join operators](../images/join-operator.png)
 
