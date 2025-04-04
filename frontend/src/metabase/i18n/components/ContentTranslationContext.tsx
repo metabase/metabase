@@ -1,4 +1,5 @@
 import { type ReactNode, createContext, useContext } from "react";
+import * as Lib from "metabase-lib";
 
 import { useListContentTranslationsQuery } from "metabase/api/content-translation";
 import { useLocale } from "metabase/common/hooks";
@@ -39,6 +40,16 @@ export const ContentTranslationProvider = ({
     locale,
     shouldLocalize: true,
   };
+
+  const dictionaryForLocale = Object.fromEntries(
+    data?.data
+      .filter((item) => item.locale === locale)
+      .map((item) => [item.msgid, item.msgstr]) || [],
+  );
+
+  useEffect(() => {
+    Lib.setContentTranslations(dictionaryForLocale);
+  }, [dictionaryForLocale]);
 
   return (
     <ContentTranslationContext.Provider value={contextValue}>
