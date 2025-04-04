@@ -3,6 +3,7 @@
   (:require
    [metabase.actions.actions]
    [metabase.actions.error]
+   [metabase.actions.events]
    [metabase.actions.execution]
    [metabase.actions.http-action]
    [metabase.actions.models]
@@ -17,11 +18,14 @@
 
 (p/import-vars
  [metabase.actions.actions
+  action-filter-keys
   cached-value
   check-actions-enabled!
   check-data-editing-enabled-for-database!
   perform-action!
-  perform-action!*]
+  perform-action!*
+  perform-with-system-events!
+  publish-action-success!]
  [metabase.actions.error
   incorrect-value-type
   violate-foreign-key-constraint

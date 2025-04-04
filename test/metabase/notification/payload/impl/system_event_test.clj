@@ -26,17 +26,17 @@
     (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                   :details      {:type    :email/handlebars-text
-                                                                 :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
-                                                                 :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}}
+                                                                 :subject "Welcome {{payload.object.first_name}} to {{context.site_name}}"
+                                                                 :body    "Hello {{payload.object.first_name}}! Welcome to {{context.site_name}}!"}}
                      :model/User             {user-id :id} {:email "ngoc@metabase.com"}
                      :model/PermissionsGroup {group-id :id} {:name "Avengers"}
                      :model/PermissionsGroupMembership _ {:group_id group-id
                                                           :user_id user-id}]
         (let [rasta (mt/fetch-user :rasta)]
           (models.notification/create-notification!
-           {:payload_type :notification/system-event}
-           [{:type       :notification-subscription/system-event
-             :event_name :event/user-invited}]
+           {:payload_type :notification/system-event
+            :payload      {:event_name :event/user-invited}}
+           nil
            [{:channel_type :channel/email
              :template_id  (:id tmpl)
              :recipients   [{:type    :notification-recipient/user
@@ -63,7 +63,7 @@
     (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                   :details      {:type    :email/handlebars-resource
-                                                                 :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
+                                                                 :subject "Welcome {{payload.object.first_name}} to {{context.site_name}}"
                                                                  :path    "notification/channel_template/hello_world.hbs"}}
                      :model/User             {user-id :id} {:email "ngoc@metabase.com"}
                      :model/PermissionsGroup {group-id :id} {:name "Avengers"}
@@ -71,9 +71,9 @@
                                                           :user_id user-id}]
         (let [rasta (mt/fetch-user :rasta)]
           (models.notification/create-notification!
-           {:payload_type :notification/system-event}
-           [{:type       :notification-subscription/system-event
-             :event_name :event/user-invited}]
+           {:payload_type :notification/system-event
+            :payload      {:event_name :event/user-invited}}
+           nil
            [{:channel_type :channel/email
              :template_id  (:id tmpl)
              :recipients   [{:type    :notification-recipient/user

@@ -1,10 +1,14 @@
 (ns metabase.events.schema
   (:require
+   [malli.core :as mc]
+   [malli.generator :as mg]
    [malli.util :as mut]
+   [metabase.lib.schema.common :as common]
    [metabase.models.view-log-impl :as view-log-impl]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (mu/defn event-schema
@@ -206,23 +210,32 @@
    [:user-id [:maybe pos-int?]]
    [:model [:or :keyword :string]]])
 
-(mr/def ::data-editing-events
+(mr/def ::nano-id ::common/non-blank-string)
+
+(def ^:private table-id-hydrate (-> [:table_id {:optional true} pos-int?] (with-hydrate :table table-hydrate)))
+
+(mr/def ::action-events
   [:map #_{:closed true}
-   (-> [:table_id pos-int?] (with-hydrate :table table-hydrate))
+   [:action :keyword]
+   [:invocation_id ::nano-id]
    (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))])
 
-(mr/def :event/data-editing-row-create [:merge
-                                        ::data-editing-events
-                                        [:map
-                                         [:created_row :map]]])
-(mr/def :event/data-editing-row-update [:merge
-                                        ::data-editing-events
-                                        [:map
-                                         ;; there could be no changes when update
-                                         [:update [:maybe :map]]
-                                         [:after  [:maybe :map]]
-                                         [:before :map]]])
-(mr/def :event/data-editing-row-delete [:merge
-                                        ::data-editing-events
-                                        [:map
-                                         [:deleted_row :map]]])
+(mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
+(mr/def :event/action.success [:merge ::action-events [:multi {:dispatch :action}
+                                                       [:row/create [:map [:result
+                                                                           [:map
+                                                                            table-id-hydrate
+                                                                            [:created_row :map]]]]]
+                                                       [:row/update [:map [:result
+                                                                           [:map
+                                                                            table-id-hydrate
+                                                                            [:raw_update [:maybe :map]]
+                                                                            [:after  [:maybe :map]]
+                                                                            [:before :map]]]]]
+                                                       [:row/delete [:map [:result
+                                                                           [:map
+                                                                            table-id-hydrate
+                                                                            [:deleted_row :map]]]]]
+                                                       [::mc/default :map]]])
+
+(mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])

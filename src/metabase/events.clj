@@ -124,3 +124,9 @@
    ;; and is important for distinguishing view events triggered when pinned cards are 'viewed'
    ;; when a user opens a collection.
    :context      (:context object)})
+
+(defmulti event-info-example
+  "Given a topic, return an example event info."
+  {:arglists '([topic options])}
+  (fn [topic _options]
+    topic))

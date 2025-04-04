@@ -14,6 +14,7 @@
   "A mapping of model to the keys that are used to check if a row is the same."
   {:model/Notification             [:payload_type :active]
    :model/NotificationSubscription [:type :event_name :cron_schedule]
+   :model/NotificationSystemEvent  [:event_name :table_id :action]
    :model/NotificationHandler      [:channel_type :active]
    :model/NotificationRecipient    [:type :user_id :permissions_group_id :details]
    :model/Channel                  [:channel_type :details]
@@ -30,8 +31,9 @@
   (select-keys-nil-vals data (get model->compare-keys model)))
 
 (defn- sanitize-notification
-  [{:keys [subscriptions handlers] :as notification}]
+  [{:keys [payload subscriptions handlers] :as notification}]
   (assoc (sanitize-model :model/Notification notification)
+         :payload       (sanitize-model :model/NotificationSubscription payload)
          :subscriptions (set (mapv #(sanitize-model :model/NotificationSubscription %) subscriptions))
          :handlers      (set (mapv (fn [{:keys [channel template recipients] :as handler}]
                                      (assoc (sanitize-model :model/NotificationHandler handler)
@@ -51,8 +53,7 @@
           {:internal_id   "system-event/user-invited"
            :active        true
            :payload_type  :notification/system-event
-           :subscriptions [{:type       :notification-subscription/system-event
-                            :event_name :event/user-invited}]
+           :payload       {:event_name :event/user-invited}
            :handlers      [{:active       true
                             :channel_type :channel/email
                             :channel_id   nil
@@ -63,14 +64,13 @@
                                                           :path           "metabase/channel/email/new_user_invite.hbs"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
-                                            :details {:pattern "{{payload.event_info.object.email}}"}}]}]}
+                                            :details {:pattern "{{payload.object.email}}"}}]}]}
 
           ;; alert new confirmation
           {:internal_id   "system-event/alert-new-confirmation"
            :active        true
            :payload_type  :notification/system-event
-           :subscriptions [{:type       :notification-subscription/system-event
-                            :event_name :event/notification-create}]
+           :payload       {:event_name :event/notification-create}
            :handlers      [{:active       true
                             :channel_type :channel/email
                             :channel_id   nil
@@ -81,14 +81,13 @@
                                                           :path "metabase/channel/email/notification_card_new_confirmation.hbs"
                                                           :recipient-type "cc"}}
                             :recipients  [{:type    :notification-recipient/template
-                                           :details {:pattern "{{payload.event_info.object.creator.email}}"}}]}]}
+                                           :details {:pattern "{{payload.object.creator.email}}"}}]}]}
 
           ;; slack token invalid
           {:internal_id   "system-event/slack-token-error"
            :active        true
            :payload_type  :notification/system-event
-           :subscriptions [{:type       :notification-subscription/system-event
-                            :event_name :event/slack-token-invalid}]
+           :payload       {:event_name :event/slack-token-invalid}
            :handlers      [{:active       true
                             :channel_type :channel/email
                             :channel_id   nil
@@ -134,8 +133,10 @@
 
 (defn- sync-notification!
   [{:keys [internal_id] :as row}]
-  (let [existing-notification (some-> (t2/select-one :model/Notification :internal_id internal_id)
-                                      models.notification/hydrate-notification)]
+  (let [existing-notification (t2/hydrate (t2/select-one :model/Notification :internal_id internal_id)
+                                          :payload
+                                          :subscriptions
+                                          [:handlers :channel :template [:recipients :recipients-detail]])]
 
     (u/prog1 (action existing-notification row)
       (case <>

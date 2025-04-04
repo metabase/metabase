@@ -110,7 +110,8 @@
     :model/NotificationSubscription
     :model/NotificationHandler
     :model/NotificationRecipient
-    :model/NotificationCard]
+    :model/NotificationCard
+    :model/NotificationSystemEvent]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation])))
