@@ -76,7 +76,7 @@ function test() {
   node e2e/runner/run_cypress_ci.js snapshot
 
   print_step "Running tests..."
-  BACKEND_PORT=4000 TEST_SUITE="e2e" node e2e/runner/run_cypress_ci.js e2e --env grepTags="--@flaky --@external",grepOmitFiltered=true --spec "e2e/test/scenarios/dashboard/dashboard.cy.spec.js"
+  BACKEND_PORT=4000 TEST_SUITE="e2e" node e2e/runner/run_cypress_ci.js e2e --env grepTags="--@flaky --@external",grepOmitFiltered=true --spec "e2e/test/scenarios/dashboard/dashboard.cy.spec.js,e2e/test/scenarios/question/caching.cy.spec.js,e2e/test/scenarios/question/column-compare.cy.spec.ts"
 }
 
 if [ "$#" -ne 3 ]; then
