@@ -21,7 +21,12 @@ jobs:
           echo "A change in the docs directory was detected."
 
       - name: Prepare to trigger slurp_branches workflow in metabase/docs.metabase.github.io
-        run: echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "BRANCH_NAME=${{ github.head_ref }}" >> $GITHUB_ENV
+          else
+            echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+          fi
 
       # Trigger the repository_dispatch event in the target repo
       - name: Trigger Workflow in `metabase/docs.metabase.github.io`
