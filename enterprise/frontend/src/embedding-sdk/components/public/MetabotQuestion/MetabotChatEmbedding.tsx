@@ -177,7 +177,7 @@ export const MetabotChatEmbedding = ({
               visibility: input.length > 0 ? "visible" : "hidden",
             }}
           >
-            <Icon name="close" c="text-light" size="1rem" />
+            <Icon name="close" c="var(--mb-color-text-primary)" size="1rem" />
           </UnstyledButton>
         )}
       </Flex>
