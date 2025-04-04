@@ -1,4 +1,4 @@
-import type { DatabaseId, Settings } from "metabase-types/api";
+import type { DatabaseId, GdrivePayload } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 
@@ -11,7 +11,7 @@ export const gdriveApi = EnterpriseApi.injectEndpoints({
       }),
     }),
     getGsheetsFolder: builder.query<
-      Settings["gsheets"] & { db_id: DatabaseId },
+      GdrivePayload & { db_id: DatabaseId },
       void
     >({
       query: () => ({
