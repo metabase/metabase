@@ -33,5 +33,7 @@ export function getItemsOrder(items: Item[]): Item["id"][] {
 }
 
 export function sortItems(items: Item[], order: Item["id"][]) {
-  return items.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const orderMap = Object.fromEntries(order.map((id, index) => [id, index]));
+
+  return items.sort((a, b) => orderMap[a.id] - orderMap[b.id]);
 }
