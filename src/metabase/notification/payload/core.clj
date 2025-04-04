@@ -1,4 +1,5 @@
 (ns metabase.notification.payload.core
+
   (:require
    [metabase.notification.condition :as notification.condition]
    [metabase.notification.models :as models.notification]
@@ -92,7 +93,7 @@
                  [:card              :map]
                  [:style             :map]
                  [:notification_card ::models.notification/NotificationCard]
-                 [:subscriptions     [:sequential ::models.notification/NotificationSubscription]]]]]]
+                 [:subscriptions     [:maybe [:sequential ::models.notification/NotificationSubscription]]]]]]]
     [:notification/testing   :map]]])
 
 (defn- logo-url

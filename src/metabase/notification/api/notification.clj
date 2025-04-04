@@ -164,13 +164,13 @@
     (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
 
-(api.macros/defendpoint :post "/example"
-  "Return an example notification."
+(api.macros/defendpoint :post "/payload"
+  "Return the payload of a notification"
   [_route _query body :- ::models.notification/NotificationWithPayload]
   (api/create-check :model/Notification body)
   (notification/notification-payload (cond-> body
-                                       (not= :notification/system-event (:payload_type body))
-                                       (assoc :payload (events/event-info-example (-> body :payload :event_name))))))
+                                       (= :notification/system-event (:payload_type body))
+                                       (assoc :event_info (events/event-info-example (-> body :payload :event_name) (:payload body))))))
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"
