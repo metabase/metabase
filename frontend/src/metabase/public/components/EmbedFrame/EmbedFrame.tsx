@@ -199,22 +199,17 @@ export const EmbedFrame = ({
                 </TitleAndButtonsContainer>
               </TitleAndDescriptionContainer>
             )}
-            {
-              // Here we can localize tabs for embedding
-              // I think the best way is to teach the DashboardTab component
-              // how to localize, but then have it only localize when a certain
-              // contextual flag is on. Perhaps React context could help.
-              dashboardTabs && (
-                <DashboardTabsContainer>
-                  <FixedWidthContainer
-                    data-testid="fixed-width-dashboard-tabs"
-                    isFixedWidth={dashboard?.width === "fixed"}
-                  >
-                    {dashboardTabs}
-                  </FixedWidthContainer>
-                </DashboardTabsContainer>
-              )
-            }
+            {dashboardTabs && (
+              <DashboardTabsContainer>
+                <FixedWidthContainer
+                  data-testid="fixed-width-dashboard-tabs"
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
+                  {dashboardTabs}
+                </FixedWidthContainer>
+              </DashboardTabsContainer>
+            )}
+
             <Separator className={EmbedFrameS.Separator} />
           </Header>
         )}
