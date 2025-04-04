@@ -484,7 +484,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("Reported failing on 0.38.1-SNAPSHOT (6d77f099)");
     cy.findByTestId("step-expression-0-0").should("not.exist");
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -524,7 +524,7 @@ describe("scenarios > question > custom column", () => {
         },
         display: "table",
       },
-      { callback: xhr => expect(xhr.response.body.error).not.to.exist },
+      { callback: (xhr) => expect(xhr.response.body.error).not.to.exist },
     );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -568,7 +568,7 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
@@ -1522,8 +1522,8 @@ describe("scenarios > question > custom column > path", () => {
       idAlias: "modelId",
     });
 
-    cy.get("@modelId").then(modelId => {
-      H.setModelMetadata(modelId, field => {
+    cy.get("@modelId").then((modelId) => {
+      H.setModelMetadata(modelId, (field) => {
         if (field.name === CC_NAME) {
           return { ...field, semantic_type: "type/URL" };
         }
@@ -1617,12 +1617,12 @@ describe("scenarios > question > custom column > function browser", () => {
     H.CustomExpressionEditor.functionBrowser().within(() => {
       cy.findByPlaceholderText("Search functions…").type("con");
 
-      cy.findByText("dayName").should("not.exist");
+      cy.findByText("datetimeAdd").should("not.exist");
       cy.findByText("concat").should("be.visible");
       cy.findByText("second").should("be.visible");
       //
       cy.findByPlaceholderText("Search functions…").clear();
-      cy.findByText("dayName").should("be.visible");
+      cy.findByText("datetimeAdd").should("be.visible");
     });
   });
 

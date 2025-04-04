@@ -8,7 +8,7 @@ import { Api } from "./api";
 import { invalidateTags, tag } from "./tags";
 
 export const settingsApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     // admin-only endpoint that returns all settings with lots of extra metadata
     getAdminSettingsDetails: builder.query<SettingDefinition[], void>({
       query: () => ({
@@ -17,9 +17,9 @@ export const settingsApi = Api.injectEndpoints({
       }),
     }),
     getSetting: builder.query<SettingValue, SettingKey>({
-      query: name => ({
+      query: (name) => ({
         method: "GET",
-        url: `/api/setting/${name}`,
+        url: `/api/setting/${encodeURIComponent(name)}`,
       }),
       providesTags: ["session-properties"],
     }),
@@ -32,14 +32,14 @@ export const settingsApi = Api.injectEndpoints({
     >({
       query: ({ key, value }) => ({
         method: "PUT",
-        url: `/api/setting/${key}`,
+        url: `/api/setting/${encodeURIComponent(key)}`,
         body: { value },
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
     updateSettings: builder.mutation<void, Record<SettingKey, SettingValue>>({
-      query: settings => ({
+      query: (settings) => ({
         method: "PUT",
         url: `/api/setting`,
         body: settings,

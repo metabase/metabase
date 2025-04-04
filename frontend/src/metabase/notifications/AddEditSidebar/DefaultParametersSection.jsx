@@ -11,7 +11,7 @@ import Heading from "./Heading";
 // TODO: will need improved formatting for operator parameter filters
 function formatDefaultParamValues(parameters) {
   return parameters
-    .map(parameter => {
+    .map((parameter) => {
       const value = conjunct([].concat(parameter.default), t`and`);
       return value && `${parameter.name} is ${value}`;
     })

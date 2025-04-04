@@ -56,7 +56,7 @@ export const getTooltipOption = (
   return {
     ...getTooltipBaseOption(containerRef),
     trigger: "item",
-    formatter: params => {
+    formatter: (params) => {
       if (Array.isArray(params)) {
         return "";
       }

@@ -41,7 +41,7 @@ export const StructuredQueryRightSidebar = ({
       () => (
         <SummarizeSidebar
           query={question.query()}
-          onQueryChange={nextQuery => {
+          onQueryChange={(nextQuery) => {
             const datesetQuery = Lib.toLegacyQuery(nextQuery);
             const nextQuestion = question.setDatasetQuery(datesetQuery);
             updateQuestion(nextQuestion.setDefaultDisplay(), {

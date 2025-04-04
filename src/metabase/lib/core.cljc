@@ -162,6 +162,7 @@
   floor
   round
   power
+  date
   interval
   relative-datetime
   time
@@ -176,6 +177,7 @@
   get-minute
   get-second
   get-quarter
+  get-day-of-week
   datetime-add
   datetime-subtract
   concat
@@ -190,6 +192,7 @@
   lower
   offset
   text
+  split-part
   integer]
  [lib.extraction
   column-extractions

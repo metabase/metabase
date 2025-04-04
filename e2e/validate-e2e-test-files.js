@@ -15,7 +15,7 @@ function validateE2EFileNames(files) {
     return;
   }
 
-  const invalidFileNames = files.filter(fullPath => {
+  const invalidFileNames = files.filter((fullPath) => {
     return !path.basename(fullPath).match(E2E_FILE_EXTENSION);
   });
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
+import type { UserId } from "./user";
 
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
@@ -374,6 +375,7 @@ interface PublicSettings {
     status: "not-connected" | "loading" | "complete" | "error";
     folder_url: string | null;
     error?: string;
+    "created-by-id"?: UserId;
   };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;

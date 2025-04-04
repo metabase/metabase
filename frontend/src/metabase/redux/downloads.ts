@@ -208,7 +208,7 @@ const getDatasetParams = ({
         url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
         params: new URLSearchParams({
           parameters: JSON.stringify(params),
-          ..._.mapObject(exportParams, value => String(value)),
+          ..._.mapObject(exportParams, (value) => String(value)),
         }),
       };
     }
@@ -221,7 +221,7 @@ const getDatasetParams = ({
         url: Urls.embedCard(token, type),
         params: new URLSearchParams({
           parameters: JSON.stringify(Object.fromEntries(params)),
-          ..._.mapObject(exportParams, value => String(value)),
+          ..._.mapObject(exportParams, (value) => String(value)),
         }),
       };
     }
@@ -333,7 +333,7 @@ const getChartFileName = (question: Question) => {
 
 export const getDownloads = (state: State) => state.downloads;
 export const hasActiveDownloads = (state: State) =>
-  state.downloads.some(download => download.status === "in-progress");
+  state.downloads.some((download) => download.status === "in-progress");
 
 const initialState: DownloadsState = [];
 
@@ -343,7 +343,7 @@ const downloads = createSlice({
   reducers: {
     clearAll: () => initialState,
   },
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder
       .addCase(downloadDataset.pending, (state, action) => {
         const title = t`Results for ${
@@ -356,14 +356,14 @@ const downloads = createSlice({
         });
       })
       .addCase(downloadDataset.fulfilled, (state, action) => {
-        const download = state.find(item => item.id === action.meta.arg.id);
+        const download = state.find((item) => item.id === action.meta.arg.id);
         if (download) {
           download.status = "complete";
           download.title = action.payload.name;
         }
       })
       .addCase(downloadDataset.rejected, (state, action) => {
-        const download = state.find(item => item.id === action.meta.arg.id);
+        const download = state.find((item) => item.id === action.meta.arg.id);
         if (download) {
           download.status = "error";
           download.error =

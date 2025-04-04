@@ -84,7 +84,7 @@ function normalizeEntityTypesCommaSeparatedSearchParameter(
   const [optionValues] = searchParams.getAll(PARAMETER);
   if (optionValues && isArrayString(optionValues)) {
     searchParams.delete(PARAMETER);
-    optionValues.split(",").forEach(value => {
+    optionValues.split(",").forEach((value) => {
       const normalizedValue = value.trim();
       if (normalizedValue) {
         searchParams.append(PARAMETER, normalizedValue);
@@ -125,7 +125,7 @@ function normalizeEntityTypes(
     const entityTypes = Array.isArray(entityTypesValueOrArray)
       ? entityTypesValueOrArray
       : [entityTypesValueOrArray];
-    const filteredEntityTypes = entityTypes.filter(type =>
+    const filteredEntityTypes = entityTypes.filter((type) =>
       ALLOWED_ENTITY_TYPES.includes(type),
     );
 

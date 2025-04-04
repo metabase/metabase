@@ -66,7 +66,7 @@ export default class Progress extends Component {
         ],
         settings,
       ) => [
-        _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
+        _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0],
       ],
     }),
     "progress.goal": {
@@ -168,7 +168,7 @@ export default class Progress extends Component {
     const clicked = { value, column, settings };
     const isClickable = onVisualizationClick != null;
 
-    const handleClick = e => {
+    const handleClick = (e) => {
       if (onVisualizationClick && visualizationIsClickable(clicked)) {
         onVisualizationClick({ ...clicked, event: e.nativeEvent });
       }

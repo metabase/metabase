@@ -108,7 +108,7 @@ export function UndoToast({
       duration={TOAST_TRANSITION_DURATION}
       timingFunction="ease"
     >
-      {styles => (
+      {(styles) => (
         <ToastCard
           dark
           data-testid="toast-undo"
@@ -168,7 +168,7 @@ export function UndoToast({
 
 export function UndoListing() {
   const dispatch = useDispatch();
-  const undos = useSelector(state => state.undo);
+  const undos = useSelector((state) => state.undo);
 
   const [lastId, setLastId] = useState<string | null>(null);
 
@@ -184,7 +184,7 @@ export function UndoListing() {
         lastId
       }
     >
-      {undos.map(undo => (
+      {undos.map((undo) => (
         <UndoToast
           key={undo._domId}
           undo={undo}

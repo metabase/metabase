@@ -119,7 +119,7 @@ describe("Admin > CollectionPermissionsPage", () => {
       // should also change permissions on nested one from no access to curate
       const otherUsersRow = await screen
         .findAllByRole("row")
-        .then(rows => rows[3]);
+        .then((rows) => rows[3]);
 
       expect(within(otherUsersRow).getByText("Other Users")).toBeVisible();
       await userEvent.click(within(otherUsersRow).getByText("View"));

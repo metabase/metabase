@@ -14,7 +14,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   const ordersColumns = ["PRODUCT_ID", "QUANTITY"];
 
   function waitAndAssertOnResponse(alias) {
-    cy.wait("@" + alias).then(xhr => {
+    cy.wait("@" + alias).then((xhr) => {
       expect(xhr.response.body.errors).to.not.exist;
     });
   }
@@ -51,7 +51,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    ordersColumns.forEach(column => {
+    ordersColumns.forEach((column) => {
       cy.wrap(
         `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[column]}/general`,
       ).as(`ORDERS_${column}_URL`);
@@ -106,7 +106,7 @@ describe("scenarios > admin > datamodel > field", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
+    ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach((name) => {
       cy.wrap(
         `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[name]}/general`,
       ).as(`ORDERS_${name}_URL`);
@@ -473,7 +473,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
     cy.log("Numeric ratings should be remapped to custom strings");
     H.openReviewsTable();
-    Object.values(customMap).forEach(rating => {
+    Object.values(customMap).forEach((rating) => {
       cy.findAllByText(rating);
     });
   });
@@ -755,7 +755,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     });
 
     it("should not crash when editing field in segment field detail page (metabase#55322)", () => {
-      cy.get("@segmentId").then(segmentId => {
+      cy.get("@segmentId").then((segmentId) => {
         cy.visit(`/reference/segments/${segmentId}/fields/${ORDERS.TAX}`);
       });
 
@@ -765,20 +765,22 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.get("main").findByText("Something’s gone wrong").should("not.exist");
     });
 
-    it("should show up in UI list", () => {
+    it("should show up in UI list and should show the segment details of a specific id", () => {
       cy.visit("/admin/datamodel/segments");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(SEGMENT_NAME);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Filtered by Total");
-    });
 
-    it("should show the segment details of a specific id", () => {
-      cy.visit("/admin/datamodel/segment/1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit Your Segment");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Preview");
+      cy.findByRole("table")
+        .findByText("Filtered by Total is less than 100")
+        .should("be.visible");
+      cy.findByRole("link", { name: /Orders < 100/ })
+        .should("be.visible")
+        .click();
+
+      cy.get("form").findByText("Edit Your Segment").should("be.visible");
+      cy.findByPlaceholderText("Something descriptive but not too long").should(
+        "have.value",
+        SEGMENT_NAME,
+      );
+      cy.findByRole("link", { name: "Preview" }).should("be.visible");
     });
 
     it("should see a newly asked question in its questions list", () => {

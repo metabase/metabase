@@ -5,6 +5,7 @@ import type { Expression } from "metabase-types/api";
 import { type ExpressionError, renderError } from "./errors";
 import { resolverPass } from "./field-resolver";
 import {
+  adjustBigIntLiteral,
   adjustBooleans,
   adjustCaseOrIf,
   adjustMultiArgOptions,
@@ -44,15 +45,16 @@ export function compileExpression({
   resolve?: boolean;
 }): CompileResult {
   try {
-    const tokens = lexify(source);
+    const { tokens } = lexify(source);
     const { root } = parse(tokens, { throwOnError: true });
     const compiled = compile(root);
     const expression = applyPasses(compiled, [
       adjustOptions,
       adjustOffset,
-      adjustCaseOrIf,
       adjustMultiArgOptions,
+      adjustBigIntLiteral,
       adjustTopLevelLiteral,
+      adjustCaseOrIf,
       shouldResolve &&
         resolverPass({
           database,

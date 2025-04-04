@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Babashka
-        uses: turtlequeue/setup-babashka@v1
+        uses: turtlequeue/setup-babashka@v1.7.0
         with:
           babashka-version: 1.12.197
 
@@ -34,5 +34,5 @@ jobs:
 
       - name: Verify deployment
         run: |
-          echo "Athena JDBC driver version ${{ github.event.inputs.version }} has been deployed"
           aws s3 ls s3://metabase-maven-downloads/com/metabase/athena-jdbc/${{ github.event.inputs.version }}/
+          echo "Athena JDBC driver version ${{ github.event.inputs.version }} has been deployed"

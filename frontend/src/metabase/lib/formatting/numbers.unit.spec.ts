@@ -1,6 +1,15 @@
 import { formatNumber, numberFormatterForOptions } from "./numbers";
 
 describe("formatNumber", () => {
+  it("should respect the decimals setting even when compact is true (metabase#54063)", () => {
+    const result = formatNumber(4.271250189320243, {
+      compact: true,
+      decimals: 0,
+    });
+
+    expect(result).toEqual("4");
+  });
+
   it("should show the correct currency format (metabase#34242)", () => {
     const numberFormatter = numberFormatterForOptions({
       number_style: "currency",
@@ -31,26 +40,6 @@ describe("formatNumber", () => {
       _numberFormatter: numberFormatter,
     });
     expect(fullResult).toEqual("-$500,000.00");
-  });
-
-  it("should work with durations", () => {
-    expect(
-      formatNumber(652000, {
-        number_style: "duration",
-      }),
-    ).toEqual("10m 52s");
-
-    expect(
-      formatNumber(10652000, {
-        number_style: "duration",
-      }),
-    ).toEqual("2h 57m 32s");
-
-    expect(
-      formatNumber(100620000, {
-        number_style: "duration",
-      }),
-    ).toEqual("1d 3h 57m");
   });
 
   it("should work with scientific notation (metabase#25222)", () => {

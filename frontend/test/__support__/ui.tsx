@@ -315,7 +315,7 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
     const hasText = (node: Element | null | undefined) =>
       node?.textContent === textToFind;
     const childrenDoNotHaveText = element
-      ? Array.from(element.children).every(child => !hasText(child))
+      ? Array.from(element.children).every((child) => !hasText(child))
       : true;
 
     return hasText(element) && childrenDoNotHaveText;
@@ -380,24 +380,10 @@ export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
 };
 
 /**
- * jsdom doesn't have scrollBy, so we need to mock it
+ * Mocked globally in frontend/test/__support__/mocks.js
  */
-export const mockScrollBy = () => {
-  window.Element.prototype.scrollBy = jest.fn();
-};
-
-/**
- * jsdom doesn't have scrollBy, so we need to mock it
- */
-export const mockScrollTo = () => {
-  window.Element.prototype.scrollTo = jest.fn();
-};
-
-/**
- * jsdom doesn't have scrollBy, so we need to mock it
- */
-export const mockScrollIntoView = () => {
-  window.Element.prototype.scrollIntoView = jest.fn();
+export const getScrollIntoViewMock = () => {
+  return window.HTMLElement.prototype.scrollIntoView;
 };
 
 /**

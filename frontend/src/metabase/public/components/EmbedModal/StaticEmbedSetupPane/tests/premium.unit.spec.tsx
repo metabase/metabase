@@ -56,7 +56,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
 
         const popover = await screen.findByRole("listbox", { name: "Font" });
 
-        FONTS_MOCK_VALUES.forEach(fontName => {
+        FONTS_MOCK_VALUES.forEach((fontName) => {
           expect(within(popover).getByText(fontName)).toBeVisible();
         });
 

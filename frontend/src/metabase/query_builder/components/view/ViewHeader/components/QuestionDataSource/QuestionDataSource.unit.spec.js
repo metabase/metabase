@@ -343,7 +343,7 @@ describe("QuestionDataSource", () => {
   });
 
   describe("common", () => {
-    ALL_TEST_CASES.forEach(testCase => {
+    ALL_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -368,7 +368,7 @@ describe("QuestionDataSource", () => {
   });
 
   describe("GUI", () => {
-    Object.values(GUI_TEST_CASE).forEach(testCase => {
+    Object.values(GUI_TEST_CASE).forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -414,7 +414,7 @@ describe("QuestionDataSource", () => {
     [
       GUI_TEST_CASE.SAVED_GUI_MULTI_SCHEMA_DB,
       GUI_TEST_CASE.AD_HOC_MULTI_SCHEMA_DB,
-    ].forEach(testCase => {
+    ].forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -437,7 +437,7 @@ describe("QuestionDataSource", () => {
     [
       GUI_TEST_CASE.SAVED_GUI_PRODUCTS_JOIN,
       GUI_TEST_CASE.AD_HOC_PRODUCTS_JOIN,
-    ].forEach(testCase => {
+    ].forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -468,7 +468,7 @@ describe("QuestionDataSource", () => {
     [
       GUI_TEST_CASE.SAVED_GUI_PRODUCTS_PEOPLE_JOIN,
       GUI_TEST_CASE.AD_HOC_PRODUCTS_PEOPLE_JOIN,
-    ].forEach(testCase => {
+    ].forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -552,7 +552,7 @@ describe("QuestionDataSource", () => {
       },
     };
 
-    Object.values(NESTED_TEST_CASES).forEach(testCase => {
+    Object.values(NESTED_TEST_CASES).forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {

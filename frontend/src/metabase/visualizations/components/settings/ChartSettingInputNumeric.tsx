@@ -55,11 +55,11 @@ export const ChartSettingInputNumeric = ({
       error={inputValue && isNaN(Number(inputValue))}
       value={String(inputValue)}
       onChange={(e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value.split("").every(ch => ALLOWED_CHARS.has(ch))) {
+        if (e.target.value.split("").every((ch) => ALLOWED_CHARS.has(ch))) {
           setInputValue(e.target.value);
         }
       }}
-      onBlur={e => {
+      onBlur={(e) => {
         let num = e.target.value !== "" ? Number(e.target.value) : Number.NaN;
         if (options?.isInteger) {
           num = Math.round(num);
