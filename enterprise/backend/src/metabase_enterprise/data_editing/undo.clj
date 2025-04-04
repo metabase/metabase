@@ -39,7 +39,9 @@
                                      [:not :undone]
                                      :undone)]}]))
 
-(defn- track-change! [user-id table-id->row-pk->old-new-values]
+(defn track-change!
+  "Insert some snapshot data based on edits made to the given table."
+  [user-id table-id->row-pk->old-new-values]
   (t2/insert!
    :model/Undo
    (for [[table-id table-updates] table-id->row-pk->old-new-values
@@ -74,6 +76,7 @@
   (boolean (seq (next-batch undo? user-id table-id))))
 
 ;; This will be used to fix conflict false positives
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- diff-keys
   "Give the sorted list of keys on which m1 and m2 differ."
   [m1 m2]
@@ -159,10 +162,14 @@
                                 (batch->rows undo? sub-batch))])
                (into {}))))))
 
-(defn undo! [user-id table-id]
+(defn undo!
+  "Rollback the given user's last change to the given table."
+  [user-id table-id]
   (undo*! true user-id table-id))
 
-(defn redo! [user-id table-id]
+(defn redo!
+  "Rollback the given user's last change to the given table."
+  [user-id table-id]
   (undo*! false user-id table-id))
 
 
