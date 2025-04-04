@@ -26,6 +26,7 @@ import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Box } from "metabase/ui";
+import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
 import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
 import { SdkContextProvider } from "../private/SdkContext";
@@ -142,7 +143,9 @@ export const MetabaseProvider = memo(function MetabaseProvider(
 
   return (
     <MetabaseReduxProvider store={storeRef.current}>
-      <MetabaseProviderInternal store={storeRef.current} {...props} />
+      <MetabotProvider>
+        <MetabaseProviderInternal store={storeRef.current} {...props} />
+      </MetabotProvider>
     </MetabaseReduxProvider>
   );
 });

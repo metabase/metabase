@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { Flex, Text } from "metabase/ui";
-import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 
@@ -18,20 +17,18 @@ export const MetabotQuestion = () => {
   }, [result]);
 
   return (
-    <MetabotProvider>
-      <Flex direction="column" align="center" gap="3rem">
-        <MetabotChatEmbedding onResult={setResult} />
-        {redirectUrl && (
-          <InteractiveAdHocQuestion
-            questionPath={redirectUrl}
-            title={false}
-            onNavigateBack={() => {}}
-            isSaveEnabled={false}
-          />
-        )}
-        <Disclaimer />
-      </Flex>
-    </MetabotProvider>
+    <Flex direction="column" align="center" gap="3rem">
+      <MetabotChatEmbedding onResult={setResult} />
+      {redirectUrl && (
+        <InteractiveAdHocQuestion
+          questionPath={redirectUrl}
+          title={false}
+          onNavigateBack={() => {}}
+          isSaveEnabled={false}
+        />
+      )}
+      <Disclaimer />
+    </Flex>
   );
 };
 
