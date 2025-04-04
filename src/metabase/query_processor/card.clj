@@ -289,9 +289,10 @@
                             :context                context
                             :card-id                card-id
                             :card-name              (:name card)
+                            :card-stored-metadata   (:result_metadata card)
                             :dashboard-id           dashboard-id
                             :visualization-settings merged-viz}
-                     (seq (:result_metadata card))
+                     (and (= (:type card) :model) (seq (:result_metadata card)))
                      (assoc :metadata/model-metadata (:result_metadata card)))]
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
