@@ -1,14 +1,137 @@
 (ns metabase.query-processor.middleware.metrics
   (:require
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
+
+(defn- filters->condition
+  [filters]
+  (when (seq filters)
+    (let [fc (count filters)]
+      (lib.util/fresh-uuids
+       (cond (= fc 1) (first filters)
+             (> fc 1) (apply lib/and filters))))))
+
+(def aggregations-pred-1st-arg
+  #{:count-where
+    :sum-where})
+
+(def nullary-aggregations
+  #{:count
+    :cum-count})
+
+(def aggregations-col-1st-arg
+  #{:avg
+    :cum-sum
+    :distinct
+    :max
+    :median
+    :min
+    :percentile
+    :stddev
+    :sum
+    :var})
+
+(defn- merge-conditions
+  [c1 c2]
+  (let [c2-operator (first c2)
+        c2-maybe-unwrapped (cond-> c2
+                             (= :and c2-operator) (subvec 2))
+        c1-operator (first c1)]
+    (if (= :and c1-operator)
+      (if (= :and c2-operator)
+        (into c1 c2-maybe-unwrapped)
+        (conj c1 c2-maybe-unwrapped))
+      (if (= :and c2-operator)
+        (apply lib/and c1 c2-maybe-unwrapped)
+        (lib/and c1 c2-maybe-unwrapped)))))
+
+(defn- transform-aggregation-with-predicate
+  [condition aggregation]
+  (assert (vector? aggregation))
+  (let [predicate-arg-index (dec (count aggregation))
+        original-predicate (aggregation predicate-arg-index)
+        adjusted-predicate (merge-conditions original-predicate condition)]
+    (assoc aggregation predicate-arg-index (lib.util/fresh-uuids adjusted-predicate))))
+
+(defn- transform-0-arity-aggregation
+  [condition aggregation]
+  (if (or (not (vector? aggregation))
+          (not (contains? nullary-aggregations (first aggregation)))
+          (empty? condition))
+    aggregation
+    (let [operator (first aggregation)
+          clause-meta (meta aggregation)
+          opts (lib.options/options aggregation)
+          aggregating-fn (case operator
+                           :count lib/sum
+                           :cum-count lib/cum-sum)]
+      (-> (aggregating-fn (lib/case [[condition 1]]))
+          ;; explicit overwrite of new options with options of original clause
+          (lib.options/with-options opts)
+          (with-meta clause-meta)))))
+
+(defn- transform-share-aggregation
+  [condition aggregation]
+  (let [opts (lib.options/options aggregation)
+        predicate (nth aggregation 2)
+        aggregation-meta (meta aggregation)]
+    (-> (lib// (lib/count-where (merge-conditions predicate condition))
+               (lib/count-where condition))
+        (lib.util/fresh-uuids)
+        (lib.options/with-options opts)
+        (with-meta aggregation-meta))))
+
+(defn- case-wrap-metric-aggregation
+  [aggregation condition]
+  (cond->> aggregation
+    (seq condition)
+    (walk/postwalk
+     (fn [form]
+       (if-not (and (vector? form)
+                    (not (map-entry? form)))
+         form
+         (let [operator (first form)]
+           (cond
+
+             (= :share operator)
+             (transform-share-aggregation condition form)
+
+             (contains? aggregations-pred-1st-arg operator)
+             (transform-aggregation-with-predicate condition form)
+
+             (contains? nullary-aggregations operator)
+             (transform-0-arity-aggregation condition form)
+
+             (or (contains? aggregations-col-1st-arg operator)
+                 (= :percentile operator))
+             (assoc form 2 (lib/case [[condition (nth form 2)]]))
+
+             :else
+             form)))))))
+
+(defn- metric-query-filters->aggregation
+  "Entrypoint into the marvelous world of transforming metric aggregation into one that hase case wrapped column arg."
+  [metric-query]
+  (if-some [filters (not-empty (lib/filters metric-query))]
+    (let [aggregation-names (select-keys (m/find-first (comp #{:source/aggregations} :lib/source)
+                                                       (lib/returned-columns metric-query))
+                                         [:name :display-name])]
+      (-> metric-query
+          (lib.util/update-query-stage -1 update-in [:aggregation 0]
+                                       #(-> %
+                                            (case-wrap-metric-aggregation (filters->condition filters))
+                                            (lib.options/update-options merge aggregation-names)))
+          (lib.util/update-query-stage -1 dissoc :filters)))
+    metric-query))
 
 (defn- replace-metric-aggregation-refs [query stage-number lookup]
   (if-let [aggregations (lib/aggregations query stage-number)]
@@ -51,7 +174,8 @@
                       (let [metric-query (->> (:dataset-query card-metadata)
                                               (lib/query query)
                                               ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
-                                              (lib/query query))
+                                              (lib/query query)
+                                              metric-query-filters->aggregation)
                             metric-name (:name card-metadata)]
                         (if-let [aggregation (first (lib/aggregations metric-query))]
                           [(:id card-metadata)
@@ -129,17 +253,19 @@
                              (comp :lib/expression-name second)
                              (lib/expressions temp-query)))
             new-query (reduce
-                       (fn [query [_metric-id {metric-query :query}]]
+                       (fn [query [metric-id {metric-query :query}]]
                          (if (and (= (lib.util/source-table-id query) (lib.util/source-table-id metric-query))
                                   (or (= (lib/stage-count metric-query) 1)
                                       (= (:qp/stage-had-source-card (last (:stages metric-query)))
                                          (:qp/stage-had-source-card (lib.util/query-stage query agg-stage-index)))))
-                           (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)]
+                           (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)
+                                 lookup (-> lookup
+                                            (assoc-in [metric-id :query] metric-query)
+                                            (assoc-in [metric-id :aggregation] (first (lib/aggregations metric-query))))]
                              (as-> query $q
                                (reduce #(expression-with-name-from-source %1 agg-stage-index %2)
                                        $q (lib/expressions metric-query -1))
                                (include-implicit-joins $q agg-stage-index metric-query)
-                               (reduce #(lib/filter %1 agg-stage-index %2) $q (lib/filters metric-query -1))
                                (replace-metric-aggregation-refs $q agg-stage-index lookup)))
                            (throw (ex-info "Incompatible metric" {:query query
                                                                   :metric metric-query}))))
@@ -181,7 +307,8 @@
    replaced with the actual aggregation of the metric."
   [query stage-path expanded-stages last-metric-stage-number metric-metadata]
   (mu/disable-enforcement
-    (let [[pre-transition-stages [last-metric-stage _following-stage & following-stages]] (split-at last-metric-stage-number expanded-stages)
+    (let [[pre-transition-stages [last-metric-stage _following-stage & following-stages]]
+          (split-at last-metric-stage-number expanded-stages)
           metric-name (:name metric-metadata)
           metric-aggregation (-> last-metric-stage :aggregation first)
           stage-query (temp-query-at-stage-path query stage-path)
@@ -190,7 +317,9 @@
                                  (fn [stage]
                                    (dissoc stage :breakout :order-by :aggregation :fields :lib/stage-metadata)))
           ;; Needed for field references to resolve further in the pipeline
-          stage-query (lib/with-fields stage-query last-metric-stage-number (lib/fieldable-columns stage-query last-metric-stage-number))
+          stage-query (lib/with-fields
+                        stage-query last-metric-stage-number
+                        (lib/fieldable-columns stage-query last-metric-stage-number))
           new-metric-stage (lib.util/query-stage stage-query last-metric-stage-number)
           lookup {(:id metric-metadata)
                   {:name metric-name :aggregation metric-aggregation}}

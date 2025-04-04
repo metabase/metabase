@@ -123,6 +123,9 @@
   [x]
   (when-let [[tag _opts & args] (and (vector? x) x)]
     (or (lib.hierarchy/isa? tag ::aggregation-clause-tag)
+        (and (= :case tag)
+             (or (some aggregation-expression? (ffirst args))
+                 (some aggregation-expression? (fnext args))))
         (some aggregation-expression? args))))
 
 (mr/def ::aggregation
