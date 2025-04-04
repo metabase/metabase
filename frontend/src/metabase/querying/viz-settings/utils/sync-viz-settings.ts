@@ -126,21 +126,30 @@ function syncColumns<T>({
   const oldNameByKey = Object.fromEntries(
     oldColumns.map((column) => [column.key, column.name]),
   );
+
+  // Track which column keys we've already processed to avoid duplicates
+  const processedKeys = new Set<string>();
+
   const remappedSettings = settings.reduce((settings: T[], setting) => {
     const oldName = getColumnName(setting);
     const oldKey = oldName && oldKeyByName[oldName];
     const newName = oldKey && newNameByKey[oldKey];
+
     if (!oldKey) {
       settings.push(setting);
     } else if (newName) {
+      // Mark this key as processed to avoid duplicates
+      processedKeys.add(oldKey);
       settings.push(setColumnName(setting, newName));
     }
     return settings;
   }, []);
+
   const remappedNames = new Set(remappedSettings.map(getColumnName));
   const addedSettings = newColumns
     .filter(
       (column) =>
+        !processedKeys.has(column.key) && // Skip columns we've already processed
         !oldNameByKey[column.key] &&
         !remappedNames.has(column.name) &&
         shouldCreateSetting(column),
@@ -163,8 +172,10 @@ function syncColumnNames({
   oldColumns,
   shouldCreateSetting,
 }: SyncColumnNamesOpts) {
-  return syncColumns({
-    settings,
+  // Use a Set to keep track of metric names we've already seen
+  const uniqueSettings = new Set(settings);
+  const result = syncColumns({
+    settings: Array.from(uniqueSettings),
     newColumns,
     oldColumns,
     getColumnName: (setting) => setting,
@@ -172,6 +183,9 @@ function syncColumnNames({
     createSetting: (column) => column.name,
     shouldCreateSetting,
   });
+
+  // Ensure no duplicates in the final result as well
+  return Array.from(new Set(result));
 }
 
 function syncTableColumns(
@@ -234,10 +248,13 @@ function syncGraphMetrics(
     return settings;
   }
 
+  // Remove any potential duplicates from graphMetrics before syncing
+  const uniqueGraphMetrics = Array.from(new Set(graphMetrics));
+
   return {
     ...settings,
     "graph.metrics": syncColumnNames({
-      settings: graphMetrics,
+      settings: uniqueGraphMetrics,
       newColumns,
       oldColumns,
       shouldCreateSetting: (column) => column.isAggregation,

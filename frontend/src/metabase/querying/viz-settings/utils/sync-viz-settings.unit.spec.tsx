@@ -350,6 +350,27 @@ describe("syncVizSettings", () => {
         "graph.metrics": ["ID", "TAX"],
       });
     });
+
+    it("should handle duplicate metrics and ensure they are deduplicated when filter is removed", () => {
+      // This test simulates the issue reported in metabase#42447
+      const oldColumns: ColumnInfo[] = [
+        { name: "Category", key: "Category" },
+        { name: "count", key: "count", isAggregation: true },
+      ];
+      const newColumns: ColumnInfo[] = [
+        { name: "Category", key: "Category" },
+        { name: "count", key: "count", isAggregation: true },
+      ];
+      const oldSettings = createMockVisualizationSettings({
+        // Simulates the duplicated metrics that can happen when filter is removed
+        "graph.metrics": ["count", "count"],
+      });
+
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      expect(newSettings).toEqual({
+        "graph.metrics": ["count"],
+      });
+    });
   });
 
   describe("pivot_table", () => {
