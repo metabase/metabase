@@ -45,7 +45,6 @@
   are required, that work must be done before calling this function."
   [table-id rows]
   (let [res (perform-bulk-action! :bulk/create table-id rows)]
-    ;; TODO if we are inserting via webhook endpoint, we have no user id - but schema requires it.
     (when-some [user-id api/*current-user-id*]
       (doseq [row (:created-rows res)]
         (events/publish-event! :event/data-editing-row-create
