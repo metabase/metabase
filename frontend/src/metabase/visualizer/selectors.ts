@@ -55,7 +55,7 @@ export function getVisualizationTitle(state: State) {
 }
 
 export function getVisualizationType(state: State) {
-  return getCurrentHistoryItem(state).display;
+  return getCurrentHistoryItem(state).display ?? undefined;
 }
 
 export const getDatasets = (state: State) => state.visualizer.datasets;
@@ -216,7 +216,7 @@ export const getVisualizerPrimaryColumn = createSelector(
   ],
   (display, settings, columns) => {
     if (!display) {
-      return null;
+      return undefined;
     }
 
     if (isCartesianChart(display)) {
@@ -226,7 +226,7 @@ export const getVisualizerPrimaryColumn = createSelector(
       }
     }
 
-    return null;
+    return undefined;
   },
 );
 
