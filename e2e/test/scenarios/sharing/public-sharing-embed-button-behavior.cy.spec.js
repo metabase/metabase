@@ -638,6 +638,7 @@ describe("#39152 sharing an unsaved question", () => {
               )
               .click({ force: true });
 
+            // We have to also disable PDF exports for both to be disabled
             if (resource === "dashboard") {
               cy.findByLabelText("Export to PDF").click({ force: true });
             }
@@ -661,6 +662,81 @@ describe("#39152 sharing an unsaved question", () => {
               },
             });
           });
+
+          // Individual download options are only supported for dashboards
+          if (resource === "dashboard") {
+            it("should support disabling PDF and result downloads individually in `static_embed_code_copied`", () => {
+              cy.get("@resourceId").then((id) => {
+                visitResource(resource, id);
+              });
+              H.openStaticEmbeddingModal({ acceptTerms: false });
+
+              H.modal().within(() => {
+                cy.findByRole("tab", { name: "Look and Feel" }).click();
+              });
+
+              cy.log(
+                "Assert that it sends `downloads: { pdf: false, dashcard: true }` when only results download is enabled",
+              );
+
+              // Disable PDF exports
+              cy.findByLabelText("Export to PDF").click({ force: true });
+
+              cy.findByTestId("embed-backend")
+                .findByTestId("copy-button")
+                .realClick();
+
+              H.expectGoodSnowplowEvent({
+                event: "static_embed_code_copied",
+                artifact: resource,
+                language: "node",
+                location: "code_appearance",
+                code: "backend",
+                appearance: {
+                  background: true,
+                  bordered: true,
+                  titled: true,
+                  font: "instance",
+                  theme: "light",
+                  downloads: { pdf: false, dashcard: true },
+                },
+              });
+
+              cy.log(
+                "Assert that it sends `downloads: { pdf: true, dashcard: false }` when only PDF is enabled",
+              );
+
+              // Enable PDF exports again
+              cy.findByLabelText("Export to PDF").click({ force: true });
+
+              // Disable results download
+              cy.findByLabelText(
+                resource === "dashboard"
+                  ? "Results (csv, xlsx, json, png)"
+                  : "Download (csv, xlsx, json, png)",
+              ).click({ force: true });
+
+              cy.findByTestId("embed-backend")
+                .findByTestId("copy-button")
+                .realClick();
+
+              H.expectGoodSnowplowEvent({
+                event: "static_embed_code_copied",
+                artifact: resource,
+                language: "node",
+                location: "code_appearance",
+                code: "backend",
+                appearance: {
+                  background: true,
+                  bordered: true,
+                  titled: true,
+                  font: "instance",
+                  theme: "light",
+                  downloads: { pdf: true, dashcard: false },
+                },
+              });
+            });
+          }
         });
 
         it("should send `static_embed_discarded` when discarding changes in the static embed modal", () => {
