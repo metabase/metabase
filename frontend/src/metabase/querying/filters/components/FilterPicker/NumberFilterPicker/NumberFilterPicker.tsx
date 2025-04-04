@@ -17,7 +17,6 @@ import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export function NumberFilterPicker({
   query,
@@ -28,10 +27,9 @@ export function NumberFilterPicker({
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
-  const tc = useTranslateContent2();
   const columnInfo = useMemo(
-    () => Lib.displayInfo(query, stageIndex, column, tc),
-    [query, stageIndex, column, tc],
+    () => Lib.displayInfo(query, stageIndex, column),
+    [query, stageIndex, column],
   );
 
   const {
