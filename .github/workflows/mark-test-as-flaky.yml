@@ -1,0 +1,128 @@
+name: Mark Test as Flaky
+
+on:
+  slack_event:
+    event_type: block_actions
+    filter:
+      action_id: mark_test_as_flaky
+
+jobs:
+  create-flaky-test-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/Jod
+
+      - name: Install dependencies
+        run: npm install @slack/web-api
+
+      - name: Create branch and add flaky tag
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { WebClient } = require('@slack/web-api');
+            const fs = require('fs');
+            const path = require('path');
+
+            // Parse the Slack event data
+            const event = context.event.event;
+            const testData = JSON.parse(event.actions[0].value);
+
+            const {
+              testName,
+              file,
+              line,
+              column,
+              jobName,
+              runId,
+              branch,
+              testIndex
+            } = testData;
+
+            // Create a new branch with unique name
+            const branchName = `mark-test-as-flaky-${runId}-${testIndex}`;
+            await exec.exec('git', ['checkout', '-b', branchName]);
+
+            // Read the file content
+            const fileContent = fs.readFileSync(file, 'utf8');
+
+            // Find the test block and add the flaky tag
+            const lines = fileContent.split('\n');
+            let inTestBlock = false;
+            let foundTest = false;
+            let testStartLine = 0;
+            let modifiedContent = [];
+
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+
+              // Look for test blocks
+              if (line.match(/^(  |\t)*it\(/) || line.match(/^(  |\t)*test\(/) || line.match(/^(  |\t)*specify\(/)) {
+                testStartLine = i;
+                inTestBlock = true;
+              }
+
+              // If we found a test block, check if it contains our test name
+              if (inTestBlock && line.includes(testName)) {
+                foundTest = true;
+                modifiedContent.push(line);
+
+                // Check if the test already has tags
+                if (line.includes('tags:')) {
+                  // Add @flaky to existing tags
+                  modifiedContent.push(line.replace(/tags:.*/, match => `${match}, '@flaky'`));
+                } else {
+                  // Add new tags object
+                  modifiedContent.push("  { tags: ['@flaky'] },");
+                }
+              }
+
+              // If we found our test, stop looking after a few lines
+              if (foundTest && i > testStartLine + 5) {
+                inTestBlock = false;
+              }
+
+              // Print other lines as is
+              if (!foundTest || i <= testStartLine) {
+                modifiedContent.push(line);
+              }
+            }
+
+            // Write the modified content back to the file
+            fs.writeFileSync(file, modifiedContent.join('\n'));
+
+            // Commit the changes
+            await exec.exec('git', ['config', 'user.name', 'Metabase bot']);
+            await exec.exec('git', ['config', 'user.email', 'metabase-bot@metabase.com']);
+            await exec.exec('git', ['add', file]);
+            await exec.exec('git', ['commit', '-m', `Mark test as flaky: ${testName}`]);
+
+            // Push the changes
+            await exec.exec('git', ['push', '-u', 'origin', branchName]);
+
+            // Create a pull request
+            await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Mark test as flaky: ${testName}`,
+              body: `This PR marks the following test as flaky:
+
+              Test: \`${testName}\`
+              File: \`${file}:${line}:${column}\`
+              Job: ${jobName}
+              Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}
+              Branch: ${branch}
+
+              This change adds the \`@flaky\` tag to the test to indicate that it is known to be flaky.
+
+              Note: This PR was automatically created by the CI system. Please review the changes carefully.`,
+              head: branchName,
+              base: branch,
+              labels: ['flaky-test-fix']
+            });
