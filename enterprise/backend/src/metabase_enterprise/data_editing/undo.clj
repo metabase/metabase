@@ -114,8 +114,7 @@
   [undo? batch]
   (let [k (if undo? :raw_before :raw_after)]
     (for [b batch]
-      (when-let [body (k b)]
-        (merge (:row_pk b) body)))))
+      (merge (:row_pk b) (k b)))))
 
 (defn- update-table-data!
   "Revert the underlying table data."
@@ -133,7 +132,7 @@
                                       :pks       (map :row_pk batch)}
                                      e))))
       :update (data-editing/perform-bulk-action! :bulk/update table-id rows)
-      :delete (data-editing/perform-bulk-action! :bulk/delete table-id (map :row_pk batch)))))
+      :delete (data-editing/perform-bulk-action! :bulk/delete table-id rows))))
 
 (defn- undo*! [undo? user-id table-id]
   (let [batch (next-batch undo? user-id table-id)]
@@ -154,12 +153,17 @@
           (t2/update! :model/Undo
                       {:batch_num (:batch_num (first batch))}
                       {:undone undo?})
-          (batch->rows undo? batch)))))
+          (->> (for [[table-id sub-batch] (u/group-by :table_id batch)]
+                 [table-id (map vector
+                                (map (comp (if undo? invert identity) categorize) sub-batch)
+                                (batch->rows undo? sub-batch))])
+               (into {}))))))
 
 (defn undo! [user-id table-id]
   (undo*! true user-id table-id))
 
 (defn redo! [user-id table-id]
   (undo*! false user-id table-id))
+
 
 
