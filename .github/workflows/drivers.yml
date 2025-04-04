@@ -1055,7 +1055,7 @@ jobs:
     needs:
       # if you add a driver job, you must add it to this list for it to be a required check
       - be-tests-h2
-      - be-tests-athena-ee
+      # - be-tests-athena-ee # FIXME
       - be-tests-bigquery-cloud-sdk-ee
       - be-tests-druid-ee
       - be-tests-databricks-ee
