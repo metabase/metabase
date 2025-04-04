@@ -344,6 +344,14 @@
       [:substring_index text div pos]
       div -1]]))
 
+(defmethod sql.qp/->honeysql [:mysql :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:mysql :date]
+  [driver [_ value]]
+  [:str_to_date (sql.qp/->honeysql driver value) "%Y-%m-%d"])
+
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
