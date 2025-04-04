@@ -26,16 +26,25 @@ export const GdriveSyncStatus = () => {
   const [dbId, setDbId] = useState<DatabaseId | undefined>();
 
   const res = useGetGsheetsFolderQuery(!showGdrive ? skipToken : undefined);
-  const { data: gdriveFolder, error: apiError } = res;
+  const { currentData: gdriveFolder, error: apiError } = res;
 
   const currentUser = useSelector(getCurrentUser);
   const isCurrentUser = currentUser?.id === gdriveFolder?.created_by_id;
 
-  const status = gdriveFolder?.status || "not-connected";
+  const status = match({
+    apiStatus: gdriveFolder?.status,
+    folderSyncError: syncError.error,
+  })
+    .returnType<GsheetsStatus>()
+    .with({ folderSyncError: true }, () => "error")
+    .with({ apiStatus: "active" }, () => "active")
+    .with({ apiStatus: "syncing" }, () => "syncing")
+    .otherwise(() => "not-connected");
+
   const previousStatus = usePrevious(status);
 
   useEffect(() => {
-    if (res?.data?.status === "syncing") {
+    if (status === "syncing") {
       const timeout = setTimeout(() => {
         dispatch(EnterpriseApi.util.invalidateTags(["gsheets-status"]));
       }, SYNC_POLL_INTERVAL);
@@ -43,12 +52,12 @@ export const GdriveSyncStatus = () => {
         clearTimeout(timeout);
       };
     }
-  }, [res, dispatch]); // need res so this runs on every refetch
+  }, [res, status, dispatch]); // need res so this runs on every refetch
 
   // if our polling endpoint changes away from loading
   useEffect(() => {
-    if (status !== "syncing" || apiError) {
-      if (apiError) {
+    if (status !== "syncing") {
+      if (status === "error") {
         console.error((apiError as ErrorPayload)?.data?.message);
 
         setSyncError({
@@ -88,20 +97,9 @@ export const GdriveSyncStatus = () => {
     return null;
   }
 
-  const displayStatus = match({
-    folderSyncStatus: gdriveFolder?.status,
-    folderSyncError: syncError.error,
-    status,
-  })
-    .returnType<GsheetsStatus>()
-    .with({ folderSyncError: true }, () => "error")
-    .with({ status: "active" }, () => "active")
-    .with({ status: "syncing" }, () => "syncing")
-    .otherwise(() => "syncing");
-
   return (
     <GsheetsSyncStatusView
-      status={displayStatus}
+      status={status}
       db_id={dbId}
       onClose={() => setForceHide(true)}
     />
