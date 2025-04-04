@@ -73,6 +73,7 @@ export function useMultiAutocomplete({
       fieldSelection,
     );
     setFieldState(newFieldState);
+    combobox.openDropdown();
   };
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -124,6 +125,7 @@ export function useMultiAutocomplete({
 
   const handleFieldClick = (event: MouseEvent<HTMLInputElement>) => {
     event.stopPropagation();
+    combobox.openDropdown();
   };
 
   const handlePillClick = (
@@ -148,11 +150,11 @@ export function useMultiAutocomplete({
   };
 
   const handlePillsInputClick = () => {
-    combobox.openDropdown();
     setFieldState({
       fieldValue: "",
       fieldSelection: undefined,
     });
+    combobox.openDropdown();
   };
 
   const handleOptionSubmit = (value: string) => {
