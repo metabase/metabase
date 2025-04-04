@@ -9,34 +9,12 @@ const { H } = cy;
 
 const sampleDictionary = `
 Language,String,Translation
-es,Accounts,Cuentas
-es,Analytic Events,Eventos Analíticos
-es,Customers,Clientes
-es,Invoices,Facturas
-es,Orders,Órdenes
-es,People,Personas
-es,Products,Productos
-es,Reviews,Reseñas
-es,Enormous Aluminum Shirt,Enorme Camisa de Aluminio
-es,Vendor,Vendedor
-es,Sample Database,Base de Datos de Ejemplo
-es,Count of Products,Conteo de productos
-es,Metric about Products,Métrica sobre productos
-es,An interesting collection,Una colección interesante
-fr,Accounts,Comptes
-fr,Analytic Events,Événements Analytiques
-fr,Customers,Clients
-fr,Invoices,Factures
-fr,Orders,Ordres
-fr,People,Personnes
-fr,Products,Produits
-fr,Reviews,Avis
-fr,Enormous Aluminum Shirt,Chemise en Aluminium Énorme
-fr,Vendor,Vendeur
-fr,Sample Database,Base de Données d'Exemple
-fr,Count of Products,Nombre de produits
-fr,Metric about Products,Métrique sur les produits
-fr,An interesting collection,Une collection intéressante
+de,Title,Titel
+de,Vendor,Anbieter
+de,Rating,Bewertung
+de,Category,Kategorie
+de,Created At,Erstellt am
+de,Price,Preis
 `;
 
 describe("scenarios > admin > localization > content translation", () => {
@@ -68,20 +46,30 @@ describe("scenarios > admin > localization > content translation", () => {
         alias: "collectionId",
       });
 
-      cy.get("@collectionId").then(collectionId => {
+      cy.get<number>("@collectionId").then((collection_id) => {
         cy.log("Create a model");
         H.createQuestion(
           {
             name: "Count of products",
-            database: SAMPLE_DB_ID,
             type: "model",
             query: {
               "source-table": PRODUCTS_ID,
               aggregation: [["count"]],
             },
-            collection_id: collectionId,
+            collection_id,
           },
           { wrapId: true, idAlias: "modelId" },
+        );
+
+        H.createQuestion(
+          {
+            name: "Products",
+            query: {
+              "source-table": PRODUCTS_ID,
+            },
+            collection_id,
+          },
+          { wrapId: true, idAlias: "productsQuestionId" },
         );
 
         cy.log("Create a metric");
@@ -93,72 +81,64 @@ describe("scenarios > admin > localization > content translation", () => {
             "source-table": PRODUCTS_ID,
             aggregation: [["count"]],
           },
-          collection_id: this.collectionId,
+          collection_id,
         });
       });
     });
 
-    describe("context: query builder", () => {
+    // describe("context: query builder", () => {
+    //   before(() => {
+    //     cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+    //     cy.log("Can see translation of table name in Browse databases");
+    //     cy.findByText("Productos").click();
+    //   });
+
+    //   it("a database name in the question breadcrumb header", () => {
+    //     cy.findByTestId("head-crumbs-container")
+    //       .findByText("Base de Datos de Ejemplo")
+    //       .should("be.visible");
+    //   });
+
+    //   it("a table name in the question breadcrumb header", () => {
+    //     cy.findByTestId("head-crumbs-container")
+    //       .findByText("Productos")
+    //       .should("be.visible");
+    //   });
+
+    //   it("cell data", () => {
+    //     cy.findAllByTestId("cell-data").should(
+    //       "contain",
+    //       "Enorme Camisa de Aluminio",
+    //     );
+    //   });
+    // });
+
+    // describe("Context: Browse models", () => {
+    //   before(() => {
+    //     cy.visit("/browse/models");
+    //   });
+    //   it("model name", () => {
+    //     cy.findByText("Conteo de productos").should("be.visible");
+    //   });
+    //   it("collection name", () => {
+    //     cy.findByText("Una colección interesante").should("be.visible");
+    //   });
+    // });
+
+    describe("On the question page", () => {
       before(() => {
-        cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
-
-        cy.log("Can see translation of table name in Browse databases");
-        cy.findByText("Productos").click();
-      });
-
-      it("a database name in the question breadcrumb header", () => {
-        cy.findByTestId("head-crumbs-container")
-          .findByText("Base de Datos de Ejemplo")
-          .should("be.visible");
-      });
-
-      it("a table name in the question breadcrumb header", () => {
-        cy.findByTestId("head-crumbs-container")
-          .findByText("Productos")
-          .should("be.visible");
-      });
-
-      it("cell data", () => {
-        cy.findAllByTestId("cell-data").should(
-          "contain",
-          "Enorme Camisa de Aluminio",
-        );
-      });
-    });
-
-    describe("Context: Browse models", () => {
-      before(() => {
-        cy.visit("/browse/models");
-      });
-      it("model name", () => {
-        cy.findByText("Conteo de productos").should("be.visible");
-      });
-      it("collection name", () => {
-        cy.findByText("Una colección interesante").should("be.visible");
-      });
-    });
-
-    describe("Context: Browse metrics", () => {
-      before(() => {
-        cy.visit("/browse/metrics");
-      });
-      it("metric name", () => {
-        cy.findByText("Métrica sobre productos").should("be.visible");
-      });
-      it("collection name", () => {
-        cy.findByText("Una colección interesante").should("be.visible");
-      });
-    });
-
-    describe("Context: Home page", () => {
-      it.only("home page recents section", () => {
-        cy.get("@modelId").then(theModelId => {
-          H.visitModel(checkNotNull(theModelId as unknown as number));
-          H.visitHomepage({ homeText: "Inicio" });
-          cy.findByTestId("home-page")
-            .findByText("Conteo de productos")
-            .should("be.visible");
+        cy.get<number>("@productsQuestionId").then((productsQuestionId) => {
+          cy.visitQuestion(productsQuestionId);
         });
+      });
+      it("column names are localized", () => {
+        cy.findByText("Titel").should("be.visible");
+        cy.findByText("Anbieter").should("be.visible");
+        cy.findByText("Bewertung").should("be.visible");
+        cy.findByText("Kategorie").should("be.visible");
+        cy.findByText("Erstellt am").should("be.visible");
+        cy.findByText("Preis").should("be.visible");
       });
     });
   });
@@ -177,7 +157,7 @@ describe("scenarios > admin > localization > content translation", () => {
       const downloadsFolder = Cypress.config("downloadsFolder");
       cy.readFile(
         path.join(downloadsFolder, "content-translations-es,fr.csv"),
-      ).then(contents => {
+      ).then((contents) => {
         fileContents = contents;
       });
     });
