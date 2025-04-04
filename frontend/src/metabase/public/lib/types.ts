@@ -20,6 +20,11 @@ export type EmbedResourceParameter = {
   default?: unknown;
 };
 
+export type EmbedResourceDownloadOptions = {
+  pdf: boolean;
+  dashcard: boolean;
+};
+
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
 
 export type EmbeddingParameters = Record<string, EmbeddingParameterVisibility>;
