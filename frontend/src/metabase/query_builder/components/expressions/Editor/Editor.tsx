@@ -13,7 +13,7 @@ import _ from "underscore";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import {
   type ExpressionError,
   MBQL_CLAUSES,
@@ -245,33 +245,27 @@ function useExpression({
 
   const formatExpression = useCallback(
     ({ initial = false }: { initial?: boolean }) => {
-      const expression =
-        clause &&
-        Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
-
-      if (!expression) {
+      function done(source: string) {
         setIsFormatting(false);
-        setSource("");
+        setSource(source);
         if (initial) {
-          setInitialSource("");
+          setInitialSource(source);
         }
+      }
+
+      if (clause == null) {
+        done("");
         return;
       }
 
-      format(expression, {
+      format(clause, {
         query,
         stageIndex,
         expressionIndex,
         printWidth: 55, // 60 is the width of the editor
       })
         .catch(() => "")
-        .then((source) => {
-          setIsFormatting(false);
-          setSource(source);
-          if (initial) {
-            setInitialSource(source);
-          }
-        });
+        .then(done);
     },
     [clause, query, stageIndex, expressionIndex],
   );

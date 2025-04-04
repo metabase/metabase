@@ -288,7 +288,15 @@ export type ExpressionOperator =
   | "segment"
   | "offset";
 
-export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
+export type ExpressionArg =
+  | null
+  | boolean
+  | number
+  | bigint
+  | string
+  | ColumnMetadata
+  | SegmentMetadata
+  | MetricMetadata;
 
 export type ExpressionParts = {
   operator: ExpressionOperator;
@@ -299,6 +307,7 @@ export type ExpressionParts = {
 export type ExpressionOptions = {
   "case-sensitive"?: boolean;
   "include-current"?: boolean;
+  "base-type"?: string;
 };
 
 declare const FilterOperatorSymbol: unique symbol;

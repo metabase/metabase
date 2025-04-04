@@ -509,7 +509,9 @@
       (testing exp
         (is (= exp (lib/display-name
                     query -1
-                    (lib/expression-clause op args options))))))))
+                    (lib/expression-clause op
+                                           (map #(lib/expression-parts query -1 %) args)
+                                           options))))))))
 
 (deftest ^:parallel truncate-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)

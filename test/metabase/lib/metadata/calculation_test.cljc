@@ -76,12 +76,11 @@
 (deftest ^:parallel display-name-without-metadata-test
   (testing "Some display name is generated for fields even if they cannot be resolved (#33490)"
     (let [query      (lib.tu/venues-query)
-          field-id   (inc (apply max (map :id (lib/visible-columns query))))
-          field-name (str field-id)]
+          field-id   (inc (apply max (map :id (lib/visible-columns query))))]
       (mu/disable-enforcement
         (is (=? {:name              (str field-id)
-                 :display-name      field-name
-                 :long-display-name (str "join → " field-name)}
+                 :display-name      "Unknown Field"
+                 :long-display-name "join → Unknown Field"}
                 (lib/display-info query [:field {:join-alias "join"} field-id])))))))
 
 (deftest ^:parallel visible-columns-test
