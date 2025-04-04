@@ -13,13 +13,13 @@ type UploadContentTranslationDictionaryRequest = {
 };
 
 export const contentTranslationApi = Api.injectEndpoints({
-  endpoints: builder => {
+  endpoints: (builder) => {
     return {
       listContentTranslations: builder.query<
         ListContentTranslationsResponse,
         ListContentTranslationsRequest | void
       >({
-        query: params => ({
+        query: (params) => ({
           method: "GET",
           url: "/api/dictionary/",
           params,
