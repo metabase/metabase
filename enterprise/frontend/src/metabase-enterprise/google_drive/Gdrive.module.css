@@ -4,3 +4,11 @@
   text-decoration: none;
   cursor: pointer;
 }
+
+.inline {
+  display: inline;
+
+  p {
+    display: inline;
+  }
+}

@@ -73,7 +73,7 @@ type OwnProps = {
 
 type PublicOrEmbeddedDashboardProps = OwnProps &
   ReduxProps &
-  DashboardDisplayOptionControls &
+  Omit<DashboardDisplayOptionControls, "downloadsEnabled"> &
   Omit<EmbedDisplayParams, "font"> &
   Pick<EmbeddingAdditionalHashOptions, "locale">;
 
@@ -135,7 +135,7 @@ const PublicOrEmbeddedDashboardInner = ({
   titled,
   theme,
   getClickActionMode,
-  downloadsEnabled = true,
+  downloadsEnabled,
   hideParameters,
   withFooter,
   navigateToNewCardFromDashboard,

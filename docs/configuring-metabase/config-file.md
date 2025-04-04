@@ -152,12 +152,10 @@ config:
   api-keys:
     - name: "Admin API key"
       group: admin
-      description: "API key with admin permissions."
       creator: cam@example.com
       key: mb_firsttestapikey
     - name: "All Users API key"
       group: all-users
-      description: "API key with permissions of the All Users group."
       creator: cam@example.com
       key: mb_secondtestapikey
 {% endraw %}

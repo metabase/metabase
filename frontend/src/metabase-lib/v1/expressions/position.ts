@@ -14,7 +14,8 @@ export function enclosingFunction(doc: string, pos: number) {
       cursor.to >= pos
     ) {
       const value = doc.slice(cursor.from, cursor.to);
-      const structure = value.replace(/\(.*\)?$/, "");
+      const argsIndex = value.indexOf("(") ?? value.length;
+      const structure = value.slice(0, argsIndex).trim();
 
       const args =
         cursor.node.getChildren("ArgList")?.[0]?.getChildren("Arg") ?? [];

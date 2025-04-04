@@ -1,3 +1,5 @@
+import expression from "ts-dedent";
+
 import { enclosingFunction } from "./position";
 
 describe("enclosingFunction", () => {
@@ -76,5 +78,60 @@ describe("enclosingFunction", () => {
   it("should handle empty input", () => {
     expect(setup("|")).toEqual(null);
     expect(setup(" |")).toEqual(null);
+  });
+
+  it("should handle multiline input", () => {
+    expect(
+      setup(expression`
+        datetimeDif|f(
+          [CreatedAt],
+          [UpdatedAt],
+          "minute"
+        )
+      `),
+    ).toEqual({
+      name: "datetime-diff",
+      from: 0,
+      to: 56,
+      arg: null,
+    });
+
+    expect(
+      setup(expression`
+        datetimeDiff(
+          [CreatedAt]|,
+          [UpdatedAt],
+          "minute"
+        )
+      `),
+    ).toEqual({
+      name: "datetime-diff",
+      from: 0,
+      to: 56,
+      arg: {
+        index: 0,
+        from: 16,
+        to: 27,
+      },
+    });
+
+    expect(
+      setup(expression`
+        datetimeDiff(
+          [CreatedAt],
+          [UpdatedAt],
+          "minute"|
+        )
+      `),
+    ).toEqual({
+      name: "datetime-diff",
+      from: 0,
+      to: 56,
+      arg: {
+        index: 2,
+        from: 46,
+        to: 54,
+      },
+    });
   });
 });

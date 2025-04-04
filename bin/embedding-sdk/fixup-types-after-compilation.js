@@ -3,6 +3,8 @@
 /* eslint-disable import/no-commonjs, import/order, no-console */
 const fs = require("fs");
 const path = require("path");
+const glob = require("glob");
+const { Extractor, ExtractorConfig } = require("@microsoft/api-extractor");
 
 const SDK_DIST_DIR_PATH = path.resolve("./resources/embedding-sdk/dist");
 
@@ -21,32 +23,26 @@ const REPLACES_MAP = {
   cljs: "target/cljs_release",
 };
 
-const traverseFilesTree = dir => {
-  try {
-    const results = [];
-    const list = fs.readdirSync(dir);
-    list.forEach(file => {
-      file = path.join(dir, file);
-      const stat = fs.statSync(file);
-      if (stat && stat.isDirectory()) {
-        results.push(...traverseFilesTree(file));
-      } else if (file.endsWith(".d.ts")) {
-        // Is a ".d.ts" file
-        results.push(file);
-      }
-    });
-    return results;
-  } catch (error) {
-    console.error(`Error when walking dir ${dir}`, error);
-  }
+const API_EXTRACTOR_CONFIG_PATH = path.join(
+  __dirname,
+  "../../enterprise/frontend/src/embedding-sdk/embedding-sdk-api-extractor.json",
+);
+
+const getLogger = (prefix) => {
+  return {
+    log: (message) => console.log(`[${prefix}] ${message}`),
+    error: (message) => console.error(`[${prefix}] ${message}`),
+  };
 };
+
+const { log } = getLogger("dts fixup");
 
 const getRelativePath = (fromPath, toPath) => {
   const relativePath = path.relative(path.dirname(fromPath), toPath);
   return relativePath.startsWith(".") ? relativePath : "./" + relativePath;
 };
 
-const replaceAliasedImports = filePath => {
+const replaceAliasedImports = (filePath) => {
   let fileContent = fs.readFileSync(filePath, { encoding: "utf8" });
 
   Object.entries(REPLACES_MAP).forEach(([alias, targetPath]) => {
@@ -69,21 +65,120 @@ const replaceAliasedImports = filePath => {
   });
 
   fs.writeFileSync(filePath, fileContent, { encoding: "utf-8" });
-  console.log(`Edited file: ${filePath}`);
+  log(`Edited file: ${filePath}`);
 };
 
-const fixupTypesAfterCompilation = () => {
-  console.log("[dts fixup] Fixing SDK d.ts files...");
+const removeUnresolvedReexports = (filePath) => {
+  if (!filePath.endsWith("index.d.ts")) {
+    return;
+  }
 
-  const dtsFilePaths = traverseFilesTree(SDK_DIST_DIR_PATH);
+  const fileContent = fs.readFileSync(filePath, { encoding: "utf8" });
+  const lines = fileContent.split(/\r?\n/);
 
-  dtsFilePaths.forEach(replaceAliasedImports);
+  let isModified = false;
 
-  console.log("[dts fixup] Done!");
+  const updatedContent = lines
+    .filter((line) => {
+      if (!line.includes("export * from")) {
+        return true;
+      }
+
+      const target = line.match(/export \* from "(.*)"/)[1];
+      const dirPath = path.dirname(filePath);
+
+      const isUnresolved =
+        !fs.existsSync(path.resolve(dirPath, target)) &&
+        !fs.existsSync(`${path.resolve(dirPath, target)}.d.ts`);
+
+      if (isUnresolved) {
+        log(`Removing unresolved re-export: ${line}`);
+        isModified = true;
+      }
+
+      return !isUnresolved;
+    })
+    .join("\n");
+
+  if (isModified) {
+    fs.writeFileSync(filePath, updatedContent, { encoding: "utf-8" });
+  }
+};
+
+const fixupTypesAfterCompilation = ({ isWatchMode }) => {
+  log("Fixing SDK d.ts files...");
+
+  const dtsFilePaths = glob.sync(`${SDK_DIST_DIR_PATH}/**/*.d.ts`);
+
+  dtsFilePaths.forEach((filePath) => {
+    replaceAliasedImports(filePath);
+    removeUnresolvedReexports(filePath);
+  });
+
+  log("Done!");
+
+  if (!isWatchMode) {
+    generateDtsRollup();
+  }
+};
+
+const generateDtsRollup = () => {
+  // Dts rollup logger
+  const { log, error } = getLogger("dts rollup");
+
+  log("Generate dts rollup...");
+
+  const dtsRollupEntryPointPath = path.resolve(
+    path.join(
+      __dirname,
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
+    ),
+  );
+  const dtsRollupEntryPointPathExist = fs.existsSync(dtsRollupEntryPointPath);
+
+  if (!dtsRollupEntryPointPathExist) {
+    log("It looks like dts rollup is already generated, skipping...");
+
+    return;
+  }
+
+  const apiExtractorConfig = ExtractorConfig.loadFileAndPrepare(
+    API_EXTRACTOR_CONFIG_PATH,
+  );
+
+  const extractorResult = Extractor.invoke(apiExtractorConfig, {
+    localBuild: true,
+    showVerboseMessages: true,
+  });
+
+  if (!extractorResult.succeeded) {
+    error(
+      `API Extractor completed with ${extractorResult.errorCount} errors` +
+        ` and ${extractorResult.warningCount} warnings`,
+    );
+    process.exitCode = 1;
+  }
+
+  log("API Extractor completed successfully");
+
+  log("Removing intermediate dts files...");
+
+  [
+    `${SDK_DIST_DIR_PATH}/enterprise`,
+    `${SDK_DIST_DIR_PATH}/frontend`,
+    `${SDK_DIST_DIR_PATH}/target`,
+  ].forEach((path) => {
+    fs.rmSync(path, {
+      force: true,
+      recursive: true,
+    });
+  });
+
+  log("Dts rollup done!");
 };
 
 const watchFilesAndFixThem = () => {
-  console.log("[dts fixup] Watching for changes in the SDK d.ts files...");
+  log("Watching for changes in the SDK d.ts files...");
   // we need to keep track of the files that just edited
   // as they trigger a file save event otherwise we'd end up in a loop
 
@@ -100,10 +195,7 @@ const watchFilesAndFixThem = () => {
         if (dirty.get(filename)) {
           return dirty.set(filename, false);
         }
-        console.log(
-          "[dts fixup]",
-          `File ${filename} changed, fixing the imports`,
-        );
+        log(`File ${filename} changed, fixing the imports`);
         dirty.set(filename, true);
         replaceAliasedImports(path.resolve(SDK_DIST_DIR_PATH, filename));
       }
@@ -111,10 +203,10 @@ const watchFilesAndFixThem = () => {
   );
 };
 
-const waitForFolder = async folderPath => {
+const waitForFolder = async (folderPath) => {
   while (!fs.existsSync(folderPath)) {
-    console.log(`Waiting for ${folderPath} to be created...`);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    log(`Waiting for ${folderPath} to be created...`);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 };
 
@@ -123,7 +215,7 @@ const isWatchMode = process.argv.includes("--watch");
 const run = async () => {
   // when running on a clean state and with --watch, the folder might not exist yet
   await waitForFolder(SDK_DIST_DIR_PATH);
-  fixupTypesAfterCompilation();
+  fixupTypesAfterCompilation({ isWatchMode });
 
   if (isWatchMode) {
     console.log("\n\n\n");

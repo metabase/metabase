@@ -55,6 +55,46 @@ H.describeWithSnowplowEE(
         H.getDashboardCardMenu().should("not.exist");
       });
 
+      it("#downloads=pdf should enable only PDF downloads", () => {
+        cy.visit(`${publicLink}#downloads=pdf`);
+        waitLoading();
+
+        cy.get("header").findByText("Export as PDF").should("exist");
+        H.getDashboardCardMenu().should("not.exist");
+      });
+
+      it("#downloads=results should enable only dashcard results downloads", () => {
+        cy.visit(`${publicLink}#downloads=results`);
+        waitLoading();
+
+        cy.get("header").findByText("Export as PDF").should("not.exist");
+        H.getDashboardCardMenu().should("exist");
+      });
+
+      it("#downloads=pdf,results should enable both PDF and results downloads", () => {
+        cy.visit(`${publicLink}#downloads=pdf,results`);
+        waitLoading();
+
+        cy.get("header").findByText("Export as PDF").should("exist");
+        H.getDashboardCardMenu().should("exist");
+      });
+
+      it("#downloads=results,pdf should enable both PDF and results downloads (order agnostic)", () => {
+        cy.visit(`${publicLink}#downloads=results,pdf`);
+        waitLoading();
+
+        cy.get("header").findByText("Export as PDF").should("exist");
+        H.getDashboardCardMenu().should("exist");
+      });
+
+      it("#downloads=results, pdf should handle whitespace between parameters", () => {
+        cy.visit(`${publicLink}#downloads=results, pdf`);
+        waitLoading();
+
+        cy.get("header").findByText("Export as PDF").should("exist");
+        H.getDashboardCardMenu().should("exist");
+      });
+
       it("should be able to download a public dashboard as PDF", () => {
         cy.visit(`${publicLink}#downloads=true`);
         waitLoading();
@@ -119,6 +159,13 @@ H.describeWithSnowplowEE(
           });
 
         cy.signOut();
+      });
+
+      it("#downloads=results should enable result downloads", () => {
+        cy.visit(`${publicLink}#downloads=results`);
+        waitLoading();
+
+        cy.findByTestId("download-button").should("exist");
       });
 
       it("#downloads=false should disable result downloads", () => {

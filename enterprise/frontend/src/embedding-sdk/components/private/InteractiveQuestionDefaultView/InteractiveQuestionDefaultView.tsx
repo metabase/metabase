@@ -32,7 +32,7 @@ import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import InteractiveQuestionS from "./InteractiveQuestionDefaultView.module.css";
 
-export interface InteractiveQuestionDefaultViewProps {
+export interface InteractiveQuestionDefaultViewProps extends FlexibleSizeProps {
   title?: SdkQuestionTitleProps;
   withResetButton?: boolean;
   withChartTypeSelector?: boolean;
@@ -46,7 +46,7 @@ export const InteractiveQuestionDefaultView = ({
   title,
   withResetButton,
   withChartTypeSelector,
-}: InteractiveQuestionDefaultViewProps & FlexibleSizeProps): ReactElement => {
+}: InteractiveQuestionDefaultViewProps): ReactElement => {
   const {
     originalId,
     question,

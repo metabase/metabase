@@ -21,7 +21,7 @@ export const gdriveApi = EnterpriseApi.injectEndpoints({
     }),
     saveGsheetsFolderLink: builder.mutation<
       { success: boolean },
-      { url: string }
+      { url: string; link_type?: "folder" | "file" }
     >({
       query: (body) => ({
         method: "POST",

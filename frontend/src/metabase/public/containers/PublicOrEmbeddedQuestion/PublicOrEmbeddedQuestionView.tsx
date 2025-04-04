@@ -87,7 +87,8 @@ export function PublicOrEmbeddedQuestionView({
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}
-      downloadsEnabled={downloadsEnabled}
+      // We don't support PDF downloads on questions
+      pdfDownloadsEnabled={false}
     >
       <LoadingAndErrorWrapper
         className={CS.flexFull}

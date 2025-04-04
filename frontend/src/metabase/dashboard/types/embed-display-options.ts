@@ -1,5 +1,8 @@
 import type { DashboardNightModeControls } from "metabase/dashboard/types/display-options";
-import type { DisplayTheme } from "metabase/public/lib/types";
+import type {
+  DisplayTheme,
+  EmbedResourceDownloadOptions,
+} from "metabase/public/lib/types";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 type EmbedBackground = boolean;
@@ -27,6 +30,6 @@ export type EmbedDisplayParams = {
   font: EmbedFont;
   theme: DisplayTheme;
   getClickActionMode?: ClickActionModeGetter;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
   withFooter: boolean;
 };
