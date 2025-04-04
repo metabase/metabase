@@ -9,6 +9,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.performance :as perf]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
@@ -40,11 +41,11 @@
        (str/join " ")))
 
 (defn- display-data [m]
-  (select-keys m [:name :display_name :description :collection_name]))
+  (perf/select-keys m [:name :display_name :description :collection_name]))
 
 (defn- ->document [m]
   (-> m
-      (select-keys
+      (perf/select-keys
        (into [:model] search.spec/attr-columns))
       (update :archived boolean)
       (assoc
