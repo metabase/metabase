@@ -14,7 +14,7 @@ const setup = ({ databases, schemas }: SetupOpts) => {
   const metadata = createMockMetadata({ databases, schemas });
 
   return {
-    databases: databases.map(({ id }) => checkNotNull(metadata.database(id))),
+    databases,
     schemas: schemas.map(({ id }) => checkNotNull(metadata.schema(id))),
   };
 };
@@ -47,9 +47,9 @@ describe("Admin > UploadSettings > utils", () => {
   describe("getDatabaseOptions", () => {
     it("should return an array of databases", () => {
       expect(getDatabaseOptions(databases)).toEqual([
-        { name: "Database", value: 100 },
-        { name: "Database", value: 200 },
-        { name: "Database", value: 300 },
+        { name: "Database", value: 100, disabled: false },
+        { name: "Database", value: 200, disabled: false },
+        { name: "Database", value: 300, disabled: false },
       ]);
     });
 

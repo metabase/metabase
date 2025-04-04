@@ -108,3 +108,9 @@ export function setupUnauthorizedDatabaseEndpoints(db: Database) {
 export function setupUnauthorizedDatabasesEndpoints(dbs: Database[]) {
   dbs.forEach((db) => setupUnauthorizedDatabaseEndpoints(db));
 }
+
+export function setupDatabaseDismissSpinnerEndpoint(db: Database) {
+  fetchMock.post(`path:/api/database/${db.id}/dismiss_spinner`, {
+    status: 204,
+  });
+}

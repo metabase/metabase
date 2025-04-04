@@ -27,25 +27,43 @@ import DatabaseNameField from "../DatabaseNameField";
 
 import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
-interface DatabaseFormProps {
-  initialValues?: DatabaseData;
-  autofocusFieldName?: string;
+export type EngineFieldState = "default" | "hidden" | "disabled";
+
+export interface DatabaseFormConfig {
+  /** present the form with advanced configuration options */
   isAdvanced?: boolean;
+  engine?: {
+    /** present the enginge field as normal, disabled, or hidden */
+    fieldState?: EngineFieldState | undefined;
+  };
+  name?: {
+    /** present the name field as a slug */
+    isSlug?: boolean;
+  };
+}
+
+interface DatabaseFormProps {
+  initialValues?: Partial<DatabaseData>;
+  autofocusFieldName?: string;
   onSubmit?: (values: DatabaseData) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
+  config?: DatabaseFormConfig;
 }
 
 export const DatabaseForm = ({
   initialValues: initialData,
   autofocusFieldName,
-  isAdvanced = false,
   onSubmit,
   onCancel,
   onEngineChange,
   setIsDirty,
+  config = {},
 }: DatabaseFormProps): JSX.Element => {
+  const isAdvanced = config.isAdvanced || false;
+  const engineFieldState = config.engine?.fieldState;
+
   const engines = useSelector(getEngines);
   const isHosted = useSelector(getIsHosted);
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
@@ -89,12 +107,14 @@ export const DatabaseForm = ({
         engine={engine}
         engineKey={engineKey}
         engines={engines}
+        engineFieldState={engineFieldState}
         autofocusFieldName={autofocusFieldName}
         isHosted={isHosted}
         isAdvanced={isAdvanced}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
         setIsDirty={setIsDirty}
+        config={config}
       />
     </FormProvider>
   );
@@ -104,24 +124,28 @@ interface DatabaseFormBodyProps {
   engine: Engine | undefined;
   engineKey: string | undefined;
   engines: Record<string, Engine>;
+  engineFieldState?: "default" | "hidden" | "disabled";
   autofocusFieldName?: string;
   isHosted: boolean;
   isAdvanced: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
+  config: DatabaseFormConfig;
 }
 
 const DatabaseFormBody = ({
   engine,
   engineKey,
   engines,
+  engineFieldState = "default",
   autofocusFieldName,
   isHosted,
   isAdvanced,
   onEngineChange,
   onCancel,
   setIsDirty,
+  config,
 }: DatabaseFormBodyProps): JSX.Element => {
   const { values, dirty } = useFormikContext<DatabaseData>();
 
@@ -135,24 +159,35 @@ const DatabaseFormBody = ({
 
   return (
     <Form data-testid="database-form">
-      <DatabaseEngineField
-        engineKey={engineKey}
-        engines={engines}
-        isHosted={isHosted}
-        isAdvanced={isAdvanced}
-        onChange={onEngineChange}
-      />
-      <DatabaseEngineWarning
-        engineKey={engineKey}
-        engines={engines}
-        onChange={onEngineChange}
-      />
-      {engine && <DatabaseNameField engine={engine} />}
+      {engineFieldState !== "hidden" && (
+        <>
+          <DatabaseEngineField
+            engineKey={engineKey}
+            engines={engines}
+            isHosted={isHosted}
+            isAdvanced={isAdvanced}
+            onChange={onEngineChange}
+            disabled={engineFieldState === "disabled"}
+          />
+          <DatabaseEngineWarning
+            engineKey={engineKey}
+            engines={engines}
+            onChange={onEngineChange}
+          />
+        </>
+      )}
+      {engine && (
+        <DatabaseNameField
+          engine={engine}
+          config={config}
+          autoFocus={autofocusFieldName === "name"}
+        />
+      )}
       {fields.map((field) => (
         <DatabaseDetailField
           key={field.name}
           field={field}
-          autoFocus={field.name === autofocusFieldName}
+          autoFocus={autofocusFieldName === field.name}
           data-kek={field.name}
         />
       ))}
@@ -235,7 +270,7 @@ const getEngine = (engines: Record<string, Engine>, engineKey?: string) => {
 
 const getEngineKey = (
   engines: Record<string, Engine>,
-  values?: DatabaseData,
+  values?: Partial<DatabaseData>,
   isAdvanced?: boolean,
 ) => {
   if (values?.engine) {

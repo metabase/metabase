@@ -87,7 +87,8 @@
   "A class of fieldvalues that has additional constraints/filters."
   #{:sandbox         ;; field values filtered by sandbox permissions
     :impersonation   ;; field values with connection impersonation enforced (db-level roles)
-    :linked-filter}) ;; field values with constraints from other linked parameters on dashboard/embedding
+    :linked-filter
+    :advanced}) ;; field values with constraints from other linked parameters on dashboard/embedding
 
 (def ^:private field-values-types
   "All FieldValues type."
@@ -311,29 +312,29 @@
   {:pre [(advanced-field-values-types (:type fv))]}
   (u.date/older-than? (:created_at fv) advanced-field-values-max-age))
 
-(defenterprise hash-key-for-sandbox
+(defenterprise hash-input-for-sandbox
   "Return a hash-key that will be used for sandboxed fieldvalues."
   metabase-enterprise.sandbox.models.params.field-values
-  [_field-id]
+  [_field]
   nil)
 
-(defenterprise hash-key-for-impersonation
+(defenterprise hash-input-for-impersonation
   "Return a hash-key that will be used for impersonated fieldvalues."
   metabase-enterprise.impersonation.driver
-  [_field-id]
+  [_field]
   nil)
 
-(defn default-hash-key-for-linked-filters
-  "OSS impl of [[hash-key-for-linked-filters]]."
-  [field-id constraints]
-  (str (hash [field-id
-              constraints])))
+(defenterprise hash-input-for-database-routing
+  "Returns a hash input that will be used for fields subject to database routing"
+  metabase-enterprise.database-routing.model
+  [_field]
+  nil)
 
-(defenterprise hash-key-for-linked-filters
+(defn hash-input-for-linked-filters
   "Return a hash-key that will be used for linked-filters fieldvalues."
-  metabase-enterprise.sandbox.models.params.field-values
-  [field-id constraints]
-  (default-hash-key-for-linked-filters field-id constraints))
+  [_field constraints]
+  (when (seq constraints)
+    {:constraints constraints}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    CRUD fns                                                    |

@@ -2,10 +2,8 @@ import type * as React from "react";
 import { useState } from "react";
 import { msgid, ngettext } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { Checkbox, Stack } from "metabase/ui";
 import type { DatabaseUsageInfo } from "metabase-types/api";
-
-import { ConfirmationCheckbox } from "./ContentRemovalConfirmation.styled";
 
 interface ContentRemovalConfirmationProps {
   usageInfo: DatabaseUsageInfo;
@@ -36,10 +34,9 @@ const ContentRemovalConfirmation = ({
   };
 
   return (
-    <div>
+    <Stack gap="md">
       {question > 0 && (
-        <ConfirmationCheckbox
-          checkedColor={color("error")}
+        <Checkbox
           label={ngettext(
             msgid`Delete ${question} saved question`,
             `Delete ${question} saved questions`,
@@ -51,8 +48,7 @@ const ContentRemovalConfirmation = ({
         />
       )}
       {dataset > 0 && (
-        <ConfirmationCheckbox
-          checkedColor={color("error")}
+        <Checkbox
           label={ngettext(
             msgid`Delete ${dataset} model`,
             `Delete ${dataset} models`,
@@ -64,8 +60,7 @@ const ContentRemovalConfirmation = ({
         />
       )}
       {metric > 0 && (
-        <ConfirmationCheckbox
-          checkedColor={color("error")}
+        <Checkbox
           label={ngettext(
             msgid`Delete ${metric} metric`,
             `Delete ${metric} metrics`,
@@ -77,8 +72,7 @@ const ContentRemovalConfirmation = ({
         />
       )}
       {segment > 0 && (
-        <ConfirmationCheckbox
-          checkedColor={color("error")}
+        <Checkbox
           label={ngettext(
             msgid`Delete ${segment} segment`,
             `Delete ${segment} segments`,
@@ -89,7 +83,7 @@ const ContentRemovalConfirmation = ({
           onChange={handleChange}
         />
       )}
-    </div>
+    </Stack>
   );
 };
 

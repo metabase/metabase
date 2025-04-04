@@ -80,6 +80,7 @@ const MetadataHeader = ({
           selectedDatabaseId={selectedDatabaseId}
           setDatabaseFn={onSelectDatabase}
           style={{ padding: 0, paddingLeft: 8 }}
+          data-testid="metdata-editor-database-select"
         />
       </div>
       {selectedDatabaseId && selectedSchemaId && selectedTableId && (

@@ -134,12 +134,23 @@
     ;; so we just manually nullify it here
     (assoc database :cache_field_values_schedule nil)))
 
+(defn- is-destination?
+  "Is this database a destination database for some router database?"
+  [db]
+  (boolean (:router_database_id db)))
+
+(defn should-sync?
+  "Should this database be synced?"
+  [db]
+  (not (is-destination? db)))
+
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
     ;; this is done this way to avoid circular dependencies
-    ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database)
+    (when (should-sync? database)
+      ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database))
     (catch Throwable e
       (log/error e "Error scheduling tasks for DB"))))
 
@@ -206,19 +217,20 @@
 ;; TODO -- consider whether this should live HERE or inside the `permissions` module.
 (defn- set-new-database-permissions!
   [database]
-  (t2/with-transaction [_conn]
-    (let [all-users-group  (perms/all-users-group)
-          non-magic-groups (perms/non-magic-groups)
-          non-admin-groups (conj non-magic-groups all-users-group)]
-      (if (:is_audit database)
-        (doseq [group non-admin-groups]
-          (perms/set-database-permission! group database :perms/view-data :unrestricted)
-          (perms/set-database-permission! group database :perms/create-queries :no)
-          (perms/set-database-permission! group database :perms/download-results :one-million-rows)
-          (perms/set-database-permission! group database :perms/manage-table-metadata :no)
-          (perms/set-database-permission! group database :perms/manage-database :no))
-        (doseq [group non-admin-groups]
-          (perms/set-new-database-permissions! group database))))))
+  (when-not (is-destination? database)
+    (t2/with-transaction [_conn]
+      (let [all-users-group  (perms/all-users-group)
+            non-magic-groups (perms/non-magic-groups)
+            non-admin-groups (conj non-magic-groups all-users-group)]
+        (if (:is_audit database)
+          (doseq [group non-admin-groups]
+            (perms/set-database-permission! group database :perms/view-data :unrestricted)
+            (perms/set-database-permission! group database :perms/create-queries :no)
+            (perms/set-database-permission! group database :perms/download-results :one-million-rows)
+            (perms/set-database-permission! group database :perms/manage-table-metadata :no)
+            (perms/set-database-permission! group database :perms/manage-database :no))
+          (doseq [group non-admin-groups]
+            (perms/set-new-database-permissions! group database)))))))
 
 (t2/define-after-insert :model/Database
   [database]
@@ -451,6 +463,7 @@
                                          ::serdes/skip))
                                      :import identity}
                :creator_id          (serdes/fk :model/User)
+               :router_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 
 (defmethod serdes/entity-id "Database"
@@ -492,4 +505,17 @@
                   :created-at    true
                   :updated-at    true}
    :search-terms [:name :description]
+   :where        [:= :router_database_id nil]
    :render-terms {:initial-sync-status true}})
+
+(defenterprise hydrate-router-user-attribute
+  "OSS implementation. Hydrates router user attribute on the databases."
+  metabase-enterprise.database-routing.model
+  [_k databases]
+  (for [database databases]
+    (assoc database :router_user_attribute nil)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :router_user_attribute]
+  "Batch hydrate `Tables` for the given `Database`."
+  [_model k databases]
+  (hydrate-router-user-attribute k databases))

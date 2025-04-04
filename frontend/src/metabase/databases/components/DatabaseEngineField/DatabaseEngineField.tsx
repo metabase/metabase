@@ -13,6 +13,7 @@ export interface DatabaseEngineFieldProps {
   engines: Record<string, Engine>;
   isHosted: boolean;
   isAdvanced: boolean;
+  disabled?: boolean;
   onChange: (engine: string | undefined) => void;
 }
 
@@ -21,6 +22,7 @@ const DatabaseEngineField = ({
   engines,
   isHosted,
   isAdvanced,
+  disabled,
   onChange,
 }: DatabaseEngineFieldProps): JSX.Element => {
   const { values } = useFormikContext<DatabaseData>();
@@ -32,7 +34,7 @@ const DatabaseEngineField = ({
   return isAdvanced ? (
     <DatabaseEngineSelect
       options={options}
-      disabled={values.is_sample}
+      disabled={disabled || values.is_sample}
       onChange={onChange}
     />
   ) : (
