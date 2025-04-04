@@ -50,7 +50,8 @@ import type {
 } from "./types";
 import type Field from "./v1/metadata/Field";
 import type Metadata from "./v1/metadata/Metadata";
-import { TCFunc } from "metabase/i18n/components/ContentTranslationContext";
+
+type TCFunc = <TypeOfArgument>(msgid?: TypeOfArgument) => TypeOfArgument;
 
 export function metadataProvider(
   databaseId: DatabaseId | null,
@@ -178,26 +179,7 @@ declare function DisplayInfoFn(
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
 export const displayInfo: typeof DisplayInfoFn = (...args) => {
-  console.log("displayInfo called with args", args);
-
-  const info = ML.display_info(...args, { "Artist Name": "ARTIST NAME!" });
-  console.log("@m932ynrk", "args", args);
-
-  const cache: any = [];
-  // Stringify with circularity avoidance
-  const stringifiedArgs = JSON.stringify(args, (key, value) => {
-    if (typeof value === "object" && value !== null) {
-      if (cache.includes(value)) {
-        return;
-      }
-      cache.push(value);
-    }
-    return value;
-  });
-
-  // if (stringifiedArgs.includes("Artist")) {
-  //   debugger;
-  // }
+  const info = ML.display_info(...args);
 
   if (args.length === 4 && typeof args[3] === "function") {
     const tc = args[3] as TCFunc;
