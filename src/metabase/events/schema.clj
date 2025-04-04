@@ -222,12 +222,12 @@
    [:action {:gen/fmap (fn [_x] *action-gen-value*)} :keyword]
    [:invocation_id ::nano-id]
    (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))
-   #_[:actor [:map {:gen/return {:first_name "Meta"
-                                 :last_name  "Bot"
-                                 :email      "bot@metabase.com"}}
-              [:first_name [:maybe :string]]
-              [:last_name  [:maybe :string]]
-              [:email      [:maybe :string]]]]])
+   [:actor {:optional true} [:map {:gen/return {:first_name "Meta"
+                                                :last_name  "Bot"
+                                                :email      "bot@metabase.com"}}
+                             [:first_name [:maybe :string]]
+                             [:last_name  [:maybe :string]]
+                             [:email      [:maybe :string]]]]])
 
 (mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
 (mr/def :event/action.success [:merge ::action-events [:multi {:dispatch :action}
