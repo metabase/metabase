@@ -6,7 +6,9 @@ import { alpha, color } from "metabase/lib/colors";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Icon } from "metabase/ui";
 
-export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
+export const Root = styled(FullWidthContainer, {
+  shouldForwardProp: (propName) => propName !== "admin",
+})<{ admin: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;

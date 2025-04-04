@@ -124,3 +124,46 @@ body:where(:global(.mb-wrapper)) {
     background-color: transparent;
   }
 }
+
+.ParametersWidgetContainer {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.AllowSticky {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 3;
+  border-bottom: 1px solid transparent;
+}
+
+.IsSticky {
+  border-bottom-color: var(--mb-color-border);
+}
+
+.IsStickyNight {
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-bg-black),
+    var(--mb-color-bg-dashboard) 15%
+  );
+}
+
+.IsStickyTransparent {
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-bg-white),
+    transparent 15%
+  );
+  border-bottom-color: transparent;
+}
+
+.IsStickyDefault {
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-bg-white),
+    var(--mb-color-bg-dashboard) 15%
+  );
+}
