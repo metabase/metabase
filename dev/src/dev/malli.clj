@@ -8,14 +8,12 @@
 (defn- graphviz-visualizer
   [schema]
   (format "https://dreampuf.github.io/GraphvizOnline/?engine=dot#%s"
-          (codec/url-encode (md/transform (mr/resolve-schema schema)))))
+          (-> schema mr/resolve-schema md/transform codec/url-encode)))
 
-(defn visualize-schema
+(defn visualize-schema!
   "Given a schema, visualize it using Graphviz.
-
-     (visualize-schema [:map [:a :int] [:b :string]])
-
-     (visualize-schema ::my/schema)"
+     (visualize-schema! [:map [:a :int] [:b :string]])
+     (visualize-schema! ::my/schema)"
   [schema]
   (let [url (graphviz-visualizer schema)]
     (sh/sh "open" url)))
