@@ -6,6 +6,7 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { DelayGroup } from "metabase/ui";
@@ -14,7 +15,6 @@ import * as Lib from "metabase-lib";
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
 import { StyledAccordionList } from "./QueryColumnPicker.styled";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
@@ -194,7 +194,6 @@ export function QueryColumnPicker({
     ),
     [query, stageIndex],
   );
-  console.log("@m92076vs", "sections", sections);
 
   return (
     <DelayGroup>
