@@ -49,11 +49,11 @@ export const metabot = createSlice({
     dismissUserMessage: (state, action: PayloadAction<number>) => {
       state.userMessages.splice(action.payload, 1);
     },
+    resetConversationId: (state) => {
+      state.conversationId = uuid();
+    },
     setIsProcessing: (state, action: PayloadAction<boolean>) => {
       state.isProcessing = action.payload;
-    },
-    setConversationId: (state, action: PayloadAction<string | undefined>) => {
-      state.conversationId = action.payload;
     },
     setVisible: (state, { payload: visible }: PayloadAction<boolean>) => {
       if (visible) {

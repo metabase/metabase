@@ -64,3 +64,16 @@ if (hasPremiumFeature("metabot_v3")) {
     },
   ];
 }
+
+/**
+ * This is for Metabot in embedding
+ *
+ * TODO: Move this under a feature flag, but then we need to make our
+ * store allowing injecting reducers dynamically since the store would
+ * already be created before PLUGIN_REDUCERS.* is set via the dynamic EE plugin.
+ */
+PLUGIN_METABOT.getMetabotProvider = () => MetabotProvider;
+PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
+PLUGIN_METABOT.MetabotContext = MetabotContext;
+
+PLUGIN_REDUCERS.metabotPlugin = metabotReducer;

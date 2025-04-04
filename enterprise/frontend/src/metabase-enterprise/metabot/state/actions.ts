@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { uuid } from "metabase/lib/uuid";
 import {
   EnterpriseApi,
   METABOT_TAG,
@@ -27,9 +26,9 @@ export const {
   addUserMessage,
   dismissUserMessage,
   clearUserMessages,
+  resetConversationId,
   setIsProcessing,
   setConfirmationOptions,
-  setConversationId,
 } = metabot.actions;
 
 export const setVisible =
@@ -62,8 +61,9 @@ export const submitInput = createAsyncThunk(
       context: MetabotChatContext;
       history: any[];
       state: any;
+      metabot_id?: string;
     },
-    { dispatch, getState },
+    { dispatch, getState, signal },
   ) => {
     const isProcessing = getIsProcessing(getState() as any);
     if (isProcessing) {
@@ -78,7 +78,11 @@ export const submitInput = createAsyncThunk(
       await dispatch(selectUserConfirmationOption(data.message));
     } else {
       dispatch(clearUserMessages());
-      await dispatch(sendMessageRequest(data));
+      const sendMessageRequestPromise = dispatch(sendMessageRequest(data));
+      signal.addEventListener("abort", () => {
+        sendMessageRequestPromise.abort();
+      });
+      return sendMessageRequestPromise;
     }
   },
 );
@@ -91,8 +95,9 @@ export const sendMessageRequest = createAsyncThunk(
       context: MetabotChatContext;
       history: any[];
       state: any;
+      metabot_id?: string;
     },
-    { dispatch, getState },
+    { dispatch, getState, signal },
   ) => {
     // TODO: make enterprise store
     let sessionId = getMetabotConversationId(getState() as any);
@@ -102,16 +107,29 @@ export const sendMessageRequest = createAsyncThunk(
       console.warn(
         "Metabot has no session id while open, this should never happen",
       );
-      sessionId = uuid();
-      dispatch(setConversationId(sessionId));
+      dispatch(resetConversationId());
+      sessionId = getMetabotConversationId(getState() as any) as string;
     }
 
-    const result = await dispatch(
+    const metabotRequestPromise = dispatch(
       metabotAgent.initiate(
         { ...data, conversation_id: sessionId },
         { fixedCacheKey: METABOT_TAG },
       ),
     );
+
+    let isAborted = false;
+    signal.addEventListener("abort", () => {
+      // This flag is needed, so other async actions are not dispatched
+      isAborted = true;
+      // Need to abort the request so, the hook's `isDoingScience` is false
+      metabotRequestPromise.abort();
+    });
+
+    const result = await metabotRequestPromise;
+    if (isAborted) {
+      return;
+    }
 
     if (result.error) {
       console.error("Metabot request returned error: ", result.error);
