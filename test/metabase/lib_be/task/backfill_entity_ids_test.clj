@@ -92,7 +92,7 @@
             (is (not (= entity-id1 entity-id2)))))))))
 
 (deftest ^:synchonized backfill-many-duplicates-test
-  (testing "Can backfill duplicate entities"
+  (testing "Can backfill many duplicate entities"
     (binding [serdes/*retry-batch-size* 3]
       (with-sample-data!
         (fn [{:keys [db-id db]}]
@@ -112,73 +112,85 @@
               ;; entity-ids are all unique
               (is (= 5 (count entity-ids))))))))))
 
-(deftest ^:synchronized drain-test
-  (with-sample-data!
-    (fn [{:keys [db-id table-id field1-id field2-id card-id]}]
-      (let [[db-eid table-eid field1-eid field2-eid card-eid] (repeatedly 5 u/generate-nano-id)]
-        (reset! serdes/entity-id-cache {:model/Database {db-id (delay db-eid)}
-                                        :model/Table {table-id (delay table-eid)}
-                                        :model/Field {field1-id (delay field1-eid)
-                                                      field2-id (delay field2-eid)}
-                                        :model/Card {card-id (delay card-eid)}})
-        (#'backfill-entity-ids/drain-entity-ids!)
-        (binding [serdes/*skip-entity-id-calc* true]
-          (is (= db-eid (:entity_id (t2/select-one :model/Database :id db-id))))
-          (is (= table-eid (:entity_id (t2/select-one :model/Table :id table-id))))
-          (is (= field1-eid (:entity_id (t2/select-one :model/Field :id field1-id))))
-          (is (= field2-eid (:entity_id (t2/select-one :model/Field :id field2-id)))))
-        (is (= {:model/Database {}
-                :model/Table {}
-                :model/Field {}
-                :model/Card {}}
-               @serdes/entity-id-cache))))))
+(deftest ^:synchronized backfill-is-noop-when-cache-is-full-test
+  (testing "Backfill exits early when there is already stuff in the cache"
+    (with-sample-data!
+      (fn [{:keys [db-id table-id]}]
+        (reset! serdes/entity-id-cache {:model/Table {table-id (delay (u/generate-nano-id))}})
+        (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Database)
+        (is (not (contains? (:model/Database @serdes/entity-id-cache) db-id)))))))
 
-(deftest ^:synchronized drain-does-not-clear-unused-entries-test
-  (with-sample-data!
-    (fn [{:keys [db-id table-id field1-id field2-id]}]
-      (binding [backfill-entity-ids/*drain-batch-size* 3]
-        (let [[db-eid table-eid field1-eid field2-eid] (repeatedly 4 u/generate-nano-id)]
+(deftest ^:synchronized drain-test
+  (testing "Drain works"
+    (with-sample-data!
+      (fn [{:keys [db-id table-id field1-id field2-id card-id]}]
+        (let [[db-eid table-eid field1-eid field2-eid card-eid] (repeatedly 5 u/generate-nano-id)]
           (reset! serdes/entity-id-cache {:model/Database {db-id (delay db-eid)}
                                           :model/Table {table-id (delay table-eid)}
                                           :model/Field {field1-id (delay field1-eid)
-                                                        field2-id (delay field2-eid)}})
+                                                        field2-id (delay field2-eid)}
+                                          :model/Card {card-id (delay card-eid)}})
           (#'backfill-entity-ids/drain-entity-ids!)
-          (is (= 1
-                 (->> @serdes/entity-id-cache
-                      vals
-                      (map count)
-                      (apply +)))))))))
+          (binding [serdes/*skip-entity-id-calc* true]
+            (is (= db-eid (:entity_id (t2/select-one :model/Database :id db-id))))
+            (is (= table-eid (:entity_id (t2/select-one :model/Table :id table-id))))
+            (is (= field1-eid (:entity_id (t2/select-one :model/Field :id field1-id))))
+            (is (= field2-eid (:entity_id (t2/select-one :model/Field :id field2-id)))))
+          (is (= {:model/Database {}
+                  :model/Table {}
+                  :model/Field {}
+                  :model/Card {}}
+                 @serdes/entity-id-cache)))))))
+
+(deftest ^:synchronized drain-does-not-clear-unused-entries-test
+  (testing "Drain only clears drained ids from the cache"
+    (with-sample-data!
+      (fn [{:keys [db-id table-id field1-id field2-id]}]
+        (binding [backfill-entity-ids/*drain-batch-size* 3]
+          (let [[db-eid table-eid field1-eid field2-eid] (repeatedly 4 u/generate-nano-id)]
+            (reset! serdes/entity-id-cache {:model/Database {db-id (delay db-eid)}
+                                            :model/Table {table-id (delay table-eid)}
+                                            :model/Field {field1-id (delay field1-eid)
+                                                          field2-id (delay field2-eid)}})
+            (#'backfill-entity-ids/drain-entity-ids!)
+            (is (= 1
+                   (->> @serdes/entity-id-cache
+                        vals
+                        (map count)
+                        (apply +))))))))))
 
 (deftest ^:synchronized drain-does-not-clear-failures-test
-  (with-sample-data!
-    (fn [{:keys [db-id table-id field1-id field2-id]}]
-      (let [[db-eid table-eid field1-eid] (repeatedly 3 u/generate-nano-id)
-            field2-eid-delay (delay field1-eid)]
-        (reset! serdes/entity-id-cache {:model/Database {db-id (delay db-eid)}
-                                        :model/Table {table-id (delay table-eid)}
-                                        :model/Field {field1-id (delay field1-eid)
-                                                      field2-id field2-eid-delay}})
-        (#'backfill-entity-ids/drain-entity-ids!)
-        (is (= {:model/Database {}
-                :model/Table {}
-                :model/Field {field2-id field2-eid-delay}}
-               @serdes/entity-id-cache))))))
+  (testing "Drain doesn't clear failures from the cache"
+    (with-sample-data!
+      (fn [{:keys [db-id table-id field1-id field2-id]}]
+        (let [[db-eid table-eid field1-eid] (repeatedly 3 u/generate-nano-id)
+              field2-eid-delay (delay field1-eid)]
+          (reset! serdes/entity-id-cache {:model/Database {db-id (delay db-eid)}
+                                          :model/Table {table-id (delay table-eid)}
+                                          :model/Field {field1-id (delay field1-eid)
+                                                        field2-id field2-eid-delay}})
+          (#'backfill-entity-ids/drain-entity-ids!)
+          (is (= {:model/Database {}
+                  :model/Table {}
+                  :model/Field {field2-id field2-eid-delay}}
+                 @serdes/entity-id-cache)))))))
 
 (deftest ^:synchronized select-uses-cached-eids-when-present-test
-  (with-sample-data!
-    (fn [{:keys [db-id table-id field1-id field2-id card-id]}]
-      (let [[db-eid table-eid field1-eid field2-eid card-eid] (repeatedly 5 u/generate-nano-id)]
-        (reset! serdes/entity-id-cache {:model/Database {db-id (delay db-eid)}
-                                        :model/Table {table-id (delay table-eid)}
-                                        :model/Field {field1-id (delay field1-eid)
-                                                      field2-id (delay field2-eid)}
-                                        :model/Card {card-id (delay card-eid)}})
-        (#'backfill-entity-ids/drain-entity-ids!)
-        (is (= db-eid (:entity_id (t2/select-one :model/Database :id db-id))))
-        (is (= table-eid (:entity_id (t2/select-one :model/Table :id table-id))))
-        (is (= field1-eid (:entity_id (t2/select-one :model/Field :id field1-id))))
-        (is (= field2-eid (:entity_id (t2/select-one :model/Field :id field2-id))))
-        (is (= card-eid (:entity_id (t2/select-one :model/Card :id card-id))))))))
+  (testing "Selecting something uses cached values when present"
+    (with-sample-data!
+      (fn [{:keys [db-id table-id field1-id field2-id card-id]}]
+        (let [[db-eid table-eid field1-eid field2-eid card-eid] (repeatedly 5 u/generate-nano-id)]
+          (reset! serdes/entity-id-cache {:model/Database {db-id (delay db-eid)}
+                                          :model/Table {table-id (delay table-eid)}
+                                          :model/Field {field1-id (delay field1-eid)
+                                                        field2-id (delay field2-eid)}
+                                          :model/Card {card-id (delay card-eid)}})
+          (#'backfill-entity-ids/drain-entity-ids!)
+          (is (= db-eid (:entity_id (t2/select-one :model/Database :id db-id))))
+          (is (= table-eid (:entity_id (t2/select-one :model/Table :id table-id))))
+          (is (= field1-eid (:entity_id (t2/select-one :model/Field :id field1-id))))
+          (is (= field2-eid (:entity_id (t2/select-one :model/Field :id field2-id))))
+          (is (= card-eid (:entity_id (t2/select-one :model/Card :id card-id)))))))))
 
 (deftest ^:synchronized get-repeat-ms-test
   (testing "get-repeat-ms handles various cases appropriately"
