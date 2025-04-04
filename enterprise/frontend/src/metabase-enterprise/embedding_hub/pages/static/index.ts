@@ -1,0 +1,1 @@
+export { StaticEmbeddingPage } from "./page";

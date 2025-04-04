@@ -6,3 +6,10 @@
     border-bottom-color: var(--mb-color-border);
   }
 }
+
+.Card {
+  &[data-variant="admin"] {
+    box-shadow: none;
+    border: 1px solid var(--mb-color-border);
+  }
+}
