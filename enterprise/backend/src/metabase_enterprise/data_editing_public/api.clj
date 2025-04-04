@@ -22,7 +22,8 @@
         rows     (if (map? row-or-rows) [row-or-rows] row-or-rows)]
     (api/check-400 (seq rows) "Please supply at least one row.")
     (api/check-400 (every? seq rows) "Every row should not be empty.")
-    (data-editing/insert! table-id rows)))
+    (data-editing/insert! table-id rows)
+    {:created (count rows)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
