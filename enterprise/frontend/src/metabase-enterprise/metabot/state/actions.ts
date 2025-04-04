@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { uuid } from "metabase/lib/uuid";
 import {
   EnterpriseApi,
   METABOT_TAG,
@@ -27,9 +26,9 @@ export const {
   addUserMessage,
   dismissUserMessage,
   clearUserMessages,
+  resetConversationId,
   setIsProcessing,
   setConfirmationOptions,
-  setConversationId,
 } = metabot.actions;
 
 export const setVisible =
@@ -108,8 +107,8 @@ export const sendMessageRequest = createAsyncThunk(
       console.warn(
         "Metabot has no session id while open, this should never happen",
       );
-      sessionId = uuid();
-      dispatch(setConversationId(sessionId));
+      dispatch(resetConversationId());
+      sessionId = getMetabotConversationId(getState() as any) as string;
     }
 
     const metabotRequestPromise = dispatch(

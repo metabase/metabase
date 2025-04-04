@@ -1,7 +1,8 @@
 import cx from "classnames";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useSdkDispatch } from "embedding-sdk/store";
 import {
   Box,
   Flex,
@@ -13,6 +14,7 @@ import {
 } from "metabase/ui";
 import { MetabotIcon } from "metabase-enterprise/metabot/components/MetabotIcon";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { resetConversationId } from "metabase-enterprise/metabot/state";
 
 import Styles from "./MetabotChatEmbedding.module.css";
 
@@ -86,6 +88,11 @@ export const MetabotChatEmbedding = ({
   function cancelRequest() {
     metabotRequestPromiseRef.current?.abort();
   }
+
+  const dispatch = useSdkDispatch();
+  useEffect(() => {
+    dispatch(resetConversationId());
+  }, [dispatch]);
 
   return (
     <Box className={Styles.container} data-testid="metabot-chat">

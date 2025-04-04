@@ -43,17 +43,17 @@ export const metabot = createSlice({
     addUserMessage: (state, action: PayloadAction<string>) => {
       state.userMessages.push(action.payload);
     },
-    clearUserMessages: state => {
+    clearUserMessages: (state) => {
       state.userMessages = [];
     },
     dismissUserMessage: (state, action: PayloadAction<number>) => {
       state.userMessages.splice(action.payload, 1);
     },
+    resetConversationId: (state) => {
+      state.conversationId = uuid();
+    },
     setIsProcessing: (state, action: PayloadAction<boolean>) => {
       state.isProcessing = action.payload;
-    },
-    setConversationId: (state, action: PayloadAction<string | undefined>) => {
-      state.conversationId = action.payload;
     },
     setVisible: (state, { payload: visible }: PayloadAction<boolean>) => {
       if (visible) {
@@ -72,7 +72,7 @@ export const metabot = createSlice({
       state.confirmationOptions = action.payload as any;
     },
   },
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder
       .addCase(sendMessageRequest.pending, (state, action) => {
         state.lastSentContext = action.meta.arg.context;
