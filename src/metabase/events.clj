@@ -130,3 +130,7 @@
   {:arglists '([topic options])}
   (fn [topic _options]
     topic))
+
+(defmethod event-info-example :default
+  [_topic _options]
+  {})

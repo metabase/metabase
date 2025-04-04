@@ -98,8 +98,8 @@
 
 ;; TODO: move notification events schema here
 
-(defmulti event-info-example
-  "Given a topic, return an example event info."
-  {:arglists '([topic options])}
-  (fn [topic _options]
-    topic))
+(defmethod events/event-info-example :event/action.success
+  [_topic options]
+  (let [action (:action options)]
+    (binding [events.schema/*action-gen-value* action]
+      (mg/generate :event/action.success))))
