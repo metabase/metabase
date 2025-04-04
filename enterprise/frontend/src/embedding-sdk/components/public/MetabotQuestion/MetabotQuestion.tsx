@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import { Flex } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
@@ -28,7 +29,14 @@ export const MetabotQuestion = () => {
             isSaveEnabled={false}
           />
         )}
+        <Disclaimer />
       </Flex>
     </MetabotProvider>
   );
 };
+
+function Disclaimer() {
+  return (
+    <Text c="var(--mb-color-text-secondary)">{t`AI can make mistakes. Double check results.`}</Text>
+  );
+}
