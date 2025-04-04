@@ -45,7 +45,6 @@ export function MultiAutocomplete({
     pillValues,
     filteredOptions,
     fieldValue,
-    isFocused,
     handleFieldChange,
     handleFieldPaste,
     handleFieldKeyDown,
@@ -74,7 +73,6 @@ export function MultiAutocomplete({
       <Icon c="text-light" name="info_filled" />
     </Tooltip>
   );
-  const defaultRightSection = isFocused ? infoIcon : <Combobox.Chevron />;
 
   return (
     <>
@@ -86,7 +84,7 @@ export function MultiAutocomplete({
       >
         <Combobox.DropdownTarget>
           <PillsInput
-            rightSection={rightSection ?? defaultRightSection}
+            rightSection={rightSection ?? infoIcon}
             onClick={handlePillsInputClick}
           >
             <Pill.Group role="list">
