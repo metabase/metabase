@@ -62,7 +62,6 @@ jobs:
               }
             });
 
-
   check-version:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -181,8 +180,6 @@ jobs:
     strategy:
       matrix:
         edition: [oss, ee]
-    env:
-      INTERACTIVE: false
     steps:
     - name: Get correct version number
       run: | # bash
@@ -206,19 +203,16 @@ jobs:
       uses: actions/checkout@v4
       with:
         ref: ${{ github.event.inputs.commit }}
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
 
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-
-    - name: Build Metabase
-      if: ${{ needs.get-build-requirements.outputs.build_process != 'legacy' }}
-      run: ./bin/build.sh :edition :${{ matrix.edition }} :version $VERSION
-
-    - name: Build Metabase (legacy)
-      if: ${{ needs.get-build-requirements.outputs.build_process == 'legacy' }}
-      run: cd ./bin/build-mb && clojure -X build/build! :edition :${{ matrix.edition }} :version $VERSION
+      - name: Build Metabase uberjar
+        uses: ./.github/actions/build-uberjar
+        with:
+          edition: ${{ matrix.edition }}
+          version: ${{ env.VERSION }}
+          java-version: ${{ needs.get-build-requirements.outputs.java_version }}
+          node-version: ${{ needs.get-build-requirements.outputs.node_version }}
+          upload-artifact: false
+          build-process: ${{ needs.get-build-requirements.outputs.build_process }}
 
     - name: Store commit's SHA-1 hash
       run:  echo ${{ inputs.commit }} > COMMIT-ID

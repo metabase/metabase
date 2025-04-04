@@ -69,24 +69,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
+      - name: Build uberjar
+        uses: ./.github/actions/build-uberjar
         with:
+          edition: ee
           node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: uberjar
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Build uberjar with ./bin/build.sh
-        run: ./bin/build.sh
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          m2-cache-key: uberjar
+          artifact-name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
   build-embedding-sdk:
     needs: [files-changed, get-build-requirements]
