@@ -1,8 +1,14 @@
 import { useDashboardContext } from "metabase/dashboard/context";
+import type { FlexProps } from "metabase/ui";
 
 import { DashboardGridConnected } from "../../DashboardGrid";
 
-export const Grid = () => {
+export const Grid = ({
+  className,
+  h,
+  w,
+  flex,
+}: Pick<FlexProps, "className" | "h" | "w" | "flex">) => {
   const {
     dashboard,
     isEditing,
@@ -25,6 +31,10 @@ export const Grid = () => {
 
   return (
     <DashboardGridConnected
+      className={className}
+      h={h}
+      w={w}
+      flex={flex}
       clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
       isNightMode={shouldRenderAsNightMode}
       isFullscreen={isFullscreen}

@@ -1,8 +1,18 @@
 import { useDashboardContext } from "metabase/dashboard/context";
+import type { FlexProps } from "metabase/ui";
 
 import { DashboardTabs } from "../../DashboardTabs";
 
-export const Tabs = () => {
+export const Tabs = (flexProps: FlexProps) => {
   const { dashboard, isEditing } = useDashboardContext();
-  return <DashboardTabs dashboardId={dashboard.id} isEditing={isEditing} />;
+  if (!dashboard) {
+    return null;
+  }
+  return (
+    <DashboardTabs
+      dashboardId={dashboard.id}
+      isEditing={isEditing}
+      {...flexProps}
+    />
+  );
 };

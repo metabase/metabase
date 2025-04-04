@@ -32,7 +32,7 @@ import {
 import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, type FlexProps } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import {
@@ -156,7 +156,8 @@ type OwnProps = {
   reportAutoScrolledToDashcard: () => void;
 };
 
-type DashboardGridProps = OwnProps &
+type DashboardGridProps = FlexProps &
+  OwnProps &
   DashboardGridReduxProps &
   ExplicitSizeProps & {
     forwardedRef?: ForwardedRef<HTMLDivElement>;
@@ -659,19 +660,24 @@ class DashboardGridInner extends Component<
   }
 
   render() {
-    const { dashboard, width, forwardedRef } = this.props;
+    const { dashboard, width, forwardedRef, className, h, w, flex } =
+      this.props;
     return (
       <Flex
         align="center"
         justify="center"
         className={cx(S.DashboardGridContainer, {
           [S.isFixedWidth]: dashboard?.width === "fixed",
+          className,
         })}
         ref={forwardedRef}
         data-testid="dashboard-grid"
         style={{
           "--dashboard-fixed-width": FIXED_WIDTH,
         }}
+        h={h}
+        w={w}
+        flex={flex}
       >
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
@@ -712,4 +718,4 @@ const DashboardGrid = forwardRef<HTMLDivElement, DashboardGridProps>(
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),
   connector,
-)(DashboardGrid) as ComponentType<OwnProps>;
+)(DashboardGrid) as ComponentType<OwnProps & FlexProps>;

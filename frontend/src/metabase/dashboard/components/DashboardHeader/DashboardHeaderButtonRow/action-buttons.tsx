@@ -1,9 +1,9 @@
 import { DashboardSharingMenu } from "metabase/embedding/components/SharingMenu/DashboardSharingMenu";
 import { Center, Divider } from "metabase/ui";
 
+import { RefreshWidget } from "../../Dashboard/components/RefreshWidget";
 import { DashboardBookmark } from "../../DashboardBookmark";
 import { ExtraEditButtonsMenu } from "../../ExtraEditButtonsMenu";
-import { RefreshWidget } from "../../RefreshWidget";
 import {
   AddActionElementButton,
   AddFilterParameterButton,
@@ -120,12 +120,7 @@ export const dashboardActionButtons: Record<
       ),
   },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
-    component: ({ isFullscreen, onFullscreenChange }) => (
-      <FullscreenToggle
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
-      />
-    ),
+    component: FullscreenToggle,
     enabled: ({ isFullscreen, isPublic, isEmbeddingSdk = false }) =>
       isPublic || isFullscreen || isEmbeddingSdk,
   },

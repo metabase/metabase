@@ -5,23 +5,22 @@ import { Sortable } from "metabase/core/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
 import { TabButton } from "metabase/core/components/TabButton";
 import { TabRow } from "metabase/core/components/TabRow";
-import { Flex } from "metabase/ui";
+import { Flex, type FlexProps } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
 import S from "./DashboardTabs.module.css";
 import { useDashboardTabs } from "./use-dashboard-tabs";
 
-export type DashboardTabsProps = {
+export interface DashboardTabsProps extends FlexProps {
   dashboardId: DashboardId;
   isEditing?: boolean;
-  className?: string;
-};
+}
 
 export function DashboardTabs({
   dashboardId,
   isEditing = false,
-  className,
+  ...flexProps
 }: DashboardTabsProps) {
   const {
     tabs,
@@ -55,7 +54,7 @@ export function DashboardTabs({
   }
 
   return (
-    <Flex align="start" gap="lg" w="100%" className={className}>
+    <Flex align="start" gap="lg" w="100%" {...flexProps}>
       <TabRow<SelectedTabId>
         value={selectedTabId}
         onChange={selectTab}
