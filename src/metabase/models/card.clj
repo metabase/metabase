@@ -830,6 +830,7 @@
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
+      serdes/add-entity-id
       ensure-clause-idents
       ;; At this point, the card should be at schema version 20.
       upgrade-card-schema-to-latest))
@@ -898,7 +899,8 @@
 
 (defmethod serdes/hash-required-fields :model/Card
   [_card]
-  [:name :collection_id :created_at])
+  {:model :model/Card
+   :required-fields [:name :collection_id :created_at]})
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
