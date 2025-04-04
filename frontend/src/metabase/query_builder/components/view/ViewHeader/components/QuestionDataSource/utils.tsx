@@ -20,7 +20,6 @@ import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
 
 import S from "./QuestionDataSource.module.css";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export type DataSourcePart = ReactElement | DataSourceBadgePart;
 
@@ -150,7 +149,6 @@ function QuestionTableBadges({
   isLast,
 }: QuestionTableBadgesProps) {
   const badgeInactiveColor = isLast && !subHead ? "text-dark" : "text-light";
-  const tc = useTranslateContent2();
 
   const parts = tables.map((table) => (
     <HeadBreadcrumbs.Badge
@@ -159,7 +157,7 @@ function QuestionTableBadges({
       inactiveColor={badgeInactiveColor}
     >
       <span>
-        {tc(table.displayName())}
+        {table.displayName()}
         {!subHead && (
           <span className={S.IconWrapper}>
             <TableInfoIcon
