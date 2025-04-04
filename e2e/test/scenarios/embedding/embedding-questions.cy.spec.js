@@ -204,6 +204,7 @@ describe("scenarios > embedding > questions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Subtotal").should("not.exist");
 
+      H.tableInteractiveScrollContainer().scrollTo("right");
       // Joined table fields
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("98.52598640° W");
