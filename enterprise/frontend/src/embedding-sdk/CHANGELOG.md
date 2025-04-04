@@ -1,3 +1,12 @@
+## [0.53.13](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.12...embedding-sdk-0.53.13) (2025-04-04)
+
+
+### Bug Fixes
+
+* **sdk:** Add `questionProps` to dashboard components ([#56215](https://github.com/metabase/metabase/issues/56215)) ([2f4098e](https://github.com/metabase/metabase/commit/2f4098e60728fe38291c9ea893c410ae61151bd1)), closes [#55993](https://github.com/metabase/metabase/issues/55993)
+
+
+
 ## [0.53.12](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.11...embedding-sdk-0.53.12) (2025-03-20)
 
 
