@@ -22,18 +22,6 @@ const utmTags = {
   utm_content: "empty-states-viz",
 };
 
-const getButtonProps = (isSummarizeSidebarOpen?: boolean) => {
-  if (isSummarizeSidebarOpen) {
-    return {};
-  }
-
-  return {
-    className: CS.link,
-    role: "button",
-    "aria-label": t`Open summarize sidebar`,
-  };
-};
-
 export const EmptyVizState = ({
   visualization,
   isSummarizeSidebarOpen,
@@ -50,7 +38,7 @@ export const EmptyVizState = ({
   });
 
   const handleClick = () => {
-    if (isSummarizeSidebarOpen || !onEditSummary) {
+    if (!onEditSummary) {
       return;
     }
 
@@ -87,15 +75,13 @@ export const EmptyVizState = ({
           <>
             <Text>{c(
               "{0} refers to the 'Summarize'. {1} refers to the follow up instructions.",
-            ).jt`Click on ${(
-              <b
-                {...getButtonProps(isSummarizeSidebarOpen)}
-                key="summarize-cta"
-                onClick={handleClick}
-              >
-                {t`Summarize`}
-              </b>
-            )} at the top right corner. ${primaryText}`}</Text>
+            ).jt`Click on ${
+              isSummarizeSidebarOpen ? (
+                <strong key="summarize">{t`Summarize`}</strong>
+              ) : (
+                <SummarizeCTA onClick={handleClick} key="summarize-cta" />
+              )
+            } at the top right corner. ${primaryText}`}</Text>
             <Text c="text-light">{secondaryText}</Text>
           </>
         )}
@@ -103,3 +89,14 @@ export const EmptyVizState = ({
     </Flex>
   );
 };
+
+const SummarizeCTA = ({ onClick }: { onClick: () => void }) => (
+  <strong
+    aria-label={t`Open summarize sidebar`}
+    className={CS.link}
+    onClick={onClick}
+    role="button"
+  >
+    {t`Summarize`}
+  </strong>
+);
