@@ -1,4 +1,8 @@
-import { Combobox, type MantineThemeOverride } from "@mantine/core";
+import {
+  Combobox,
+  ComboboxChevron,
+  type MantineThemeOverride,
+} from "@mantine/core";
 
 import S from "./Combobox.module.css";
 
@@ -11,6 +15,11 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
       options: S.options,
       option: S.option,
       empty: S.empty,
+    },
+  }),
+  ComboboxChevron: ComboboxChevron.extend({
+    classNames: {
+      chevron: S.chevron,
     },
   }),
 };
