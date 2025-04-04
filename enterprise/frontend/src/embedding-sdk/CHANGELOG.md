@@ -1,3 +1,19 @@
+## [0.54.5](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.4-nightly...embedding-sdk-0.54.5) (2025-04-04)
+
+
+### Bug Fixes
+
+* **sdk:** Add `questionProps` to dashboard components ([#55993](https://github.com/metabase/metabase/issues/55993)) ([#56214](https://github.com/metabase/metabase/issues/56214)) ([56f11a8](https://github.com/metabase/metabase/commit/56f11a849ff574302efb068d1d515106c9fcd5ec))
+* **sdk:** Clean up "Unrecognized Prop" errors on CreateDashboardModal ([#55523](https://github.com/metabase/metabase/issues/55523)) ([#56206](https://github.com/metabase/metabase/issues/56206)) ([8977c2e](https://github.com/metabase/metabase/commit/8977c2e9afa4e3a4d953c65acc87edaff2b884f7))
+* **sdk:** fix dataset endpoint being called on every re-render ([#56100](https://github.com/metabase/metabase/issues/56100)) ([#56233](https://github.com/metabase/metabase/issues/56233)) ([b5a7871](https://github.com/metabase/metabase/commit/b5a78711868823055aab4acdf8d6bdfc10442423))
+
+
+### Reverts
+
+* Revert "fix(sdk): Clean up "Unrecognized Prop" errors on CreateDashboardModal…" (#56222) ([23d8d50](https://github.com/metabase/metabase/commit/23d8d50053974098d09d9ddddd33dbe81754f928)), closes [#56222](https://github.com/metabase/metabase/issues/56222)
+
+
+
 ## [0.54.4-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.3-nightly...embedding-sdk-0.54.4-nightly) (2025-03-26)
 
 
