@@ -401,6 +401,11 @@
                                :post (url %1)
                                {:request-options {:body (.getBytes (json/encode %2))}})
               status         (comp :status req)
+              result         (comp
+                              (fn [req]
+                                (is (= 200 (:status req)))
+                                (:body req))
+                              req)
               create-url     "ee/data-editing/webhook"
               create         #(:body (mt/user-http-request-full-response :crowberto :post create-url {:table-id %}))
               delete-url     #(format "ee/data-editing/webhook/%s" %)
@@ -418,10 +423,10 @@
               []   400
               [{}] 400))
           (testing "one row in array"
-            (is (= 200 (status token [{:id 1, :v "a"}])))
+            (is (= {:created 1} (result token [{:id 1, :v "a"}])))
             (is (= [[1 "a"]] (table-rows table-id))))
           (testing "multiple rows in array"
-            (is (= 200 (status token [{:id 2, :v "b"} {:id 3, :v "c"}])))
+            (is (= {:created 2} (result token [{:id 2, :v "b"} {:id 3, :v "c"}])))
             (is (= [[1 "a"] [2 "b"] [3 "c"]] (table-rows table-id))))
           (testing "missing pk"
             (is (= 400 (status token [{:v "d"}]))))
@@ -438,7 +443,7 @@
               (toggle-data-editing-enabled! false)
               (is (= 400 (status token [{:id 4, :v "d"}])))
               (toggle-data-editing-enabled! true)
-              (is (= 200 (status token [{:id 4, :v "d"}])))
+              (is (= {:created 1} (result token [{:id 4, :v "d"}])))
               (finally
                 (toggle-data-editing-enabled! true))))
           (testing "token deleted"
