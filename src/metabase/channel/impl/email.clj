@@ -104,29 +104,13 @@
    :content      url})
 
 (defn- assoc-attachment-booleans [part-configs parts]
-  (let [[_ result-parts]
-        (reduce
-         (fn [[count-so-far, results-so-far] result]
-           (let [{{result-card-id :id} :card} result
-                 cur-config (nth part-configs count-so-far)
-                 has-id? (boolean result-card-id)
-                 noti-dashcard (if (= result-card-id (:card_id cur-config))
-                                 cur-config
-                                 (m/find-first #(= (:card_id %) result-card-id) part-configs))
-                 processed-result
-                 (if has-id?
-                   (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :format_rows :pivot_results]))
-                   result)
-                 new-count (if has-id? (inc count-so-far) count-so-far)]
-             [new-count, (conj results-so-far processed-result)]))
-         [0, []]
-         parts)]
-    result-parts))
-
-(defn- assoc-attachment-booleans-old [part-configs parts]
   (for [{{result-card-id :id} :card :as result} parts
-       ;; TODO: check if does this match by dashboard_card_id or card_id?
-        :let [noti-dashcard (m/find-first #(= (:card_id %) result-card-id) part-configs)]]
+        :let [result-dashboard-card-id (:id (:dashcard result))
+              ;; We match on both the card id and the dashboard card id to support visualizer dashcards
+              noti-dashcard (m/find-first (fn [config]
+                                            (and (= (:card_id config) result-card-id)
+                                                 (= (:dashboard_card_id config) result-dashboard-card-id)))
+                                          part-configs)]]
     (if result-card-id
       (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :format_rows :pivot_results]))
       result)))
