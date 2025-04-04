@@ -12,6 +12,7 @@ import { t } from "ttag";
 
 import { Icon } from "../../icons";
 
+import S from "./MultiAutocomplete.module.css";
 import { useMultiAutocomplete } from "./use-multi-autocomplete";
 
 export type MultiAutocompleteProps = {
@@ -50,7 +51,7 @@ export function MultiAutocomplete({
     handleFieldKeyDown,
     handleFieldFocus,
     handleFieldBlur,
-    handlePillDoubleClick,
+    handlePillClick,
     handlePillRemoveClick,
     handlePillsInputClick,
     handleOptionSubmit,
@@ -93,8 +94,9 @@ export function MultiAutocomplete({
                 value !== null ? (
                   <Pill
                     key={valueIndex}
+                    className={S.pill}
                     withRemoveButton
-                    onDoubleClick={() => handlePillDoubleClick(valueIndex)}
+                    onClick={() => handlePillClick(valueIndex)}
                     onRemove={() => handlePillRemoveClick(valueIndex)}
                   >
                     {value}
@@ -102,6 +104,7 @@ export function MultiAutocomplete({
                 ) : (
                   <Combobox.EventsTarget key="field">
                     <PillsInput.Field
+                      className={S.field}
                       value={fieldValue}
                       placeholder={placeholder}
                       role="combobox"

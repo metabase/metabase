@@ -1,0 +1,10 @@
+.pill {
+  cursor: default;
+}
+
+.field {
+  flex: 0 1 auto;
+  min-width: auto;
+  /* stylelint-disable-next-line property-no-unknown */
+  field-sizing: content;
+}

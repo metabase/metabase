@@ -124,7 +124,7 @@ export function useMultiAutocomplete({
     });
   };
 
-  const handlePillDoubleClick = (valueIndex: number) => {
+  const handlePillClick = (valueIndex: number) => {
     setFieldState({
       fieldValue: escapeCsv(values[valueIndex]),
       fieldSelection: { index: valueIndex, length: 1 },
@@ -179,7 +179,7 @@ export function useMultiAutocomplete({
     handleFieldKeyDown,
     handleFieldFocus,
     handleFieldBlur,
-    handlePillDoubleClick,
+    handlePillClick,
     handlePillRemoveClick,
     handlePillsInputClick,
     handleOptionSubmit,
