@@ -12,7 +12,6 @@ import {
 
 import { GdriveConnectionModal } from "./GdriveConnectionModal";
 import { trackSheetConnectionClick } from "./analytics";
-import { SYNC_INTERVAL_MINUTES } from "./constants";
 import { useShowGdrive } from "./utils";
 
 export function GdriveDbMenu() {
@@ -73,11 +72,11 @@ export function GdriveDbMenu() {
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
-          <SyncNowButton disabled={status === "loading"} />
+          <SyncNowButton disabled={status === "syncing"} />
           <Menu.Item
             leftSection={<Icon name="close" />}
             fw="bold"
-            disabled={status === "loading"}
+            disabled={status === "syncing"}
             onClick={() => setShowModal(true)}
           >
             {t`Disconnect`}
@@ -122,7 +121,8 @@ function MenuSyncStatus() {
     refetchOnMountOrArgChange: 5,
   });
 
-  const lastSync = folderInfo?.["folder-upload-time"];
+  const lastSync = folderInfo?.last_sync_at;
+  const nextSync = folderInfo?.next_sync_at;
   const folderStatus = folderInfo?.status;
 
   const lastSyncRelative = lastSync
@@ -130,19 +130,15 @@ function MenuSyncStatus() {
     : t`unknown`;
 
   const nextSyncOverDue =
-    !lastSync ||
-    dayjs
-      .unix(lastSync)
-      .add(SYNC_INTERVAL_MINUTES, "minutes")
-      .isBefore(dayjs());
+    !lastSync || !nextSync || dayjs.unix(nextSync).isBefore(dayjs());
 
   const nextSyncRelative = !nextSyncOverDue
-    ? dayjs.unix(lastSync).add(SYNC_INTERVAL_MINUTES, "minutes").fromNow()
+    ? dayjs.unix(nextSync).fromNow()
     : t`soon` + "™";
 
   return (
     <>
-      {folderStatus === "loading" ? (
+      {folderStatus === "syncing" ? (
         <SyncingText />
       ) : (
         <Text fw="bold">{t`Next sync ${nextSyncRelative}`}</Text>
