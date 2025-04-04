@@ -178,7 +178,6 @@
   get-minute
   get-second
   get-quarter
-  get-day-of-week
   datetime-add
   datetime-subtract
   concat
