@@ -171,6 +171,3 @@
   "Rollback the given user's last change to the given table."
   [user-id table-id]
   (undo*! false user-id table-id))
-
-
-
