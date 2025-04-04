@@ -55,4 +55,3 @@
   []
   (t2/query {:select [:*]
              :from [[(t2/table-name :model/ContentTranslation) :t]]}))
-
