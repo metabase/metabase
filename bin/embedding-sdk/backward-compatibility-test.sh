@@ -11,8 +11,14 @@ FE_FOLDER="$TMP_FOLDER/metabase-fe"
 BE_FOLDER="$TMP_FOLDER/metabase-be"
 JAR_PATH="$BE_FOLDER/target/uberjar/metabase.jar"
 
-echo "Using backend from $BE_GIT_REF"
 echo "Using frontend from $FE_GIT_REF"
+echo "Using backend from $BE_GIT_REF"
+echo ""
+
+echo "To test locally run:" # log for ci
+echo "sh bin/embedding-sdk/backward-compatibility-test.sh $FE_GIT_REF $BE_GIT_REF <build|start|test>"
+
+echo ""
 
 echo "TMP_FOLDER: $TMP_FOLDER"
 echo "FE_FOLDER: $FE_FOLDER"
