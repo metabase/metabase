@@ -23,11 +23,7 @@ import type {
 } from "metabase/dashboard/types";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
-import {
-  ContentTranslationProvider,
-  useTranslateContent,
-  useTranslateContent2,
-} from "metabase/i18n/components/ContentTranslationContext";
+import { ContentTranslationProvider } from "metabase/i18n/components/ContentTranslationContext";
 import { useDispatch } from "metabase/lib/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
@@ -207,8 +203,6 @@ function Dashboard(props: DashboardProps) {
   } = props;
 
   const dispatch = useDispatch();
-
-  const tc = useTranslateContent2();
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -412,7 +406,7 @@ function Dashboard(props: DashboardProps) {
             <Flex direction="column" mih="100%" w="100%" flex="1 0 auto">
               {dashboard.archived && (
                 <ArchivedEntityBanner
-                  name={tc(dashboard.name)}
+                  name={dashboard.name}
                   entityType="dashboard"
                   canMove={canWrite}
                   canRestore={canRestore}
@@ -420,7 +414,7 @@ function Dashboard(props: DashboardProps) {
                   onUnarchive={async () => {
                     await dispatch(
                       setArchivedDashboard(false, false, {
-                        name: tc(dashboard.name),
+                        name: dashboard.name,
                       }),
                     );
                     await dispatch(Bookmarks.actions.invalidateLists());
