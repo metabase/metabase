@@ -4,6 +4,7 @@ import {
   type ChangeEvent,
   type ClipboardEvent,
   type KeyboardEvent,
+  type MouseEvent,
   useState,
 } from "react";
 
@@ -138,8 +139,15 @@ export function useMultiAutocomplete({
     });
   };
 
-  const handlePillsInputClick = () => {
+  const handlePillsInputClick = (event: MouseEvent<HTMLDivElement>) => {
     combobox.openDropdown();
+
+    if (!(event.target instanceof HTMLInputElement)) {
+      setFieldState({
+        fieldValue: "",
+        fieldSelection: undefined,
+      });
+    }
   };
 
   const handleOptionSubmit = (value: string) => {
