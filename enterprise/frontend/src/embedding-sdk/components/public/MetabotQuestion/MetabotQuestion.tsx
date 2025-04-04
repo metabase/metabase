@@ -2,11 +2,12 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { Flex, Text } from "metabase/ui";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 
-export const MetabotQuestion = () => {
+const MetabotQuestionInner = () => {
   const [result, setResult] = useState<Record<string, any> | null>(null);
 
   const redirectUrl = useMemo(() => {
@@ -37,3 +38,4 @@ function Disclaimer() {
     <Text c="var(--mb-color-text-secondary)">{t`AI can make mistakes. Double check results.`}</Text>
   );
 }
+export const MetabotQuestion = withPublicComponentWrapper(MetabotQuestionInner);
