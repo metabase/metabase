@@ -13,3 +13,7 @@ export type ContentTranslationContextObject = {
   locale?: string;
   dictionary?: ContentTranslationDictionary;
 };
+
+/** Mapping of msgid to msgstr. This is a dictionary for a single locale, so no
+ * locale information is stored in it */
+export type DictionaryForLocale = Record<string, string>;
