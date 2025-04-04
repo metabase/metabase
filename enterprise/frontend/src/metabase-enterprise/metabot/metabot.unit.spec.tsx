@@ -94,7 +94,6 @@ const lastReqBody = async () => {
 
 describe("metabot", () => {
   describe("ui", () => {
-    // eslint-disable-next-line jest/expect-expect
     it("should be able to render metabot", async () => {
       setup();
       await assertVisible();
@@ -138,7 +137,6 @@ describe("metabot", () => {
       expect(secondConversationId).not.toBe(firstConversationId);
     });
 
-    // eslint-disable-next-line jest/expect-expect
     it("should auto-close metabot if inactive with no user input", async () => {
       jest.useFakeTimers({ advanceTimers: true });
 
@@ -180,7 +178,6 @@ describe("metabot", () => {
       jest.useRealTimers();
     });
 
-    // eslint-disable-next-line jest/expect-expect
     it("should properly auto-close metabot if route changes", async () => {
       setup();
 
@@ -189,7 +186,6 @@ describe("metabot", () => {
       await assertNotVisible();
     });
 
-    // eslint-disable-next-line jest/expect-expect
     it("should not close on route change if metabot is processing", async () => {
       const { store } = setup();
 
@@ -202,7 +198,6 @@ describe("metabot", () => {
       await assertNotVisible();
     });
 
-    // eslint-disable-next-line jest/expect-expect
     it("should not close on route change if there is user input", async () => {
       const { store } = setup();
 
@@ -213,7 +208,6 @@ describe("metabot", () => {
       await assertVisible();
     });
 
-    // eslint-disable-next-line jest/expect-expect
     it("should not close on route change if new location shares base bath segement", async () => {
       const { store } = setup();
 
@@ -226,7 +220,6 @@ describe("metabot", () => {
       await assertVisible();
     });
 
-    // eslint-disable-next-line jest/expect-expect
     it("should hide metabot when the user logs out", async () => {
       jest.spyOn(domModule, "reload").mockImplementation(() => {});
 
@@ -244,7 +237,6 @@ describe("metabot", () => {
       }
     });
 
-    // eslint-disable-next-line jest/expect-expect
     it("should not show metabot if the is not signed in user", async () => {
       // suppress expected console error
       const consoleErrorSpy = jest
