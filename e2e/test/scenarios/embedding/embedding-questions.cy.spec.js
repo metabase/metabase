@@ -197,6 +197,7 @@ describe("scenarios > embedding > questions", () => {
         .should("contain", "Tue, Feb 11, 2025, 21:40:27")
         .should("not.contain", "Subtotal");
 
+      cy.findAllByTestId("mini-bar-container").should("have.length", 5);
       H.tableInteractiveScrollContainer().scrollTo("right");
 
       // Joined table fields
