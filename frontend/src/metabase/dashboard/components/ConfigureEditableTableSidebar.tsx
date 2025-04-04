@@ -1,12 +1,17 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { datasetApi } from "metabase/api";
-import { updateEditingDashboardCard } from "metabase/dashboard/actions";
+import {
+  setDashCardAttributes,
+  setEditingDashcardData,
+} from "metabase/dashboard/actions";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { FilterPanelPopover } from "metabase/querying/filters/components/FilterPanel/FilterPanelPopover";
+import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -22,7 +27,6 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
-  DashCardId,
   DashboardCard,
   StructuredDatasetQuery,
 } from "metabase-types/api";
@@ -30,12 +34,10 @@ import type {
 import { getDashCardById, getSidebar } from "../selectors";
 
 interface ConfigureEditableTableSidebarProps {
-  onUpdateDashCard: (dashcardId: DashCardId, card: Card) => void;
   onClose: () => void;
 }
 
 export function ConfigureEditableTableSidebar({
-  onUpdateDashCard,
   onClose,
 }: ConfigureEditableTableSidebarProps) {
   const dashcardId = useSelector(getSidebar).props.dashcardId;
@@ -63,10 +65,7 @@ export function ConfigureEditableTableSidebar({
           </Tabs.Panel>
           <Tabs.Panel value="filters">
             <div>DashcardID: {dashcardId}</div>
-            <ConfigureEditableTableFilters
-              dashcard={dashcard}
-              onUpdateDashCard={onUpdateDashCard}
-            />
+            <ConfigureEditableTableFilters dashcard={dashcard} />
           </Tabs.Panel>
           <Tabs.Panel value="actions">
             <div>Not implemented</div>
@@ -83,53 +82,49 @@ function ConfigureEditableTableColumns() {
 
 function ConfigureEditableTableFilters({
   dashcard,
-  onUpdateDashCard,
 }: {
   dashcard: DashboardCard;
-  onUpdateDashCard: (dashcardId: DashCardId, card: Card) => void;
 }) {
   const [isOpened, { close, toggle }] = useDisclosure();
-
   const dispatch = useDispatch();
-
   const metadata = useSelector(getMetadata);
 
-  // TODO: handle just added card.
-  const initialQuery = useMemo(() => {
-    const question = isQuestionCard(dashcard?.card)
-      ? new Question(dashcard.card, metadata)
-      : null;
+  const card = dashcard.card;
+
+  // TODO: check just added card
+  const query = useMemo(() => {
+    const question = isQuestionCard(card) ? new Question(card, metadata) : null;
 
     return question?.query();
-  }, [dashcard?.card, metadata]);
+  }, [card, metadata]);
 
-  const [query, setQuery] = useState(initialQuery);
+  const filterItems = useMemo(() => getFilterItems(query), [query]);
 
   const handleQueryChange = async (newQuery: Lib.Query) => {
-    setQuery(newQuery);
-
     const legacyQuery = Lib.toLegacyQuery(newQuery);
 
-    // NOTE: we cannot do data loading inside an action, as we don't support ad-hoc queries as a dashcard.
-    // TODO: move this logic to FETCH_CARD_DATA action
+    // NOTE: we cannot do data loading inside an action, as we don't support ad-hoc queries as a dashcard
     const action = dispatch(
+      // TODO: set "dashboard" context for api request ?
       datasetApi.endpoints.getAdhocQuery.initiate(legacyQuery),
     );
-
     const cardData = await action.unwrap();
 
     const newCard: Card<StructuredDatasetQuery> = {
-      ...dashcard.card,
+      ...card,
       dataset_query: legacyQuery,
+      isDirty: true,
     };
 
-    // setDashcardData(dashcard, cardData);
     dispatch(
-      updateEditingDashboardCard({
-        ...dashcard,
-        card: newCard,
+      setDashCardAttributes({
+        id: dashcard.id,
+        attributes: {
+          card: newCard,
+        },
       }),
     );
+    dispatch(setEditingDashcardData(dashcard.id, card.id, cardData));
   };
 
   if (!query) {
@@ -137,7 +132,19 @@ function ConfigureEditableTableFilters({
   }
 
   return (
-    <div>
+    <Box>
+      <Flex align="center" wrap="wrap" gap="sm" py="sm">
+        {filterItems.map(({ filter, filterIndex, stageIndex }, itemIndex) => (
+          <FilterPanelPopover
+            key={itemIndex}
+            query={query}
+            stageIndex={stageIndex}
+            filter={filter}
+            filterIndex={filterIndex}
+            onChange={handleQueryChange}
+          />
+        ))}
+      </Flex>
       <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
         <Popover.Target>
           <Button
@@ -157,6 +164,6 @@ function ConfigureEditableTableFilters({
           />
         </Popover.Dropdown>
       </Popover>
-    </div>
+    </Box>
   );
 }

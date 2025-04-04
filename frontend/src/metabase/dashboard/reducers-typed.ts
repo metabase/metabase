@@ -18,7 +18,6 @@ import type {
   Card,
   DashCardId,
   Dashboard,
-  DashboardCard,
   ParameterId,
   ParameterValueOrArray,
   Revision,
@@ -41,7 +40,6 @@ import {
   SET_SIDEBAR,
   SHOW_ADD_PARAMETER_POPOVER,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
-  UPDATE_EDITING_DASHBOARD_CARD,
   addCardToDash,
   addDashcardIdsToLoadingQueue,
   addManyCardsToDash,
@@ -56,6 +54,7 @@ import {
   setDashboardAttributes,
   setDisplayTheme,
   setDocumentTitle,
+  setEditingDashcardData,
   setShowLoadingCompleteFavicon,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
@@ -139,82 +138,28 @@ export const isAddParameterPopoverOpen = handleActions(
   INITIAL_DASHBOARD_STATE.isAddParameterPopoverOpen,
 );
 
-export const editingDashboard = createReducer(
-  INITIAL_DASHBOARD_STATE.editingDashboard,
-  (builder) => {
-    builder.addCase(INITIALIZE, () => INITIAL_DASHBOARD_STATE.editingDashboard);
-    builder.addCase(RESET, () => INITIAL_DASHBOARD_STATE.editingDashboard);
-    builder.addCase(SET_EDITING_DASHBOARD, (state, { payload }) => {
-      // Only update the dashboard in the state if the new dashboard differs from the current one.
-      // This prevents the case where this function is accidentally called with an edited/dirty dashboard,
-      // preventing the diff logic in our save flow from properly detecting that were changes.
-      if (payload !== null && state?.id === payload?.id) {
-        console.warn(
-          "The editingDashboard state should not be set to a newer version of the same dashboard. This can produce subtle bugs for detecting how dashboards have changed over time. Skipping updating state and using old editingDashboard state.",
-        );
-        return state;
-      }
-
-      return payload ?? null;
-    });
-
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: DashboardCard;
-      }
-    >(UPDATE_EDITING_DASHBOARD_CARD, (state, { payload }) => {
-      if (state?.id && payload) {
-        const changedCardIndex = state.dashcards.findIndex(
-          ({ id }) => id === payload.id,
-        );
-        if (changedCardIndex > -1) {
-          state.dashcards[changedCardIndex] = payload;
+export const editingDashboard = handleActions(
+  {
+    [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
+    [SET_EDITING_DASHBOARD]: {
+      next: (state, { payload }) => {
+        // Only update the dashboard in the state if the new dashboard differs from the current one.
+        // This prevents the case where this function is accidentally called with an edited/dirty dashboard,
+        // preventing the diff logic in our save flow from properly detecting that were changes.
+        if (payload !== null && state?.id === payload?.id) {
+          console.warn(
+            "The editingDashboard state should not be set to a newer version of the same dashboard. This can produce subtle bugs for detecting how dashboards have changed over time. Skipping updating state and using old editingDashboard state.",
+          );
+          return state;
         }
-      }
 
-      return state;
-    });
+        return payload ?? null;
+      },
+    },
+    [RESET]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
   },
+  INITIAL_DASHBOARD_STATE.editingDashboard,
 );
-
-// export const editingDashboard = handleActions(
-//   {
-//     [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
-//     [SET_EDITING_DASHBOARD]: {
-//       next: (state, { payload }) => {
-//         // Only update the dashboard in the state if the new dashboard differs from the current one.
-//         // This prevents the case where this function is accidentally called with an edited/dirty dashboard,
-//         // preventing the diff logic in our save flow from properly detecting that were changes.
-//         if (payload !== null && state?.id === payload?.id) {
-//           console.warn(
-//             "The editingDashboard state should not be set to a newer version of the same dashboard. This can produce subtle bugs for detecting how dashboards have changed over time. Skipping updating state and using old editingDashboard state.",
-//           );
-//           return state;
-//         }
-//
-//         return payload ?? null;
-//       },
-//     },
-//     [UPDATE_EDITING_DASHBOARD_CARD]: {
-//       next: (state, { payload }) => {
-//         if (state?.id && payload) {
-//           const changedCardIndex = state.dashcards.findIndex(
-//             ({ id }) => id === payload.id,
-//           );
-//           if (changedCardIndex > -1) {
-//             state.dashcards[changedCardIndex] = payload;
-//           }
-//         }
-//
-//         return state;
-//       },
-//     },
-//     [RESET]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
-//   },
-//   INITIAL_DASHBOARD_STATE.editingDashboard,
-// );
 
 export const loadingControls = createReducer(
   INITIAL_DASHBOARD_STATE.loadingControls,
@@ -516,6 +461,14 @@ export const dashcardData = createReducer(
             for (const dashcardId in state) {
               delete state[dashcardId][model_id];
             }
+          }
+        },
+      )
+      .addCase(
+        setEditingDashcardData,
+        (state, { payload: { dashcardId, cardId, dataset } }) => {
+          if (dashcardId && cardId) {
+            return assocIn(state, [dashcardId, cardId], dataset);
           }
         },
       );

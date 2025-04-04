@@ -260,7 +260,7 @@ export const replaceCard =
       .getObject(getState(), { entityId: nextCardId })
       .card();
 
-    await dispatch(
+    dispatch(
       setDashCardAttributes({
         id: dashcardId,
         attributes: {
@@ -280,32 +280,6 @@ export const replaceCard =
     dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
 
     dashboardId && trackQuestionReplaced(dashboardId);
-  };
-
-export const updateCard =
-  ({ dashcardId, card }: { dashcardId: DashCardId; card: Card }) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    // const dashboardId = getDashboardId(getState());
-
-    await dispatch(
-      setDashCardAttributes({
-        id: dashcardId,
-        attributes: {
-          card,
-          series: [],
-          parameter_mappings: [],
-          visualization_settings: {},
-        },
-      }),
-    );
-
-    const dashcard = getDashCardById(getState(), dashcardId);
-
-    dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
-    await dispatch(loadMetadataForCard(card));
-    // dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
-
-    // dashboardId && trackQuestionReplaced(dashboardId);
   };
 
 export const removeCardFromDashboard = createThunkAction(
