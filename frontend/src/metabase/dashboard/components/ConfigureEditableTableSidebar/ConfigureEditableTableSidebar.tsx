@@ -4,7 +4,7 @@ import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useSelector } from "metabase/lib/redux";
 import { ActionIcon, Box, Flex, Icon, Tabs } from "metabase/ui";
 
-import { getSidebar } from "../selectors";
+import { getSidebar } from "../../selectors";
 
 interface ConfigureEditableTableSidebarProps {
   onClose: () => void;

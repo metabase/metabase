@@ -1,15 +1,20 @@
 .customTemplateRoot {
   --mb-color-border: transparent;
+
   color: var(--mb-color-text-primary);
 }
+
 .customTemplateControl {
   --mb-color-border: transparent;
+
   padding: 0;
 }
+
 .customTemplateLabel {
   font-weight: 500;
   color: var(--mb-color-text-primary);
 }
+
 .customTemplateIcon {
   color: var(--mb-color-text-primary);
 
