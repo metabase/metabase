@@ -413,9 +413,9 @@
           (testing "empty rows"
             (are [input code]
                  (= code (status token input))
-              nil  200
+              nil  400
               {}   400
-              []   200
+              []   400
               [{}] 400))
           (testing "one row in array"
             (is (= 200 (status token [{:id 1, :v "a"}])))
