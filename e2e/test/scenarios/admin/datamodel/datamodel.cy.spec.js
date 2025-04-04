@@ -768,14 +768,22 @@ describe("scenarios > admin > datamodel > segments", () => {
     it("should show up in UI list and should show the segment details of a specific id", () => {
       cy.visit("/admin/datamodel/segments");
 
-      cy.findByRole("table")
-        .findByText("Filtered by Total is less than 100")
-        .should("be.visible");
+      cy.findByRole("table").within(() => {
+        cy.findByText("Filtered by Total is less than 100").should(
+          "be.visible",
+        );
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+      });
       cy.findByRole("link", { name: /Orders < 100/ })
         .should("be.visible")
         .click();
 
-      cy.get("form").findByText("Edit Your Segment").should("be.visible");
+      cy.get("form").within(() => {
+        cy.findByText("Edit Your Segment").should("be.visible");
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+      });
       cy.findByPlaceholderText("Something descriptive but not too long").should(
         "have.value",
         SEGMENT_NAME,
