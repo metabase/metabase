@@ -30,13 +30,15 @@ export function resolverPass({
     });
 }
 
+export type Kind = "field" | "metric" | "segment";
+
 export function fieldResolver(options: {
   query: Lib.Query;
   stageIndex: number;
   startRule: string;
 }) {
   return function (
-    kind: "field" | "segment" | "metric" | "dimension",
+    kind: Kind,
     name: string,
     expression?: Expression,
   ): Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata {
