@@ -14,7 +14,11 @@
 
 (defn- is-canceled-statement?
   [err]
-  (boolean (re-find #"ERROR: canceling statement due to user request" (ex-message err))))
+  (let [msg (ex-message err)]
+    (boolean (or (re-find #"ERROR: canceling statement due to user request" msg) ;; error text on postgres
+                 (re-find #"Query timed out" msg) ;; error text on mysql
+                 (re-find #"Query execution was interrupted" msg) ;;error text on mariadb
+                 ))))
 
 (def ^:private default-retry-config
   {:max-attempts 5
