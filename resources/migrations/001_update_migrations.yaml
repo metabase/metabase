@@ -11318,31 +11318,13 @@ databaseChangeLog:
 #            tableName: data_edit_undo_chain
 #            columns:
 #              - column:
+#                  name: batch_num
+#              - column:
 #                  name: table_id
 #              - column:
 #                  name: user_id
 #              - column:
-#                  name: change_num
-#              - column:
 #                  name: undone
-#        - createIndex:
-#            indexName: idx_data_edit_undo_chain_conflict_detection
-#            tableName: data_edit_undo_chain
-#            columns:
-#              - column:
-#                  name: table_id
-#              - column:
-#                  name: row_id
-#              - column:
-#                  name: field_id
-#              - column:
-#                  name: change_num
-#        - createIndex:
-#            indexName: idx_data_edit_undo_chain_batch_cleanup
-#            tableName: data_edit_undo_chain
-#            columns:
-#              - column:
-#                  name: change_num
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

@@ -49,17 +49,18 @@
 
           (is (undo/has-undo? true user-id table-id))
           (is (not (undo/has-undo? false user-id table-id)))
-          (is (= [{:id 1, :name "Snorkmaiden", :favourite_food "orc"}]
+          (is (= {table-id [[:create {:id 1, :name "Snorkmaiden", :favourite_food "orc"}]]}
                  (undo/undo! user-id table-id)))
 
           (is (undo/has-undo? true user-id table-id))
           (is (undo/has-undo? false user-id table-id))
-          (is (= [{:id 1, :name "Snorkmaiden", :favourite_food "pork"}]
+          (is (= {table-id [[:update {:id 1, :name "Snorkmaiden", :favourite_food "pork"}]]}
                  (undo/undo! user-id table-id)))
 
           (is (undo/has-undo? true user-id table-id))
           (is (undo/has-undo? false user-id table-id))
-          (is (= [nil]
+          ;; This doesn't tell the FE which rows to hide
+          (is (= {table-id [[:delete {:id 1}]]}
                  (undo/undo! user-id table-id)))
 
           (is (not (undo/has-undo? true user-id table-id)))
@@ -71,17 +72,17 @@
 
           (is (not (undo/has-undo? true user-id table-id)))
           (is (undo/has-undo? false user-id table-id))
-          (is (= [{:id 1, :name "Snorkmaiden", :favourite_food "pork"}]
+          (is (= {table-id [[:create {:id 1, :name "Snorkmaiden", :favourite_food "pork"}]]}
                  (undo/redo! user-id table-id)))
 
           (is (undo/has-undo? true user-id table-id))
           (is (undo/has-undo? false user-id table-id))
-          (is (= [{:id 1, :name "Snorkmaiden", :favourite_food "orc"}]
+          (is (= {table-id [[:update {:id 1, :name "Snorkmaiden", :favourite_food "orc"}]]}
                  (undo/redo! user-id table-id)))
 
           (is (undo/has-undo? true user-id table-id))
           (is (undo/has-undo? false user-id table-id))
-          (is (= [nil]
+          (is (= {table-id [[:delete {:id 1}]]}
                  (undo/redo! user-id table-id)))
 
           (is (undo/has-undo? true user-id table-id))
@@ -100,8 +101,8 @@
                                                                :power [:int]}
                                                               {:primary-key [:id]})]
         (let [table-id @table-ref
-              user-1  (mt/user->id :crowberto)
-              user-2  (mt/user->id :rasta)]
+              user-1   (mt/user->id :crowberto)
+              user-2   (mt/user->id :rasta)]
           (data-editing.tu/toggle-data-editing-enabled! true)
 
           ;; NOTE: this test relies on the "conflicts even when different columns changed" semantics
@@ -121,7 +122,7 @@
 
           (is (undo/has-undo? true user-1 table-id))
           (is (not (undo/has-undo? false user-1 table-id)))
-          (is (= [{:id 2, :name "Moominswole", :power 9001}]
+          (is (= {table-id [[:create {:id 2, :name "Moominswole", :power 9001}]]}
                  (undo/undo! user-1 table-id)))
 
           (is (undo/has-undo? true user-1 table-id))
@@ -135,17 +136,17 @@
           (is (undo/has-undo? false user-1 table-id))
           (is (undo/has-undo? true user-2 table-id))
           (is (not (undo/has-undo? false user-2 table-id)))
-          (is (= [{:id 2, :name "Moomintroll", :power 9001}]
+          (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 9001}]]}
                  (undo/undo! user-2 table-id)))
 
           (is (undo/has-undo? true user-1 table-id))
           (is (undo/has-undo? false user-1 table-id))
-          (is (= [{:id 2, :name "Moomintroll", :power 3}]
+          (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 3}]]}
                  (undo/undo! user-1 table-id)))
 
           (is (undo/has-undo? true user-1 table-id))
           (is (undo/has-undo? false user-1 table-id))
-          (is (= [nil]
+          (is (= {table-id [[:delete {:id 2}]]}
                  (undo/undo! user-1 table-id)))
 
           (is (not (undo/has-undo? true user-1 table-id)))
@@ -157,22 +158,22 @@
 
           (is (not (undo/has-undo? true user-1 table-id)))
           (is (undo/has-undo? false user-1 table-id))
-          (is (= [{:id 2, :name "Moomintroll", :power 3}]
+          (is (= {table-id [[:create {:id 2, :name "Moomintroll", :power 3}]]}
                  (undo/redo! user-1 table-id)))
 
           (is (undo/has-undo? true user-1 table-id))
           (is (undo/has-undo? false user-1 table-id))
-          (is (= [{:id 2, :name "Moomintroll", :power 9001}]
+          (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 9001}]]}
                  (undo/redo! user-1 table-id)))
 
           (is (undo/has-undo? true user-1 table-id))
           (is (undo/has-undo? false user-1 table-id))
-          (is (= [{:id 2, :name "Moominswole", :power 9001}]
+          (is (= {table-id [[:update {:id 2, :name "Moominswole", :power 9001}]]}
                  (undo/redo! user-2 table-id)))
 
           (is (undo/has-undo? true user-1 table-id))
           (is (undo/has-undo? false user-1 table-id))
-          (is (= [nil]
+          (is (= {table-id [[:delete {:id 2}]]}
                  (undo/redo! user-1 table-id)))
 
           (is (undo/has-undo? true user-1 table-id))
