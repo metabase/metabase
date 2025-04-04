@@ -193,24 +193,3 @@
                            :event/action.success
                            {:action action
                             :result {:table_id (mt/id :orders)}})))))))))
-
-(deftest example-payload-row-create-test
-  (mt/user-http-request :crowberto :post 200 "notification/payload"
-                        {:payload_type :notification/system-event
-                         :payload      {:event_name :event/action.success
-                                        :action     :row/create}
-                         :creator_id   (mt/user->id :crowberto)}))
-
-(deftest example-payload-row-update-test
-  (mt/user-http-request :crowberto :post 200 "notification/payload"
-                        {:payload_type :notification/system-event
-                         :payload      {:event_name :event/action.success
-                                        :action     :row/update}
-                         :creator_id   (mt/user->id :crowberto)}))
-
-(deftest example-payload-row-delete-test
-  (mt/user-http-request :crowberto :post 200 "notification/payload"
-                        {:payload_type :notification/system-event
-                         :payload      {:event_name :event/action.success
-                                        :action     :row/delete}
-                         :creator_id   (mt/user->id :crowberto)}))

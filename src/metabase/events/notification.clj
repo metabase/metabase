@@ -97,9 +97,3 @@
   (maybe-send-notification-for-topic! topic event-info))
 
 ;; TODO: move notification events schema here
-
-(defmethod events/event-info-example :event/action.success
-  [_topic options]
-  (let [action (:action options)]
-    (binding [events.schema/*action-gen-value* action]
-      (mg/generate :event/action.success))))
