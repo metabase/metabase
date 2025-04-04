@@ -9,11 +9,9 @@
 (defn get-content-translations
   "Get the current content translations. This is a map of user-generated strings to their translations in the user's current locale."
   []
-  (log/info "In content_translation.cljc, content translations =" (pr-str @content-translations))
   @content-translations)
 
 (defn set-content-translations
   "Set the current content-translation dictionary."
   [m]
-  (log/info "In content_translation.cljc, setting content translations to" (pr-str m))
   (reset! content-translations m))
