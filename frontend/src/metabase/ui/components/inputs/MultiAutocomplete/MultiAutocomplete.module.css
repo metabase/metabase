@@ -6,14 +6,16 @@
   }
 }
 
-.field {
-  flex: 0 1 auto;
-  min-width: auto;
-  /* stylelint-disable-next-line property-no-unknown */
-  field-sizing: content;
+@supports (field-sizing: content) {
+  .field {
+    flex: 0 1 auto;
+    min-width: auto;
+    /* stylelint-disable-next-line property-no-unknown */
+    field-sizing: content;
 
-  &:not(:last-child) {
-    padding-left: 0.5rem;
-    padding-right: 1.75rem;
+    &:not(:last-child) {
+      padding-left: 0.5rem;
+      padding-right: 1.75rem;
+    }
   }
 }
