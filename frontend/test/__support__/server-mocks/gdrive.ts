@@ -1,42 +1,26 @@
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
-import type { Settings } from "metabase-types/api";
-
-type Props =
-  | {
-      status?: never;
-      "folder-upload-time"?: never;
-      errorCode: number;
-    }
-  | {
-      status: Settings["gsheets"]["status"];
-      "folder-upload-time"?: number;
-      errorCode?: never;
-    };
+import type { GdrivePayload } from "metabase-types/api";
 
 export function setupGdriveGetFolderEndpoint({
-  status,
   errorCode,
-  "folder-upload-time": uploadTime,
-}: Props) {
-  if (status) {
-    fetchMock.get(
-      "path:/api/ee/gsheets/folder",
-      () => {
-        return {
-          status,
-          db_id: 1,
-          "folder-upload-time": uploadTime ?? dayjs().unix(),
-        };
-      },
-      { overwriteRoutes: true },
-    );
+  ...gdrivePayload
+}: Partial<GdrivePayload> & { errorCode?: number }) {
+  if (errorCode) {
+    fetchMock.get("path:/api/ee/gsheets/folder", errorCode, {
+      overwriteRoutes: true,
+    });
+    return;
   }
 
-  if (errorCode) {
-    fetchMock.get("path:/api/ee/gsheets/folder", errorCode);
-  }
+  fetchMock.get(
+    "path:/api/ee/gsheets/folder",
+    () => {
+      // fetchmock gets confused if you try to return only a 'status' property
+      return { ...gdrivePayload, _test: "" };
+    },
+    { overwriteRoutes: true },
+  );
 }
 
 export function setupGdriveServiceAccountEndpoint(
@@ -45,6 +29,10 @@ export function setupGdriveServiceAccountEndpoint(
   fetchMock.get("path:/api/ee/gsheets/service-account", () => {
     return { email };
   });
+}
+
+export function setupGdrivePostFolderEndpoint() {
+  fetchMock.post("path:/api/ee/gsheets/folder", { status: 202 });
 }
 
 export function setupGdriveSyncEndpoint() {
