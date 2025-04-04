@@ -1,12 +1,11 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
-import type { DashboardFullscreenControls } from "metabase/dashboard/types";
+import { useDashboardContext } from "metabase/dashboard/context";
 
-export const FullscreenToggle = ({
-  isFullscreen,
-  onFullscreenChange,
-}: DashboardFullscreenControls) => {
+export const FullscreenToggle = () => {
+  const { isFullscreen, onFullscreenChange } = useDashboardContext();
+
   const label = isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`;
   return (
     <ToolbarButton

@@ -6,7 +6,7 @@ import {
   trackExportDashboardToPDF,
 } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
-import { useDispatch } from "metabase/lib/redux";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { Button, Icon } from "metabase/ui";
@@ -14,16 +14,9 @@ import {
   getExportTabAsPdfButtonText,
   saveDashboardPdf,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
-import type { Dashboard } from "metabase-types/api";
 
-export const ExportAsPdfButton = ({
-  dashboard,
-  color,
-}: {
-  dashboard: Dashboard;
-  color?: string;
-}) => {
-  const dispatch = useDispatch();
+export const ExportAsPdfButton = ({ color }: { color?: string }) => {
+  const { dashboard } = useDashboardContext();
 
   const saveAsPDF = () => {
     const dashboardAccessedVia = match(dashboard?.id)
@@ -49,7 +42,7 @@ export const ExportAsPdfButton = ({
       px="0.5rem"
       leftSection={<Icon name="document" />}
       color={color || "text-dark"}
-      onClick={() => dispatch(saveAsPDF)}
+      onClick={saveAsPDF}
     >
       {getExportTabAsPdfButtonText(dashboard.tabs)}
     </Button>
