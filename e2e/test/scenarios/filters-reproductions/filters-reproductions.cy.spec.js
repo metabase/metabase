@@ -1394,10 +1394,10 @@ describe("Issue 48851", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.viewport(1050, 300);
+    cy.viewport(1050, 500);
   });
 
-  const manyValues = Array(12)
+  const manyValues = Array(20)
     .fill(0)
     .map(() => Math.round(Math.random() * 1000_000_000_000).toString(36))
     .join(", ");
@@ -1411,12 +1411,11 @@ describe("Issue 48851", () => {
       cy.findByText("Is").click();
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
-    H.popover().last().findByText("Contains").click();
+    H.popover().eq(1).findByText("Contains").click();
+    H.popover().should("have.length", 1);
     H.popover()
-      .first()
       .findByPlaceholderText("Enter some text")
-      .type(manyValues, { timeout: 0 });
+      .type(manyValues, { force: true, timeout: 0 });
 
     H.popover().button("Add filter").should("be.visible");
   });
