@@ -17,6 +17,7 @@ import {
   moveColumnInSettings,
   toggleColumnInSettings,
 } from "./utils";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 interface TableColumnPanelProps {
   columns: DatasetColumn[];
@@ -33,15 +34,16 @@ export const TableColumnPanel = ({
   onChange,
   onShowWidget,
 }: TableColumnPanelProps) => {
+  const tc = useTranslateContent2();
   const columnItems = useMemo(() => {
-    return getColumnItems(columns, columnSettings);
-  }, [columns, columnSettings]);
+    return getColumnItems(columns, columnSettings, tc);
+  }, [columns, columnSettings, tc]);
 
   const getItemName = useCallback(
     (columnItem: ColumnItem) => {
-      return getColumnName(columnItem.column);
+      return tc(getColumnName(columnItem.column));
     },
-    [getColumnName],
+    [getColumnName, tc],
   );
 
   const handleEnableColumn = useCallback(

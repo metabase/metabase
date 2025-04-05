@@ -15,6 +15,7 @@ import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export function StringFilterPicker({
   query,
@@ -29,6 +30,7 @@ export function StringFilterPicker({
     () => Lib.displayInfo(query, stageIndex, column),
     [query, stageIndex, column],
   );
+  const tc = useTranslateContent2();
 
   const {
     type,
@@ -71,7 +73,7 @@ export function StringFilterPicker({
       onSubmit={handleSubmit}
     >
       <FilterPickerHeader
-        columnName={columnInfo.longDisplayName}
+        columnName={tc(columnInfo.longDisplayName)}
         onBack={onBack}
       >
         <FilterOperatorPicker

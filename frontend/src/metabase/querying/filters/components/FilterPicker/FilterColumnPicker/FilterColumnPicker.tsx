@@ -8,6 +8,7 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
@@ -70,6 +71,8 @@ export function FilterColumnPicker({
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
+  console.log("fcp");
+  const tc = useTranslateContent2();
   const sections = useMemo(
     () =>
       getSections(
@@ -77,8 +80,9 @@ export function FilterColumnPicker({
         stageIndexes,
         withColumnGroupIcon,
         withCustomExpression,
+        tc,
       ),
-    [query, stageIndexes, withColumnGroupIcon, withCustomExpression],
+    [query, stageIndexes, withColumnGroupIcon, withCustomExpression, tc],
   );
 
   const handleSectionChange = (section: Section) => {
@@ -127,7 +131,9 @@ function getSections(
   stageIndexes: number[],
   withColumnGroupIcon: boolean,
   withCustomExpression: boolean,
+  tc: (msgid: string) => string,
 ) {
+  console.log("get s");
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -139,13 +145,16 @@ function getSections(
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
         return {
           name: columnInfo.name,
-          displayName: columnInfo.displayName,
+          displayName: tc(columnInfo.displayName),
           filterPositions: columnInfo.filterPositions,
           column,
           query,
           stageIndex,
         };
       });
+
+      const sortedColumnItems = sortedByDisplayName(columnItems);
+
       const segments = groupInfo.isSourceTable
         ? Lib.availableSegments(query, stageIndex)
         : [];
@@ -153,7 +162,7 @@ function getSections(
         const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
         return {
           name: segmentInfo.name,
-          displayName: segmentInfo.displayName,
+          displayName: tc(segmentInfo.displayName),
           filterPositions: segmentInfo.filterPositions,
           segment,
           stageIndex,
@@ -165,7 +174,10 @@ function getSections(
           ? getGroupName(groupInfo, stageIndex)
           : groupInfo.displayName,
         icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
-        items: [...segmentItems, ...columnItems],
+        items: [
+          ...sortedByDisplayName(segmentItems),
+          ...sortedByDisplayName(columnItems),
+        ],
       };
     });
   });
@@ -205,3 +217,10 @@ function renderItemIcon(
 function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
 }
+
+/** Sort an array by display name, since some display names may be translated */
+const sortedByDisplayName = (arr: { displayName: string }[]) => {
+  return arr.toSorted((a, b) =>
+    (a.displayName || "").localeCompare(b.displayName),
+  );
+};
