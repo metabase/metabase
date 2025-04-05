@@ -1,62 +1,64 @@
+import { t } from "ttag";
+
 import type { ShortcutDef } from "../types";
 
 export const dashboardShortcuts: Record<string, ShortcutDef> = {
   "bookmark-dashboard": {
-    name: "Bookmark Dashboard",
+    name: t`Bookmark Dashboard`,
     shortcut: ["o"],
     shortcutGroup: "dashboard",
   },
   "add-filter": {
-    name: "Add Filter",
+    name: t`Add Filter`,
     shortcut: ["f"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
   "add-notebook-question": {
-    name: "Add Notebook Question",
+    name: t`Add Notebook Question`,
     shortcut: ["a q"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
   "add-native-question": {
-    name: "Add Native Question",
+    name: t`Add Native Question`,
     shortcut: ["a n"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
   "cancel-edit": {
-    name: "Cancel Edit Dashboard",
+    name: t`Cancel Edit Dashboard`,
     shortcut: ["e"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
   "copy-dashboard": {
-    name: "Copy dashboard",
+    name: t`Copy dashboard`,
     shortcut: ["$mod+c"],
     shortcutGroup: "dashboard",
   },
   "move-dashboard": {
-    name: "Move dashboard",
+    name: t`Move dashboard`,
     shortcut: ["$mod+m"],
     shortcutGroup: "dashboard",
   },
   "trash-dashboard": {
-    name: "Send tashboard to trash",
+    name: t`Send tashboard to trash`,
     shortcut: ["$mod+backspace"],
     shortcutGroup: "dashboard",
   },
   "info-dashboard": {
-    name: "Toggle Dashboard Info",
+    name: t`Toggle Dashboard Info`,
     shortcut: ["]"],
     shortcutGroup: "dashboard",
   },
   "edit-dashboard": {
-    name: "Edit Dashboard",
+    name: t`Edit Dashboard`,
     shortcutGroup: "dashboard",
     shortcut: ["e"],
   },
   "save-dashboard": {
-    name: "Save Dashboard",
+    name: t`Save Dashboard`,
     shortcut: ["s"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",

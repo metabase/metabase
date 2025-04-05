@@ -1,4 +1,3 @@
-import { useRegisterActions } from "kbar";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -16,6 +15,7 @@ import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { Button, Flex, Icon, type IconProps } from "metabase/ui";
@@ -24,6 +24,7 @@ import type { Collection, CollectionId } from "metabase-types/api";
 import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
 import { addDashboardQuestion } from "./actions";
+
 interface QuestionPickerInnerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
   collectionsById: Record<CollectionId, Collection>;
@@ -71,18 +72,14 @@ function QuestionPickerInner({
   const onNewQuestion = (type: "native" | "notebook") =>
     dispatch(addDashboardQuestion(type));
 
-  useRegisterActions(
+  useRegisterShortcut(
     [
       {
-        name: "Add new question",
         id: "new-question-dashboard",
-        shortcut: ["q"],
         perform: () => onNewQuestion("notebook"),
       },
       {
-        name: "Add new native question",
         id: "new-native-question-dashboard",
-        shortcut: ["n"],
         perform: () => onNewQuestion("native"),
       },
     ],

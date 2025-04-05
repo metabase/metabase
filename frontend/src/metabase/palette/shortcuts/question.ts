@@ -1,66 +1,68 @@
+import { t } from "ttag";
+
 export const questionShortcuts = {
   "toggle-notebook-editor": {
-    name: "Toggle Notebook",
+    name: t`Toggle Notebook`,
     shortcut: ["e"],
     shortcutGroup: "question",
   },
   "visualization-open-filter": {
-    name: "Open filter modal",
+    name: t`Open filter modal`,
     shortcut: ["f"],
     shortcutGroup: "question",
   },
   "toggle-summarize-sidebar": {
-    name: "Open summarize sidebar",
+    name: t`Open summarize sidebar`,
     shortcut: ["s"],
     shortcutGroup: "question",
   },
   "bookmark-question": {
-    name: "Bookmark Question",
+    name: t`Bookmark Question`,
     shortcut: ["b"],
     shortcutGroup: "question",
   },
   "question-info-sidebar": {
-    name: "Open question info",
+    name: t`Open question info`,
     shortcut: ["]"],
     shortcutGroup: "question",
   },
   "question-refresh": {
-    name: "Refetch question data",
+    name: t`Refetch question data`,
     shortcut: ["r"],
     shortcutGroup: "question",
   },
   "toggle-visualization": {
-    name: "Toggle viz settings",
+    name: t`Toggle viz settings`,
     shortcut: ["v"],
     shortcutGroup: "question",
   },
   "toggle-viz-settings": {
-    name: "Toggle viz settings",
+    name: t`Toggle viz settings`,
     shortcutGroup: "question",
     shortcut: ["z s"],
   },
   "toggle-viz-types": {
-    name: "Toggle viz types",
+    name: t`Toggle viz types`,
     shortcutGroup: "question",
     shortcut: ["z t"],
   },
   "download-question": {
-    name: "Download",
+    name: t`Download`,
     shortcut: ["d"],
     shortcutGroup: "question",
   },
   "duplicate-question": {
-    name: "Duplicate question",
+    name: t`Duplicate question`,
     shortcut: ["$mod+d"],
     shortcutGroup: "question",
   },
   "move-question": {
-    name: "Move question",
+    name: t`Move question`,
     shortcut: ["$mod+m"],
     shortcutGroup: "question",
   },
   "trash-question": {
-    name: "Send question to trash",
+    name: t`Send question to trash`,
     shortcut: ["$mod+backspace"],
     shortcutGroup: "question",
   },

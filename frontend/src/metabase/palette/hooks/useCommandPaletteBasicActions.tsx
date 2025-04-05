@@ -155,18 +155,6 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
-    // if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
-    //   actions.push({
-    //     id: "create-action",
-    //     name: t`New action`,
-    //     section: "basic",
-    //     icon: "bolt",
-    //     perform: () => {
-    //       openNewModal("action");
-    //     },
-    //   });
-    // }
-
     actions.push({
       id: "report-issue",
       name: t`Report an issue`,
@@ -209,16 +197,8 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
-    return [...actions, ...browseActions /*diagnosticAction*/];
-  }, [
-    dispatch,
-    hasDataAccess,
-    //hasDatabaseWithActionsEnabled,
-    hasNativeWrite,
-    //hasModels,
-    collectionId,
-    openNewModal,
-  ]);
+    return [...actions, ...browseActions];
+  }, [dispatch, hasDataAccess, hasNativeWrite, collectionId, openNewModal]);
 
   useRegisterShortcut(initialActions, [initialActions]);
 

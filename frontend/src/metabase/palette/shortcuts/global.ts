@@ -3,47 +3,47 @@ import { t } from "ttag";
 import type { ShortcutDef } from "../types";
 export const globalShortcuts: Record<string, ShortcutDef> = {
   "create-question": {
-    name: "Create a question",
+    name: t`Create a question`,
     shortcut: ["q"],
     shortcutGroup: "global",
   },
   "create-native-query": {
-    name: "Create a native query",
+    name: t`Create a native query`,
     shortcut: ["n"],
     shortcutGroup: "global",
   },
   "create-dashboard": {
-    name: "Create a dashboard",
+    name: t`Create a dashboard`,
     shortcut: ["d"],
     shortcutGroup: "global",
   },
   "create-collection": {
-    name: "Create a collection",
+    name: t`Create a collection`,
     shortcut: ["c"],
     shortcutGroup: "global",
   },
   "create-model": {
-    name: "Create a model",
+    name: t`Create a model`,
     shortcut: ["m"],
     shortcutGroup: "global",
   },
   "create-metric": {
-    name: "Create a metric",
+    name: t`Create a metric`,
     shortcut: ["k"],
     shortcutGroup: "global",
   },
   "browse-database": {
-    name: "Browse databases",
+    name: t`Browse databases`,
     shortcut: ["b d"],
     shortcutGroup: "global",
   },
   "browse-model": {
-    name: "Browse models",
+    name: t`Browse models`,
     shortcut: ["b m"],
     shortcutGroup: "global",
   },
   "browse-metric": {
-    name: "Browse metrics",
+    name: t`Browse metrics`,
     shortcut: ["b k"],
     shortcutGroup: "global",
   },
@@ -54,7 +54,7 @@ export const globalShortcuts: Record<string, ShortcutDef> = {
     shortcutGroup: "global",
   },
   "shortcuts-modal": {
-    name: "Toggle Shortcuts Modal",
+    name: t`Toggle Shortcuts Modal`,
     shortcut: ["?"],
     shortcutGroup: "global",
   },
