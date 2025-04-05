@@ -1,5 +1,4 @@
 import { skipToken } from "@reduxjs/toolkit/query/react";
-import type { FocusEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -25,11 +24,8 @@ interface FilterValuePickerProps<T> {
   column: Lib.ColumnMetadata;
   values: T[];
   autoFocus?: boolean;
-  compact?: boolean;
   onChange: (newValues: T[]) => void;
-  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
-  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
-  shouldCreate?: (query: string, values: string[]) => boolean;
+  shouldCreate?: (query: string) => boolean;
 }
 
 interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
@@ -43,11 +39,8 @@ function FilterValuePicker({
   values: selectedValues,
   placeholder,
   autoFocus = false,
-  compact = false,
   shouldCreate,
   onChange,
-  onFocus,
-  onBlur,
 }: FilterValuePickerOwnProps) {
   const fieldInfo = useMemo(
     () => Lib.fieldValuesSearchInfo(query, column),
@@ -73,12 +66,8 @@ function FilterValuePicker({
         fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
-        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
-        compact={compact}
         onChange={onChange}
-        onFocus={onFocus}
-        onBlur={onBlur}
       />
     );
   }
@@ -96,8 +85,6 @@ function FilterValuePicker({
         shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         onChange={onChange}
-        onFocus={onFocus}
-        onBlur={onBlur}
       />
     );
   }
@@ -109,8 +96,6 @@ function FilterValuePicker({
       shouldCreate={shouldCreate}
       autoFocus={autoFocus}
       onChange={onChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
     />
   );
 }
@@ -120,17 +105,12 @@ export function StringFilterValuePicker({
   values,
   ...props
 }: FilterValuePickerProps<string>) {
-  const shouldCreate = (query: string, values: string[]) => {
-    return query.trim().length > 0 && !values.includes(query);
-  };
-
   return (
     <FilterValuePicker
       {...props}
       column={column}
       values={values}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
-      shouldCreate={shouldCreate}
     />
   );
 }
@@ -141,9 +121,8 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<Lib.NumberFilterValue>) {
-  const shouldCreate = (value: string, values: string[]) => {
-    const number = parseNumber(value);
-    return number != null && !values.includes(value);
+  const shouldCreate = (value: string) => {
+    return parseNumber(value) != null;
   };
 
   return (

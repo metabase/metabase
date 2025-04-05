@@ -1,0 +1,7 @@
+.input {
+  --input-fz: var(--mantine-font-size-md);
+
+  input::placeholder {
+    color: var(--mb-color-text-tertiary);
+  }
+}

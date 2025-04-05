@@ -73,32 +73,6 @@ export function NumberInputWidget({
     values.map(getOption).filter((item): item is SelectItem => item !== null) ??
     [];
 
-  const valueOptions = unsavedArrayValue
-    .map((item): SelectItem | null => {
-      const option = parameter?.values_source_config?.values?.find(
-        (option) => getValue(option)?.toString() === item?.toString(),
-      );
-
-      if (!option) {
-        return null;
-      }
-
-      const value = getValue(option)?.toString();
-      if (typeof value !== "string") {
-        return null;
-      }
-
-      return {
-        label: getLabel(option),
-        value,
-      };
-    })
-    .filter(isNotNull);
-
-  const customLabelOptions = options.filter(
-    (option) => option.label !== option.value,
-  );
-
   function shouldCreate(value: string) {
     const res = parseNumber(value);
     return res !== null;
@@ -115,25 +89,11 @@ export function NumberInputWidget({
                 values.map((value) => parseNumber(value)).filter(isNotNull),
               )
             }
-            value={filteredUnsavedArrayValue.map((value) => value?.toString())}
+            values={filteredUnsavedArrayValue.map((value) => value?.toString())}
             placeholder={placeholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
-            data={customLabelOptions.concat(valueOptions)}
-            filter={({
-              options,
-              search,
-            }: {
-              options: any[];
-              search: string;
-            }) => {
-              return options.filter((item) =>
-                Boolean(
-                  search !== "" &&
-                    item.label?.toLowerCase().startsWith(search.toLowerCase()),
-                ),
-              );
-            }}
+            options={options}
           />
         </TokenFieldWrapper>
       ) : (

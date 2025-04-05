@@ -138,11 +138,9 @@ function StringValueInput({
     return (
       <Box p="md" pb={0} mah="40vh" style={{ overflow: "auto" }}>
         <MultiAutocomplete
-          value={values}
-          data={[]}
+          values={values}
+          options={[]}
           placeholder={t`Enter some text`}
-          autoFocus
-          w="100%"
           aria-label={t`Filter value`}
           onChange={onChange}
         />

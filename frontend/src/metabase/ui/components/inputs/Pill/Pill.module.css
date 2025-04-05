@@ -1,0 +1,21 @@
+.root {
+  height: unset;
+  padding: 1px var(--mantine-spacing-sm);
+  font-weight: bold;
+  font-size: var(--mantine-font-size-md);
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-text-selected);
+  background-color: var(--mb-color-background-selected);
+}
+
+.remove {
+  --remove-button-size: 0.75rem;
+
+  padding: 0;
+  border-width: 0;
+
+  svg {
+    width: var(--remove-button-size) !important;
+    height: var(--remove-button-size) !important;
+  }
+}
