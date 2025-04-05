@@ -62,6 +62,7 @@ export const LookAndFeelSettings = ({
   const availableFonts = useSelector((state) =>
     getSetting(state, "available-fonts"),
   );
+  const isDashboard = resourceType === "dashboard";
 
   return (
     <>
@@ -175,20 +176,61 @@ export const LookAndFeelSettings = ({
             }
           />
 
-          {canWhitelabel && (
-            <Switch
-              label={t`Download buttons`}
-              labelPosition="left"
-              size="sm"
-              variant="stretch"
-              checked={displayOptions.downloads ?? true}
-              onChange={(e) =>
-                onChangeDisplayOptions({
-                  ...displayOptions,
-                  downloads: e.target.checked,
-                })
-              }
-            />
+          {/** `downloads` is only null when `canWhitelabel` is false. */}
+          {canWhitelabel && displayOptions.downloads && (
+            <DisplayOptionSection title={isDashboard ? t`Downloads` : null}>
+              <Stack gap="md" mt={isDashboard ? "md" : 0}>
+                {isDashboard && (
+                  <Switch
+                    label={t`Export to PDF`}
+                    labelPosition="left"
+                    size="sm"
+                    variant="stretch"
+                    checked={displayOptions.downloads.pdf}
+                    onChange={(e) => {
+                      if (!displayOptions.downloads) {
+                        return;
+                      }
+
+                      onChangeDisplayOptions({
+                        ...displayOptions,
+                        downloads: {
+                          ...displayOptions.downloads,
+                          pdf: e.target.checked,
+                        },
+                      });
+                    }}
+                  />
+                )}
+
+                <Switch
+                  label={
+                    isDashboard
+                      ? t`Results (csv, xlsx, json, png)`
+                      : t`Download (csv, xlsx, json, png)`
+                  }
+                  labelPosition="left"
+                  size="sm"
+                  variant="stretch"
+                  checked={displayOptions.downloads.dashcard}
+                  onChange={(e) => {
+                    if (!displayOptions.downloads) {
+                      return;
+                    }
+
+                    onChangeDisplayOptions({
+                      ...displayOptions,
+                      downloads: {
+                        dashcard: e.target.checked,
+                        pdf: isDashboard
+                          ? displayOptions.downloads.pdf
+                          : e.target.checked, // ! PDF exports are not supported for questions, so we match the dashcard download's state.
+                      },
+                    });
+                  }}
+                />
+              </Stack>
+            </DisplayOptionSection>
           )}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>
