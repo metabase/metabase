@@ -139,10 +139,7 @@ export function useMultiAutocomplete({
     const newValues = [...values];
     newValues.splice(valueIndex, 1);
     onChange(newValues);
-    setFieldState({
-      fieldValue: "",
-      fieldSelection: undefined,
-    });
+    resetFieldState();
   };
 
   const handlePillGroupClick = (event: MouseEvent<HTMLDivElement>) => {
