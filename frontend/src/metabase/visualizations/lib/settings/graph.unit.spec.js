@@ -248,7 +248,7 @@ describe("GRAPH_TREND_SETTINGS", () => {
       const isHidden = getHidden(
         [{ card: { display: "area" }, data: { insights: ["FOO", "BAR"] } }],
         {
-          series: series => ({ display: series.card.display }),
+          series: (series) => ({ display: series.card.display }),
           "graph.dimensions": ["FOO", "BAR"],
         },
       );
