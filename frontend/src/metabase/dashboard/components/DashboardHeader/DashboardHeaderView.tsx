@@ -207,28 +207,26 @@ export function DashboardHeaderView({
                   [S.showSubHeader]: showSubHeader,
                 })}
               >
-                <Flex className={S.HeaderCaptionContainer} direction="column">
-                  <Flex align="center">
-                    <EditableText
-                      className={cx(S.HeaderCaption, {
-                        [S.HeaderCaptionError]: nameError != null,
-                      })}
-                      key={dashboard.name}
-                      initialValue={dashboard.name}
-                      placeholder={t`Add title`}
-                      isDisabled={!dashboard.can_write}
-                      data-testid="dashboard-name-heading"
-                      onChange={handleUpdateCaption}
-                    />
-                    <PLUGIN_MODERATION.EntityModerationIcon
-                      dashboard={dashboard}
-                    />
-                    <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-                      color={color("brand")}
-                      collection={collection}
-                      entity="dashboard"
-                    />
-                  </Flex>
+                <Flex className={S.HeaderCaptionContainer}>
+                  <EditableText
+                    className={cx(S.HeaderCaption, {
+                      [S.HeaderCaptionError]: nameError != null,
+                    })}
+                    key={dashboard.name}
+                    initialValue={dashboard.name}
+                    placeholder={t`Add title`}
+                    isDisabled={!dashboard.can_write}
+                    data-testid="dashboard-name-heading"
+                    onChange={handleUpdateCaption}
+                  />
+                  <PLUGIN_MODERATION.EntityModerationIcon
+                    dashboard={dashboard}
+                  />
+                  <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                    color={color("brand")}
+                    collection={collection}
+                    entity="dashboard"
+                  />
                 </Flex>
                 <Flex className={S.HeaderBadges}>
                   {nameError && (
