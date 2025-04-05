@@ -53,14 +53,14 @@ export const PaletteShortcutsModal = ({
     >
       <Tabs orientation="vertical" defaultValue="global" pt="2rem" h="100%">
         <Tabs.List miw={200}>
-          {shortcutGroups.map(shortcutGroup => (
+          {shortcutGroups.map((shortcutGroup) => (
             <Tabs.Tab key={shortcutGroup} value={shortcutGroup}>
               {GROUP_LABLES[shortcutGroup]}
             </Tabs.Tab>
           ))}
         </Tabs.List>
 
-        {shortcutGroups.map(shortcutGroup => (
+        {shortcutGroups.map((shortcutGroup) => (
           <Tabs.Panel
             value={shortcutGroup}
             key={shortcutGroup}
@@ -76,7 +76,7 @@ export const PaletteShortcutsModal = ({
                   "shortcutContext",
                 );
 
-                return Object.keys(shortcutContexts).map(context => [
+                return Object.keys(shortcutContexts).map((context) => [
                   context !== String(undefined) ? (
                     <Text
                       py="sm"
@@ -87,7 +87,7 @@ export const PaletteShortcutsModal = ({
                       {context}
                     </Text>
                   ) : null,
-                  ...shortcutContexts[context].map(shortcut => (
+                  ...shortcutContexts[context].map((shortcut) => (
                     <Group
                       key={shortcut.id}
                       justify="space-between"
@@ -114,7 +114,7 @@ const Shortcut = (props: { shortcut: string }) => {
     .replace("$mod", METAKEY)
     .replace(" ", " > ")
     .replace("+", " + ");
-  const result = string.split(" ").map(x => {
+  const result = string.split(" ").map((x) => {
     if (x === "+" || x === ">") {
       return x;
     }
