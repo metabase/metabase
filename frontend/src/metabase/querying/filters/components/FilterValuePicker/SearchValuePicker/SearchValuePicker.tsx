@@ -9,7 +9,11 @@ import type { FieldId, FieldValue } from "metabase-types/api";
 import { getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
-import { getNothingFoundMessage, shouldSearch } from "./utils";
+import {
+  getFilteredOptions,
+  getNothingFoundMessage,
+  shouldSearch,
+} from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
@@ -55,6 +59,11 @@ export function SearchValuePicker({
   const searchOptions = canSearch
     ? getFieldOptions(searchFieldValues)
     : getFieldOptions(initialFieldValues);
+  const visibleOptions = getFilteredOptions(
+    searchOptions,
+    searchValue,
+    selectedValues,
+  );
   const nothingFoundMessage = getNothingFoundMessage(
     columnDisplayName,
     searchError,
@@ -80,7 +89,7 @@ export function SearchValuePicker({
   return (
     <MultiAutocomplete
       values={selectedValues}
-      options={searchOptions}
+      options={visibleOptions}
       shouldCreate={shouldCreate}
       placeholder={t`Search by ${columnDisplayName}`}
       autoFocus={autoFocus}

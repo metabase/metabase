@@ -63,7 +63,7 @@ export function useMultiAutocomplete({
     newFieldValue: string,
     newParsedValues: string[],
   ) => {
-    const newFieldValues = getUnusedFieldValues(
+    const newFieldValues = getFieldValuesNotInSelection(
       values,
       newParsedValues.filter(shouldCreate),
       fieldSelection,
@@ -156,7 +156,7 @@ export function useMultiAutocomplete({
   };
 
   const handleOptionSubmit = (value: string) => {
-    const newFieldValues = getUnusedFieldValues(
+    const newFieldValues = getFieldValuesNotInSelection(
       values,
       [value],
       fieldSelection,
@@ -217,36 +217,32 @@ function getFilteredOptions(
   options: ComboboxItem[],
   fieldSelection: FieldSelection,
 ) {
-  const unusedValues = new Set(
-    getUnusedFieldValues(
-      values,
-      options.map((option) => option.value),
-      fieldSelection,
-    ),
-  );
-
-  const seenValues = new Set<string>();
+  const usedValues = new Set(getValuesNotInSelection(values, fieldSelection));
   return options.reduce((options: ComboboxItem[], option) => {
-    if (!seenValues.has(option.value)) {
-      options.push({
-        ...option,
-        disabled: !unusedValues.has(option.value),
-      });
-      seenValues.add(option.value);
+    if (!usedValues.has(option.value)) {
+      options.push(option);
+      usedValues.add(option.value);
     }
     return options;
   }, []);
 }
 
-function getUnusedFieldValues(
+function getValuesNotInSelection(
   values: string[],
-  fieldValues: string[],
   fieldSelection: FieldSelection,
 ) {
   const startValues = values.slice(0, fieldSelection.index);
   const endValues = values.slice(fieldSelection.index + fieldSelection.length);
-  const unchangedValues = new Set([...startValues, ...endValues]);
-  return fieldValues.filter((value) => !unchangedValues.has(value));
+  return [...startValues, ...endValues];
+}
+
+function getFieldValuesNotInSelection(
+  values: string[],
+  fieldValues: string[],
+  fieldSelection: FieldSelection,
+) {
+  const usedValues = new Set(getValuesNotInSelection(values, fieldSelection));
+  return fieldValues.filter((value) => !usedValues.has(value));
 }
 
 function getValuesAfterChange<T>(
