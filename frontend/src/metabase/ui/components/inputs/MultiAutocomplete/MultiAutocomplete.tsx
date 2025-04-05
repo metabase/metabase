@@ -50,9 +50,9 @@ export function MultiAutocomplete({
     handleFieldKeyDown,
     handleFieldFocus,
     handleFieldBlur,
-    handleFieldClick,
     handlePillClick,
     handlePillRemoveClick,
+    handlePillGroupClick,
     handlePillsInputClick,
     handleOptionSubmit,
   } = useMultiAutocomplete({
@@ -88,14 +88,14 @@ export function MultiAutocomplete({
             rightSection={rightSection ?? infoIcon}
             onClick={handlePillsInputClick}
           >
-            <Pill.Group role="list">
+            <Pill.Group role="list" onClick={handlePillGroupClick}>
               {pillValues.map((value, valueIndex) =>
                 value !== null ? (
                   <Pill
                     key={valueIndex}
                     className={S.pill}
                     withRemoveButton
-                    onClick={(event) => handlePillClick(event, valueIndex)}
+                    onClick={() => handlePillClick(valueIndex)}
                     onRemove={() => handlePillRemoveClick(valueIndex)}
                   >
                     {value}
@@ -114,7 +114,6 @@ export function MultiAutocomplete({
                       onKeyDown={handleFieldKeyDown}
                       onFocus={handleFieldFocus}
                       onBlur={handleFieldBlur}
-                      onClick={handleFieldClick}
                     />
                   </Combobox.EventsTarget>
                 ),

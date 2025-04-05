@@ -5,7 +5,6 @@ import {
   type ClipboardEvent,
   type KeyboardEvent,
   type MouseEvent,
-  useMemo,
   useState,
 } from "react";
 
@@ -46,12 +45,18 @@ export function useMultiAutocomplete({
   const [fieldValue, setFieldValue] = useState("");
   const [_fieldSelection, setFieldSelection] = useState<FieldSelection>();
   const fieldSelection = _fieldSelection ?? { index: values.length, length: 0 };
-  const optionByValue = useMemo(() => getOptionByValue(options), [options]);
 
   const setFieldState = ({ fieldValue, fieldSelection }: FieldState) => {
     setFieldValue(fieldValue);
     setFieldSelection(fieldSelection);
     onSearchChange?.(fieldValue);
+  };
+
+  const resetFieldState = () => {
+    setFieldState({
+      fieldValue: "",
+      fieldSelection: undefined,
+    });
   };
 
   const handleFieldInput = (
@@ -75,13 +80,13 @@ export function useMultiAutocomplete({
       fieldSelection,
     );
     setFieldState(newFieldState);
-    combobox.openDropdown();
   };
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newFieldValue = event.target.value;
     const newParsedValues = parseCsv(newFieldValue);
     handleFieldInput(newFieldValue, newParsedValues);
+    combobox.openDropdown();
   };
 
   const handleFieldPaste = (event: ClipboardEvent<HTMLInputElement>) => {
@@ -89,6 +94,7 @@ export function useMultiAutocomplete({
     const newParsedValues = parseCsv(newFieldValue);
     if (newParsedValues.length > 1) {
       event.preventDefault();
+      combobox.openDropdown();
       handleFieldInput(newFieldValue, newParsedValues);
     }
   };
@@ -119,22 +125,10 @@ export function useMultiAutocomplete({
 
   const handleFieldBlur = () => {
     combobox.closeDropdown();
-    setFieldState({
-      fieldValue: "",
-      fieldSelection: undefined,
-    });
+    resetFieldState();
   };
 
-  const handleFieldClick = (event: MouseEvent<HTMLInputElement>) => {
-    event.stopPropagation();
-    combobox.openDropdown();
-  };
-
-  const handlePillClick = (
-    event: MouseEvent<HTMLDivElement>,
-    valueIndex: number,
-  ) => {
-    event.stopPropagation();
+  const handlePillClick = (valueIndex: number) => {
     setFieldState({
       fieldValue: escapeCsv(values[valueIndex]),
       fieldSelection: { index: valueIndex, length: 1 },
@@ -151,12 +145,17 @@ export function useMultiAutocomplete({
     });
   };
 
-  const handlePillsInputClick = () => {
-    setFieldState({
-      fieldValue: "",
-      fieldSelection: undefined,
-    });
+  const handlePillGroupClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      resetFieldState();
+    }
+  };
+
+  const handlePillsInputClick = (event: MouseEvent<HTMLDivElement>) => {
     combobox.openDropdown();
+    if (event.target === event.currentTarget) {
+      resetFieldState();
+    }
   };
 
   const handleOptionSubmit = (value: string) => {
@@ -184,34 +183,31 @@ export function useMultiAutocomplete({
 
   return {
     combobox,
-    pillValues: getPillValues(values, optionByValue, fieldSelection),
-    filteredOptions: getFilteredOptions(values, optionByValue, fieldSelection),
+    pillValues: getPillValues(values, options, fieldSelection),
+    filteredOptions: getFilteredOptions(values, options, fieldSelection),
     fieldValue,
     handleFieldChange,
     handleFieldPaste,
     handleFieldKeyDown,
     handleFieldFocus,
     handleFieldBlur,
-    handleFieldClick,
     handlePillClick,
     handlePillRemoveClick,
+    handlePillGroupClick,
     handlePillsInputClick,
     handleOptionSubmit,
   };
 }
 
-function getOptionByValue(options: ComboboxItem[]) {
-  return new Map(options.map((option) => [option.value, option]));
-}
-
 function getPillValues(
   values: string[],
-  optionByValue: Map<string, ComboboxItem>,
+  options: ComboboxItem[],
   fieldSelection: FieldSelection,
 ) {
-  const mappedValues = values.map(
-    (value) => optionByValue.get(value)?.label ?? value,
+  const labelByValue = Object.fromEntries(
+    options.map((option) => [option.value, option.label]),
   );
+  const mappedValues = values.map((value) => labelByValue[value] ?? value);
   return getValuesAfterChange(
     mappedValues,
     [FIELD_PLACEHOLDER],
@@ -221,17 +217,20 @@ function getPillValues(
 
 function getFilteredOptions(
   values: string[],
-  optionByValue: Map<string, ComboboxItem>,
+  options: ComboboxItem[],
   fieldSelection: FieldSelection,
 ) {
-  const unusedValues = getUnusedFieldValues(
-    values,
-    Array.from(optionByValue.keys()),
-    fieldSelection,
+  const unusedValues = new Set(
+    getUnusedFieldValues(
+      values,
+      options.map((option) => option.value),
+      fieldSelection,
+    ),
   );
-  return unusedValues
-    .map((value) => optionByValue.get(value))
-    .filter((option): option is ComboboxItem => option != null);
+  return options.map((option) => ({
+    ...option,
+    disabled: !unusedValues.has(option.value),
+  }));
 }
 
 function getUnusedFieldValues(
