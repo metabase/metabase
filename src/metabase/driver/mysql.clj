@@ -195,8 +195,7 @@
     (assoc driver.common/additional-options
            :placeholder  "tinyInt1isBit=false")
     driver.common/default-advanced-options]
-   (map u/one-or-many)
-   (apply concat)))
+   (into [] (mapcat u/one-or-many))))
 
 (defmethod sql.qp/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
