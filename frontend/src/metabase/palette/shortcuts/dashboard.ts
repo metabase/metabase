@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
-import type { ShortcutDef } from "../types";
-
-export const dashboardShortcuts: Record<string, ShortcutDef> = {
+export const dashboardShortcuts = {
   "bookmark-dashboard": {
     name: t`Bookmark Dashboard`,
     shortcut: ["o"],

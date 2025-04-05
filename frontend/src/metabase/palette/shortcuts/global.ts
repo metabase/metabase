@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import type { ShortcutDef } from "../types";
-export const globalShortcuts: Record<string, ShortcutDef> = {
+export const globalShortcuts = {
   "create-question": {
     name: t`Create a question`,
     shortcut: ["q"],

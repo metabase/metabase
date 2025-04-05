@@ -75,11 +75,11 @@ function QuestionPickerInner({
   useRegisterShortcut(
     [
       {
-        id: "new-question-dashboard",
+        id: "add-notebook-question",
         perform: () => onNewQuestion("notebook"),
       },
       {
-        id: "new-native-question-dashboard",
+        id: "add-native-question",
         perform: () => onNewQuestion("native"),
       },
     ],
