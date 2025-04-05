@@ -227,10 +227,18 @@ function getFilteredOptions(
       fieldSelection,
     ),
   );
-  return options.map((option) => ({
-    ...option,
-    disabled: !unusedValues.has(option.value),
-  }));
+
+  const seenValues = new Set<string>();
+  return options.reduce((options: ComboboxItem[], option) => {
+    if (!seenValues.has(option.value)) {
+      options.push({
+        ...option,
+        disabled: !unusedValues.has(option.value),
+      });
+      seenValues.add(option.value);
+    }
+    return options;
+  }, []);
 }
 
 function getUnusedFieldValues(
