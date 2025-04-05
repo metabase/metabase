@@ -172,6 +172,18 @@
   "Enable the Query Validator Tool?"
   :query-reference-validation)
 
+(define-premium-feature ^{:added "0.52.0"} enable-metabot-v3?
+  "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase-enterprise.metabot-v3.core]].)"
+  :metabot-v3)
+
+(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-fixer?
+  "Should Metabase suggest SQL fixes?"
+  :ai-sql-fixer)
+
+(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-generation?
+  "Should Metabase generate SQL queries?"
+  :ai-sql-generation)
+
 (define-premium-feature enable-upload-management?
   "Should we allow admins to clean up tables created from uploads?"
   :upload-management)

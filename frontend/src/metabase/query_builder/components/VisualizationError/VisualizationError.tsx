@@ -8,12 +8,16 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_AI_SQL_FIXER } from "metabase/plugins";
+import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
+import { getIsResultDirty } from "metabase/query_builder/selectors";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type { DatasetError, DatasetErrorType } from "metabase-types/api";
 
 import { VISUALIZATION_SLOW_TIMEOUT } from "../../constants";
 
@@ -22,23 +26,50 @@ import { AdminEmail } from "./components";
 import { adjustPositions, stripRemarks } from "./utils";
 
 interface VisualizationErrorProps {
+  className?: string;
   via: Record<string, any>[];
   question: Question;
   duration: number;
-  error: any;
-  className?: string;
+  error: DatasetError;
+  errorType?: DatasetErrorType;
 }
 
 export function VisualizationError({
+  className,
   via,
   question,
   duration,
   error,
-  className,
+  errorType,
 }: VisualizationErrorProps) {
+  const query = question.query();
+  const isResultDirty = useSelector(getIsResultDirty);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const isNative = question && Lib.queryDisplayInfo(question.query()).isNative;
-  if (error && typeof error.status === "number") {
+  const dispatch = useDispatch();
+
+  const handleNativeQueryFix = (
+    fixedQuery: Lib.Query,
+    fixedLineNumbers: number[],
+  ) => {
+    const newQuestion = question.setQuery(fixedQuery);
+    dispatch(updateQuestion(newQuestion));
+    dispatch(
+      setUIControls({
+        highlightedNativeQueryLineNumbers: fixedLineNumbers,
+        isNativeEditorOpen: true,
+        isNativeQueryFixApplied: true,
+      }),
+    );
+  };
+
+  const handleNativeQueryHighlight = (fixedLineNumbers: number[]) => {
+    dispatch(
+      setUIControls({ highlightedNativeQueryLineNumbers: fixedLineNumbers }),
+    );
+  };
+
+  const isNative = question && Lib.queryDisplayInfo(query).isNative;
+  if (typeof error === "object" && error.status != null) {
     // Assume if the request took more than 15 seconds it was due to a timeout
     // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
     if (duration > VISUALIZATION_SLOW_TIMEOUT) {
@@ -89,14 +120,12 @@ export function VisualizationError({
     );
   } else if (isNative) {
     // always show errors for native queries
-    let processedError = error;
+    let processedError = String(error);
     const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
-    if (typeof error === "string" && typeof origSql === "string") {
+    if (typeof origSql === "string") {
       processedError = adjustPositions(error, origSql);
     }
-    if (typeof error === "string") {
-      processedError = stripRemarks(processedError);
-    }
+    processedError = stripRemarks(processedError);
     const database = question.database();
     const isSql = database && getEngineNativeType(database.engine) === "sql";
 
@@ -110,16 +139,27 @@ export function VisualizationError({
             >{t`An error occurred in your query`}</Box>
           </Flex>
           <Box className={VisErrorS.QueryErrorMessage}>{processedError}</Box>
-          {isSql && showMetabaseLinks && (
-            <ExternalLink
-              className={VisErrorS.QueryErrorLink}
-              href={getLearnUrl(
-                "grow-your-data-skills/learn-sql/debugging-sql/sql-syntax",
-              )}
-            >
-              {t`Learn how to debug SQL errors`}
-            </ExternalLink>
-          )}
+          <Flex align="center" my="md" gap="md">
+            {isSql && showMetabaseLinks && (
+              <ExternalLink
+                className={VisErrorS.QueryErrorLink}
+                href={getLearnUrl(
+                  "grow-your-data-skills/learn-sql/debugging-sql/sql-syntax",
+                )}
+              >
+                {t`Learn how to debug SQL errors`}
+              </ExternalLink>
+            )}
+            {!isResultDirty && (
+              <PLUGIN_AI_SQL_FIXER.FixSqlQueryButton
+                query={query}
+                queryError={error}
+                queryErrorType={errorType}
+                onQueryFix={handleNativeQueryFix}
+                onHighlightLines={handleNativeQueryHighlight}
+              />
+            )}
+          </Flex>
         </Flex>
       </Box>
     );

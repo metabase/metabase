@@ -318,7 +318,8 @@
 
 (defmethod tables-for-native* :sql
   [driver query opts]
-  (if (nqa.impl/trusted-for-table-permissions? driver)
+  (if (or (:all-drivers-trusted? opts)
+          (nqa.impl/trusted-for-table-permissions? driver))
     (tables-via-macaw driver query opts)
     {:error :query-analysis.error/driver-not-supported}))
 

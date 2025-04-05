@@ -631,6 +631,14 @@
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api audit driver enterprise/impersonation lib models permissions premium-features query-processor util enterprise/sandbox}}
 
+  enterprise/ai-sql-fixer
+  {:api #{metabase-enterprise.ai-sql-fixer.api}
+   :uses #{api driver enterprise/metabot-v3 query-analysis query-processor util}}
+
+  enterprise/ai-sql-generation
+  {:api #{metabase-enterprise.ai-sql-generation.api}
+   :uses #{api driver enterprise/metabot-v3 util}}
+
   enterprise/airgap
   {:api  #{}
    :uses #{premium-features util}}
@@ -704,6 +712,11 @@
   enterprise/llm
   {:api  #{metabase-enterprise.llm.api}
    :uses #{analytics analyze api models query-processor util}}
+
+  enterprise/metabot-v3
+  {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
+          metabase-enterprise.metabot-v3.tools.api}
+   :uses #{api config db legacy-mbql lib models premium-features public-settings pulse query-processor request util}}
 
   enterprise/query-reference-validation
   {:api  #{metabase-enterprise.query-reference-validation.api}

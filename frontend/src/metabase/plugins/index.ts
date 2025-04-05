@@ -1,10 +1,10 @@
-import type React from "react";
-import type {
-  ComponentType,
-  Dispatch,
-  HTMLAttributes,
-  ReactNode,
-  SetStateAction,
+import React, {
+  type ComponentType,
+  type Dispatch,
+  type HTMLAttributes,
+  type ReactNode,
+  type SetStateAction,
+  useMemo,
 } from "react";
 import { t } from "ttag";
 import type { AnySchema } from "yup";
@@ -36,9 +36,12 @@ import type {
 import type { LinkProps } from "metabase/core/components/Link";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import { getIconBase } from "metabase/lib/icon";
+import type { MetabotContext } from "metabase/metabot";
+import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -54,8 +57,11 @@ import type {
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
+  DatabaseId,
   Database as DatabaseType,
   Dataset,
+  DatasetError,
+  DatasetErrorType,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -442,10 +448,12 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
+  metabotPlugin: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
+  metabotPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -609,4 +617,60 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
     hide_download_button?: boolean | null;
     downloads?: string | boolean | null;
   }) => ({ pdf: true, dashcard: true }),
+};
+
+const defaultMetabotContextValue: MetabotContext = {
+  getChatContext: () => ({}) as any,
+  registerChatContextProvider: () => () => {},
+};
+
+export type FixSqlQueryButtonProps = {
+  query: Lib.Query;
+  queryError: DatasetError;
+  queryErrorType: DatasetErrorType | undefined;
+  onQueryFix: (fixedQuery: Lib.Query, fixedLineNumbers: number[]) => void;
+  onHighlightLines: (fixedLineNumbers: number[]) => void;
+};
+
+export type PluginAiSqlFixer = {
+  FixSqlQueryButton: ComponentType<FixSqlQueryButtonProps>;
+};
+
+export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
+  FixSqlQueryButton: PluginPlaceholder,
+};
+
+export type GenerateSqlQueryButtonProps = {
+  className?: string;
+  prompt: string;
+  databaseId: DatabaseId;
+  onGenerateQuery: (queryText: string) => void;
+};
+
+export type PluginAiSqlGeneration = {
+  GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
+};
+
+export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
+  GenerateSqlQueryButton: PluginPlaceholder,
+};
+
+export const PLUGIN_METABOT = {
+  Metabot: () => null as React.ReactElement | null,
+  defaultMetabotContextValue,
+  MetabotContext: React.createContext(defaultMetabotContextValue),
+  getMetabotProvider: () => {
+    return ({ children }: { children: React.ReactNode }) =>
+      React.createElement(
+        PLUGIN_METABOT.MetabotContext.Provider,
+        { value: PLUGIN_METABOT.defaultMetabotContextValue },
+        children,
+      );
+  },
+  useMetabotPalletteActions: (_searchText: string) =>
+    useMemo(() => [] as PaletteAction[], []),
+};
+
+export const PLUGIN_GO_MENU = {
+  getMenuItems: (_dispatch: any) => [] as Array<any>,
 };
