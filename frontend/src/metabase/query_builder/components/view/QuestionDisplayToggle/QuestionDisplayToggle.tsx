@@ -16,10 +16,26 @@ const QuestionDisplayToggle = ({
   isShowingRawTable,
   onToggleRawTable,
 }: QuestionDisplayToggleProps) => {
+  const handleToggle = () => onToggleRawTable(!isShowingRawTable);
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleToggle();
+    }
+  };
+
   return (
     <Flex
       className={cx(QuestionDisplayToggleS.Well, className)}
-      onClick={() => onToggleRawTable(!isShowingRawTable)}
+      onClick={handleToggle}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="button"
+      aria-pressed={isShowingRawTable}
+      aria-label={
+        isShowingRawTable ? t`Switch to visualization` : t`Switch to data`
+      }
     >
       <Flex
         className={cx(QuestionDisplayToggleS.ToggleIcon, {
