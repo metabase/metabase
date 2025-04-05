@@ -48,7 +48,8 @@
 
     :num-bins
     {:min-value 12.061602936923117, :max-value 238.32732001721533, :bin-width 28.28321, :num-bins 8}
-    {:min-value 0.0, :max-value 240.0, :num-bins 8, :bin-width 30.0}))
+    {:min-value 0.0, :max-value 240.0, :num-bins 8, :bin-width 30.0}
+    :num-bins {:min-value 2, :max-value 2, :num-bins 8} {:min-value 2.0, :max-value 2.0, :num-bins 8, :bin-width 1.0}))
 
 (deftest ^:parallel resolve-default-strategy-test
   (let [column (assoc (meta/field-metadata :orders :total)
