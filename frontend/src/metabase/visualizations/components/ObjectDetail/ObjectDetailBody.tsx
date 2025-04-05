@@ -37,12 +37,6 @@ export function ObjectDetailBody({
   tableForeignKeyReferences,
   followForeignKey,
 }: ObjectDetailBodyProps): JSX.Element {
-  const showRelationships =
-    hasRelationships &&
-    tableForeignKeys &&
-    tableForeignKeyReferences &&
-    followForeignKey;
-
   return (
     <ObjectDetailBodyWrapper>
       <DetailsTable
@@ -52,7 +46,7 @@ export function ObjectDetailBody({
         onVisualizationClick={onVisualizationClick}
         visualizationIsClickable={visualizationIsClickable}
       />
-      {showRelationships && (
+      {hasRelationships && (
         <Relationships
           objectName={objectName}
           tableForeignKeys={tableForeignKeys}

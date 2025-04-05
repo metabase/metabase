@@ -144,6 +144,9 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
 
+    // we might render the thing before it's actually clickable
+    cy.get("[data-testid=click-icon]", { timeout: 1000 }).should("be.visible");
+
     cy.findByRole("dialog").findByTestId("fk-relation-orders").click();
 
     cy.findByTestId("qb-filters-panel")
