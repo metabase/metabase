@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Text } from "metabase/ui";
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
+import type { EnterpriseSettings } from "metabase-types/api";
 
 import { SettingInputBlurChange } from "./LandingPageWidget.styled";
 import { getRelativeLandingPageUrl } from "./utils";

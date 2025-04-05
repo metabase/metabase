@@ -9,8 +9,8 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type {
+  EnterpriseSettings,
   SettingDefinition,
   TokenFeatures,
   User,

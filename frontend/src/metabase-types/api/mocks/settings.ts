@@ -1,10 +1,10 @@
 import dayjs from "dayjs";
 
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type {
   Engine,
   EngineField,
   EngineSource,
+  EnterpriseSettings,
   FontFile,
   SettingDefinition,
   SettingKey,
@@ -15,7 +15,6 @@ import type {
   VersionInfo,
   VersionInfoRecord,
 } from "metabase-types/api";
-
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
   "details-fields": [],
