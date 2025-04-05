@@ -35,6 +35,10 @@ title: Driver interface changelog
 
 - Added a feature `:split-part` for drivers that support the `split-part` function.
 
+## Metabase 0.53.10
+
+- Added `metabase.driver.sql-jdbc.sync/describe-fields-pre-process-xf` for JDBC drivers. This allows manipulating the results of `metabase.driver.sql-jdbc.sync/describe-fields-sql` without reimplementing `driver/describe-fields`.
+
 ## Metabase 0.53.0
 
 - Added the multimethod `bad-connection-details` to allow mocking bad connection parameters for tests.
