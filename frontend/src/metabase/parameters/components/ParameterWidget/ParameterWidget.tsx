@@ -6,6 +6,7 @@ import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -15,7 +16,6 @@ import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
 import { ParameterValueWidget } from "../ParameterValueWidget";
 
 import S from "./ParameterWidget.module.css";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 type ParameterWidgetProps = PropsWithChildren<
   {
@@ -100,7 +100,7 @@ export const ParameterWidget = ({
   children,
   dragHandle,
 }: ParameterWidgetProps) => {
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
 
   const [isFocused, setIsFocused] = useState(false);
   const isEditingParameter = editingParameter?.id === parameter.id;

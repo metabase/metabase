@@ -8,6 +8,7 @@ import {
   getQuestionByCard,
 } from "metabase/dashboard/selectors";
 import { isNativeDashCard, isQuestionDashCard } from "metabase/dashboard/utils";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { connect } from "metabase/lib/redux";
 import {
   type ParameterMappingOption,
@@ -29,7 +30,6 @@ import type { State } from "metabase-types/store";
 
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
 import S from "./DashCardParameterMapper.module.css";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 const mapStateToProps = (
   state: State,
@@ -72,7 +72,7 @@ export function DashCardCardParameterMapper({
   mappingOptions,
   isRecentlyAutoConnected,
 }: DashcardCardParameterMapperProps) {
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
   const isQuestion = isQuestionDashCard(dashcard);
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
   const isAction = isActionDashCard(dashcard);

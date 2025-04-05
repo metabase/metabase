@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import _ from "underscore";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { Icon } from "metabase/ui";
 
 export const ParameterTargetList = ({
@@ -13,7 +12,7 @@ export const ParameterTargetList = ({
   maxHeight,
   onChange,
 }) => {
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
   const mappingOptionSections = _.groupBy(mappingOptions, "sectionName");
 
   const hasForeignOption = _.any(mappingOptions, (o) => !!o.isForeign);

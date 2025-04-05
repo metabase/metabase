@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   type UpdateQueryHookProps,
@@ -14,7 +15,6 @@ import * as Lib from "metabase-lib";
 import BreakoutColumnListS from "./BreakoutColumnList.module.css";
 import { BreakoutColumnListItem } from "./BreakoutColumnListItem";
 import { getBreakoutListItem, getColumnSections, isPinnedColumn } from "./util";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export type BreakoutColumnListProps = UpdateQueryHookProps;
 
@@ -30,7 +30,7 @@ export function BreakoutColumnList({
     onReplaceBreakouts,
   } = useBreakoutQueryHandlers({ query, onQueryChange, stageIndex });
 
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(

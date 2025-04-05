@@ -1,11 +1,11 @@
 import { type ReactNode, createContext, useContext, useEffect } from "react";
-import * as Lib from "metabase-lib";
 
 import { useListContentTranslationsQuery } from "metabase/api/content-translation";
 import { useLocale } from "metabase/common/hooks";
+import * as Lib from "metabase-lib";
 
 import type { ContentTranslationContextObject } from "../types";
-import { translateProperty, translateString } from "../utils";
+import { translateContentString } from "../utils";
 
 export const ContentTranslationContext =
   createContext<ContentTranslationContextObject>({
@@ -42,6 +42,8 @@ export const ContentTranslationProvider = ({
           .filter((item) => item.locale === locale)
           .map((item) => [item.msgid, item.msgstr]) || [],
       );
+
+      // Make the content translation dictionary available to Metabase Lib
       Lib.setContentTranslations(dictionaryForLocale);
     }
   }, [isLoading, data?.data, locale]);
@@ -53,34 +55,15 @@ export const ContentTranslationProvider = ({
   );
 };
 
-export const useTranslateContent = () => {
-  const context = useContext(ContentTranslationContext);
-  return getContentTranslationFunction(context);
-};
-
 export type TCFunc = <TypeOfArgument>(msgid?: TypeOfArgument) => TypeOfArgument;
 
-export const useTranslateContent2 = () => {
+export const useTranslateContent = () => {
   const context = useContext(ContentTranslationContext);
-
-  // FIXME: Useful in development but let's remove this later
-  if (!context.dictionary?.length) {
-    console.log("Dictionary is empty");
-  }
 
   const tcFunc: TCFunc = <TypeOfArgument,>(msgid?: TypeOfArgument) =>
     (msgid && typeof msgid === "string"
-      ? translateString(msgid, context)
+      ? translateContentString(msgid, context)
       : msgid) as TypeOfArgument;
 
   return tcFunc;
-};
-
-export const getContentTranslationFunction = (
-  context: ContentTranslationContextObject,
-) => {
-  return (obj: any, property: string) =>
-    translateProperty(obj, property, (msgid: string) =>
-      translateString(msgid, context),
-    );
 };

@@ -230,7 +230,7 @@
     (when (every? some? path)
       (str/join ": " path))))
 
-(defn get-field-value
+(defn get-value-from-js-map
   "Retrieve a value from a map-like JavaScript object."
   [obj field default-value]
   (try
@@ -258,8 +258,8 @@
                        :as                 field-metadata} style]
   (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
         translations (lib.content-translation/get-content-translations)
-        humanized-name (get-field-value translations humanized-name humanized-name)
-        simple-display-name (get-field-value translations simple-display-name simple-display-name)
+        humanized-name (get-value-from-js-map translations humanized-name humanized-name)
+        simple-display-name (get-value-from-js-map translations simple-display-name simple-display-name)
         field-display-name (or simple-display-name
                                (when (and parent-id
                                           ;; check that we haven't nested yet
@@ -317,7 +317,7 @@
     (let
      [translations (lib.content-translation/get-content-translations)
       display-name (lib.metadata.calculation/display-name query stage-number field-metadata style)]
-      (get-field-value translations display-name display-name))
+      (get-value-from-js-map translations display-name display-name))
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
 

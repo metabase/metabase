@@ -6,7 +6,7 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { DelayGroup } from "metabase/ui";
@@ -66,7 +66,7 @@ export function QueryColumnPicker({
   alwaysExpanded,
   disableSearch,
 }: QueryColumnPickerProps) {
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
   const sections: Sections[] = useMemo(
     () =>
       columnGroups.map((group) => {

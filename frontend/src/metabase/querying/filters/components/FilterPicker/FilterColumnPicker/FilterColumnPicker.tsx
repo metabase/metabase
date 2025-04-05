@@ -8,7 +8,7 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
@@ -71,8 +71,7 @@ export function FilterColumnPicker({
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
-  console.log("fcp");
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
   const sections = useMemo(
     () =>
       getSections(
@@ -133,7 +132,6 @@ function getSections(
   withCustomExpression: boolean,
   tc: (msgid: string) => string,
 ) {
-  console.log("get s");
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -152,8 +150,6 @@ function getSections(
           stageIndex,
         };
       });
-
-      const sortedColumnItems = sortedByDisplayName(columnItems);
 
       const segments = groupInfo.isSourceTable
         ? Lib.availableSegments(query, stageIndex)

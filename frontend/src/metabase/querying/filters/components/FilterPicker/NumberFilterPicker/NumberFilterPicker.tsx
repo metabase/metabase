@@ -2,6 +2,7 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { isNotNull } from "metabase/lib/types";
 import {
   type NumberOrEmptyValue,
@@ -17,7 +18,6 @@ import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export function NumberFilterPicker({
   query,
@@ -28,7 +28,7 @@ export function NumberFilterPicker({
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column, tc),
     [query, stageIndex, column, tc],

@@ -40,8 +40,8 @@ import {
   memoize,
   useMemoizedCallback,
 } from "metabase/hooks/use-memoized-callback";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { getScrollBarSize } from "metabase/lib/dom";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -164,7 +164,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isClientSideSortingEnabled = isDashboard;
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
 
   const { rows, cols } = data;
 

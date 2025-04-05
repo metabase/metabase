@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -9,7 +10,6 @@ import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
 import S from "./SortStep.module.css";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export function SortStep({
   query,
@@ -21,7 +21,7 @@ export function SortStep({
 }: NotebookStepProps) {
   const { stageIndex } = step;
 
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
 
   const clauses = useMemo(() => {
     return Lib.orderBys(query, stageIndex);

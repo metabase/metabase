@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
@@ -19,7 +20,6 @@ import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesi
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export function useModelsAndOption(
   {
@@ -37,8 +37,7 @@ export function useModelsAndOption(
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
-  const tc = useTranslateContent2();
-  console.log("@m9252gao", "tc in usemodelsandoption", tc);
+  const tc = useTranslateContent();
 
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 

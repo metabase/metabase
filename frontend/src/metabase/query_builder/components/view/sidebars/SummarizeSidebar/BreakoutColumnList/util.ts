@@ -1,10 +1,7 @@
+import type { TCFunc } from "metabase/i18n/components/ContentTranslationContext";
 import * as Lib from "metabase-lib";
 
 import type { ListItem, ListSection } from "./types";
-import {
-  TCFunc,
-  useTranslateContent2,
-} from "metabase/i18n/components/ContentTranslationContext";
 
 export function getBreakoutListItem(
   query: Lib.Query,
@@ -25,7 +22,6 @@ function getColumnListItems(
   tc?: TCFunc,
 ): ListItem[] {
   const columnInfo = Lib.displayInfo(query, stageIndex, column, tc);
-  console.log("@m91xhouo", "columnInfo", columnInfo);
 
   const { breakoutPositions = [] } = columnInfo;
   if (breakoutPositions.length === 0) {

@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
 import type { DatePickerValue } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
 import { DatePicker } from "../../DatePicker";
 import type { FilterPickerWidgetProps } from "../types";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export function DateFilterPicker({
   query,
@@ -18,7 +18,7 @@ export function DateFilterPicker({
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column, tc);
   }, [query, stageIndex, column, tc]);

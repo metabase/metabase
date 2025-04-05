@@ -14,7 +14,7 @@ import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenFie
 import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { parseNumber } from "metabase/lib/number";
 import { defer } from "metabase/lib/promise";
 import { connect, useDispatch } from "metabase/lib/redux";
@@ -143,7 +143,7 @@ export const FieldValuesWidgetInner = forwardRef<
   },
   ref,
 ) {
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
   const [options, setOptions] = useState<FieldValue[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingStateType>("INIT");
   const [lastValue, setLastValue] = useState<string>("");

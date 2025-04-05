@@ -1,13 +1,13 @@
 import { type Ref, forwardRef, useState } from "react";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { Button, Flex, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ClauseStep } from "../ClauseStep";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 type FilterStepProps = {
   query: Lib.Query | undefined;
@@ -65,12 +65,11 @@ function FilterPopover({
   hasFilters,
   onChange,
 }: FilterPopoverProps) {
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
   const [isOpened, setIsOpened] = useState(false);
   const filterInfo = filter
     ? Lib.displayInfo(query, stageIndex, filter, tc)
     : undefined;
-  console.log("@m920f908", "filterInfo", filterInfo);
 
   const handleSelect = (newFilter: Lib.Filterable) => {
     const newQuery = filter

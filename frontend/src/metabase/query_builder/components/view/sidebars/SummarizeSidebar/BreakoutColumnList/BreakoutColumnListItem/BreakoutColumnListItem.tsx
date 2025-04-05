@@ -10,12 +10,12 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Button from "metabase/core/components/Button";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { Tooltip } from "metabase/ui";
 import { Box, type BoxProps, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import BreakoutColumnListItemS from "./BreakoutColumnListItem.module.css";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 interface BreakoutColumnListItemProps {
   query: Lib.Query;
@@ -83,7 +83,7 @@ export function BreakoutColumnListItem({
   );
 
   const displayName = isPinned ? item.longDisplayName : item.displayName;
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
 
   return (
     <HoverParent

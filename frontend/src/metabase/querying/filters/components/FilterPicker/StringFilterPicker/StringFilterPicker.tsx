@@ -2,6 +2,7 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import {
   type OperatorType,
   useStringFilter,
@@ -15,7 +16,6 @@ import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
-import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export function StringFilterPicker({
   query,
@@ -30,7 +30,7 @@ export function StringFilterPicker({
     () => Lib.displayInfo(query, stageIndex, column),
     [query, stageIndex, column],
   );
-  const tc = useTranslateContent2();
+  const tc = useTranslateContent();
 
   const {
     type,
