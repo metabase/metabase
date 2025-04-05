@@ -18,6 +18,7 @@ import {
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { DASHBOARD_NAME_MAX_LENGTH } from "metabase/dashboard/constants";
 import {
   getCanResetFilters,
   getIsEditing,
@@ -31,6 +32,7 @@ import type {
   DashboardNightModeControls,
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
+import { maxLengthErrorMessage } from "metabase/forms/utils/messages";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -39,7 +41,7 @@ import {
 } from "metabase/plugins";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Text } from "metabase/ui";
 import type { Collection, Dashboard } from "metabase-types/api";
 
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
@@ -93,6 +95,8 @@ export function DashboardHeaderView({
   const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
   const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
+  const [nameError, setNameError] = useState<string | null>(null);
+
   const handleResetFilters = useCallback(async () => {
     await dispatch(resetParameters());
     await dispatch(applyDraftParameterValues());
@@ -142,6 +146,11 @@ export function DashboardHeaderView({
 
   const handleUpdateCaption = useCallback(
     async (name: string) => {
+      if (name.length > DASHBOARD_NAME_MAX_LENGTH) {
+        setNameError(maxLengthErrorMessage({ max: DASHBOARD_NAME_MAX_LENGTH }));
+        return;
+      }
+      setNameError(null);
       await setDashboardAttribute("name", name);
       if (!isEditing) {
         await dispatch(updateDashboard({ attributeNames: ["name"] }));
@@ -198,26 +207,39 @@ export function DashboardHeaderView({
                   [S.showSubHeader]: showSubHeader,
                 })}
               >
-                <Flex className={S.HeaderCaptionContainer}>
-                  <EditableText
-                    className={S.HeaderCaption}
-                    key={dashboard.name}
-                    initialValue={dashboard.name}
-                    placeholder={t`Add title`}
-                    isDisabled={!dashboard.can_write}
-                    data-testid="dashboard-name-heading"
-                    onChange={handleUpdateCaption}
-                  />
-                  <PLUGIN_MODERATION.EntityModerationIcon
-                    dashboard={dashboard}
-                  />
-                  <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-                    color={color("brand")}
-                    collection={collection}
-                    entity="dashboard"
-                  />
+                <Flex className={S.HeaderCaptionContainer} direction="column">
+                  <Flex align="center">
+                    <EditableText
+                      className={cx(S.HeaderCaption, {
+                        [S.HeaderCaptionError]: nameError != null,
+                      })}
+                      key={dashboard.name}
+                      initialValue={dashboard.name}
+                      placeholder={t`Add title`}
+                      isDisabled={!dashboard.can_write}
+                      data-testid="dashboard-name-heading"
+                      onChange={handleUpdateCaption}
+                    />
+                    <PLUGIN_MODERATION.EntityModerationIcon
+                      dashboard={dashboard}
+                    />
+                    <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                      color={color("brand")}
+                      collection={collection}
+                      entity="dashboard"
+                    />
+                  </Flex>
                 </Flex>
                 <Flex className={S.HeaderBadges}>
+                  {nameError && (
+                    <Text
+                      className={S.HeaderCaptionErrorText}
+                      mt="sm"
+                      size="sm"
+                    >
+                      {nameError}
+                    </Text>
+                  )}
                   {isLastEditInfoVisible && (
                     <LastEditInfoLabel
                       className={S.HeaderLastEditInfoLabel}

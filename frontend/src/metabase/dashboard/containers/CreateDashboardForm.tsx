@@ -20,12 +20,15 @@ import { useSelector } from "metabase/lib/redux";
 import { Button, Stack } from "metabase/ui";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 
-import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "../constants";
+import {
+  DASHBOARD_DESCRIPTION_MAX_LENGTH,
+  DASHBOARD_NAME_MAX_LENGTH,
+} from "../constants";
 
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string()
     .required(Errors.required)
-    .max(100, Errors.maxLength)
+    .max(DASHBOARD_NAME_MAX_LENGTH, Errors.maxLength)
     .default(""),
   description: Yup.string()
     .nullable()
