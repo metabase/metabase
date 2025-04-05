@@ -94,8 +94,8 @@ export function useMultiAutocomplete({
     const newParsedValues = parseCsv(newFieldValue);
     if (newParsedValues.length > 1) {
       event.preventDefault();
-      combobox.openDropdown();
       handleFieldInput(newFieldValue, newParsedValues);
+      combobox.openDropdown();
     }
   };
 
@@ -124,8 +124,8 @@ export function useMultiAutocomplete({
   };
 
   const handleFieldBlur = () => {
-    combobox.closeDropdown();
     resetFieldState();
+    combobox.closeDropdown();
   };
 
   const handlePillClick = (valueIndex: number) => {
@@ -149,10 +149,10 @@ export function useMultiAutocomplete({
   };
 
   const handlePillsInputClick = (event: MouseEvent<HTMLDivElement>) => {
-    combobox.openDropdown();
     if (event.target === event.currentTarget) {
       resetFieldState();
     }
+    combobox.openDropdown();
   };
 
   const handleOptionSubmit = (value: string) => {
