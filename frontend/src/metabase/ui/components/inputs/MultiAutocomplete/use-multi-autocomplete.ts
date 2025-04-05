@@ -5,6 +5,7 @@ import {
   type ClipboardEvent,
   type KeyboardEvent,
   type MouseEvent,
+  useMemo,
   useState,
 } from "react";
 
@@ -45,6 +46,7 @@ export function useMultiAutocomplete({
   const [fieldValue, setFieldValue] = useState("");
   const [_fieldSelection, setFieldSelection] = useState<FieldSelection>();
   const fieldSelection = _fieldSelection ?? { index: values.length, length: 0 };
+  const optionByValue = useMemo(() => getOptionByValue(options), [options]);
 
   const setFieldState = ({ fieldValue, fieldSelection }: FieldState) => {
     setFieldValue(fieldValue);
@@ -56,7 +58,7 @@ export function useMultiAutocomplete({
     newFieldValue: string,
     newParsedValues: string[],
   ) => {
-    const newFieldValues = getUniqueFieldValues(
+    const newFieldValues = getUnusedFieldValues(
       values,
       newParsedValues.filter(shouldCreate),
       fieldSelection,
@@ -158,7 +160,7 @@ export function useMultiAutocomplete({
   };
 
   const handleOptionSubmit = (value: string) => {
-    const newFieldValues = getUniqueFieldValues(
+    const newFieldValues = getUnusedFieldValues(
       values,
       [value],
       fieldSelection,
@@ -182,8 +184,8 @@ export function useMultiAutocomplete({
 
   return {
     combobox,
-    pillValues: getPillValues(values, options, fieldSelection),
-    filteredOptions: getFilteredOptions(options, values),
+    pillValues: getPillValues(values, optionByValue, fieldSelection),
+    filteredOptions: getFilteredOptions(values, optionByValue, fieldSelection),
     fieldValue,
     handleFieldChange,
     handleFieldPaste,
@@ -198,16 +200,17 @@ export function useMultiAutocomplete({
   };
 }
 
+function getOptionByValue(options: ComboboxItem[]) {
+  return new Map(options.map((option) => [option.value, option]));
+}
+
 function getPillValues(
   values: string[],
-  options: ComboboxItem[],
+  optionByValue: Map<string, ComboboxItem>,
   fieldSelection: FieldSelection,
 ) {
-  const optionByValue = Object.fromEntries(
-    options.map((option) => [option.value, option]),
-  );
   const mappedValues = values.map(
-    (value) => optionByValue[value]?.label ?? value,
+    (value) => optionByValue.get(value)?.label ?? value,
   );
   return getValuesAfterChange(
     mappedValues,
@@ -216,23 +219,22 @@ function getPillValues(
   );
 }
 
-function normalizeValue(value: string) {
-  return value.trim().toLowerCase();
+function getFilteredOptions(
+  values: string[],
+  optionByValue: Map<string, ComboboxItem>,
+  fieldSelection: FieldSelection,
+) {
+  const unusedValues = getUnusedFieldValues(
+    values,
+    Array.from(optionByValue.keys()),
+    fieldSelection,
+  );
+  return unusedValues
+    .map((value) => optionByValue.get(value))
+    .filter((option): option is ComboboxItem => option != null);
 }
 
-function getFilteredOptions(options: ComboboxItem[], values: string[]) {
-  const usedValues = new Set(values.map(normalizeValue));
-  return options.reduce((newOptions: ComboboxItem[], option) => {
-    const normalizedValue = normalizeValue(option.value);
-    if (!usedValues.has(normalizedValue)) {
-      newOptions.push(option);
-      usedValues.add(normalizedValue);
-    }
-    return newOptions;
-  }, []);
-}
-
-function getUniqueFieldValues(
+function getUnusedFieldValues(
   values: string[],
   fieldValues: string[],
   fieldSelection: FieldSelection,
