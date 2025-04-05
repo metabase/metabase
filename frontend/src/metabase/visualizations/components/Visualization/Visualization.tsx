@@ -131,6 +131,7 @@ type VisualizationOwnProps = {
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
+  labelRightSection?: React.ReactNode;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   onEditSummary?: () => void;
@@ -549,6 +550,7 @@ class Visualization extends PureComponent<
       isShowingDetailsOnlyColumns,
       isShowingSummarySidebar,
       isSlow,
+      labelRightSection,
       metadata,
       mode,
       onEditSummary,
@@ -714,6 +716,7 @@ class Visualization extends PureComponent<
                     ? this.handleOnChangeCardAndRun
                     : null
                 }
+                labelRightSection={labelRightSection}
               />
             </VisualizationHeader>
           )}
@@ -772,6 +775,7 @@ class Visualization extends PureComponent<
                   height={rawHeight}
                   hovered={hovered}
                   isDashboard={!!isDashboard}
+                  labelRightSection={labelRightSection}
                   isEditing={!!isEditing}
                   isEmbeddingSdk={isEmbeddingSdk}
                   isFullscreen={!!isFullscreen}
