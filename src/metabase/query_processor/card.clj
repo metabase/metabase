@@ -289,6 +289,7 @@
                             :context                context
                             :card-id                card-id
                             :card-name              (:name card)
+                            :card-stored-metadata   (:result_metadata card)
                             :dashboard-id           dashboard-id
                             :visualization-settings merged-viz}
                      (and (= (:type card) :model) (seq (:result_metadata card)))

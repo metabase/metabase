@@ -11,6 +11,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -395,3 +396,19 @@
              :data   {:results_metadata {:columns [{:name "ID"}
                                                    {:name "ID_2"}]}}}
             (mt/process-query query)))))
+
+(deftest ^:parallel standardize-metadata-test
+  (is (= nil (#'middleware.results-metadata/standardize-metadata nil)))
+  (is (= {} (#'middleware.results-metadata/standardize-metadata {})))
+  (is (= [] (#'middleware.results-metadata/standardize-metadata [])))
+  (is (= {:a 1 :b 2} (#'middleware.results-metadata/standardize-metadata {:a 1 :b 2})))
+  (is (= [{:a 1 :b 2}] (#'middleware.results-metadata/standardize-metadata [{:a 1 :b 2}])))
+  (is (= {:a 1 :b 2} (#'middleware.results-metadata/standardize-metadata {:a 1 :b 2 :coercion_strategy nil})))
+  (is (= [{:a 1 :b 2}] (#'middleware.results-metadata/standardize-metadata [{:a 1 :b 2 :coercion_strategy nil}])))
+  (is (= {:a 1 :b 2 :coercion_strategy 3} (#'middleware.results-metadata/standardize-metadata {:a 1 :b 2 :coercion_strategy 3})))
+  (is (= {:a 1 :b 2 :c {:x 3}} (#'middleware.results-metadata/standardize-metadata {:a 1 :b 2 :c {:x 3 :coercion_strategy nil}})))
+  (is (= {:a 1 :b 2 :c [{:x 3}]} (#'middleware.results-metadata/standardize-metadata {:a 1 :b 2 :c [{:x 3 :coercion_strategy nil}]})))
+  (is (= {:a 1 :b 2 :c {:x 3} :d {:y {}}} (#'middleware.results-metadata/standardize-metadata {:a 1 :b 2 :c {:x 3 :coercion_strategy nil} :d {:y {:coercion_strategy nil}}})))
+  (is (= {:a 1 :b 2} (#'middleware.results-metadata/standardize-metadata {:a 1 :b 2 :coercion_strategy nil :settings nil})))
+  (is (= {:a 1 :b 2} (#'middleware.results-metadata/standardize-metadata {:a 1 :b 2 :fk_target_field_id nil})))
+  (is (= {:a 1 :b 2} (#'middleware.results-metadata/standardize-metadata {:a 1 :b 2 :semantic_type nil}))))
