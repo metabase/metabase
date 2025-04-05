@@ -620,6 +620,7 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   settings,
   columnSettings,
   isLiveResizable: () => false,
+  hasEmptyState: true,
 });
 
 export { PivotTable };
