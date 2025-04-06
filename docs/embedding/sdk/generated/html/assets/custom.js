@@ -1,5 +1,14 @@
 const SECTIONS_TO_HIDE = ["Modules"];
 
+const setupRedirectsFromInternalModule = () => {
+  const href = location.href;
+  const indexPage = href.replace(/(.*\/html)\/.*/, "$1/index.html");
+
+  if (href.endsWith("internal.html")) {
+    location.replace(indexPage);
+  }
+};
+
 /**
  * Hides a section with the given name
  */
@@ -69,6 +78,7 @@ const adjustInternalCategoryItem = () => {
 };
 
 const adjustPage = () => {
+  setupRedirectsFromInternalModule();
   SECTIONS_TO_HIDE.forEach(hideSection);
   adjustInternalMenuItems();
   adjustInternalCategoryItem();

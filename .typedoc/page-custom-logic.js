@@ -1,6 +1,29 @@
 const SECTIONS_TO_HIDE = ["Modules"];
 
 /**
+ * Disclaimer:
+ * Right now it's unclear how to generate the `internal` module but completely exclude it from all navigation/etc using
+ * default typedoc config.
+ *
+ * So this file is a manual workaround to hide the `internal` module from the navigation and the main page.
+ */
+
+/**
+ * Redirects from the "internal" module index page to the main index page
+ */
+const setupRedirectsFromInternalModule = () => {
+  const href = location.href;
+  const indexPage = href.replace(/(.*\/html)\/.*/, "$1/index.html");
+
+  const isInternalModule =
+    href.endsWith("internal.html") || href.endsWith("internal");
+
+  if (isInternalModule) {
+    location.replace(indexPage);
+  }
+};
+
+/**
  * Hides a section with the given name
  */
 const hideSection = (sectionName) => {
@@ -69,6 +92,7 @@ const adjustInternalCategoryItem = () => {
 };
 
 const adjustPage = () => {
+  setupRedirectsFromInternalModule();
   SECTIONS_TO_HIDE.forEach(hideSection);
   adjustInternalMenuItems();
   adjustInternalCategoryItem();
