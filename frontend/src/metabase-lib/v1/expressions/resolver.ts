@@ -1,10 +1,6 @@
 import { t } from "ttag";
 
-import type {
-  CaseOptions,
-  Expression,
-  ExpressionOperand,
-} from "metabase-types/api";
+import type { Expression, ExpressionOperand } from "metabase-types/api";
 
 import { FIELD_MARKERS, MBQL_CLAUSES, getMBQLName } from "./config";
 import { ResolverError } from "./errors";
@@ -71,25 +67,6 @@ export function resolve({
     return [kind, name];
   }
 
-  if (isCaseOrIfOperator(op)) {
-    const pairs = operands[0] as [Expression, Expression][];
-    const options = operands[1] as CaseOptions | undefined;
-
-    const resolvedPairs = pairs.map(([tst, val]): [Expression, Expression] => [
-      resolve({ expression: tst, type: "boolean", fn }),
-      resolve({ expression: val, type, fn }),
-    ]);
-
-    if (options && "default" in options && options.default !== undefined) {
-      const resolvedOptions = {
-        default: resolve({ expression: options.default, type, fn }),
-      };
-      return [op, resolvedPairs, resolvedOptions];
-    }
-
-    return [op, resolvedPairs];
-  }
-
   const clause = MBQL_CLAUSES[op];
   if (!clause) {
     throw new ResolverError(t`Unknown function ${op}`, getNode(expression));
@@ -97,7 +74,7 @@ export function resolve({
 
   return [
     op,
-    ...operands.map((operand, index) => {
+    ...map(op, operands, (operand, index, args) => {
       if (
         (index >= clause.args.length && !clause.multiple) ||
         isOptionsObject(operand)
@@ -108,11 +85,80 @@ export function resolve({
 
       return resolve({
         expression: operand,
-        type: clause.argType?.(index, type) ?? clause.args[index],
+        type: clause.argType?.(index, args, type) ?? clause.args[index],
         fn,
       });
     }),
   ];
+}
+
+// Map over operands of case/if expressions, but marshal them first and unmarshal them after
+function map(
+  op: string,
+  operands: (Expression | ExpressionOperand)[],
+  fn: (
+    operand: Expression | ExpressionOperand,
+    index: number,
+    args: (Expression | ExpressionOperand)[],
+  ) => Expression | ExpressionOperand,
+): (Expression | ExpressionOperand)[] {
+  const marshalled = marshalOperands(op, operands);
+  const mapped = marshalled.map(fn);
+  return unmarshalOperands(op, mapped);
+}
+
+// Flatten operands of case/if expressions so they can be easily mapped over
+function marshalOperands(
+  op: string,
+  operands: (Expression | ExpressionOperand)[],
+): (Expression | ExpressionOperand)[] {
+  if (!isCaseOrIfOperator(op)) {
+    return operands;
+  }
+
+  const pairs = operands[0] as [Expression, Expression][];
+  const options = operands[1];
+  const res = pairs.flat();
+
+  if (
+    isOptionsObject(options) &&
+    "default" in options &&
+    options.default !== undefined
+  ) {
+    res.push(options.default as Expression);
+  }
+  return res;
+}
+
+// Unflatten the operands of case/if expressions, as flattened by marshalOperands
+function unmarshalOperands(
+  op: string,
+  operands: (Expression | ExpressionOperand)[],
+): (Expression | ExpressionOperand)[] {
+  if (!isCaseOrIfOperator(op)) {
+    return operands;
+  }
+
+  const pairs: [Expression, Expression][] = [];
+
+  const pairCount = operands.length >> 1;
+  for (let i = 0; i < pairCount; ++i) {
+    const tst = operands[i * 2];
+    const val = operands[i * 2 + 1];
+    if (isOptionsObject(tst) || isOptionsObject(val)) {
+      throw new Error("Unsupported case/if options");
+    }
+    pairs.push([tst, val]);
+  }
+  if (operands.length > 2 * pairCount) {
+    const lastOperand = operands[operands.length - 1];
+    const options = isOptionsObject(lastOperand)
+      ? lastOperand
+      : { default: lastOperand };
+    return [pairs, options] as (Expression | ExpressionOperand)[];
+  }
+
+  return [pairs] as (Expression | ExpressionOperand)[];
 }
 
 function getNode(expression: Expression): Node | undefined {

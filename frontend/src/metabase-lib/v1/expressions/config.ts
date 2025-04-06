@@ -331,7 +331,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `coalesce`,
     type: "expression",
     args: ["expression", "expression"],
-    argType(_index, type) {
+    argType(_index, _args, type) {
       return type;
     },
     multiple: true,
@@ -339,14 +339,34 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   case: {
     displayName: `case`,
     type: "expression",
-    args: ["expression", "expression"], // ideally we'd alternate boolean/expression
     multiple: true,
+    args: ["expression", "expression"], // ideally we'd alternate boolean/expression
+    argType(index, args, type) {
+      const len = args.length;
+      if (len % 2 === 1 && index === len - 1) {
+        return type;
+      }
+      if (index % 2 === 1) {
+        return type;
+      }
+      return "boolean";
+    },
   },
   if: {
     displayName: `if`,
     type: "expression",
-    args: ["expression", "expression"],
     multiple: true,
+    args: ["expression", "expression"],
+    argType(index, args, type) {
+      const len = args.length;
+      if (len % 2 === 1 && index === len - 1) {
+        return type;
+      }
+      if (index % 2 === 1) {
+        return type;
+      }
+      return "boolean";
+    },
   },
   offset: {
     displayName: `Offset`,
@@ -369,7 +389,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: "*",
     type: "number",
     args: ["number", "number"],
-    argType(_index, type) {
+    argType(_index, _args, type) {
       if (type === "aggregation") {
         return "aggregation";
       }
@@ -380,7 +400,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: "/",
     type: "number",
     args: ["number", "number"],
-    argType(_index, type) {
+    argType(_index, _args, type) {
       if (type === "aggregation") {
         return "aggregation";
       }
@@ -391,7 +411,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: "-",
     type: "number",
     args: ["number", "number"],
-    argType(_index, type) {
+    argType(_index, _args, type) {
       if (type === "aggregation") {
         return "aggregation";
       }
@@ -402,7 +422,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: "+",
     type: "number",
     args: ["number", "number"],
-    argType(_index, type) {
+    argType(_index, _args, type) {
       if (type === "aggregation") {
         return "aggregation";
       }
