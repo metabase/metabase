@@ -309,9 +309,7 @@ describe("resolve", () => {
   });
 
   it("should reject unknown function", () => {
-    expect(() =>
-      resolve({ expression: ["foobar", 42], type: "expression" }),
-    ).toThrow();
+    expect(() => expr(["foobar", 42])).toThrow();
   });
 
   describe("comparison operators", () => {

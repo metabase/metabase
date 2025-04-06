@@ -27,7 +27,7 @@ type ResolverFunction = (
 type Options<T> = {
   expression: T;
   type: ExpressionType;
-  fn?: ResolverFunction;
+  fn: ResolverFunction;
 };
 
 export function resolve(options: Options<Expression>): Expression;
@@ -35,7 +35,7 @@ export function resolve(options: Options<ExpressionOperand>): ExpressionOperand;
 export function resolve({
   expression,
   type = "expression",
-  fn = undefined,
+  fn,
 }: Options<Expression | ExpressionOperand>): Expression | ExpressionOperand {
   if (!isCallExpression(expression) || isValue(expression)) {
     return expression;
@@ -46,25 +46,22 @@ export function resolve({
   if (FIELD_MARKERS.has(op)) {
     const kind = MAP_TYPE[type as keyof typeof MAP_TYPE] ?? "dimension";
     const [name] = operands;
-    if (fn) {
-      try {
-        if (typeof name === "string") {
-          return fn(kind, name, expression);
-        }
-        return expression;
-      } catch (err) {
-        if (typeof name === "string") {
-          // A second chance when field is not found:
-          // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
-          const func = getMBQLName(name.trim().toLowerCase());
-          if (func && MBQL_CLAUSES[func].args.length === 0) {
-            return [func];
-          }
-        }
-        throw err;
+    try {
+      if (typeof name === "string") {
+        return fn(kind, name, expression);
       }
+      return expression;
+    } catch (err) {
+      if (typeof name === "string") {
+        // A second chance when field is not found:
+        // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
+        const func = getMBQLName(name.trim().toLowerCase());
+        if (func && MBQL_CLAUSES[func].args.length === 0) {
+          return [func];
+        }
+      }
+      throw err;
     }
-    return [kind, name];
   }
 
   const clause = MBQL_CLAUSES[op];
