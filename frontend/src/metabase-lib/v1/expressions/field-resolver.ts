@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
 import { ResolverError } from "./errors";
@@ -39,13 +39,7 @@ export function fieldResolver(options: {
     kind: "field" | "segment" | "metric" | "dimension",
     name: string,
     expression?: Expression,
-  ): Expression {
-    const { query, stageIndex } = options;
-    if (!query) {
-      // @uladzimirdev double check why is this needed
-      return [kind, name];
-    }
-
+  ): Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
@@ -67,7 +61,7 @@ export function fieldResolver(options: {
         );
       }
 
-      return Lib.legacyRef(query, stageIndex, metric) as Expression;
+      return metric;
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
@@ -77,7 +71,7 @@ export function fieldResolver(options: {
         );
       }
 
-      return Lib.legacyRef(query, stageIndex, segment) as Expression;
+      return segment;
     } else {
       // fallback
       const dimension = parseDimension(name, options);
@@ -85,7 +79,7 @@ export function fieldResolver(options: {
         throw new ResolverError(t`Unknown Field: ${name}`, getNode(expression));
       }
 
-      return Lib.legacyRef(query, stageIndex, dimension) as Expression;
+      return dimension;
     }
   };
 }

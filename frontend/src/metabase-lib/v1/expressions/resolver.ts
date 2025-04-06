@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
 import type { Expression, ExpressionOperand } from "metabase-types/api";
 
 import { FIELD_MARKERS, MBQL_CLAUSES, getMBQLName } from "./config";
@@ -22,7 +23,7 @@ type ResolverFunction = (
   kind: "field" | "segment" | "metric",
   name: string,
   expression?: Expression,
-) => Expression;
+) => Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata;
 
 type Options<T> = {
   expression: T;
