@@ -313,4 +313,16 @@ describe("resolve", () => {
       resolve({ expression: ["foobar", 42], type: "expression" }),
     ).toThrow();
   });
+
+  describe("comparison operators", () => {
+    it("should resolve comparison operators correctly", () => {
+      expect(expr(["<=", A, B]).dimensions).toEqual(["A", "B"]);
+      expect(filter(["<=", A, B]).dimensions).toEqual(["A", "B"]);
+      expect(aggregation(["<=", A, B]).dimensions).toEqual(["A", "B"]);
+      expect(aggregation(["count-where", ["<=", A, B]]).dimensions).toEqual([
+        "A",
+        "B",
+      ]);
+    });
+  });
 });
