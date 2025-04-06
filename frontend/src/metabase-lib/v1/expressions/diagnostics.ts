@@ -5,7 +5,12 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
 import { type CompileResult, compileExpression } from "./compiler";
-import { COMPARISON_OPERATORS, MBQL_CLAUSES, getMBQLName } from "./config";
+import {
+  COMPARISON_OPERATORS,
+  FIELD_MARKERS,
+  MBQL_CLAUSES,
+  getMBQLName,
+} from "./config";
 import { DiagnosticError, type ExpressionError, renderError } from "./errors";
 import {
   isCallExpression,
@@ -186,6 +191,7 @@ export function diagnoseExpression({
   metadata?: Metadata;
 }) {
   const checkers = [
+    checkKnownFunctions,
     checkFunctionSupport,
     checkArgValidator,
     checkArgCount,
@@ -257,6 +263,27 @@ function checkMissingCommasInArgumentList(
   }
 
   return null;
+}
+
+function checkKnownFunctions({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+
+    const name = node[0];
+    if (FIELD_MARKERS.has(name)) {
+      return;
+    }
+
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      throw new DiagnosticError(
+        t`Unknown function ${name}`,
+        getToken(expression),
+      );
+    }
+  });
 }
 
 function checkFunctionSupport({

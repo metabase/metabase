@@ -100,6 +100,10 @@ describe("diagnostics", () => {
       );
     });
 
+    it("should catch unknown functions", () => {
+      expect(err("unknown()")).toEqual("Unknown function unknown");
+    });
+
     describe("arg count validation", () => {
       it("should catch mismatched number of function parameters", () => {
         expect(err(`between()`)).toEqual(
