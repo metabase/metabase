@@ -348,4 +348,27 @@ describe("resolve", () => {
       });
     });
   });
+
+  describe("logic operators", () => {
+    it("should resolve logic operators correctly", () => {
+      expect(expr(["and", A, B])).toEqual({
+        dimensions: [],
+        metrics: [],
+        segments: ["A", "B"],
+        expression: expect.any(Array),
+      });
+      expect(filter(["and", A, B])).toEqual({
+        dimensions: [],
+        metrics: [],
+        segments: ["A", "B"],
+        expression: expect.any(Array),
+      });
+      expect(aggregation(["and", A, B])).toEqual({
+        dimensions: [],
+        metrics: [],
+        segments: ["A", "B"],
+        expression: expect.any(Array),
+      });
+    });
+  });
 });
