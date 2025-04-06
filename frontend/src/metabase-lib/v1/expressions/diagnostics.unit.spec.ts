@@ -101,6 +101,21 @@ describe("diagnostics", () => {
     });
 
     describe("arg count validation", () => {
+      it("should catch mismatched number of function parameters", () => {
+        expect(err(`between()`)).toEqual(
+          "Function between expects 3 arguments",
+        );
+        expect(err(`between(1)`)).toEqual(
+          "Function between expects 3 arguments",
+        );
+        expect(err(`between(1, 2)`)).toEqual(
+          "Function between expects 3 arguments",
+        );
+        expect(err(`between(1, 2, 3, 4)`)).toEqual(
+          "Function between expects 3 arguments",
+        );
+      });
+
       it.each(["in", "notIn"])(
         "should reject multi-arg function calls without options when there is not enough arguments",
         (fn) => {
@@ -139,6 +154,12 @@ describe("diagnostics", () => {
           ).toBeUndefined();
         },
       );
+
+      it("should allow any number of arguments in a variadic function", () => {
+        expect(err(`concat("foo", "bar")`)).toBeUndefined();
+        expect(err(`concat("foo", "bar", "baz")`)).toBeUndefined();
+        expect(err(`concat("foo", "bar", "baz", "quu")`)).toBeUndefined();
+      });
     });
 
     describe("arg validation", () => {

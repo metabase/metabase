@@ -1,4 +1,4 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import { MBQL_CLAUSES, getMBQLName } from "./config";
 import { ResolverError } from "./errors";
@@ -129,40 +129,7 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
       throw new ResolverError(t`Unknown function ${op}`, expression.node);
     }
 
-    const { displayName, args, multiple, hasOptions } = clause;
-    if (multiple) {
-      const argCount = operands.filter((arg) => !isOptionsObject(arg)).length;
-      const minArgCount = args.length;
-
-      if (argCount < minArgCount) {
-        throw new ResolverError(
-          ngettext(
-            msgid`Function ${displayName} expects at least ${minArgCount} argument`,
-            `Function ${displayName} expects at least ${minArgCount} arguments`,
-            minArgCount,
-          ),
-          expression.node,
-        );
-      }
-    } else {
-      const expectedArgsLength = args.length;
-      const maxArgCount = hasOptions
-        ? expectedArgsLength + 1
-        : expectedArgsLength;
-      if (
-        operands.length < expectedArgsLength ||
-        operands.length > maxArgCount
-      ) {
-        throw new ResolverError(
-          ngettext(
-            msgid`Function ${displayName} expects ${expectedArgsLength} argument`,
-            `Function ${displayName} expects ${expectedArgsLength} arguments`,
-            expectedArgsLength,
-          ),
-          expression.node,
-        );
-      }
-    }
+    const { args } = clause;
     const resolvedOperands = operands.map((operand, i) => {
       if ((i >= args.length && !clause.multiple) || isOptionsObject(operand)) {
         // as-is, optional object for e.g. ends-with, time-interval, etc

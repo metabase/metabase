@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -7,7 +7,12 @@ import type { Expression } from "metabase-types/api";
 import { type CompileResult, compileExpression } from "./compiler";
 import { MBQL_CLAUSES, getMBQLName } from "./config";
 import { DiagnosticError, type ExpressionError, renderError } from "./errors";
-import { isCallExpression, isExpression } from "./matchers";
+import {
+  isCallExpression,
+  isExpression,
+  isFunction,
+  isOptionsObject,
+} from "./matchers";
 import {
   CALL,
   FIELD,
@@ -191,7 +196,7 @@ export function diagnoseExpression({
     expressionIndex,
   );
 
-  const checkers = [checkFunctionSupport, checkArgValidator];
+  const checkers = [checkFunctionSupport, checkArgValidator, checkArgCount];
 
   for (const checker of checkers) {
     checker({ expression, query, metadata });
@@ -304,6 +309,56 @@ function checkArgValidator({ expression }: { expression: Expression }) {
       const validationError = clause.validator(...operands);
       if (validationError) {
         throw new DiagnosticError(validationError, getToken(expression));
+      }
+    }
+  });
+}
+
+function checkArgCount({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isFunction(node)) {
+      return;
+    }
+
+    const [name, ...operands] = node;
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      return;
+    }
+
+    const { displayName, args, multiple, hasOptions } = clause;
+
+    if (multiple) {
+      const argCount = operands.filter((arg) => !isOptionsObject(arg)).length;
+      const minArgCount = args.length;
+
+      if (argCount < minArgCount) {
+        throw new DiagnosticError(
+          ngettext(
+            msgid`Function ${displayName} expects at least ${minArgCount} argument`,
+            `Function ${displayName} expects at least ${minArgCount} arguments`,
+            minArgCount,
+          ),
+          getToken(expression),
+        );
+      }
+    } else {
+      const expectedArgsLength = args.length;
+      const maxArgCount = hasOptions
+        ? expectedArgsLength + 1
+        : expectedArgsLength;
+      if (
+        operands.length < expectedArgsLength ||
+        operands.length > maxArgCount
+      ) {
+        throw new DiagnosticError(
+          ngettext(
+            msgid`Function ${displayName} expects ${expectedArgsLength} argument`,
+            `Function ${displayName} expects ${expectedArgsLength} arguments`,
+            expectedArgsLength,
+          ),
+          getToken(expression),
+        );
       }
     }
   });

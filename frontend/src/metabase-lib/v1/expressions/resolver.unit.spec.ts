@@ -1,4 +1,4 @@
-import type { CallOptions, CaseOptions, Expression } from "metabase-types/api";
+import type { CaseOptions, Expression } from "metabase-types/api";
 
 import { resolve } from "./resolver";
 
@@ -72,12 +72,6 @@ describe("resolve", () => {
       expect(filter(["or", P, [">", Q, 3]]).dimensions).toEqual(["Q"]);
     });
 
-    it("should catch mismatched number of function parameters", () => {
-      expect(() => filter(["between"])).toThrow();
-      expect(() => filter(["between", Y])).toThrow();
-      expect(() => filter(["between", Y, "A", "B", "C"])).toThrow();
-    });
-
     it("should allow a comparison (lexicographically) on strings", () => {
       // P <= "abc"
       expect(() => filter(["<=", P, "abc"])).not.toThrow();
@@ -134,12 +128,6 @@ describe("resolve", () => {
       expect(expr(["integer", A]).dimensions).toEqual(["A"]);
     });
 
-    it("should allow any number of arguments in a variadic function", () => {
-      expect(() => expr(["concat", "1"])).not.toThrow();
-      expect(() => expr(["concat", "1", "2"])).not.toThrow();
-      expect(() => expr(["concat", "1", "2", "3"])).not.toThrow();
-    });
-
     it("should allow nested datetime expressions", () => {
       expect(() => expr(["get-year", ["now"]])).not.toThrow();
     });
@@ -154,33 +142,6 @@ describe("resolve", () => {
 
     it("should honor CONCAT's implicit casting", () => {
       expect(() => expr(["concat", ["coalesce", "B", 1]])).not.toThrow();
-    });
-
-    describe("arg validation", () => {
-      it.each(["in", "not-in"])(
-        "should reject multi-arg function calls without options when there is not enough arguments",
-        (tag) => {
-          expect(() => expr([tag])).toThrow();
-          expect(() => expr([tag, A])).toThrow();
-          expect(() => expr([tag, A, B])).not.toThrow();
-          expect(() => expr([tag, A, B, C])).not.toThrow();
-        },
-      );
-
-      it.each(["contains", "does-not-contain", "starts-with", "ends-with"])(
-        "should reject multi-arg function calls with options when there is not enough arguments",
-        (tag) => {
-          const options: CallOptions = { "case-sensitive": true };
-          expect(() => expr([tag])).toThrow();
-          expect(() => expr([tag, A])).toThrow();
-          expect(() => expr([tag, A, options])).toThrow();
-          expect(() => expr([tag, A, "abc"])).not.toThrow();
-          expect(() => expr([tag, A, B])).not.toThrow();
-          expect(() => expr([tag, A, B, C])).not.toThrow();
-          expect(() => expr([tag, A, B, options])).not.toThrow();
-          expect(() => expr([tag, options, A, B, C])).not.toThrow();
-        },
-      );
     });
 
     describe("datetime functions", () => {
