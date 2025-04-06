@@ -95,7 +95,7 @@ export function diagnoseAndCompile({
       throw error;
     }
 
-    const error = diagnoseExpression({
+    diagnoseExpression({
       query,
       stageIndex,
       startRule,
@@ -103,9 +103,6 @@ export function diagnoseAndCompile({
       expressionIndex,
       metadata,
     });
-    if (error) {
-      throw error;
-    }
 
     return result;
   } catch (error) {
@@ -186,7 +183,7 @@ export function diagnoseExpression({
   expression: Expression;
   expressionIndex?: number;
   metadata?: Metadata;
-}): ExpressionError | null {
+}) {
   const checkers = [
     checkFunctionSupport,
     checkArgValidator,
@@ -210,7 +207,6 @@ export function diagnoseExpression({
       friendly: Boolean(error.friendly),
     });
   }
-  return null;
 }
 
 function checkMissingCommasInArgumentList(
