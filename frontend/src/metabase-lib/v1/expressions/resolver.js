@@ -22,23 +22,6 @@ const MAP_TYPE = {
   aggregation: "metric",
 };
 
-const EQUIVALENT_FILTERS = {
-  "does-not-contain": "contains",
-  "not-null": "is-null",
-  "not-empty": "is-empty",
-};
-
-function findMBQL(op) {
-  let clause = MBQL_CLAUSES[op];
-  if (!clause) {
-    const alt = EQUIVALENT_FILTERS[op];
-    if (alt) {
-      clause = MBQL_CLAUSES[alt];
-    }
-  }
-  return clause;
-}
-
 /**
  * @param {{
  *   expression: import("./pratt").Expr
@@ -124,7 +107,7 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
       ];
     }
 
-    const clause = findMBQL(op);
+    const clause = MBQL_CLAUSES[op];
     if (!clause) {
       throw new ResolverError(t`Unknown function ${op}`, expression.node);
     }
