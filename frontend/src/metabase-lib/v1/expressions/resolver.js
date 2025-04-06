@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { COMPARISON_OPERATORS, MBQL_CLAUSES, getMBQLName } from "./config";
 import { ResolverError } from "./errors";
 import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
 import { OPERATOR as OP } from "./tokenizer";
@@ -8,14 +8,6 @@ import { OPERATOR as OP } from "./tokenizer";
 const FIELD_MARKERS = ["dimension", "segment", "metric"];
 export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
 const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
-export const COMPARISON_OPS = [
-  OP.Equal,
-  OP.NotEqual,
-  OP.GreaterThan,
-  OP.LessThan,
-  OP.GreaterThanEqual,
-  OP.LessThanEqual,
-];
 
 const MAP_TYPE = {
   boolean: "segment",
@@ -61,7 +53,7 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
       operandType = type === "aggregation" ? type : "number";
     } else if (op === "true" || op === "false") {
       operandType = "expression";
-    } else if (COMPARISON_OPS.includes(op)) {
+    } else if (COMPARISON_OPERATORS.has(op)) {
       operandType = "expression";
       const [firstOperand] = operands;
       if (typeof firstOperand === "number" && !Array.isArray(firstOperand)) {

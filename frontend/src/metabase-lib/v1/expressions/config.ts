@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { OPERATOR } from "./tokenizer";
 import type { MBQLClauseMap } from "./types";
 
 export const EDITOR_QUOTES = {
@@ -637,7 +638,14 @@ const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
 // operators in which order of operands doesn't matter
 export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
 
-const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
+export const COMPARISON_OPERATORS = new Set([
+  OPERATOR.Equal,
+  OPERATOR.NotEqual,
+  OPERATOR.GreaterThan,
+  OPERATOR.LessThan,
+  OPERATOR.GreaterThanEqual,
+  OPERATOR.LessThanEqual,
+]);
 
 const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
 const LOGICAL_AND_OPERATOR = new Set(["and"]);
@@ -650,7 +658,7 @@ export const FUNCTIONS = new Set([
 
 export const OPERATORS = new Set([
   ...EXPRESSION_OPERATORS,
-  ...FILTER_OPERATORS,
+  ...COMPARISON_OPERATORS,
   ...BOOLEAN_UNARY_OPERATORS,
   ...LOGICAL_AND_OPERATOR,
   ...LOGICAL_OR_OPERATOR,
