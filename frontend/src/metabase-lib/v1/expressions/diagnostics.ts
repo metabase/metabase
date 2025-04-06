@@ -187,6 +187,16 @@ export function diagnoseExpression({
   expressionIndex?: number;
   metadata?: Metadata;
 }): ExpressionError | null {
+  const checkers = [
+    checkFunctionSupport,
+    checkArgValidator,
+    checkArgCount,
+    checkComparisonOperatorArgs,
+  ];
+  for (const checker of checkers) {
+    checker({ expression, query, metadata });
+  }
+
   const error = Lib.diagnoseExpression(
     query,
     stageIndex,
@@ -194,17 +204,6 @@ export function diagnoseExpression({
     expression,
     expressionIndex,
   );
-
-  const checkers = [
-    checkFunctionSupport,
-    checkArgValidator,
-    checkArgCount,
-    checkComparisonOperatorArgs,
-  ];
-
-  for (const checker of checkers) {
-    checker({ expression, query, metadata });
-  }
 
   if (error) {
     throw new DiagnosticError(error.message, {
