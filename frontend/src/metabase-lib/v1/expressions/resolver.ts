@@ -46,19 +46,17 @@ export function resolve({
   if (FIELD_MARKERS.has(op)) {
     const kind = MAP_TYPE[type as keyof typeof MAP_TYPE] ?? "dimension";
     const [name] = operands;
+    if (typeof name !== "string") {
+      throw new ResolverError(t`Invalid field name`, getNode(expression));
+    }
     try {
-      if (typeof name === "string") {
-        return fn(kind, name, expression);
-      }
-      return expression;
+      return fn(kind, name, expression);
     } catch (err) {
-      if (typeof name === "string") {
-        // A second chance when field is not found:
-        // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
-        const func = getMBQLName(name.trim().toLowerCase());
-        if (func && MBQL_CLAUSES[func].args.length === 0) {
-          return [func];
-        }
+      // A second chance when field is not found:
+      // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
+      const func = getMBQLName(name.trim().toLowerCase());
+      if (func && MBQL_CLAUSES[func].args.length === 0) {
+        return [func];
       }
       throw err;
     }
