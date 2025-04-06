@@ -32,7 +32,7 @@ import {
 } from "./pratt";
 import type { OPERATOR } from "./tokenizer";
 import type { StartRule } from "./types";
-import { getDatabase, getExpressionMode } from "./utils";
+import { getDatabase, getExpressionMode, getToken } from "./utils";
 import { visit } from "./visitor";
 
 export function diagnose(options: {
@@ -434,9 +434,4 @@ function checkCaseOrIfArgCount({ expression }: { expression: Expression }) {
       );
     }
   });
-}
-
-function getToken(expression: Expression): Token | undefined {
-  // @ts-expect-error: we don't know if node was set on expression
-  return expression.node?.token;
 }

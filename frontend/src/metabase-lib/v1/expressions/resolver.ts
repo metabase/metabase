@@ -10,8 +10,8 @@ import {
   isOptionsObject,
   isValue,
 } from "./matchers";
-import type { Node } from "./pratt";
 import type { ExpressionType } from "./types";
+import { getNode } from "./utils";
 
 const MAP_TYPE = {
   boolean: "segment",
@@ -74,7 +74,7 @@ export function resolve({
 
   return [
     op,
-    ...map(op, operands, (operand, index, args) => {
+    ...map(op, operands, expression, (operand, index, args) => {
       if (
         (index >= clause.args.length && !clause.multiple) ||
         isOptionsObject(operand)
@@ -96,6 +96,7 @@ export function resolve({
 function map(
   op: string,
   operands: (Expression | ExpressionOperand)[],
+  expression: Expression,
   fn: (
     operand: Expression | ExpressionOperand,
     index: number,
@@ -104,7 +105,7 @@ function map(
 ): (Expression | ExpressionOperand)[] {
   const marshalled = marshalOperands(op, operands);
   const mapped = marshalled.map(fn);
-  return unmarshalOperands(op, mapped);
+  return unmarshalOperands(op, mapped, expression);
 }
 
 // Flatten operands of case/if expressions so they can be easily mapped over
@@ -134,6 +135,7 @@ function marshalOperands(
 function unmarshalOperands(
   op: string,
   operands: (Expression | ExpressionOperand)[],
+  expression: Expression,
 ): (Expression | ExpressionOperand)[] {
   if (!isCaseOrIfOperator(op)) {
     return operands;
@@ -146,7 +148,10 @@ function unmarshalOperands(
     const tst = operands[i * 2];
     const val = operands[i * 2 + 1];
     if (isOptionsObject(tst) || isOptionsObject(val)) {
-      throw new Error("Unsupported case/if options");
+      throw new ResolverError(
+        t`Unsupported case/if options`,
+        getNode(expression),
+      );
     }
     pairs.push([tst, val]);
   }
@@ -159,9 +164,4 @@ function unmarshalOperands(
   }
 
   return [pairs] as (Expression | ExpressionOperand)[];
-}
-
-function getNode(expression: Expression): Node | undefined {
-  // @ts-expect-error: we don't know if node was set on expression
-  return expression.node;
 }

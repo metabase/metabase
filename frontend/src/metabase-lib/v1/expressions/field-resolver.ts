@@ -5,9 +5,9 @@ import type { Expression } from "metabase-types/api";
 
 import { ResolverError } from "./errors";
 import { parseDimension, parseMetric, parseSegment } from "./identifier";
-import type { Node } from "./pratt";
 import { resolve } from "./resolver";
 import type { StartRule } from "./types";
+import { getNode } from "./utils";
 
 export function resolverPass({
   query,
@@ -88,9 +88,4 @@ export function fieldResolver(options: {
       return Lib.legacyRef(query, stageIndex, dimension) as Expression;
     }
   };
-}
-
-function getNode(expression?: Expression): Node | undefined {
-  // @ts-expect-error: we might have set node on expression but don't express it in types
-  return expression?.node;
 }
