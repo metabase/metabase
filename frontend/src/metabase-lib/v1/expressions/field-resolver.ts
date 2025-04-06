@@ -35,7 +35,11 @@ export function fieldResolver(options: {
   stageIndex: number;
   startRule: string;
 }) {
-  return function (kind: string, name: string, node: Node) {
+  return function (
+    kind: "field" | "segment" | "metric" | "dimension",
+    name: string,
+    expression?: Expression,
+  ): Expression {
     const { query, stageIndex } = options;
     if (!query) {
       // @uladzimirdev double check why is this needed
@@ -54,28 +58,39 @@ export function fieldResolver(options: {
           )
             .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
 
-          throw new ResolverError(error, node);
+          throw new ResolverError(error, getNode(expression));
         }
 
-        throw new ResolverError(t`Unknown Metric: ${name}`, node);
+        throw new ResolverError(
+          t`Unknown Metric: ${name}`,
+          getNode(expression),
+        );
       }
 
-      return Lib.legacyRef(query, stageIndex, metric);
+      return Lib.legacyRef(query, stageIndex, metric) as Expression;
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
-        throw new ResolverError(t`Unknown Segment: ${name}`, node);
+        throw new ResolverError(
+          t`Unknown Segment: ${name}`,
+          getNode(expression),
+        );
       }
 
-      return Lib.legacyRef(query, stageIndex, segment);
+      return Lib.legacyRef(query, stageIndex, segment) as Expression;
     } else {
       // fallback
       const dimension = parseDimension(name, options);
       if (!dimension) {
-        throw new ResolverError(t`Unknown Field: ${name}`, node);
+        throw new ResolverError(t`Unknown Field: ${name}`, getNode(expression));
       }
 
-      return Lib.legacyRef(query, stageIndex, dimension);
+      return Lib.legacyRef(query, stageIndex, dimension) as Expression;
     }
   };
+}
+
+function getNode(expression?: Expression): Node | undefined {
+  // @ts-expect-error: we might have set node on expression but don't express it in types
+  return expression?.node;
 }

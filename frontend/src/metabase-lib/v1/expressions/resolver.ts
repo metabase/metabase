@@ -1,5 +1,11 @@
 import { t } from "ttag";
 
+import type {
+  CaseOptions,
+  Expression,
+  ExpressionOperand,
+} from "metabase-types/api";
+
 import {
   COMPARISON_OPERATORS,
   FIELD_MARKERS,
@@ -15,20 +21,34 @@ import {
   isOptionsObject,
   isValue,
 } from "./matchers";
+import type { Node } from "./pratt";
+import type { OPERATOR } from "./tokenizer";
+import type { ExpressionType } from "./types";
 
 const MAP_TYPE = {
   boolean: "segment",
   aggregation: "metric",
+} as const;
+
+type ResolverFunction = (
+  kind: "field" | "segment" | "metric",
+  name: string,
+  expression?: Expression,
+) => Expression;
+
+type Options<T> = {
+  expression: T;
+  type: ExpressionType;
+  fn?: ResolverFunction;
 };
 
-/**
- * @param {{
- *   expression: import("./pratt").Expr
- *   type?: string
- *   fn?: ?(kind: string, name: string, node: import("./pratt").Node) => void
- * }} options
- */
-export function resolve({ expression, type = "expression", fn = undefined }) {
+export function resolve(options: Options<Expression>): Expression;
+export function resolve(options: Options<ExpressionOperand>): ExpressionOperand;
+export function resolve({
+  expression,
+  type = "expression",
+  fn = undefined,
+}: Options<Expression | ExpressionOperand>): Expression | ExpressionOperand {
   if (!isCallExpression(expression) || isValue(expression)) {
     return expression;
   }
@@ -36,17 +56,22 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
   const [op, ...operands] = expression;
 
   if (FIELD_MARKERS.has(op)) {
-    const kind = MAP_TYPE[type] || "dimension";
+    const kind = MAP_TYPE[type as keyof typeof MAP_TYPE] ?? "dimension";
     const [name] = operands;
     if (fn) {
       try {
-        return fn(kind, name, expression.node);
+        if (typeof name === "string") {
+          return fn(kind, name, expression);
+        }
+        return expression;
       } catch (err) {
-        // A second chance when field is not found:
-        // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
-        const func = getMBQLName(name.trim().toLowerCase());
-        if (func && MBQL_CLAUSES[func].args.length === 0) {
-          return [func];
+        if (typeof name === "string") {
+          // A second chance when field is not found:
+          // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
+          const func = getMBQLName(name.trim().toLowerCase());
+          if (func && MBQL_CLAUSES[func].args.length === 0) {
+            return [func];
+          }
         }
         throw err;
       }
@@ -54,28 +79,29 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
     return [kind, name];
   }
 
-  let operandType = null;
-  if (LOGICAL_OPERATORS.has(op)) {
+  let operandType: ExpressionType | null = null;
+  if (LOGICAL_OPERATORS.has(op as OPERATOR)) {
     operandType = "boolean";
-  } else if (NUMBER_OPERATORS.has(op)) {
+  } else if (NUMBER_OPERATORS.has(op as OPERATOR)) {
     operandType = type === "aggregation" ? type : "number";
   } else if (op === "true" || op === "false") {
     operandType = "expression";
-  } else if (COMPARISON_OPERATORS.has(op)) {
+  } else if (COMPARISON_OPERATORS.has(op as OPERATOR)) {
     operandType = "expression";
   } else if (op === "concat") {
     operandType = "expression";
   } else if (op === "coalesce") {
     operandType = type;
   } else if (isCaseOrIfOperator(op)) {
-    const [pairs, options] = operands;
+    const pairs = operands[0] as [Expression, Expression][];
+    const options = operands[1] as CaseOptions | undefined;
 
-    const resolvedPairs = pairs.map(([tst, val]) => [
+    const resolvedPairs = pairs.map(([tst, val]): [Expression, Expression] => [
       resolve({ expression: tst, type: "boolean", fn }),
       resolve({ expression: val, type, fn }),
     ]);
 
-    if (options && "default" in options) {
+    if (options && "default" in options && options.default !== undefined) {
       const resolvedOptions = {
         default: resolve({ expression: options.default, type, fn }),
       };
@@ -85,7 +111,7 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
     return [op, resolvedPairs];
   }
 
-  if (operandType) {
+  if (operandType != null) {
     return [
       op,
       ...operands.map((operand) =>
@@ -96,7 +122,7 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
 
   const clause = MBQL_CLAUSES[op];
   if (!clause) {
-    throw new ResolverError(t`Unknown function ${op}`, expression.node);
+    throw new ResolverError(t`Unknown function ${op}`, getNode(expression));
   }
 
   return [
@@ -112,4 +138,9 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
       return resolve({ expression: operand, type: clause.args[i], fn });
     }),
   ];
+}
+
+function getNode(expression: Expression): Node | undefined {
+  // @ts-expect-error: we don't know if node was set on expression
+  return expression.node;
 }

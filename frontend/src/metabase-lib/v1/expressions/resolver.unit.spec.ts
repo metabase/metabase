@@ -1,14 +1,18 @@
 import type { CaseOptions, Expression } from "metabase-types/api";
 
 import { resolve } from "./resolver";
+import type { StartRule } from "./types";
 
 describe("resolve", () => {
-  function collect(expression: Expression, startRule = "expression") {
+  function collect(
+    expression: Expression,
+    startRule: StartRule = "expression",
+  ) {
     const dimensions: string[] = [];
     const segments: string[] = [];
     const metrics: string[] = [];
 
-    resolve({
+    const expr = resolve({
       expression,
       type: startRule,
       fn: (kind: string, name: string) => {
@@ -27,7 +31,7 @@ describe("resolve", () => {
       },
     });
 
-    return { dimensions, segments, metrics };
+    return { dimensions, segments, metrics, expression: expr };
   }
 
   // handy references
@@ -268,24 +272,18 @@ describe("resolve", () => {
   });
 
   it("should not fail on literal 0", () => {
+    const expr = (expr: Expression) => collect(expr, "expression").expression;
     const opt = { default: 0 };
-    expect(resolve({ expression: ["case", [[X, 0]]] })).toEqual([
-      "case",
-      [[X, 0]],
-    ]);
-    expect(resolve({ expression: ["case", [[X, 0]], opt] })).toEqual([
-      "case",
-      [[X, 0]],
-      opt,
-    ]);
-    expect(resolve({ expression: ["case", [[X, 2]], opt] })).toEqual([
-      "case",
-      [[X, 2]],
-      opt,
-    ]);
+
+    expect(expr(["case", [[X, 0]]])).toEqual(["case", [[X, 0]]]);
+
+    expect(expr(["case", [[X, 0]], opt])).toEqual(["case", [[X, 0]], opt]);
+    expect(expr(["case", [[X, 2]], opt])).toEqual(["case", [[X, 2]], opt]);
   });
 
   it("should reject unknown function", () => {
-    expect(() => resolve({ expression: ["foobar", 42] })).toThrow();
+    expect(() =>
+      resolve({ expression: ["foobar", 42], type: "expression" }),
+    ).toThrow();
   });
 });
