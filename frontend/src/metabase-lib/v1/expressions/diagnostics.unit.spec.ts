@@ -1,4 +1,7 @@
+import { createMockMetadata } from "__support__/metadata";
 import { createQuery } from "metabase-lib/test-helpers";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import {
   countMatchingParentheses,
@@ -13,17 +16,29 @@ describe("diagnostics", () => {
     function setup({
       expression,
       startRule = "expression",
+      metadata,
     }: {
       expression: string;
       startRule?: StartRule;
+      metadata?: Metadata;
     }) {
       const query = createQuery();
       const stageIndex = -1;
-      return diagnose({ source: expression, startRule, query, stageIndex });
+      return diagnose({
+        source: expression,
+        startRule,
+        query,
+        stageIndex,
+        metadata,
+      });
     }
 
-    function err(expression: string, startRule: StartRule = "expression") {
-      return setup({ expression, startRule })?.message;
+    function err(
+      expression: string,
+      startRule: StartRule = "expression",
+      metadata?: Metadata,
+    ) {
+      return setup({ expression, startRule, metadata })?.message;
     }
 
     it("should count matching parentheses", () => {
@@ -133,6 +148,21 @@ describe("diagnostics", () => {
         );
         expect(err(`substring("foo", 1, 1)`)).toBeUndefined();
       });
+    });
+
+    it("should reject unsupported function (metabase#39773)", () => {
+      const metadata = createMockMetadata({
+        databases: [
+          createSampleDatabase({
+            id: 1,
+            features: ["left-join"],
+          }),
+        ],
+      });
+
+      expect(err(`percentile(1, 2)`, "expression", metadata)).toEqual(
+        "Unsupported function percentile",
+      );
     });
   });
 
