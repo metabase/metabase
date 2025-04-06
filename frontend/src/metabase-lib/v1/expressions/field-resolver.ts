@@ -5,30 +5,7 @@ import type { Expression } from "metabase-types/api";
 
 import { ResolverError } from "./errors";
 import { parseDimension, parseMetric, parseSegment } from "./identifier";
-import { resolve } from "./resolver";
-import type { StartRule } from "./types";
 import { getNode } from "./utils";
-
-export function resolverPass({
-  query,
-  stageIndex,
-  startRule,
-}: {
-  query: Lib.Query;
-  stageIndex: number;
-  startRule: StartRule;
-}) {
-  return (expression: Expression): Expression =>
-    resolve({
-      expression,
-      type: startRule,
-      fn: fieldResolver({
-        query,
-        stageIndex,
-        startRule,
-      }),
-    });
-}
 
 export type Kind = "field" | "metric" | "segment";
 
