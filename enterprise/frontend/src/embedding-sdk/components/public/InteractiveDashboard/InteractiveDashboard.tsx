@@ -51,6 +51,10 @@ export type InteractiveDashboardProps = {
    * Height of a question component when drilled from the dashboard to a question level.
    */
   drillThroughQuestionHeight?: number;
+
+  /**
+   * Props of a question component when drilled from the dashboard to a question level.
+   */
   drillThroughQuestionProps?: Omit<BaseInteractiveQuestionProps, "questionId"> &
     InteractiveQuestionDefaultViewProps;
 } & SdkDashboardDisplayProps &

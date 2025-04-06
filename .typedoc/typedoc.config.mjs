@@ -5,6 +5,7 @@ const config = {
     "typedoc-plugin-missing-exports",
     "typedoc-plugin-markdown",
     "typedoc-plugin-frontmatter",
+    "typedoc-plugin-mdn-links",
   ],
   entryPoints: ["../resources/embedding-sdk/dist/index.d.ts"],
   router: "structure",
