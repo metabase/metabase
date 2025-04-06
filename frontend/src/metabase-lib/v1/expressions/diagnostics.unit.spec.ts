@@ -116,6 +116,10 @@ describe("diagnostics", () => {
         );
       });
 
+      it("should accept multiple arguments for number operators", () => {
+        expect(err(`1 + 2 + 3 + 4`)).toBeUndefined();
+      });
+
       it.each(["in", "notIn"])(
         "should reject multi-arg function calls without options when there is not enough arguments",
         (fn) => {
