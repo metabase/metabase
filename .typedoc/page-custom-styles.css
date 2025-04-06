@@ -72,6 +72,18 @@
   }
 }
 
+.tsd-toolbar-contents > .title::before {
+  content: "";
+  display: inline-block;
+  background-image: url('/images/logo.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  height: 36px;
+  width: 36px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
 .tsd-kind-icon ~ span,
 .tsd-breadcrumb a,
 .tsd-navigation a,
