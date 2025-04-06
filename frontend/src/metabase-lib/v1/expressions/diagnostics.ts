@@ -80,15 +80,12 @@ export function diagnoseAndCompile({
       }
     }
 
-    const database = getDatabase(query, metadata);
-
     // make a simple check on expression syntax correctness
     const result = compileExpression({
       source,
       startRule,
       query,
       stageIndex,
-      database,
     });
 
     if (!isExpression(result.expression) || result.expressionClause === null) {

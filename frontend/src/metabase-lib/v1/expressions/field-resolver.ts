@@ -1,7 +1,6 @@
 import { c, t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
 import { ResolverError } from "./errors";
@@ -14,18 +13,15 @@ export function resolverPass({
   query,
   stageIndex,
   startRule,
-  database,
 }: {
   query: Lib.Query;
   stageIndex: number;
   startRule: StartRule;
-  database?: Database | null;
 }) {
   return (expression: Expression): Expression =>
     resolve({
       expression,
       type: startRule,
-      database,
       fn: fieldResolver({
         query,
         stageIndex,
