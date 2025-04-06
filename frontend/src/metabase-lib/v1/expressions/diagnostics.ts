@@ -90,7 +90,7 @@ export function diagnoseAndCompile({
       throw error;
     }
 
-    const error = checkCompiledExpression({
+    const error = diagnoseExpression({
       query,
       stageIndex,
       startRule,
@@ -166,7 +166,7 @@ export function countMatchingParentheses(tokens: Token[]) {
   return tokens.reduce(count, 0);
 }
 
-function checkCompiledExpression({
+export function diagnoseExpression({
   query,
   stageIndex,
   startRule,
