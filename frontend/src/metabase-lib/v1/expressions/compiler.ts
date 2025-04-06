@@ -2,18 +2,9 @@ import * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
 import { type ExpressionError, renderError } from "./errors";
-import { resolverPass } from "./field-resolver";
-import {
-  adjustBigIntLiteral,
-  adjustBooleans,
-  adjustCaseOrIf,
-  adjustMultiArgOptions,
-  adjustOffset,
-  adjustOptions,
-  adjustTopLevelLiteral,
-  applyPasses,
-} from "./passes";
+import { fieldResolver } from "./field-resolver";
 import { compile, lexify, parse } from "./pratt";
+import { resolve } from "./resolver";
 import type { StartRule } from "./types";
 
 export type CompileResult =
@@ -45,26 +36,29 @@ export function compileExpression({
     const { tokens } = lexify(source);
     const { root } = parse(tokens, { throwOnError: true });
     const compiled = compile(root);
-    const expression = applyPasses(compiled, [
-      adjustOptions,
-      adjustOffset,
-      adjustMultiArgOptions,
-      adjustBigIntLiteral,
-      adjustTopLevelLiteral,
-      adjustCaseOrIf,
-      shouldResolve &&
-        resolverPass({
-          query,
-          stageIndex,
-          startRule,
-        }),
-      adjustBooleans,
-    ]);
+    const resolved = shouldResolve
+      ? resolve({
+          expression: compiled,
+          type: startRule,
+          fn: fieldResolver({
+            query,
+            stageIndex,
+            startRule,
+          }),
+        })
+      : compiled;
 
-    const expressionClause = Lib.expressionClauseForLegacyExpression(
+    const expressionClause = Lib.isExpressionParts(resolved)
+      ? Lib.expressionClause(resolved.operator, resolved.args, resolved.options)
+      : resolved;
+
+    // TODO: implement these passes previously handled by the resolver
+    // - adjust booleans pass
+
+    const expression = Lib.legacyExpressionForExpressionClause(
       query,
       stageIndex,
-      expression,
+      expressionClause,
     );
 
     return {
