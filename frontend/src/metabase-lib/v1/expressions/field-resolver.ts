@@ -1,7 +1,6 @@
 import { c, t } from "ttag";
 
 import type * as Lib from "metabase-lib";
-import type { Expression } from "metabase-types/api";
 
 import { ResolverError } from "./errors";
 import { parseDimension, parseMetric, parseSegment } from "./identifier";
@@ -17,7 +16,7 @@ export function fieldResolver(options: {
   return function (
     kind: Kind,
     name: string,
-    expression?: Expression,
+    expression?: Lib.ExpressionParts,
   ): Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
