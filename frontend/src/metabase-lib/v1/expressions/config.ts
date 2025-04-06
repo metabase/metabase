@@ -364,38 +364,32 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   // numeric operators
   "*": {
     displayName: "*",
-    tokenName: "Multi",
     type: "number",
     args: ["number", "number"],
   },
   "/": {
     displayName: "/",
-    tokenName: "Div",
     type: "number",
     args: ["number", "number"],
   },
   "-": {
     displayName: "-",
-    tokenName: "Minus",
     type: "number",
     args: ["number", "number"],
   },
   "+": {
     displayName: "+",
-    tokenName: "Plus",
     type: "number",
     args: ["number", "number"],
   },
   // comparison operators
   "=": {
     displayName: "=",
-    tokenName: "Equal",
     type: "boolean",
     args: ["expression", "expression"],
   },
   "!=": {
     displayName: "!=",
-    tokenName: "NotEqual",
     type: "boolean",
     args: ["expression", "expression"],
   },
@@ -414,25 +408,21 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   },
   "<=": {
     displayName: "<=",
-    tokenName: "LessThanEqual",
     type: "boolean",
     args: ["expression", "expression"],
   },
   ">=": {
     displayName: ">=",
-    tokenName: "GreaterThanEqual",
     type: "boolean",
     args: ["expression", "expression"],
   },
   "<": {
     displayName: "<",
-    tokenName: "LessThan",
     type: "boolean",
     args: ["expression", "expression"],
   },
   ">": {
     displayName: ">",
-    tokenName: "GreaterThan",
     type: "boolean",
     args: ["expression", "expression"],
   },

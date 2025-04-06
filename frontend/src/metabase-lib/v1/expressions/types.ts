@@ -54,7 +54,6 @@ export type MBQLClauseFunctionConfig = {
   requiresFeature?: DatabaseFeature;
   hasOptions?: boolean;
   multiple?: boolean;
-  tokenName?: string;
   name?: string;
 
   validator?: (...args: any) => string | undefined;
