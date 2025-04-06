@@ -7,9 +7,7 @@ import type {
 } from "metabase-types/api";
 
 import {
-  COMPARISON_OPERATORS,
   FIELD_MARKERS,
-  LOGICAL_OPERATORS,
   MBQL_CLAUSES,
   NUMBER_OPERATORS,
   getMBQLName,
@@ -80,16 +78,8 @@ export function resolve({
   }
 
   let operandType: ExpressionType | null = null;
-  if (LOGICAL_OPERATORS.has(op as OPERATOR)) {
-    operandType = "boolean";
-  } else if (NUMBER_OPERATORS.has(op as OPERATOR)) {
+  if (NUMBER_OPERATORS.has(op as OPERATOR)) {
     operandType = type === "aggregation" ? type : "number";
-  } else if (op === "true" || op === "false") {
-    operandType = "expression";
-  } else if (COMPARISON_OPERATORS.has(op as OPERATOR)) {
-    operandType = "expression";
-  } else if (op === "concat") {
-    operandType = "expression";
   } else if (op === "coalesce") {
     operandType = type;
   } else if (isCaseOrIfOperator(op)) {
