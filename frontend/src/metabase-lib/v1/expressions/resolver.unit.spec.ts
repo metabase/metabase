@@ -1,6 +1,4 @@
-import { createMockMetadata } from "__support__/metadata";
 import type { CallOptions, CaseOptions, Expression } from "metabase-types/api";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { resolve } from "./resolver";
 
@@ -367,24 +365,5 @@ describe("resolve", () => {
 
   it("should reject unknown function", () => {
     expect(() => resolve({ expression: ["foobar", 42] })).toThrow();
-  });
-
-  it("should reject unsupported function (metabase#39773)", () => {
-    const database = createMockMetadata({
-      databases: [
-        createSampleDatabase({
-          id: 1,
-          features: ["left-join"],
-        }),
-      ],
-    }).database(1);
-
-    expect(() =>
-      resolve({
-        expression: ["percentile", 1, 2],
-        type: "aggregation",
-        database,
-      }),
-    ).toThrow("Unsupported function percentile");
   });
 });

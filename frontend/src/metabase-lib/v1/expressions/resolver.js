@@ -44,15 +44,9 @@ function findMBQL(op) {
  *   expression: import("./pratt").Expr
  *   type?: string
  *   fn?: ?(kind: string, name: string, node: import("./pratt").Node) => void
- *   database?: Database | null
  * }} options
  */
-export function resolve({
-  expression,
-  type = "expression",
-  fn = undefined,
-  database = undefined,
-}) {
+export function resolve({ expression, type = "expression", fn = undefined }) {
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
 
@@ -107,13 +101,13 @@ export function resolve({
       }
 
       const resolvedPairs = pairs.map(([tst, val]) => [
-        resolve({ expression: tst, type: "boolean", fn, database }),
-        resolve({ expression: val, type, fn, database }),
+        resolve({ expression: tst, type: "boolean", fn }),
+        resolve({ expression: val, type, fn }),
       ]);
 
       if (options && "default" in options) {
         const resolvedOptions = {
-          default: resolve({ expression: options.default, type, fn, database }),
+          default: resolve({ expression: options.default, type, fn }),
         };
         return [op, resolvedPairs, resolvedOptions];
       }
@@ -125,7 +119,7 @@ export function resolve({
       return [
         op,
         ...operands.map((operand) =>
-          resolve({ expression: operand, type: operandType, fn, database }),
+          resolve({ expression: operand, type: operandType, fn }),
         ),
       ];
     }
@@ -133,14 +127,6 @@ export function resolve({
     const clause = findMBQL(op);
     if (!clause) {
       throw new ResolverError(t`Unknown function ${op}`, expression.node);
-    }
-
-    if (
-      clause.requiresFeature &&
-      database &&
-      !database.hasFeature(clause.requiresFeature)
-    ) {
-      throw new ResolverError(t`Unsupported function ${op}`, expression.node);
     }
 
     const { displayName, args, multiple, hasOptions, validator } = clause;
@@ -188,7 +174,7 @@ export function resolve({
         // as-is, optional object for e.g. ends-with, time-interval, etc
         return operand;
       }
-      return resolve({ expression: operand, type: args[i], fn, database });
+      return resolve({ expression: operand, type: args[i], fn });
     });
     return [op, ...resolvedOperands];
   }

@@ -7,7 +7,7 @@ import type { Expression } from "metabase-types/api";
 import { type CompileResult, compileExpression } from "./compiler";
 import { MBQL_CLAUSES, getMBQLName } from "./config";
 import { DiagnosticError, type ExpressionError, renderError } from "./errors";
-import { isExpression } from "./matchers";
+import { isCallExpression, isExpression } from "./matchers";
 import {
   CALL,
   FIELD,
@@ -20,6 +20,7 @@ import {
 } from "./pratt";
 import type { StartRule } from "./types";
 import { getDatabase, getExpressionMode } from "./utils";
+import { visit } from "./visitor";
 
 export function diagnose(options: {
   source: string;
@@ -96,6 +97,7 @@ export function diagnoseAndCompile({
       startRule,
       expression: result.expression,
       expressionIndex,
+      metadata,
     });
     if (error) {
       throw error;
@@ -172,12 +174,14 @@ export function diagnoseExpression({
   startRule,
   expression,
   expressionIndex,
+  metadata,
 }: {
   query: Lib.Query;
   stageIndex: number;
   startRule: string;
   expression: Expression;
   expressionIndex?: number;
+  metadata?: Metadata;
 }): ExpressionError | null {
   const error = Lib.diagnoseExpression(
     query,
@@ -186,6 +190,12 @@ export function diagnoseExpression({
     expression,
     expressionIndex,
   );
+
+  const checkers = [checkFunctionSupport];
+
+  for (const checker of checkers) {
+    checker({ expression, query, metadata });
+  }
 
   if (error) {
     throw new DiagnosticError(error.message, {
@@ -241,4 +251,45 @@ function checkMissingCommasInArgumentList(
   }
 
   return null;
+}
+
+function checkFunctionSupport({
+  query,
+  expression,
+  metadata,
+}: {
+  expression: Expression;
+  query: Lib.Query;
+  metadata?: Metadata;
+}) {
+  if (!metadata) {
+    return;
+  }
+
+  const database = getDatabase(query, metadata);
+  if (!database) {
+    return;
+  }
+
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+    const name = node[0];
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      return;
+    }
+    if (!database?.hasFeature(clause.requiresFeature)) {
+      throw new DiagnosticError(
+        t`Unsupported function ${name}`,
+        getNode(expression),
+      );
+    }
+  });
+}
+
+function getNode(expression: Expression): Token | undefined {
+  // @ts-expect-error: we don't know if node was set on expression
+  return expression.node?.token;
 }
