@@ -9,6 +9,7 @@ import { COMPARISON_OPERATORS, MBQL_CLAUSES, getMBQLName } from "./config";
 import { DiagnosticError, type ExpressionError, renderError } from "./errors";
 import {
   isCallExpression,
+  isCaseOrIfOperator,
   isExpression,
   isFunction,
   isOperator,
@@ -189,6 +190,7 @@ export function diagnoseExpression({
     checkArgValidator,
     checkArgCount,
     checkComparisonOperatorArgs,
+    checkCaseOrIfArgCount,
   ];
   for (const checker of checkers) {
     checker({ expression, query, metadata });
@@ -380,6 +382,27 @@ function checkComparisonOperatorArgs({
     if (typeof firstOperand === "number") {
       throw new DiagnosticError(
         t`Expecting field but found ${firstOperand}`,
+        getToken(expression),
+      );
+    }
+  });
+}
+
+function checkCaseOrIfArgCount({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+    const [op] = node;
+    if (!isCaseOrIfOperator(op)) {
+      return;
+    }
+
+    const pairs = node[1] as [Expression, Expression][];
+
+    if (pairs.length < 1) {
+      throw new DiagnosticError(
+        t`${op.toUpperCase()} expects 2 arguments or more`,
         getToken(expression),
       );
     }

@@ -250,11 +250,6 @@ describe("resolve", () => {
       expect(expr(["coalesce", ["case", [[A, B]]]]).dimensions).toEqual(["B"]);
     });
 
-    it("should reject a CASE expression with only one argument", () => {
-      // CASE(X)
-      expect(() => expr(["case", [], { default: Y }])).toThrow();
-    });
-
     it("should accept a CASE expression with complex arguments", () => {
       // CASE(X, 0.5*Y, A-B)
       const def: CaseOptions = { default: ["-", A, B] };

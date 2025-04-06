@@ -83,7 +83,7 @@ describe("diagnostics", () => {
     });
 
     it("should show the correct number of CASE arguments in a custom expression", () => {
-      expect(setup({ expression: "CASE([Price]>0)" })?.message).toEqual(
+      expect(setup({ expression: "CASE([Total] > 0)" })?.message).toEqual(
         "CASE expects 2 arguments or more",
       );
     });
@@ -206,6 +206,12 @@ describe("diagnostics", () => {
       expect(err(`"abc" <= [Product → Category]`)).toBeUndefined();
       expect(err(`"abc" <= lower([Product → Category])`)).toBeUndefined();
       expect(err(`[Product → Category] = true`)).toBeUndefined();
+    });
+
+    it("should reject a CASE expression with only one argument", () => {
+      expect(err("case([Total] > 0)")).toEqual(
+        "CASE expects 2 arguments or more",
+      );
     });
   });
 

@@ -69,12 +69,6 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
     operandType = type;
   } else if (isCaseOrIfOperator(op)) {
     const [pairs, options] = operands;
-    if (pairs.length < 1) {
-      throw new ResolverError(
-        t`${op.toUpperCase()} expects 2 arguments or more`,
-        expression.node,
-      );
-    }
 
     const resolvedPairs = pairs.map(([tst, val]) => [
       resolve({ expression: tst, type: "boolean", fn }),
