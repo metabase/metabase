@@ -389,6 +389,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: "*",
     type: "number",
     args: ["number", "number"],
+    multiple: true,
     argType(_index, _args, type) {
       if (type === "aggregation") {
         return "aggregation";
@@ -400,6 +401,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: "/",
     type: "number",
     args: ["number", "number"],
+    multiple: true,
     argType(_index, _args, type) {
       if (type === "aggregation") {
         return "aggregation";
@@ -411,6 +413,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: "-",
     type: "number",
     args: ["number", "number"],
+    multiple: true,
     argType(_index, _args, type) {
       if (type === "aggregation") {
         return "aggregation";
@@ -422,6 +425,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: "+",
     type: "number",
     args: ["number", "number"],
+    multiple: true,
     argType(_index, _args, type) {
       if (type === "aggregation") {
         return "aggregation";

@@ -345,6 +345,15 @@ describe("resolve", () => {
         expression: expect.any(Array),
       });
     });
+
+    it("should resolve all arguments of repeated number operators", () => {
+      expect(expr(["+", A, B, C])).toEqual({
+        dimensions: ["A", "B", "C"],
+        segments: [],
+        metrics: [],
+        expression: expect.any(Array),
+      });
+    });
   });
 
   describe("logic operators", () => {
