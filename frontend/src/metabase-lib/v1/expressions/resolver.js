@@ -4,14 +4,13 @@ import {
   COMPARISON_OPERATORS,
   LOGICAL_OPERATORS,
   MBQL_CLAUSES,
+  NUMBER_OPERATORS,
   getMBQLName,
 } from "./config";
 import { ResolverError } from "./errors";
 import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
-import { OPERATOR as OP } from "./tokenizer";
 
 const FIELD_MARKERS = ["dimension", "segment", "metric"];
-const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
 
 const MAP_TYPE = {
   boolean: "segment",
@@ -53,7 +52,7 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
     let operandType = null;
     if (LOGICAL_OPERATORS.has(op)) {
       operandType = "boolean";
-    } else if (NUMBER_OPS.includes(op)) {
+    } else if (NUMBER_OPERATORS.has(op)) {
       operandType = type === "aggregation" ? type : "number";
     } else if (op === "true" || op === "false") {
       operandType = "expression";

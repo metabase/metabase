@@ -633,7 +633,12 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "coalesce",
 ]);
 
-const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
+export const NUMBER_OPERATORS = new Set([
+  OPERATOR.Plus,
+  OPERATOR.Minus,
+  OPERATOR.Star,
+  OPERATOR.Slash,
+]);
 
 // operators in which order of operands doesn't matter
 export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
@@ -659,7 +664,7 @@ export const FUNCTIONS = new Set([
 ]);
 
 export const OPERATORS = new Set([
-  ...EXPRESSION_OPERATORS,
+  ...NUMBER_OPERATORS,
   ...COMPARISON_OPERATORS,
   ...LOGICAL_OPERATORS,
 ]);
