@@ -576,7 +576,7 @@ export function getExpressionName(mbqlName: string) {
 }
 export function getMBQLName(expressionName: string) {
   // case-insensitive
-  return EXPRESSION_TO_MBQL_NAME.get(expressionName.toLowerCase());
+  return EXPRESSION_TO_MBQL_NAME.get(expressionName.trim().toLowerCase());
 }
 
 export const AGGREGATION_FUNCTIONS = new Set([

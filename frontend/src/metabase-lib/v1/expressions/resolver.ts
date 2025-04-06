@@ -54,7 +54,7 @@ export function resolve({
     } catch (err) {
       // A second chance when field is not found:
       // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
-      const func = getMBQLName(name.trim().toLowerCase());
+      const func = getMBQLName(name);
       if (func && MBQL_CLAUSES[func].args.length === 0) {
         return [func];
       }
