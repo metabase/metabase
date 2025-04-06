@@ -125,6 +125,15 @@ describe("diagnostics", () => {
         },
       );
     });
+
+    describe("arg validation", () => {
+      it("should not allow substring with index=0", () => {
+        expect(err(`substring("foo", 0, 1)`)).toEqual(
+          "Expected positive integer but found 0",
+        );
+        expect(err(`substring("foo", 1, 1)`)).toBeUndefined();
+      });
+    });
   });
 
   describe("diagnoseAndCompile", () => {
