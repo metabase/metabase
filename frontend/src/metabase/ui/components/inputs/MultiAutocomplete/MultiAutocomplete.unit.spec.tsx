@@ -34,6 +34,12 @@ type SetupOpts = {
   "aria-label"?: string;
 };
 
+const OPTIONS: ComboboxItem[] = [
+  { value: "1", label: "One" },
+  { value: "2", label: "Two" },
+  { value: "3", label: "Three" },
+  { value: "4", label: "Four" },
+];
 const PLACEHOLDER = "Enter some text";
 
 function setup({
@@ -59,10 +65,27 @@ function setup({
   return { onChange, onSearchChange };
 }
 
+function getInput() {
+  return screen.getByRole("combobox");
+}
+
+function getOptionList() {
+  return screen.getByRole("list");
+}
+
 describe("MultiAutocomplete", () => {
   it("should allow to enter multiple values", async () => {
     const { onChange } = setup();
-    await userEvent.type(screen.getByPlaceholderText(PLACEHOLDER), "a,ab,abc");
+    await userEvent.type(getInput(), "a,ab,abc");
     expect(onChange).toHaveBeenLastCalledWith(["a", "ab", "abc"]);
+  });
+
+  it("should open the dropdown when started editing a value", async () => {
+    setup({ initialValues: ["1"], options: OPTIONS });
+    await userEvent.click(screen.getByText("One"));
+    expect(getInput()).toHaveValue("One");
+    expect(getOptionList()).toBeInTheDocument();
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(screen.queryByText("Two")).not.toBeInTheDocument();
   });
 });

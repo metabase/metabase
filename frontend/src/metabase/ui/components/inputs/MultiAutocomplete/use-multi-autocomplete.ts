@@ -5,6 +5,7 @@ import {
   type ClipboardEvent,
   type KeyboardEvent,
   type MouseEvent,
+  useMemo,
   useState,
 } from "react";
 
@@ -45,6 +46,7 @@ export function useMultiAutocomplete({
   const [fieldValue, setFieldValue] = useState("");
   const [_fieldSelection, setFieldSelection] = useState<FieldSelection>();
   const fieldSelection = _fieldSelection ?? { index: values.length, length: 0 };
+  const optionByValue = useMemo(() => getOptionByValue(options), [options]);
 
   const setFieldState = ({ fieldValue, fieldSelection }: FieldState) => {
     setFieldValue(fieldValue);
@@ -80,13 +82,13 @@ export function useMultiAutocomplete({
       fieldSelection,
     );
     setFieldState(newFieldState);
+    combobox.openDropdown();
   };
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newFieldValue = event.target.value;
     const newParsedValues = parseCsv(newFieldValue);
     handleFieldInput(newFieldValue, newParsedValues);
-    combobox.openDropdown();
   };
 
   const handleFieldPaste = (event: ClipboardEvent<HTMLInputElement>) => {
@@ -95,7 +97,6 @@ export function useMultiAutocomplete({
     if (newParsedValues.length > 1) {
       event.preventDefault();
       handleFieldInput(newFieldValue, newParsedValues);
-      combobox.openDropdown();
     }
   };
 
@@ -129,8 +130,11 @@ export function useMultiAutocomplete({
   };
 
   const handlePillClick = (valueIndex: number) => {
+    const newValue = values[valueIndex];
+    const newFieldValue = optionByValue[newValue]?.label ?? newValue;
+
     setFieldState({
-      fieldValue: escapeCsv(values[valueIndex]),
+      fieldValue: escapeCsv(newFieldValue),
       fieldSelection: { index: valueIndex, length: 1 },
     });
   };
@@ -180,7 +184,7 @@ export function useMultiAutocomplete({
 
   return {
     combobox,
-    pillValues: getPillValues(values, options, fieldSelection),
+    pillValues: getPillValues(values, optionByValue, fieldSelection),
     filteredOptions: getFilteredOptions(values, options, fieldSelection),
     fieldValue,
     handleFieldChange,
@@ -196,15 +200,18 @@ export function useMultiAutocomplete({
   };
 }
 
+function getOptionByValue(options: ComboboxItem[]) {
+  return Object.fromEntries(options.map((option) => [option.value, option]));
+}
+
 function getPillValues(
   values: string[],
-  options: ComboboxItem[],
+  optionByValue: Record<string, ComboboxItem>,
   fieldSelection: FieldSelection,
 ) {
-  const labelByValue = Object.fromEntries(
-    options.map((option) => [option.value, option.label]),
+  const mappedValues = values.map(
+    (value) => optionByValue[value]?.label ?? value,
   );
-  const mappedValues = values.map((value) => labelByValue[value] ?? value);
   return getValuesAfterChange(
     mappedValues,
     [FIELD_PLACEHOLDER],
