@@ -325,4 +325,27 @@ describe("resolve", () => {
       ]);
     });
   });
+
+  describe("number operators", () => {
+    it("should resolve number operators correctly", () => {
+      expect(expr(["+", A, B])).toEqual({
+        dimensions: ["A", "B"],
+        segments: [],
+        metrics: [],
+        expression: expect.any(Array),
+      });
+      expect(filter(["+", A, B])).toEqual({
+        dimensions: ["A", "B"],
+        segments: [],
+        metrics: [],
+        expression: expect.any(Array),
+      });
+      expect(aggregation(["+", A, B])).toEqual({
+        dimensions: [],
+        segments: [],
+        metrics: ["A", "B"],
+        expression: expect.any(Array),
+      });
+    });
+  });
 });
