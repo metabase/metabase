@@ -1,12 +1,16 @@
 import { t } from "ttag";
 
-import { COMPARISON_OPERATORS, MBQL_CLAUSES, getMBQLName } from "./config";
+import {
+  COMPARISON_OPERATORS,
+  LOGICAL_OPERATORS,
+  MBQL_CLAUSES,
+  getMBQLName,
+} from "./config";
 import { ResolverError } from "./errors";
 import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
 import { OPERATOR as OP } from "./tokenizer";
 
 const FIELD_MARKERS = ["dimension", "segment", "metric"];
-export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
 const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
 
 const MAP_TYPE = {
@@ -47,7 +51,7 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
     }
 
     let operandType = null;
-    if (LOGICAL_OPS.includes(op)) {
+    if (LOGICAL_OPERATORS.has(op)) {
       operandType = "boolean";
     } else if (NUMBER_OPS.includes(op)) {
       operandType = type === "aggregation" ? type : "number";

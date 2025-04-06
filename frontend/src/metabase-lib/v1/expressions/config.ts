@@ -647,9 +647,11 @@ export const COMPARISON_OPERATORS = new Set([
   OPERATOR.LessThanEqual,
 ]);
 
-const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
-const LOGICAL_AND_OPERATOR = new Set(["and"]);
-const LOGICAL_OR_OPERATOR = new Set(["or"]);
+export const LOGICAL_OPERATORS = new Set([
+  OPERATOR.Not,
+  OPERATOR.And,
+  OPERATOR.Or,
+]);
 
 export const FUNCTIONS = new Set([
   ...EXPRESSION_FUNCTIONS,
@@ -659,7 +661,5 @@ export const FUNCTIONS = new Set([
 export const OPERATORS = new Set([
   ...EXPRESSION_OPERATORS,
   ...COMPARISON_OPERATORS,
-  ...BOOLEAN_UNARY_OPERATORS,
-  ...LOGICAL_AND_OPERATOR,
-  ...LOGICAL_OR_OPERATOR,
+  ...LOGICAL_OPERATORS,
 ]);
