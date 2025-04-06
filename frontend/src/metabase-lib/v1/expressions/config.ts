@@ -668,3 +668,10 @@ export const OPERATORS = new Set([
   ...COMPARISON_OPERATORS,
   ...LOGICAL_OPERATORS,
 ]);
+
+export const FIELD_MARKERS = new Set([
+  "dimension",
+  "field",
+  "segment",
+  "metric",
+]);

@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import {
   COMPARISON_OPERATORS,
+  FIELD_MARKERS,
   LOGICAL_OPERATORS,
   MBQL_CLAUSES,
   NUMBER_OPERATORS,
@@ -9,8 +10,6 @@ import {
 } from "./config";
 import { ResolverError } from "./errors";
 import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
-
-const FIELD_MARKERS = ["dimension", "segment", "metric"];
 
 const MAP_TYPE = {
   boolean: "segment",
