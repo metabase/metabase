@@ -221,6 +221,12 @@ describe("diagnostics", () => {
         "CASE expects 2 arguments or more",
       );
     });
+
+    it("should accept top-level literals", () => {
+      expect(err(`1`)).toBeUndefined();
+      expect(err(`"foo"`)).toBeUndefined();
+      expect(err(`true`)).toBeUndefined();
+    });
   });
 
   describe("diagnoseAndCompile", () => {

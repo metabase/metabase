@@ -272,7 +272,7 @@ function checkKnownFunctions({ expression }: { expression: Expression }) {
     }
 
     const name = node[0];
-    if (FIELD_MARKERS.has(name)) {
+    if (FIELD_MARKERS.has(name) || name === "value") {
       return;
     }
 
