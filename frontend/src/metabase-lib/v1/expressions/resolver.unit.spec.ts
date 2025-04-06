@@ -45,9 +45,11 @@ describe("resolve", () => {
   const X: Expression = ["segment", "X"];
   const Y: Expression = ["dimension", "Y"];
 
-  describe("for filters", () => {
-    const filter = (expr: Expression) => collect(expr, "boolean");
+  const expr = (expr: Expression) => collect(expr, "expression");
+  const filter = (expr: Expression) => collect(expr, "boolean");
+  const aggregation = (expr: Expression) => collect(expr, "aggregation");
 
+  describe("for filters", () => {
     it("should resolve segments correctly", () => {
       expect(filter(A).segments).toEqual(["A"]);
       expect(filter(["not", B]).segments).toEqual(["B"]);
@@ -83,8 +85,6 @@ describe("resolve", () => {
   });
 
   describe("for expressions (for custom columns)", () => {
-    const expr = (expr: Expression) => collect(expr, "expression");
-
     it("should resolve segments correctly", () => {
       expect(expr(["trim", A]).segments).toEqual([]);
       expect(expr(["round", B]).segments).toEqual([]);
@@ -110,16 +110,45 @@ describe("resolve", () => {
       expect(() => expr(["get-year", ["now"]])).not.toThrow();
     });
 
-    it("should accept COALESCE for number", () => {
-      expect(() => expr(["round", ["coalesce", 0]])).not.toThrow();
-    });
+    describe("coalesce", () => {
+      it("should resolve coalesce correctly", () => {
+        expect(expr(["coalesce", A])).toEqual({
+          dimensions: ["A"],
+          segments: [],
+          metrics: [],
+          expression: expect.any(Array),
+        });
+        expect(filter(["coalesce", A])).toEqual({
+          dimensions: [],
+          segments: ["A"],
+          metrics: [],
+          expression: expect.any(Array),
+        });
+        expect(aggregation(["coalesce", A])).toEqual({
+          dimensions: [],
+          segments: [],
+          metrics: ["A"],
+          expression: expect.any(Array),
+        });
+        expect(aggregation(["trim", ["coalesce", A]])).toEqual({
+          dimensions: ["A"],
+          segments: [],
+          metrics: [],
+          expression: expect.any(Array),
+        });
+      });
 
-    it("should accept COALESCE for string", () => {
-      expect(() => expr(["trim", ["coalesce", "B"]])).not.toThrow();
-    });
+      it("should accept COALESCE for number", () => {
+        expect(() => expr(["round", ["coalesce", 0]])).not.toThrow();
+      });
 
-    it("should honor CONCAT's implicit casting", () => {
-      expect(() => expr(["concat", ["coalesce", "B", 1]])).not.toThrow();
+      it("should accept COALESCE for string", () => {
+        expect(() => expr(["trim", ["coalesce", "B"]])).not.toThrow();
+      });
+
+      it("should honor CONCAT's implicit casting", () => {
+        expect(() => expr(["concat", ["coalesce", "B", 1]])).not.toThrow();
+      });
     });
 
     describe("datetime functions", () => {
@@ -169,8 +198,6 @@ describe("resolve", () => {
   });
 
   describe("for aggregations", () => {
-    const aggregation = (expr: Expression) => collect(expr, "aggregation");
-
     it("should resolve dimensions correctly", () => {
       expect(aggregation(A).dimensions).toEqual([]);
       expect(aggregation(["cum-sum", B]).dimensions).toEqual(["B"]);
