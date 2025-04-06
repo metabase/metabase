@@ -6,6 +6,7 @@ import {
   diagnoseAndCompile,
 } from "./diagnostics";
 import { lexify } from "./pratt";
+import type { StartRule } from "./types";
 
 describe("diagnostics", () => {
   describe("diagnose", () => {
@@ -14,11 +15,15 @@ describe("diagnostics", () => {
       startRule = "expression",
     }: {
       expression: string;
-      startRule?: "boolean" | "expression" | "aggregation";
+      startRule?: StartRule;
     }) {
       const query = createQuery();
       const stageIndex = -1;
       return diagnose({ source: expression, startRule, query, stageIndex });
+    }
+
+    function err(expression: string, startRule: StartRule = "expression") {
+      return setup({ expression, startRule })?.message;
     }
 
     it("should count matching parentheses", () => {
@@ -77,6 +82,47 @@ describe("diagnostics", () => {
     it("should catch missing comma in function arguments", () => {
       expect(setup({ expression: 'concat([Tax] "test")' })?.message).toEqual(
         'Expecting operator but got "test" instead',
+      );
+    });
+
+    describe("arg count validation", () => {
+      it.each(["in", "notIn"])(
+        "should reject multi-arg function calls without options when there is not enough arguments",
+        (fn) => {
+          expect(err(`${fn}()`)).toEqual(
+            `Function ${fn} expects at least 2 arguments`,
+          );
+          expect(err(`${fn}("foo")`)).toEqual(
+            `Function ${fn} expects at least 2 arguments`,
+          );
+          expect(err(`${fn}("foo", "bar")`)).toBeUndefined();
+          expect(err(`${fn}("foo", "bar", "baz")`)).toBeUndefined();
+        },
+      );
+
+      it.each(["contains", "doesNotContain", "startsWith", "endsWith"])(
+        "should reject when there is not enough arguments for %s",
+        (fn) => {
+          expect(err(`${fn}()`)).toEqual(
+            `Function ${fn} expects at least 2 arguments`,
+          );
+          expect(err(`${fn}("foo")`)).toEqual(
+            `Function ${fn} expects at least 2 arguments`,
+          );
+
+          // TODO?
+          // expect(
+          //   setup({ expression: `${fn}("foo", "case-insensitive")` })?.message,
+          // ).toEqual(`Function ${fn} expects at least 2 arguments`);
+
+          expect(
+            err(`${fn}("foo", "bar", "case-insensitive")`),
+          ).toBeUndefined();
+
+          expect(
+            err(`${fn}("foo", "bar", "baz", "case-insensitive")`),
+          ).toBeUndefined();
+        },
       );
     });
   });
