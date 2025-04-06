@@ -57,13 +57,6 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
       operandType = "expression";
     } else if (COMPARISON_OPERATORS.has(op)) {
       operandType = "expression";
-      const [firstOperand] = operands;
-      if (typeof firstOperand === "number" && !Array.isArray(firstOperand)) {
-        throw new ResolverError(
-          t`Expecting field but found ${firstOperand}`,
-          expression.node,
-        );
-      }
     } else if (op === "concat") {
       operandType = "expression";
     } else if (op === "coalesce") {

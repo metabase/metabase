@@ -5,12 +5,13 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
 import { type CompileResult, compileExpression } from "./compiler";
-import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { COMPARISON_OPERATORS, MBQL_CLAUSES, getMBQLName } from "./config";
 import { DiagnosticError, type ExpressionError, renderError } from "./errors";
 import {
   isCallExpression,
   isExpression,
   isFunction,
+  isOperator,
   isOptionsObject,
 } from "./matchers";
 import {
@@ -23,6 +24,7 @@ import {
   type Token,
   lexify,
 } from "./pratt";
+import type { OPERATOR } from "./tokenizer";
 import type { StartRule } from "./types";
 import { getDatabase, getExpressionMode } from "./utils";
 import { visit } from "./visitor";
@@ -193,7 +195,12 @@ export function diagnoseExpression({
     expressionIndex,
   );
 
-  const checkers = [checkFunctionSupport, checkArgValidator, checkArgCount];
+  const checkers = [
+    checkFunctionSupport,
+    checkArgValidator,
+    checkArgCount,
+    checkComparisonOperatorArgs,
+  ];
 
   for (const checker of checkers) {
     checker({ expression, query, metadata });
@@ -357,6 +364,29 @@ function checkArgCount({ expression }: { expression: Expression }) {
           getToken(expression),
         );
       }
+    }
+  });
+}
+
+function checkComparisonOperatorArgs({
+  expression,
+}: {
+  expression: Expression;
+}) {
+  visit(expression, (node) => {
+    if (!isOperator(node)) {
+      return;
+    }
+    const [name, ...operands] = node;
+    if (!COMPARISON_OPERATORS.has(name as OPERATOR)) {
+      return;
+    }
+    const [firstOperand] = operands;
+    if (typeof firstOperand === "number") {
+      throw new DiagnosticError(
+        t`Expecting field but found ${firstOperand}`,
+        getToken(expression),
+      );
     }
   });
 }

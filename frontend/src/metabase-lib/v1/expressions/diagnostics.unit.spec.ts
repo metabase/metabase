@@ -185,6 +185,28 @@ describe("diagnostics", () => {
         "Unsupported function percentile",
       );
     });
+
+    it("should reject comparison operator with non-field operand", () => {
+      expect(err("1 < 2")).toEqual("Expecting field but found 1");
+      expect(err("1 <= 2")).toEqual("Expecting field but found 1");
+      expect(err("1 > 2")).toEqual("Expecting field but found 1");
+      expect(err("1 >= 2")).toEqual("Expecting field but found 1");
+      expect(err("1 = 2")).toEqual("Expecting field but found 1");
+      expect(err("1 != 2")).toEqual("Expecting field but found 1");
+
+      expect(err("[Tax] < 2")).toBeUndefined();
+      expect(err("[Tax] <= 2")).toBeUndefined();
+      expect(err("[Tax] <= 2")).toBeUndefined();
+      expect(err("[Tax] >= 2")).toBeUndefined();
+      expect(err("[Tax] = 2")).toBeUndefined();
+      expect(err("[Tax] != 2")).toBeUndefined();
+
+      expect(err(`[Product → Category] < "abc"`)).toBeUndefined();
+      expect(err(`lower([Product → Category]) < "abc"`)).toBeUndefined();
+      expect(err(`"abc" <= [Product → Category]`)).toBeUndefined();
+      expect(err(`"abc" <= lower([Product → Category])`)).toBeUndefined();
+      expect(err(`[Product → Category] = true`)).toBeUndefined();
+    });
   });
 
   describe("diagnoseAndCompile", () => {

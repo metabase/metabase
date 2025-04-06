@@ -72,32 +72,6 @@ describe("resolve", () => {
       expect(filter(["or", P, [">", Q, 3]]).dimensions).toEqual(["Q"]);
     });
 
-    it("should allow a comparison (lexicographically) on strings", () => {
-      // P <= "abc"
-      expect(() => filter(["<=", P, "abc"])).not.toThrow();
-    });
-
-    it("should allow a comparison (lexicographically) on functions returning string", () => {
-      // Lower([A]) <= "P"
-      expect(() => filter(["<=", ["lower", A], "P"])).not.toThrow();
-    });
-
-    // backward-compatibility
-    it("should reject a number literal on the left-hand side of a comparison", () => {
-      // 0 < [A]
-      expect(() => filter(["<", 0, A])).toThrow();
-    });
-
-    it("should still allow a string literal on the left-hand side of a comparison", () => {
-      // "XYZ" < [B]
-      expect(() => filter(["<", "XYZ", B])).not.toThrow();
-    });
-
-    it("should allow a boolean literal", () => {
-      // [B] = True
-      expect(() => filter(["=", B, true])).not.toThrow();
-    });
-
     it("should work on functions with optional flag", () => {
       const flag = { "include-current": true };
       expect(() => filter(["time-interval", A, 3, "day", flag])).not.toThrow();
