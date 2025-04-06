@@ -129,13 +129,7 @@ export function resolve({ expression, type = "expression", fn = undefined }) {
       throw new ResolverError(t`Unknown function ${op}`, expression.node);
     }
 
-    const { displayName, args, multiple, hasOptions, validator } = clause;
-    if (validator) {
-      const validationError = validator(...operands);
-      if (validationError) {
-        throw new ResolverError(validationError, expression.node);
-      }
-    }
+    const { displayName, args, multiple, hasOptions } = clause;
     if (multiple) {
       const argCount = operands.filter((arg) => !isOptionsObject(arg)).length;
       const minArgCount = args.length;

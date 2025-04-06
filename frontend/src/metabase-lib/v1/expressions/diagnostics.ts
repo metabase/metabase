@@ -191,7 +191,7 @@ export function diagnoseExpression({
     expressionIndex,
   );
 
-  const checkers = [checkFunctionSupport];
+  const checkers = [checkFunctionSupport, checkArgValidator];
 
   for (const checker of checkers) {
     checker({ expression, query, metadata });
@@ -275,7 +275,7 @@ function checkFunctionSupport({
     if (!isCallExpression(node)) {
       return;
     }
-    const name = node[0];
+    const [name] = node;
     const clause = MBQL_CLAUSES[name];
     if (!clause) {
       return;
@@ -283,13 +283,33 @@ function checkFunctionSupport({
     if (!database?.hasFeature(clause.requiresFeature)) {
       throw new DiagnosticError(
         t`Unsupported function ${name}`,
-        getNode(expression),
+        getToken(expression),
       );
     }
   });
 }
 
-function getNode(expression: Expression): Token | undefined {
+function checkArgValidator({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+    const [name, ...operands] = node;
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      return;
+    }
+
+    if (clause.validator) {
+      const validationError = clause.validator(...operands);
+      if (validationError) {
+        throw new DiagnosticError(validationError, getToken(expression));
+      }
+    }
+  });
+}
+
+function getToken(expression: Expression): Token | undefined {
   // @ts-expect-error: we don't know if node was set on expression
   return expression.node?.token;
 }

@@ -157,14 +157,6 @@ describe("resolve", () => {
     });
 
     describe("arg validation", () => {
-      it("should not allow substring with index=0", () => {
-        expect(() => expr(["substring", "foo", 0, 1])).toThrow();
-      });
-
-      it("should allow substring with index=1", () => {
-        expect(() => expr(["substring", "foo", 1, 1])).not.toThrow();
-      });
-
       it.each(["in", "not-in"])(
         "should reject multi-arg function calls without options when there is not enough arguments",
         (tag) => {
