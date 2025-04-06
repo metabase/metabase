@@ -331,6 +331,9 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `coalesce`,
     type: "expression",
     args: ["expression", "expression"],
+    argType(_index, type) {
+      return type;
+    },
     multiple: true,
   },
   case: {
@@ -366,21 +369,45 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: "*",
     type: "number",
     args: ["number", "number"],
+    argType(_index, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
   },
   "/": {
     displayName: "/",
     type: "number",
     args: ["number", "number"],
+    argType(_index, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
   },
   "-": {
     displayName: "-",
     type: "number",
     args: ["number", "number"],
+    argType(_index, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
   },
   "+": {
     displayName: "+",
     type: "number",
     args: ["number", "number"],
+    argType(_index, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
   },
   // comparison operators
   "=": {

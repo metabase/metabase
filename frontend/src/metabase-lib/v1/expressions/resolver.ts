@@ -6,12 +6,7 @@ import type {
   ExpressionOperand,
 } from "metabase-types/api";
 
-import {
-  FIELD_MARKERS,
-  MBQL_CLAUSES,
-  NUMBER_OPERATORS,
-  getMBQLName,
-} from "./config";
+import { FIELD_MARKERS, MBQL_CLAUSES, getMBQLName } from "./config";
 import { ResolverError } from "./errors";
 import {
   isCallExpression,
@@ -20,7 +15,6 @@ import {
   isValue,
 } from "./matchers";
 import type { Node } from "./pratt";
-import type { OPERATOR } from "./tokenizer";
 import type { ExpressionType } from "./types";
 
 const MAP_TYPE = {
@@ -77,12 +71,7 @@ export function resolve({
     return [kind, name];
   }
 
-  let operandType: ExpressionType | null = null;
-  if (NUMBER_OPERATORS.has(op as OPERATOR)) {
-    operandType = type === "aggregation" ? type : "number";
-  } else if (op === "coalesce") {
-    operandType = type;
-  } else if (isCaseOrIfOperator(op)) {
+  if (isCaseOrIfOperator(op)) {
     const pairs = operands[0] as [Expression, Expression][];
     const options = operands[1] as CaseOptions | undefined;
 
@@ -101,15 +90,6 @@ export function resolve({
     return [op, resolvedPairs];
   }
 
-  if (operandType != null) {
-    return [
-      op,
-      ...operands.map((operand) =>
-        resolve({ expression: operand, type: operandType, fn }),
-      ),
-    ];
-  }
-
   const clause = MBQL_CLAUSES[op];
   if (!clause) {
     throw new ResolverError(t`Unknown function ${op}`, getNode(expression));
@@ -117,15 +97,20 @@ export function resolve({
 
   return [
     op,
-    ...operands.map((operand, i) => {
+    ...operands.map((operand, index) => {
       if (
-        (i >= clause.args.length && !clause.multiple) ||
+        (index >= clause.args.length && !clause.multiple) ||
         isOptionsObject(operand)
       ) {
         // as-is, optional object for e.g. ends-with, time-interval, etc
         return operand;
       }
-      return resolve({ expression: operand, type: clause.args[i], fn });
+
+      return resolve({
+        expression: operand,
+        type: clause.argType?.(index, type) ?? clause.args[index],
+        fn,
+      });
     }),
   ];
 }
