@@ -100,7 +100,7 @@ describe("old recursive-parser tests", () => {
   });
 
   it("should flatten unary expressions", () => {
-    expect(expr("--5")).toEqual(["-", -5]);
+    expect(expr("--5")).toEqual(["value", 5, { base_type: "type/Integer" }]);
     expect(expr("- 6")).toEqual(["value", -6, { base_type: "type/Integer" }]);
     expect(expr("+-7")).toEqual(["value", -7, { base_type: "type/Integer" }]);
     expect(expr("sqrt(-1)")).toEqual(["sqrt", -1]);
