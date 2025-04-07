@@ -39,6 +39,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [pangloss.transducers :as transducers]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -870,7 +871,7 @@
   (let [schema-names (set schema-names)
         table-names (set table-names)
         position-counter (volatile! {})
-        positioner (map (fn [{table-name :table_name schema-name :schema-name :as row}]
+        positioner (map (fn [{:keys [schema-name table-name] :as row}]
                           (let [idx [schema-name table-name]
                                 pos (inc (get @position-counter idx -1))]
                             (vswap! position-counter assoc idx pos)
@@ -889,7 +890,8 @@
                        (map (fn [col]
                               (let [lookup ((juxt :table-schema :table-name :name) col)
                                     pk? (contains? pks lookup)]
-                                (assoc col :pk? pk?)))))]
+                                (assoc col :pk? pk?))))
+                       (transducers/sorted-by (juxt :table-schema :table-name :database-position)))]
     (cond->> normalize-row
       ;; Add pre-filter to schemas and tables (schemas are checked first)
       (seq table-names)
