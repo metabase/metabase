@@ -49,7 +49,7 @@
                card-id
                ;; don't want to update metadata when we use a Card as a source Card.
                (not (:qp/source-card-id query)))
-      ;; Don't update the metadata if it hasn't changed
+      ;; Only update changed metadata
       (when (and metadata (not= (standardize-metadata metadata)
                                 (:stored-metadata (:info query))))
         (t2/update! :model/Card card-id {:result_metadata metadata
