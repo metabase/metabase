@@ -1,4 +1,5 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
+import {createWatermark} from "metabase/auth/Watermark";
 
 import Dashboards from "metabase/entities/dashboards";
 import Users from "metabase/entities/users";
@@ -11,7 +12,15 @@ export const refreshCurrentUser = createAsyncThunk(
   "metabase/user/REFRESH_CURRENT_USER",
   async (_, { fulfillWithValue }) => {
     try {
-      return UserApi.current();
+      const current = UserApi.current();
+      const newCurrent = await UserApi.current();
+      // eslint-disable-next-line no-console
+      console.log("newCurrent",newCurrent)
+      localStorage.setItem("current",JSON.stringify(newCurrent))
+      const commonName = newCurrent.common_name;
+      createWatermark(commonName).create()
+      return current;
+      // return UserApi.current();
     } catch (e) {
       return fulfillWithValue(null);
     }

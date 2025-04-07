@@ -1,9 +1,9 @@
-import { t } from "ttag";
+import {t} from "ttag";
 
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
-import type { Dashboard } from "metabase-types/api";
+import {DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID} from "metabase/dashboard/constants";
+import type {Dashboard} from "metabase-types/api";
 
-import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
+import {SAVING_DOM_IMAGE_CLASS} from "./save-chart-image";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
 
@@ -145,6 +145,85 @@ const HEADER_MARGIN_BOTTOM = 12;
 const PARAMETERS_MARGIN_BOTTOM = 12;
 const PAGE_PADDING = 16;
 
+function generateWatermarkImage(text, opts = {}) {
+  const {
+    width = 300,
+    height = 200,
+    fontSize = 24,
+    color = 'rgba(0,0,0,0.1)',
+    angle = -30
+  } = opts;
+
+  const canvas = document.getElementById('wmCanvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = color;
+  ctx.font = `${fontSize}px sans-serif`;
+  ctx.translate(width / 2, height / 2);
+  ctx.rotate((Math.PI / 180) * angle);
+  ctx.textAlign = 'center';
+  ctx.fillText(text, 0, 0);
+
+  return canvas.toDataURL('image/png');
+}
+
+function addImageWatermark(doc, imgData, opts = {}) {
+  const {
+    xSpacing = 200,
+    ySpacing = 200,
+    imgWidth = 150,
+    imgHeight = 100
+  } = opts;
+
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+
+  for (let x = -imgWidth; x < pageW + imgWidth; x += xSpacing) {
+    for (let y = -imgHeight; y < pageH + imgHeight; y += ySpacing) {
+      doc.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight, undefined, 'FAST');
+    }
+  }
+}
+
+function addTextWatermark(doc, text, options = {}) {
+  const {
+    fontSize = 12,
+    color = "#CCCCCC",
+    opacity = 0.3,
+    angle = -45,
+    xSpacing = 80,
+    ySpacing = 80
+  } = options;
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // 设置字体样式
+  doc.setFontSize(fontSize);
+  doc.setTextColor(color);
+  // 透明度（0-1）
+  doc.setGState(new doc.GState({opacity}));
+
+  // 计算文字宽度（用于横向间距调整）
+  // const textWidth = doc.getTextWidth(text);
+  const textWidth = text.length * fontSize / 1.4
+
+  // 循环铺满页面
+  for (let x = -pageWidth; x < pageWidth * 2; x += textWidth) {
+    for (let y = -pageHeight; y < pageHeight * 2; y += ySpacing) {
+      doc.text(text, x, y, {
+        angle: angle
+      });
+    }
+  }
+
+  // 恢复透明度
+  doc.setGState(new doc.GState({opacity: 1}));
+}
+
 export const saveDashboardPdf = async (
   selector: string,
   dashboardName: string,
@@ -216,11 +295,16 @@ export const saveDashboardPdf = async (
     minPageHeight,
     verticalOffset,
   );
-
+  const currentStr = localStorage.getItem("current") ?? "";
+  const current = JSON.parse(currentStr);
+  const watermarkText = `${current?.common_name ?? ''} ${new Date().toLocaleString()}`;
+  const wmImg = generateWatermarkImage(watermarkText);
   const pdf = new jspdf({
     unit: "px",
     hotfixes: ["px_scaling"],
   });
+  pdf.addFont('SourceHanSans-Normal.ttf', 'SourceHanSans-Normal', 'normal');
+  pdf.setFont('SourceHanSans-Normal');
 
   // Remove initial empty page
   pdf.deletePage(1);
@@ -279,10 +363,22 @@ export const saveDashboardPdf = async (
         sourceHeight,
       );
     }
+    // // 3. 绘制文字水印（在内容上层）
+    // // 保存图形状态
+    pdf.saveGraphicsState();
+    addImageWatermark(pdf, wmImg, {
+      xSpacing: 250,
+      ySpacing: 250,
+      imgWidth: 200,
+      imgHeight: 120
+    });
+    // addTextWatermark(pdf, watermarkText)// // 3. 绘制文字水印（在内容上层）
+
+    // 恢复图形状态
+    pdf.restoreGraphicsState();
 
     prevBreak = pageBreak;
   });
-
   pdf.save(fileName);
 };
 

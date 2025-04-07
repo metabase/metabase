@@ -391,6 +391,7 @@ function Dashboard(props: DashboardProps) {
       error={error}
       noWrapper={noLoaderWrapper}
     >
+      <canvas id="wmCanvas" width="300" height="200" style={{display:"none"}}></canvas>
       {() => {
         if (!dashboard) {
           return null;
