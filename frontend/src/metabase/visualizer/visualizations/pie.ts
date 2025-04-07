@@ -13,8 +13,13 @@ import {
   isMetric,
   isNumeric,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import type { Dataset, DatasetColumn } from "metabase-types/api";
+import type {
+  VisualizerDataSource,
+  VisualizerHistoryItem,
+} from "metabase-types/store/visualizer";
+
+import { removeColumnfromStateUnlessUsedElseWhere } from "./utils";
 
 export const pieDropHandler = (
   state: VisualizerHistoryItem,
@@ -109,5 +114,57 @@ export function removeColumnFromPieChart(
 
   if (state.settings["pie.metric"] === columnName) {
     delete state.settings["pie.metric"];
+  }
+
+  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+    "pie.metric",
+    "pie.dimension",
+  ]);
+}
+
+export function combineWithPieChart(
+  state: VisualizerHistoryItem,
+  { data }: Dataset,
+  dataSource: VisualizerDataSource,
+) {
+  const metrics = data.cols.filter(col => isMetric(col));
+  const dimensions = data.cols.filter(
+    col => isDimension(col) && !isMetric(col),
+  );
+
+  if (!state.settings["pie.metric"] && metrics.length === 1) {
+    const [metric] = metrics;
+    const columnRef = createVisualizerColumnReference(
+      dataSource,
+      metric,
+      extractReferencedColumns(state.columnValuesMapping),
+    );
+    const column = copyColumn(
+      columnRef.name,
+      metric,
+      dataSource.name,
+      state.columns,
+    );
+    state.columns.push(column);
+    state.columnValuesMapping[column.name] = [columnRef];
+    addColumnToPieChart(state, column);
+  }
+
+  if (!state.settings["pie.dimension"] && dimensions.length === 1) {
+    const [dimension] = dimensions;
+    const columnRef = createVisualizerColumnReference(
+      dataSource,
+      dimension,
+      extractReferencedColumns(state.columnValuesMapping),
+    );
+    const column = copyColumn(
+      columnRef.name,
+      dimension,
+      dataSource.name,
+      state.columns,
+    );
+    state.columns.push(column);
+    state.columnValuesMapping[column.name] = [columnRef];
+    addColumnToPieChart(state, column);
   }
 }

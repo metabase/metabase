@@ -14,7 +14,6 @@ import {
   getColumnVizSettings,
   isCartesianChart,
 } from "metabase/visualizations";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardId,
@@ -33,7 +32,6 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import {
-  canCombineCard,
   copyColumn,
   createDataSource,
   createVisualizerColumnReference,
@@ -46,21 +44,22 @@ import {
 import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
 import {
   addColumnToCartesianChart,
-  addDimensionColumnToCartesianChart,
-  addMetricColumnToCartesianChart,
   cartesianDropHandler,
+  combineWithCartesianChart,
+  isCompatibleWithCartesianChart,
   maybeImportDimensionsFromOtherDataSources,
+  removeBubbleSizeFromCartesianChart,
   removeColumnFromCartesianChart,
 } from "./visualizations/cartesian";
 import {
   addColumnToFunnel,
-  addScalarToFunnel,
-  canCombineCardWithFunnel,
+  combineWithFunnel,
   funnelDropHandler,
   removeColumnFromFunnel,
 } from "./visualizations/funnel";
 import {
   addColumnToPieChart,
+  combineWithPieChart,
   pieDropHandler,
   removeColumnFromPieChart,
 } from "./visualizations/pie";
@@ -71,7 +70,7 @@ const initialCommonState: VisualizerCommonState = {
   loadingDataSources: {},
   loadingDatasets: {},
   expandedDataSources: {},
-  isFullscreen: false,
+  isDataSidebarOpen: true,
   isVizSettingsSidebarOpen: false,
   error: null,
   draggedItem: null,
@@ -229,25 +228,25 @@ const visualizerHistoryItemSlice = createSlice({
     addColumnInner: (
       state,
       action: PayloadAction<{
+        column: DatasetColumn;
         dataSource: VisualizerDataSource;
         dataset: Dataset;
-        column: DatasetColumn;
         dataSourceMap: Record<VisualizerDataSourceId, VisualizerDataSource>;
         datasetMap: Record<VisualizerDataSourceId, Dataset>;
-        card?: Card;
       }>,
     ) => {
       const {
+        column: originalColumn,
         dataSource,
         dataset,
-        column: originalColumn,
         dataSourceMap,
         datasetMap,
-        card,
       } = action.payload;
+
       if (!state.display) {
         return;
       }
+
       const columnRef = createVisualizerColumnReference(
         dataSource,
         originalColumn,
@@ -259,27 +258,32 @@ const visualizerHistoryItemSlice = createSlice({
         dataSource.name,
         state.columns,
       );
+
       if (state.display === "funnel") {
-        addColumnToFunnel(state, column, columnRef, dataSource, dataset, card);
+        addColumnToFunnel(state, column, columnRef, dataset, dataSource);
         return;
       }
+
       state.columns.push(column);
       state.columnValuesMapping[column.name] = [columnRef];
+
       if (isCartesianChart(state.display)) {
-        addColumnToCartesianChart(state, column, columnRef, dataSource, card);
+        addColumnToCartesianChart(
+          state,
+          column,
+          columnRef,
+          dataset,
+          dataSource,
+        );
 
         const dimension = state.settings["graph.dimensions"] ?? [];
         const isDimension = dimension.includes(column.name);
 
         if (isDimension && column.id) {
-          const datasets = card
-            ? _.omit(datasetMap, `card:${card.id}`)
-            : datasetMap;
-
           maybeImportDimensionsFromOtherDataSources(
             state,
-            column.id,
-            datasets,
+            column,
+            _.omit(datasetMap, dataSource.id),
             dataSourceMap,
           );
         }
@@ -287,22 +291,26 @@ const visualizerHistoryItemSlice = createSlice({
         addColumnToPieChart(state, column);
       }
     },
-    removeColumn: (state, action: PayloadAction<{ name: string }>) => {
-      const { name } = action.payload;
+    removeColumn: (
+      state,
+      action: PayloadAction<{ name: string; well?: "bubble" }>,
+    ) => {
+      const { name, well } = action.payload;
       if (!state.display) {
         return;
       }
 
       if (isCartesianChart(state.display)) {
-        removeColumnFromCartesianChart(state, name);
+        if (well === "bubble") {
+          removeBubbleSizeFromCartesianChart(state, name);
+        } else {
+          removeColumnFromCartesianChart(state, name);
+        }
       } else if (state.display === "funnel") {
         removeColumnFromFunnel(state, name);
       } else if (state.display === "pie") {
         removeColumnFromPieChart(state, name);
       }
-
-      state.columns = state.columns.filter(col => col.name !== name);
-      delete state.columnValuesMapping[name];
     },
     handleDropInner: (
       state,
@@ -340,7 +348,14 @@ const visualizerHistoryItemSlice = createSlice({
       })
       .addCase(addDataSource.fulfilled, (state, action) => {
         const { card, dataset } = action.payload;
-        Object.assign(state, maybeCombineDataset(state, card, dataset));
+        if (
+          !state.display ||
+          (card.display === state.display && state.columns.length === 0)
+        ) {
+          return getInitialStateForCardDataSource(card, dataset.data.cols);
+        }
+        const dataSource = createDataSource("card", card.id, card.name);
+        Object.assign(state, maybeCombineDataset(state, dataSource, dataset));
       })
       .addCase(removeDataSource, (state, action) => {
         const source = action.payload;
@@ -401,18 +416,17 @@ const visualizerSlice = createSlice({
       state.expandedDataSources[action.payload] =
         !state.expandedDataSources[action.payload];
     },
-    toggleFullscreenMode: state => {
-      state.isFullscreen = !state.isFullscreen;
-    },
-    turnOffFullscreenMode: state => {
-      state.isFullscreen = false;
-      state.isVizSettingsSidebarOpen = false;
+    toggleDataSideBar: state => {
+      state.isDataSidebarOpen = !state.isDataSidebarOpen;
     },
     toggleVizSettingsSidebar: state => {
       state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
     },
     closeVizSettingsSidebar: state => {
       state.isVizSettingsSidebarOpen = false;
+    },
+    closeDataSidebar: state => {
+      state.isDataSidebarOpen = false;
     },
     undo: state => {
       const canUndo = state.past.length > 0;
@@ -541,7 +555,6 @@ const visualizerSlice = createSlice({
         const { cards, datasets } = state;
         const { column, dataSource } = action.payload;
 
-        const card = cards.find(card => card.id === dataSource.sourceId);
         const dataset = datasets[dataSource.id];
 
         const dataSourceMap = Object.fromEntries(
@@ -554,12 +567,11 @@ const visualizerSlice = createSlice({
         maybeUpdateHistory(
           state,
           addColumnInner({
-            dataSource,
-            dataset,
             column,
+            dataset,
+            dataSource,
             dataSourceMap,
             datasetMap: datasets,
-            card,
           }),
         );
       })
@@ -581,150 +593,27 @@ function maybeUpdateHistory(state: VisualizerState, action: Action) {
 
 function maybeCombineDataset(
   currentState: VisualizerHistoryItem,
-  card: Card,
+  dataSource: VisualizerDataSource,
   dataset: Dataset,
 ) {
   const state = { ...currentState };
-  const source = createDataSource("card", card.id, card.name);
-
-  if (
-    !state.display ||
-    (card.display === state.display && state.columns.length === 0)
-  ) {
-    return getInitialStateForCardDataSource(card, dataset.data.cols);
+  if (!state.display) {
+    return;
   }
 
   if (
-    ["area", "bar", "line"].includes(state.display) &&
-    canCombineCard(state.display, state.columns, state.settings, card)
+    isCartesianChart(state.display) &&
+    isCompatibleWithCartesianChart(state, dataset)
   ) {
-    const metrics = card.visualization_settings["graph.metrics"] ?? [];
-    const dimensions = card.visualization_settings["graph.dimensions"] ?? [];
-    const columns = dataset.data.cols.filter(
-      col => metrics.includes(col.name) || dimensions.includes(col.name),
-    );
-    columns.forEach(column => {
-      const columnRef = createVisualizerColumnReference(
-        source,
-        column,
-        extractReferencedColumns(state.columnValuesMapping),
-      );
-      if (metrics.includes(column.name)) {
-        addMetricColumnToCartesianChart(state, column, columnRef, source);
-      } else {
-        addDimensionColumnToCartesianChart(state, column, columnRef, source);
-      }
-    });
-    return state;
+    combineWithCartesianChart(state, dataset, dataSource);
   }
 
   if (state.display === "pie") {
-    const metrics = dataset.data.cols.filter(col => isMetric(col));
-    const dimensions = dataset.data.cols.filter(
-      col => isDimension(col) && !isMetric(col),
-    );
-
-    if (!state.settings["pie.metric"] && metrics.length === 1) {
-      const [metric] = metrics;
-      const columnRef = createVisualizerColumnReference(
-        source,
-        metric,
-        extractReferencedColumns(state.columnValuesMapping),
-      );
-      const column = copyColumn(
-        columnRef.name,
-        metric,
-        source.name,
-        state.columns,
-      );
-      state.columns.push(column);
-      state.columnValuesMapping[column.name] = [columnRef];
-      addColumnToPieChart(state, column);
-    }
-
-    if (!state.settings["pie.dimension"] && dimensions.length === 1) {
-      const [dimension] = dimensions;
-      const columnRef = createVisualizerColumnReference(
-        source,
-        dimension,
-        extractReferencedColumns(state.columnValuesMapping),
-      );
-      const column = copyColumn(
-        columnRef.name,
-        dimension,
-        source.name,
-        state.columns,
-      );
-      state.columns.push(column);
-      state.columnValuesMapping[column.name] = [columnRef];
-      addColumnToPieChart(state, column);
-    }
+    combineWithPieChart(state, dataset, dataSource);
   }
 
   if (state.display === "funnel") {
-    const isEmpty =
-      !state.settings["funnel.metric"] && !state.settings["funnel.dimension"];
-    const isMadeOfScalars = state.columnValuesMapping.METRIC?.length >= 1;
-
-    if (
-      (isEmpty || isMadeOfScalars) &&
-      canCombineCardWithFunnel(card, dataset)
-    ) {
-      const [column] = dataset.data.cols;
-      addScalarToFunnel(state, source, column);
-      return state;
-    }
-
-    if (!isMadeOfScalars) {
-      const metrics = dataset.data.cols.filter(col => isMetric(col));
-      const dimensions = dataset.data.cols.filter(
-        col => isDimension(col) && !isMetric(col),
-      );
-
-      if (!state.settings["funnel.metric"] && metrics.length === 1) {
-        const dataSource = createDataSource("card", card.id, card.name);
-        const [metric] = metrics;
-        const columnRef = createVisualizerColumnReference(
-          dataSource,
-          metric,
-          extractReferencedColumns(state.columnValuesMapping),
-        );
-        const newColumn = copyColumn(
-          columnRef.name,
-          metric,
-          dataSource.name,
-          state.columns,
-        );
-        state.columns = [...state.columns, newColumn];
-        state.columnValuesMapping = {
-          ...state.columnValuesMapping,
-          [newColumn.name]: [columnRef],
-        };
-        state.settings["funnel.metric"] = columnRef.name;
-      }
-
-      if (!state.settings["funnel.dimension"] && dimensions.length === 1) {
-        const dataSource = createDataSource("card", card.id, card.name);
-        const [dimension] = dimensions;
-        const columnRef = createVisualizerColumnReference(
-          dataSource,
-          dimension,
-          extractReferencedColumns(state.columnValuesMapping),
-        );
-        const newColumn = copyColumn(
-          columnRef.name,
-          dimension,
-          dataSource.name,
-          state.columns,
-        );
-        state.columns = [...state.columns, newColumn];
-        state.columnValuesMapping = {
-          ...state.columnValuesMapping,
-          [newColumn.name]: [columnRef],
-        };
-        state.settings["funnel.dimension"] = columnRef.name;
-      }
-    }
+    combineWithFunnel(state, dataset, dataSource);
   }
 
   return state;
@@ -738,10 +627,10 @@ export const { setTitle, updateSettings, removeColumn, setDisplay } =
 export const {
   setDraggedItem,
   toggleDataSourceExpanded,
-  toggleFullscreenMode,
-  turnOffFullscreenMode,
+  toggleDataSideBar,
   toggleVizSettingsSidebar,
   closeVizSettingsSidebar,
+  closeDataSidebar,
   undo,
   redo,
   resetVisualizer,

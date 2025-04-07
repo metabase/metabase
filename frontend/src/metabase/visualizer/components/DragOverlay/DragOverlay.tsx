@@ -5,7 +5,7 @@ import {
 } from "metabase/visualizer/utils";
 import type { DraggedItem } from "metabase-types/store/visualizer";
 
-import { ColumnListItem } from "../DataManager";
+import { ColumnsListItem } from "../DataImporter/ColumnsList/ColumnsListItem";
 import { WellItem } from "../VisualizationCanvas/WellItem";
 
 interface DragOverlayProps {
@@ -15,7 +15,7 @@ interface DragOverlayProps {
 export function DragOverlay({ item }: DragOverlayProps) {
   if (isDraggedColumnItem(item)) {
     return (
-      <ColumnListItem highlightedForDrag column={item.data.current.column} />
+      <ColumnsListItem highlightedForDrag column={item.data.current.column} />
     );
   }
   if (isDraggedWellItem(item)) {

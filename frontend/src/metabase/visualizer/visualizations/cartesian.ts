@@ -8,21 +8,27 @@ import {
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
-  canCombineCard,
   copyColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
   isDraggedColumnItem,
   shouldSplitVisualizerSeries,
 } from "metabase/visualizer/utils";
-import { isCategory, isDate } from "metabase-lib/v1/types/utils/isa";
-import type { Card, Dataset, DatasetColumn } from "metabase-types/api";
+import {
+  isCategory,
+  isDate,
+  isDimension,
+  isMetric,
+} from "metabase-lib/v1/types/utils/isa";
+import type { Dataset, DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
+
+import { removeColumnfromStateUnlessUsedElseWhere } from "./utils";
 
 export const cartesianDropHandler = (
   state: VisualizerHistoryItem,
@@ -60,14 +66,12 @@ export const cartesianDropHandler = (
 
     if (isSuitableColumn(column)) {
       addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
-      if (column.id) {
-        maybeImportDimensionsFromOtherDataSources(
-          state,
-          column.id,
-          _.omit(datasetMap, dataSource.id),
-          dataSourceMap,
-        );
-      }
+      maybeImportDimensionsFromOtherDataSources(
+        state,
+        column,
+        _.omit(datasetMap, dataSource.id),
+        dataSourceMap,
+      );
     }
   }
 
@@ -184,8 +188,8 @@ export function addColumnToCartesianChart(
   state: VisualizerHistoryItem,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
+  dataset: Dataset,
   dataSource: VisualizerDataSource,
-  card?: Card,
 ) {
   if (
     !state.display ||
@@ -216,33 +220,48 @@ export function addColumnToCartesianChart(
     }
   }
 
-  if (!card) {
-    return;
-  }
-
   const ownMetrics = state.settings["graph.metrics"] ?? [];
   const ownDimensions = state.settings["graph.dimensions"] ?? [];
 
   if (
     ownDimensions.length === 0 ||
-    canCombineCard(state.display, state.columns, state.settings, card)
+    isCompatibleWithCartesianChart(state, dataset)
   ) {
-    const metrics = card.visualization_settings["graph.metrics"] ?? [];
-    const dimensions = card.visualization_settings["graph.dimensions"] ?? [];
-
-    const isMetric = metrics.includes(columnRef.originalName);
-    const isDimension = dimensions.includes(columnRef.originalName);
-
-    if (isMetric) {
-      state.settings["graph.metrics"] = [...ownMetrics, column.name];
-    }
-
-    if (isDimension) {
+    if (isDimension(column)) {
       state.settings["graph.dimensions"] = [...ownDimensions, column.name];
+    } else if (isMetric(column)) {
+      state.settings["graph.metrics"] = [...ownMetrics, column.name];
     }
   }
 }
 
+/**
+ * Removes the bubble size from the state, for scatter charts.
+ *
+ * @param state the current state (will be mutated)
+ * @param columnName the column to remove
+ */
+export function removeBubbleSizeFromCartesianChart(
+  state: VisualizerHistoryItem,
+  columnName: string,
+) {
+  if (state.settings["scatter.bubble"] === columnName) {
+    delete state.settings["scatter.bubble"];
+  }
+
+  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+    "graph.metrics",
+    "graph.dimensions",
+    "scatter.bubble",
+  ]);
+}
+
+/**
+ * Removes a column from the state, for cartesian charts.
+ *
+ * @param state the current state (will be mutated)
+ * @param columnName the column to remove
+ */
 export function removeColumnFromCartesianChart(
   state: VisualizerHistoryItem,
   columnName: string,
@@ -275,8 +294,14 @@ export function removeColumnFromCartesianChart(
   }
 
   if (state.settings["scatter.bubble"] === columnName) {
-    delete state.settings["scatter.bubble"];
+    removeBubbleSizeFromCartesianChart(state, columnName);
   }
+
+  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+    "graph.metrics",
+    "graph.dimensions",
+    "scatter.bubble",
+  ]);
 }
 
 function removeDimensionFromMultiSeriesChart(
@@ -318,34 +343,99 @@ function removeDimensionFromMultiSeriesChart(
 
 export function maybeImportDimensionsFromOtherDataSources(
   state: VisualizerHistoryItem,
-  dimensionId: number,
+  newDimension: DatasetColumn,
   datasetMap: Record<string, Dataset>,
   dataSourceMap: Record<string, VisualizerDataSource>,
 ) {
   Object.entries(datasetMap).forEach(([dataSourceId, dataset]) => {
     const dataSource = dataSourceMap[dataSourceId];
-    const matchingDimension = dataset.data.cols.find(
-      col => col.id === dimensionId,
-    );
+
+    let matchingDimension: DatasetColumn | undefined = undefined;
+    if (isDate(newDimension)) {
+      const dimensions = dataset.data.cols.filter(
+        col => isDimension(col) && !isMetric(col),
+      );
+      matchingDimension = dimensions.find(isDate);
+    } else if (newDimension.id) {
+      matchingDimension = dataset.data.cols.find(
+        col => col.id === newDimension.id,
+      );
+    }
+
     if (matchingDimension) {
       const columnRef = createVisualizerColumnReference(
         dataSource,
         matchingDimension,
         extractReferencedColumns(state.columnValuesMapping),
       );
-      const column = copyColumn(
-        columnRef.name,
+      addDimensionColumnToCartesianChart(
+        state,
         matchingDimension,
-        dataSource.name,
-        state.columns,
+        columnRef,
+        dataSource,
       );
-
-      state.columns.push(column);
-      state.columnValuesMapping[column.name] = [columnRef];
-      if (!state.settings["graph.dimensions"]) {
-        state.settings["graph.dimensions"] = [];
-      }
-      state.settings["graph.dimensions"].push(column.name);
     }
+  });
+}
+
+export function isCompatibleWithCartesianChart(
+  state: VisualizerHistoryItem,
+  { data }: Dataset,
+) {
+  const ownDimensions = state.settings["graph.dimensions"] ?? [];
+  const ownDimensionColumns = state.columns.filter(col =>
+    ownDimensions.includes(col.name),
+  );
+  const [ownTimeDimensions, ownOtherDimensions] = _.partition(
+    ownDimensionColumns,
+    col => isDate(col),
+  );
+
+  const dimensionColumns = data.cols.filter(
+    col => isDimension(col) && !isMetric(col),
+  );
+  const [timeDimensions, otherDimensions] = _.partition(dimensionColumns, col =>
+    isDate(col),
+  );
+
+  let isCompatible = false;
+  if (ownTimeDimensions.length > 0) {
+    isCompatible = timeDimensions.some(col => isDate(col));
+  }
+  if (ownOtherDimensions.length > 0) {
+    isCompatible = otherDimensions.every(col =>
+      ownOtherDimensions.some(ownCol => ownCol.id === col.id),
+    );
+  }
+
+  return isCompatible;
+}
+
+export function combineWithCartesianChart(
+  state: VisualizerHistoryItem,
+  { data }: Dataset,
+  dataSource: VisualizerDataSource,
+) {
+  const metrics = data.cols.filter(col => isMetric(col));
+  const dimensions = data.cols.filter(
+    col => isDimension(col) && !isMetric(col),
+  );
+
+  metrics.forEach(column => {
+    const columnRef = createVisualizerColumnReference(
+      dataSource,
+      column,
+      extractReferencedColumns(state.columnValuesMapping),
+    );
+    addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+  });
+
+  dimensions.forEach(column => {
+    const columnRef = createVisualizerColumnReference(
+      dataSource,
+      column,
+      extractReferencedColumns(state.columnValuesMapping),
+    );
+    addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
   });
 }

@@ -21,10 +21,10 @@ import {
 import type { DatasetColumn } from "metabase-types/api";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
-import { ColumnListItem, type ColumnListItemProps } from "./ColumnListItem";
-import S from "./DatasetList.module.css";
+import S from "./ColumnsList.module.css";
+import { ColumnsListItem, type ColumnsListItemProps } from "./ColumnsListItem";
 
-export const DatasetList = () => {
+export const ColumnsList = () => {
   const dataSources = useSelector(getDataSources);
   const datasets = useSelector(getDatasets);
   const loadingDatasets = useSelector(getLoadingDatasets);
@@ -123,7 +123,7 @@ export const DatasetList = () => {
   );
 };
 
-type DraggableColumnListItemProps = ColumnListItemProps & {
+type DraggableColumnListItemProps = ColumnsListItemProps & {
   isSelected: boolean;
   dataSource: VisualizerDataSource;
 };
@@ -144,7 +144,7 @@ function DraggableColumnListItem({
   });
 
   return (
-    <ColumnListItem
+    <ColumnsListItem
       {...props}
       {...attributes}
       {...listeners}

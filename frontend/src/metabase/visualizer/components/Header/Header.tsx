@@ -13,7 +13,7 @@ import {
 } from "metabase/visualizer/selectors";
 import {
   setTitle,
-  toggleFullscreenMode,
+  toggleDataSideBar,
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
@@ -57,7 +57,7 @@ export function Header({
 
   return (
     <Flex p="md" pb="sm" align="center" className={className}>
-      <ActionIcon onClick={() => dispatch(toggleFullscreenMode())}>
+      <ActionIcon onClick={() => dispatch(toggleDataSideBar())}>
         <Icon name="sidebar_open" />
       </ActionIcon>
       <EditableText
