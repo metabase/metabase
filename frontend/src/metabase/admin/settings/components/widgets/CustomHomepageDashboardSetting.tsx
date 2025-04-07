@@ -50,12 +50,12 @@ export function CustomHomepageDashboardSetting() {
     await updateSetting({
       key: "custom-homepage",
       value: newValue,
+      toast: false,
     });
     if (newValue === false) {
       await updateSetting({
         key: "custom-homepage-dashboard",
         value: null,
-        toast: false,
       });
     }
 

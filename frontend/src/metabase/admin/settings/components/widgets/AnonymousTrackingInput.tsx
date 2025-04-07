@@ -15,12 +15,16 @@ export function AnonymousTrackingInput() {
 
   const handleChange = async (newValue: boolean) => {
     if (value) {
+      // if we're changing this getting turned off, we need to track it before it's changed
       trackTrackingPermissionChanged(newValue);
     }
     await updateSetting({
       key: "anon-tracking-enabled",
       value: newValue,
     });
+    if (newValue) {
+      trackTrackingPermissionChanged(newValue);
+    }
   };
 
   return (
