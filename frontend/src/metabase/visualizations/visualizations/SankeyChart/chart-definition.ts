@@ -209,6 +209,7 @@ export const SANKEY_CHART_DEFINITION = {
       );
     }
   },
+  hasEmptyState: true,
   settings: {
     ...SETTINGS_DEFINITIONS,
   } as any as VisualizationSettingsDefinitions,

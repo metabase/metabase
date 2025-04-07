@@ -5,7 +5,8 @@ import {
   isBooleanLiteral,
   isCaseOrIf,
   isCaseOrIfOperator,
-  isNumberLiteral,
+  isFloatLiteral,
+  isIntegerLiteral,
   isOptionsObject,
   isStringLiteral,
 } from "./matchers";
@@ -218,12 +219,14 @@ export const adjustBigIntLiteral: CompilerPass = (tree) =>
   });
 
 export const adjustTopLevelLiteral: CompilerPass = (tree) => {
-  if (
-    isStringLiteral(tree) ||
-    isNumberLiteral(tree) ||
-    isBooleanLiteral(tree)
-  ) {
-    return ["value", tree, null];
+  if (isStringLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Text" }];
+  } else if (isBooleanLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Boolean" }];
+  } else if (isIntegerLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Integer" }];
+  } else if (isFloatLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Float" }];
   } else {
     return tree;
   }
