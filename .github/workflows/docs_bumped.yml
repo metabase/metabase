@@ -39,4 +39,6 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: token ${TOKEN}" \
             https://api.github.com/repos/metabase/docs.metabase.github.io/slurp_branches/dispatches \
-            -d "{\"event_type\": \"trigger-workflow\", \"client_payload\": {\"branch\": \"$BRANCH_NAME\"}}"
+            -d "{\"event_type\": \"trigger-workflow\",
+                 \"ref\": \"$BRANCH_NAME\"
+                 \"client_payload\": {\"branch\": \"$BRANCH_NAME\"}}"
