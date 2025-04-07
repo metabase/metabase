@@ -10,32 +10,42 @@
 (defmulti event-schema
   "Get the Malli schema we should use for events of `topic`. By default, this looks in our registry for a schema
   matching the event topic name; if it fails to find one, it falls back to `:map`."
-  (fn [topic _event-info]
-    topic))
+  {:arglists '([topic event-info])}
+  (fn [topic _event-info] topic))
 
 (defmethod event-schema :default
   [topic _event-info]
   (or (mr/registered-schema topic)
       :map))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defn with-hydrate
-  "Given a malli entry schema of a map, return a new entry schema with an additional option
-  to hydrate information when sending system event notifications.
+(defn hydrated-schemas
+  "Returns a pair of schemas that can be used to hydrate a schema and its hydrated schema.
 
-    (events.notification/hydrate! [:map
-                                    (-> [:user_id :int] (with-hydrate :user [:model/User :email]))]
-                                  {:user_id 1})
+    (#'metabase.events.notification/hydrate!
+       (into [:map]
+             (hydrated-schemas
+              [:user_id pos-int?]
+              :user
+              [:model/User :email]
+              [:user [:map {:closed true}
+                      [:email         ms/Email]]]))
+       {:user_id 3})
     ;; => {:user_id 1
            :user    {:email \"ngoc@metabase.com\"}}"
-  [entry-schema k model]
+  [entry-schema k model hydrated-schema]
   (assert (#{2 3} (count entry-schema)) "entry-schema must have 2 or 3 elements")
-  (let [[entry-key option schema] (if (= 2 (count entry-schema))
-                                    [(first entry-schema) {} (second entry-schema)]
-                                    entry-schema)]
-    [entry-key (assoc option :hydrate {:key   k
-                                       :model model})
-     schema]))
+  (let [merge-options (fn [entry-schema new-options]
+                        (if (= 2 (count entry-schema))
+                          (let [[k s] entry-schema]
+                            [k new-options s])
+                          (let [[k o s] entry-schema]
+                            [k (merge o new-options) s])))]
+    [(merge-options entry-schema {:hydrate {:key   k
+                                            :model model}})
+     ;; the hydrated-key? option is used to indicate that this is a key that will be added by hydration process
+     ;; currently used in generating examples of a schema. See [[events/event-info-example]].
+     ;; Another way is to make malli generator to always include optional keys.
+     (merge-options hydrated-schema {:hydrated-key? true})]))
 
 (def user-hydrate
   "Hydrate user information when sending system event notifications."
@@ -170,13 +180,13 @@
 ;; alert schemas
 
 (mr/def :event/alert-create
-  [:map {:closed true}
-   (-> [:user-id pos-int?]
-       (with-hydrate :user user-hydrate))
-   [:object [:and
-             [:fn #(t2/instance-of? :model/Pulse %)]
-             [:map
-              [:card [:fn #(t2/instance-of? :model/Card %)]]]]]])
+  (-> [:map {:closed true}
+       [:object [:and
+                 [:fn #(t2/instance-of? :model/Pulse %)]
+                 [:map
+                  [:card [:fn #(t2/instance-of? :model/Card %)]]]]]]
+      (into (hydrated-schemas [:user-id pos-int?]
+                              :user user-hydrate [:user [:map [:email ms/Email]]]))))
 
 ;; pulse schemas
 

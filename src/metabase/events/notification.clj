@@ -45,7 +45,7 @@
 
 (defn- hydrate!
   "Given a schema and value, hydrate the keys that are marked as to-hydrate.
-  Hydrated keys have the :hydrate properties that can be added by [[metabase.events.schema/with-hydration]].
+  Hydrated keys have the :hydrate properties that can be added by [[metabase.events.schema/hydrated-schemas]].
 
     (hydrate! [:map
                 [:user_id {:hydrate {:key :user
@@ -105,11 +105,6 @@
 (def ^:private table-hydrate
   [:model/Table :name])
 
-(def ^:private table-id-hydrate (-> [:table_id {:optional true
-                                                :description "The table that was created"}
-                                     pos-int?]
-                                    (events.schema/with-hydrate :table table-hydrate)))
-
 (def ^:private table-hydrate-schema [:table {:optional true}
                                      [:map
                                       [:name
@@ -119,20 +114,28 @@
 
 (mr/def ::nano-id ::common/non-blank-string)
 
+(def ^:private table-id-hydrate-schemas
+  (events.schema/hydrated-schemas [:table_id pos-int?]
+                                  :table
+                                  table-hydrate
+                                  table-hydrate-schema))
+
 (mr/def ::action-events
-  [:map #_{:closed true}
-   [:action :keyword]
-   [:invocation_id {:description "The unique identifier for the action invocation"} ::nano-id]
-   (-> [:actor_id pos-int?] (events.schema/with-hydrate :actor events.schema/user-hydrate))
-   [:actor {:optional     true
-            :hydrated-key true
-            :description  "The user who performed the action"}
-    [:map {:gen/return {:first_name "Meta"
-                        :last_name  "Bot"
-                        :email      "bot@metabase.com"}}
-     [:first_name [:maybe :string]]
-     [:last_name  [:maybe :string]]
-     [:email      [:maybe :string]]]]])
+  (into
+   [:map #_{:closed true}
+    [:action :keyword]
+    [:invocation_id {:description "The unique identifier for the action invocation"} ::nano-id]]
+   (events.schema/hydrated-schemas [:actor_id pos-int?]
+                                   :actor events.schema/user-hydrate
+                                   [:actor {:optional     true
+                                            :hydrated-key true
+                                            :description  "The user who performed the action"}
+                                    [:map {:gen/return {:first_name "Meta"
+                                                        :last_name  "Bot"
+                                                        :email      "bot@metabase.com"}}
+                                     [:first_name [:maybe :string]]
+                                     [:last_name  [:maybe :string]]
+                                     [:email      [:maybe :string]]]])))
 
 (mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
 
@@ -140,42 +143,38 @@
                                           [:map
                                            [:action [:= :row/create]]
                                            [:result
-                                            [:map
-                                             table-id-hydrate
-                                             table-hydrate-schema
-                                             [:created_row {:gen/return {:id 1
-                                                                         :name "this is an example"}
-                                                            :description "The created row, actual keys will vary based on the table"}
-                                              :map]]]]])
+                                            (-> [:map [:created_row {:gen/return {:id 1
+                                                                                  :name "this is an example"}
+                                                                     :description "The created row, actual keys will vary based on the table"}
+                                                       :map]]
+                                                (into table-id-hydrate-schemas))]]])
 
 (mr/def :event/action.success.row-update [:merge ::action-events
                                           [:map
                                            [:action [:= :row/update]]
                                            [:result
-                                            [:map
-                                             table-id-hydrate
-                                             table-hydrate-schema
-                                             [:raw_update {:gen/return {:id 1
+                                            (-> [:map
+                                                 [:raw_update {:gen/return {:id 1
+                                                                            :name "New Name"}
+                                                               :description "The raw update, actual keys will vary based on the table"} [:maybe :map]]
+                                                 [:after  {:gen/return {:id 2
                                                                         :name "New Name"}
-                                                           :description "The raw update, actual keys will vary based on the table"} [:maybe :map]]
-                                             [:after  {:gen/return {:id 2
-                                                                    :name "New Name"}
-                                                       :description "The after state, actual keys will vary based on the table"} [:maybe :map]]
-                                             [:before {:gen/return {:id 2
-                                                                    :name "Old Name"}
-                                                       :description "The before state, actual keys will vary based on the table"} [:maybe :map]]]]]])
+                                                           :description "The after state, actual keys will vary based on the table"} [:maybe :map]]
+                                                 [:before {:gen/return {:id 2
+                                                                        :name "Old Name"}
+                                                           :description "The before state, actual keys will vary based on the table"} [:maybe :map]]]
+                                                (into table-id-hydrate-schemas))]]])
 
 (mr/def :event/action.success.row-delete [:merge ::action-events
                                           [:map
                                            [:action [:= :row/delete]]
                                            [:result
-                                            [:map
-                                             table-id-hydrate
-                                             table-hydrate-schema
-                                             [:deleted_row {:gen/return {:id 1
-                                                                         :name "this is an example"}
-                                                            :description "The deleted row, actual keys will vary based on the table"}
-                                              :map]]]]])
+                                            (-> [:map
+                                                 [:deleted_row {:gen/return {:id 1
+                                                                             :name "this is an example"}
+                                                                :description "The deleted row, actual keys will vary based on the table"}
+                                                  :map]]
+                                                (into table-id-hydrate-schemas))]]])
 
 (mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])
 
@@ -185,7 +184,7 @@
                        :row/create :event/action.success.row-create
                        :row/update :event/action.success.row-update
                        :row/delete :event/action.success.row-delete
-                       (throw (ex-info "Invalid action" {:action action})))))
+                       ::action-events)))
 
 (defn schema->json-schema
   "Convert a malli schema to a OpenAI schema schema."

@@ -116,7 +116,8 @@
                       e))))
   event)
 
-(defn- unoptional-hydrated-key
+(defn- require-hydrate-keys
+  "Hydrated keys are optional by default, but when generating examples, we want to include it as a required key."
   [schema]
   (mc/walk
    schema
@@ -124,7 +125,7 @@
      (if (= :map (mc/type schema))
        (mc/-set-children schema
                          (mapv (fn [[k p s]]
-                                 [k (if (:hydrated-key p)
+                                 [k (if (:hydrated-key? p)
                                       (dissoc p :optional)
                                       p)
                                   s]) children))
@@ -133,8 +134,4 @@
 (defn event-info-example
   "Given a topic, return an example event info."
   [topic event]
-  (-> (event-schema topic event) mr/resolve-schema unoptional-hydrated-key (mg/generate {:seed 42})))
-
-(defmethod event-info-example :default
-  [_topic _options]
-  {})
+  (-> (event-schema topic event) mr/resolve-schema require-hydrate-keys (mg/generate {:seed 42})))
