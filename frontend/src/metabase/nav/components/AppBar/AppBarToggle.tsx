@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Tooltip } from "metabase/ui";
 
 import { SidebarButton, SidebarIcon } from "./AppBarToggle.styled";
@@ -35,15 +36,21 @@ export function AppBarToggle({
     }
   }, [hovered]);
 
-  if (!isNavBarEnabled) {
-    return null;
-  }
-
   const handleToggleClick = () => {
     setDisableTooltip(true);
     onToggleClick?.();
   };
 
+  useRegisterShortcut([
+    {
+      id: "toggle-navbar",
+      perform: handleToggleClick,
+    },
+  ]);
+
+  if (!isNavBarEnabled) {
+    return null;
+  }
   return (
     <div ref={hoverRef as React.Ref<HTMLDivElement>}>
       <Tooltip
