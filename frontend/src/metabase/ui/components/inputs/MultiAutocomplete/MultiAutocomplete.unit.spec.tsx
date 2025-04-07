@@ -284,8 +284,11 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "3");
     expect(onChange).toHaveBeenLastCalledWith(["3", "2"]);
 
+    await userEvent.type(input, ",4");
+    expect(onChange).toHaveBeenLastCalledWith(["3", "4", "2"]);
+
     await userEvent.tab();
-    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenLastCalledWith(["3", "4", "2"]);
   });
 
   it("should display the remapped value when there are matching options", () => {
