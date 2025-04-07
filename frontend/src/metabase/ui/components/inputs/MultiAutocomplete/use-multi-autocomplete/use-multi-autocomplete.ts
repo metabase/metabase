@@ -306,7 +306,7 @@ function getFieldStateAfterChange(
   // into account to allow entering values when the delimiter is escaped; in
   // this case it will be an empty array until there is a closing quote.
   //
-  // When the new field value contains multiple values, we reset the input state
+  // When the new input value contains multiple values, we reset the input state
   // immediately. It can happen both with copy-pasting and regular input. With
   // regular input, the user can enter "abc" and then "ab,c"; in this case "abc"
   // will be replaced by the 2 new values.
@@ -330,7 +330,7 @@ function getFieldStateAfterChange(
 }
 
 // When pasting, we want to combine the values from the clipboard with the
-// existing input value taking the current selection into account. For example,
+// existing input value, taking the current selection into account. For example,
 // if the input value is "ab<caret>c" and the user pastes "d,e,f", the
 // new values should be "abd,e,fc".
 function getParsedValuesCombinedWithFieldValue(
