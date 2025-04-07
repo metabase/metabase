@@ -66,12 +66,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           head-sha: ${{ github.event.pull_request.head.sha || github.sha }}
-      # - name: Retrieve uberjar artifact
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
-      #     run-id: ${{ steps.wait_for_uberjar.outputs.run_id }}
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
