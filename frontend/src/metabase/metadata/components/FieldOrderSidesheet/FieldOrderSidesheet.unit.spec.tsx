@@ -37,31 +37,35 @@ const setup = ({ error, isOpen, tableId = PRODUCTS_ID }: SetupOpts) => {
 };
 
 describe("FieldOrderSidesheet", () => {
-  it("shows loading state when sidesheet is open", async () => {
-    setup({ isOpen: true });
+  describe("isOpen is true", () => {
+    it("shows loading state", async () => {
+      setup({ isOpen: true });
 
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    });
+
+    it("shows error state", async () => {
+      setup({ error: true, isOpen: true });
+
+      await waitForLoaderToBeRemoved();
+
+      expect(screen.getByText("An error occurred")).toBeInTheDocument();
+    });
   });
 
-  it("does not show loading state when sidesheet is closed", async () => {
-    setup({ isOpen: false });
+  describe("isOpen is false", () => {
+    it("does not show loading state when sidesheet is closed", async () => {
+      setup({ isOpen: false });
 
-    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-  });
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    });
 
-  it("shows error state when sidesheet is open", async () => {
-    setup({ error: true, isOpen: true });
+    it("does not show error state when sidesheet is closed", async () => {
+      setup({ error: true, isOpen: false });
 
-    await waitForLoaderToBeRemoved();
+      await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText("An error occurred")).toBeInTheDocument();
-  });
-
-  it("does not show error state when sidesheet is closed", async () => {
-    setup({ error: true, isOpen: false });
-
-    await waitForLoaderToBeRemoved();
-
-    expect(screen.queryByText("An error occurred")).not.toBeInTheDocument();
+      expect(screen.queryByText("An error occurred")).not.toBeInTheDocument();
+    });
   });
 });
