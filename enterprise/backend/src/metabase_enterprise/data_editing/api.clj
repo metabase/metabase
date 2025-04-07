@@ -20,6 +20,8 @@
    [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defmethod events.notification/notification-filter-for-topic :event/action.success
   [_topic event-info]
   [:and
@@ -72,12 +74,22 @@
                             :has_field_values [:in ["list" "auto-list"]]))]
     (run! field-values/create-or-update-full-field-values! fields)))
 
+(defn require-authz?
+  "Temporary hack to have auth be off by default, only on if MB_DATA_EDITING_AUTHZ=true.
+  Remove once auth policy is fixed for dashboards."
+  []
+  (= "true" (System/getenv "MB_DATA_EDITING_AUTHZ")))
+
+(defn- check-permissions []
+  (when (require-authz?)
+    (api/check-superuser)))
+
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
-  (api/check-superuser)
+  (check-permissions)
   (let [rows'      (data-editing/apply-coercions table-id rows)
         res        (data-editing/insert! table-id rows')
         pk-field   (table-id->pk table-id)
@@ -93,7 +105,7 @@
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
-  (api/check-superuser)
+  (check-permissions)
   (if (empty? rows)
     {:updated []}
     (let [rows'        (data-editing/apply-coercions table-id rows)
@@ -124,7 +136,7 @@
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
-  (api/check-superuser)
+  (check-permissions)
   (let [pk-field    (table-id->pk table-id)
         id->db-rows (query-db-rows table-id pk-field rows)
         res         (data-editing/perform-bulk-action! :bulk/delete table-id rows)]
@@ -178,7 +190,7 @@
                [:map
                 [:name Identifier]
                 [:type ColumnType]]]]]]
-  (api/check-superuser)
+  (check-permissions)
   (let [{driver :engine :as database} (api/check-404 (t2/select-one :model/Database db-id))
         _          (actions/check-data-editing-enabled-for-database! database)
         column-map (->> (for [{column-name :name
@@ -194,7 +206,7 @@
   [_
    _
    {:keys [table-id]}] :- [:map [:table-id ms/PositiveInt]]
-  (api/check-superuser)
+  (check-permissions)
   (let [_       (api/check-404 (t2/select-one :model/Table table-id))
         token   (u/generate-nano-id)
         user-id api/*current-user-id*]
@@ -207,7 +219,7 @@
   [{:keys [token]}
    _
    _]
-  (api/check-superuser)
+  (check-permissions)
   (let [deleted-count (t2/delete! :table_webhook_token :token token)]
     (api/check-404 (pos? deleted-count)))
   {})
@@ -217,7 +229,7 @@
   Behaviour is currently undefined if no table-id parameter is specified"
   [_
    {:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
-  (api/check-superuser)
+  (check-permissions)
   (api/check-404 (t2/select-one :model/Table table-id))
   (let [include-cols [:token :table_id :creator_id]]
     {:tokens (t2/select (into [:table_webhook_token] include-cols) :table_id table-id)}))
