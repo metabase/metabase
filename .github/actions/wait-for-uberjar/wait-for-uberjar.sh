@@ -61,7 +61,8 @@ if [ -z "$BUILD_JOB_ID" ]; then
   exit 1
 fi
 
-BUILD_JOB_NAME=$(gh run view ${WORKFLOW_ID} --json jobs -q ".jobs[] | select(.databaseId == $BUILD_JOB_ID) | .name")
+# Get the job name - using string interpolation for jq
+BUILD_JOB_NAME=$(gh run view ${WORKFLOW_ID} --json jobs -q '.jobs[] | select(.databaseId | tostring == "'$BUILD_JOB_ID'") | .name')
 echo "Found build job: $BUILD_JOB_NAME with ID: $BUILD_JOB_ID"
 
 # Wait for the job to complete
@@ -69,8 +70,9 @@ echo "Waiting for job to complete..."
 COMPLETED=false
 
 while [ "$COMPLETED" = false ]; do
-  JOB_STATUS=$(gh run view ${WORKFLOW_ID} --json jobs -q ".jobs[] | select(.databaseId == $BUILD_JOB_ID) | .status")
-  JOB_CONCLUSION=$(gh run view ${WORKFLOW_ID} --json jobs -q ".jobs[] | select(.databaseId == $BUILD_JOB_ID) | .conclusion")
+  # Using string interpolation for jq
+  JOB_STATUS=$(gh run view ${WORKFLOW_ID} --json jobs -q '.jobs[] | select(.databaseId | tostring == "'$BUILD_JOB_ID'") | .status')
+  JOB_CONCLUSION=$(gh run view ${WORKFLOW_ID} --json jobs -q '.jobs[] | select(.databaseId | tostring == "'$BUILD_JOB_ID'") | .conclusion')
 
   echo "Job status: $JOB_STATUS, conclusion: $JOB_CONCLUSION"
 
