@@ -8,9 +8,13 @@ import {
   setupGdriveServiceAccountEndpoint,
   setupGdriveSyncEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import type { Settings } from "metabase-types/api";
-import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { GdriveDbMenu } from "./GdriveDbMenu";
@@ -35,12 +39,22 @@ const closeMenu = openMenu;
 
 const setup = ({
   status,
-  uploadTime,
+  sync_started_at,
+  last_sync_at,
+  next_sync_at,
 }: {
   status: Status;
-  uploadTime?: number;
+  sync_started_at?: number;
+  last_sync_at?: number;
+  next_sync_at?: number;
 }) => {
-  setupGdriveGetFolderEndpoint({ status, "folder-upload-time": uploadTime });
+  setupGdriveGetFolderEndpoint({
+    status,
+    sync_started_at,
+    last_sync_at,
+    next_sync_at,
+  });
+
   setupGdriveServiceAccountEndpoint();
   setupDatabaseEndpoints(
     createMockDatabase({
@@ -57,10 +71,9 @@ const setup = ({
     storeInitialState: {
       settings: createMockSettingsState({
         "show-google-sheets-integration": true,
-        gsheets: {
-          status,
-          folder_url: null,
-        },
+        "token-features": createMockTokenFeatures({
+          attached_dwh: true,
+        }),
       }),
       currentUser: createMockUser({ is_superuser: true }),
     },
@@ -81,21 +94,21 @@ describe("Google Drive > DB Menu", () => {
   });
 
   it("shows a menu when connected", async () => {
-    setup({ status: "complete" });
+    setup({ status: "active" });
 
     expect(await screen.findByText("Google Sheets")).toBeInTheDocument();
     expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
   });
 
   it("shows a menu when loading", async () => {
-    setup({ status: "loading" });
+    setup({ status: "syncing" });
 
     expect(await screen.findByText("Google Sheets")).toBeInTheDocument();
     expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
   });
 
   it("shows 'Syncing' when loading", async () => {
-    setup({ status: "loading" });
+    setup({ status: "syncing" });
 
     await openMenu();
     expect(await screen.findByText("Syncing")).toBeInTheDocument();
@@ -103,7 +116,7 @@ describe("Google Drive > DB Menu", () => {
 
   it("shows a disconnect button when connected", async () => {
     setup({
-      status: "complete",
+      status: "active",
     });
 
     await openMenu();
@@ -115,7 +128,7 @@ describe("Google Drive > DB Menu", () => {
 
   it("disables disconnect button when loading", async () => {
     setup({
-      status: "loading",
+      status: "syncing",
     });
 
     await openMenu();
@@ -127,8 +140,9 @@ describe("Google Drive > DB Menu", () => {
 
   it("should show last sync time", async () => {
     setup({
-      status: "complete",
-      uploadTime: dayjs().subtract(3, "minute").unix(),
+      status: "active",
+      last_sync_at: dayjs().subtract(3, "minute").unix(),
+      next_sync_at: dayjs().add(2, "minute").unix(),
     });
 
     await openMenu();
@@ -140,8 +154,9 @@ describe("Google Drive > DB Menu", () => {
 
   it("should show next sync time", async () => {
     setup({
-      status: "complete",
-      uploadTime: dayjs().subtract(13, "minute").unix(),
+      status: "active",
+      last_sync_at: dayjs().subtract(13, "minute").unix(),
+      next_sync_at: dayjs().add(2, "minute").unix(),
     });
 
     await openMenu();
@@ -151,10 +166,11 @@ describe("Google Drive > DB Menu", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show next sync time as soon if the last sync was more than 15 min ago", async () => {
+  it("should show next sync time as soon if the next sync time is passed", async () => {
     setup({
-      status: "complete",
-      uploadTime: dayjs().subtract(20, "minute").unix(),
+      status: "active",
+      last_sync_at: dayjs().subtract(20, "minute").unix(),
+      next_sync_at: dayjs().subtract(5, "minute").unix(),
     });
 
     await openMenu();
@@ -165,7 +181,7 @@ describe("Google Drive > DB Menu", () => {
   });
 
   it("should call the sync API when clicking sync now", async () => {
-    setup({ status: "complete" });
+    setup({ status: "active" });
 
     await openMenu();
 
@@ -175,30 +191,32 @@ describe("Google Drive > DB Menu", () => {
     expect(syncButton).toBeEnabled();
 
     setupGdriveGetFolderEndpoint({
-      status: "loading",
-      "folder-upload-time": dayjs().subtract(3, "minute").unix(),
+      status: "syncing",
+      sync_started_at: dayjs().subtract(3, "minute").unix(),
     });
+
     await userEvent.click(syncButton);
+    // sync should cause a refetch
+    expect(await screen.findByText("Syncing")).toBeInTheDocument();
 
     const syncCalls = fetchMock.calls("path:/api/ee/gsheets/folder/sync");
     expect(syncCalls).toHaveLength(1);
 
-    // sync should cause a refetch
-    expect(await screen.findByText("Syncing")).toBeInTheDocument();
-
-    closeMenu();
-    jest.advanceTimersByTime(6000);
+    await closeMenu();
+    await act(() => {
+      jest.advanceTimersByTime(6000);
+    });
     setupGdriveGetFolderEndpoint({
-      status: "complete",
-      "folder-upload-time": dayjs().subtract(2, "second").unix(),
+      status: "active",
+      last_sync_at: dayjs().subtract(2, "second").unix(),
     });
     // reopening the menu after 5 seconds should cause refetch
-    openMenu();
+    await openMenu();
     await screen.findByText("Last synced a few seconds ago");
   });
 
   it("should open disconnect modal when clicking disconnect", async () => {
-    setup({ status: "complete" });
+    setup({ status: "active" });
     await openMenu();
     const disconnectButton = await screen.findByRole("menuitem", {
       name: /close icon disconnect/i,
@@ -206,7 +224,9 @@ describe("Google Drive > DB Menu", () => {
     expect(disconnectButton).toBeEnabled();
     await userEvent.click(disconnectButton);
     expect(
-      screen.getByText(/Disconnect from Google Drive?/i),
+      screen.getByText(
+        /To add a new Google Drive folder, the existing one needs to be disconnected first/i,
+      ),
     ).toBeInTheDocument();
   });
 });

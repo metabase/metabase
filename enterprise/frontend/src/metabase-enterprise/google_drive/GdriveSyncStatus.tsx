@@ -22,18 +22,17 @@ export const GdriveSyncStatus = () => {
   const showGdrive = useShowGdrive();
 
   const [forceHide, setForceHide] = useState(true);
-  const [syncError, setSyncError] = useState({ error: false, message: "" });
   const [dbId, setDbId] = useState<DatabaseId | undefined>();
 
   const res = useGetGsheetsFolderQuery(!showGdrive ? skipToken : undefined);
-  const { currentData: gdriveFolder, error: apiError } = res;
+  const { data: gdriveFolder, error: apiError } = res;
 
   const currentUser = useSelector(getCurrentUser);
   const isCurrentUser = currentUser?.id === gdriveFolder?.created_by_id;
 
   const status = match({
     apiStatus: gdriveFolder?.status,
-    folderSyncError: syncError.error,
+    folderSyncError: !!apiError,
   })
     .returnType<GsheetsStatus>()
     .with({ folderSyncError: true }, () => "error")
@@ -44,7 +43,7 @@ export const GdriveSyncStatus = () => {
   const previousStatus = usePrevious(status);
 
   useEffect(() => {
-    if (status === "syncing") {
+    if (status === "syncing" && !forceHide) {
       const timeout = setTimeout(() => {
         dispatch(EnterpriseApi.util.invalidateTags(["gsheets-status"]));
       }, SYNC_POLL_INTERVAL);
@@ -52,46 +51,27 @@ export const GdriveSyncStatus = () => {
         clearTimeout(timeout);
       };
     }
-  }, [res, status, dispatch]); // need res so this runs on every refetch
-
-  // if our polling endpoint changes away from loading
-  useEffect(() => {
-    if (status !== "syncing") {
-      if (status === "error") {
-        console.error((apiError as ErrorPayload)?.data?.message);
-
-        setSyncError({
-          error: true,
-          // eslint-disable-next-line no-literal-metabase-strings -- admin UI
-          message: t`Please check that the folder is shared with the Metabase Service Account.`,
-        });
-      }
-
-      if (gdriveFolder?.db_id) {
-        setDbId(gdriveFolder.db_id);
-      }
-    }
-  }, [status, gdriveFolder, apiError]);
+  }, [res, status, dispatch, forceHide]); // need res so this runs on every refetch
 
   useEffect(() => {
-    // if our setting changed to loading from something else, reset the force hide and clear any errors
-    if (status === "syncing" && previousStatus !== "syncing") {
+    // if our setting changed to loading from not-connected, show the status
+    if (status === "syncing" && previousStatus === "not-connected") {
       setForceHide(false);
-      setSyncError({
-        error: false,
-        message: "",
-      });
     }
 
-    // if our setting changed to not-connected from loading and we don't have an error, force hide
-    if (
-      status === "not-connected" &&
-      previousStatus === "syncing" &&
-      !syncError.error
-    ) {
+    // if our setting changed to not-connected from loading, force hide
+    if (status === "not-connected" && previousStatus === "syncing") {
       setForceHide(true);
     }
-  }, [status, previousStatus, syncError]);
+
+    if (status === "active" && gdriveFolder?.db_id !== dbId) {
+      setDbId(gdriveFolder?.db_id);
+    }
+
+    if (status === "error" && previousStatus === "syncing") {
+      console.error((apiError as ErrorPayload)?.data?.message);
+    }
+  }, [status, previousStatus, gdriveFolder, dbId, apiError]);
 
   if (forceHide || !isCurrentUser) {
     return null;

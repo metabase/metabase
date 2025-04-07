@@ -27,11 +27,13 @@ export function GdriveDbMenu() {
   const isDwh = databaseInfo?.is_attached_dwh;
   const showGdrive = useShowGdrive();
 
+  const showMenu = showGdrive && isDwh;
+
   const { data: folderInfo } = useGetGsheetsFolderQuery(
-    showGdrive ? undefined : skipToken,
+    showMenu ? undefined : skipToken,
   );
 
-  if (!showGdrive || !isDwh) {
+  if (!showMenu) {
     return null;
   }
 
