@@ -319,7 +319,7 @@ describe("MultiAutocomplete", () => {
   });
 
   it("should escape the selected value when editing", async () => {
-    const { input, onChange } = setup({
+    const { input, onChange, onSearchChange } = setup({
       initialValues: ["a,b"],
     });
     await userEvent.click(screen.getByText("a,b"));
@@ -330,6 +330,7 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "{selectall}{arrowright}{arrowleft}c");
     expect(input).toHaveValue('"a\\,bc"');
     expect(onChange).toHaveBeenCalledWith(["a,bc"]);
+    expect(onSearchChange).toHaveBeenLastCalledWith("a,bc");
   });
 
   it("should escape the selected option label when editing", async () => {
