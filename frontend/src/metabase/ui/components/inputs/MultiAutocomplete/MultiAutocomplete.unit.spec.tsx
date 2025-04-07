@@ -412,6 +412,18 @@ describe("MultiAutocomplete", () => {
     expect(onChange).toHaveBeenLastCalledWith(["10", "20"]);
   });
 
+  it("should ignore duplicates in the clipboard data", async () => {
+    const { input, onChange } = setup({
+      onCreate: (value) => {
+        const number = parseFloat(value);
+        return Number.isNaN(number) ? null : String(number);
+      },
+    });
+    await userEvent.click(input);
+    await userEvent.paste("10,+10,20");
+    expect(onChange).toHaveBeenLastCalledWith(["10", "20"]);
+  });
+
   it("should handle cases when 2 values are added at once", async () => {
     const { input, onChange } = setup();
     await userEvent.type(input, "abcd{arrowleft}{arrowleft},");

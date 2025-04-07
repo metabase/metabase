@@ -68,7 +68,7 @@ export function useMultiAutocomplete({
     newFieldValue: string,
     newParsedValues: string[],
   ) => {
-    const newFieldValues = getFieldValuesNotInSelection(
+    const newFieldValues = getFieldValuesWithoutDuplicates(
       values,
       newParsedValues.map(onCreate).filter(isNotNullish),
       fieldSelection,
@@ -173,7 +173,7 @@ export function useMultiAutocomplete({
   };
 
   const handleOptionSubmit = (value: string) => {
-    const newFieldValues = getFieldValuesNotInSelection(
+    const newFieldValues = getFieldValuesWithoutDuplicates(
       values,
       [value],
       fieldSelection,
@@ -198,7 +198,11 @@ export function useMultiAutocomplete({
   return {
     combobox,
     pillValues: getPillValues(values, optionByValue, fieldSelection),
-    filteredOptions: getFilteredOptions(values, options, fieldSelection),
+    filteredOptions: getOptionsWithoutDuplicates(
+      values,
+      options,
+      fieldSelection,
+    ),
     fieldValue,
     searchValue,
     handleFieldChange,
@@ -238,8 +242,16 @@ function getPillValues(
   );
 }
 
-// Remove duplicate options and options for the already selected values.
-function getFilteredOptions(
+function getValuesNotInSelection(
+  values: string[],
+  fieldSelection: FieldSelection,
+) {
+  const startValues = values.slice(0, fieldSelection.index);
+  const endValues = values.slice(fieldSelection.index + fieldSelection.length);
+  return [...startValues, ...endValues];
+}
+
+function getOptionsWithoutDuplicates(
   values: string[],
   options: ComboboxItem[],
   fieldSelection: FieldSelection,
@@ -254,22 +266,19 @@ function getFilteredOptions(
   }, []);
 }
 
-function getValuesNotInSelection(
-  values: string[],
-  fieldSelection: FieldSelection,
-) {
-  const startValues = values.slice(0, fieldSelection.index);
-  const endValues = values.slice(fieldSelection.index + fieldSelection.length);
-  return [...startValues, ...endValues];
-}
-
-function getFieldValuesNotInSelection(
+function getFieldValuesWithoutDuplicates(
   values: string[],
   fieldValues: string[],
   fieldSelection: FieldSelection,
 ) {
   const usedValues = new Set(getValuesNotInSelection(values, fieldSelection));
-  return fieldValues.filter((value) => !usedValues.has(value));
+  return fieldValues.reduce((fieldValues: string[], value) => {
+    if (!usedValues.has(value)) {
+      fieldValues.push(value);
+      usedValues.add(value);
+    }
+    return fieldValues;
+  }, []);
 }
 
 function getValuesAfterChange<T>(
