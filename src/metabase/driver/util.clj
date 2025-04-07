@@ -521,7 +521,7 @@
     "vertica"})
 
 (defn driver-source
-  "Return the source type of the driver: official, partner, or community"
+  "Return the source type of the driver: official or community"
   [driver-name]
   (if (contains? official-drivers driver-name)
     "official"
