@@ -25,7 +25,8 @@
 
 (p/import-vars
  [events.schema
-  event-schema])
+  event-schema
+  schema->json-schema])
 
 (set! *warn-on-reflection* true)
 
@@ -116,7 +117,7 @@
                       e))))
   event)
 
-(defn- require-hydrate-keys
+(defn- require-hydrated-keys
   "Hydrated keys are optional by default, but when generating examples, we want to include it as a required key."
   [schema]
   (mc/walk
@@ -125,7 +126,7 @@
      (if (= :map (mc/type schema))
        (mc/-set-children schema
                          (mapv (fn [[k p s]]
-                                 [k (if (:hydrated-key? p)
+                                 [k (if (some? (:required-hydrated-key? p))
                                       (dissoc p :optional)
                                       p)
                                   s]) children))
@@ -134,4 +135,4 @@
 (defn event-info-example
   "Given a topic, return an example event info."
   [topic event]
-  (-> (event-schema topic event) mr/resolve-schema require-hydrate-keys (mg/generate {:seed 42})))
+  (-> (event-schema topic event) mr/resolve-schema require-hydrated-keys (mg/generate {:seed 42})))

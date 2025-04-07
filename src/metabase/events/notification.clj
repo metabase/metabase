@@ -2,10 +2,7 @@
 (ns metabase.events.notification
   (:require
    [malli.core :as mc]
-   [malli.generator :as mg]
-   [malli.json-schema :as mjs]
    [malli.transform :as mtx]
-   [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.events :as events]
    [metabase.events.schema :as events.schema]
    [metabase.lib.schema.common :as common]
@@ -38,7 +35,7 @@
                                       (if (map? x)
                                         (reduce-kv
                                          (fn [acc k {:keys [key model] :as _hydrate-prop}]
-                                           (assoc acc key (t2/select-one model (get x k))))
+                                           (assoc acc key (when-let [id (get x k)] (t2/select-one model id))))
                                          x
                                          hydrates)
                                         x)))))}}}))
@@ -121,21 +118,19 @@
                                   table-hydrate-schema))
 
 (mr/def ::action-events
-  (into
-   [:map #_{:closed true}
-    [:action :keyword]
-    [:invocation_id {:description "The unique identifier for the action invocation"} ::nano-id]]
-   (events.schema/hydrated-schemas [:actor_id pos-int?]
-                                   :actor events.schema/user-hydrate
-                                   [:actor {:optional     true
-                                            :hydrated-key true
-                                            :description  "The user who performed the action"}
-                                    [:map {:gen/return {:first_name "Meta"
-                                                        :last_name  "Bot"
-                                                        :email      "bot@metabase.com"}}
-                                     [:first_name [:maybe :string]]
-                                     [:last_name  [:maybe :string]]
-                                     [:email      [:maybe :string]]]])))
+  (-> [:map #_{:closed true}
+       [:action :keyword]
+       [:invocation_id {:description "The unique identifier for the action invocation"} ::nano-id]]
+      (into (events.schema/hydrated-schemas [:actor_id {:optional true} [:maybe pos-int?]]
+                                            :actor events.schema/user-hydrate
+                                            [:actor {:optional     true
+                                                     :description  "The user who performed the action"}
+                                             [:map {:gen/return {:first_name "Meta"
+                                                                 :last_name  "Bot"
+                                                                 :email      "bot@metabase.com"}}
+                                              [:first_name [:maybe :string]]
+                                              [:last_name  [:maybe :string]]
+                                              [:email      [:maybe :string]]]]))))
 
 (mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
 
@@ -185,8 +180,3 @@
                        :row/update :event/action.success.row-update
                        :row/delete :event/action.success.row-delete
                        ::action-events)))
-
-(defn schema->json-schema
-  "Convert a malli schema to a OpenAI schema schema."
-  [schema]
-  (defendpoint.open-api/fix-json-schema (-> schema mr/resolve-schema mjs/transform)))

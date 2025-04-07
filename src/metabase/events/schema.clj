@@ -1,8 +1,9 @@
 (ns metabase.events.schema
   (:require
+   [malli.json-schema :as mjs]
    [malli.util :as mut]
+   [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.models.view-log-impl :as view-log-impl]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -34,7 +35,8 @@
            :user    {:email \"ngoc@metabase.com\"}}"
   [entry-schema k model hydrated-schema]
   (assert (#{2 3} (count entry-schema)) "entry-schema must have 2 or 3 elements")
-  (let [merge-options (fn [entry-schema new-options]
+  (let [entry-required? (some-> entry-schema second :optional not)
+        merge-options (fn [entry-schema new-options]
                         (if (= 2 (count entry-schema))
                           (let [[k s] entry-schema]
                             [k new-options s])
@@ -45,7 +47,12 @@
      ;; the hydrated-key? option is used to indicate that this is a key that will be added by hydration process
      ;; currently used in generating examples of a schema. See [[events/event-info-example]].
      ;; Another way is to make malli generator to always include optional keys.
-     (merge-options hydrated-schema {:hydrated-key? true})]))
+     (merge-options hydrated-schema {:required-hydrated-key? entry-required?})]))
+
+(defn schema->json-schema
+  "Convert a malli schema to a OpenAI schema schema."
+  [schema]
+  (defendpoint.open-api/fix-json-schema (-> schema mr/resolve-schema mjs/transform)))
 
 (def user-hydrate
   "Hydrate user information when sending system event notifications."
