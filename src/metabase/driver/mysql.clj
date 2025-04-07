@@ -75,7 +75,8 @@
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
-                              :window-functions/offset                false}]
+                              :window-functions/offset                false
+                              :expression-literals                    true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -194,8 +195,7 @@
     (assoc driver.common/additional-options
            :placeholder  "tinyInt1isBit=false")
     driver.common/default-advanced-options]
-   (map u/one-or-many)
-   (apply concat)))
+   (into [] (mapcat u/one-or-many))))
 
 (defmethod sql.qp/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
@@ -343,6 +343,14 @@
      [:substring_index
       [:substring_index text div pos]
       div -1]]))
+
+(defmethod sql.qp/->honeysql [:mysql :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:mysql :date]
+  [driver [_ value]]
+  [:str_to_date (sql.qp/->honeysql driver value) "%Y-%m-%d"])
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]

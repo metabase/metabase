@@ -28,6 +28,13 @@ export default class LeafletMap extends Component {
         minZoom: 2,
         drawControlTooltips: false,
         zoomSnap: false,
+        // Set max bounds for latitude only, allowing longitude to wrap
+        maxBounds: [
+          [-90, -Infinity], // Southwest corner (limit south, no limit west)
+          [90, Infinity], // Northeast corner (limit north, no limit east)
+        ],
+        maxBoundsViscosity: 1.0, // Completely prevent panning outside latitude bounds
+        worldCopyJump: true, // Enable smooth horizontal wrapping
       }));
 
       const drawnItems = new L.FeatureGroup();
