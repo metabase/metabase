@@ -142,7 +142,8 @@
       (throw (ex-info "map-schema-assoc expects even number of arguments after schema-map, found odd number" {})))
     map-schema))
 
-(core/defn schema->json-schema
-  "Convert a malli schema to a OpenAI schema schema."
-  [schema]
-  (defendpoint.open-api/fix-json-schema (-> schema mr/resolve-schema mjs/transform)))
+#?(:clj
+   (core/defn schema->json-schema
+     "Convert a malli schema to a OpenAI schema schema."
+     [schema]
+     (defendpoint.open-api/fix-json-schema (-> schema mr/resolve-schema mjs/transform))))
