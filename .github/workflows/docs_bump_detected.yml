@@ -40,7 +40,6 @@ jobs:
       - name: Read Workflow ID
         run: echo $WORKFLOW_ID
 
-      # Trigger the repository_dispatch event in the target repo
       - name: Trigger Workflow in `metabase/docs.metabase.github.io`
         env:
           TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
