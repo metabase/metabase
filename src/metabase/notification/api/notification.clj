@@ -174,7 +174,9 @@
                                                  (assoc :event_info (events/event-info-example (-> body :payload :event_name) (:payload body)))))
    :schema (case (:payload_type body)
              :notification/system-event
-             (mu/schema->json-schema (events/event-schema (-> body :payload :event_name) (:payload body))))})
+             (mu/schema->json-schema (events/event-schema (-> body :payload :event_name) (:payload body)))
+             ;; TODO for :notification/card
+             {})})
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"
