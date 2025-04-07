@@ -44,7 +44,8 @@ jobs:
             -H "Authorization: token ${TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             https://api.github.com/repos/metabase/docs.metabase.github.io/actions/workflows | \
-            jq -r '.workflows[] | select(.name | endswith("process_docs_changes.yml")) | .id')
+            jq -r '.workflows[] | select(.path | endswith("process_docs_changes.yml")) .id')
+          echo $WORKFLOW_ID
           echo "WORKFLOW_ID=$WORKFLOW_ID" >> $GITHUB_ENV
 
       - name: Read Workflow ID
@@ -59,6 +60,4 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: token ${TOKEN}" \
             "https://api.github.com/repos/metabase/docs.metabase.github.io/actions/workflows/154066234/dispatches" \
-            -d "{\"event_type\": \"trigger-workflow\",
-                 \"ref\": \"$BRANCH_NAME\",
-                 \"client_payload\": {\"branch\": \"$BRANCH_NAME\"}}"
+            -d "{\"ref\": \"$BRANCH_NAME\", \"inputs\": {\"branch\": \"$BRANCH_NAME\"}}"
