@@ -56,7 +56,6 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :describe-fields                        true
-                              :expression-literals                    true
                               :expressions/integer                    true
                               :identifiers-with-spaces                true
                               :split-part                             true

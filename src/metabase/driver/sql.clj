@@ -20,6 +20,7 @@
 (doseq [feature [:advanced-math-expressions
                  :binning
                  :expression-aggregations
+                 :expression-literals
                  :expressions
                  :full-join
                  :inner-join

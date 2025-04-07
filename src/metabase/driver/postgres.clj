@@ -79,7 +79,6 @@
                               :uuid-type                true
                               :split-part               true
                               :uploads                  true
-                              :expression-literals      true
                               :expressions/text         true
                               :expressions/integer      true
                               :expressions/date         true}]

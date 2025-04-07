@@ -42,7 +42,6 @@
 (doseq [[feature supported?] {:connection-impersonation  true
                               :describe-fields           true
                               :describe-fks              true
-                              :expression-literals       false
                               :identifiers-with-spaces   false
                               :uuid-type                 false
                               :nested-field-columns      false

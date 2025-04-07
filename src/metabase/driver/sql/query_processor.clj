@@ -597,12 +597,35 @@
                        (h2x/with-type-info value {:database-type "varchar"}))))
       (->honeysql driver value))))
 
+(defn- literal-text-value?
+  [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
+  (and (mbql.u/is-clause? :value clause)
+       (string? value)
+       (isa? (or effective-type base-type)
+             :type/Text)))
+
+(def ^:dynamic *force-cast*
+  "Force ::cast to always cast regardless of whether the value is already the expected type."
+  false)
+
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name {::add/keys [source-table source-alias]} :as _clause]]
   (let [expression-definition (mbql.u/expression-with-name *inner-query* expression-name)]
-    (->honeysql driver (if (= source-table ::add/source)
-                         (apply h2x/identifier :field source-query-alias source-alias)
-                         expression-definition))))
+    (cond (= source-table ::add/source)
+          (->honeysql driver (apply h2x/identifier :field source-query-alias source-alias))
+          ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
+          ;; statement immediately, presumably before the types of the params are known, and sometimes raises
+          ;; an "Unknown data type" error if it can't deduce the type. The recommended workaround is to insert an
+          ;; explicit CAST. We only need to do this for string literals, since numbers and booleans get inlined
+          ;; directly.
+          ;;
+          ;; https://linear.app/metabase/issue/QUE-726/
+          ;; https://github.com/h2database/h2database/issues/1383
+          (literal-text-value? expression-definition)
+          (binding [*force-cast* true]
+            (->honeysql driver [::cast-to-text expression-definition]))
+          :else
+          (->honeysql driver expression-definition))))
 
 (defmethod ->honeysql [:sql :now]
   [driver _clause]
@@ -1402,7 +1425,10 @@
 
 (defmethod ->honeysql [:sql ::cast]
   [driver [_ expr database-type]]
-  (h2x/maybe-cast database-type (->honeysql driver expr)))
+  ((if *force-cast*
+     h2x/cast
+     h2x/maybe-cast)
+   database-type (->honeysql driver expr)))
 
 (defmethod ->honeysql [:sql ::cast-to-text]
   [driver [_ expr]]
