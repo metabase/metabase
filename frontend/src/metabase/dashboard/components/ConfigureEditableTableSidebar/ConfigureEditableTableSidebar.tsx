@@ -25,11 +25,7 @@ import {
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type {
-  Card,
-  DashboardCard,
-  StructuredDatasetQuery,
-} from "metabase-types/api";
+import type { Card, DashboardCard } from "metabase-types/api";
 
 import { getDashCardById, getSidebar } from "../../selectors";
 
@@ -67,8 +63,7 @@ export function ConfigureEditableTableSidebar({
             {dashcard && <ConfigureEditableTableColumns dashcard={dashcard} />}
           </Tabs.Panel>
           <Tabs.Panel value="filters">
-            <div>DashcardID: {dashcardId}</div>
-            <ConfigureEditableTableFilters dashcard={dashcard} />
+            {dashcard && <ConfigureEditableTableFilters dashcard={dashcard} />}
           </Tabs.Panel>
           <Tabs.Panel value="actions">
             <div>Not implemented</div>
@@ -97,7 +92,10 @@ function ConfigureEditableTableFilters({
     return question?.query();
   }, [card, metadata]);
 
-  const filterItems = useMemo(() => getFilterItems(query), [query]);
+  const filterItems = useMemo(
+    () => (query ? getFilterItems(query) : []),
+    [query],
+  );
 
   const handleQueryChange = async (newQuery: Lib.Query) => {
     const legacyQuery = Lib.toLegacyQuery(newQuery);
@@ -109,9 +107,11 @@ function ConfigureEditableTableFilters({
     );
     const cardData = await action.unwrap();
 
-    const newCard: Card<StructuredDatasetQuery> = {
+    const newCard: Card = {
       ...card,
       dataset_query: legacyQuery,
+
+      // @ts-expect-error - we don't have a type for Store card with additional state
       isDirty: true,
     };
 
