@@ -33,6 +33,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
   return {
     value: settingValue,
     settingDetails,
+    description: settingDetails?.description,
     updateSetting,
     updateSettingResult,
     isLoading: settingsLoading || detailsLoading,
