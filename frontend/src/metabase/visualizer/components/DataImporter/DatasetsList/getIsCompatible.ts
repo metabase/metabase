@@ -77,9 +77,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
   }
 
   if (isDate(primaryColumn)) {
-    return fields.some(field => {
-      return typeMatcher(field) && (field as any).unit === primaryColumn.unit;
-    });
+    return fields.some(typeMatcher);
   }
 
   return false;
