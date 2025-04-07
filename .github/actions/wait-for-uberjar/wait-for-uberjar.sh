@@ -28,7 +28,7 @@ if [ -z "$BUILD_WORKFLOW_RUN" ]; then
 
   # Try to find a build-related workflow
   echo "Looking for any build-related workflow run..."
-  BUILD_WORKFLOW_RUN=$(gh run list --commit ${HEAD_SHA} --json databaseId,workflowName,status -q '.[] | select(.workflowName | test("(?i)build|uberjar")) | select(.status != "cancelled") | .databaseId' --limit 1)
+  BUILD_WORKFLOW_RUN=$(gh run list --commit ${HEAD_SHA} --json databaseId,workflowName,status -q '.[] | select(.workflowName | contains("build") or .workflowName | contains("Build") or .workflowName | contains("uberjar") or .workflowName | contains("Uberjar")) | select(.status != "cancelled") | .databaseId' --limit 1)
 
   if [ -z "$BUILD_WORKFLOW_RUN" ]; then
     echo "No build-related workflow run found. Using the first non-cancelled run."
@@ -54,25 +54,37 @@ gh run view ${WORKFLOW_ID} --json jobs --jq '.jobs[] | .name + " (ID: " + (.data
 
 # Find a suitable build job
 echo "Looking for a build job..."
-BUILD_JOB_ID=$(gh run view ${WORKFLOW_ID} --json jobs -q '.jobs[] | select(.name | test("(?i)build.*(oss|ee)|build-ee|build-oss|build$")) | .databaseId')
+# Get all job data to analyze manually instead of complex jq
+JOBS_JSON=$(gh run view ${WORKFLOW_ID} --json jobs -q '.jobs')
+
+# Look for build jobs with simpler pattern matching
+for pattern in "build (ee)" "build (oss)" "build-ee" "build-oss" "build"; do
+  echo "Searching for jobs matching pattern: $pattern"
+  BUILD_JOB_ID=$(echo "$JOBS_JSON" | jq -r --arg pattern "$pattern" '.[] | select(.name | contains($pattern)) | .databaseId')
+
+  if [ -n "$BUILD_JOB_ID" ]; then
+    BUILD_JOB_NAME=$(echo "$JOBS_JSON" | jq -r --arg id "$BUILD_JOB_ID" '.[] | select(.databaseId | tostring == $id) | .name')
+    echo "Found build job: $BUILD_JOB_NAME with ID: $BUILD_JOB_ID"
+    break
+  fi
+done
 
 if [ -z "$BUILD_JOB_ID" ]; then
   echo "Could not find a build job in workflow run ID: $WORKFLOW_ID"
   exit 1
 fi
 
-# Get the job name - using string interpolation for jq
-BUILD_JOB_NAME=$(gh run view ${WORKFLOW_ID} --json jobs -q '.jobs[] | select(.databaseId | tostring == "'$BUILD_JOB_ID'") | .name')
-echo "Found build job: $BUILD_JOB_NAME with ID: $BUILD_JOB_ID"
-
 # Wait for the job to complete
 echo "Waiting for job to complete..."
 COMPLETED=false
 
 while [ "$COMPLETED" = false ]; do
-  # Using string interpolation for jq
-  JOB_STATUS=$(gh run view ${WORKFLOW_ID} --json jobs -q '.jobs[] | select(.databaseId | tostring == "'$BUILD_JOB_ID'") | .status')
-  JOB_CONCLUSION=$(gh run view ${WORKFLOW_ID} --json jobs -q '.jobs[] | select(.databaseId | tostring == "'$BUILD_JOB_ID'") | .conclusion')
+  # Get fresh job data
+  JOB_DATA=$(gh run view ${WORKFLOW_ID} --json jobs -q '.jobs[] | select(.databaseId | tostring == "'$BUILD_JOB_ID'")')
+
+  # Extract status and conclusion
+  JOB_STATUS=$(echo "$JOB_DATA" | jq -r '.status')
+  JOB_CONCLUSION=$(echo "$JOB_DATA" | jq -r '.conclusion')
 
   echo "Job status: $JOB_STATUS, conclusion: $JOB_CONCLUSION"
 
