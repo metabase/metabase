@@ -34,18 +34,18 @@ type SetupOpts = {
   initialValues?: string[];
   options?: ComboboxItem[];
   placeholder?: string;
-  shouldCreate?: (value: string) => boolean;
   autoFocus?: boolean;
   rightSection?: ReactNode;
   nothingFoundMessage?: ReactNode;
   "aria-label"?: string;
+  onCreate?: (rawValue: string) => string | null;
 };
 
 function setup({
   initialValues = [],
   options = [],
   placeholder = "Enter some text",
-  shouldCreate,
+  onCreate,
 }: SetupOpts = {}) {
   const onChange = jest.fn<void, [string[]]>();
   const onSearchChange = jest.fn<void, [string]>();
@@ -55,7 +55,7 @@ function setup({
       initialValues={initialValues}
       options={options}
       placeholder={placeholder}
-      shouldCreate={shouldCreate}
+      onCreate={onCreate}
       onChange={onChange}
       onSearchChange={onSearchChange}
     />,
@@ -88,9 +88,9 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  it("should not accept values when blurring if they are not accepted by shouldCreate", async () => {
+  it("should not accept values when blurring if they are not accepted by onCreate", async () => {
     const { input, onChange } = setup({
-      shouldCreate: (value) => value === "foo",
+      onCreate: (value) => (value === "foo" ? value : null),
     });
     await userEvent.type(input, "foo");
     await userEvent.click(document.body);
@@ -169,9 +169,9 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  it("should not accept values when entering a comma if they are not accepted by shouldCreate", async () => {
+  it("should not accept values when entering a comma if they are not accepted by onCreate", async () => {
     const { input, onChange } = setup({
-      shouldCreate: (value) => value === "foo",
+      onCreate: (value) => (value === "foo" ? value : null),
     });
     await userEvent.type(input, "foo,");
     expect(onChange).toHaveBeenLastCalledWith(["foo"]);
@@ -207,9 +207,9 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  it("should accept comma-separated values, but omit values not accepted by shouldCreate", async () => {
+  it("should accept comma-separated values, but omit values not accepted by onCreate", async () => {
     const { input, onChange } = setup({
-      shouldCreate: (value) => value === "foo" || value === "bar",
+      onCreate: (value) => (value === "foo" || value === "bar" ? value : null),
     });
     await userEvent.click(input);
     await userEvent.paste("foo,bar,baz");
@@ -353,5 +353,16 @@ describe("MultiAutocomplete", () => {
     expect(queryOption("Two")).not.toBeInTheDocument();
     expect(queryOption("Three")).not.toBeInTheDocument();
     expect(onChange).toHaveBeenLastCalledWith(["1", "2", "3"]);
+  });
+
+  it("should ignore duplicates when there are different string representations of the underlying value", async () => {
+    const { input, onChange } = setup({
+      onCreate: (value) => {
+        const number = parseFloat(value);
+        return Number.isNaN(number) ? null : String(number);
+      },
+    });
+    await userEvent.type(input, "10,+10,20");
+    expect(onChange).toHaveBeenLastCalledWith(["10", "20"]);
   });
 });
