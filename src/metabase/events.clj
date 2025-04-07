@@ -26,8 +26,7 @@
 
 (p/import-vars
  [events.schema
-  event-schema
-  schema->json-schema])
+  event-schema])
 
 (set! *warn-on-reflection* true)
 

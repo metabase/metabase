@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
@@ -13,7 +14,6 @@
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -174,7 +174,7 @@
                                                  (assoc :event_info (events/event-info-example (-> body :payload :event_name) (:payload body)))))
    :schema (case (:payload_type body)
              :notification/system-event
-             (mu/schema->json-schema (events/event-schema (-> body :payload :event_name) (:payload body)))
+             (defendpoint.open-api/schema->json-schema (events/event-schema (-> body :payload :event_name) (:payload body)))
              ;; TODO for :notification/card
              {})})
 

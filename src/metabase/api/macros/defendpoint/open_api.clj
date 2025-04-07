@@ -192,6 +192,11 @@
              (vals endpoints))
      :components {:schemas @*definitions*}}))
 
+(defn schema->json-schema
+  "Convert a malli schema to a OpenAI schema schema."
+  [schema]
+  (-> schema mr/resolve-schema mjs/transform fix-json-schema))
+
 #_:clj-kondo/ignore
 (comment
   (open-api-spec (metabase.api.macros/ns-routes 'metabase.api.geojson) "/api/geojson")
