@@ -9,26 +9,18 @@ const config = {
   ],
   entryPoints: ["../resources/embedding-sdk/dist/index.d.ts"],
   router: "structure",
-  customJs: "page-custom-logic.js",
-  customCss: "page-custom-styles.css",
   internalModule: "internal",
-  collapseInternalModule: true,
-  favicon: "../resources/frontend_client/favicon.ico",
   outputs: [
     {
       name: "html",
       path: "../docs/embedding/sdk/generated/html",
       options: {
+        favicon: "./resources/frontend_client/favicon.ico",
+        customJs: "./.typedoc/page-custom-logic.js",
+        customCss: "./.typedoc/page-custom-styles.css",
         hideGenerator: true,
-        navigation: {
-          includeCategories: false,
-          includeGroups: false,
-          includeFolders: false,
-          compactFolders: true,
-          excludeReferences: true,
-        },
+        collapseInternalModule: true,
         visibilityFilters: {},
-        includeHierarchySummary: false,
         frontmatterGlobals: {
           layout: "docs-api",
         },
@@ -93,6 +85,14 @@ const config = {
   ],
   treatWarningsAsErrors: true,
   disableSources: true,
+  includeHierarchySummary: false,
+  navigation: {
+    includeCategories: true,
+    includeGroups: false,
+    includeFolders: false,
+    compactFolders: true,
+    excludeReferences: true,
+  },
   validation: {
     notExported: true,
     invalidLink: true,
