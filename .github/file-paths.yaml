@@ -100,7 +100,7 @@ sources: &sources
 e2e_ci: &e2e_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
-  - ".github/actions/prepare-uberjar-artifact/**"
+  - ".github/actions/prepare-uberjar/**"
   - ".github/actions/e2e-prepare-containers/**"
   - ".github/actions/prepare-cypress/**"
   - ".github/actions/run-snowplow-micro/**"
