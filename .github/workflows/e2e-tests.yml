@@ -48,7 +48,7 @@ jobs:
               node_version: requirements.node,
             };
 
-  build:
+  wait-for-uberjar:
     needs: [get-build-requirements]
     if: ${{ !cancelled() && !inputs.skip }}
     runs-on: ubuntu-22.04
@@ -58,14 +58,18 @@ jobs:
         edition: [oss, ee]
     steps:
       - uses: actions/checkout@v4
-      - name: Build uberjar
-        uses: ./.github/actions/build-uberjar
+      - name: Wait for uberjar
+        id: wait_for_uberjar
+        uses: ./.github/actions/wait-for-uberjar
         with:
-          edition: ${{ matrix.edition }}
-          java-version: ${{ needs.get-build-requirements.outputs.java_version || 21 }}
-          artifact-name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          # make sure that builds on release branches get licenses, because we use them for releases
-          skip-licenses: ${{ github.event_name == 'pull_request' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          head-sha: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Retrieve uberjar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ steps.wait_for_uberjar.outputs.run_id }}
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
@@ -103,9 +107,9 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs:
       - e2e-matrix-builder
-      - build
+      - wait-for-uberjar
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() && needs.wait-for-uberjar.result == 'success'
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -123,9 +127,9 @@ jobs:
   flaky-e2e-tests:
     name: Flaky e2e Tests
     uses: ./.github/workflows/e2e-test.yml
-    needs: build
+    needs: wait-for-uberjar
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() && needs.wait-for-uberjar.result == 'success'
     secrets: inherit
     with:
       name: Flaky
@@ -160,7 +164,7 @@ jobs:
           fi
 
   pr-env:
-    needs: [build]
+    needs: [wait-for-uberjar]
     if: |
       !cancelled() &&
       contains(github.event.pull_request.labels.*.name, 'PR-Env')

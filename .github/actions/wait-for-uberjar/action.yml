@@ -1,4 +1,4 @@
-name: "Wait for Uberjar"
+name: Wait for Uberjar
 description: "Waits for a Metabase uberjar build to complete"
 inputs:
   github-token:
