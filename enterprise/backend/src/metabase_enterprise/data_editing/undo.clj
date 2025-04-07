@@ -22,8 +22,6 @@
 ;; undone` is monotonic in `batch_num`, for each `table_id`, `row_pk` combination.
 ;;  i.e., it can only change from `false` to `true` for any logical "cell", as `batch_num` increases.
 
-;; TODO not serialized (yaml)
-
 (defn- next-batch [undo? user-id table-id]
   ;; For now, we assume all the changes are to the same table.
   ;; In the future, we might want to skip multi-table changes when using cmd-Z.
