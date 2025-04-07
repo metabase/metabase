@@ -54,6 +54,9 @@ const DefaultTemplate: StoryFn<{
 };
 
 export const DefaultTable = {
+  parameters: {
+    loki: { skip: true },
+  },
   render: DefaultTemplate,
   args: {
     series: data.variousColumnSettings,

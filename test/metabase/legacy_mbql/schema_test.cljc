@@ -164,6 +164,33 @@
       @#'mbql.s/EqualityComparable
       [:or mbql.s/absolute-datetime mbql.s/value])))
 
+(deftest ^:parallel expression-value-wrapped-literals-test
+  (are [value] (not (me/humanize (mr/explain mbql.s/MBQLQuery
+                                             {:source-table 1, :expressions {"expr" [:value value nil]}})))
+    ""
+    "192.168.1.1"
+    "2025-03-11"
+    -1
+    0
+    1
+    1.23
+    true
+    false))
+
+(deftest ^:parallel expression-unwrapped-literals-test
+  (are [value] (= {:expressions {"expr" ["valid instance of one of these MBQL clauses: :expression, :field"]}}
+                  (me/humanize (mr/explain mbql.s/MBQLQuery
+                                           {:source-table 1, :expressions {"expr" value}})))
+    ""
+    "192.168.1.1"
+    "2025-03-11"
+    -1
+    0
+    1
+    1.23
+    true
+    false))
+
 (deftest ^:parallel or-test
   (are [schema expected] (= expected
                             (mu.humanize/humanize (mr/explain schema [:value "192.168.1.1" {:base_type :type/FK}])))
@@ -194,5 +221,8 @@
   (are [x] (not (me/humanize (mr/explain ::mbql.s/Filter x)))
     [:value true nil]
     [:value false nil]
+    [:expression "boolexpr"]
     [:field 1 nil]
-    [:segment 1]))
+    [:segment 1]
+    [:and [:expression "bool1"] [:expression "bool2"]]
+    [:or  [:expression "bool1"] [:expression "bool2"]]))

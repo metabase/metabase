@@ -407,6 +407,14 @@
                        (for [option options]
                          (:selected (lib/display-info query2 option)))))))))))))
 
+(deftest ^:parallel available-binning-strategies-missing-feature-test
+  (let [provider (meta/updated-metadata-provider update :features disj :binning)
+        query    (lib/query provider (meta/table-metadata :orders))
+        subtotal (meta/field-metadata :orders :subtotal)]
+    (testing "no available binning strategies if database does not support :binning"
+      (is (= []
+             (lib/available-binning-strategies query subtotal))))))
+
 (deftest ^:parallel available-binning-strategies-expressions-test
   (testing "There should be no binning strategies for expressions as they are not supported (#31367)"
     (let [query (-> (lib.tu/venues-query)
