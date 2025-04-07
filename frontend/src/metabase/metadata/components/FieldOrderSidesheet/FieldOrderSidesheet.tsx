@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Sidesheet } from "metabase/common/components/Sidesheet";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import {
   type DragEndEvent,
   SortableList,
@@ -35,10 +36,18 @@ interface OwnProps {
 }
 
 interface Props extends OwnProps {
+  error: unknown;
+  loading: boolean;
   table?: Table;
 }
 
-const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
+const FieldOrderSidesheetBase = ({
+  error,
+  isOpen,
+  loading,
+  table,
+  onClose,
+}: Props) => {
   const dispatch = useDispatch();
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
@@ -61,8 +70,12 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
     dispatch(Tables.actions.updateProperty(table, "field_order", value));
   };
 
-  if (!table) {
-    return null;
+  if (loading || error || !table) {
+    return (
+      <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
+        <LoadingAndErrorWrapper error={error} loading={loading} />
+      </Sidesheet>
+    );
   }
 
   return (
