@@ -25,15 +25,20 @@ jobs:
             echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
           fi
 
-      - name: List Workflows in docs.metabase.github.io
+      - name: Get workflow id for process_docs_changes.yml
         env:
           TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
-          curl -L \
-          -H "Accept: application/vnd.github+json" \
-          -H "Authorization: token ${TOKEN}" \
-          -H "X-GitHub-Api-Version: 2022-11-28" \
-          https://api.github.com/repos/metabase/docs.metabase.github.io/actions/workflows
+          WORKFLOW_ID=$(curl -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: token ${TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/metabase/docs.metabase.github.io/actions/workflows | \
+            jq -r '.workflows[] | select(.name == ".github/workflows/process_docs_changes.yml") | .id')
+          echo "WORKFLOW_ID=$WORKFLOW_ID" >> $GITHUB_ENV
+
+      - name: Read Workflow ID
+        run: echo $WORKFLOW_ID
 
       # Trigger the repository_dispatch event in the target repo
       - name: Trigger Workflow in `metabase/docs.metabase.github.io`
@@ -45,7 +50,7 @@ jobs:
           curl -X POST \
             -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: token ${TOKEN}" \
-            https://api.github.com/repos/metabase/docs.metabase.github.io/process_docs_changes.yml/dispatches \
+            https://api.github.com/repos/metabase/docs.metabase.github.io/$WORKFLOW_ID/dispatches \
             -d "{\"event_type\": \"trigger-workflow\",
                  \"ref\": \"$BRANCH_NAME\"
                  \"client_payload\": {\"branch\": \"$BRANCH_NAME\"}}"
