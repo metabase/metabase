@@ -10,7 +10,9 @@
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
+   [malli.json-schema :as mjs]
    [malli.util :as mut]
+   [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr])
   #?(:cljs (:require-macros [metabase.util.malli])))
@@ -139,3 +141,8 @@
         (recur ret (nnext kvs)))
       (throw (ex-info "map-schema-assoc expects even number of arguments after schema-map, found odd number" {})))
     map-schema))
+
+(core/defn schema->json-schema
+  "Convert a malli schema to a OpenAI schema schema."
+  [schema]
+  (defendpoint.open-api/fix-json-schema (-> schema mr/resolve-schema mjs/transform)))

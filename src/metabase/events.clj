@@ -11,6 +11,7 @@
    [clojure.spec.alpha :as s]
    [malli.core :as mc]
    [malli.generator :as mg]
+   [metabase.config :as config]
    [metabase.events.schema :as events.schema]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -117,22 +118,23 @@
                       e))))
   event)
 
-(defn- require-hydrated-keys
-  "Hydrated keys are optional by default, but when generating examples, we want to include it as a required key."
+(defn- require-all-keys
+  "Ensure maps has no optional keys, maybe is required."
   [schema]
   (mc/walk
    schema
    (fn [schema _path children _options]
-     (if (= :map (mc/type schema))
+     (case (mc/type schema)
+       :map
        (mc/-set-children schema
                          (mapv (fn [[k p s]]
-                                 [k (if (some? (:required-hydrated-key? p))
-                                      (dissoc p :optional)
-                                      p)
-                                  s]) children))
+                                 [k (dissoc p :optional) s]) children))
+       :maybe
+       (first children)
+
        schema))))
 
 (defn event-info-example
   "Given a topic, return an example event info."
   [topic event]
-  (-> (event-schema topic event) mr/resolve-schema require-hydrated-keys (mg/generate {:seed 42})))
+  (-> (event-schema topic event) mr/resolve-schema require-all-keys (mg/generate {:seed (when config/is-prod? 42)})))

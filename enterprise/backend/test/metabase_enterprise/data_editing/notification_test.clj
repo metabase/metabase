@@ -213,11 +213,11 @@
                                            :created_row (mt/malli=? [:map-of :keyword :any])}
                            :event_name "event/action.success"}
            :context       (mt/malli=? :map)}
-          (mt/user-http-request :crowberto :post 200 "notification/payload"
-                                {:payload_type :notification/system-event
-                                 :payload      {:event_name :event/action.success
-                                                :action     :row/create}
-                                 :creator_id   (mt/user->id :crowberto)}))))
+          (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
+                                          {:payload_type :notification/system-event
+                                           :payload      {:event_name :event/action.success
+                                                          :action     :row/create}
+                                           :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-update-test
   (is (=? {:payload_type "notification/system-event"
@@ -239,11 +239,11 @@
                            :event_name "event/action.success"
                            :custom {}}
            :context       (mt/malli=? :map)}
-          (mt/user-http-request :crowberto :post 200 "notification/payload"
-                                {:payload_type :notification/system-event
-                                 :payload      {:event_name :event/action.success
-                                                :action     :row/update}
-                                 :creator_id   (mt/user->id :crowberto)}))))
+          (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
+                                          {:payload_type :notification/system-event
+                                           :payload      {:event_name :event/action.success
+                                                          :action     :row/update}
+                                           :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-delete-test
   (is (=? {:payload_type "notification/system-event"
@@ -262,8 +262,8 @@
                                            :deleted_row (mt/malli=? [:map-of :keyword :any])}
                            :event_name "event/action.success"}
            :context       (mt/malli=? :map)}
-          (mt/user-http-request :crowberto :post 200 "notification/payload"
-                                {:payload_type :notification/system-event
-                                 :payload      {:event_name :event/action.success
-                                                :action     :row/delete}
-                                 :creator_id   (mt/user->id :crowberto)}))))
+          (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
+                                          {:payload_type :notification/system-event
+                                           :payload      {:event_name :event/action.success
+                                                          :action     :row/delete}
+                                           :creator_id   (mt/user->id :crowberto)})))))
