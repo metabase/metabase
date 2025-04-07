@@ -49,7 +49,8 @@ jobs:
           echo "WORKFLOW_ID=$WORKFLOW_ID" >> $GITHUB_ENV
 
       - name: Read Workflow ID
-        run: echo 'workflow id:' "$WORKFLOW_ID"
+        run: |
+          echo 'workflow id:' "$WORKFLOW_ID"
 
       - name: Trigger Workflow in `metabase/docs.metabase.github.io`
         env:
