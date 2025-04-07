@@ -98,8 +98,7 @@
     driver.common/cloud-ip-address-info
     driver.common/advanced-options-start
     driver.common/default-advanced-options]
-   (map u/one-or-many)
-   (apply concat)))
+   (into [] (mapcat u/one-or-many))))
 
 (defn- malicious-property-value
   "Checks an h2 connection string for connection properties that could be malicious. Markers of this include semi-colons

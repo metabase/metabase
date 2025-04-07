@@ -1002,44 +1002,59 @@ describe("scenarios > admin > databases > table", () => {
     });
 
     it("should see multiple fields", () => {
-      cy.findByTestId("column-ID").within(() => {
-        cy.findByPlaceholderText("Select a semantic type").should(
-          "have.value",
-          "Entity Key",
-        );
-      });
+      cy.findByTestId("column-ID")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("BIGINT").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Entity Key",
+          );
+        });
 
-      cy.findByTestId("column-USER_ID").within(() => {
-        cy.findByPlaceholderText("Select a semantic type").should(
-          "have.value",
-          "Foreign Key",
-        );
-        cy.findByPlaceholderText("Select a target").should(
-          "have.value",
-          "People → ID",
-        );
-      });
+      cy.findByTestId("column-USER_ID")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("INTEGER").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Foreign Key",
+          );
+          cy.findByPlaceholderText("Select a target").should(
+            "have.value",
+            "People → ID",
+          );
+        });
 
-      cy.findByTestId("column-TAX").within(() => {
-        cy.findByPlaceholderText("Select a semantic type").should(
-          "have.value",
-          "No semantic type",
-        );
-      });
+      cy.findByTestId("column-TAX")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("DOUBLE PRECISION").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "No semantic type",
+          );
+        });
 
-      cy.findByTestId("column-DISCOUNT").within(() => {
-        cy.findByPlaceholderText("Select a semantic type").should(
-          "have.value",
-          "Discount",
-        );
-      });
+      cy.findByTestId("column-DISCOUNT")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("DOUBLE PRECISION").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Discount",
+          );
+        });
 
-      cy.findByTestId("column-CREATED_AT").within(() => {
-        cy.findByPlaceholderText("Select a semantic type").should(
-          "have.value",
-          "Creation timestamp",
-        );
-      });
+      cy.findByTestId("column-CREATED_AT")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("TIMESTAMP").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Creation timestamp",
+          );
+        });
     });
   });
 
