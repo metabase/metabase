@@ -278,10 +278,7 @@ function checkKnownFunctions({ expression }: { expression: Expression }) {
 
     const clause = MBQL_CLAUSES[name];
     if (!clause) {
-      throw new DiagnosticError(
-        t`Unknown function ${name}`,
-        getToken(expression),
-      );
+      throw new DiagnosticError(t`Unknown function ${name}`, getToken(node));
     }
   });
 }
@@ -316,7 +313,7 @@ function checkFunctionSupport({
     if (!database?.hasFeature(clause.requiresFeature)) {
       throw new DiagnosticError(
         t`Unsupported function ${name}`,
-        getToken(expression),
+        getToken(node),
       );
     }
   });
@@ -337,7 +334,7 @@ function checkArgValidator({ expression }: { expression: Expression }) {
       const args = operands.filter((arg) => !isOptionsObject(arg));
       const validationError = clause.validator(...args);
       if (validationError) {
-        throw new DiagnosticError(validationError, getToken(expression));
+        throw new DiagnosticError(validationError, getToken(node));
       }
     }
   });
@@ -368,7 +365,7 @@ function checkArgCount({ expression }: { expression: Expression }) {
             `Function ${displayName} expects at least ${minArgCount} arguments`,
             minArgCount,
           ),
-          getToken(expression),
+          getToken(node),
         );
       }
     } else {
@@ -386,7 +383,7 @@ function checkArgCount({ expression }: { expression: Expression }) {
             `Function ${displayName} expects ${expectedArgsLength} arguments`,
             expectedArgsLength,
           ),
-          getToken(expression),
+          getToken(node),
         );
       }
     }
@@ -410,7 +407,7 @@ function checkComparisonOperatorArgs({
     if (typeof firstOperand === "number") {
       throw new DiagnosticError(
         t`Expecting field but found ${firstOperand}`,
-        getToken(expression),
+        getToken(node),
       );
     }
   });
@@ -431,7 +428,7 @@ function checkCaseOrIfArgCount({ expression }: { expression: Expression }) {
     if (pairs.length < 1) {
       throw new DiagnosticError(
         t`${op.toUpperCase()} expects 2 arguments or more`,
-        getToken(expression),
+        getToken(node),
       );
     }
   });
