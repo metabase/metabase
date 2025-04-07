@@ -79,6 +79,7 @@ export function useMultiAutocomplete({
     const newFieldState = getFieldStateAfterChange(
       newFieldValue,
       newFieldValues,
+      newParsedValues,
       fieldSelection,
     );
     setFieldState(newFieldState);
@@ -263,13 +264,14 @@ function getValuesAfterChange<T>(
 function getFieldStateAfterChange(
   fieldValue: string,
   fieldValues: string[],
+  parsedValues: string[],
   fieldSelection: FieldSelection,
 ) {
   const isDelimiter = DELIMITERS.some((delimiter) =>
     fieldValue.endsWith(delimiter),
   );
 
-  if (fieldValues.length > 1 || (isDelimiter && fieldValues.length > 0)) {
+  if (parsedValues.length > 1 || (isDelimiter && parsedValues.length > 0)) {
     return {
       fieldValue: "",
       fieldSelection: {
