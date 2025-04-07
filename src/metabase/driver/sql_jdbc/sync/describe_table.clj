@@ -314,7 +314,7 @@
 
 (defmethod describe-fields-pre-process-xf :sql-jdbc
   [_driver _db & _args]
-  (map identity))
+  identity)
 
 (defn describe-fields
   "Default implementation of [[metabase.driver/describe-fields]] for JDBC drivers. Uses JDBC DatabaseMetaData."
