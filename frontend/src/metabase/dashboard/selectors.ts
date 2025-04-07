@@ -94,8 +94,8 @@ export const getDashcardData = createSelector(
     getEditingDashcardDataOverrideMap,
   ],
   (dashcardDataMap, dashcardId, isEditing, editingDashcardDataMap) => {
-    return isEditing
-      ? editingDashcardDataMap[dashcardId] || dashcardDataMap[dashcardId]
+    return isEditing && dashcardId in editingDashcardDataMap
+      ? editingDashcardDataMap[dashcardId]
       : dashcardDataMap[dashcardId];
   },
 );
