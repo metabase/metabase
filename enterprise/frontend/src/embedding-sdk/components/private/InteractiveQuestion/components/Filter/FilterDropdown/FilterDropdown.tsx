@@ -101,6 +101,12 @@ const FilterDropdownInner = ({
   );
 };
 
+/**
+ * A dropdown button for the Filter component.
+ *
+ * @function
+ * @param props
+ */
 export const FilterDropdown = ({
   withColumnItemIcon,
 }: InteractiveQuestionFilterDropdownProps) => {

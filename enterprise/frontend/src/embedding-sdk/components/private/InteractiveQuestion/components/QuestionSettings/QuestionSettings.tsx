@@ -74,9 +74,16 @@ const QuestionSettingsContent = ({
   );
 };
 
-export const QuestionSettings = (
-  stackProps: InteractiveQuestionQuestionSettingsProps,
-) => {
+/**
+ * Settings panel for configuring visualization options like axes, colors, and formatting.
+ * Uses question context for settings.
+ *
+ * @function
+ * @param props
+ */
+export const QuestionSettings = ({
+  ...stackProps
+}: InteractiveQuestionQuestionSettingsProps) => {
   const { question, queryResults, updateQuestion } =
     useInteractiveQuestionContext();
 

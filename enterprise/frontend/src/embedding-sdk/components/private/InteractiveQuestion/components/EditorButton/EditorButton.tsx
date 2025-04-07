@@ -15,6 +15,7 @@ import S from "./EditorButton.module.css";
 export type InteractiveQuestionEditorButtonProps = {
   /**
    * Whether the editor is currently open
+   * @defaultValue false
    */
   isOpen?: boolean;
 
@@ -25,6 +26,13 @@ export type InteractiveQuestionEditorButtonProps = {
 } & ActionIconProps &
   HTMLAttributes<HTMLButtonElement>;
 
+/**
+ * Toggle button for showing/hiding the Editor interface.
+ * In custom layouts, the `EditorButton` _must_ have an {@link InteractiveQuestionEditorButtonProps.onClick}` handler or the button won't do anything when clicked.
+ *
+ * @function
+ * @param props
+ */
 export const EditorButton = ({
   isOpen = false,
   ...actionIconProps

@@ -33,6 +33,13 @@ const AddFilterPopover = () => {
   );
 };
 
+/**
+ * A set of interactive filter badges that allow adding, editing, and removing filters.
+ * Displays current filters as badges with an "Add another filter" option.
+ *
+ * @function
+ * @param props
+ */
 export const Filter = ({
   withColumnItemIcon,
 }: InteractiveQuestionFilterProps) => (

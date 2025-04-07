@@ -95,6 +95,12 @@ export const BreakoutDropdownInner = ({
   );
 };
 
+/**
+ * Dropdown button for the Breakout component.
+ *
+ * @function
+ * @param props
+ */
 export const BreakoutDropdown = (
   props: InteractiveQuestionBreakoutDropdownProps,
 ) => {

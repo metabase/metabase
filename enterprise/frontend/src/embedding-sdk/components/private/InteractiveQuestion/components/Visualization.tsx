@@ -21,6 +21,12 @@ import { useInteractiveQuestionContext } from "../context";
  */
 export type InteractiveQuestionQuestionVisualizationProps = FlexibleSizeProps;
 
+/**
+ * The main visualization component that renders the question results as a chart, table, or other visualization type.
+ *
+ * @function
+ * @param props
+ */
 export const QuestionVisualization = ({
   height,
   width,

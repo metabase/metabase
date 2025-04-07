@@ -15,6 +15,12 @@ import { useInteractiveQuestionContext } from "../../context";
  */
 export type InteractiveQuestionResetButtonProps = ButtonProps;
 
+/**
+ * Button to reset question modifications. Only appears when there are unsaved changes to the question.
+ *
+ * @function
+ * @param props
+ */
 export const QuestionResetButton = ({
   onClick,
   ...buttonProps

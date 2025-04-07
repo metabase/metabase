@@ -12,9 +12,15 @@ import { useSensibleVisualizations } from "../hooks/use-sensible-visualizations"
  */
 export type InteractiveQuestionChartTypeSelectorProps = StackProps;
 
-export const ChartTypeSelector = (
-  stackProps: InteractiveQuestionChartTypeSelectorProps,
-) => {
+/**
+ * Detailed chart type selection interface with recommended visualization options.
+ *
+ * @function
+ * @param props
+ */
+export const ChartTypeSelector = ({
+  ...stackProps
+}: InteractiveQuestionChartTypeSelectorProps) => {
   const { sensibleVisualizations, nonSensibleVisualizations } =
     useSensibleVisualizations();
 

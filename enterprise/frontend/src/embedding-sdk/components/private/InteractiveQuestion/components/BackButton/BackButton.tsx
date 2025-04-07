@@ -15,9 +15,16 @@ export type InteractiveQuestionBackButtonProps = Omit<
   "noLink" | "onClick"
 >;
 
-export const BackButton = (
-  actionIconProps: InteractiveQuestionBackButtonProps,
-) => {
+/**
+ * A navigation button that returns to the previous view.
+ * Only visible when rendered within the {@link InteractiveDashboardProps.renderDrillThroughQuestion} prop.
+ *
+ * @function
+ * @param props
+ */
+export const BackButton = ({
+  ...actionIconProps
+}: InteractiveQuestionBackButtonProps) => {
   const { onNavigateBack } = useInteractiveQuestionContext();
 
   if (!onNavigateBack) {

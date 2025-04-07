@@ -35,9 +35,17 @@ export const shouldShowSaveButton = ({
   return Boolean(isQuestionChanged && canSave);
 };
 
-export const SaveButton = (
-  buttonProps: InteractiveQuestionSaveButtonProps = {},
-) => {
+/**
+ * Button for saving question changes. Only enabled when there are unsaved modifications to the question.
+ *
+ * _Note_: Currently, in custom layouts, the `SaveButton` must have an `onClick` handler or the button will not do anything when clicked.
+ *
+ * @function
+ * @param props
+ */
+export const SaveButton = ({
+  ...buttonProps
+}: InteractiveQuestionSaveButtonProps = {}) => {
   const { question, originalQuestion } = useInteractiveQuestionContext();
 
   const isSaveButtonEnabled = shouldShowSaveButton({

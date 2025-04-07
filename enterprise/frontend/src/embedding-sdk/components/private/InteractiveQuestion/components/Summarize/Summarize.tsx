@@ -40,6 +40,12 @@ const SummarizePopover = ({
   );
 };
 
+/**
+ * Interface for adding and managing data summaries (like counts, sums, averages). Displays as a set of badges.
+ * Uses question context for summarization functionality.
+ *
+ * @function
+ */
 export const Summarize = () => {
   const items = useSummarizeData();
 

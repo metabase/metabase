@@ -11,9 +11,15 @@ import { ToolbarButton } from "../util/ToolbarButton";
  */
 export type InteractiveQuestionDownloadWidgetDropdownProps = PopoverProps;
 
-export const DownloadWidgetDropdown = (
-  popoverProps: InteractiveQuestionDownloadWidgetDropdownProps,
-) => {
+/**
+ * Provides a button that contains a dropdown that shows the `DownloadWidget`.
+ *
+ * @function
+ * @param props
+ */
+export const DownloadWidgetDropdown = ({
+  ...popoverProps
+}: InteractiveQuestionDownloadWidgetDropdownProps) => {
   const { withDownloads } = useInteractiveQuestionContext();
   return (
     <Popover

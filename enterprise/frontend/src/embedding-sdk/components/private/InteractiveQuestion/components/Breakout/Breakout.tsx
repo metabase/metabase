@@ -51,6 +51,12 @@ export const BreakoutInner = ({
   );
 };
 
+/**
+ * A set of badges for managing data groupings (breakouts).
+ * Uses question context for breakout functionality.
+ *
+ * @function
+ */
 export const Breakout = () => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 

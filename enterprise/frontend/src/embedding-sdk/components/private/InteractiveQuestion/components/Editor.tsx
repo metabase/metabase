@@ -23,6 +23,13 @@ export type InteractiveQuestionEditorProps = {
   onApply?: () => void;
 };
 
+/**
+ * Advanced query editor that provides full access to question configuration.
+ * Includes filtering, aggregation, custom expressions, and joins.
+ *
+ * @function
+ * @param props
+ */
 export const Editor = ({
   onApply = () => {},
 }: InteractiveQuestionEditorProps) => {

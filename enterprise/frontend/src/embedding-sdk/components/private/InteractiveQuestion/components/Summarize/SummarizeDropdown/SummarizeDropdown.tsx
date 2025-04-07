@@ -26,9 +26,15 @@ export type InteractiveQuestionSummarizeDropdownProps = Omit<
   "children" | "onClose" | "opened"
 >;
 
-export const SummarizeDropdown = (
-  popoverProps: InteractiveQuestionSummarizeDropdownProps,
-) => {
+/**
+ * Dropdown button for the Summarize component.
+ *
+ * @function
+ * @param props
+ */
+export const SummarizeDropdown = ({
+  ...popoverProps
+}: InteractiveQuestionSummarizeDropdownProps) => {
   const aggregationItems = useSummarizeData();
 
   const label = match(aggregationItems.length)

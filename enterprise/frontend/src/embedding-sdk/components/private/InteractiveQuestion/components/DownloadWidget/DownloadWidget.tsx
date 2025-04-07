@@ -39,6 +39,12 @@ const DownloadWidgetInner = ({
   );
 };
 
+/**
+ * Provides a UI widget for downloading data in different formats (`CSV`, `XLSX`, `JSON`, and `PNG` depending on the visualization).
+ *
+ * @function
+ * @param props
+ */
 export const DownloadWidget = (
   props: InteractiveQuestionDownloadWidgetProps,
 ) => {

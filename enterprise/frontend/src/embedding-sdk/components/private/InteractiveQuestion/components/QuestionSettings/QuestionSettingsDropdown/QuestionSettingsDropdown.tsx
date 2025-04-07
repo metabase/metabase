@@ -20,6 +20,12 @@ export type InteractiveQuestionQuestionSettingsDropdownProps = {
   height?: CSSProperties["height"];
 } & Omit<PopoverProps, "children">;
 
+/**
+ * Dropdown button that contains the QuestionSettings component.
+ *
+ * @function
+ * @param props
+ */
 export const QuestionSettingsDropdown = ({
   height,
   ...popoverProps
