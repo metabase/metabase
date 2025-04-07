@@ -33,10 +33,11 @@
 
 (defenterprise cache-strategy
   "Returns cache strategy for a card. In EE, this checks the hierarchy for the card, dashboard, or
-   database (in that order). In OSS returns root configuration."
+  database (in that order). In OSS returns root configuration, taking card's :cache_invalidated_at
+  into consideration."
   metabase-enterprise.cache.strategies
-  [_card _dashboard-id]
-  (cache-config/card-strategy (cache-config/root-strategy) nil))
+  [card _dashboard-id]
+  (cache-config/card-strategy (cache-config/root-strategy) card))
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)

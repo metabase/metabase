@@ -18,9 +18,9 @@ To use the custom expression editor, create a **Custom Column** (where the custo
 
 When using the query builder, you can use expressions to create new:
 
-- **Custom columns**. You could use `= [Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
-- **Filters**. The expression `= contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
-- **Summaries**. Also known as metrics or aggregations. `= Share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
+- **Custom columns**. You could use `[Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
+- **Filters**. The expression `contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
+- **Summaries**. Also known as metrics or aggregations. `Share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
 
 Type in your expression, give it a name, and click **Done**. If the Done button is grayed out, check that your expression is valid, and that you've given the expression a name (which you enter at the bottom of the expression editor).
 
@@ -54,15 +54,23 @@ To format expressions, click on the auto-format button on the right side of the 
 
 Use `+`, `-`, `*` (multiply), `/` (divide) on numeric columns with numeric values, like integers, floats, and double. You can use parentheses, `(` and `)`, to group parts of your expression.
 
-For example, you could create a new column that calculates the difference between the total and subtotal of a order: `= [Total] - [Subtotal]`.
+For example, you could create a new column that calculates the difference between the total and subtotal of a order: `[Total] - [Subtotal]`.
 
 To do math on timestamp columns, you can use [Date functions](expressions-list.md#date-functions) like [dateDiff](./expressions/datetimediff.md).
 
 ## Conditional operators
 
-`AND`, `OR`, `NOT`, `>`, `>=` (greater than or equal to), `<`, `<=` (less than or equal to), `=`, `!=` (not equal to).
+- `AND`
+- `OR`  
+- `NOT`
+- `>` 
+- `>=` (greater than or equal to)
+- `<`
+- `<=` (less than or equal to) 
+- `=`
+- `!=` (not equal to)
 
-For example, you could create a filter for customers from California or Vermont: `= [State] = "CA" OR [State] = "VT"`.
+For example, you could create a filter for customers from California or Vermont: `[State] = "CA" OR [State] = "VT"`.
 
 You can also use conditionals with the `case` function (alias `if`):
 
