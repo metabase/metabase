@@ -122,19 +122,18 @@
    schema
    (fn [schema _path children _options]
      (if (= :map (mc/type schema))
-       (do
-         (mc/-set-children schema
-                           (mapv (fn [[k p s]]
-                                   [k (if (:hydrated-key p)
-                                        (dissoc p :optional)
-                                        p)
-                                    s]) children)))
+       (mc/-set-children schema
+                         (mapv (fn [[k p s]]
+                                 [k (if (:hydrated-key p)
+                                      (dissoc p :optional)
+                                      p)
+                                  s]) children))
        schema))))
 
 (defn event-info-example
   "Given a topic, return an example event info."
   [topic event]
-  (-> (event-schema topic event) mr/resolve-schema unoptional-hydrated-key mg/generate))
+  (-> (event-schema topic event) mr/resolve-schema unoptional-hydrated-key (mg/generate {:seed 42})))
 
 (defmethod event-info-example :default
   [_topic _options]

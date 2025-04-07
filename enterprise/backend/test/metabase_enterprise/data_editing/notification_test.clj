@@ -1,7 +1,9 @@
 (ns metabase-enterprise.data-editing.notification-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
+   [metabase.events :as events]
    [metabase.events.notification :as events.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]))
@@ -195,22 +197,73 @@
                             :result {:table_id (mt/id :orders)}})))))))))
 
 (deftest example-payload-row-create-test
-  (mt/user-http-request :crowberto :post 200 "notification/payload"
-                        {:payload_type :notification/system-event
-                         :payload      {:event_name :event/action.success
-                                        :action     :row/create}
-                         :creator_id   (mt/user->id :crowberto)}))
+  (is (=? {:payload_type "notification/system-event"
+           :creator      {:first_name "Crowberto"
+                          :last_name   "Corv"
+                          :email       "crowberto@metabase.com"
+                          :common_name "Crowberto Corv"}
+           :payload       {:action        "row/create"
+                           :invocation_id (mt/malli=? :string)
+                           :actor_id      (mt/malli=? :int)
+                           :actor         (mt/malli=? [:map
+                                                       [:first_name :string]
+                                                       [:last_name :string]
+                                                       [:email :string]])
+                           :result        {:table_id    (mt/malli=? :int)
+                                           :created_row (mt/malli=? [:map-of :keyword :any])}
+                           :event_name "event/action.success"}
+           :context       (mt/malli=? :map)}
+          (mt/user-http-request :crowberto :post 200 "notification/payload"
+                                {:payload_type :notification/system-event
+                                 :payload      {:event_name :event/action.success
+                                                :action     :row/create}
+                                 :creator_id   (mt/user->id :crowberto)}))))
 
 (deftest example-payload-row-update-test
-  (mt/user-http-request :crowberto :post 200 "notification/payload"
-                        {:payload_type :notification/system-event
-                         :payload      {:event_name :event/action.success
-                                        :action     :row/update}
-                         :creator_id   (mt/user->id :crowberto)}))
+  (is (=? {:payload_type "notification/system-event"
+           :creator      {:first_name "Crowberto"
+                          :last_name   "Corv"
+                          :email       "crowberto@metabase.com"
+                          :common_name "Crowberto Corv"}
+           :payload       {:action        "row/update"
+                           :invocation_id (mt/malli=? :string)
+                           :actor_id      (mt/malli=? :int)
+                           :actor         (mt/malli=? [:map
+                                                       [:first_name :string]
+                                                       [:last_name :string]
+                                                       [:email :string]])
+                           :result        {:table_id    (mt/malli=? :int)
+                                           :raw_update  (mt/malli=? [:map-of :keyword :any])
+                                           :after       (mt/malli=? [:map-of :keyword :any])
+                                           :before      (mt/malli=? [:map-of :keyword :any])}
+                           :event_name "event/action.success"
+                           :custom {}}
+           :context       (mt/malli=? :map)}
+          (mt/user-http-request :crowberto :post 200 "notification/payload"
+                                {:payload_type :notification/system-event
+                                 :payload      {:event_name :event/action.success
+                                                :action     :row/update}
+                                 :creator_id   (mt/user->id :crowberto)}))))
 
 (deftest example-payload-row-delete-test
-  (mt/user-http-request :crowberto :post 200 "notification/payload"
-                        {:payload_type :notification/system-event
-                         :payload      {:event_name :event/action.success
-                                        :action     :row/delete}
-                         :creator_id   (mt/user->id :crowberto)}))
+  (is (=? {:payload_type "notification/system-event"
+           :creator      {:first_name "Crowberto"
+                          :last_name   "Corv"
+                          :email       "crowberto@metabase.com"
+                          :common_name "Crowberto Corv"}
+           :payload       {:action        "row/delete"
+                           :invocation_id (mt/malli=? :string)
+                           :actor_id      (mt/malli=? :int)
+                           :actor         (mt/malli=? [:map
+                                                       [:first_name :string]
+                                                       [:last_name :string]
+                                                       [:email :string]])
+                           :result        {:table_id    (mt/malli=? :int)
+                                           :deleted_row (mt/malli=? [:map-of :keyword :any])}
+                           :event_name "event/action.success"}
+           :context       (mt/malli=? :map)}
+          (mt/user-http-request :crowberto :post 200 "notification/payload"
+                                {:payload_type :notification/system-event
+                                 :payload      {:event_name :event/action.success
+                                                :action     :row/delete}
+                                 :creator_id   (mt/user->id :crowberto)}))))
