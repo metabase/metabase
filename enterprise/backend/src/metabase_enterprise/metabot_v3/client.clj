@@ -83,7 +83,7 @@
 (defn- generate-sql-endpoint []
   (str (ai-proxy-base-url) "/v1/sql/generate"))
 
-(mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response-v2
+(mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response
   "Make a V2 request to the AI Proxy."
   [{:keys [context messages conversation-id session-id state]}
    :- [:map
@@ -95,12 +95,12 @@
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
     (let [url      (agent-v2-endpoint-url)
-          body     (-> {:messages messages
-                        :context  context}
-                       (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en)
-                       (assoc :conversation_id conversation-id
-                              :state           state
-                              :user_id         api/*current-user-id*))
+          body     (-> {:messages        messages
+                        :context         context
+                        :conversation_id conversation-id
+                        :state           state
+                        :user_id         api/*current-user-id*}
+                       (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en))
           _        (metabot-v3.context/log body :llm.log/be->llm)
           _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
           options  (cond-> {:headers          {"Accept"                    "application/json"
@@ -115,12 +115,9 @@
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
-        (u/prog1 (mc/decode ::metabot-v3.client.schema/ai-proxy.response-v2
+        (u/prog1 (mc/decode ::metabot-v3.client.schema/ai-proxy.response
                             (:body response)
-                            (mtx/transformer
-                             (mtx/json-transformer)
-                             {:name :api-response}
-                             (mtx/key-transformer {:decode u/->kebab-case-en})))
+                            (mtx/transformer {:name :api-response}))
           (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)

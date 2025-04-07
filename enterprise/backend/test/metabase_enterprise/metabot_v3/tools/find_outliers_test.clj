@@ -65,36 +65,36 @@
 (deftest metric-find-outliers-test
   (mt/with-temp [:model/Card {metric-id :id} (assoc (test-card) :type :metric)]
     (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
-                     {:data-source {:metric_id metric-id}}))))
+                     {:data-source {:metric-id metric-id}}))))
 
 (deftest report-find-outliers-test
   (mt/with-temp [:model/Card {report-id :id} (assoc (test-card) :type :question)]
     (let [report-details (mt/with-current-user (mt/user->id :crowberto)
                            (#'metabot-v3.dummy-tools/card-details report-id))
-          ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field_id)
+          ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field-id)
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))
           result-field-id (->field-id "Average of Subtotal")]
       (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
-                       {:data-source {:report_id report-id
-                                      :result_field_id result-field-id}})))))
+                       {:data-source {:report-id report-id
+                                      :result-field-id result-field-id}})))))
 
 (deftest query-find-outliers-test
   (let [query-id (u/generate-nano-id)
         query-details (#'metabot-v3.dummy-tools/execute-query query-id (:dataset_query (test-card)))
-        ->field-id #(u/prog1 (-> query-details :result_columns (by-name %) :field_id)
+        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field-id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
         result-field-id (->field-id "Average of Subtotal")]
-    (testing "new style tool call with query and query_id"
+    (testing "new style tool call with query and query-id"
       (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
                        {:data-source {:query (:query query-details)
-                                      :query_id query-id
-                                      :result_field_id result-field-id}})))
+                                      :query-id query-id
+                                      :result-field-id result-field-id}})))
     (testing "new style tool call with just query"
       (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
                        {:data-source {:query (:query query-details)
-                                      :result_field_id result-field-id}})))))
+                                      :result-field-id result-field-id}})))))
 
 (deftest ^:parallel metric-find-outliers-no-temporal-dimension-test
   (mt/with-temp [:model/Card {metric-id :id} (-> (test-card)
@@ -104,7 +104,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (is (= {:output "No temporal dimension found. Outliers can only be detected when a temporal dimension is available."}
              (metabot-v3.tools.find-outliers/find-outliers
-              {:data-source {:metric_id metric-id}}))))))
+              {:data-source {:metric-id metric-id}}))))))
 
 (deftest ^:parallel metric-find-outliers-no-numeric-dimension-test
   (mt/with-temp [:model/Card {metric-id :id} (-> (test-card)
@@ -114,12 +114,12 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (is (= {:output "Could not determine result field."}
              (metabot-v3.tools.find-outliers/find-outliers
-              {:data-source {:metric_id metric-id}}))))))
+              {:data-source {:metric-id metric-id}}))))))
 
 (deftest ^:parallel find-outliers-wrong-query-test
   (let [query-id (u/generate-nano-id)
         query-details (#'metabot-v3.dummy-tools/execute-query query-id (:dataset_query (test-card)))
-        ->field-id #(u/prog1 (-> query-details :result_columns (by-name %) :field_id)
+        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field-id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
         result-field-id (->field-id "Average of Subtotal")]
@@ -127,7 +127,7 @@
       (are [details output] (= {:output output}
                                (metabot-v3.tools.find-outliers/find-outliers
                                 {:data-source {:query (:query details)
-                                               :result_field_id result-field-id}}))
+                                               :result-field-id result-field-id}}))
 
         (assoc-in query-details [:query :query :source-table] Integer/MAX_VALUE)
         "Unexpected error running query"
@@ -138,11 +138,11 @@
         (is (= {:output (str "Invalid result_field_id " wrong-result-field-id)}
                (metabot-v3.tools.find-outliers/find-outliers
                 {:data-source {:query (:query query-details)
-                               :result_field_id wrong-result-field-id}})))))))
+                               :result-field-id wrong-result-field-id}})))))))
 
 (deftest ^:parallel invalid-ids-test
   (are [data-source output] (= {:output output}
                                (metabot-v3.tools.find-outliers/find-outliers {:data-source data-source}))
-    {:metric_id "42"} "Invalid metric_id as data_source"
-    {:report_id "42"} "Invalid report_id as data_source"
+    {:metric-id "42"} "Invalid metric_id as data_source"
+    {:report-id "42"} "Invalid report_id as data_source"
     {:table_id 42}    "Invalid data_source"))
