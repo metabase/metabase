@@ -93,7 +93,7 @@ export const DatabaseRoutingSection = ({
   return (
     <DatabaseInfoSection
       name={t`Database routing`}
-      description={t`Route user queries to a separate database with the same schema. When a user views a question or dashboard for this database, they’ll be routed to a destination database whose slug matches the value of that attribute.`}
+      description={t`When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema.`}
       data-testid="database-routing-section"
     >
       <Flex justify="space-between" align="center">
@@ -137,7 +137,7 @@ export const DatabaseRoutingSection = ({
                 </Text>
               </Text>
               <Tooltip
-                label={t`This attribute will be used to determine which database a user is routed to. The value must match the slug of a destination database.`}
+                label={t`This attribute determins which destination database the person can query. The value must match the slug of the destination database.`}
                 withArrow
               >
                 <Select
