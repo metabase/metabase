@@ -80,10 +80,14 @@ export function isOptionsObject(obj: unknown): obj is CallOptions {
 
 export function isFunction(expr: unknown): expr is CallExpression {
   return (
-    Array.isArray(expr) &&
+    isCallExpression(expr) &&
     FUNCTIONS.has(expr[0]) &&
     expr.slice(1).every((arg) => isExpression(arg) || isOptionsObject(arg))
   );
+}
+
+export function isCallExpression(expr: unknown): expr is CallExpression {
+  return Array.isArray(expr) && typeof expr[0] === "string";
 }
 
 export function isDimension(expr: unknown): expr is FieldReference {
