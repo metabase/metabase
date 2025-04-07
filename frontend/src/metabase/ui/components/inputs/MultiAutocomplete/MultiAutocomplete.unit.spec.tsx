@@ -34,12 +34,10 @@ type SetupOpts = {
   "aria-label"?: string;
 };
 
-const PLACEHOLDER = "Enter some text";
-
 function setup({
   initialValues = [],
   options = [],
-  placeholder = PLACEHOLDER,
+  placeholder = "Enter some text",
   shouldCreate,
 }: SetupOpts = {}) {
   const onChange = jest.fn<void, [string[]]>();
@@ -204,17 +202,27 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  // eslint-disable-next-line jest/no-disabled-tests
-  it.skip("should handle pasting when there is some text in the input", async () => {
+  it("should handle pasting with 1 value when there is some text in the input", async () => {
     const { input, onChange } = setup();
-    await userEvent.type(input, "foo123");
+    await userEvent.type(input, "123{arrowleft}");
+    await userEvent.paste("45");
+    expect(onChange).toHaveBeenLastCalledWith(["12453"]);
+    expect(input).toHaveValue("12453");
+  });
 
-    await userEvent.click(input);
-    // @ts-expect-error: input does have setSelectionRange, and testing-library does not provide a wrapper
-    input.setSelectionRange(3, 3);
-    await userEvent.paste("quu,xyz");
+  it("should handle pasting with 2 values when there is some text in the input", async () => {
+    const { input, onChange } = setup();
+    await userEvent.type(input, "123{arrowleft}");
+    await userEvent.paste("45,6");
+    expect(onChange).toHaveBeenLastCalledWith(["1245", "63"]);
+    expect(input).toHaveValue("");
+  });
 
-    expect(onChange).toHaveBeenLastCalledWith(["fooquu", "xyz123"]);
+  it("should handle pasting with 3 values when there is some text in the input", async () => {
+    const { input, onChange } = setup();
+    await userEvent.type(input, "123{arrowleft}");
+    await userEvent.paste("45,6,78");
+    expect(onChange).toHaveBeenLastCalledWith(["1245", "6", "783"]);
     expect(input).toHaveValue("");
   });
 

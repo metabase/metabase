@@ -94,10 +94,19 @@ export function useMultiAutocomplete({
 
   const handleFieldPaste = (event: ClipboardEvent<HTMLInputElement>) => {
     const newFieldValue = event.clipboardData.getData("text");
+    const { selectionStart, selectionEnd } = event.currentTarget;
     const newParsedValues = parseCsv(newFieldValue);
     if (newParsedValues.length > 1) {
       event.preventDefault();
-      handleFieldInput(newFieldValue, newParsedValues);
+      handleFieldInput(
+        newFieldValue,
+        getParsedValuesCombinedWithFieldValue(
+          fieldValue,
+          newParsedValues,
+          selectionStart,
+          selectionEnd,
+        ),
+      );
     }
   };
 
@@ -288,6 +297,28 @@ function getFieldStateAfterChange(
       },
     };
   }
+}
+
+function getParsedValuesCombinedWithFieldValue(
+  fieldValue: string,
+  parsedValues: string[],
+  selectionStart: number | null,
+  selectionEnd: number | null,
+) {
+  const prefix =
+    selectionStart != null && selectionStart > 0
+      ? fieldValue.substring(0, selectionStart)
+      : "";
+  const suffix =
+    selectionEnd != null && selectionEnd < fieldValue.length
+      ? fieldValue.substring(selectionEnd)
+      : "";
+
+  return [
+    `${prefix}${parsedValues[0]}`,
+    ...parsedValues.slice(1, parsedValues.length - 1),
+    `${parsedValues[parsedValues.length - 1]}${suffix}`,
+  ];
 }
 
 function parseCsv(rawValue: string): string[] {
