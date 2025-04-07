@@ -124,6 +124,12 @@ describe("diagnostics", () => {
         expect(err(`1 + 2 + 3 + 4`)).toBeUndefined();
       });
 
+      it("should accept multiple arguments for logical operators", () => {
+        expect(
+          err(`(1 > 2) and (2 > 3) and (3 > 4) and (4 > 5)`),
+        ).toBeUndefined();
+      });
+
       it.each(["in", "notIn"])(
         "should reject multi-arg function calls without options when there is not enough arguments",
         (fn) => {

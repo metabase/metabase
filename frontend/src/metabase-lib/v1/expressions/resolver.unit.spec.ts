@@ -110,47 +110,6 @@ describe("resolve", () => {
       expect(() => expr(["get-year", ["now"]])).not.toThrow();
     });
 
-    describe("coalesce", () => {
-      it("should resolve coalesce correctly", () => {
-        expect(expr(["coalesce", A])).toEqual({
-          dimensions: ["A"],
-          segments: [],
-          metrics: [],
-          expression: expect.any(Array),
-        });
-        expect(filter(["coalesce", A])).toEqual({
-          dimensions: [],
-          segments: ["A"],
-          metrics: [],
-          expression: expect.any(Array),
-        });
-        expect(aggregation(["coalesce", A])).toEqual({
-          dimensions: [],
-          segments: [],
-          metrics: ["A"],
-          expression: expect.any(Array),
-        });
-        expect(aggregation(["trim", ["coalesce", A]])).toEqual({
-          dimensions: ["A"],
-          segments: [],
-          metrics: [],
-          expression: expect.any(Array),
-        });
-      });
-
-      it("should accept COALESCE for number", () => {
-        expect(() => expr(["round", ["coalesce", 0]])).not.toThrow();
-      });
-
-      it("should accept COALESCE for string", () => {
-        expect(() => expr(["trim", ["coalesce", "B"]])).not.toThrow();
-      });
-
-      it("should honor CONCAT's implicit casting", () => {
-        expect(() => expr(["concat", ["coalesce", "B", 1]])).not.toThrow();
-      });
-    });
-
     describe("datetime functions", () => {
       it("should resolve unchained functions", () => {
         expect(() => expr(["get-week", "2022-01-01"])).not.toThrow();
@@ -312,12 +271,53 @@ describe("resolve", () => {
     expect(() => expr(["foobar", 42])).toThrow();
   });
 
+  describe("coalesce", () => {
+    it("should resolve coalesce correctly", () => {
+      expect(expr(["coalesce", A])).toEqual({
+        dimensions: ["A"],
+        segments: [],
+        metrics: [],
+        expression: expect.any(Array),
+      });
+      expect(filter(["coalesce", A])).toEqual({
+        dimensions: [],
+        segments: ["A"],
+        metrics: [],
+        expression: expect.any(Array),
+      });
+      expect(aggregation(["coalesce", A])).toEqual({
+        dimensions: [],
+        segments: [],
+        metrics: ["A"],
+        expression: expect.any(Array),
+      });
+      expect(aggregation(["trim", ["coalesce", A]])).toEqual({
+        dimensions: ["A"],
+        segments: [],
+        metrics: [],
+        expression: expect.any(Array),
+      });
+    });
+
+    it("should accept COALESCE for number", () => {
+      expect(() => expr(["round", ["coalesce", 0]])).not.toThrow();
+    });
+
+    it("should accept COALESCE for string", () => {
+      expect(() => expr(["trim", ["coalesce", "B"]])).not.toThrow();
+    });
+
+    it("should honor CONCAT's implicit casting", () => {
+      expect(() => expr(["concat", ["coalesce", "B", 1]])).not.toThrow();
+    });
+  });
+
   describe("comparison operators", () => {
-    it("should resolve comparison operators correctly", () => {
-      expect(expr(["<=", A, B]).dimensions).toEqual(["A", "B"]);
-      expect(filter(["<=", A, B]).dimensions).toEqual(["A", "B"]);
-      expect(aggregation(["<=", A, B]).dimensions).toEqual(["A", "B"]);
-      expect(aggregation(["count-where", ["<=", A, B]]).dimensions).toEqual([
+    it.each(["<", "<=", ">", ">="])("should resolve both args to %s", (op) => {
+      expect(expr([op, A, B]).dimensions).toEqual(["A", "B"]);
+      expect(filter([op, A, B]).dimensions).toEqual(["A", "B"]);
+      expect(aggregation([op, A, B]).dimensions).toEqual(["A", "B"]);
+      expect(aggregation(["count-where", [op, A, B]]).dimensions).toEqual([
         "A",
         "B",
       ]);
@@ -325,55 +325,70 @@ describe("resolve", () => {
   });
 
   describe("number operators", () => {
-    it("should resolve number operators correctly", () => {
-      expect(expr(["+", A, B])).toEqual({
-        dimensions: ["A", "B"],
-        segments: [],
-        metrics: [],
-        expression: expect.any(Array),
-      });
-      expect(filter(["+", A, B])).toEqual({
-        dimensions: ["A", "B"],
-        segments: [],
-        metrics: [],
-        expression: expect.any(Array),
-      });
-      expect(aggregation(["+", A, B])).toEqual({
-        dimensions: [],
-        segments: [],
-        metrics: ["A", "B"],
-        expression: expect.any(Array),
-      });
-    });
-
-    it("should resolve all arguments of repeated number operators", () => {
-      expect(expr(["+", A, B, C])).toEqual({
-        dimensions: ["A", "B", "C"],
-        segments: [],
-        metrics: [],
-        expression: expect.any(Array),
-      });
-    });
+    it.each(["+", "-", "*", "/"])(
+      "should resolve all %s args correctly",
+      (op) => {
+        expect(expr([op, A, B, C])).toEqual({
+          dimensions: ["A", "B", "C"],
+          segments: [],
+          metrics: [],
+          expression: expect.any(Array),
+        });
+        expect(filter([op, A, B, C])).toEqual({
+          dimensions: ["A", "B", "C"],
+          segments: [],
+          metrics: [],
+          expression: expect.any(Array),
+        });
+        expect(aggregation([op, A, B, C])).toEqual({
+          dimensions: [],
+          segments: [],
+          metrics: ["A", "B", "C"],
+          expression: expect.any(Array),
+        });
+      },
+    );
   });
 
   describe("logic operators", () => {
-    it("should resolve logic operators correctly", () => {
-      expect(expr(["and", A, B])).toEqual({
+    it.each(["and", "or"])("should resolve all args to %s correctly", (op) => {
+      expect(expr([op, A, B, C])).toEqual({
         dimensions: [],
         metrics: [],
-        segments: ["A", "B"],
+        segments: ["A", "B", "C"],
         expression: expect.any(Array),
       });
-      expect(filter(["and", A, B])).toEqual({
+      expect(filter([op, A, B, C])).toEqual({
         dimensions: [],
         metrics: [],
-        segments: ["A", "B"],
+        segments: ["A", "B", "C"],
         expression: expect.any(Array),
       });
-      expect(aggregation(["and", A, B])).toEqual({
+      expect(aggregation([op, A, B, C])).toEqual({
         dimensions: [],
         metrics: [],
-        segments: ["A", "B"],
+        segments: ["A", "B", "C"],
+        expression: expect.any(Array),
+      });
+    });
+
+    it("should resolve not args correctly", () => {
+      expect(expr(["not", A])).toEqual({
+        dimensions: [],
+        metrics: [],
+        segments: ["A"],
+        expression: expect.any(Array),
+      });
+      expect(filter(["not", A])).toEqual({
+        dimensions: [],
+        metrics: [],
+        segments: ["A"],
+        expression: expect.any(Array),
+      });
+      expect(aggregation(["not", A])).toEqual({
+        dimensions: [],
+        metrics: [],
+        segments: ["A"],
         expression: expect.any(Array),
       });
     });

@@ -381,9 +381,29 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     hasOptions: true,
   },
   // boolean operators
-  and: { displayName: `AND`, type: "boolean", args: ["boolean", "boolean"] },
-  or: { displayName: `OR`, type: "boolean", args: ["boolean", "boolean"] },
-  not: { displayName: `NOT`, type: "boolean", args: ["boolean"] },
+  and: {
+    displayName: `AND`,
+    type: "boolean",
+    multiple: true,
+    args: ["boolean", "boolean"],
+    argType() {
+      return "boolean";
+    },
+  },
+  or: {
+    displayName: `OR`,
+    type: "boolean",
+    multiple: true,
+    args: ["boolean", "boolean"],
+    argType() {
+      return "boolean";
+    },
+  },
+  not: {
+    displayName: `NOT`,
+    type: "boolean",
+    args: ["boolean"],
+  },
   // numeric operators
   "*": {
     displayName: "*",
