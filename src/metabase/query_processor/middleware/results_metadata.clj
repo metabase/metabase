@@ -3,6 +3,7 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
+   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -19,12 +20,16 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- standardize-metadata [metadata]
-  (let [skip-keys #{:coercion_strategy :settings :fk_target_field_id :semantic_type}]
+(defn- standardize-metadata
+  "There is sometimes a difference between stored metadata and the 'new' metadata,
+  where the 'new' metadata has nil values for some keys whereas the stored metadata does not include the keys.
+  This function removes those nil valued-keys to avoid false negatives."
+  [metadata]
+  (let [drop-nil-keys #{:coercion_strategy :settings :fk_target_field_id :semantic_type}]
     (cond
       (map? metadata)
       (m/filter-kv (fn [k v] (or (some? v)
-                                 (not (drop-when-nil? k))))
+                                 (not (drop-nil-keys k))))
                    metadata)
 
       (sequential? metadata)
