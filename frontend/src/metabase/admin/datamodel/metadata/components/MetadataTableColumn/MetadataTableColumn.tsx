@@ -95,7 +95,7 @@ const MetadataTableColumn = ({
               />
             </div>
             <div className={cx(CS.flexAuto, CS.px1)}>
-              <Label>{field.base_type}</Label>
+              <Label>{field.getPlainObject().database_type}</Label>
               <SemanticTypeAndTargetPicker
                 className={CS.block}
                 field={field}
