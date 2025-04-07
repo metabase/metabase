@@ -1005,7 +1005,7 @@ describe("scenarios > admin > databases > table", () => {
       cy.findByTestId("column-ID")
         .scrollIntoView()
         .within(() => {
-          cy.findByText("type/BigInteger").should("be.visible");
+          cy.findByText("BIGINT").should("be.visible");
           cy.findByPlaceholderText("Select a semantic type").should(
             "have.value",
             "Entity Key",
@@ -1015,7 +1015,7 @@ describe("scenarios > admin > databases > table", () => {
       cy.findByTestId("column-USER_ID")
         .scrollIntoView()
         .within(() => {
-          cy.findByText("type/Integer").should("be.visible");
+          cy.findByText("INTEGER").should("be.visible");
           cy.findByPlaceholderText("Select a semantic type").should(
             "have.value",
             "Foreign Key",
@@ -1029,7 +1029,7 @@ describe("scenarios > admin > databases > table", () => {
       cy.findByTestId("column-TAX")
         .scrollIntoView()
         .within(() => {
-          cy.findByText("type/Float").should("be.visible");
+          cy.findByText("DOUBLE PRECISION").should("be.visible");
           cy.findByPlaceholderText("Select a semantic type").should(
             "have.value",
             "No semantic type",
@@ -1039,7 +1039,7 @@ describe("scenarios > admin > databases > table", () => {
       cy.findByTestId("column-DISCOUNT")
         .scrollIntoView()
         .within(() => {
-          cy.findByText("type/Float").should("be.visible");
+          cy.findByText("DOUBLE PRECISION").should("be.visible");
           cy.findByPlaceholderText("Select a semantic type").should(
             "have.value",
             "Discount",
@@ -1049,7 +1049,7 @@ describe("scenarios > admin > databases > table", () => {
       cy.findByTestId("column-CREATED_AT")
         .scrollIntoView()
         .within(() => {
-          cy.findByText("type/DateTime").should("be.visible");
+          cy.findByText("TIMESTAMP").should("be.visible");
           cy.findByPlaceholderText("Select a semantic type").should(
             "have.value",
             "Creation timestamp",
