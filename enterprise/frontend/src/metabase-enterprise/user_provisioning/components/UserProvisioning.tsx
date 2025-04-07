@@ -23,8 +23,11 @@ import {
   useRegenerateScimTokenMutation,
 } from "metabase-enterprise/api";
 import { hasAnySsoPremiumFeature } from "metabase-enterprise/settings";
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
-import type { SettingValue, Settings } from "metabase-types/api";
+import type {
+  EnterpriseSettings,
+  SettingValue,
+  Settings,
+} from "metabase-types/api";
 
 import { CopyScimInput, getTextInputStyles } from "./ScimInputs";
 import { ScimTextWarning } from "./ScimTextWarning";
