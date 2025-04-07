@@ -1,0 +1,23 @@
+name: "Wait for Uberjar"
+description: "Waits for a Metabase uberjar build to complete"
+inputs:
+  github-token:
+    description: "GitHub token for API access"
+    required: true
+  head-sha:
+    description: "The SHA of the commit to wait for"
+    required: true
+outputs:
+  run_id:
+    description: "The run ID of the workflow that built the uberjar"
+    value: ${{ steps.wait-for-uberjar.outputs.run_id }}
+runs:
+  using: "composite"
+  steps:
+    - name: Wait for uberjar
+      id: wait-for-uberjar
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+      run: ${{ github.action_path }}/wait-for-uberjar.sh
