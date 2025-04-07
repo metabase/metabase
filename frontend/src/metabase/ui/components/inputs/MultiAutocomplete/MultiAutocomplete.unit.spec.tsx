@@ -23,6 +23,13 @@ function TestInput({ initialValues, onChange, ...props }: TestInputProps) {
   );
 }
 
+const REMAPPED_OPTIONS: ComboboxItem[] = [
+  { value: "1", label: "One" },
+  { value: "2", label: "Two" },
+  { value: "3", label: "Three" },
+  { value: "4", label: "Four" },
+];
+
 type SetupOpts = {
   initialValues?: string[];
   options?: ComboboxItem[];
@@ -255,5 +262,48 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "a,a,b,b,a,a,");
     expect(onChange).toHaveBeenLastCalledWith(["a", "b"]);
     expect(input).toHaveValue("");
+  });
+
+  it("should allow to edit a value", async () => {
+    const { input, onChange } = setup({ initialValues: ["1", "2"] });
+    await userEvent.click(screen.getByText("1"));
+    expect(input).toHaveValue("1");
+    expect(onChange).not.toHaveBeenCalled();
+
+    await userEvent.clear(input);
+    expect(onChange).toHaveBeenLastCalledWith(["2"]);
+
+    await userEvent.type(input, "3");
+    expect(onChange).toHaveBeenLastCalledWith(["3", "2"]);
+
+    await userEvent.tab();
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it("should display the remapped value when there are matching options", () => {
+    setup({ initialValues: ["1", "2", "5"], options: REMAPPED_OPTIONS });
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(screen.getByText("Two")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
+  });
+
+  it("should use the remapped value when editing", async () => {
+    const { input, onChange } = setup({
+      initialValues: ["1", "3"],
+      options: REMAPPED_OPTIONS,
+    });
+    await userEvent.click(screen.getByText("One"));
+    expect(input).toHaveValue("One");
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(screen.queryByText("Two")).not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "Two");
+    expect(screen.getByText("Two")).toBeInTheDocument();
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Two"));
+    expect(onChange).toHaveBeenLastCalledWith(["2", "3"]);
   });
 });

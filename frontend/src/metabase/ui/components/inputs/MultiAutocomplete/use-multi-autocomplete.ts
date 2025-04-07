@@ -141,9 +141,10 @@ export function useMultiAutocomplete({
   };
 
   const handlePillClick = (valueIndex: number) => {
-    const newValue = values[valueIndex];
+    const selectedValue = values[valueIndex];
+    const selectedOption = optionByValue[selectedValue];
     setFieldState({
-      fieldValue: escapeCsv(newValue),
+      fieldValue: escapeCsv(selectedOption?.label ?? selectedValue),
       fieldSelection: { index: valueIndex, length: 1 },
     });
   };
