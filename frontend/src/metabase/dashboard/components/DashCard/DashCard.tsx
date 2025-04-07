@@ -132,6 +132,7 @@ function DashCardInner({
   const dashcardData = useSelector((state) =>
     getDashcardData(state, dashcard.id),
   );
+
   const store = useStore();
   const getHref = useCallback(
     () => getDashcardHref(store.getState(), dashcard.id),

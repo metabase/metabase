@@ -7,6 +7,7 @@ import { ActionIcon, Box, Flex, Icon, Tabs } from "metabase/ui";
 import { getDashCardById, getSidebar } from "../../selectors";
 
 import { ConfigureEditableTableColumns } from "./ConfigureEditableTableColumns";
+import { ConfigureEditableTableFilters } from "./ConfigureEditableTableFilters";
 
 interface ConfigureEditableTableSidebarProps {
   onClose: () => void;
@@ -19,6 +20,11 @@ export function ConfigureEditableTableSidebar({
   const dashcard = useSelector((state) =>
     dashcardId !== undefined ? getDashCardById(state, dashcardId) : undefined,
   );
+
+  if (!dashcard) {
+    // TODO: show error state
+    return null;
+  }
 
   return (
     <Sidebar data-testid="add-table-sidebar">
@@ -37,11 +43,10 @@ export function ConfigureEditableTableSidebar({
 
         <Box p="md">
           <Tabs.Panel value="columns">
-            {dashcard && <ConfigureEditableTableColumns dashcard={dashcard} />}
+            <ConfigureEditableTableColumns dashcard={dashcard} />
           </Tabs.Panel>
           <Tabs.Panel value="filters">
-            <div>DashcardID: {dashcardId}</div>
-            <ConfigureEditableTableFilters />
+            <ConfigureEditableTableFilters dashcard={dashcard} />
           </Tabs.Panel>
           <Tabs.Panel value="actions">
             <div>Not implemented</div>
@@ -50,8 +55,4 @@ export function ConfigureEditableTableSidebar({
       </Tabs>
     </Sidebar>
   );
-}
-
-function ConfigureEditableTableFilters() {
-  return <div>Filters Content</div>;
 }

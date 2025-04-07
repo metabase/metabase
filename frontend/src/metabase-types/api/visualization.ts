@@ -17,7 +17,7 @@ export const isVirtualCardDisplayType = (
 
 const cardDisplayTypes = [
   "table",
-  "table-editable", // TODO [WRK]: make sure this doesn't break anything for regular use cases
+  "table-editable",
   "bar",
   "line",
   "pie",

@@ -609,7 +609,8 @@
                                                :model?            is-model-after-update?})
           card-updates                       (merge card-updates
                                                     (when (and (some? type)
-                                                               is-model-after-update?)
+                                                               is-model-after-update?
+                                                               (not= :table-editable (some-> (:display card-updates (:display card-before-update)) keyword)))
                                                       {:display :table})
                                                     (when (and
                                                            (api/column-will-change? :dashboard_id

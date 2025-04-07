@@ -27,6 +27,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   dashboards: {},
   dashcards: {},
   dashcardData: {},
+  editingDashcardDataOverride: {},
   parameterValues: {},
   draftParameterValues: {},
   loadingDashCards: {

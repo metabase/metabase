@@ -552,6 +552,15 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
+export const SET_EDITING_DASHCARD_DATA =
+  "metabase/dashboard/SET_EDITING_DASHCARD_DATA";
+export const setEditingDashcardData = createAction(
+  SET_EDITING_DASHCARD_DATA,
+  (dashcardId, cardId, dataset) => ({
+    payload: { dashcardId, cardId, dataset },
+  }),
+);
+
 function getDatasetQueryParams(datasetQuery: Partial<DatasetQuery> = {}) {
   const parameters =
     datasetQuery?.parameters
