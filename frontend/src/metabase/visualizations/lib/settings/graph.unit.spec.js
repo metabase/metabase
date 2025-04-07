@@ -9,6 +9,7 @@ import {
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
+  GRAPH_TREND_SETTINGS,
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
   getDefaultDimensionLabel,
@@ -236,6 +237,24 @@ describe("GRAPH_AXIS_SETTINGS", () => {
         expect(isEnabled).toBe(expectedDefault);
       },
     );
+  });
+});
+
+describe("GRAPH_TREND_SETTINGS", () => {
+  describe("graph.show_trendline", () => {
+    const getHidden = GRAPH_TREND_SETTINGS["graph.show_trendline"].getHidden;
+
+    it("should be hidden on cards with multiple dimensions", () => {
+      const isHidden = getHidden(
+        [{ card: { display: "area" }, data: { insights: ["FOO", "BAR"] } }],
+        {
+          series: (series) => ({ display: series.card.display }),
+          "graph.dimensions": ["FOO", "BAR"],
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
   });
 });
 
