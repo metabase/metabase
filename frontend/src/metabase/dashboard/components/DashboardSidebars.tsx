@@ -34,7 +34,7 @@ import { ActionSidebarConnected } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
 import { AddTableSidebar } from "./AddTableSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
-import { ConfigureEditableTableSidebar } from "./ConfigureEditableTableSidebar/ConfigureEditableTableSidebar";
+import { ConfigureEditableTableSidebar } from "./ConfigureEditableTableSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 
