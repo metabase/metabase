@@ -365,4 +365,11 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "10,+10,20");
     expect(onChange).toHaveBeenLastCalledWith(["10", "20"]);
   });
+
+  it("should handle cases when 2 values are inserted at the same time", async () => {
+    const { input, onChange } = setup();
+    await userEvent.type(input, "abcd{arrowleft}{arrowleft},");
+    expect(input).toHaveValue("");
+    expect(onChange).toHaveBeenLastCalledWith(["ab", "cd"]);
+  });
 });
