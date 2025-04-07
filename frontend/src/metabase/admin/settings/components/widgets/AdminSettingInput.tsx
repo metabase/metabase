@@ -68,6 +68,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
     value: initialValue,
     updateSetting,
     isLoading,
+    description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
 
@@ -92,8 +93,12 @@ export function AdminSettingInput<SettingName extends SettingKey>({
   }
 
   return (
-    <Box {...boxProps}>
-      <SettingHeader id={name} title={title} description={description} />
+    <Box data-testid={`${name}-setting`} {...boxProps}>
+      <SettingHeader
+        id={name}
+        title={title}
+        description={description ?? settingDescription}
+      />
       {settingDetails?.is_env_setting && settingDetails?.env_name ? (
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
@@ -153,6 +158,7 @@ export function BasicAdminSettingInput({
           checked={localValue}
           onChange={(e) => handleChange(e.target.checked)}
           label={localValue ? t`Enabled` : t`Disabled`}
+          w="auto"
         />
       );
     case "radio":
