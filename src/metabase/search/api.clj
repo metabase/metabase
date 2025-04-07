@@ -17,7 +17,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.response :as response]))
+   [ring.util.response :as response]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -110,6 +111,23 @@
       (set-weights! context overrides))
     (search.config/weights context)))
 
+(defn- add-metadata [include-metadata search-results]
+  (if include-metadata
+    (let [card-ids (into #{}
+                         (comp
+                          (filter #(= (:model %) "card"))
+                          (map :id))
+                         (:data search-results))
+          card-metadata (t2/select-pk->fn :result_metadata :model/Card :id [:in card-ids])]
+      (update search-results :data
+              (fn [data]
+                (mapv (fn [item]
+                        (if (= (:model item) "card")
+                          (assoc item :result_metadata (card-metadata (:id item)))
+                          item))
+                      data))))
+    search-results))
+
 (api.macros/defendpoint :get "/"
   "Search for items in Metabase.
   For the list of supported models, check [[metabase.search.config/all-models]].
@@ -133,7 +151,7 @@
 
   A search query that has both filters applied will only return models and cards."
   [_route-params
-   {:keys [q context archived models verified ids]
+   {:keys                               [q context archived models verified ids]
     calculate-available-models          :calculate_available_models
     created-at                          :created_at
     created-by                          :created_by
@@ -144,7 +162,8 @@
     model-ancestors                     :model_ancestors
     search-engine                       :search_engine
     search-native-query                 :search_native_query
-    table-db-id                         :table_db_id}
+    table-db-id                         :table_db_id
+    include-metadata                    :include_metadata}
    :- [:map
        [:q                                   {:optional true} [:maybe ms/NonBlankString]]
        [:context                             {:optional true} [:maybe :keyword]]
@@ -162,36 +181,38 @@
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:calculate_available_models          {:optional true} [:maybe true?]]
-       [:include_dashboard_questions         {:default false} [:maybe :boolean]]]]
+       [:include_dashboard_questions         {:default false} [:maybe :boolean]]
+       [:include_metadata                    {:default false} [:maybe :boolean]]]]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
-    (u/prog1 (search/search
-              (search/search-context
-               {:archived                            archived
-                :context                             context
-                :created-at                          created-at
-                :created-by                          (set created-by)
-                :current-user-id                     api/*current-user-id*
-                :is-impersonated-user?               (perms/impersonated-user?)
-                :is-sandboxed-user?                  (perms/sandboxed-user?)
-                :is-superuser?                       api/*is-superuser?*
-                :current-user-perms                  @api/*current-user-permissions-set*
-                :filter-items-in-personal-collection filter-items-in-personal-collection
-                :last-edited-at                      last-edited-at
-                :last-edited-by                      (set last-edited-by)
-                :limit                               (request/limit)
-                :model-ancestors?                    model-ancestors
-                :models                              (not-empty (set models))
-                :offset                              (request/offset)
-                :search-engine                       search-engine
-                :search-native-query                 search-native-query
-                :search-string                       q
-                :table-db-id                         table-db-id
-                :verified                            verified
-                :ids                                 (set ids)
-                :calculate-available-models?         calculate-available-models
-                :include-dashboard-questions?        include-dashboard-questions}))
-      (analytics/inc! :metabase-search/response-ok))
+    (add-metadata include-metadata
+                  (u/prog1 (search/search
+                            (search/search-context
+                             {:archived                            archived
+                              :context                             context
+                              :created-at                          created-at
+                              :created-by                          (set created-by)
+                              :current-user-id                     api/*current-user-id*
+                              :is-impersonated-user?               (perms/impersonated-user?)
+                              :is-sandboxed-user?                  (perms/sandboxed-user?)
+                              :is-superuser?                       api/*is-superuser?*
+                              :current-user-perms                  @api/*current-user-permissions-set*
+                              :filter-items-in-personal-collection filter-items-in-personal-collection
+                              :last-edited-at                      last-edited-at
+                              :last-edited-by                      (set last-edited-by)
+                              :limit                               (request/limit)
+                              :model-ancestors?                    model-ancestors
+                              :models                              (not-empty (set models))
+                              :offset                              (request/offset)
+                              :search-engine                       search-engine
+                              :search-native-query                 search-native-query
+                              :search-string                       q
+                              :table-db-id                         table-db-id
+                              :verified                            verified
+                              :ids                                 (set ids)
+                              :calculate-available-models?         calculate-available-models
+                              :include-dashboard-questions?        include-dashboard-questions}))
+                    (analytics/inc! :metabase-search/response-ok)))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
         (when (or (not status-code) (= 5 (quot status-code 100)))
