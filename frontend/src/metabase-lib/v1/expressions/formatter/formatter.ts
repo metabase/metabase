@@ -291,7 +291,7 @@ function formatExpressionOptions(options: Lib.ExpressionOptions): Doc | null {
   return null;
 }
 
-function isOperator(operator: string): boolean {
+function isOperator(operator: string): operator is OPERATOR {
   return OPERATORS.has(operator as OPERATOR);
 }
 
