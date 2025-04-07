@@ -1,4 +1,5 @@
 import {
+  type BoxProps,
   Combobox,
   type ComboboxItem,
   OptionsDropdown,
@@ -6,6 +7,7 @@ import {
   PillsInput,
   Text,
   Tooltip,
+  extractStyleProps,
 } from "@mantine/core";
 import type { ReactNode } from "react";
 import { t } from "ttag";
@@ -15,7 +17,7 @@ import { Icon } from "../../icons";
 import S from "./MultiAutocomplete.module.css";
 import { useMultiAutocomplete } from "./use-multi-autocomplete";
 
-export type MultiAutocompleteProps = {
+export type MultiAutocompleteProps = BoxProps & {
   values: string[];
   options: ComboboxItem[];
   placeholder?: string;
@@ -39,6 +41,7 @@ export function MultiAutocomplete({
   "aria-label": ariaLabel,
   onChange,
   onSearchChange,
+  ...otherProps
 }: MultiAutocompleteProps) {
   const {
     combobox,
@@ -63,6 +66,8 @@ export function MultiAutocomplete({
     onSearchChange,
   });
 
+  const { styleProps } = extractStyleProps(otherProps);
+
   const infoIcon = (
     <Tooltip
       label={
@@ -85,6 +90,7 @@ export function MultiAutocomplete({
       >
         <Combobox.DropdownTarget>
           <PillsInput
+            {...styleProps}
             rightSection={rightSection ?? infoIcon}
             onClick={handlePillsInputClick}
           >
