@@ -35,7 +35,7 @@ jobs:
           TARGET_REPO: "metabase/docs.metabase.github.io"
           # Optionally, if you need a PAT with broader permissions than the default token,
           # store it in your secrets and reference it here (if same owner, the default GITHUB_TOKEN may suffice)
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
           echo "Triggering workflow in ${TARGET_REPO} with branch: $BRANCH_NAME"
           curl -X POST \
