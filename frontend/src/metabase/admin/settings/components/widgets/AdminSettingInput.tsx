@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
-import { useAdminSetting } from "metabase/api";
+import { useAdminSetting } from "metabase/api/utils";
 import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import {

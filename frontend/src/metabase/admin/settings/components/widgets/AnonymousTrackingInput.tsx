@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api";
+import { useAdminSetting } from "metabase/api/utils";
 import { Stack } from "metabase/ui";
 
 import { trackTrackingPermissionChanged } from "../../analytics";
