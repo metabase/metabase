@@ -765,20 +765,30 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.get("main").findByText("Something’s gone wrong").should("not.exist");
     });
 
-    it("should show up in UI list", () => {
+    it("should show up in UI list and should show the segment details of a specific id", () => {
       cy.visit("/admin/datamodel/segments");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(SEGMENT_NAME);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Filtered by Total");
-    });
 
-    it("should show the segment details of a specific id", () => {
-      cy.visit("/admin/datamodel/segment/1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit Your Segment");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Preview");
+      cy.findByRole("table").within(() => {
+        cy.findByText("Filtered by Total is less than 100").should(
+          "be.visible",
+        );
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+      });
+      cy.findByRole("link", { name: /Orders < 100/ })
+        .should("be.visible")
+        .click();
+
+      cy.get("form").within(() => {
+        cy.findByText("Edit Your Segment").should("be.visible");
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+      });
+      cy.findByPlaceholderText("Something descriptive but not too long").should(
+        "have.value",
+        SEGMENT_NAME,
+      );
+      cy.findByRole("link", { name: "Preview" }).should("be.visible");
     });
 
     it("should see a newly asked question in its questions list", () => {
@@ -992,44 +1002,59 @@ describe("scenarios > admin > databases > table", () => {
     });
 
     it("should see multiple fields", () => {
-      cy.findByTestId("column-ID").within(() => {
-        cy.findByPlaceholderText("Select a semantic type").should(
-          "have.value",
-          "Entity Key",
-        );
-      });
+      cy.findByTestId("column-ID")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("BIGINT").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Entity Key",
+          );
+        });
 
-      cy.findByTestId("column-USER_ID").within(() => {
-        cy.findByPlaceholderText("Select a semantic type").should(
-          "have.value",
-          "Foreign Key",
-        );
-        cy.findByPlaceholderText("Select a target").should(
-          "have.value",
-          "People → ID",
-        );
-      });
+      cy.findByTestId("column-USER_ID")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("INTEGER").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Foreign Key",
+          );
+          cy.findByPlaceholderText("Select a target").should(
+            "have.value",
+            "People → ID",
+          );
+        });
 
-      cy.findByTestId("column-TAX").within(() => {
-        cy.findByPlaceholderText("Select a semantic type").should(
-          "have.value",
-          "No semantic type",
-        );
-      });
+      cy.findByTestId("column-TAX")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("DOUBLE PRECISION").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "No semantic type",
+          );
+        });
 
-      cy.findByTestId("column-DISCOUNT").within(() => {
-        cy.findByPlaceholderText("Select a semantic type").should(
-          "have.value",
-          "Discount",
-        );
-      });
+      cy.findByTestId("column-DISCOUNT")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("DOUBLE PRECISION").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Discount",
+          );
+        });
 
-      cy.findByTestId("column-CREATED_AT").within(() => {
-        cy.findByPlaceholderText("Select a semantic type").should(
-          "have.value",
-          "Creation timestamp",
-        );
-      });
+      cy.findByTestId("column-CREATED_AT")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("TIMESTAMP").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Creation timestamp",
+          );
+        });
     });
   });
 
