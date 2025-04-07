@@ -1004,14 +1004,14 @@
         margin-left: -1.5rem;
     }
 
-    .tsd-page-navigation-section {
-        margin-left: 10px;
-    }
     .tsd-page-navigation-section > summary {
         padding: 0.25rem;
     }
+    .tsd-page-navigation-section > summary > svg {
+        margin-right: 0.25rem;
+    }
     .tsd-page-navigation-section > div {
-        margin-left: 20px;
+        margin-left: 30px;
     }
     .tsd-page-navigation ul {
         padding-left: 1.75rem;
