@@ -121,6 +121,7 @@
      ([type schema]
       `(register! ~type ~schema))
      ([type docstring schema]
+      (assert (string? docstring))
       `(metabase.util.malli.registry/def ~type
          (-with-doc ~schema ~docstring)))))
 
