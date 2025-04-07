@@ -81,7 +81,6 @@ export interface Field {
   display_name: string;
   description: string | null;
 
-  database_type: string;
   base_type: string;
   effective_type?: string;
   semantic_type: string | null;

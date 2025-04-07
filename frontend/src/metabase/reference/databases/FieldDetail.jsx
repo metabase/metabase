@@ -240,7 +240,7 @@ const FieldDetail = (props) => {
                     <Detail
                       id="base_type"
                       name={t`Data type`}
-                      description={entity.database_type}
+                      description={entity.base_type}
                     />
                   </li>
                 )}
