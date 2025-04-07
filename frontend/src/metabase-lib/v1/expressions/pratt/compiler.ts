@@ -5,7 +5,13 @@ import * as Lib from "metabase-lib";
 
 import { getMBQLName as defaultGetMBQLName } from "../config";
 import { CompileError } from "../errors";
-import { isLiteral } from "../matchers";
+import {
+  isBigIntLiteral,
+  isBooleanLiteral,
+  isFloatLiteral,
+  isIntegerLiteral,
+  isStringLiteral,
+} from "../matchers";
 import { unescapeString } from "../string";
 
 import {
@@ -70,10 +76,34 @@ function compileRoot(
   assert(node.children.length === 1, t`Root must have one child`);
 
   const result = compileNode(node.children[0], opts);
-  if (isLiteral(result)) {
+  if (isStringLiteral(result)) {
     return {
       operator: "value" as Lib.ExpressionOperator,
-      options: {},
+      options: { "base-type": "type/Text" },
+      args: [result],
+    };
+  } else if (isBooleanLiteral(result)) {
+    return {
+      operator: "value" as Lib.ExpressionOperator,
+      options: { "base-type": "type/Boolean" },
+      args: [result],
+    };
+  } else if (isIntegerLiteral(result)) {
+    return {
+      operator: "value" as Lib.ExpressionOperator,
+      options: { "base-type": "type/Integer" },
+      args: [result],
+    };
+  } else if (isFloatLiteral(result)) {
+    return {
+      operator: "value" as Lib.ExpressionOperator,
+      options: { "base-type": "type/Float" },
+      args: [result],
+    };
+  } else if (isBigIntLiteral(result)) {
+    return {
+      operator: "value" as Lib.ExpressionOperator,
+      options: { "base-type": "type/BigInteger" },
       args: [result],
     };
   }

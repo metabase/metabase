@@ -10,6 +10,14 @@ function value(value: unknown, options: Lib.ExpressionOptions = {}) {
   };
 }
 
+function integer(x: number) {
+  return value(x, { "base-type": "type/Integer" });
+}
+
+function text(x: string) {
+  return value(x, { "base-type": "type/Text" });
+}
+
 describe("pratt/compiler", () => {
   function expr(source: string) {
     const ast = parse(lexify(source).tokens, {
@@ -21,15 +29,15 @@ describe("pratt/compiler", () => {
 
   describe("(for an expression)", () => {
     it("should compile literals", () => {
-      expect(expr("42")).toEqual(value(42));
-      expect(expr("'Universe'")).toEqual(value("Universe"));
-      expect(expr(`"Universe"`)).toEqual(value("Universe"));
-      expect(expr(`"\\""`)).toEqual(value(`"`));
-      expect(expr(`'\\''`)).toEqual(value(`'`));
-      expect(expr(`"a\\"b"`)).toEqual(value(`a"b`));
-      expect(expr(`'a\\'b'`)).toEqual(value(`a'b`));
-      expect(expr(`"'"`)).toEqual(value(`'`));
-      expect(expr(`'"'`)).toEqual(value(`"`));
+      expect(expr("42")).toEqual(integer(42));
+      expect(expr("'Universe'")).toEqual(text("Universe"));
+      expect(expr(`"Universe"`)).toEqual(text("Universe"));
+      expect(expr(`"\\""`)).toEqual(text(`"`));
+      expect(expr(`'\\''`)).toEqual(text(`'`));
+      expect(expr(`"a\\"b"`)).toEqual(text(`a"b`));
+      expect(expr(`'a\\'b'`)).toEqual(text(`a'b`));
+      expect(expr(`"'"`)).toEqual(text(`'`));
+      expect(expr(`'"'`)).toEqual(text(`"`));
     });
 
     it("should compile bigints", () => {
@@ -255,12 +263,12 @@ describe("pratt/compiler", () => {
     });
 
     it("should handle parenthesized expression", () => {
-      expect(expr("(42)")).toEqual(value(42));
-      expect(expr("-42")).toEqual(value(-42));
-      expect(expr("-(42)")).toEqual(value(-42));
-      expect(expr("((43))")).toEqual(value(43));
-      expect(expr("('Universe')")).toEqual(value("Universe"));
-      expect(expr("(('Answer'))")).toEqual(value("Answer"));
+      expect(expr("(42)")).toEqual(integer(42));
+      expect(expr("-42")).toEqual(integer(-42));
+      expect(expr("-(42)")).toEqual(integer(-42));
+      expect(expr("((43))")).toEqual(integer(43));
+      expect(expr("('Universe')")).toEqual(text("Universe"));
+      expect(expr("(('Answer'))")).toEqual(text("Answer"));
       expect(expr("(1+2)")).toEqual({
         operator: "+",
         options: {},

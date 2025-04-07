@@ -62,6 +62,10 @@ export function isFloatLiteral(expr: unknown): expr is NumericLiteral {
   return typeof expr === "number" && !Number.isInteger(expr);
 }
 
+export function isBigIntLiteral(expr: unknown): expr is NumericLiteral {
+  return typeof expr === "bigint";
+}
+
 export function isValue(expr: unknown): expr is ValueExpression {
   return Array.isArray(expr) && expr[0] === "value";
 }
