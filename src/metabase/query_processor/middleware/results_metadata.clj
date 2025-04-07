@@ -3,7 +3,6 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
-   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -20,17 +19,6 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- standardize-metadata
-  "There is sometimes a difference between stored metadata and the 'new' metadata,
-  where the 'new' metadata has nil values for some keys whereas the stored metadata does not include the keys.
-  This function removes those nil valued-keys to avoid false negatives."
-  [metadata]
-  (let [drop-nil-keys #{:coercion_strategy :settings :fk_target_field_id :semantic_type}]
-    (for [col metadata]
-      (m/filter-kv (fn [k v] (or (some? v)
-                                 (not (drop-nil-keys k))))
-                    col))))
-
 (defn- record-metadata! [{{:keys [card-id]} :info, :as query} metadata]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
@@ -40,12 +28,11 @@
                (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
                card-id
                ;; don't want to update metadata when we use a Card as a source Card.
-               (not (:qp/source-card-id query)))
-      ;; Only update changed metadata
-      (when (and metadata (not= (standardize-metadata metadata)
-                                (:card-stored-metadata (:info query))))
-        (t2/update! :model/Card card-id {:result_metadata metadata
-                                         :updated_at      :updated_at})))
+               (not (:qp/source-card-id query))
+               ;; Only update changed metadata
+               (not= metadata (:card-stored-metadata (:info query))))
+      (t2/update! :model/Card card-id {:result_metadata metadata
+                                       :updated_at      :updated_at}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e

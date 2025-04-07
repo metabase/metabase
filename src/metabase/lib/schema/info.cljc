@@ -61,6 +61,7 @@
    ;; NanoID for the card. Gets set on the client even for ad-hoc queries.
    [:card-entity-id          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:card-stored-metadata    {:optional true} [:maybe [:vector [:map-of :any :any]]]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:alias/escaped->original {:optional true} [:maybe [:map-of :any :any]]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]

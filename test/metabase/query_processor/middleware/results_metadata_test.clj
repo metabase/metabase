@@ -396,13 +396,3 @@
              :data   {:results_metadata {:columns [{:name "ID"}
                                                    {:name "ID_2"}]}}}
             (mt/process-query query)))))
-
-(deftest ^:parallel standardize-metadata-test
-  (is (= [] (#'middleware.results-metadata/standardize-metadata nil)))
-  (is (= [] (#'middleware.results-metadata/standardize-metadata [])))
-  (is (= [{:a 1 :b 2}] (#'middleware.results-metadata/standardize-metadata [{:a 1 :b 2}])))
-  (is (= [{:a 1 :b 2}] (#'middleware.results-metadata/standardize-metadata [{:a 1 :b 2 :coercion_strategy nil}])))
-  (is (= [{:a 1 :b 2 :coercion_strategy 3}] (#'middleware.results-metadata/standardize-metadata [{:a 1 :b 2 :coercion_strategy 3}])))
-  (is (= [{:a 1 :b 2}] (#'middleware.results-metadata/standardize-metadata [{:a 1 :b 2 :coercion_strategy nil :settings nil}])))
-  (is (= [{:a 1 :b 2}] (#'middleware.results-metadata/standardize-metadata [{:a 1 :b 2 :fk_target_field_id nil}])))
-  (is (= [{:a 1 :b 2}] (#'middleware.results-metadata/standardize-metadata [{:a 1 :b 2 :semantic_type nil}]))))
