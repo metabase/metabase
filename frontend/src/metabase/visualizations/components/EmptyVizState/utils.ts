@@ -22,7 +22,10 @@ import type { CardDisplayType } from "metabase-types/api";
  * The "table" and the "object" (detail) charts can always display the data
  * using the raw table alone, so they don't need an empty state.
  */
-export type ExcludedEmptyVizDisplayTypes = "table" | "object";
+export type ExcludedEmptyVizDisplayTypes =
+  | "table"
+  | "object"
+  | "table-editable";
 type SupportedDisplayType = Exclude<
   CardDisplayType,
   ExcludedEmptyVizDisplayTypes
