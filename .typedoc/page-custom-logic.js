@@ -43,35 +43,10 @@ const hideSection = (sectionName) => {
  */
 const adjustInternalMenuItems = () => {
   const internalModuleItem = document.querySelector(
-    '.tsd-navigation > ul > li:has(summary[data-key="internal"])',
+    '.tsd-navigation .tsd-accordion ul > li:has(summary[data-key="other$internal"])',
   );
 
-  if (!internalModuleItem) {
-    return;
-  }
-
-  const hasSelectedInternalItem =
-    document.querySelector(
-      ".tsd-accordion .tsd-nested-navigation > li:has(a.current)",
-    ) !== null;
-
-  if (!hasSelectedInternalItem) {
-    internalModuleItem.remove();
-  }
-
-  const nestedNavigationInternalItemsToHide = document.querySelectorAll(
-    ".tsd-accordion .tsd-nested-navigation > li:not(:has(a.current))",
-  );
-  const pageNavigationInternalItemsToHide = document.querySelectorAll(
-    ".tsd-accordion .tsd-page-navigation-section > div > a[href='#internal']",
-  );
-
-  [
-    ...nestedNavigationInternalItemsToHide,
-    ...pageNavigationInternalItemsToHide,
-  ].forEach((item) => {
-    item.remove();
-  });
+  internalModuleItem.remove();
 };
 
 /**
