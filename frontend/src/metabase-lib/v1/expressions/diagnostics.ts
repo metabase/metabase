@@ -334,7 +334,8 @@ function checkArgValidator({ expression }: { expression: Expression }) {
     }
 
     if (clause.validator) {
-      const validationError = clause.validator(...operands);
+      const args = operands.filter((arg) => !isOptionsObject(arg));
+      const validationError = clause.validator(...args);
       if (validationError) {
         throw new DiagnosticError(validationError, getToken(expression));
       }

@@ -171,11 +171,51 @@ describe("diagnostics", () => {
     });
 
     describe("arg validation", () => {
-      it("should not allow substring with index=0", () => {
-        expect(err(`substring("foo", 0, 1)`)).toEqual(
-          "Expected positive integer but found 0",
-        );
-        expect(err(`substring("foo", 1, 1)`)).toBeUndefined();
+      describe("substring", () => {
+        it("should reject substring with index <= 0", () => {
+          expect(err(`substring("foo", 0, 1)`)).toEqual(
+            "Expected positive integer but found 0",
+          );
+          expect(err(`substring("foo", -1, 1)`)).toEqual(
+            "Expected positive integer but found -1",
+          );
+        });
+
+        it("should accept substring with index >= 1", () => {
+          expect(err(`substring("foo", 1, 1)`)).toBeUndefined();
+          expect(err(`substring("foo", 2, 1)`)).toBeUndefined();
+        });
+      });
+
+      describe("split-part", () => {
+        it("should reject split-part with index <= 0", () => {
+          expect(err(`splitPart("foo", "/", 0)`)).toEqual(
+            "Expected positive integer but found 0",
+          );
+          expect(err(`splitPart("foo", "/" ,-1)`)).toEqual(
+            "Expected positive integer but found -1",
+          );
+        });
+
+        it("should accept substring with index >= 1", () => {
+          expect(err(`splitPart("foo", "/", 1)`)).toBeUndefined();
+          expect(err(`splitPart("foo", "/", 2)`)).toBeUndefined();
+        });
+      });
+
+      describe("offset", () => {
+        it("should reject offset with offset = 0", () => {
+          expect(err(`Offset([Total], 0)`, "aggregation")).toEqual(
+            "Row offset cannot be zero",
+          );
+        });
+
+        it("should accept offset with offset != 0", () => {
+          expect(err(`Offset([Total], -2)`, "aggregation")).toBeUndefined();
+          expect(err(`Offset([Total], -1)`, "aggregation")).toBeUndefined();
+          expect(err(`Offset([Total], 1)`, "aggregation")).toBeUndefined();
+          expect(err(`Offset([Total], 2)`, "aggregation")).toBeUndefined();
+        });
       });
     });
 
