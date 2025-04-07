@@ -28,6 +28,7 @@ import type {
 } from "metabase-types/store/dashboard";
 
 import {
+  CANCEL_EDITING_DASHBOARD,
   CLOSE_SIDEBAR,
   HIDE_ADD_PARAMETER_POPOVER,
   INITIALIZE,
@@ -463,7 +464,19 @@ export const dashcardData = createReducer(
             }
           }
         },
+      );
+  },
+);
+
+export const editingDashcardDataOverride = createReducer(
+  INITIAL_DASHBOARD_STATE.editingDashcardDataOverride,
+  (builder) => {
+    builder
+      .addCase(
+        initialize,
+        () => INITIAL_DASHBOARD_STATE.editingDashcardDataOverride,
       )
+      .addCase(reset, () => INITIAL_DASHBOARD_STATE.editingDashcardDataOverride)
       .addCase(
         setEditingDashcardData,
         (state, { payload: { dashcardId, cardId, dataset } }) => {
@@ -471,6 +484,10 @@ export const dashcardData = createReducer(
             return assocIn(state, [dashcardId, cardId], dataset);
           }
         },
+      )
+      .addCase(
+        CANCEL_EDITING_DASHBOARD,
+        () => INITIAL_DASHBOARD_STATE.editingDashcardDataOverride,
       );
   },
 );
