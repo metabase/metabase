@@ -154,10 +154,15 @@ describe("diagnostics", () => {
             `Function ${fn} expects at least 2 arguments`,
           );
 
-          // TODO?
-          // expect(
-          //   setup({ expression: `${fn}("foo", "case-insensitive")` })?.message,
-          // ).toEqual(`Function ${fn} expects at least 2 arguments`);
+          expect(err(`${fn}("foo", "bar")`)).toBeUndefined();
+
+          expect(err(`${fn}("case-insensitive")`)).toEqual(
+            `Function ${fn} expects at least 2 arguments`,
+          );
+
+          expect(err(`${fn}("foo", "case-insensitive")`)).toEqual(
+            `Function ${fn} expects at least 2 arguments`,
+          );
 
           expect(
             err(`${fn}("foo", "bar", "case-insensitive")`),
@@ -166,6 +171,40 @@ describe("diagnostics", () => {
           expect(
             err(`${fn}("foo", "bar", "baz", "case-insensitive")`),
           ).toBeUndefined();
+        },
+      );
+
+      it("should reject when there is not enough arguments for interval", () => {
+        expect(err(`interval()`)).toBe(`Function interval expects 3 arguments`);
+        expect(err(`interval([Created At])`)).toBe(
+          `Function interval expects 3 arguments`,
+        );
+
+        expect(err(`interval([Created At], 1)`)).toBe(
+          `Function interval expects 3 arguments`,
+        );
+
+        expect(err(`interval("include-current")`)).toBe(
+          `Function interval expects 3 arguments`,
+        );
+
+        expect(err(`interval("foo", "include-current")`)).toBe(
+          `Function interval expects 3 arguments`,
+        );
+
+        expect(err(`interval([Created At], 1, "month")`)).toBeUndefined();
+
+        expect(
+          err(`interval([Created At], 1, "month", "include-current")`),
+        ).toBeUndefined();
+      });
+
+      it.each(["week", "weekday"])(
+        "should reject when there is not enough arguments for %s",
+        (fn) => {
+          expect(err(`${fn}()`)).toBe(`Function ${fn} expects 1 argument`);
+          expect(err(`${fn}([Created At])`)).toBeUndefined();
+          expect(err(`${fn}([Created At], "US")`)).toBeUndefined();
         },
       );
 
