@@ -329,6 +329,21 @@ describe("MultiAutocomplete", () => {
     expect(onChange).toHaveBeenCalledWith(["a,bc"]);
   });
 
+  it("should escape the selected option label when editing", async () => {
+    const { input, onChange } = setup({
+      initialValues: ["1"],
+      options: [{ value: "1", label: "a,b" }],
+    });
+    await userEvent.click(screen.getByText("a,b"));
+    expect(input).toHaveValue('"a\\,b"');
+    expect(onChange).not.toHaveBeenCalled();
+
+    await userEvent.click(input);
+    await userEvent.type(input, "{selectall}{arrowright}{arrowleft}\\,c");
+    expect(input).toHaveValue('"a\\,b\\,c"');
+    expect(onChange).toHaveBeenLastCalledWith(["a,b,c"]);
+  });
+
   it("should open and close the dropdown correctly", async () => {
     const { input, onChange } = setup({ options: REMAPPED_OPTIONS });
     expect(queryOption("One")).not.toBeInTheDocument();
