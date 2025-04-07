@@ -1,11 +1,13 @@
 (ns metabase.util.queue
-  "
-  Functionality for working with queues. There are two main blocks of functionality: a custom BoundedTransferQueue and a queue listener.
+  "Functionality for working with queues.
+   There are two main blocks of functionality: a custom BoundedTransferQueue and a queue listener.
 
-  The BoundedTransferQueue allows for callers to decide whether to block the previous synchronous put to complete before adding another message, or attempt to add it to a fixed-sized async queue if there is space.
+  The BoundedTransferQueue allows for callers to decide whether to block the previous synchronous put to complete
+  before adding another message, or attempt to add it to a fixed-sized async queue if there is space.
   See `bounded-transfer-queue` for more details.
 
-  The queue listener allows the creation and management of (possibly) multithreaded queue listeners that can process messages off the queue in batches.
+  The queue listener allows the creation and management of (possibly) multithreaded queue listeners that can
+  process messages off the queue in batches.
   Listeners should generally be managed with `init-listener! which calls `listen!`.
   "
   (:require

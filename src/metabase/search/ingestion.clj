@@ -4,6 +4,7 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -160,6 +161,7 @@
   "Send a search index update report to Prometheus"
   [duration report]
   (analytics/inc! :metabase-search/index-ms duration)
+  (prometheus/observe! :metabase-search/index-duration-ms duration)
   (doseq [[model cnt] report]
     (analytics/inc! :metabase-search/index {:model model} cnt)))
 
@@ -168,10 +170,9 @@
   []
   (queue/listen! listener-name queue bulk-ingest!
                  {:success-handler     (fn [result duration _]
-                                         (when (seq result)
-                                           (report->prometheus! duration result)
-                                           (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))
-                                           (track-queue-size!)))
+                                         (report->prometheus! duration result)
+                                         (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))
+                                         (track-queue-size!))
                   :err-handler        (fn [err _]
                                         (log/error err "Error indexing search entries")
                                         (analytics/inc! :metabase-search/index-error)
@@ -179,5 +180,7 @@
                   ;; Note that each message can correspond to multiple documents,
                   ;; for example there would be 1 message for updating all
                   ;; the tables within a given database when it is renamed.
+                  ;; Messages can also correspond to zero documents,
+                  ;; such as when updating a table that is marked as not visible.
                   :max-batch-messages 50
                   :max-next-ms       100}))
