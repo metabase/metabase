@@ -55,9 +55,10 @@
                               :connection-impersonation-requires-role true
                               :convert-timezone                       true
                               :datetime-diff                          true
-                              :identifiers-with-spaces                true
                               :describe-fields                        true
-                              :cast                                   true
+                              :expression-literals                    true
+                              :expressions/integer                    true
+                              :identifiers-with-spaces                true
                               :split-part                             true
                               :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
@@ -456,7 +457,21 @@
 
 (defmethod sql.qp/->honeysql [:snowflake :split-part]
   [driver [_ text divider position]]
-  [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
+  (let [position (sql.qp/->honeysql driver position)]
+    [:case
+     [:< position 1]
+     ""
+
+     :else
+     [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
+
+(defmethod sql.qp/->honeysql [:snowflake :text]
+  [driver [_ value]]
+  [:to_char (sql.qp/->honeysql driver value)])
+
+(defmethod sql.qp/->honeysql [:snowflake :date]
+  [driver [_ value]]
+  [:to_date (sql.qp/->honeysql driver value) "YYYY-MM-DD"])
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
@@ -734,13 +749,25 @@
   [_]
   #{"INFORMATION_SCHEMA"})
 
+(defn- adjust-host-and-port
+  [{:keys [account host port] :as db-details}]
+  (cond-> db-details
+    (not host) (assoc :host (str account ".snowflakecomputing.com"))
+    (not port) (assoc :port 443)))
+
+(defmethod driver/incorporate-ssh-tunnel-details :snowflake
+  [_driver db-details]
+  (let [details (adjust-host-and-port db-details)]
+    (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))
+
 (defmethod driver/can-connect? :snowflake
   [driver {:keys [db], :as details}]
-  (and ((get-method driver/can-connect? :sql-jdbc) driver details)
-       (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
-         ;; jdbc/query is used to see if we throw, we want to ignore the results
-         (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db))
-         true)))
+  (let [details (adjust-host-and-port details)]
+    (and ((get-method driver/can-connect? :sql-jdbc) driver details)
+         (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+           ;; jdbc/query is used to see if we throw, we want to ignore the results
+           (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db))
+           true))))
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
@@ -806,13 +833,6 @@
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
   (-> database :details :role))
-
-(defmethod driver/incorporate-ssh-tunnel-details :snowflake
-  [_driver {:keys [account host port] :as db-details}]
-  (let [details (cond-> db-details
-                  (not host) (assoc :host (str account ".snowflakecomputing.com"))
-                  (not port) (assoc :port 443))]
-    (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))
 
 (defmethod driver/describe-fields :snowflake
   [driver database & args]

@@ -184,6 +184,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               <FormTextInput
                 {...fields["saml-identity-provider-issuer"]}
                 label={t`SAML Identity Provider Issuer`}
+                required
               />
             </Stack>
           </SAMLFormSection>

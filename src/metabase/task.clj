@@ -18,6 +18,7 @@
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
   (:require
    [clojure.string :as str]
+   [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.db :as mdb]
@@ -289,6 +290,7 @@
     (task/job-info \"metabase.task.sync-and-analyze.job\")"
   [job-key]
   (when-let [scheduler (scheduler)]
+    (qs/shutdown? scheduler)
     (let [job-key (->job-key job-key)]
       (try
         (assoc (job-detail->info (qs/get-job scheduler job-key))
@@ -328,3 +330,11 @@
        (catch Exception e#
          (log/error e# msg#)
          (throw (JobExecutionException. msg# e# true))))))
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmacro defjob
+  "Like `clojurewerkz.quartzite.task/defjob` but with a log context."
+  [jtype args & body]
+  `(jobs/defjob ~jtype ~args
+     (log/with-context {:quartz-job-type (quote ~jtype)}
+       ~@body)))
