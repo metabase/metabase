@@ -1,6 +1,7 @@
 (ns metabase.models.database
   (:require
    [clojure.core.match :refer [match]]
+   [clojure.data :as data]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
@@ -153,8 +154,9 @@
       (loop [[test-details & tail] details-to-test]
         (if test-details
           (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
-            (do
-              (log/infof "Successfully connected, migrating to: %s" (pr-str test-details))
+            (let [keys-remaining (-> test-details keys set)
+                  [_ removed _] (data/diff keys-remaining (-> details keys set))]
+              (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
               (t2/update! :model/Database (:id database) {:details test-details})
               test-details)
             (recur tail))
