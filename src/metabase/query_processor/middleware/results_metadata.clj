@@ -23,15 +23,9 @@
   (let [skip-keys #{:coercion_strategy :settings :fk_target_field_id :semantic_type}]
     (cond
       (map? metadata)
-      (let [m (into {} (for [[k v] metadata
-                             :when (or (not (skip-keys k))
-                                       (some? v))]
-                         [k (standardize-metadata v)]))]
-        (reduce (fn [m k]
-                  (cond-> m
-                    (nil? (get m k)) (dissoc k)))
-                m
-                skip-keys))
+      (m/filter-kv (fn [k v] (or (some? v)
+                                 (not (drop-when-nil? k))))
+                   metadata)
 
       (sequential? metadata)
       (mapv standardize-metadata metadata)
