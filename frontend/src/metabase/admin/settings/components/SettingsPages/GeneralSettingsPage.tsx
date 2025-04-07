@@ -62,7 +62,7 @@ export function GeneralSettingsPage() {
       />
 
       <AdminSettingInput
-        hidden={hasQueryValidation}
+        hidden={!hasQueryValidation}
         name="query-analysis-enabled"
         title={t`Enable query analysis`}
         inputType="boolean"
