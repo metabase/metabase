@@ -12,9 +12,11 @@
    [metabase.events.notification :as events.notification]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.upload :as-alias upload]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -60,6 +62,19 @@
                qp-result->row-map
                (m/index-by #(get-row-pk pk-field %))))))))
 
+(defn- invalidate-field-values! [table-id rows]
+  (let [field-name-xf (comp (mapcat keys)
+                            (distinct)
+                            (map name)
+                            (map u/lower-case-en))
+        field-names (into #{} field-name-xf rows)
+        fields (when (seq field-names)
+                 (t2/select :model/Field
+                            :table_id table-id
+                            :name [:in field-names]
+                            :has_field_values [:in ["list" "auto-list"]]))]
+    (run! field-values/create-or-update-full-field-values! fields)))
+
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
@@ -73,6 +88,7 @@
          ;; right now the FE works off qp outputs, which coerce output row data
          ;; still feels messy, revisit this
         id->db-row (query-db-rows table-id pk-field (map #(update-keys % keyword) (:created-rows res)))]
+    (invalidate-field-values! table-id rows')
     {:created-rows (vals id->db-row)}))
 
 (api.macros/defendpoint :put "/table/:table-id"
@@ -83,11 +99,11 @@
   (api/check-superuser)
   (if (empty? rows)
     {:updated []}
-    (let [rows         (data-editing/apply-coercions table-id rows)
+    (let [rows'        (data-editing/apply-coercions table-id rows)
           pk-field     (table-id->pk table-id)
-          id->db-row   (query-db-rows table-id pk-field rows)
+          id->db-row   (query-db-rows table-id pk-field rows')
           updated-rows (volatile! [])]
-      (doseq [row rows]
+      (doseq [row rows']
         (let [;; well, this is a trick, but I haven't figured out how to do single row update
               result        (:rows-updated (data-editing/perform-bulk-action! :bulk/update table-id [row]))
               after-row     (-> (query-db-rows table-id pk-field [row]) vals first)
@@ -101,6 +117,7 @@
                                     :before   row-before
                                     :update   changes
                                     :actor_id api/*current-user-id*}))))
+      (invalidate-field-values! table-id rows')
       {:updated @updated-rows})))
 
 (api.macros/defendpoint :post "/table/:table-id/delete"
@@ -178,7 +195,7 @@
    {:keys [table-id]}] :- [:map [:table-id ms/PositiveInt]]
   (api/check-superuser)
   (let [_       (api/check-404 (t2/select-one :model/Table table-id))
-        token   (str (random-uuid))
+        token   (u/generate-nano-id)
         user-id api/*current-user-id*]
     (t2/insert! :table_webhook_token {:token token, :table_id table-id, :creator_id user-id})
     {:table_id table-id

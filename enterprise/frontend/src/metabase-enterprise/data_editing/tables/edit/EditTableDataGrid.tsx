@@ -22,6 +22,7 @@ import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
 import { EditingBodyCellWrapper } from "./EditingBodyCell";
+import type { EditableTableColumnConfig } from "./use-editable-column-config";
 import { useTableEditing } from "./use-table-editing";
 
 type EditTableDataGridProps = {
@@ -29,6 +30,7 @@ type EditTableDataGridProps = {
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onRowExpandClick: (rowIndex: number) => void;
+  columnsConfig?: EditableTableColumnConfig;
 };
 
 export const EditTableDataGrid = ({
@@ -36,13 +38,20 @@ export const EditTableDataGrid = ({
   fieldMetadataMap,
   onCellValueUpdate,
   onRowExpandClick,
+  columnsConfig,
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
     useTableEditing();
 
-  const columnOrder = useMemo(() => cols.map(({ name }) => name), [cols]);
+  const columnOrder = useMemo(
+    () =>
+      columnsConfig
+        ? columnsConfig.filter((it) => it.enabled).map(({ name }) => name)
+        : cols.map(({ name }) => name),
+    [cols, columnsConfig],
+  );
 
   const columnSizingMap = useMemo(() => ({}), []);
 
@@ -99,6 +108,17 @@ export const EditTableDataGrid = ({
     columnsOptions,
   });
 
+  // Optional
+  const columnsConfiguredForEditing = useMemo(() => {
+    if (!columnsConfig) {
+      return undefined;
+    }
+
+    return new Set(
+      columnsConfig.filter((it) => it.editable).map(({ name }) => name),
+    );
+  }, [columnsConfig]);
+
   const handleCellClick = useCallback(
     (
       e: React.MouseEvent<HTMLDivElement>,
@@ -111,6 +131,14 @@ export const EditTableDataGrid = ({
       },
     ) => {
       const field = fieldMetadataMap?.[columnId];
+
+      if (
+        columnsConfiguredForEditing &&
+        !columnsConfiguredForEditing.has(columnId)
+      ) {
+        return;
+      }
+
       // Disables editing for some columns, such as primary keys
       if (!canEditField(field)) {
         return;
@@ -122,7 +150,12 @@ export const EditTableDataGrid = ({
         onCellClickToEdit(cellId);
       }
     },
-    [onCellClickToEdit, editingCellId, fieldMetadataMap],
+    [
+      onCellClickToEdit,
+      editingCellId,
+      fieldMetadataMap,
+      columnsConfiguredForEditing,
+    ],
   );
 
   return (

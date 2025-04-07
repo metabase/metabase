@@ -66,6 +66,7 @@ import type {
   Revision,
   TableId,
   User,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
@@ -609,8 +610,8 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
    */
   areDownloadsEnabled: (_args: {
     hide_download_button?: boolean | null;
-    downloads?: boolean | null;
-  }) => true,
+    downloads?: string | boolean | null;
+  }) => ({ pdf: true, dashcard: true }),
 };
 
 export const PLUGIN_DATA_EDITING = {
@@ -636,5 +637,6 @@ export const PLUGIN_DATA_EDITING = {
     tableId: ConcreteTableId;
     className?: string;
     refetchTableDataQuery: () => void;
+    visualizationSettings?: VisualizationSettings;
   }>,
 };

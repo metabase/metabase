@@ -57,7 +57,7 @@
                               :datetime-diff                          true
                               :identifiers-with-spaces                true
                               :describe-fields                        true
-                              :cast                                   true
+                              :expressions/integer                    true
                               :split-part                             true
                               :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
@@ -456,7 +456,21 @@
 
 (defmethod sql.qp/->honeysql [:snowflake :split-part]
   [driver [_ text divider position]]
-  [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
+  (let [position (sql.qp/->honeysql driver position)]
+    [:case
+     [:< position 1]
+     ""
+
+     :else
+     [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
+
+(defmethod sql.qp/->honeysql [:snowflake :text]
+  [driver [_ value]]
+  [:to_char (sql.qp/->honeysql driver value)])
+
+(defmethod sql.qp/->honeysql [:snowflake :date]
+  [driver [_ value]]
+  [:to_date (sql.qp/->honeysql driver value) "YYYY-MM-DD"])
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but

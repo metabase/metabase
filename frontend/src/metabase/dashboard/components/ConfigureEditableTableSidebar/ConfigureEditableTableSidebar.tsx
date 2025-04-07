@@ -31,7 +31,9 @@ import type {
   StructuredDatasetQuery,
 } from "metabase-types/api";
 
-import { getDashCardById, getSidebar } from "../selectors";
+import { getDashCardById, getSidebar } from "../../selectors";
+
+import { ConfigureEditableTableColumns } from "./ConfigureEditableTableColumns";
 
 interface ConfigureEditableTableSidebarProps {
   onClose: () => void;
@@ -41,7 +43,9 @@ export function ConfigureEditableTableSidebar({
   onClose,
 }: ConfigureEditableTableSidebarProps) {
   const dashcardId = useSelector(getSidebar).props.dashcardId;
-  const dashcard = useSelector((state) => getDashCardById(state, dashcardId));
+  const dashcard = useSelector((state) =>
+    dashcardId !== undefined ? getDashCardById(state, dashcardId) : undefined,
+  );
 
   return (
     <Sidebar data-testid="add-table-sidebar">
@@ -60,8 +64,7 @@ export function ConfigureEditableTableSidebar({
 
         <Box p="md">
           <Tabs.Panel value="columns">
-            <div>DashcardID: {dashcardId}</div>
-            <ConfigureEditableTableColumns />
+            {dashcard && <ConfigureEditableTableColumns dashcard={dashcard} />}
           </Tabs.Panel>
           <Tabs.Panel value="filters">
             <div>DashcardID: {dashcardId}</div>
@@ -74,10 +77,6 @@ export function ConfigureEditableTableSidebar({
       </Tabs>
     </Sidebar>
   );
-}
-
-function ConfigureEditableTableColumns() {
-  return <div>Columns Content</div>;
 }
 
 function ConfigureEditableTableFilters({

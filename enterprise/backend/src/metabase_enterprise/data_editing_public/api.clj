@@ -18,12 +18,12 @@
   [{:keys [token]}
    _
    row-or-rows]
-  (let [table-id (api/check-404 (t2/select-one-fn :table_id :table_webhook_token :token token))
-        rows     (if (map? row-or-rows) [row-or-rows] row-or-rows)]
-    (when (seq rows)
-      (api/check-400 (every? seq rows))
-      (data-editing/insert! table-id rows))
-    {}))
+  (let [hook (api/check-404 (t2/select-one :table_webhook_token :token token))
+        rows (if (map? row-or-rows) [row-or-rows] row-or-rows)]
+    (api/check-400 (seq rows) "Please supply at least one row.")
+    (api/check-400 (every? seq rows) "Every row should not be empty.")
+    (binding [api/*current-user-id* (:creator_id hook)]
+      {:created (count (:created-rows (data-editing/insert! (:table_id hook) rows)))})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

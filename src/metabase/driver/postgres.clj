@@ -671,7 +671,13 @@
 
 (defmethod sql.qp/->honeysql [:postgres :split-part]
   [driver [_ text divider position]]
-  [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
+  (let [position (sql.qp/->honeysql driver position)]
+    [:case
+     [:< position 1]
+     ""
+
+     :else
+     [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
 (defmethod sql.qp/->honeysql [:postgres :text]
   [driver [_ value]]
@@ -679,7 +685,7 @@
 
 (defmethod sql.qp/->honeysql [:postgres :date]
   [driver [_ value]]
-  [:to_date (sql.qp/->honeysql driver value) "YYYY-MM-DD"])
+  [:to_date (sql.qp/->honeysql driver value) [:inline "YYYY-MM-DD"]])
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
