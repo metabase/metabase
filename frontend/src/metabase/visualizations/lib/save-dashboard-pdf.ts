@@ -145,7 +145,7 @@ const HEADER_MARGIN_BOTTOM = 12;
 const PARAMETERS_MARGIN_BOTTOM = 12;
 const PAGE_PADDING = 16;
 
-function generateWatermarkImage(text, opts = {}) {
+function generateWatermarkImage(text:string, opts = {}) {
   const {
     width = 300,
     height = 200,
@@ -170,7 +170,7 @@ function generateWatermarkImage(text, opts = {}) {
   return canvas.toDataURL('image/png');
 }
 
-function addImageWatermark(doc, imgData, opts = {}) {
+function addImageWatermark(doc:any, imgData, opts = {}) {
   const {
     xSpacing = 200,
     ySpacing = 200,
@@ -188,41 +188,6 @@ function addImageWatermark(doc, imgData, opts = {}) {
   }
 }
 
-function addTextWatermark(doc, text, options = {}) {
-  const {
-    fontSize = 12,
-    color = "#CCCCCC",
-    opacity = 0.3,
-    angle = -45,
-    xSpacing = 80,
-    ySpacing = 80
-  } = options;
-
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-
-  // 设置字体样式
-  doc.setFontSize(fontSize);
-  doc.setTextColor(color);
-  // 透明度（0-1）
-  doc.setGState(new doc.GState({opacity}));
-
-  // 计算文字宽度（用于横向间距调整）
-  // const textWidth = doc.getTextWidth(text);
-  const textWidth = text.length * fontSize / 1.4
-
-  // 循环铺满页面
-  for (let x = -pageWidth; x < pageWidth * 2; x += textWidth) {
-    for (let y = -pageHeight; y < pageHeight * 2; y += ySpacing) {
-      doc.text(text, x, y, {
-        angle: angle
-      });
-    }
-  }
-
-  // 恢复透明度
-  doc.setGState(new doc.GState({opacity: 1}));
-}
 
 export const saveDashboardPdf = async (
   selector: string,
