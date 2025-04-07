@@ -1011,7 +1011,8 @@
                 [:raw "c.table_name not in ('innodb_table_stats', 'innodb_index_stats')"]
                 (when-let [db-name ((some-fn :db :dbname) details)]
                   [:= :c.table_schema db-name])
-                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]}
+                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]
+               :order-by [:c.table_name :c.ordinal_position]}
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :mysql
