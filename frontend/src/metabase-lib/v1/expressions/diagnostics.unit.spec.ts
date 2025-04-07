@@ -44,78 +44,66 @@ describe("diagnostics", () => {
     it("should count matching parentheses", () => {
       const count = (expr: string) =>
         countMatchingParentheses(lexify(expr).tokens);
-      expect(count("()")).toEqual(0);
-      expect(count("(")).toEqual(1);
-      expect(count(")")).toEqual(-1);
-      expect(count("(A+(")).toEqual(2);
-      expect(count("SUMIF(")).toEqual(1);
-      expect(count("COUNTIF(Deal))")).toEqual(-1);
+      expect(count("()")).toBe(0);
+      expect(count("(")).toBe(1);
+      expect(count(")")).toBe(-1);
+      expect(count("(A+(")).toBe(2);
+      expect(count("SUMIF(")).toBe(1);
+      expect(count("COUNTIF(Deal))")).toBe(-1);
     });
 
     it("should catch mismatched parentheses", () => {
-      expect(setup({ expression: "FLOOR [Price]/2)" })?.message).toEqual(
+      expect(err("FLOOR [Price]/2)")).toBe(
         "Expecting an opening parenthesis after function FLOOR",
       );
     });
 
     it("should catch missing parentheses", () => {
-      expect(setup({ expression: "LOWER [Vendor]" })?.message).toEqual(
+      expect(err("LOWER [Vendor]")).toBe(
         "Expecting an opening parenthesis after function LOWER",
       );
     });
 
     it("should catch invalid characters", () => {
-      expect(setup({ expression: "[Price] / #" })?.message).toEqual(
-        "Invalid character: #",
-      );
+      expect(err("[Price] / #")).toBe("Invalid character: #");
     });
 
     it("should catch unterminated string literals", () => {
-      expect(setup({ expression: '[Category] = "widget' })?.message).toEqual(
-        "Missing closing quotes",
-      );
+      expect(err('[Category] = "widget')).toBe("Missing closing quotes");
     });
 
     it("should catch unterminated field reference", () => {
-      expect(setup({ expression: "[Price / 2" })?.message).toEqual(
-        "Missing a closing bracket",
-      );
+      expect(err("[Price / 2")).toBe("Missing a closing bracket");
     });
 
     it("should show the correct number of CASE arguments in a custom expression", () => {
-      expect(setup({ expression: "CASE([Total] > 0)" })?.message).toEqual(
-        "CASE expects 2 arguments or more",
-      );
+      expect(err("CASE([Total] > 0)")).toBe("CASE expects 2 arguments or more");
     });
 
     it("should show the correct number of function arguments in a custom expression", () => {
-      expect(
-        setup({ expression: "between([Tax])", startRule: "boolean" })?.message,
-      ).toEqual("Function between expects 3 arguments");
+      expect(err("between([Tax])", "boolean")).toBe(
+        "Function between expects 3 arguments",
+      );
     });
 
     it("should catch missing comma in function arguments", () => {
-      expect(setup({ expression: 'concat([Tax] "test")' })?.message).toEqual(
+      expect(err('concat([Tax] "test")')).toBe(
         'Expecting operator but got "test" instead',
       );
     });
 
     it("should catch unknown functions", () => {
-      expect(err("unknown()")).toEqual("Unknown function unknown");
+      expect(err("unknown()")).toBe("Unknown function unknown");
     });
 
     describe("arg count validation", () => {
       it("should catch mismatched number of function parameters", () => {
-        expect(err(`between()`)).toEqual(
+        expect(err(`between()`)).toBe("Function between expects 3 arguments");
+        expect(err(`between(1)`)).toBe("Function between expects 3 arguments");
+        expect(err(`between(1, 2)`)).toBe(
           "Function between expects 3 arguments",
         );
-        expect(err(`between(1)`)).toEqual(
-          "Function between expects 3 arguments",
-        );
-        expect(err(`between(1, 2)`)).toEqual(
-          "Function between expects 3 arguments",
-        );
-        expect(err(`between(1, 2, 3, 4)`)).toEqual(
+        expect(err(`between(1, 2, 3, 4)`)).toBe(
           "Function between expects 3 arguments",
         );
       });
@@ -133,10 +121,10 @@ describe("diagnostics", () => {
       it.each(["in", "notIn"])(
         "should reject multi-arg function calls without options when there is not enough arguments",
         (fn) => {
-          expect(err(`${fn}()`)).toEqual(
+          expect(err(`${fn}()`)).toBe(
             `Function ${fn} expects at least 2 arguments`,
           );
-          expect(err(`${fn}("foo")`)).toEqual(
+          expect(err(`${fn}("foo")`)).toBe(
             `Function ${fn} expects at least 2 arguments`,
           );
           expect(err(`${fn}("foo", "bar")`)).toBeUndefined();
@@ -147,20 +135,20 @@ describe("diagnostics", () => {
       it.each(["contains", "doesNotContain", "startsWith", "endsWith"])(
         "should reject when there is not enough arguments for %s",
         (fn) => {
-          expect(err(`${fn}()`)).toEqual(
+          expect(err(`${fn}()`)).toBe(
             `Function ${fn} expects at least 2 arguments`,
           );
-          expect(err(`${fn}("foo")`)).toEqual(
+          expect(err(`${fn}("foo")`)).toBe(
             `Function ${fn} expects at least 2 arguments`,
           );
 
           expect(err(`${fn}("foo", "bar")`)).toBeUndefined();
 
-          expect(err(`${fn}("case-insensitive")`)).toEqual(
+          expect(err(`${fn}("case-insensitive")`)).toBe(
             `Function ${fn} expects at least 2 arguments`,
           );
 
-          expect(err(`${fn}("foo", "case-insensitive")`)).toEqual(
+          expect(err(`${fn}("foo", "case-insensitive")`)).toBe(
             `Function ${fn} expects at least 2 arguments`,
           );
 
@@ -218,10 +206,10 @@ describe("diagnostics", () => {
     describe("arg validation", () => {
       describe("substring", () => {
         it("should reject substring with index <= 0", () => {
-          expect(err(`substring("foo", 0, 1)`)).toEqual(
+          expect(err(`substring("foo", 0, 1)`)).toBe(
             "Expected positive integer but found 0",
           );
-          expect(err(`substring("foo", -1, 1)`)).toEqual(
+          expect(err(`substring("foo", -1, 1)`)).toBe(
             "Expected positive integer but found -1",
           );
         });
@@ -234,10 +222,10 @@ describe("diagnostics", () => {
 
       describe("split-part", () => {
         it("should reject split-part with index <= 0", () => {
-          expect(err(`splitPart("foo", "/", 0)`)).toEqual(
+          expect(err(`splitPart("foo", "/", 0)`)).toBe(
             "Expected positive integer but found 0",
           );
-          expect(err(`splitPart("foo", "/" ,-1)`)).toEqual(
+          expect(err(`splitPart("foo", "/" ,-1)`)).toBe(
             "Expected positive integer but found -1",
           );
         });
@@ -250,7 +238,7 @@ describe("diagnostics", () => {
 
       describe("offset", () => {
         it("should reject offset with offset = 0", () => {
-          expect(err(`Offset([Total], 0)`, "aggregation")).toEqual(
+          expect(err(`Offset([Total], 0)`, "aggregation")).toBe(
             "Row offset cannot be zero",
           );
         });
@@ -274,18 +262,18 @@ describe("diagnostics", () => {
         ],
       });
 
-      expect(err(`percentile(1, 2)`, "expression", metadata)).toEqual(
+      expect(err(`percentile(1, 2)`, "expression", metadata)).toBe(
         "Unsupported function percentile",
       );
     });
 
     it("should reject comparison operator with non-field operand", () => {
-      expect(err("1 < 2")).toEqual("Expecting field but found 1");
-      expect(err("1 <= 2")).toEqual("Expecting field but found 1");
-      expect(err("1 > 2")).toEqual("Expecting field but found 1");
-      expect(err("1 >= 2")).toEqual("Expecting field but found 1");
-      expect(err("1 = 2")).toEqual("Expecting field but found 1");
-      expect(err("1 != 2")).toEqual("Expecting field but found 1");
+      expect(err("1 < 2")).toBe("Expecting field but found 1");
+      expect(err("1 <= 2")).toBe("Expecting field but found 1");
+      expect(err("1 > 2")).toBe("Expecting field but found 1");
+      expect(err("1 >= 2")).toBe("Expecting field but found 1");
+      expect(err("1 = 2")).toBe("Expecting field but found 1");
+      expect(err("1 != 2")).toBe("Expecting field but found 1");
 
       expect(err("[Tax] < 2")).toBeUndefined();
       expect(err("[Tax] <= 2")).toBeUndefined();
@@ -302,9 +290,7 @@ describe("diagnostics", () => {
     });
 
     it("should reject a CASE expression with only one argument", () => {
-      expect(err("case([Total] > 0)")).toEqual(
-        "CASE expects 2 arguments or more",
-      );
+      expect(err("case([Total] > 0)")).toBe("CASE expects 2 arguments or more");
     });
 
     it("should accept top-level literals", () => {
@@ -340,7 +326,7 @@ describe("diagnostics", () => {
     it("should handle invalid input", () => {
       const expression = "1+";
       const result = setup({ expression });
-      expect(result.error?.message).toEqual("Expected expression");
+      expect(result.error?.message).toBe("Expected expression");
     });
   });
 });
