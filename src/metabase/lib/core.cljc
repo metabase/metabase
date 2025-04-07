@@ -300,6 +300,7 @@
  [lib.metadata.composed-provider
   composed-metadata-provider]
  [lib.metadata.ident
+  assert-idents-present!
   explicitly-joined-ident
   implicit-join-clause-ident
   implicitly-joined-ident

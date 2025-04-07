@@ -5,7 +5,6 @@
    [malli.error :as me]
    [metabase.analyze.query-results :as qr]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
@@ -119,21 +118,28 @@
         (is (= (:updated_at card)
                (t2/select-one-fn :updated_at :model/Card :id (u/the-id card))))))))
 
+(defn- test-card-1 []
+  (let [eid (u/generate-nano-id)]
+    {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
+     :entity_id       eid
+     :result_metadata [{:name         "NAME"
+                        :display_name "Name"
+                        :ident        (lib/native-ident "NAME" eid)
+                        :base_type    :type/Text}]}))
+
 (deftest save-result-metadata-test-2
-  (testing "check that using a Card as your source doesn't overwrite the results metadata..."
-    (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                                     :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
+  (testing "check that using a Card as your source doesn't overwrite its results metadata..."
+    (mt/with-temp [:model/Card card (test-card-1)]
       (is (= [{:name         "NAME"
                :display_name "Name"
-               ;; Idents not found in result_metadata are backfilled on read.
                :ident        (lib/native-ident "NAME" (:entity_id card))
                :base_type    :type/Text}]
              (card-metadata card)))
       (let [result (qp/process-query
-                    (qp/userland-query
-                     {:database lib.schema.id/saved-questions-virtual-database-id
-                      :type     :query
-                      :query    {:source-table (str "card__" (u/the-id card))}}))]
+                     (qp/userland-query
+                       {:database lib.schema.id/saved-questions-virtual-database-id
+                        :type     :query
+                        :query    {:source-table (str "card__" (u/the-id card))}}))]
         (is (partial= {:status :completed}
                       result)))
       (is (= [{:name         "NAME"
@@ -145,9 +151,7 @@
 (deftest save-result-metadata-test-3
   (testing "check that using a Card as your source doesn't overwrite the results metadata even when running via the API endpoint"
     (mt/with-temp [:model/Collection collection {}
-                   :model/Card       card {:collection_id   (u/the-id collection)
-                                           :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                                           :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
+                   :model/Card       card       (assoc (test-card-1) :collection_id (u/the-id collection))]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (mt/user-http-request :rasta :post 202 "dataset" {:database lib.schema.id/saved-questions-virtual-database-id
                                                         :type     :query
@@ -161,11 +165,13 @@
 (deftest save-result-metadata-test-4
   (testing "check that using a Card as your source doesn't overwrite the results metadata for MBQL queries..."
     (mt/with-temp [:model/Card card {:dataset_query   (mt/mbql-query venues {:fields [$name]})
-                                     :result_metadata [{:name "NAME", :display_name "Custom Name", :base_type :type/Text}]}]
+                                     :result_metadata [{:name         "NAME"
+                                                        :display_name "Custom Name"
+                                                        :ident        (mt/ident :venues :name)
+                                                        :base_type    :type/Text}]}]
       (is (= [{:name         "NAME"
                :display_name "Custom Name"
-               ;; Idents not found in result_metadata are backfilled on read.
-               :ident        (:ident (lib.metadata/field (mt/metadata-provider) (mt/id :venues :name)))
+               :ident        (mt/ident :venues :name)
                :base_type    :type/Text}]
              (card-metadata card)))
       (let [result (qp/process-query
@@ -177,7 +183,7 @@
                       result)))
       (is (= [{:name         "NAME"
                :display_name "Custom Name"
-               :ident        (:ident (lib.metadata/field (mt/metadata-provider) (mt/id :venues :name)))
+               :ident        (mt/ident :venues :name)
                :base_type    :type/Text}]
              (card-metadata card))))))
 
@@ -414,7 +420,8 @@
 (deftest ^:parallel result-metadata-preservation-test
   (testing "result_metadata is preserved in the query processor if passed into the context"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query {:database (mt/id)
+      (mt/with-temp [:model/Card {base-card-id :id
+                                  :as base-card}    {:dataset_query {:database (mt/id)
                                                                      :type     :query
                                                                      :query    {:source-table (mt/id :orders)
                                                                                 :expressions  {"Tax Rate" [:/
@@ -430,6 +437,11 @@
                                                                             :database (mt/id)
                                                                             :query    {:source-table (format "card__%s" base-card-id)}}
                                                           :result_metadata [{:semantic_type :type/Percentage
+                                                                             :ident         (get-in base-card
+                                                                                                    [:dataset_query
+                                                                                                     :query
+                                                                                                     :expression-idents
+                                                                                                     "Tax Rate"])
                                                                              :name          "Tax Rate"}]}]
         (testing "The baseline behavior is for data results_metadata to be independently computed"
           (let [results (qp/process-query dataset-query)]

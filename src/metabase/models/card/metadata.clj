@@ -1,6 +1,7 @@
 (ns metabase.models.card.metadata
   "Code related to Card metadata (re)calculation and saving updated metadata asynchronously."
   (:require
+   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -242,7 +243,7 @@ saved later when it is ready."
     (not query)
     (do
       (log/debug "Not inferring result metadata for Card: query was not updated")
-      card)
+      (m/update-existing card :result_metadata fix-incoming-idents card))
 
     ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
     metadata
@@ -276,9 +277,9 @@ saved later when it is ready."
 (defn assert-valid-idents!
   "Given a card (or updates being made to a card) check the `:result_metadata` has correctly formed idents."
   [{cols :result_metadata :as card}]
-  (when-let [missing (seq (remove :ident cols))]
-    (throw (ex-info "Some columns in :result_metadata are missing :idents; these are required"
-                    {:missing missing})))
-  (when-let [invalid (seq (remove #(valid-ident? % card) cols))]
+  (lib/assert-idents-present! cols {:card-id (:id card)})
+  (when-let [invalid (seq (remove #(or (nil? (:ident %))
+                                       (valid-ident? % card))
+                                  cols))]
     (throw (ex-info "Some columns in :result_metadata have bad :idents!"
                     {:invalid invalid}))))

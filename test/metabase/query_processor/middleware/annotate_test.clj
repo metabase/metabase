@@ -283,7 +283,6 @@
                     :display-name "Child"
                     :parent-id    2)]}))
 
-;; XXX: START HERE: Continue adding idents to these tests.
 (deftest ^:parallel col-info-combine-parent-field-names-test
   (testing "For fields with parents we should return them with a combined name including parent's name"
     (qp.store/with-metadata-provider child-parent-grandparent-metadata-provider

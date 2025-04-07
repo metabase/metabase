@@ -15,6 +15,7 @@
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -22,6 +23,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
+   [metabase.query-processor.middleware.annotate :as qp.annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -507,15 +509,17 @@
                                          database-id)
                                        (u/the-id (lib.metadata/database parent-metadata-provider)))
                     :name          (format "Card %d" (inc i))
+                    :entity-id     (u/generate-nano-id)
                     :dataset-query query}))
     (completing
-     (fn [metadata-provider {query :dataset-query, :as card}]
-       (qp.store/with-metadata-provider metadata-provider
-         (let [result-metadata (if (= (:type query) :query)
-                                 (qp.preprocess/query->expected-cols query)
-                                 (actual-query-results query))
-               card            (assoc card :result-metadata result-metadata)]
-           (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))
+     (fn [metadata-provider {query :dataset-query, eid :entity-id, :as card}]
+       (let [query (assoc-in query [:info :card-entity-id] eid)]
+         (qp.store/with-metadata-provider metadata-provider
+           (let [result-metadata (if (= (:type query) :query)
+                                   (qp.preprocess/query->expected-cols query)
+                                   (actual-query-results query))
+                 card            (assoc card :result-metadata result-metadata)]
+             (lib.tu/mock-metadata-provider metadata-provider {:cards [card]}))))))
     parent-metadata-provider
     queries)))
 
@@ -608,3 +612,15 @@
   "Override the determined results timezone ID and execute `body`. Intended primarily for REPL and test usage."
   [timezone-id & body]
   `(do-with-results-timezone-id ~timezone-id (fn [] ~@body)))
+
+(defn metadata->native-form
+  "Given metadata for an MBQL query, transform it into the metadata which would be expected for a native query that
+  selected the same columns.
+
+  If the optional `entity_id` is provided, it will be used for the `:ident`s. If missing, a placeholder ident will
+  be used instead, as is done for ad-hoc native queries."
+  ([metadata]
+   (metadata->native-form metadata (lib/placeholder-card-entity-id-for-adhoc-query)))
+  ([metadata card-entity-id]
+   (qp.annotate/annotate-native-cols (mapv #(dissoc % :id :ident :source) metadata)
+                                     card-entity-id)))

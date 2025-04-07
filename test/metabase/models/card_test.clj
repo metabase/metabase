@@ -285,9 +285,13 @@
              (is (= nil
                     metadata)))))
       (testing "Shouldn't remove verified result metadata from native queries (#37009)"
-        (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query checkins))]
-          (f (cond-> {:dataset_query (mt/native-query {:native "SELECT * FROM CHECKINS"})
-                      :result_metadata metadata}
+        (let [card-eid (u/generate-nano-id)
+              metadata (-> (mt/mbql-query checkins)
+                           qp.preprocess/query->expected-cols
+                           (mt/metadata->native-form card-eid))]
+          (f (cond-> {:dataset_query   (mt/native-query {:native "SELECT * FROM CHECKINS"})
+                      :result_metadata metadata
+                      :entity_id       card-eid}
                (= creating-or-updating "updating")
                (assoc :verified-result-metadata? true))
              (fn [new-metadata]

@@ -1701,14 +1701,18 @@
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           card-query (-> (lib/query mp (lib.metadata/table mp (mt/id "orders")))
                          (lib/order-by (lib.metadata/field mp (mt/id "orders" "created_at")))
-                         (lib/limit 1))
+                         (lib/limit 1)
+                         lib/->legacy-MBQL)
           results (qp/process-query card-query)]
       (mt/with-temp [:model/Card {card-id :id} {:type :question
                                                 :dataset_query {:native (get-in results [:data :native_form])
                                                                 :database (mt/id)
                                                                 :type :native}
-                                                :result_metadata (get-in results [:data :results_metadata :columns])
-                                                :name "Spaces in Name"}]
+                                                :name          "Spaces in Name"
+                                                :entity_id     "yZvzZlw8lRkATwq8w8fDi"
+                                                :result_metadata
+                                                (for [col (get-in results [:data :results_metadata :columns])]
+                                                  (assoc col :ident (lib/native-ident (:name col) "yZvzZlw8lRkATwq8w8fDi")))}]
         (let [created-at-pred (every-pred (comp #{"Created At"} :display-name) (comp #{"Spaces in Name"} :source-alias))
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id "products"))) $q
                       (lib/join $q (lib/join-clause (lib.metadata/card mp card-id)))

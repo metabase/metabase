@@ -391,3 +391,8 @@
                                                                   :type     :native
                                                                   :native   {:query "SELECT * FROM VENUES;"}}
                                                 :result-metadata (get-in (mock-cards) [:venues :result-metadata])}))))
+
+(defn placeholder-entity-id?
+  "True if the string `s` is exactly a placeholder `entity_id` of the type generated for ad-hoc cards."
+  [s]
+  (lib.metadata.ident/placeholder? s))

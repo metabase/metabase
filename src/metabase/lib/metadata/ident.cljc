@@ -69,10 +69,23 @@
 (def ^:private placeholder-regex
   #"\$\$ADHOC\[[A-Za-z0-9_-]{21}\]")
 
+(defn contains-placeholder-ident?
+  "Returns true if the given string contains a placeholder."
+  [s]
+  (and (string? s)
+       (boolean (re-matches placeholder-regex s))))
+
+(defn placeholder?
+  "Returns true if the given string is **exactly** a placeholder."
+  [s]
+  (and (contains-placeholder-ident? s)
+       (= (count s) 30)))
+
 (defn replace-placeholder-idents
   "Given an `:ident` and the true `:entity_id` for a card, overwrite the placeholders."
   [ident card-entity-id]
-  (str/replace ident placeholder-regex card-entity-id))
+  (when ident
+    (str/replace ident placeholder-regex card-entity-id)))
 
 (comment
   (let [placeholder-ident (native-ident "SOME_COLUMN" (placeholder-card-entity-id-for-adhoc-query))

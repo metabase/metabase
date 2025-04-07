@@ -80,7 +80,12 @@
                          :first-row        (first rows)
                          :type             qp.error-type/qp}))))))
 
-(defn- annotate-native-cols [cols card-entity-id]
+(defn annotate-native-cols
+  "Given metadata columns and the `entity_id` of the card, annotate the metadata with full details.
+
+  Do not call this from other namespaces; it is exposed only to support
+  [[metabase.query-processor.test-util/metadata->native-form]]."
+  [cols card-entity-id]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
     (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
             (let [col-name (name col-name)]
@@ -536,12 +541,15 @@
 (defn- cols-for-source-query
   [{:keys [source-metadata source-query/entity-id]
     {native-source-query :native, :as source-query} :source-query}
-   outer-query
+   {{:keys [card-entity-id]} :info :as outer-query}
    results]
   (let [columns (if native-source-query
                   (maybe-merge-source-metadata
                    source-metadata (column-info {:type :native
-                                                 :info {:card-entity-id entity-id}}
+                                                 ;; If the native stage came from a source card, we use its entity_id.
+                                                 ;; But if that isn't set, then this native stage is an inner stage of
+                                                 ;; a single card, and we use its entity_id for native idents.
+                                                 :info {:card-entity-id (or entity-id card-entity-id)}}
                                                 results))
                   (mbql-cols source-query outer-query results))]
     (qp.util/combine-metadata columns source-metadata)))

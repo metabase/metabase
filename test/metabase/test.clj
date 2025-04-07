@@ -214,6 +214,7 @@
   formatted-rows+column-names
   format-rows-by
   formatted-rows
+  metadata->native-form
   nest-query
   normal-drivers
   normal-drivers-with-feature

@@ -957,7 +957,7 @@
       (dissoc :verified-result-metadata?)
       (assoc :card_schema current-schema-version)
       t2/changes
-      (->> (into {:id (:id card)}))
+      (->> (into (select-keys card [:id :type :entity_id])))
       apply-dashboard-question-updates
       maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't

@@ -228,6 +228,37 @@
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
             (do-test)))))))
 
+(comment
+  (let [short-col-name "coun"
+          long-col-name  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+
+          ;; Lightly validate the native form that comes back. Resist the urge to check for exact equality.
+          validate-native-form (fn [native-form-lines]
+                                 (and (some #(str/includes? % short-col-name) native-form-lines)
+                                      (some #(str/includes? % long-col-name) native-form-lines)))
+
+          ;; Disable truncate-alias when compiling the native query to ensure we don't truncate the column.
+          ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
+          native-sub-query (with-redefs [lib.util/truncate-alias
+                                         (fn mock-truncate-alias
+                                           [ss & _] ss)]
+                             (-> (mt/mbql-query people
+                                   {:source-table $$people
+                                    :aggregation  [[:aggregation-options [:count] {:name short-col-name}]]
+                                    :breakout     [[:field %state {:name long-col-name}]]
+                                    :limit        5})
+                                 qp.compile/compile
+                                 :query))
+          _ (clojure.pprint/pprint native-sub-query)
+
+          native-query (mt/native-query {:query native-sub-query})
+
+          ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
+          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])]
+    (lib.metadata/card metadata-provider 1)
+    )
+  )
+
 (deftest native-query-with-long-column-alias
   (testing "nested native query with long column alias (metabase#47584)"
     (let [short-col-name "coun"
@@ -250,17 +281,16 @@
                                     :limit        5})
                                  qp.compile/compile
                                  :query))
-
           native-query (mt/native-query {:query native-sub-query})
 
           ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
-          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])]
+          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])
+          metadata-card     (lib.metadata/card metadata-provider 1)
+          ]
       (mt/with-temp
-        [:model/Card card (assoc {:dataset_query native-query}
-                                 :result_metadata
-                                 (-> (lib.metadata.protocols/metadatas metadata-provider :metadata/card [1])
-                                     first
-                                     :result-metadata))]
+        [:model/Card card {:dataset_query native-query
+                           :entity_id       (:entity-id metadata-card)
+                           :result_metadata (:result-metadata metadata-card)}]
         (let [card-query {:database (mt/id)
                           :type     "query"
                           :query    {:source-table (str "card__" (u/the-id card))}}]
