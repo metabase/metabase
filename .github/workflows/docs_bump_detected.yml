@@ -54,14 +54,11 @@ jobs:
         env:
           TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
-          echo $BRANCH_NAME
-          echo "https://api.github.com/repos/metabase/docs.metabase.github.io/${WORKFLOW_ID}/dispatches"
-          echo "https://api.github.com/repos/metabase/docs.metabase.github.io/$WORKFLOW_ID/dispatches"
           echo "Triggering workflow in metabase/docs.metabase.github.io with branch: $BRANCH_NAME"
           curl -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: token ${TOKEN}" \
-            "https://api.github.com/repos/metabase/docs.metabase.github.io/actions/workflows/${WORKFLOW_ID}/dispatches" \
+            "https://api.github.com/repos/metabase/docs.metabase.github.io/actions/workflows/154066234/dispatches" \
             -d "{\"event_type\": \"trigger-workflow\",
                  \"ref\": \"$BRANCH_NAME\",
                  \"client_payload\": {\"branch\": \"$BRANCH_NAME\"}}"
