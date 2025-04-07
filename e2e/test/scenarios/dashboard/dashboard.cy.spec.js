@@ -125,6 +125,10 @@ describe("scenarios > dashboard", () => {
       () => {
         cy.intercept("POST", "api/collection").as("createCollection");
         cy.visit("/");
+        cy.findByTestId("home-page").should(
+          "contain",
+          "Try out these sample x-rays to see what Metabase can do.",
+        );
         H.closeNavigationSidebar();
         H.appBar().findByText("New").click();
         H.popover().findByText("Dashboard").should("be.visible").click();
