@@ -19,12 +19,12 @@ interface DatasetsListItemProps {
   item: VisualizerDataSource;
   onSwap?: (item: VisualizerDataSource) => void;
   onAdd?: (item: VisualizerDataSource) => void;
+  onRemove?: (item: VisualizerDataSource) => void;
   selected: boolean;
-  mode: "swap" | "add" | "both";
 }
 
 export const DatasetsListItem = (props: DatasetsListItemProps) => {
-  const { selected, item, onSwap, onAdd, mode } = props;
+  const { selected, item, onSwap, onAdd, onRemove } = props;
 
   const currentDisplay = useSelector(getVisualizationType);
   const primaryColumn = useSelector(getVisualizerPrimaryColumn);
@@ -54,10 +54,6 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
       },
     });
   }, [metadata, primaryColumn, currentDisplay]);
-
-  if (mode === "add" && !isCompatible) {
-    return null;
-  }
 
   return (
     <Flex
@@ -92,21 +88,38 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
       <Ellipsified style={{ flexGrow: 1, paddingBottom: 1 }}>
         {item.name}
       </Ellipsified>
-      {mode === "both" && !selected && isCompatible && (
+      {selected ? (
         <Button
-          data-testid="add-dataset-button"
-          className={S.AddButton}
-          variant="inverse"
+          data-testid="remove-dataset-button"
+          className={S.RemoveButton}
+          variant="filled"
           size="xs"
-          rightSection={<Icon name="add" />}
+          rightSection={<Icon name="trash" />}
           onClick={e => {
             e.stopPropagation();
-            onAdd?.(item);
+            onRemove?.(item);
           }}
           style={{
             flexShrink: 0,
           }}
         />
+      ) : (
+        isCompatible && (
+          <Button
+            data-testid="add-dataset-button"
+            className={S.AddButton}
+            variant="inverse"
+            size="xs"
+            rightSection={<Icon name="add" />}
+            onClick={e => {
+              e.stopPropagation();
+              onAdd?.(item);
+            }}
+            style={{
+              flexShrink: 0,
+            }}
+          />
+        )
       )}
     </Flex>
   );

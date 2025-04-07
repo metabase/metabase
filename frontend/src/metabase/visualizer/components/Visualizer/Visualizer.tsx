@@ -7,7 +7,7 @@ import {
   useSensor,
 } from "@dnd-kit/core";
 import { useCallback, useEffect } from "react";
-import { usePrevious, useUnmount } from "react-use";
+import { useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box } from "metabase/ui";
@@ -16,7 +16,6 @@ import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-h
 import {
   getDraggedItem,
   getIsDataSidebarOpen,
-  getIsDirty,
   getIsVizSettingsSidebarOpen,
 } from "metabase/visualizer/selectors";
 import {
@@ -24,8 +23,6 @@ import {
   isValidDraggedItem,
 } from "metabase/visualizer/utils";
 import {
-  closeDataSidebar,
-  closeVizSettingsSidebar,
   handleDrop,
   resetVisualizer,
   setDraggedItem,
@@ -82,21 +79,11 @@ export const Visualizer = (props: VisualizerProps) => {
   const isDataSidebarOpen = useSelector(getIsDataSidebarOpen);
   const isVizSettingsSidebarOpen = useSelector(getIsVizSettingsSidebarOpen);
 
-  const isDirty = useSelector(getIsDirty);
-  const wasDirty = usePrevious(isDirty);
-
   const dispatch = useDispatch();
 
   const canvasSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 10 },
   });
-
-  useEffect(() => {
-    if (wasDirty && !isDirty) {
-      dispatch(closeVizSettingsSidebar());
-      dispatch(closeDataSidebar());
-    }
-  }, [isDirty, wasDirty, dispatch]);
 
   useUnmount(() => {
     dispatch(resetVisualizer({ full: true }));
