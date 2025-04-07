@@ -650,6 +650,9 @@
       [:time-interval _ (x :guard temporal?) n unit]
       (lib.temporal-bucket/describe-temporal-interval n unit)
 
+      [:relative-time-interval _ (x :guard temporal?) n unit offset offset-unit]
+      (lib.temporal-bucket/describe-temporal-interval-with-offset n unit offset offset-unit)
+
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
 
