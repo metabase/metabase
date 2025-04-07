@@ -3,6 +3,8 @@ name: Build Uberjars
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    branches:
+      - master
 
 jobs:
   build:
