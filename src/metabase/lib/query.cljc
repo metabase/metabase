@@ -178,10 +178,9 @@
     (let [pmbql-query (-> (binding [lib.schema.expression/*suppress-expression-type-check?* true]
                             (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
                           (add-types-to-fields metadata-providerable))]
-      (cond-> (merge
-               pmbql-query
-               (query-with-stages metadata-providerable (:stages pmbql-query)))
-        (:info legacy-query) (assoc :info (:info legacy-query)))) ;; preserve info map
+      (merge
+       pmbql-query
+       (query-with-stages metadata-providerable (:stages pmbql-query))))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
                       {:legacy-query legacy-query}

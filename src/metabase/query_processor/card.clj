@@ -20,6 +20,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -289,11 +290,11 @@
                             :context                context
                             :card-id                card-id
                             :card-name              (:name card)
-                            :card-stored-metadata   (:result_metadata card)
                             :dashboard-id           dashboard-id
                             :visualization-settings merged-viz}
                      (and (= (:type card) :model) (seq (:result_metadata card)))
                      (assoc :metadata/model-metadata (:result_metadata card)))]
+    (qp.store/store-miscellaneous-value! [::card-stored-metadata] (:result_metadata card))
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id

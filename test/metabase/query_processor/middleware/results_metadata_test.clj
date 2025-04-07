@@ -142,26 +142,28 @@
   (testing "test that card result metadata does not generate an UPDATE statement when unchanged"
     (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT NAME FROM VENUES"})}]
       (is (nil? (card-metadata card)))
-      (let [result (qp/process-query
-                    (qp/userland-query
-                     (mt/native-query {:query "SELECT NAME FROM VENUES"})
-                     {:card-id    (u/the-id card)
-                      :card-stored-metadata [{:base_type :type/Text
-                                              :database_type "CHARACTER VARYING"
-                                              :display_name "NAME"
-                                              :effective_type :type/Text
-                                              :field_ref [:field "NAME" {:base-type :type/Text}]
-                                              :fingerprint {:global {:distinct-count 100, :nil% 0.0}
-                                                            :type {:type/Text {:average-length 15.63
-                                                                               :percent-email 0.0
-                                                                               :percent-json 0.0
-                                                                               :percent-state 0.0
-                                                                               :percent-url 0.0}}}
-                                              :name "NAME"
-                                              :semantic_type :type/Name}]
-                      :query-hash (qp.util/query-hash {})}))]
-        (is (partial= {:status :completed}
-                      result)))
+      (mt/with-metadata-provider (mt/id)
+        (qp.store/store-miscellaneous-value! [:metabase.query-processor.card/card-stored-metadata]
+                                             [{:base_type :type/Text
+                                               :database_type "CHARACTER VARYING"
+                                               :display_name "NAME"
+                                               :effective_type :type/Text
+                                               :field_ref [:field "NAME" {:base-type :type/Text}]
+                                               :fingerprint {:global {:distinct-count 100, :nil% 0.0}
+                                                             :type {:type/Text {:average-length 15.63
+                                                                                :percent-email 0.0
+                                                                                :percent-json 0.0
+                                                                                :percent-state 0.0
+                                                                                :percent-url 0.0}}}
+                                               :name "NAME"
+                                               :semantic_type :type/Name}])
+        (let [result (qp/process-query
+                      (qp/userland-query
+                       (mt/native-query {:query "SELECT NAME FROM VENUES"})
+                       {:card-id    (u/the-id card)
+                        :query-hash (qp.util/query-hash {})}))]
+          (is (partial= {:status :completed}
+                        result))))
       (is (nil? (card-metadata card))))))
 
 (deftest ^:parallel metadata-in-results-test
