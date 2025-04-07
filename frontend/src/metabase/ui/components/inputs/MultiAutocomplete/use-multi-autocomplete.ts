@@ -78,8 +78,8 @@ export function useMultiAutocomplete({
     onChange(newValues);
     const newFieldState = getFieldStateAfterChange(
       newFieldValue,
-      newFieldValues,
       newParsedValues,
+      newFieldValues,
       fieldSelection,
     );
     setFieldState(newFieldState);
@@ -273,14 +273,16 @@ function getValuesAfterChange<T>(
 
 function getFieldStateAfterChange(
   fieldValue: string,
-  fieldValues: string[],
   parsedValues: string[],
+  fieldValues: string[], // `parsedValues` with duplicates and invalid values removed
   fieldSelection: FieldSelection,
 ) {
   const isDelimiter = DELIMITERS.some((delimiter) =>
     fieldValue.endsWith(delimiter),
   );
 
+  // we want to reset the input state when there is a delimiter and some parsed
+  // values, even if all of them are rejected by validation
   if (parsedValues.length > 1 || (isDelimiter && parsedValues.length > 0)) {
     return {
       fieldValue: "",
