@@ -1,9 +1,6 @@
-name: Docs Bumped
+name: Docs Bump Detected
 
 on:
-  push:
-    paths:
-      - 'docs/**'
   pull_request:
     paths:
       - 'docs/**'
