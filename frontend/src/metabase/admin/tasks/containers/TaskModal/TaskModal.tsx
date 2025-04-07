@@ -9,6 +9,8 @@ import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 
+import { CopyButton } from "./CopyButton";
+
 type TaskModalProps = {
   params: { taskId: number };
 };
@@ -37,8 +39,12 @@ export const TaskModal = ({ params }: TaskModalProps) => {
         <Button leftSection={<Icon name="audit" />}>{t`See logs`}</Button>
 
         <Flex gap="md">
-          <Button leftSection={<Icon name="download" />}>{t`Download`}</Button>
-          <Button leftSection={<Icon name="clipboard" />}>{t`Copy`}</Button>
+          <CopyButton text={code} />
+
+          <Button
+            leftSection={<Icon name="download" />}
+            variant="filled"
+          >{t`Download`}</Button>
         </Flex>
       </Flex>
     </ModalContent>
