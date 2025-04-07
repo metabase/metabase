@@ -1,4 +1,4 @@
-name: Docs Update Detected
+name: Docs Bumped
 
 on:
   push:
@@ -38,5 +38,5 @@ jobs:
           curl -X POST \
             -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: token ${TOKEN}" \
-            https://api.github.com/repos/metabase/docs.metabase.github.io/dispatches \
+            https://api.github.com/repos/metabase/docs.metabase.github.io/slurp_branches/dispatches \
             -d "{\"event_type\": \"trigger-workflow\", \"client_payload\": {\"branch\": \"$BRANCH_NAME\"}}"
