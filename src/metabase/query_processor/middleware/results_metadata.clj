@@ -26,17 +26,10 @@
   This function removes those nil valued-keys to avoid false negatives."
   [metadata]
   (let [drop-nil-keys #{:coercion_strategy :settings :fk_target_field_id :semantic_type}]
-    (cond
-      (map? metadata)
+    (for [col metadata]
       (m/filter-kv (fn [k v] (or (some? v)
                                  (not (drop-nil-keys k))))
-                   metadata)
-
-      (sequential? metadata)
-      (mapv standardize-metadata metadata)
-
-      :else
-      metadata)))
+                    col))))
 
 (defn- record-metadata! [{{:keys [card-id]} :info, :as query} metadata]
   (try
