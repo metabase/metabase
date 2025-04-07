@@ -16,8 +16,6 @@ import {
 
 /**
  * @category InteractiveQuestion
- * @remarks
- * Uses [Mantine Stack props](https://v7.mantine.dev/core/stack/?t=props) under the hood
  */
 export type InteractiveQuestionQuestionSettingsProps = StackProps;
 

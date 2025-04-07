@@ -7,8 +7,6 @@ import { useInteractiveQuestionContext } from "../../context";
 
 /**
  * @category InteractiveQuestion
- * @remarks
- * Uses [Mantine ActionIcon props](https://v7.mantine.dev/core/action-icon/) under the hood
  */
 export type InteractiveQuestionBackButtonProps = Omit<
   DashboardBackButtonProps,

@@ -18,8 +18,6 @@ import {
 
 /**
  * @category InteractiveQuestion
- * @remarks
- * Uses [Mantine Popover props](https://v7.mantine.dev/core/popover/) under the hood
  */
 export type InteractiveQuestionSummarizeDropdownProps = Omit<
   PopoverProps,

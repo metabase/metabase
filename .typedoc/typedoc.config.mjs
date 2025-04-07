@@ -100,6 +100,15 @@ const config = {
     notDocumented: false,
     unusedMergeModuleWith: true,
   },
+  externalSymbolLinkMappings: {
+    "@mantine/core": {
+      "*": "https://v7.mantine.dev/overview",
+      ButtonProps: "https://v7.mantine.dev/core/button/?t=props",
+      MenuProps: "https://v7.mantine.dev/core/menu/?t=props",
+      PopoverProps: "https://v7.mantine.dev/core/popover/?t=props",
+      StackProps: "https://v7.mantine.dev/core/stack/?t=props",
+    },
+  },
 };
 
 export default config;

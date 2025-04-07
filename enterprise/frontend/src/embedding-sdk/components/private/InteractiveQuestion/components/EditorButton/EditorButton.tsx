@@ -9,8 +9,6 @@ import S from "./EditorButton.module.css";
 /**
  * @interface
  * @category InteractiveQuestion
- * @remarks
- * Uses [Mantine ActionIcon props](https://v7.mantine.dev/core/action-icon/) under the hood
  */
 export type InteractiveQuestionEditorButtonProps = {
   /**

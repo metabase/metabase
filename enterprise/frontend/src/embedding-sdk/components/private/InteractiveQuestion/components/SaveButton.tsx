@@ -10,8 +10,6 @@ import { ToolbarButton } from "./util/ToolbarButton";
 
 /**
  * @category InteractiveQuestion
- * @remarks
- * Uses [Mantine Button props](https://v7.mantine.dev/core/button/?t=props) under the hood
  */
 export type InteractiveQuestionSaveButtonProps = {
   /**
