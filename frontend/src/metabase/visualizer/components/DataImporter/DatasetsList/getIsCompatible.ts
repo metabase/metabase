@@ -68,7 +68,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     return false;
   }
 
-  if (fields.length <= 1) {
+  if (fields.length <= 1 && currentDisplay !== "funnel") {
     return false;
   }
 

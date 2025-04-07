@@ -2,6 +2,7 @@
   cursor: pointer;
   border-radius: 4px;
   gap: var(--mantine-spacing-xs);
+  height: 46px;
 }
 
 .InfoIcon {

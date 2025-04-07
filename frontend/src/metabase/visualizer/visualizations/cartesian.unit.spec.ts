@@ -234,7 +234,7 @@ describe("cartesian", () => {
       );
 
       // Remove the first column as a bubble
-      removeColumnFromCartesianChart(state, "COLUMN_1", "bubble");
+      removeColumnFromCartesianChart(state, "COLUMN_1");
 
       // Check that we have both columns where they should be
       expect(state.columns.map(c => c.name)).toEqual(["COLUMN_1"]);

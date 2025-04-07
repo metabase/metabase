@@ -115,6 +115,35 @@ describe("getIsCompatible", () => {
     ).toBe(false);
   });
 
+  it("should accept a target that only has one field if we are building a funnel", () => {
+    const primaryColumn = createMockColumn(
+      NumberColumn({
+        id: 1,
+        name: "the column",
+      }),
+    );
+
+    const field = createMockField(
+      NumberColumn({
+        id: 1,
+        name: "the column",
+      }),
+    );
+
+    expect(
+      getIsCompatible({
+        currentDataset: { display: "funnel", primaryColumn },
+        targetDataset: { display: "scalar", fields: [field] },
+      }),
+    ).toBe(true);
+    expect(
+      getIsCompatible({
+        currentDataset: { display: "funnel", primaryColumn },
+        targetDataset: { display: "funnel", fields: [] },
+      }),
+    ).toBe(false);
+  });
+
   it("should accept a target if the primary column is a string or number (assuming the target has the same column)", () => {
     const primaryColumn = createMockColumn(
       NumberColumn({

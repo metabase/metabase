@@ -1,20 +1,16 @@
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { cardApi } from "metabase/api";
+import { useGetCardQuery } from "metabase/api";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 import {
   getVisualizationType,
   getVisualizerPrimaryColumn,
 } from "metabase/visualizer/selectors";
 import { parseDataSourceId } from "metabase/visualizer/utils";
-import type { Field, VisualizationDisplay } from "metabase-types/api";
-import type {
-  VisualizerDataSource,
-  VisualizerDataSourceId,
-} from "metabase-types/store/visualizer";
+import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
 import S from "./DatasetsListItem.module.css";
 import { getIsCompatible } from "./getIsCompatible";
@@ -33,33 +29,16 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const currentDisplay = useSelector(getVisualizationType);
   const primaryColumn = useSelector(getVisualizerPrimaryColumn);
 
-  const [metadata, setMetadata] = useState<{
-    display?: VisualizationDisplay | undefined;
-    fields?: Field[] | undefined;
-  }>({});
+  const { sourceId } = parseDataSourceId(item.id);
+  const { data } = useGetCardQuery({ id: sourceId });
 
-  const dispatch = useDispatch();
-
-  const getFieldsMetadata = useCallback(
-    async (id: VisualizerDataSourceId) => {
-      const { type, sourceId } = parseDataSourceId(id);
-      if (type === "card") {
-        const result = await dispatch(
-          cardApi.endpoints.getCard.initiate({ id: sourceId }),
-        );
-
-        setMetadata({
-          display: result.data?.display,
-          fields: result.data?.result_metadata,
-        });
-      }
-    },
-    [dispatch],
+  const metadata = useMemo(
+    () => ({
+      display: data?.display,
+      fields: data?.result_metadata,
+    }),
+    [data],
   );
-
-  useEffect(() => {
-    getFieldsMetadata(item.id);
-  }, [item, getFieldsMetadata]);
 
   const isCompatible = useMemo(() => {
     const { display, fields } = metadata;
