@@ -82,6 +82,7 @@
     :model/TaskHistory                       metabase.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
+    :model/Undo                              metabase-enterprise.data-editing.undo
     :model/User                              metabase.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.models.user-parameter-value
