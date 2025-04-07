@@ -238,7 +238,18 @@ describe("GsheetsSyncStatus", () => {
     });
 
     // initial loading state
-    expect(screen.getByText("Importing Google Sheets...")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Importing Google Sheets..."),
+    ).toBeInTheDocument();
+
+    setupGdriveGetFolderEndpoint({
+      status: "not-connected",
+      created_by_id: USER_ID,
+    });
+
+    await act(() => {
+      jest.advanceTimersByTime(3000);
+    });
 
     // not-connected state
     await waitFor(() =>
