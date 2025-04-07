@@ -51,7 +51,7 @@ jobs:
           curl -X POST \
             -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: Bearer ${TOKEN}" \
-            "https://api.github.com/repos/metabase/docs.metabase.github.io/${WORKFLOW_ID}/dispatches" \
+            "https://api.github.com/repos/metabase/docs.metabase.github.io/actions/workflows/${WORKFLOW_ID}/dispatches" \
             -d "{\"event_type\": \"trigger-workflow\",
-                 \"ref\": \"$BRANCH_NAME\"
+                 \"ref\": \"$BRANCH_NAME\",
                  \"client_payload\": {\"branch\": \"$BRANCH_NAME\"}}"
