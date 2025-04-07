@@ -75,9 +75,7 @@ const ColumnRow = ({ field, isBordered, isSecondary }: ColumnRowProps) => (
     >
       {field.name}
     </ColumnNameCell>
-    <DataTypeCell isBordered={isBordered}>
-      {field.getPlainObject().database_type}
-    </DataTypeCell>
+    <DataTypeCell isBordered={isBordered}>{field.base_type}</DataTypeCell>
     <DataTypeCell isBordered={isBordered} />
   </tr>
 );
