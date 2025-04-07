@@ -8,15 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import {
-  Box,
-  Divider,
-  Flex,
-  Icon,
-  Menu,
-  Text,
-  UnstyledButton,
-} from "metabase/ui";
+import { Box, Flex, Icon, Menu, Text, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database, DatabaseId } from "metabase-types/api";
 
@@ -54,8 +46,6 @@ export const DestinationDatabasesList = ({
           >{t`No destination databases added yet`}</Text>
         ) : (
           <>
-            <Text>{t`Name`}</Text>
-            <Divider my="sm" />
             {destinationDatabases.slice(0, previewCount).map((db) => (
               <DestinationDatabasesListItem
                 key={db.id}

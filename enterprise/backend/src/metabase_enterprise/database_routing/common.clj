@@ -22,7 +22,7 @@
      (let [database-name (get (:login_attributes user) attr-name)]
        (cond
          (nil? user)
-         (throw (ex-info "Anonymous access to a Router Database is prohibited." {}))
+         (throw (ex-info "Anonymous users cannot access a database with routing enabled." {}))
 
          (= database-name "__METABASE_ROUTER__")
          (u/the-id db-or-id)
@@ -34,15 +34,18 @@
 
          ;; non-superusers get an error
          (nil? database-name)
-         (throw (ex-info "User attribute missing, cannot lookup Mirror Database" {:database-name database-name
-                                                                                  :router-database-id (u/the-id db-or-id)}))
+         (throw (ex-info "Required user attribute is missing. Cannot route to a Destination Database."
+                         {:database-name database-name
+                          :router-database-id (u/the-id db-or-id)}))
 
          :else
          (or (t2/select-one-pk :model/Database
                                :router_database_id (u/the-id db-or-id)
                                :name database-name)
-             (throw (ex-info "No Mirror Database found for user attribute" {:database-name database-name
-                                                                            :router-database-id (u/the-id db-or-id)}))))))))
+             (throw (ex-info (format "Database Routing error: No Destination Database with slug `%s` found."
+                                     database-name)
+                             {:database-name database-name
+                              :router-database-id (u/the-id db-or-id)}))))))))
 
 ;; We want, at all times, a guarantee that we are not hitting a router *or* destination database without being
 ;; intentional about it. It would be bad to EITHER:

@@ -93,7 +93,7 @@ export const DatabaseRoutingSection = ({
   return (
     <DatabaseInfoSection
       name={t`Database routing`}
-      description={t`Run queries against a separate database with the same schema based on a user attribute.`}
+      description={t`Route user queries to a separate database with the same schema. When a user views a question or dashboard for this database, they’ll be routed to a destination database whose slug matches the value of that attribute.`}
       data-testid="database-routing-section"
     >
       <Flex justify="space-between" align="center">
@@ -131,19 +131,24 @@ export const DatabaseRoutingSection = ({
           <Box mb="xl">
             <Flex justify="space-between" align="center">
               <Text>
-                {t`User attribute to use for connection slug`}{" "}
+                {t`User attribute to match destination database`}{" "}
                 <Text component="span" c="error">
                   *
                 </Text>
               </Text>
-              <Select
-                data-testid="db-routing-user-attribute"
-                placeholder={t`Choose an attribute`}
-                data={userAttributeOptions}
-                disabled={!isAdmin || !!disabledFeatMsg}
-                value={userAttribute}
-                onChange={handleUserAttributeChange}
-              />
+              <Tooltip
+                label={t`This attribute will be used to determine which database a user is routed to. The value must match the slug of a destination database.`}
+                withArrow
+              >
+                <Select
+                  data-testid="db-routing-user-attribute"
+                  placeholder={t`Choose an attribute`}
+                  data={userAttributeOptions}
+                  disabled={!isAdmin || !!disabledFeatMsg}
+                  value={userAttribute}
+                  onChange={handleUserAttributeChange}
+                />
+              </Tooltip>
             </Flex>
             {errMsg && <Error>{errMsg}</Error>}
           </Box>
