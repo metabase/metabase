@@ -411,10 +411,18 @@ describe("MultiAutocomplete", () => {
     expect(onChange).toHaveBeenLastCalledWith(["10", "20"]);
   });
 
-  it("should handle cases when 2 values are inserted at the same time", async () => {
+  it("should handle cases when 2 values are added at once", async () => {
     const { input, onChange } = setup();
     await userEvent.type(input, "abcd{arrowleft}{arrowleft},");
     expect(input).toHaveValue("");
     expect(onChange).toHaveBeenLastCalledWith(["ab", "cd"]);
+  });
+
+  it("should handle cases when a value is replaced with 2 values at once", async () => {
+    const { input, onChange } = setup({ initialValues: ["abc"] });
+    await userEvent.click(screen.getByText("abc"));
+    await userEvent.type(input, "{arrowleft},");
+    expect(input).toHaveValue("");
+    expect(onChange).toHaveBeenLastCalledWith(["ab", "c"]);
   });
 });
