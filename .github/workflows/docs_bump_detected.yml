@@ -60,4 +60,4 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: token ${TOKEN}" \
             "https://api.github.com/repos/metabase/docs.metabase.github.io/actions/workflows/154066234/dispatches" \
-            -d "{\"ref\": \"github_action_to_read_from_main_metabase\", \"inputs\": {\"branch\": \"$BRANCH_NAME\"}}"
+            -d "{\"ref\": \"github_action_to_read_from_main_metabase\", \"inputs\": {\"branch_name\": \"$BRANCH_NAME\"}}"
