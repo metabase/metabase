@@ -3,13 +3,17 @@
   (:require
    [malli.core :as mc]
    [malli.generator :as mg]
+   [malli.json-schema :as mjs]
    [malli.transform :as mtx]
+   [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.events :as events]
    [metabase.events.schema :as events.schema]
+   [metabase.lib.schema.common :as common]
    [metabase.models.task-history :as task-history]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -55,9 +59,11 @@
 (defn maybe-hydrate-event-info
   "Hydrate event-info if the topic has a schema."
   [topic event-info]
-  (cond->> event-info
-    (some? (events/event-schema topic))
-    (hydrate! (events/event-schema topic))))
+  (if-let [schema (events/event-schema topic event-info)]
+    (if (map? event-info)
+      (hydrate! schema event-info)
+      event-info)
+    event-info))
 
 (defmulti notification-filter-for-topic
   "Given an event info, return additional honeysql filters for notification if needed."
@@ -96,10 +102,92 @@
   [topic event-info]
   (maybe-send-notification-for-topic! topic event-info))
 
-;; TODO: move notification events schema here
+(def ^:private table-hydrate
+  [:model/Table :name])
 
-(defmethod events/event-info-example :event/action.success
-  [_topic options]
-  (let [action (:action options)]
-    (binding [events.schema/*action-gen-value* action]
-      (mg/generate :event/action.success))))
+(def ^:private table-id-hydrate (-> [:table_id {:optional true
+                                                :description "The table that was created"}
+                                     pos-int?]
+                                    (events.schema/with-hydrate :table table-hydrate)))
+
+(def ^:private table-hydrate-schema [:table {:optional true}
+                                     [:map
+                                      [:name
+                                       {:description "The name of the table"
+                                        :gen/return "orders"}
+                                       :string]]])
+
+(mr/def ::nano-id ::common/non-blank-string)
+
+(mr/def ::action-events
+  [:map #_{:closed true}
+   [:action :keyword]
+   [:invocation_id {:description "The unique identifier for the action invocation"} ::nano-id]
+   (-> [:actor_id pos-int?] (events.schema/with-hydrate :actor events.schema/user-hydrate))
+   [:actor {:optional     true
+            :hydrated-key true
+            :description  "The user who performed the action"}
+    [:map {:gen/return {:first_name "Meta"
+                        :last_name  "Bot"
+                        :email      "bot@metabase.com"}}
+     [:first_name [:maybe :string]]
+     [:last_name  [:maybe :string]]
+     [:email      [:maybe :string]]]]])
+
+(mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
+
+(mr/def :event/action.success.row-create [:merge ::action-events
+                                          [:map
+                                           [:action [:= :row/create]]
+                                           [:result
+                                            [:map
+                                             table-id-hydrate
+                                             table-hydrate-schema
+                                             [:created_row {:gen/return {:id 1
+                                                                         :name "this is an example"}
+                                                            :description "The created row, actual keys will vary based on the table"}
+                                              :map]]]]])
+
+(mr/def :event/action.success.row-update [:merge ::action-events
+                                          [:map
+                                           [:action [:= :row/update]]
+                                           [:result
+                                            [:map
+                                             table-id-hydrate
+                                             table-hydrate-schema
+                                             [:raw_update {:gen/return {:id 1
+                                                                        :name "New Name"}
+                                                           :description "The raw update, actual keys will vary based on the table"} [:maybe :map]]
+                                             [:after  {:gen/return {:id 2
+                                                                    :name "New Name"}
+                                                       :description "The after state, actual keys will vary based on the table"} [:maybe :map]]
+                                             [:before {:gen/return {:id 2
+                                                                    :name "Old Name"}
+                                                       :description "The before state, actual keys will vary based on the table"} [:maybe :map]]]]]])
+
+(mr/def :event/action.success.row-delete [:merge ::action-events
+                                          [:map
+                                           [:action [:= :row/delete]]
+                                           [:result
+                                            [:map
+                                             table-id-hydrate
+                                             table-hydrate-schema
+                                             [:deleted_row {:gen/return {:id 1
+                                                                         :name "this is an example"}
+                                                            :description "The deleted row, actual keys will vary based on the table"}
+                                              :map]]]]])
+
+(mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])
+
+(defmethod events/event-schema :event/action.success
+  [_topic {:keys [action]}]
+  (mr/resolve-schema (case action
+                       :row/create :event/action.success.row-create
+                       :row/update :event/action.success.row-update
+                       :row/delete :event/action.success.row-delete
+                       (throw (ex-info "Invalid action" {:action action})))))
+
+(defn schema->json-schema
+  "Convert a malli schema to a OpenAI schema schema."
+  [schema]
+  (defendpoint.open-api/fix-json-schema (-> schema mr/resolve-schema mjs/transform)))
