@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import { useDispatch } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -23,12 +22,11 @@ export function CustomHomepageDashboardSetting() {
     "custom-homepage-dashboard",
   );
   const dispatch = useDispatch();
-  const [sendToast] = useToast();
 
   const handleDashboardChange = async (newDashboardId?: DashboardId) => {
     const result = await updateSetting({
       key: "custom-homepage-dashboard",
-      value: newDashboardId,
+      value: newDashboardId ?? null,
     });
 
     if (!result) {
@@ -42,9 +40,8 @@ export function CustomHomepageDashboardSetting() {
     await updateSetting({
       key: "dismissed-custom-dashboard-toast",
       value: true,
+      toast: false,
     });
-
-    sendToast({ message: t`Changes saved`, icon: "check" });
 
     await dispatch(refreshCurrentUser());
   };
@@ -58,14 +55,11 @@ export function CustomHomepageDashboardSetting() {
       await updateSetting({
         key: "custom-homepage-dashboard",
         value: null,
+        toast: false,
       });
     }
 
     await dispatch(refreshCurrentUser());
-
-    if (customHomepageDashboardId || !newValue) {
-      sendToast({ message: t`Changes saved`, icon: "check" });
-    }
   };
 
   return (

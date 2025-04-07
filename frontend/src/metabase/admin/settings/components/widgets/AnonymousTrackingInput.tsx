@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
-import type { GenericErrorResponse } from "metabase/lib/errors";
 import { Stack } from "metabase/ui";
 
 import { trackTrackingPermissionChanged } from "../../analytics";
@@ -14,7 +12,6 @@ export function AnonymousTrackingInput() {
   const { value, updateSetting, description } = useAdminSetting(
     "anon-tracking-enabled",
   );
-  const [sendToast] = useToast();
 
   const handleChange = async (newValue: boolean) => {
     if (value) {
@@ -23,18 +20,6 @@ export function AnonymousTrackingInput() {
     await updateSetting({
       key: "anon-tracking-enabled",
       value: newValue,
-    }).then((response) => {
-      if (response?.error) {
-        const message =
-          (response.error as GenericErrorResponse)?.message ||
-          t`Error updating setting`;
-        sendToast({ message, icon: "warning", toastColor: "danger" });
-      } else {
-        sendToast({ message: t`Changes saved`, icon: "check" });
-        if (newValue) {
-          trackTrackingPermissionChanged(newValue);
-        }
-      }
     });
   };
 
