@@ -28,6 +28,8 @@ import type {
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
 
+import { removeColumnfromStateUnlessUsedElseWhere } from "./utils";
+
 export const cartesianDropHandler = (
   state: VisualizerHistoryItem,
   { active, over }: DragEndEvent,
@@ -233,6 +235,33 @@ export function addColumnToCartesianChart(
   }
 }
 
+/**
+ * Removes the bubble size from the state, for scatter charts.
+ *
+ * @param state the current state (will be mutated)
+ * @param columnName the column to remove
+ */
+export function removeBubbleSizeFromCartesianChart(
+  state: VisualizerHistoryItem,
+  columnName: string,
+) {
+  if (state.settings["scatter.bubble"] === columnName) {
+    delete state.settings["scatter.bubble"];
+  }
+
+  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+    "graph.metrics",
+    "graph.dimensions",
+    "scatter.bubble",
+  ]);
+}
+
+/**
+ * Removes a column from the state, for cartesian charts.
+ *
+ * @param state the current state (will be mutated)
+ * @param columnName the column to remove
+ */
 export function removeColumnFromCartesianChart(
   state: VisualizerHistoryItem,
   columnName: string,
@@ -265,8 +294,14 @@ export function removeColumnFromCartesianChart(
   }
 
   if (state.settings["scatter.bubble"] === columnName) {
-    delete state.settings["scatter.bubble"];
+    removeBubbleSizeFromCartesianChart(state, columnName);
   }
+
+  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+    "graph.metrics",
+    "graph.dimensions",
+    "scatter.bubble",
+  ]);
 }
 
 function removeDimensionFromMultiSeriesChart(

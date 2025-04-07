@@ -36,11 +36,6 @@ type State = { visualizer: VisualizerState };
 
 const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 
-export const getCards = (state: State) => state.visualizer.cards;
-
-export const getVisualizerRawSettings = (state: State) =>
-  getCurrentHistoryItem(state).settings;
-
 const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
 
@@ -49,13 +44,18 @@ const getVisualizerColumnValuesMapping = (state: State) =>
 
 // Public selectors
 
+export const getVisualizerRawSettings = (state: State) =>
+  getCurrentHistoryItem(state).settings;
+
+export const getCards = (state: State) => state.visualizer.cards;
+
 export function getVisualizationTitle(state: State) {
   const settings = getVisualizerRawSettings(state);
   return settings["card.title"] ?? getDefaultVisualizationName();
 }
 
 export function getVisualizationType(state: State) {
-  return getCurrentHistoryItem(state).display;
+  return getCurrentHistoryItem(state).display ?? undefined;
 }
 
 export const getDatasets = (state: State) => state.visualizer.datasets;
@@ -78,8 +78,8 @@ export const getIsLoading = createSelector(
 
 export const getDraggedItem = (state: State) => state.visualizer.draggedItem;
 
-export const getIsFullscreenModeEnabled = (state: State) =>
-  state.visualizer.isFullscreen;
+export const getIsDataSidebarOpen = (state: State) =>
+  state.visualizer.isDataSidebarOpen;
 
 export const getIsVizSettingsSidebarOpen = (state: State) =>
   state.visualizer.isVizSettingsSidebarOpen;
@@ -93,6 +93,9 @@ export const getReferencedColumns = createSelector(
   mappings => extractReferencedColumns(mappings),
 );
 
+/**
+ * Returns a list of data sources that are used in the current visualization.
+ */
 export const getDataSources = createSelector([getCards], cards =>
   cards.map(card => createDataSource("card", card.id, card.name)),
 );
@@ -202,6 +205,28 @@ export const getVisualizerComputedSettings = createSelector(
   [getVisualizerTransformedSeries],
   (series): ComputedVisualizationSettings =>
     series.length > 0 ? getComputedSettingsForSeries(series) : {},
+);
+
+export const getVisualizerPrimaryColumn = createSelector(
+  [
+    getVisualizationType,
+    getVisualizerComputedSettings,
+    getVisualizerDatasetColumns,
+  ],
+  (display, settings, columns) => {
+    if (!display) {
+      return undefined;
+    }
+
+    if (isCartesianChart(display)) {
+      const dimensionName = settings["graph.dimensions"]?.[0];
+      if (dimensionName) {
+        return columns.find(column => column.name === dimensionName);
+      }
+    }
+
+    return undefined;
+  },
 );
 
 export const getTabularPreviewSeries = createSelector(

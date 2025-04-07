@@ -19,6 +19,8 @@ import type {
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
 
+import { removeColumnfromStateUnlessUsedElseWhere } from "./utils";
+
 export const pieDropHandler = (
   state: VisualizerHistoryItem,
   { active, over }: DragEndEvent,
@@ -113,6 +115,11 @@ export function removeColumnFromPieChart(
   if (state.settings["pie.metric"] === columnName) {
     delete state.settings["pie.metric"];
   }
+
+  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+    "pie.metric",
+    "pie.dimension",
+  ]);
 }
 
 export function combineWithPieChart(

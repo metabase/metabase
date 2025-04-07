@@ -48,6 +48,7 @@ import {
   combineWithCartesianChart,
   isCompatibleWithCartesianChart,
   maybeImportDimensionsFromOtherDataSources,
+  removeBubbleSizeFromCartesianChart,
   removeColumnFromCartesianChart,
 } from "./visualizations/cartesian";
 import {
@@ -69,7 +70,7 @@ const initialCommonState: VisualizerCommonState = {
   loadingDataSources: {},
   loadingDatasets: {},
   expandedDataSources: {},
-  isFullscreen: false,
+  isDataSidebarOpen: true,
   isVizSettingsSidebarOpen: false,
   error: null,
   draggedItem: null,
@@ -290,22 +291,26 @@ const visualizerHistoryItemSlice = createSlice({
         addColumnToPieChart(state, column);
       }
     },
-    removeColumn: (state, action: PayloadAction<{ name: string }>) => {
-      const { name } = action.payload;
+    removeColumn: (
+      state,
+      action: PayloadAction<{ name: string; well?: "bubble" }>,
+    ) => {
+      const { name, well } = action.payload;
       if (!state.display) {
         return;
       }
 
       if (isCartesianChart(state.display)) {
-        removeColumnFromCartesianChart(state, name);
+        if (well === "bubble") {
+          removeBubbleSizeFromCartesianChart(state, name);
+        } else {
+          removeColumnFromCartesianChart(state, name);
+        }
       } else if (state.display === "funnel") {
         removeColumnFromFunnel(state, name);
       } else if (state.display === "pie") {
         removeColumnFromPieChart(state, name);
       }
-
-      state.columns = state.columns.filter(col => col.name !== name);
-      delete state.columnValuesMapping[name];
     },
     handleDropInner: (
       state,
@@ -411,18 +416,17 @@ const visualizerSlice = createSlice({
       state.expandedDataSources[action.payload] =
         !state.expandedDataSources[action.payload];
     },
-    toggleFullscreenMode: state => {
-      state.isFullscreen = !state.isFullscreen;
-    },
-    turnOffFullscreenMode: state => {
-      state.isFullscreen = false;
-      state.isVizSettingsSidebarOpen = false;
+    toggleDataSideBar: state => {
+      state.isDataSidebarOpen = !state.isDataSidebarOpen;
     },
     toggleVizSettingsSidebar: state => {
       state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
     },
     closeVizSettingsSidebar: state => {
       state.isVizSettingsSidebarOpen = false;
+    },
+    closeDataSidebar: state => {
+      state.isDataSidebarOpen = false;
     },
     undo: state => {
       const canUndo = state.past.length > 0;
@@ -623,10 +627,10 @@ export const { setTitle, updateSettings, removeColumn, setDisplay } =
 export const {
   setDraggedItem,
   toggleDataSourceExpanded,
-  toggleFullscreenMode,
-  turnOffFullscreenMode,
+  toggleDataSideBar,
   toggleVizSettingsSidebar,
   closeVizSettingsSidebar,
+  closeDataSidebar,
   undo,
   redo,
   resetVisualizer,
