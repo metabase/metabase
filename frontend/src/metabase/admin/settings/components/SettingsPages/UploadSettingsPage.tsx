@@ -6,7 +6,7 @@ import { UploadSettingsForm } from "../UploadSettings/UploadSettingsForm";
 
 export function UploadSettingsPage() {
   return (
-    <Stack gap="xl" maw="48rem" px="lg" py="sm">
+    <Stack gap="xl" maw="60rem" px="lg" py="sm">
       <Flex justify="space-between" align="flex-start" gap="md">
         <UploadSettingsForm saveStatusRef={saveStatusRef} />
         <UpsellUploads source="settings-uploads" />

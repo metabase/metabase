@@ -72,9 +72,11 @@ export function UploadSettingsFormView({
   updateSetting: ({
     key,
     value,
+    toast,
   }: {
     key: SettingKey;
     value: SettingValue;
+    toast?: boolean;
   }) => Promise<any>;
 }) {
   const [dbId, setDbId] = useState<number | null>(
@@ -119,6 +121,7 @@ export function UploadSettingsFormView({
         schema_name: schemaName,
         table_prefix: tablePrefix,
       },
+      toast: false,
     }).then((response) => {
       if (response.error) {
         showError(getErrorMessage(enableErrorMessage));
@@ -138,6 +141,7 @@ export function UploadSettingsFormView({
         schema_name: null,
         table_prefix: null,
       },
+      toast: false,
     }).then((response) => {
       if (response.error) {
         showError(getErrorMessage(disableErrorMessage));
