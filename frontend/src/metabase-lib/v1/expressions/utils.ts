@@ -1,7 +1,6 @@
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Expression } from "metabase-types/api";
 
 import type { Node, Token } from "./pratt";
 
@@ -25,14 +24,14 @@ export function getExpressionMode(startRule: string): Lib.ExpressionMode {
   throw new Error(`Unknown start rule: ${startRule}`);
 }
 
-export function getNode(
-  expression?: Expression & { node?: Node },
-): Node | undefined {
-  return expression?.node;
+type Nodable = string | number | boolean | bigint | unknown[] | { node?: Node };
+
+export function getNode(item?: Nodable): Node | undefined {
+  if (typeof item === "object" && item !== null && "node" in item) {
+    return item?.node;
+  }
 }
 
-export function getToken(
-  expression?: Expression & { node?: Node },
-): Token | undefined {
-  return expression?.node?.token ?? undefined;
+export function getToken(x?: Nodable): Token | undefined {
+  return getNode(x)?.token ?? undefined;
 }
