@@ -316,6 +316,14 @@ export const BarStackedNormalizedCustomMinMax48021 = {
   },
 };
 
+export const BarStackedNormalizedGoalLine51054 = {
+  render: Template,
+  args: {
+    rawSeries: data.barStackedNormalizedGoalLine51054 as any,
+    renderingContext,
+  },
+};
+
 export const BarStackedNormalizedEmptySpace37880 = {
   render: Template,
   args: {
