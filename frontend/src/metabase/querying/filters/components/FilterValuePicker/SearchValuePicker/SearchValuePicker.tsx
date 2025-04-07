@@ -21,8 +21,8 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   columnDisplayName: string;
-  shouldCreate?: (query: string) => boolean;
   autoFocus?: boolean;
+  onCreate?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
 }
 
@@ -32,8 +32,8 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   columnDisplayName,
-  shouldCreate,
   autoFocus,
+  onCreate,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
@@ -90,12 +90,12 @@ export function SearchValuePicker({
     <MultiAutocomplete
       values={selectedValues}
       options={visibleOptions}
-      shouldCreate={shouldCreate}
       placeholder={t`Search by ${columnDisplayName}`}
       autoFocus={autoFocus}
       rightSection={isSearching ? <Loader size="xs" /> : undefined}
       nothingFoundMessage={nothingFoundMessage}
       aria-label={t`Filter value`}
+      onCreate={onCreate}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />

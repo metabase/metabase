@@ -5,16 +5,16 @@ import { MultiAutocomplete } from "metabase/ui";
 interface StaticValuePickerProps {
   selectedValues: string[];
   placeholder?: string;
-  shouldCreate?: (query: string) => boolean;
   autoFocus?: boolean;
+  onCreate?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
 }
 
 export function StaticValuePicker({
   selectedValues,
   placeholder,
-  shouldCreate,
   autoFocus,
+  onCreate,
   onChange,
 }: StaticValuePickerProps) {
   return (
@@ -22,9 +22,9 @@ export function StaticValuePicker({
       values={selectedValues}
       options={[]}
       placeholder={placeholder}
-      shouldCreate={shouldCreate}
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
+      onCreate={onCreate}
       onChange={onChange}
     />
   );

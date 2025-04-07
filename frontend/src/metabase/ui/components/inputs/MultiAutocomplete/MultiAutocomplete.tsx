@@ -21,11 +21,11 @@ export type MultiAutocompleteProps = BoxProps & {
   values: string[];
   options: ComboboxItem[];
   placeholder?: string;
-  shouldCreate?: (value: string) => boolean;
   autoFocus?: boolean;
   rightSection?: ReactNode;
   nothingFoundMessage?: ReactNode;
   "aria-label"?: string;
+  onCreate?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
   onSearchChange?: (newValue: string) => void;
 };
@@ -34,11 +34,11 @@ export function MultiAutocomplete({
   values,
   options,
   placeholder,
-  shouldCreate,
   autoFocus,
   rightSection,
   nothingFoundMessage,
   "aria-label": ariaLabel,
+  onCreate,
   onChange,
   onSearchChange,
   ...otherProps
@@ -61,7 +61,7 @@ export function MultiAutocomplete({
   } = useMultiAutocomplete({
     values,
     options,
-    shouldCreate,
+    onCreate,
     onChange,
     onSearchChange,
   });

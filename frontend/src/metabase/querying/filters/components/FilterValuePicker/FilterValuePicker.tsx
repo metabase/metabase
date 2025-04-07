@@ -24,8 +24,8 @@ interface FilterValuePickerProps<T> {
   column: Lib.ColumnMetadata;
   values: T[];
   autoFocus?: boolean;
+  onCreate?: (rawValue: string) => string | null;
   onChange: (newValues: T[]) => void;
-  shouldCreate?: (query: string) => boolean;
 }
 
 interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
@@ -39,7 +39,7 @@ function FilterValuePicker({
   values: selectedValues,
   placeholder,
   autoFocus = false,
-  shouldCreate,
+  onCreate,
   onChange,
 }: FilterValuePickerOwnProps) {
   const fieldInfo = useMemo(
@@ -82,8 +82,8 @@ function FilterValuePicker({
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
         columnDisplayName={columnInfo.displayName}
-        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
+        onCreate={onCreate}
         onChange={onChange}
       />
     );
@@ -93,8 +93,8 @@ function FilterValuePicker({
     <StaticValuePicker
       selectedValues={selectedValues}
       placeholder={placeholder}
-      shouldCreate={shouldCreate}
       autoFocus={autoFocus}
+      onCreate={onCreate}
       onChange={onChange}
     />
   );
@@ -121,8 +121,13 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<Lib.NumberFilterValue>) {
-  const shouldCreate = (value: string) => {
-    return parseNumber(value) != null;
+  const handleCreate = (rawValue: string) => {
+    const number = parseNumber(rawValue);
+    return number != null ? String(number) : null;
+  };
+
+  const handleChange = (newValues: string[]) => {
+    onChange(newValues.map(parseNumber).filter(isNotNull));
   };
 
   return (
@@ -131,10 +136,8 @@ export function NumberFilterValuePicker({
       column={column}
       values={values.map((value) => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
-      shouldCreate={shouldCreate}
-      onChange={(newValue) =>
-        onChange(newValue.map(parseNumber).filter(isNotNull))
-      }
+      onCreate={handleCreate}
+      onChange={handleChange}
     />
   );
 }

@@ -73,10 +73,16 @@ export function NumberInputWidget({
     values.map(getOption).filter((item): item is SelectItem => item !== null) ??
     [];
 
-  function shouldCreate(value: string) {
-    const res = parseNumber(value);
-    return res !== null;
-  }
+  const handleCreate = (rawValue: string) => {
+    const number = parseNumber(rawValue);
+    return number !== null ? String(number) : null;
+  };
+
+  const handleChange = (newValues: string[]) => {
+    setUnsavedArrayValue(
+      newValues.map((value) => parseNumber(value)).filter(isNotNull),
+    );
+  };
 
   return (
     <WidgetRoot className={className}>
@@ -84,16 +90,12 @@ export function NumberInputWidget({
       {arity === "n" ? (
         <TokenFieldWrapper>
           <MultiAutocomplete
-            onChange={(values: string[]) =>
-              setUnsavedArrayValue(
-                values.map((value) => parseNumber(value)).filter(isNotNull),
-              )
-            }
             values={filteredUnsavedArrayValue.map((value) => value?.toString())}
             placeholder={placeholder}
-            shouldCreate={shouldCreate}
             autoFocus={autoFocus}
             options={options}
+            onCreate={handleCreate}
+            onChange={handleChange}
           />
         </TokenFieldWrapper>
       ) : (

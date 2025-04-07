@@ -18,7 +18,7 @@ const FIELD_PLACEHOLDER = null;
 type UseMultiAutocompleteProps = {
   values: string[];
   options: ComboboxItem[];
-  shouldCreate?: (newValue: string) => boolean;
+  onCreate?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
   onSearchChange?: (newValue: string) => void;
 };
@@ -36,7 +36,7 @@ type FieldSelection = {
 export function useMultiAutocomplete({
   values,
   options,
-  shouldCreate = defaultShouldCreate,
+  onCreate = defaultCreate,
   onChange,
   onSearchChange,
 }: UseMultiAutocompleteProps) {
@@ -67,7 +67,7 @@ export function useMultiAutocomplete({
   ) => {
     const newFieldValues = getFieldValuesNotInSelection(
       values,
-      newParsedValues.filter(shouldCreate),
+      newParsedValues.map(onCreate).filter(isNotNullish),
       fieldSelection,
     );
     const newValues = getValuesAfterChange(
@@ -360,6 +360,10 @@ function escapeCsv(value: string): string {
   return value;
 }
 
-function defaultShouldCreate(value: string) {
-  return value.trim().length > 0;
+function defaultCreate(value: string) {
+  return value.trim().length > 0 ? value : null;
+}
+
+function isNotNullish<T>(value: T | null): value is T {
+  return value != null;
 }
