@@ -54,13 +54,13 @@ describe("FieldOrderSidesheet", () => {
   });
 
   describe("isOpen is false", () => {
-    it("does not show loading state when sidesheet is closed", async () => {
+    it("does not show loading state", async () => {
       setup({ isOpen: false });
 
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
     });
 
-    it("does not show error state when sidesheet is closed", async () => {
+    it("does not show error state", async () => {
       setup({ error: true, isOpen: false });
 
       await waitForLoaderToBeRemoved();
