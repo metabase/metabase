@@ -56,6 +56,8 @@ jobs:
     strategy:
       matrix:
         edition: [oss, ee]
+    outputs:
+      run_id: ${{ steps.wait_for_uberjar.outputs.run_id }}
     steps:
       - uses: actions/checkout@v4
       - name: Wait for uberjar
@@ -64,12 +66,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           head-sha: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Retrieve uberjar artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ steps.wait_for_uberjar.outputs.run_id }}
+      # - name: Retrieve uberjar artifact
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     run-id: ${{ steps.wait_for_uberjar.outputs.run_id }}
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
@@ -122,6 +124,7 @@ jobs:
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
+      run_id: ${{ needs.wait-for-uberjar.outputs.run_id }}
 
   # run this separately to make it non-blocking
   flaky-e2e-tests:
@@ -135,6 +138,7 @@ jobs:
       name: Flaky
       tags: "@flaky"
       specs: "./e2e/test/scenarios/**/*.cy.spec.*"
+      run_id: ${{ needs.wait-for-uberjar.outputs.run_id }}
 
   e2e-tests-result:
     needs:

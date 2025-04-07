@@ -28,6 +28,9 @@ on:
       split_index: # index of the chunk
         required: false
         type: number
+      run_id: # workflow run ID for retrieving uberjar
+        required: false
+        type: string
 
 jobs:
   e2e-tests:
@@ -85,6 +88,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.run_id }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
