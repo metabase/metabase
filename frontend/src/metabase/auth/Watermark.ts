@@ -1,20 +1,23 @@
-import {BlindWatermark, Watermark} from 'watermark-js-plus'
-
-const current = localStorage.getItem("current");
-const commonName = JSON.parse(current).common_name;
-const watermark = new BlindWatermark({
-  content: commonName ?? 'watermark',
-  width: 200,
-  height: 200,
-  onSuccess: () => {
-    // success callback
-  }
-})
+import {Watermark} from 'watermark-js-plus'
 
 const createWatermark = (content: string) => new Watermark({
   content: content ?? 'watermark',
-  width: 200,
-  height: 200,
+  width: 240,
+  "height": 120,
+  "rotate": 22,
+  "contentType": "text",
+  "globalAlpha": 0.2,
+  "mode": "default",
+  "textType": "fill",
+  "lineHeight": 30,
+  "fontSize": "12px",
+  "fontFamily": "sans-serif",
+  "fontStyle": "",
+  "fontVariant": "",
+  "fontColor": "#000",
+  "fontWeight": "normal",
+  "filter": "none",
+  "letterSpacing": "0px",
   onSuccess: () => {
     // success callback
   }
@@ -22,4 +25,4 @@ const createWatermark = (content: string) => new Watermark({
 
 // watermark.create()
 
-export {watermark, createWatermark}
+export {createWatermark}
