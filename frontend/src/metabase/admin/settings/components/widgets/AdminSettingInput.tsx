@@ -93,7 +93,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
   }
 
   return (
-    <Box data-testid={`admin-setting-${name}`} {...boxProps}>
+    <Box data-testid={`${name}-setting`} {...boxProps}>
       <SettingHeader
         id={name}
         title={title}
