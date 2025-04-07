@@ -243,7 +243,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields as in the database", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
-      setTableOrder("Database");
+      verifyTableOrder("Database");
       H.openProductsTable();
       assertTableHeader([
         "ID",
@@ -291,11 +291,13 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields in the custom order", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
-      //moveField(0, 200);
-      H.moveDnDKitElement(cy.findAllByTestId("grabber").first(), {
-        vertical: 200,
+      cy.findByLabelText("Edit column order").click();
+      H.modal().findByLabelText("Sort").should("have.text", "Database");
+      H.moveDnDKitElement(H.modal().findByLabelText("ID"), {
+        vertical: 50,
       });
       cy.wait("@updateFieldOrder");
+      H.modal().findByLabelText("Sort").should("have.text", "Custom");
       H.openProductsTable();
       assertTableHeader([
         "Ean",
@@ -688,8 +690,14 @@ const getFieldSection = (fieldName) => {
   return cy.findByLabelText(fieldName);
 };
 
+const verifyTableOrder = (order) => {
+  cy.findByLabelText("Edit column order").click();
+  H.modal().findByLabelText("Sort").should("have.text", order);
+};
+
 const setTableOrder = (order) => {
-  cy.findByLabelText("Sort").click();
+  cy.findByLabelText("Edit column order").click();
+  H.modal().findByLabelText("Sort").click();
   H.popover().findByText(order).click();
   cy.wait("@updateTable");
 };
