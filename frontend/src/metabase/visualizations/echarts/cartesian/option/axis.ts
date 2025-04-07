@@ -22,6 +22,7 @@ import { getScaledMinAndMax } from "../model/axis";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 
 import { getTicksOptions } from "./ticks";
+import { TCFunc } from "metabase/i18n/components/ContentTranslationContext";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -209,7 +210,10 @@ export const buildDimensionAxis = (
   chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
+  tc?: TCFunc,
 ): XAXisOption => {
+  console.log("@m9251beg", "tc in dimensionaxis", tc);
+
   const xAxisModel = chartModel.xAxisModel;
 
   if (isNumericAxis(xAxisModel)) {
@@ -237,6 +241,7 @@ export const buildDimensionAxis = (
     settings,
     chartMeasurements,
     renderingContext,
+    tc,
   );
 };
 
@@ -330,6 +335,7 @@ export const buildCategoricalDimensionAxis = (
   originalSettings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
+  tc?: TCFunc,
 ): XAXisOption => {
   const {
     xAxisModel: { formatter },
@@ -364,8 +370,8 @@ export const buildCategoricalDimensionAxis = (
         if (isNumericBaseType(column) && numberValue !== null) {
           return ` ${formatter(numberValue)} `;
         }
-
-        return ` ${formatter(value)} `; // spaces force padding between ticks
+        const translatedValue = tc?.(value) || value;
+        return ` ${formatter(translatedValue)} `; // spaces force padding between ticks
       },
     },
   };
@@ -473,6 +479,7 @@ export const buildAxes = (
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
+  tc?: TCFunc,
 ) => {
   return {
     xAxis: buildDimensionAxis(
@@ -482,6 +489,7 @@ export const buildAxes = (
       chartMeasurements,
       hasTimelineEvents,
       renderingContext,
+      tc,
     ),
     yAxis: buildMetricsAxes(
       chartModel,

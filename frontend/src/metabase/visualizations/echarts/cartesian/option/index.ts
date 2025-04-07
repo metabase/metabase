@@ -23,6 +23,7 @@ import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
+import { TCFunc } from "metabase/i18n/components/ContentTranslationContext";
 
 export const getSharedEChartsOptions = (isAnimated: boolean) => ({
   useUTC: true,
@@ -49,6 +50,7 @@ export const getCartesianChartOption = (
   chartWidth: number,
   isAnimated: boolean,
   renderingContext: RenderingContext,
+  tc?: TCFunc,
 ): EChartsCoreOption => {
   const hasTimelineEvents = timelineEventsModel != null;
   const timelineEventsSeries = hasTimelineEvents
@@ -66,6 +68,7 @@ export const getCartesianChartOption = (
     chartMeasurements,
     renderingContext,
   );
+
   const goalSeriesOption = getGoalLineSeriesOption(
     chartModel,
     settings,
@@ -130,6 +133,7 @@ export const getCartesianChartOption = (
       settings,
       hasTimelineEvents,
       renderingContext,
+      tc,
     ),
   };
 };

@@ -15,22 +15,39 @@ export const SET_ARCHIVED_DASHBOARD =
   "metabase/dashboard/SET_ARCHIVED_DASHBOARD";
 export const setArchivedDashboard = createThunkAction(
   SET_ARCHIVED_DASHBOARD,
-  function (archived = true, undoing = false) {
+  function (
+    archived = true,
+    undoing = false,
+    {
+      name,
+    }: {
+      /** We can pass in a localized name */
+      name?: string;
+    },
+  ) {
     return async function (dispatch, getState) {
       const { dashboardId, dashboards, dashcards } = getState().dashboard;
       const dashboard = dashboardId
         ? dashboards[dashboardId]
-        : { name: "Dashboard" };
+        : {
+            name:
+              // FIXME: This should be localized, right?
+              t`Dashboard`,
+            name_localized: undefined,
+          };
 
       await dispatch(
         Dashboards.actions.update({ id: dashboardId }, { archived }),
       );
 
+      name ??= dashboard.name;
+
       if (!undoing) {
         dispatch(
           addUndo({
-            message: getTrashUndoMessage(dashboard.name, archived),
-            action: () => dispatch(setArchivedDashboard(!archived, true)),
+            message: getTrashUndoMessage(name, archived),
+            action: () =>
+              dispatch(setArchivedDashboard(!archived, true, { name })),
           }),
         );
       }

@@ -8,12 +8,13 @@ import EntityItem from "metabase/components/EntityItem";
 import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
+import Tooltip from "metabase/core/components/Tooltip";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 import { useSelector } from "metabase/lib/redux";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { IconProps } from "metabase/ui";
-import { Tooltip } from "metabase/ui";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 
 import type { SortableColumnHeaderProps } from "./BaseItemsTable";
@@ -158,10 +159,11 @@ export const Columns = {
       includeDescription?: boolean;
       onClick?: (item: CollectionItem) => void;
     }) => {
+      const tc = useTranslateContent2();
       return (
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
           <ItemLinkComponent onClick={onClick} item={item}>
-            <EntityItem.Name name={item.name} variant="list" />
+            <EntityItem.Name name={tc(item.name)} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
               status={item.moderated_status}

@@ -55,6 +55,7 @@ import {
   shouldList,
   showRemapping,
 } from "./utils";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 const MAX_SEARCH_RESULTS = 100;
 
@@ -142,6 +143,7 @@ export const FieldValuesWidgetInner = forwardRef<
   },
   ref,
 ) {
+  const tc = useTranslateContent2();
   const [options, setOptions] = useState<FieldValue[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingStateType>("INIT");
   const [lastValue, setLastValue] = useState<string>("");
@@ -240,6 +242,7 @@ export const FieldValuesWidgetInner = forwardRef<
             entityId: field.getUniqueId(),
           }),
       );
+      console.log("@m925uhk0", "fieldValues", fieldValues);
 
       return dedupeValues(fieldValues);
     } else {
@@ -374,7 +377,7 @@ export const FieldValuesWidgetInner = forwardRef<
         value,
         autoLoad: true,
         compact: false,
-        displayValue: option?.[1],
+        displayValue: tc(option?.[1]),
       });
     };
   }
@@ -386,7 +389,7 @@ export const FieldValuesWidgetInner = forwardRef<
         formatOptions,
         value: option[0],
         autoLoad: false,
-        displayValue: option[1],
+        displayValue: tc(option[1]),
       });
   }
 

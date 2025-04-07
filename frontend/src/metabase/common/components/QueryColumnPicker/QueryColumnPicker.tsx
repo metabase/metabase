@@ -14,6 +14,7 @@ import * as Lib from "metabase-lib";
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
 import { StyledAccordionList } from "./QueryColumnPicker.styled";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
@@ -65,15 +66,18 @@ export function QueryColumnPicker({
   alwaysExpanded,
   disableSearch,
 }: QueryColumnPickerProps) {
+  const tc = useTranslateContent2();
   const sections: Sections[] = useMemo(
     () =>
       columnGroups.map((group) => {
         const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-        const items = Lib.getColumnsFromColumnGroup(group).map((column) => ({
-          ...Lib.displayInfo(query, stageIndex, column),
-          column,
-        }));
+        const items = Lib.getColumnsFromColumnGroup(group, tc)
+          .map((column) => ({
+            ...Lib.displayInfo(query, stageIndex, column, tc),
+            column,
+          }))
+          .toSorted((a, b) => a.displayName.localeCompare(b.displayName));
 
         return {
           name: groupInfo.displayName,
@@ -81,7 +85,7 @@ export function QueryColumnPicker({
           items,
         };
       }),
-    [query, stageIndex, columnGroups],
+    [query, stageIndex, columnGroups, tc],
   );
 
   const handleSelect = useCallback(
@@ -190,6 +194,7 @@ export function QueryColumnPicker({
     ),
     [query, stageIndex],
   );
+  console.log("@m92076vs", "sections", sections);
 
   return (
     <DelayGroup>

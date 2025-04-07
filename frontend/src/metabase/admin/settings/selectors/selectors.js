@@ -2,6 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import { UpsellWhitelabel } from "metabase/admin/upsells";
 import MetabaseSettings from "metabase/lib/settings";
@@ -16,6 +17,7 @@ import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { CloudPanel } from "../components/CloudPanel";
+import { ContentTranslationConfiguration } from "../components/ContentTranslationConfiguration/ContentTranslationConfiguration";
 import { BccToggleWidget } from "../components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "../components/Email/SettingsEmailForm";
 import {
@@ -251,6 +253,16 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
       },
       {
+        display_name: t`Content localization`,
+        description: "",
+        key: "content-localization",
+        widget: () => (
+          <ErrorBoundary>
+            <ContentTranslationConfiguration />
+          </ErrorBoundary>
+        ),
+      },
+      {
         key: "report-timezone",
         display_name: t`Report Timezone`,
         type: "select",
@@ -302,7 +314,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
-
   "public-sharing": {
     name: t`Public Sharing`,
     order: 90,

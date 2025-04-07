@@ -6,6 +6,7 @@ import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
+import { useTranslateContent2 } from "metabase/i18n/components/ContentTranslationContext";
 
 export function BreakoutStep({
   query,
@@ -31,9 +32,10 @@ export function BreakoutStep({
 
   const hasAddButton = !readOnly && (!isMetric || breakouts.length === 0);
   const isAddButtonDisabled = isMetric && metricColumns.length === 0;
+  const tc = useTranslateContent2();
 
   const renderBreakoutName = (clause: Lib.BreakoutClause) =>
-    Lib.displayInfo(query, stageIndex, clause).longDisplayName;
+    Lib.displayInfo(query, stageIndex, clause, tc).longDisplayName;
 
   const handleAddBreakout = (column: Lib.ColumnMetadata) => {
     const nextQuery = Lib.breakout(query, stageIndex, column);

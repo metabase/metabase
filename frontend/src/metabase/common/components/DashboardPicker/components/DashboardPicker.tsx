@@ -192,6 +192,7 @@ const DashboardPickerInner = (
           newPath[newPath.length - 1].selectedItem = currentDashboard
             ? {
                 id: currentDashboard.id,
+                // NOTE: We could localize the name later
                 name: currentDashboard.name,
                 model: "dashboard",
               }
