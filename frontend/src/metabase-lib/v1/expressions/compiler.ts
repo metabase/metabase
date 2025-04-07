@@ -1,5 +1,4 @@
 import * as Lib from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
 import { type ExpressionError, renderError } from "./errors";
@@ -34,14 +33,12 @@ export function compileExpression({
   startRule,
   query,
   stageIndex,
-  database,
   resolve: shouldResolve = true,
 }: {
   source: string;
   startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
-  database?: Database | null;
   resolve?: boolean;
 }): CompileResult {
   try {
@@ -57,7 +54,6 @@ export function compileExpression({
       adjustCaseOrIf,
       shouldResolve &&
         resolverPass({
-          database,
           query,
           stageIndex,
           startRule,

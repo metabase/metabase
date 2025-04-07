@@ -226,7 +226,7 @@ describe("old recursive-parser tests", () => {
   it.each([
     {
       source: "contains('A', 'case-insensitive')",
-      expression: ["contains", "A", "case-insensitive"],
+      expression: ["contains", "A", { "case-sensitive": false }],
     },
     {
       source: "contains('A', 'B', 'case-insensitive')",

@@ -1,13 +1,25 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
 import { type CompileResult, compileExpression } from "./compiler";
-import { MBQL_CLAUSES, getMBQLName } from "./config";
+import {
+  COMPARISON_OPERATORS,
+  FIELD_MARKERS,
+  MBQL_CLAUSES,
+  getMBQLName,
+} from "./config";
 import { DiagnosticError, type ExpressionError, renderError } from "./errors";
-import { isExpression } from "./matchers";
+import {
+  isCallExpression,
+  isCaseOrIfOperator,
+  isExpression,
+  isFunction,
+  isOperator,
+  isOptionsObject,
+} from "./matchers";
 import {
   CALL,
   FIELD,
@@ -18,8 +30,10 @@ import {
   type Token,
   lexify,
 } from "./pratt";
+import type { OPERATOR } from "./tokenizer";
 import type { StartRule } from "./types";
-import { getDatabase, getExpressionMode } from "./utils";
+import { getDatabase, getExpressionMode, getToken } from "./utils";
+import { visit } from "./visitor";
 
 export function diagnose(options: {
   source: string;
@@ -74,15 +88,12 @@ export function diagnoseAndCompile({
       }
     }
 
-    const database = getDatabase(query, metadata);
-
     // make a simple check on expression syntax correctness
     const result = compileExpression({
       source,
       startRule,
       query,
       stageIndex,
-      database,
     });
 
     if (!isExpression(result.expression) || result.expressionClause === null) {
@@ -90,16 +101,14 @@ export function diagnoseAndCompile({
       throw error;
     }
 
-    const error = checkCompiledExpression({
+    diagnoseExpression({
       query,
       stageIndex,
       startRule,
       expression: result.expression,
       expressionIndex,
+      metadata,
     });
-    if (error) {
-      throw error;
-    }
 
     return result;
   } catch (error) {
@@ -166,19 +175,33 @@ export function countMatchingParentheses(tokens: Token[]) {
   return tokens.reduce(count, 0);
 }
 
-function checkCompiledExpression({
+export function diagnoseExpression({
   query,
   stageIndex,
   startRule,
   expression,
   expressionIndex,
+  metadata,
 }: {
   query: Lib.Query;
   stageIndex: number;
   startRule: string;
   expression: Expression;
   expressionIndex?: number;
-}): ExpressionError | null {
+  metadata?: Metadata;
+}) {
+  const checkers = [
+    checkKnownFunctions,
+    checkFunctionSupport,
+    checkArgValidator,
+    checkArgCount,
+    checkComparisonOperatorArgs,
+    checkCaseOrIfArgCount,
+  ];
+  for (const checker of checkers) {
+    checker({ expression, query, metadata });
+  }
+
   const error = Lib.diagnoseExpression(
     query,
     stageIndex,
@@ -192,7 +215,6 @@ function checkCompiledExpression({
       friendly: Boolean(error.friendly),
     });
   }
-  return null;
 }
 
 function checkMissingCommasInArgumentList(
@@ -241,4 +263,173 @@ function checkMissingCommasInArgumentList(
   }
 
   return null;
+}
+
+function checkKnownFunctions({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+
+    const name = node[0];
+    if (FIELD_MARKERS.has(name) || name === "value" || name === "expression") {
+      return;
+    }
+
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      throw new DiagnosticError(t`Unknown function ${name}`, getToken(node));
+    }
+  });
+}
+
+function checkFunctionSupport({
+  query,
+  expression,
+  metadata,
+}: {
+  expression: Expression;
+  query: Lib.Query;
+  metadata?: Metadata;
+}) {
+  if (!metadata) {
+    return;
+  }
+
+  const database = getDatabase(query, metadata);
+  if (!database) {
+    return;
+  }
+
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+    const [name] = node;
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      return;
+    }
+    if (!database?.hasFeature(clause.requiresFeature)) {
+      throw new DiagnosticError(
+        t`Unsupported function ${name}`,
+        getToken(node),
+      );
+    }
+  });
+}
+
+function checkArgValidator({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+    const [name, ...operands] = node;
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      return;
+    }
+
+    if (clause.validator) {
+      const args = operands.filter((arg) => !isOptionsObject(arg));
+      const validationError = clause.validator(...args);
+      if (validationError) {
+        throw new DiagnosticError(validationError, getToken(node));
+      }
+    }
+  });
+}
+
+function checkArgCount({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isFunction(node)) {
+      return;
+    }
+
+    const [name, ...operands] = node;
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      return;
+    }
+
+    const { displayName, args, multiple, hasOptions } = clause;
+
+    if (multiple) {
+      const argCount = operands.filter((arg) => !isOptionsObject(arg)).length;
+      const minArgCount = args.length;
+
+      if (argCount < minArgCount) {
+        throw new DiagnosticError(
+          ngettext(
+            msgid`Function ${displayName} expects at least ${minArgCount} argument`,
+            `Function ${displayName} expects at least ${minArgCount} arguments`,
+            minArgCount,
+          ),
+          getToken(node),
+        );
+      }
+    } else {
+      const expectedArgsLength = args.length;
+      const maxArgCount = hasOptions
+        ? expectedArgsLength + 1
+        : expectedArgsLength;
+      if (
+        operands.length < expectedArgsLength ||
+        operands.length > maxArgCount
+      ) {
+        throw new DiagnosticError(
+          ngettext(
+            msgid`Function ${displayName} expects ${expectedArgsLength} argument`,
+            `Function ${displayName} expects ${expectedArgsLength} arguments`,
+            expectedArgsLength,
+          ),
+          getToken(node),
+        );
+      }
+    }
+  });
+}
+
+function checkComparisonOperatorArgs({
+  expression,
+}: {
+  expression: Expression;
+}) {
+  visit(expression, (node) => {
+    if (!isOperator(node)) {
+      return;
+    }
+    const [name, ...operands] = node;
+    if (!COMPARISON_OPERATORS.has(name as OPERATOR)) {
+      return;
+    }
+    const [firstOperand] = operands;
+    if (typeof firstOperand === "number") {
+      throw new DiagnosticError(
+        t`Expecting field but found ${firstOperand}`,
+        getToken(node),
+      );
+    }
+  });
+}
+
+function checkCaseOrIfArgCount({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+    const [op] = node;
+    if (!isCaseOrIfOperator(op)) {
+      return;
+    }
+
+    const pairs = node[1] as [Expression, Expression][];
+
+    if (pairs.length < 1) {
+      throw new DiagnosticError(
+        t`${op.toUpperCase()} expects 2 arguments or more`,
+        getToken(node),
+      );
+    }
+  });
 }
