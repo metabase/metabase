@@ -3,13 +3,13 @@
 set -e
 
 ## Get workflow run id for uberjar build
-curl -Ls --output e2e-tests.json \
+curl -Ls --output build-uberjars.json \
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer $GITHUB_TOKEN" \
   -H "X-GitHub-Api-Version: 2022-11-28" \
   https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/run-tests.yml/runs?head_sha=${HEAD_SHA}
 
-ID=$(jq -r '.workflow_runs[0].id' e2e-tests.json)
+ID=$(jq -r '.workflow_runs[0].id' build-uberjars.json)
 echo "Run ID: ${ID}"
 
 ## Get workflow run id for uberjar build
