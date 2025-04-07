@@ -1,0 +1,23 @@
+name: Build Uberjars
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build uberjar
+        uses: ./.github/actions/build-uberjar
+        with:
+          edition: ${{ matrix.edition }}
+          java-version: ${{ needs.get-build-requirements.outputs.java_version || 21 }}
+          artifact-name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          # make sure that builds on release branches get licenses, because we use them for releases
+          skip-licenses: ${{ github.event_name == 'pull_request' }}
