@@ -93,20 +93,21 @@ export function useMultiAutocomplete({
   };
 
   const handleFieldPaste = (event: ClipboardEvent<HTMLInputElement>) => {
-    const newFieldValue = event.clipboardData.getData("text");
     const { selectionStart, selectionEnd } = event.currentTarget;
-    const newParsedValues = parseCsv(newFieldValue);
+    const clipboardData = event.clipboardData.getData("text");
+    const newParsedValues = parseCsv(clipboardData);
+
     if (newParsedValues.length > 1) {
       event.preventDefault();
-      handleFieldInput(
-        newFieldValue,
+      const newFieldValue = "";
+      const newParsedValuesWithFieldValue =
         getParsedValuesCombinedWithFieldValue(
           fieldValue,
           newParsedValues,
           selectionStart,
           selectionEnd,
-        ),
-      );
+        );
+      handleFieldInput(newFieldValue, newParsedValuesWithFieldValue);
     }
   };
 

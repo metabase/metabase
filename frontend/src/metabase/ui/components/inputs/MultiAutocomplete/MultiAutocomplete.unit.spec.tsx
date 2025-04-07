@@ -202,7 +202,7 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  it("should handle pasting with 1 value when there is some text in the input", async () => {
+  it("should handle pasting 1 value in the middle of the text in the input", async () => {
     const { input, onChange } = setup();
     await userEvent.type(input, "123{arrowleft}");
     await userEvent.paste("45");
@@ -210,7 +210,7 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("12453");
   });
 
-  it("should handle pasting with 2 values when there is some text in the input", async () => {
+  it("should handle pasting 2 values in the middle of the text in the input", async () => {
     const { input, onChange } = setup();
     await userEvent.type(input, "123{arrowleft}");
     await userEvent.paste("45,6");
@@ -218,7 +218,23 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  it("should handle pasting with 3 values when there is some text in the input", async () => {
+  it("should handle pasting 2 values at the start of the text in the input", async () => {
+    const { input, onChange } = setup();
+    await userEvent.type(input, "123{arrowleft}{arrowleft}{arrowleft}");
+    await userEvent.paste("45,6");
+    expect(onChange).toHaveBeenLastCalledWith(["45", "6123"]);
+    expect(input).toHaveValue("");
+  });
+
+  it("should handle pasting 2 values at the end of the text in the input", async () => {
+    const { input, onChange } = setup();
+    await userEvent.type(input, "123");
+    await userEvent.paste("45,6");
+    expect(onChange).toHaveBeenLastCalledWith(["12345", "6"]);
+    expect(input).toHaveValue("");
+  });
+
+  it("should handle pasting 3 values in the middle of the text in the input", async () => {
     const { input, onChange } = setup();
     await userEvent.type(input, "123{arrowleft}");
     await userEvent.paste("45,6,78");
