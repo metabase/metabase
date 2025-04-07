@@ -228,6 +228,7 @@ function getPillValues(
   );
 }
 
+// Remove duplicate options and options for the already selected values.
 function getFilteredOptions(
   values: string[],
   options: ComboboxItem[],
@@ -281,9 +282,16 @@ function getFieldStateAfterChange(
     fieldValue.endsWith(delimiter),
   );
 
-  // we want to reset the input state when there is a delimiter and some parsed
-  // values, even if all of them are rejected by validation
-  if (parsedValues.length > 1 || (isDelimiter && parsedValues.length > 0)) {
+  // Reset the input state when there is a delimiter and some parsed values,
+  // even if all of them are rejected by validation. Parsed values are taken
+  // into account to allow entering values when the delimiter is escaped; in
+  // this case it will be an empty array until there is a closing quote.
+  //
+  // When the new field value contains multiple values, we reset the input state
+  // immediately. It can happen both with copy-pasting and regular input. With
+  // regular input, the user can enter "abc" and then "ab,c"; in this case "abc"
+  // will be replaced by the 2 new values.
+  if ((isDelimiter && parsedValues.length > 0) || parsedValues.length > 1) {
     return {
       fieldValue: "",
       fieldSelection: {
@@ -302,6 +310,10 @@ function getFieldStateAfterChange(
   }
 }
 
+// When pasting, we want to combine the values from the clipboard with the
+// existing input value taking the current selection into account. For example,
+// if the input value is "ab<caret>c" and the user pastes "d,e,f", the
+// new values should be "abd,e,fc".
 function getParsedValuesCombinedWithFieldValue(
   fieldValue: string,
   parsedValues: string[],
