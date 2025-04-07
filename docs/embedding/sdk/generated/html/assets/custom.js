@@ -1,5 +1,3 @@
-const SECTIONS_TO_HIDE = ["Modules"];
-
 /**
  * Disclaimer:
  * Right now it's unclear how to generate the `internal` module but completely exclude it from all navigation/etc using
@@ -92,7 +90,8 @@ const adjustInternalCategoryItem = () => {
 };
 
 const adjustPage = () => {
-  setupRedirectsFromInternalModule();
+  const SECTIONS_TO_HIDE = ["Modules"];
+
   SECTIONS_TO_HIDE.forEach(hideSection);
   adjustInternalMenuItems();
   adjustInternalCategoryItem();
@@ -104,3 +103,9 @@ observer.observe(document.body, {
   childList: true,
   subtree: true,
 });
+
+const init = () => {
+  setupRedirectsFromInternalModule();
+};
+
+init();
