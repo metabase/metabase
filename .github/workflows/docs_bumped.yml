@@ -9,7 +9,7 @@ on:
       - 'docs/**'
 
 jobs:
-  docs_job:
+  push_workflow_to_docs_metabase_github_io_job:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,6 +29,8 @@ jobs:
           fi
 
       - name: List Workflows in docs.metabase.github.io
+        env:
+          TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
           curl -L \
           -H "Accept: application/vnd.github+json" \
