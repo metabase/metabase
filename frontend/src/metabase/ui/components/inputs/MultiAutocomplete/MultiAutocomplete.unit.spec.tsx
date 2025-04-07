@@ -66,6 +66,14 @@ function setup({
   return { input, onChange, onSearchChange };
 }
 
+function getOption(name: string) {
+  return screen.getByRole("option", { name });
+}
+
+function queryOption(name: string) {
+  return screen.queryByRole("option", { name });
+}
+
 describe("MultiAutocomplete", () => {
   it("should accept values when blurring", async () => {
     const { input, onChange } = setup();
@@ -294,56 +302,56 @@ describe("MultiAutocomplete", () => {
     });
     await userEvent.click(screen.getByText("One"));
     expect(input).toHaveValue("One");
-    expect(screen.getByText("One")).toBeInTheDocument();
-    expect(screen.queryByText("Two")).not.toBeInTheDocument();
+    expect(getOption("One")).toBeInTheDocument();
+    expect(queryOption("Two")).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
 
     await userEvent.clear(input);
     await userEvent.type(input, "Two");
-    expect(screen.getByText("Two")).toBeInTheDocument();
-    expect(screen.queryByText("One")).not.toBeInTheDocument();
+    expect(getOption("Two")).toBeInTheDocument();
+    expect(queryOption("One")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Two"));
+    await userEvent.click(getOption("Two"));
     expect(onChange).toHaveBeenLastCalledWith(["2", "3"]);
   });
 
   it("should open and close the dropdown correctly", async () => {
     const { input, onChange } = setup({ options: REMAPPED_OPTIONS });
-    expect(screen.queryByText("One")).not.toBeInTheDocument();
+    expect(queryOption("One")).not.toBeInTheDocument();
 
     await userEvent.click(input);
-    expect(screen.getByText("One")).toBeInTheDocument();
-    expect(screen.getByText("Two")).toBeInTheDocument();
+    expect(getOption("One")).toBeInTheDocument();
+    expect(getOption("Two")).toBeInTheDocument();
 
     await userEvent.type(input, "on");
-    expect(screen.getByText("One")).toBeInTheDocument();
-    expect(screen.queryByText("Two")).not.toBeInTheDocument();
-    expect(screen.queryByText("Three")).not.toBeInTheDocument();
+    expect(getOption("One")).toBeInTheDocument();
+    expect(queryOption("Two")).not.toBeInTheDocument();
+    expect(queryOption("Three")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByText("One"));
-    expect(screen.queryByText("One")).not.toBeInTheDocument();
-    expect(screen.queryByText("Two")).not.toBeInTheDocument();
-    expect(screen.queryByText("Three")).not.toBeInTheDocument();
+    expect(queryOption("One")).not.toBeInTheDocument();
+    expect(queryOption("Two")).not.toBeInTheDocument();
+    expect(queryOption("Three")).not.toBeInTheDocument();
 
     await userEvent.type(input, "t");
-    expect(screen.queryByText("One")).not.toBeInTheDocument();
-    expect(screen.getByText("Two")).toBeInTheDocument();
-    expect(screen.getByText("Three")).toBeInTheDocument();
+    expect(queryOption("One")).not.toBeInTheDocument();
+    expect(getOption("Two")).toBeInTheDocument();
+    expect(getOption("Three")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Two"));
-    expect(screen.queryByText("One")).not.toBeInTheDocument();
-    expect(screen.queryByText("Two")).not.toBeInTheDocument();
-    expect(screen.queryByText("Three")).not.toBeInTheDocument();
+    await userEvent.click(getOption("Two"));
+    expect(queryOption("One")).not.toBeInTheDocument();
+    expect(queryOption("Two")).not.toBeInTheDocument();
+    expect(queryOption("Three")).not.toBeInTheDocument();
 
     await userEvent.paste("three");
-    expect(screen.queryByText("One")).not.toBeInTheDocument();
-    expect(screen.queryByText("Two")).not.toBeInTheDocument();
-    expect(screen.getByText("Three")).toBeInTheDocument();
+    expect(queryOption("One")).not.toBeInTheDocument();
+    expect(queryOption("Two")).not.toBeInTheDocument();
+    expect(getOption("Three")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Three"));
-    expect(screen.queryByText("One")).not.toBeInTheDocument();
-    expect(screen.queryByText("Two")).not.toBeInTheDocument();
-    expect(screen.queryByText("Three")).not.toBeInTheDocument();
+    await userEvent.click(getOption("Three"));
+    expect(queryOption("One")).not.toBeInTheDocument();
+    expect(queryOption("Two")).not.toBeInTheDocument();
+    expect(queryOption("Three")).not.toBeInTheDocument();
     expect(onChange).toHaveBeenLastCalledWith(["1", "2", "3"]);
   });
 });
