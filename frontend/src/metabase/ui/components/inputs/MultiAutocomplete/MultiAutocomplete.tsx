@@ -48,6 +48,7 @@ export function MultiAutocomplete({
     pillValues,
     filteredOptions,
     fieldValue,
+    searchValue,
     handleFieldChange,
     handleFieldPaste,
     handleFieldKeyDown,
@@ -129,7 +130,7 @@ export function MultiAutocomplete({
         </Combobox.DropdownTarget>
         <OptionsDropdown
           data={filteredOptions}
-          search={fieldValue}
+          search={searchValue}
           nothingFoundMessage={nothingFoundMessage}
           hiddenWhenEmpty={!nothingFoundMessage}
           filter={undefined}

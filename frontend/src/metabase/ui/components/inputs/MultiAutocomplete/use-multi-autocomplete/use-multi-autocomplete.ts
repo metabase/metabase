@@ -46,12 +46,15 @@ export function useMultiAutocomplete({
   const [fieldValue, setFieldValue] = useState("");
   const [_fieldSelection, setFieldSelection] = useState<FieldSelection>();
   const fieldSelection = _fieldSelection ?? { index: values.length, length: 0 };
+  const searchValue = useMemo(() => getSearchValue(fieldValue), [fieldValue]);
   const optionByValue = useMemo(() => getOptionByValue(options), [options]);
 
   const setFieldState = ({ fieldValue, fieldSelection }: FieldState) => {
     setFieldValue(fieldValue);
     setFieldSelection(fieldSelection);
-    onSearchChange?.(fieldValue);
+
+    const newSearchValue = getSearchValue(fieldValue);
+    onSearchChange?.(newSearchValue);
   };
 
   const resetFieldState = () => {
@@ -197,6 +200,7 @@ export function useMultiAutocomplete({
     pillValues: getPillValues(values, optionByValue, fieldSelection),
     filteredOptions: getFilteredOptions(values, options, fieldSelection),
     fieldValue,
+    searchValue,
     handleFieldChange,
     handleFieldPaste,
     handleFieldKeyDown,
@@ -212,6 +216,11 @@ export function useMultiAutocomplete({
 
 function getOptionByValue(options: ComboboxItem[]) {
   return Object.fromEntries(options.map((option) => [option.value, option]));
+}
+
+function getSearchValue(fieldValue: string) {
+  const parsedValues = parseCsv(fieldValue);
+  return parsedValues.length === 1 ? parsedValues[0] : fieldValue;
 }
 
 function getPillValues(

@@ -332,16 +332,29 @@ describe("MultiAutocomplete", () => {
   it("should escape the selected option label when editing", async () => {
     const { input, onChange } = setup({
       initialValues: ["1"],
-      options: [{ value: "1", label: "a,b" }],
+      options: [
+        { value: "1", label: "a,b" },
+        { value: "2", label: "a,b,c" },
+        { value: "3", label: "a,b,c,d" },
+      ],
     });
     await userEvent.click(screen.getByText("a,b"));
     expect(input).toHaveValue('"a\\,b"');
+    expect(getOption("a,b")).toBeInTheDocument();
+    expect(getOption("a,b,c")).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
 
-    await userEvent.click(input);
-    await userEvent.type(input, "{selectall}{arrowright}{arrowleft}\\,c");
-    expect(input).toHaveValue('"a\\,b\\,c"');
-    expect(onChange).toHaveBeenLastCalledWith(["a,b,c"]);
+    await userEvent.click(getOption("a,b,c"));
+    expect(input).toHaveValue("");
+    expect(onChange).toHaveBeenLastCalledWith(["2"]);
+
+    await userEvent.type(input, '"b\\,c"');
+    expect(queryOption("a,b")).not.toBeInTheDocument();
+    expect(queryOption("a,b,c")).not.toBeInTheDocument();
+    expect(getOption("a,b,c,d")).toBeInTheDocument();
+
+    await userEvent.click(getOption("a,b,c,d"));
+    expect(onChange).toHaveBeenLastCalledWith(["2", "3"]);
   });
 
   it("should open and close the dropdown correctly", async () => {
