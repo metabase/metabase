@@ -306,4 +306,44 @@ describe("MultiAutocomplete", () => {
     await userEvent.click(screen.getByText("Two"));
     expect(onChange).toHaveBeenLastCalledWith(["2", "3"]);
   });
+
+  it("should open and close the dropdown correctly", async () => {
+    const { input, onChange } = setup({ options: REMAPPED_OPTIONS });
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+
+    await userEvent.click(input);
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(screen.getByText("Two")).toBeInTheDocument();
+
+    await userEvent.type(input, "on");
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(screen.queryByText("Two")).not.toBeInTheDocument();
+    expect(screen.queryByText("Three")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("One"));
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+    expect(screen.queryByText("Two")).not.toBeInTheDocument();
+    expect(screen.queryByText("Three")).not.toBeInTheDocument();
+
+    await userEvent.type(input, "t");
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+    expect(screen.getByText("Two")).toBeInTheDocument();
+    expect(screen.getByText("Three")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Two"));
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+    expect(screen.queryByText("Two")).not.toBeInTheDocument();
+    expect(screen.queryByText("Three")).not.toBeInTheDocument();
+
+    await userEvent.paste("three");
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+    expect(screen.queryByText("Two")).not.toBeInTheDocument();
+    expect(screen.getByText("Three")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Three"));
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+    expect(screen.queryByText("Two")).not.toBeInTheDocument();
+    expect(screen.queryByText("Three")).not.toBeInTheDocument();
+    expect(onChange).toHaveBeenLastCalledWith(["1", "2", "3"]);
+  });
 });
