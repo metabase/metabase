@@ -15,11 +15,11 @@ import type { Task } from "metabase-types/api";
 
 import S from "./TaskModal.module.css";
 
-type TaskModalProps = {
+interface Props {
   params: { taskId: number };
-};
+}
 
-export const TaskModal = ({ params }: TaskModalProps) => {
+export const TaskModal = ({ params }: Props) => {
   const dispatch = useDispatch();
   const { data: task, error, isLoading } = useGetTaskQuery(params.taskId);
   const code = useMemo(() => formatTaskDetails(task), [task]);
