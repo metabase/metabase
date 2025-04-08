@@ -7,6 +7,7 @@ import {
   AppearancePage,
   InteractiveSettingsPage,
   OverviewPage,
+  ReferencePage,
   StaticEmbeddingPage,
   UserManagementPage,
 } from "./pages";
@@ -21,5 +22,6 @@ export const getRoutes = () => (
       <Route path="user-management" component={UserManagementPage} />
     </Route>
     <Route path="appearance" component={AppearancePage} />
+    <Route path="reference" component={ReferencePage} />
   </Route>
 );
