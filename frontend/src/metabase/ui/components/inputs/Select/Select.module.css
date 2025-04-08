@@ -53,6 +53,14 @@
   [data-position="right"] {
     color: var(--mb-color-text-light);
   }
+
+  /*
+  metabase#56179
+  Firefox shows a caret in readonly text inputs when focused
+  */
+  &[readonly]:focus {
+    caret-color: transparent;
+  }
 }
 
 .SelectInputSection {
