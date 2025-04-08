@@ -15,8 +15,6 @@ import { DiagnosticError, type ExpressionError, renderError } from "./errors";
 import {
   isCallExpression,
   isCaseOrIfOperator,
-  isExpression,
-  isFunction,
   isOperator,
   isOptionsObject,
 } from "./matchers";
@@ -96,7 +94,7 @@ export function diagnoseAndCompile({
       stageIndex,
     });
 
-    if (!isExpression(result.expression) || result.expressionClause === null) {
+    if (result.expression === null || result.expressionClause === null) {
       const error = result.error ?? new DiagnosticError(t`Invalid expression`);
       throw error;
     }
@@ -342,20 +340,24 @@ function checkArgValidator({ expression }: { expression: Expression }) {
 
 function checkArgCount({ expression }: { expression: Expression }) {
   visit(expression, (node) => {
-    if (!isFunction(node)) {
+    if (!isCallExpression(node)) {
       return;
     }
 
     const [name, ...operands] = node;
     const clause = MBQL_CLAUSES[name];
-    if (!clause) {
+    if (!clause || name === "case" || name === "if") {
       return;
     }
 
     const { displayName, args, multiple, hasOptions } = clause;
 
+    const filtered = operands.filter(
+      (arg) => !isOptionsObject(arg) && arg !== null,
+    );
+
     if (multiple) {
-      const argCount = operands.filter((arg) => !isOptionsObject(arg)).length;
+      const argCount = filtered.length;
       const minArgCount = args.length;
 
       if (argCount < minArgCount) {
@@ -374,8 +376,8 @@ function checkArgCount({ expression }: { expression: Expression }) {
         ? expectedArgsLength + 1
         : expectedArgsLength;
       if (
-        operands.length < expectedArgsLength ||
-        operands.length > maxArgCount
+        filtered.length < expectedArgsLength ||
+        filtered.length > maxArgCount
       ) {
         throw new DiagnosticError(
           ngettext(
