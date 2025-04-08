@@ -107,10 +107,9 @@ entity_types=table,model
 The default behavior for the data picker is:
 
 - Show both tables and models.
-- Exclude Metrics
-- Display a simple dropdown menu
+- Exclude Metrics.
+- Display a simple dropdown menu. If there are 100 or more items, Metabase will display a souped-up data picker.
 
-If the number of tables and models exceeds 99, Metabase will display a souped-up data picker that lets people navigate databases, tables, and models (if set as an available entity type).
 
 ## `header`
 
@@ -132,17 +131,14 @@ Read more about [localization](../configuring-metabase/localization.md).
 
 ## `logo`
 
-Whether to show the logo that opens and closes the sidebar nav. Default is true. How Metabase displays the logo depends on the `side_nav` setting. Here's a rough breakdown of how these two parameters interact:
+Whether to show the logo that opens and closes the sidebar nav. Default is true. The logo's behavior depends on the `side_nav` setting:
 
-If `logo=true` and:
-
-- `side_nav=true`: Looks like regular Metabase (with whatever logo you have set).
-- `side_nav=false`: There is no sidebar, so nothing happens when you hover over the logo.
-
-If `logo=false` and:
-
-- `side_nav=true`: Metabase shows the generic sidebar icon, with a gray color in normal state, and a brand color on hover.
-- `side_nav=false`: There is no side nav nor logo, so the breadcrumbs move all the way to the left of the screen.
+| `logo` | `side_nav` | Result |
+|--------|------------|--------|
+| true   | true       | Shows your configured logo in the sidebar |
+| true   | false      | No sidebar or logo functionality |
+| false  | true       | Shows a generic sidebar icon (gray when normal, brand color on hover) |
+| false  | false      | No sidebar or logo, with breadcrumbs aligned to the left edge |
 
 ## `new_button`
 
@@ -182,4 +178,4 @@ top_nav=false
 
 ![Top nav bar](./images/top-nav.png)
 
-`search`, `new_button`, and `breadcrumbs` all depend on `top_nav` being set to `true`. If these three children (`search`, `new_button`, and `breadcrumbs`) are all false, Metabase will hide the top nav bar.
+The `top_nav` parameter controls the visibility of the entire top navigation bar. When `top_nav` is set to `false`, all child elements (`search`, `new_button`, and `breadcrumbs`) are automatically hidden. When `top_nav` is set to `true`, you can individually control the visibility of these child elements.
