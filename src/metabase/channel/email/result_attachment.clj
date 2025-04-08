@@ -9,6 +9,7 @@
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.performance :as perf])
@@ -35,6 +36,7 @@
                                                                      [:database_id ::lib.schema.id/database]]]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
+  (log/debugf "Streaming results to %s with %d rows" export-format (:row_count results))
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-metadata-provider database-id
       (let [w                           (qp.si/streaming-results-writer export-format os)

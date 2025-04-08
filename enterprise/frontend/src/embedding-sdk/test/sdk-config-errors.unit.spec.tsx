@@ -1,5 +1,3 @@
-/* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectErrorMessage"] }] */
-
 import { render, screen, waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 

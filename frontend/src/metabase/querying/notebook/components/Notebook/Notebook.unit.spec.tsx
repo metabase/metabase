@@ -306,7 +306,6 @@ describe("Notebook", () => {
         });
       });
 
-      // eslint-disable-next-line jest/expect-expect
       it("should show tabs if more than one type is chosen", async () => {
         const models: DataPickerValue["model"][] = ["dataset", "card"];
 
@@ -354,7 +353,6 @@ describe("Notebook", () => {
     describe.each<DataPickerValue["model"]>(TEST_ENTITY_TYPES)(
       "when filtering with %s",
       (entityType) => {
-        // eslint-disable-next-line jest/expect-expect
         it(`should show the Collection item picker when modelsFilterList=[${entityType}]`, async () => {
           setup({
             question: createSummarizedQuestion("question"),

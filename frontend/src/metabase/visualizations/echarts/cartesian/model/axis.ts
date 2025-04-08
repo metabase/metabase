@@ -922,7 +922,9 @@ function getTimeSeriesXAxisInfo(
   if (range) {
     const [min, max] = range;
     // A single date counts as one interval
-    intervalsCount = Math.ceil(max.diff(min, interval.unit) / interval.count);
+    intervalsCount = Math.abs(
+      Math.ceil(max.diff(min, interval.unit) / interval.count),
+    );
   }
 
   return { interval, timezone, offsetMinutes, intervalsCount, range, unit };

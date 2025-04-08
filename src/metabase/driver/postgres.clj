@@ -79,7 +79,9 @@
                               :uuid-type                true
                               :split-part               true
                               :uploads                  true
-                              :cast                     true}]
+                              :expressions/text         true
+                              :expressions/integer      true
+                              :expressions/date         true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -205,8 +207,7 @@
     (assoc driver.common/additional-options
            :placeholder "prepareThreshold=0")
     driver.common/default-advanced-options]
-   (map u/one-or-many)
-   (apply concat)))
+   (into [] (mapcat u/one-or-many))))
 
 (defmethod driver/db-start-of-week :postgres
   [_]
