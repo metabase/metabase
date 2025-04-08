@@ -25,7 +25,8 @@ type UseMultiAutocompleteProps = {
 
 type FieldState = {
   fieldValue: string;
-  fieldSelection: FieldSelection | undefined;
+  fieldSelection?: FieldSelection;
+  fieldMinWidth?: number;
 };
 
 type FieldSelection = {
@@ -45,23 +46,26 @@ export function useMultiAutocomplete({
   });
   const [fieldValue, setFieldValue] = useState("");
   const [_fieldSelection, setFieldSelection] = useState<FieldSelection>();
+  const [fieldMinWidth, setFieldMinWidth] = useState<number>();
   const fieldSelection = _fieldSelection ?? { index: values.length, length: 0 };
   const searchValue = useMemo(() => getSearchValue(fieldValue), [fieldValue]);
   const optionByValue = useMemo(() => getOptionByValue(options), [options]);
 
-  const setFieldState = ({ fieldValue, fieldSelection }: FieldState) => {
+  const setFieldState = ({
+    fieldValue,
+    fieldSelection,
+    fieldMinWidth,
+  }: FieldState) => {
     setFieldValue(fieldValue);
     setFieldSelection(fieldSelection);
+    setFieldMinWidth(fieldMinWidth);
 
     const newSearchValue = getSearchValue(fieldValue);
     onSearchChange?.(newSearchValue);
   };
 
   const resetFieldState = () => {
-    setFieldState({
-      fieldValue: "",
-      fieldSelection: undefined,
-    });
+    setFieldState({ fieldValue: "" });
   };
 
   const handleFieldInput = (
@@ -143,12 +147,18 @@ export function useMultiAutocomplete({
     combobox.closeDropdown();
   };
 
-  const handlePillClick = (valueIndex: number) => {
+  const handlePillClick = (
+    event: MouseEvent<HTMLDivElement>,
+    valueIndex: number,
+  ) => {
     const selectedValue = values[valueIndex];
     const selectedOption = optionByValue[selectedValue];
+    const pillRect = event.currentTarget.getBoundingClientRect();
+
     setFieldState({
       fieldValue: escapeCsv(selectedOption?.label ?? selectedValue),
       fieldSelection: { index: valueIndex, length: 1 },
+      fieldMinWidth: pillRect.width,
     });
   };
 
@@ -204,6 +214,7 @@ export function useMultiAutocomplete({
       fieldSelection,
     ),
     fieldValue,
+    fieldMinWidth,
     searchValue,
     handleFieldChange,
     handleFieldPaste,

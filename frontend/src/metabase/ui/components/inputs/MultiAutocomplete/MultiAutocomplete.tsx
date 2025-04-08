@@ -48,6 +48,7 @@ export function MultiAutocomplete({
     pillValues,
     filteredOptions,
     fieldValue,
+    fieldMinWidth,
     searchValue,
     handleFieldChange,
     handleFieldPaste,
@@ -102,7 +103,7 @@ export function MultiAutocomplete({
                     key={valueIndex}
                     className={S.pill}
                     withRemoveButton
-                    onClick={() => handlePillClick(valueIndex)}
+                    onClick={(event) => handlePillClick(event, valueIndex)}
                     onRemove={() => handlePillRemoveClick(valueIndex)}
                   >
                     {value}
@@ -114,6 +115,7 @@ export function MultiAutocomplete({
                       value={fieldValue}
                       placeholder={placeholder}
                       role="combobox"
+                      miw={fieldMinWidth}
                       autoFocus={autoFocus}
                       aria-label={ariaLabel}
                       onChange={handleFieldChange}
