@@ -1,10 +1,10 @@
 import dayjs from "dayjs";
 
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type {
   Engine,
   EngineField,
   EngineSource,
+  EnterpriseSettings,
   FontFile,
   SettingDefinition,
   SettingKey,
@@ -15,7 +15,6 @@ import type {
   VersionInfo,
   VersionInfoRecord,
 } from "metabase-types/api";
-
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
   "details-fields": [],
@@ -239,6 +238,7 @@ export const createMockSettings = (
   "persisted-model-refresh-cron-schedule": "0 0 0/6 * * ? *",
   "premium-embedding-token": null,
   "read-only-mode": false,
+  "redirect-all-requests-to-https": false,
   "report-timezone-short": "UTC",
   "report-timezone-long": "Europe/London",
   "saml-configured": false,
