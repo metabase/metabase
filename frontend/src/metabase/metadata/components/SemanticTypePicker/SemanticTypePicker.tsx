@@ -34,6 +34,9 @@ export const SemanticTypePicker = ({
       comboboxProps={{
         middlewares: {
           flip: true,
+          size: {
+            padding: 8,
+          },
         },
         position: "bottom-start",
         width: 300,
