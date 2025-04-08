@@ -49,28 +49,26 @@ export function useTableEditingStateDashcardUpdateStrategy(
         return;
       }
 
-      const { data } = cardData;
-      const pkColumnIndex = data.cols.findIndex(isPK);
-      const updatedRows = mapDataEditingRowObjectsToRowValues(rows, data.cols);
-      const nextRows = structuredClone(data.rows);
-
-      for (const row of nextRows) {
-        for (const updatedRow of updatedRows) {
-          if (row[pkColumnIndex] === updatedRow[pkColumnIndex]) {
-            // Update row values array with updated values
-            for (let i = 0; i < data.cols.length; i++) {
-              row[i] = updatedRow[i];
-            }
-          }
-        }
-      }
+      const pkColumnIndex = cardData.data.cols.findIndex(isPK);
+      const updatedRows = mapDataEditingRowObjectsToRowValues(
+        rows,
+        cardData.data.cols,
+      );
 
       dispatch(
         updateCardData(cardId, dashcardId, {
           ...cardData,
           data: {
-            ...data,
-            rows: nextRows,
+            ...cardData.data,
+            rows: cardData.data.rows.map((row) => {
+              for (const updatedRow of updatedRows) {
+                if (row[pkColumnIndex] === updatedRow[pkColumnIndex]) {
+                  return updatedRow;
+                }
+              }
+
+              return row;
+            }),
           },
         }),
       );
@@ -84,20 +82,18 @@ export function useTableEditingStateDashcardUpdateStrategy(
         return;
       }
 
-      const { data } = cardData;
-      const pkColumnIndex = data.cols.findIndex(isPK);
-      const pkColumnName = data.cols[pkColumnIndex].name;
+      const pkColumnIndex = cardData.data.cols.findIndex(isPK);
+      const pkColumnName = cardData.data.cols[pkColumnIndex].name;
       const deletedPKs = new Set(rows.map((row) => row[pkColumnName]));
-      const nextRows = structuredClone(data.rows).filter(
-        (row) => !deletedPKs.has(row[pkColumnIndex]),
-      );
 
       dispatch(
         updateCardData(cardId, dashcardId, {
           ...cardData,
           data: {
-            ...data,
-            rows: nextRows,
+            ...cardData.data,
+            rows: cardData.data.rows.filter(
+              (row) => !deletedPKs.has(row[pkColumnIndex]),
+            ),
           },
         }),
       );
