@@ -78,17 +78,24 @@
   [database-id]
   (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
 
+(def ^{:arglists '([db-id])
+       :private  true} db-id->router-db-id
+  (mdb/memoize-for-application-db
+   (fn [db-id]
+     (t2/select-one-fn :router_database_id :model/Database :id db-id))))
+
 (defmethod mi/can-read? :model/Database
   ([instance]
    (mi/can-read? :model/Database (u/the-id instance)))
   ([_model pk]
-   (if (should-read-audit-db? pk)
-     false
-     (contains? #{:query-builder :query-builder-and-native}
-                (perms/most-permissive-database-permission-for-user
-                 api/*current-user-id*
-                 :perms/create-queries
-                 pk)))))
+   (cond
+     (should-read-audit-db? pk) false
+     (db-id->router-db-id pk) (mi/can-read? :model/Database (db-id->router-db-id pk))
+     :else (contains? #{:query-builder :query-builder-and-native}
+                      (perms/most-permissive-database-permission-for-user
+                       api/*current-user-id*
+                       :perms/create-queries
+                       pk)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -98,8 +105,9 @@
 
 (defn- can-write?
   [db-id]
-  (and (not= db-id audit/audit-db-id)
-       (current-user-can-write-db? db-id)))
+  (or (some-> db-id db-id->router-db-id can-write?)
+      (and (not= db-id audit/audit-db-id)
+           (current-user-can-write-db? db-id))))
 
 (defmethod mi/can-write? :model/Database
   ;; Lack of permission to change database details will also exclude the `details` field from the HTTP response,
