@@ -167,7 +167,7 @@
    :tsql        Dialect/TSql})
 
 (def ^:private ^java.util.List additional-operators
-  ["#>>" "!="])
+  ["#>>" "!=" "||"])
 
 (defn- add-operators
   ^SqlFormatter$Formatter [^SqlFormatter$Formatter formatter]
