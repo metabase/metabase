@@ -3,18 +3,18 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import {
   Box,
+  Button,
   Card,
   Divider,
   Group,
+  Select,
+  Space,
   Stack,
   Switch,
   Text,
+  Textarea,
   TextInput,
   Title,
-  Textarea,
-  Button,
-  Select,
-  Space
 } from "metabase/ui";
 
 export function ReferencePage() {
@@ -24,11 +24,11 @@ export function ReferencePage() {
       <Text mb="xl">{t`This page serves as a reference for Metabase admin UI design patterns to maintain consistency across the application.`}</Text>
 
       {/* Card Design Pattern */}
-      <Card p="xl" mt="xl" withBorder shadow="sm">
+      <Card p="xl" mt="xl" bg={color("bg-light")} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Card Design Pattern`}</Title>
         <Text mb="lg">{t`The standard card component used throughout the admin interface with consistent styling.`}</Text>
         <Divider mb="md" />
-        <Box bg={color("bg-light")} p="md">
+        <Box p="md">
           <Text fw={600} mb="xs">{t`Specifications:`}</Text>
           <ul>
             <li>{t`White background`}</li>
@@ -42,7 +42,7 @@ export function ReferencePage() {
       </Card>
 
       {/* Site Information Section Example */}
-      <Card p="xl" mt="2rem" withBorder shadow="sm">
+      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Site Information Section`}</Title>
         <Text mb="lg">{t`A common section for site-wide configuration.`}</Text>
         <Divider mb="xl" />
@@ -76,7 +76,7 @@ export function ReferencePage() {
       </Card>
 
       {/* Toggle Settings Section Example */}
-      <Card p="xl" mt="2rem" withBorder shadow="sm">
+      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Toggle Settings Pattern`}</Title>
         <Text mb="lg">{t`Used for enabling or disabling features.`}</Text>
         <Divider mb="xl" />
@@ -115,7 +115,7 @@ export function ReferencePage() {
       </Card>
 
       {/* Dropdown Selection Pattern */}
-      <Card p="xl" mt="2rem" withBorder shadow="sm">
+      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Selection Controls Pattern`}</Title>
         <Text mb="lg">{t`Pattern for selection inputs and dropdowns.`}</Text>
         <Divider mb="xl" />
@@ -158,7 +158,7 @@ export function ReferencePage() {
       </Card>
 
       {/* Danger Zone Pattern */}
-      <Card p="xl" mt="2rem" withBorder shadow="sm" mb="2rem">
+      <Card p="xl" mt="2rem" mb="2rem" bg={color("bg-light")} withBorder shadow="none">
         <Title order={2} mb="xs" c={color("danger")}>{t`Danger Zone Pattern`}</Title>
         <Text mb="lg">{t`Used for destructive actions that should be handled with care.`}</Text>
         <Divider mb="xl" />
