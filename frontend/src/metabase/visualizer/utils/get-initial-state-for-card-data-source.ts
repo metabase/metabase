@@ -1,10 +1,12 @@
 import { isNotNull } from "metabase/lib/types";
 import { getColumnVizSettings } from "metabase/visualizations";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getDefaultDimensionFilter,
   getDefaultMetricFilter,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
-import type { Card, DatasetColumn } from "metabase-types/api";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { Card, Dataset, DatasetColumn } from "metabase-types/api";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import {
@@ -29,7 +31,7 @@ function pickColumnsFromTableToBarChart(
   const columns: DatasetColumn[] = [];
 
   // using "every" to break the loop early
-  originalColumns.every(column => {
+  originalColumns.every((column) => {
     if (!foundMetric && isSuitableMetric(column)) {
       columns.push(column);
       foundMetric = true;
@@ -50,8 +52,12 @@ function pickColumnsFromTableToBarChart(
 
 export function getInitialStateForCardDataSource(
   card: Card,
-  originalColumns: DatasetColumn[],
+  dataset: Dataset,
 ): VisualizerHistoryItem {
+  const {
+    data: { cols: originalColumns },
+  } = dataset;
+
   const state: VisualizerHistoryItem = {
     display: isVisualizerSupportedVisualization(card.display)
       ? card.display
@@ -70,7 +76,7 @@ export function getInitialStateForCardDataSource(
       ? pickColumnsFromTableToBarChart(originalColumns)
       : originalColumns;
 
-  columns.forEach(column => {
+  columns.forEach((column) => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,
@@ -82,9 +88,17 @@ export function getInitialStateForCardDataSource(
     state.columnValuesMapping[columnRef.name] = [columnRef];
   });
 
-  const entries = getColumnVizSettings(card.display)
-    .map(setting => {
-      const originalValue = card.visualization_settings[setting];
+  const computedSettings: ComputedVisualizationSettings =
+    getComputedSettingsForSeries([
+      {
+        ...dataset,
+        card: { ...card, display: state.display },
+      },
+    ]);
+
+  const entries = getColumnVizSettings(state.display!)
+    .map((setting) => {
+      const originalValue = computedSettings[setting];
 
       if (!originalValue) {
         return null;
@@ -93,15 +107,15 @@ export function getInitialStateForCardDataSource(
       if (Array.isArray(originalValue)) {
         return [
           setting,
-          originalValue.map(originalColumnName => {
+          originalValue.map((originalColumnName) => {
             const index = columns.findIndex(
-              col => col.name === originalColumnName,
+              (col) => col.name === originalColumnName,
             );
             return state.columns[index].name;
           }),
         ];
       } else {
-        const index = columns.findIndex(col => col.name === originalValue);
+        const index = columns.findIndex((col) => col.name === originalValue);
         if (!state.columns[index]) {
           return;
         }
