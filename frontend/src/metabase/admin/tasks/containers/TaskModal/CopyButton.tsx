@@ -12,7 +12,7 @@ export const CopyButton = ({ text }: Props) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const timeoutIdRef = useRef<number>();
 
-  const onCopyValue = () => {
+  const handleCopy = () => {
     setShowTooltip(true);
 
     window.clearTimeout(timeoutIdRef.current);
@@ -20,7 +20,7 @@ export const CopyButton = ({ text }: Props) => {
   };
 
   return (
-    <CopyToClipboard text={text} onCopy={onCopyValue}>
+    <CopyToClipboard text={text} onCopy={handleCopy}>
       <Tooltip
         label={<Text c="white" fw={700}>{t`Copied!`}</Text>}
         opened={showTooltip}
