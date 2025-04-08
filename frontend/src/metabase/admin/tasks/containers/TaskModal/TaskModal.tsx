@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router";
 import { goBack } from "react-router-redux";
 import { t } from "ttag";
 
@@ -65,7 +66,11 @@ export const TaskModal = ({ params }: TaskModalProps) => {
       </Box>
 
       <Flex gap="md" justify="space-between" mt="xl">
-        <Button leftSection={<Icon name="audit" />}>{t`See logs`}</Button>
+        <Button
+          component={Link}
+          leftSection={<Icon name="audit" />}
+          to="/admin/troubleshooting/logs"
+        >{t`See logs`}</Button>
 
         <Button
           leftSection={<Icon name="download" />}
