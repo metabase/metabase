@@ -12,6 +12,8 @@ import {
 const DELIMITERS = [",", "\t", "\n"];
 const QUOTE_CHAR = '"';
 const ESCAPE_CHAR = "\\";
+const QUOTED_CHARS = /["\\,]/;
+const ESCAPED_CHARS = /["\\]/g;
 const FIELD_PLACEHOLDER = null;
 
 type UseMultiAutocompleteProps = {
@@ -381,10 +383,9 @@ function parseCsv(rawValue: string): string[] {
   }
 }
 
-// quote, but don't escape "," as it's not required for the csv parser
 function escapeCsv(value: string): string {
-  if (/["\\,]/g.test(value)) {
-    return `${QUOTE_CHAR}${value.replaceAll(/["\\]/g, (s) => `${ESCAPE_CHAR}${s}`)}${QUOTE_CHAR}`;
+  if (QUOTED_CHARS.test(value)) {
+    return `${QUOTE_CHAR}${value.replaceAll(ESCAPED_CHARS, (s) => `${ESCAPE_CHAR}${s}`)}${QUOTE_CHAR}`;
   }
   return value;
 }
