@@ -118,7 +118,6 @@ function compileField(node: Node): Lib.ExpressionParts {
   // Slice off the leading and trailing brackets
   const name = node.token.text.slice(1, node.token.text.length - 1);
   return withNode(node, {
-    // TODO: remove this cast
     operator: "dimension" as Lib.ExpressionOperator,
     options: {},
     args: [unescapeString(name)],
@@ -131,7 +130,6 @@ function compileIdentifier(node: Node): Lib.ExpressionParts {
 
   const name = node.token.text;
   return withNode(node, {
-    // TODO: remove this cast
     operator: "dimension" as Lib.ExpressionOperator,
     options: {},
     args: [name],
