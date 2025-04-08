@@ -86,6 +86,15 @@ function getFieldRefPivotOptions(
   return { pivot_rows: rows ?? [], pivot_cols: columns ?? [] };
 }
 
+export function getNewPivotOptions(question: Question) {
+  const settings = question.settings();
+
+  return {
+    new_pivot_cols: settings["pivot.cols"] ?? [],
+    new_pivot_rows: settings["pivot.rows"] ?? [],
+  };
+}
+
 export function getPivotOptions(question: Question) {
   const query = question.query();
   const stageIndex = -1;
