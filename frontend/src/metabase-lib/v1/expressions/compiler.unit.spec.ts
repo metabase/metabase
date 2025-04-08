@@ -155,7 +155,6 @@ describe("old recursive-parser tests", () => {
     expect(expr("CASE([Total] = 1, 'A')")).toEqual([
       "case",
       [[["=", total, 1], "A"]],
-      {},
     ]);
 
     expect(expr("CASE([Total] = 1, 'A', [Total] = 2, 'B')")).toEqual([
@@ -164,7 +163,6 @@ describe("old recursive-parser tests", () => {
         [["=", total, 1], "A"],
         [["=", total, 2], "B"],
       ],
-      {},
     ]);
 
     expect(expr("CASE([Total] = 1, 'A', 'B')")).toEqual([
@@ -187,7 +185,6 @@ describe("old recursive-parser tests", () => {
     expect(expr("IF([Total] = 1, 'A')")).toEqual([
       "if",
       [[["=", total, 1], "A"]],
-      {},
     ]);
 
     expect(expr("IF([Total] = 1, 'A', [Total] = 2, 'B')")).toEqual([
@@ -196,7 +193,6 @@ describe("old recursive-parser tests", () => {
         [["=", total, 1], "A"],
         [["=", total, 2], "B"],
       ],
-      {},
     ]);
 
     expect(expr("IF([Total] = 1, 'A', 'B')")).toEqual([
