@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -46,229 +46,74 @@ export function LocalizationReferencePage() {
 
   return (
     <>
-      <Title>{t`Localization Settings Reference`}</Title>
+      <Title order={1} mb="xs">{t`Localization Settings Reference`}</Title>
       <Text mb="xl">
-        {/* eslint-disable-next-line no-literal-metabase-strings -- This is a reference implementation */}
-        {t(
-          "This page demonstrates the localization settings UI patterns for " +
-            getApplicationName() +
-            " admin interfaces.",
-        )}
+        {jt`This page demonstrates the localization settings UI patterns for ${getApplicationName()} admin interfaces.`}
       </Text>
 
-      {/* Instance Language Section */}
+      {/* General Localization Settings Card */}
       <Card p="xl" mt="xl" bg={color("bg-light")} withBorder shadow="none">
-        <Title order={2} mb="xs">{t`Default Language`}</Title>
+        <Title order={2} mb="xs">{t`General Localization Settings`}</Title>
         <Text mb="lg">
-          {/* eslint-disable-next-line no-literal-metabase-strings -- This is a reference implementation */}
-          {t(
-            "Set the default language for this " +
-              getApplicationName() +
-              " instance across the UI, system emails, and alerts.",
-          )}
+          {jt`Configure regional settings that affect how ${getApplicationName()} displays content across the application.`}
         </Text>
         <Divider mb="xl" />
 
-        <Stack gap="lg">
-          <Select
-            label={t`Instance language`}
-            description={
-              /* eslint-disable-next-line no-literal-metabase-strings -- This is a reference implementation */
-              t(
-                "The default language for all users across the " +
-                  getApplicationName() +
-                  " UI, system emails, and alerts. Users can individually override this default language from their own account settings.",
-              )
-            }
-            placeholder="Select a language"
-            defaultValue="en"
-            data={mockLocales}
-          />
-        </Stack>
-
-        <Box mt="xl">
-          <Button>{t`Save changes`}</Button>
-        </Box>
-      </Card>
-
-      {/* Timezone Section */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
-        <Title order={2} mb="xs">{t`Report Timezone`}</Title>
-        <Text mb="lg">{t`Set the default timezone for displaying dates and times in reports.`}</Text>
-        <Divider mb="xl" />
-
-        <Stack gap="lg">
-          <Select
-            label={t`Report Timezone`}
-            description={
-              <>
-                <Text
-                  size="sm"
-                  mb="xs"
-                >{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</Text>
-                <Text size="sm">{t`Not all databases support timezones, in which case this setting won't take effect.`}</Text>
-              </>
-            }
-            placeholder="Select a timezone"
-            defaultValue=""
-            data={mockTimezones}
-            searchable
-          />
-
-          <Box>
-            <Text fw={600} mb="sm">{t`Supported Databases`}</Text>
-            <Box p="md" bg={color("bg-medium")} style={{ borderRadius: "4px" }}>
-              <Stack gap="xs">
-                <Group gap="xs">
-                  <Badge>BigQuery</Badge>
-                  <Badge>Druid</Badge>
-                  <Badge>MySQL</Badge>
-                  <Badge>Oracle</Badge>
-                </Group>
-                <Group gap="xs">
-                  <Badge>PostgreSQL</Badge>
-                  <Badge>Presto</Badge>
-                  <Badge>Redshift</Badge>
-                  <Badge>Vertica</Badge>
-                </Group>
-              </Stack>
-            </Box>
-          </Box>
-        </Stack>
-
-        <Box mt="xl">
-          <Button>{t`Save changes`}</Button>
-        </Box>
-      </Card>
-
-      {/* First Day of Week Section */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
-        <Title order={2} mb="xs">{t`First Day of the Week`}</Title>
-        <Text mb="lg">{t`Set the first day of the week for calendar views and date functions.`}</Text>
-        <Divider mb="xl" />
-
-        <Select
-          label={t`First day of the week`}
-          description={t`Setting the first day of the week affects things like grouping by week and filtering in questions. This setting doesn't affect SQL queries.`}
-          defaultValue="sunday"
-          data={weekdays}
-        />
-
-        <Box mt="xl">
-          <Button>{t`Save changes`}</Button>
-        </Box>
-      </Card>
-
-      {/* Date and Time Formatting Section */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
-        <Title order={2} mb="xs">{t`Date and Time Formatting`}</Title>
-        <Text mb="lg">{t`Configure how dates and times should be displayed throughout the application.`}</Text>
-        <Divider mb="xl" />
-
         <Stack gap="xl">
+          {/* Instance Language Section */}
           <Box>
-            <Text fw={600} mb="xs">{t`Date Style`}</Text>
+            <Text fw={600} mb="xs">{t`Default Language`}</Text>
             <Text size="sm" mb="sm" c={color("text-medium")}>
-              {/* eslint-disable-next-line no-literal-metabase-strings -- This is a reference implementation */}
-              {t(
-                "How would you like dates to be displayed throughout " +
-                  getApplicationName() +
-                  "?",
-              )}
+              {jt`The default language for all users across the ${getApplicationName()} UI, system emails, and alerts.`}
             </Text>
-            <Group>
-              <Button variant="outline">MM/DD/YYYY</Button>
-              <Button variant="outline">DD/MM/YYYY</Button>
-              <Button variant="filled">YYYY-MM-DD</Button>
-            </Group>
+            <Select
+              placeholder={t`Select a language`}
+              defaultValue="en"
+              data={mockLocales}
+            />
           </Box>
 
+          <Divider />
+
+          {/* Timezone Section */}
           <Box>
-            <Text fw={600} mb="xs">{t`Date Separators`}</Text>
+            <Text fw={600} mb="xs">{t`Report Timezone`}</Text>
             <Text size="sm" mb="sm" c={color("text-medium")}>
-              {t`Choose the separator for dates.`}
+              {t`Connection timezone to use when executing queries. Defaults to system timezone.`}
             </Text>
-            <Group>
-              <Button variant="outline">/</Button>
-              <Button variant="filled">-</Button>
-              <Button variant="outline">.</Button>
-            </Group>
+            <Select
+              placeholder={t`Select a timezone`}
+              defaultValue=""
+              data={mockTimezones}
+              searchable
+            />
+            <Text size="xs" mt="xs" c={color("text-medium")}>
+              {t`Not all databases support timezones, in which case this setting won't take effect.`}
+            </Text>
           </Box>
 
-          <Switch
-            label={t`Abbreviate names of days and months`}
-            description={t`When enabled, displays "Jan" instead of "January" and "Mon" instead of "Monday".`}
-          />
+          <Divider />
 
+          {/* First Day of Week Section */}
           <Box>
-            <Text fw={600} mb="xs">{t`Time Style`}</Text>
+            <Text fw={600} mb="xs">{t`First Day of the Week`}</Text>
             <Text size="sm" mb="sm" c={color("text-medium")}>
-              {t`Choose 12 or 24-hour clock for displaying times.`}
+              {t`Setting the first day of the week affects things like grouping by week and filtering in questions. This setting doesn't affect SQL queries.`}
             </Text>
-            <Radio.Group defaultValue="12">
-              <Group mt="xs">
-                <Radio value="12" label={t`12-hour clock (e.g., 3:00 PM)`} />
-                <Radio value="24" label={t`24-hour clock (e.g., 15:00)`} />
-              </Group>
-            </Radio.Group>
+            <Select
+              placeholder={t`Select first day`}
+              defaultValue="sunday"
+              data={weekdays}
+            />
           </Box>
         </Stack>
 
-        <Box mt="xl">
+        <Group justify="right" mt="xl">
           <Button>{t`Save changes`}</Button>
-        </Box>
+        </Group>
       </Card>
 
-      {/* Number Formatting Section */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
-        <Title order={2} mb="xs">{t`Number Formatting`}</Title>
-        <Text mb="lg">{t`Configure how numbers should be displayed.`}</Text>
-        <Divider mb="xl" />
-
-        <Box>
-          <Text fw={600} mb="xs">{t`Separator Style`}</Text>
-          <Text size="sm" mb="sm" c={color("text-medium")}>
-            {t`Choose the thousands and decimal separators.`}
-          </Text>
-          <Radio.Group defaultValue="comma">
-            <Stack mt="xs">
-              <Radio
-                value="comma"
-                label={
-                  <Group gap="xs" align="center">
-                    <Text>{t`Commas for thousands`}</Text>
-                    <Badge>1,234.56</Badge>
-                  </Group>
-                }
-              />
-              <Radio
-                value="period"
-                label={
-                  <Group gap="xs" align="center">
-                    <Text>{t`Periods for thousands`}</Text>
-                    <Badge>1.234,56</Badge>
-                  </Group>
-                }
-              />
-              <Radio
-                value="space"
-                label={
-                  <Group gap="xs" align="center">
-                    <Text>{t`Spaces for thousands`}</Text>
-                    <Badge>1 234,56</Badge>
-                  </Group>
-                }
-              />
-            </Stack>
-          </Radio.Group>
-        </Box>
-
-        <Box mt="xl">
-          <Button>{t`Save changes`}</Button>
-        </Box>
-      </Card>
-
-      {/* Currency Formatting Section */}
+      {/* Format Settings Card */}
       <Card
         p="xl"
         mt="2rem"
@@ -277,52 +122,180 @@ export function LocalizationReferencePage() {
         withBorder
         shadow="none"
       >
-        <Title order={2} mb="xs">{t`Currency Formatting`}</Title>
-        <Text mb="lg">{t`Configure how currency values should be displayed.`}</Text>
+        <Title order={2} mb="xs">{t`Format Settings`}</Title>
+        <Text mb="lg">{t`Configure how dates, times, numbers, and currency values should be displayed throughout the application.`}</Text>
         <Divider mb="xl" />
 
         <Stack gap="xl">
-          <Select
-            label={t`Unit of Currency`}
-            description={t`The default currency to use when displaying monetary values.`}
-            placeholder="Select a currency"
-            defaultValue="USD"
-            data={
-              [
-                { value: "USD", label: "US Dollar ($)" },
-                { value: "EUR", label: "Euro (€)" },
-                { value: "GBP", label: "British Pound (£)" },
-                { value: "JPY", label: "Japanese Yen (¥)" },
-              ] as Array<{ value: string; label: string }>
-            }
-            searchable
-          />
-
+          {/* Date and Time Formatting Section */}
           <Box>
-            <Text fw={600} mb="xs">{t`Currency Label Style`}</Text>
-            <Radio.Group defaultValue="symbol">
-              <Stack mt="xs">
-                <Radio value="symbol" label={t`Symbol ($)`} />
-                <Radio value="code" label={t`Code (USD)`} />
-                <Radio value="name" label={t`Name (US Dollar)`} />
-              </Stack>
-            </Radio.Group>
+            <Text fw={600} mb="sm">{t`Date and Time Formatting`}</Text>
+
+            <Stack gap="lg">
+              <Box>
+                <Text
+                  fw={500}
+                  mb="xs"
+                  c={color("text-medium")}
+                >{t`Date Style`}</Text>
+                <Group>
+                  <Button variant="outline">MM/DD/YYYY</Button>
+                  <Button variant="outline">DD/MM/YYYY</Button>
+                  <Button variant="filled">YYYY-MM-DD</Button>
+                </Group>
+              </Box>
+
+              <Box>
+                <Text
+                  fw={500}
+                  mb="xs"
+                  c={color("text-medium")}
+                >{t`Date Separators`}</Text>
+                <Group>
+                  <Button variant="outline">/</Button>
+                  <Button variant="filled">-</Button>
+                  <Button variant="outline">.</Button>
+                </Group>
+              </Box>
+
+              <Group justify="space-between">
+                <Box>
+                  <Text fw={500}>{t`Abbreviate names of days and months`}</Text>
+                  <Text size="sm" c={color("text-medium")}>
+                    {t`When enabled, displays "Jan" instead of "January" and "Mon" instead of "Monday".`}
+                  </Text>
+                </Box>
+                <Switch />
+              </Group>
+
+              <Box>
+                <Text
+                  fw={500}
+                  mb="xs"
+                  c={color("text-medium")}
+                >{t`Time Style`}</Text>
+                <Radio.Group defaultValue="12">
+                  <Group mt="xs">
+                    <Radio
+                      value="12"
+                      label={t`12-hour clock (e.g., 3:00 PM)`}
+                    />
+                    <Radio value="24" label={t`24-hour clock (e.g., 15:00)`} />
+                  </Group>
+                </Radio.Group>
+              </Box>
+            </Stack>
           </Box>
 
+          <Divider />
+
+          {/* Number Formatting Section */}
           <Box>
-            <Text fw={600} mb="xs">{t`Currency Display Location`}</Text>
-            <Radio.Group defaultValue="header">
-              <Stack mt="xs">
-                <Radio value="header" label={t`In column header only`} />
-                <Radio value="value" label={t`Next to each value`} />
-              </Stack>
-            </Radio.Group>
+            <Text fw={600} mb="sm">{t`Number Formatting`}</Text>
+
+            <Box>
+              <Text
+                fw={500}
+                mb="xs"
+                c={color("text-medium")}
+              >{t`Separator Style`}</Text>
+              <Radio.Group defaultValue="comma">
+                <Stack mt="xs">
+                  <Radio
+                    value="comma"
+                    label={
+                      <Group gap="xs" align="center">
+                        <Text>{t`Commas for thousands`}</Text>
+                        <Badge>1,234.56</Badge>
+                      </Group>
+                    }
+                  />
+                  <Radio
+                    value="period"
+                    label={
+                      <Group gap="xs" align="center">
+                        <Text>{t`Periods for thousands`}</Text>
+                        <Badge>1.234,56</Badge>
+                      </Group>
+                    }
+                  />
+                  <Radio
+                    value="space"
+                    label={
+                      <Group gap="xs" align="center">
+                        <Text>{t`Spaces for thousands`}</Text>
+                        <Badge>1 234,56</Badge>
+                      </Group>
+                    }
+                  />
+                </Stack>
+              </Radio.Group>
+            </Box>
+          </Box>
+
+          <Divider />
+
+          {/* Currency Formatting Section */}
+          <Box>
+            <Text fw={600} mb="sm">{t`Currency Formatting`}</Text>
+
+            <Stack gap="lg">
+              <Box>
+                <Text
+                  fw={500}
+                  mb="xs"
+                  c={color("text-medium")}
+                >{t`Unit of Currency`}</Text>
+                <Select
+                  placeholder={t`Select a currency`}
+                  defaultValue="USD"
+                  data={
+                    [
+                      { value: "USD", label: "US Dollar ($)" },
+                      { value: "EUR", label: "Euro (€)" },
+                      { value: "GBP", label: "British Pound (£)" },
+                      { value: "JPY", label: "Japanese Yen (¥)" },
+                    ] as Array<{ value: string; label: string }>
+                  }
+                  searchable
+                />
+              </Box>
+
+              <Box>
+                <Text
+                  fw={500}
+                  mb="xs"
+                  c={color("text-medium")}
+                >{t`Currency Label Style`}</Text>
+                <Radio.Group defaultValue="symbol">
+                  <Stack mt="xs">
+                    <Radio value="symbol" label={t`Symbol ($)`} />
+                    <Radio value="code" label={t`Code (USD)`} />
+                    <Radio value="name" label={t`Name (US Dollar)`} />
+                  </Stack>
+                </Radio.Group>
+              </Box>
+
+              <Box>
+                <Text
+                  fw={500}
+                  mb="xs"
+                  c={color("text-medium")}
+                >{t`Currency Display Location`}</Text>
+                <Radio.Group defaultValue="header">
+                  <Stack mt="xs">
+                    <Radio value="header" label={t`In column header only`} />
+                    <Radio value="value" label={t`Next to each value`} />
+                  </Stack>
+                </Radio.Group>
+              </Box>
+            </Stack>
           </Box>
         </Stack>
 
-        <Box mt="xl">
+        <Group justify="right" mt="xl">
           <Button>{t`Save changes`}</Button>
-        </Box>
+        </Group>
       </Card>
     </>
   );

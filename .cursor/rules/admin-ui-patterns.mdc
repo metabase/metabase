@@ -1,11 +1,6 @@
 ---
-description: 
-globs: 
-alwaysApply: false
----
- ---
 description: Metabase Admin UI design patterns and styling conventions
-globs: 
+globs:
   - "**/*.tsx"
   - "**/*.jsx"
 ---
@@ -71,7 +66,7 @@ Button Standards:
 - Secondary actions: `<Button variant="subtle">Action</Button>`
 - Tertiary actions: `<Button variant="outline">Action</Button>`
 - Danger actions: `<Button color={color("danger")}>Action</Button>`
-- Right-align form submission buttons
+- Right-align form submission buttons with `<Group justify="right" mt="xl">`
 
 Danger Zone Pattern:
 - Use title with c={color("danger")} for danger section headers
@@ -86,6 +81,15 @@ Color Usage:
 - success for positive status indicators
 - error/danger for negative status/destructive actions
 
+Settings Grouping Guidelines:
+- Group settings by functional relationship (e.g., general regional settings vs formatting settings)
+- Keep card sections focused on a single conceptual area
+- Limit each card to a maximum of 8 settings
+- Use dividers between related sub-sections within a card
+- Each card should have its own save button that applies to all settings in that card
+- Multi-section cards should use headings with Text fw={600} mb="sm" for each section
+- Save buttons should be right-aligned and placed at the bottom of each card
+
 examples:
   # Example of proper card pattern
   - input: |
@@ -96,7 +100,7 @@ examples:
         <Divider />
         <Box>Content goes here</Box>
       </Card>
-      
+
       // Good: Following the pattern
       <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Card Title`}</Title>
@@ -105,7 +109,7 @@ examples:
         <Box p="md">Content goes here</Box>
       </Card>
     output: "Correctly styled card following admin UI patterns"
-  
+
   # Example of proper toggle pattern
   - input: |
       // Bad: Inconsistent toggle layout
@@ -114,7 +118,7 @@ examples:
         <Text size="sm">Feature description</Text>
         <Switch />
       </Box>
-      
+
       // Good: Following the pattern
       <Group justify="space-between">
         <Box>
@@ -135,7 +139,7 @@ examples:
         <TextInput label="Field 2" />
         <Button>Submit</Button>
       </Box>
-      
+
       // Good: Structured form layout
       <Stack gap="lg">
         <TextInput
@@ -154,6 +158,79 @@ examples:
         </Group>
       </Stack>
     output: "Correctly structured form following admin UI patterns"
+
+  # Example of settings grouping
+  - input: |
+      // Bad: Too many unrelated settings in one card
+      <Card p="xl" bg={color("bg-light")} withBorder shadow="none">
+        <Title order={2} mb="xs">{t`Settings`}</Title>
+        <Text mb="lg">{t`Configure various settings`}</Text>
+        <Divider mb="xl" />
+        <Stack gap="lg">
+          <Select label={t`Language`} data={languages} />
+          <TextInput label={t`Site Name`} />
+          <NumberInput label={t`Query Timeout`} />
+          <Select label={t`Date Format`} data={dateFormats} />
+          <Switch label={t`Enable Analytics`} />
+          <Select label={t`Currency`} data={currencies} />
+          <ColorInput label={t`Theme Color`} />
+          <Select label={t`Default Dashboard`} data={dashboards} />
+          <Select label={t`Email Service`} data={emailServices} />
+          <Group justify="right" mt="xl">
+            <Button>{t`Save changes`}</Button>
+          </Group>
+        </Stack>
+      </Card>
+
+      // Good: Properly grouped settings in separate cards
+      <Card p="xl" bg={color("bg-light")} withBorder shadow="none">
+        <Title order={2} mb="xs">{t`General Settings`}</Title>
+        <Text mb="lg">{t`Configure basic site settings`}</Text>
+        <Divider mb="xl" />
+        <Stack gap="lg">
+          <TextInput label={t`Site Name`} />
+          <Select label={t`Language`} data={languages} />
+          <Switch label={t`Enable Analytics`} />
+          <ColorInput label={t`Theme Color`} />
+        </Stack>
+        <Group justify="right" mt="xl">
+          <Button>{t`Save changes`}</Button>
+        </Group>
+      </Card>
+
+      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+        <Title order={2} mb="xs">{t`Query Settings`}</Title>
+        <Text mb="lg">{t`Configure how queries are executed`}</Text>
+        <Divider mb="xl" />
+        <Stack gap="lg">
+          <NumberInput label={t`Query Timeout`} />
+          <Select label={t`Default Dashboard`} data={dashboards} />
+        </Stack>
+        <Group justify="right" mt="xl">
+          <Button>{t`Save changes`}</Button>
+        </Group>
+      </Card>
+
+      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+        <Title order={2} mb="xs">{t`Formatting Settings`}</Title>
+        <Text mb="lg">{t`Configure date and currency formats`}</Text>
+        <Divider mb="xl" />
+        <Stack gap="xl">
+          <Box>
+            <Text fw={600} mb="sm">{t`Date Format`}</Text>
+            <Select data={dateFormats} />
+          </Box>
+          <Divider />
+          <Box>
+            <Text fw={600} mb="sm">{t`Currency`}</Text>
+            <Select data={currencies} />
+          </Box>
+        </Stack>
+        <Group justify="right" mt="xl">
+          <Button>{t`Save changes`}</Button>
+        </Group>
+      </Card>
+    output: "Correctly grouped settings following admin UI patterns"
 
 metadata:
   priority: high
