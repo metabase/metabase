@@ -229,7 +229,6 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     cy.get("@lines").eq(4).should("have.text", "}");
 
     cy.log("copy button");
-    // mock clipboardData so that copy-to-clipboard doesn't use window.prompt, pausing the tests
     cy.window().then((window) => {
       window.clipboardData = {
         setData: cy.stub(),
@@ -245,7 +244,7 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     cy.button(/Download/).click();
     cy.readFile(`cypress/downloads/task-${task.id}.json`).should(
       "deep.equal",
-      // Ideally we'd be comparing strings here, but Cypress auto-parses JSON files
+      // Ideally, we would compare raw strings here, but Cypress automatically parses JSON files
       task.task_details,
     );
   });
