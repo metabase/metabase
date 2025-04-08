@@ -1,4 +1,5 @@
 import type {
+  ActionType,
   CardId,
   ChannelApiResponse,
   CreateAlertNotificationRequest,
@@ -114,7 +115,6 @@ export const getDefaultQuestionAlertRequest = ({
     subscriptions: [
       {
         type: "notification-subscription/cron",
-        event_name: null,
         cron_schedule: DEFAULT_ALERT_CRON_SCHEDULE,
         ui_display_type: "cron/builder",
       },
@@ -125,6 +125,7 @@ export const getDefaultQuestionAlertRequest = ({
 export const getDefaultTableNotificationRequest = ({
   tableId,
   eventName,
+  action,
   currentUserId,
   channelSpec,
   hookChannels,
@@ -132,6 +133,7 @@ export const getDefaultTableNotificationRequest = ({
 }: {
   tableId: TableId;
   eventName: SystemEvent;
+  action: ActionType;
   currentUserId: UserId;
   channelSpec: ChannelApiResponse;
   hookChannels: NotificationChannel[];
@@ -139,7 +141,11 @@ export const getDefaultTableNotificationRequest = ({
 }): CreateTableNotificationRequest => {
   return {
     payload_type: "notification/system-event",
-    payload: null,
+    payload: {
+      event_name: eventName,
+      table_id: tableId,
+      action,
+    },
     payload_id: null,
     handlers: getDefaultChannelConfig({
       channelSpec,
@@ -147,13 +153,6 @@ export const getDefaultTableNotificationRequest = ({
       currentUserId,
       userCanAccessSettings,
     }),
-    condition: ["=", ["context", "payload", "event_info", "table_id"], tableId],
-    subscriptions: [
-      {
-        type: "notification-subscription/system-event",
-        event_name: eventName,
-        table_id: tableId,
-      },
-    ],
+    condition: ["=", ["context", "payload", "result", "table_id"], tableId],
   };
 };

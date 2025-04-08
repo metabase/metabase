@@ -26,10 +26,10 @@
 (deftest send-notification!*-test
   (testing "sending a notification will call render on all of its handlers"
     (notification.tu/with-notification-testing-setup!
-      (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
-                     :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")]
+      (mt/with-temp [:model/Channel chn-1 notification.tu/default-can-connect-channel
+                     :model/Channel chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")]
         (let [n                 (models.notification/create-notification!
-                                 {:payload_type :notification/system-event}
+                                 {:payload_type :notification/testing}
                                  nil
                                  [{:channel_type notification.tu/test-channel-type
                                    :channel_id   (:id chn-1)
@@ -45,7 +45,7 @@
                                                    :event_topic :event/test})
               expected-notification-payload (mt/malli=?
                                              [:map
-                                              [:payload_type [:= :notification/system-event]]
+                                              [:payload_type [:= :notification/testing]]
                                               [:context :map]
                                               [:payload :map]])
               renders           (atom [])]

@@ -12,6 +12,7 @@ import {
 import { getUser } from "metabase/selectors/user";
 import { Box, Group, Text } from "metabase/ui";
 import type {
+  ActionType,
   NotificationChannel,
   SystemEvent,
   TableNotification,
@@ -45,7 +46,6 @@ export const TableNotificationsListItem = ({
 
   const { emailHandler, slackHandler, hookHandlers } =
     getNotificationHandlersGroupedByTypes(notification.handlers);
-  const subscription = notification.subscriptions[0];
 
   const handleEdit = () => {
     if (canEdit) {
@@ -85,7 +85,10 @@ export const TableNotificationsListItem = ({
       onMouseLeave={handleMouseLeave}
     >
       <Text className={S.itemTitle} size="md" lineClamp={1} fw="bold">
-        {formatTitle(subscription?.event_name)}
+        {formatTitle(
+          notification.payload.event_name,
+          notification.payload.action,
+        )}
       </Text>
       <Group gap="xs" align="center" c="text-secondary">
         {user && (
@@ -130,13 +133,20 @@ export const TableNotificationsListItem = ({
   );
 };
 
-const formatTitle = (sendCondition: SystemEvent): string => {
-  switch (sendCondition) {
-    case "event/data-editing-row-create":
-      return t`Notify when new record is created`;
-    case "event/data-editing-row-update":
-      return t`Notify when record is updated`;
-    case "event/data-editing-row-delete":
-      return t`Notify when record is deleted`;
+const formatTitle = (eventName: SystemEvent, action: ActionType): string => {
+  switch (eventName) {
+    case "event/action.success":
+      switch (action) {
+        case "row/create":
+          return t`Notify when new record is created`;
+        case "row/update":
+          return t`Notify when record is updated`;
+        case "row/delete":
+          return t`Notify when record is deleted`;
+        default:
+          return eventName;
+      }
+    default:
+      return t`Notification`;
   }
 };

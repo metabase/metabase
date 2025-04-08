@@ -189,7 +189,6 @@
                                  :payload_type  "notification/card"
                                  :subscriptions [{:notification_id (:id created-notification)
                                                   :type "notification-subscription/cron"
-                                                  :event_name nil
                                                   :cron_schedule "0 0 0 * * ?"}]
                                  :handlers [{:recipients [{:id (mt/malli=? int?)
                                                            :type "notification-recipient/user"
@@ -354,11 +353,9 @@
                                        :active true}
                             :new      {:subscriptions [{:notification_id (:id notification)
                                                         :type "notification-subscription/cron"
-                                                        :event_name nil
                                                         :cron_schedule "0 0 0 * * ?"
                                                         :ui_display_type nil
-                                                        :table_id nil
-                                                        :table nil}]
+                                                        :table_id nil}]
                                        :active false}}}
                  (mt/latest-audit-log-entry))))))))
 
@@ -464,10 +461,10 @@
           (get-notification third-user-id 403))))))
 
 (deftest get-system-event-permissions-test
-  (notification.tu/with-temporary-event-topics! [:mb-test/permissions]
+  (notification.tu/with-temporary-event-topics! [:event/test-permissions]
     (notification.tu/with-system-event-notification!
-      [notification {:event :mb-test/permissions
-                     :notification {:creator_id (mt/user->id :rasta)}}]
+      [notification {:notification-system-event {:event_name :event/test-permissions}
+                     :notification              {:creator_id (mt/user->id :rasta)}}]
       (let [get-notification (fn [user-or-id expected-status]
                                (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
         (testing "admin can view"
@@ -841,11 +838,13 @@
 (deftest list-filter-table-notifications-test
   (let [table-id (mt/id :categories)]
     (notification.tu/with-system-event-notification!
-      [{noti-id-1 :id} {:subscriptions [{:event_name :event/data-editing-row-create
-                                         :table_id   table-id}]}]
+      [{noti-id-1 :id} {:notification-system-event {:event_name :event/action.success
+                                                    :action     :row/create
+                                                    :table_id   table-id}}]
       (notification.tu/with-system-event-notification!
-        [{noti-id-2 :id} {:subscriptions [{:event_name :event/data-editing-row-create
-                                           :table_id   table-id}]}]
+        [{noti-id-2 :id} {:notification-system-event {:event_name :event/action.success
+                                                      :action :row/create
+                                                      :table_id   table-id}}]
         (testing "returns notifications for the given table"
           (is (= #{noti-id-1 noti-id-2}
                  (list-notification-ids :crowberto #{noti-id-1 noti-id-2}
@@ -933,19 +932,22 @@
                                                                      :handlers     [{:channel_type "channel/email"
                                                                                      :recipients   [{:type    :notification-recipient/user
                                                                                                      :user_id (mt/user->id :lucky)}]}]}]
-          (let [[email] (notification.tu/with-mock-inbox-email!
-                          (with-send-messages-sync!
-                            (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
+          (let [[email :as emails] (notification.tu/with-mock-inbox-email!
+                                     (with-send-messages-sync!
+                                       (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
                 a-href (format "<a href=\".*/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
-            (testing "sends unsubscribe confirmation email"
-              (is (=? {:bcc     #{"lucky@metabase.com"}
-                       :subject "You unsubscribed from an alert"
-                       :body    [{"You’re no longer receiving alerts about" true
-                                  a-href                                    true}]}
-                      (mt/summarize-multipart-single-email email
-                                                           #"You’re no longer receiving alerts about"
-                                                           (re-pattern a-href)))))))))))
+            (testing (format "\nNotification: \n%s\n" notification)
+              (testing (format "\nEmail: \n%s\n" email)
+                (is (= 1 (count emails)))
+                (testing "sends unsubscribe confirmation email"
+                  (is (=? {:bcc     #{"lucky@metabase.com"}
+                           :subject "You unsubscribed from an alert"
+                           :body    [{"You’re no longer receiving alerts about" true
+                                      a-href                                    true}]}
+                          (mt/summarize-multipart-single-email email
+                                                               #"You’re no longer receiving alerts about"
+                                                               (re-pattern a-href)))))))))))))
 
 (deftest unsubscribe-notification-audit-test
   (mt/with-model-cleanup [:model/Notification]
@@ -1048,19 +1050,19 @@
     (let [table-id     (mt/id :orders)
           notification (mt/user-http-request :crowberto :post 200 "notification"
                                              {:payload_type :notification/system-event
+                                              :payload      {:table_id   table-id
+                                                             :action     :row/create
+                                                             :event_name :event/action.success}
                                               :creator_id   (mt/user->id :crowberto)
                                               :condition    [:= [:context "event_info" "table_id"] table-id]
-                                              :handlers     [@notification.tu/default-email-handler]
-                                              :subscriptions [{:type       :notification-subscription/system-event
-                                                               :table_id   table-id
-                                                               :event_name :event/data-editing-row-create}]})]
+                                              :handlers     [@notification.tu/default-email-handler]})]
       (testing "can create a table notification"
         (is (=? {:condition     ["=" ["context" "event_info" "table_id"] table-id]
+                 :payload       {:event_name "event/action.success"
+                                 :table_id   table-id
+                                 :action     "row/create"}
                  :creator_id    (mt/user->id :crowberto)
-                 :payload_type  "notification/system-event"
-                 :subscriptions [{:event_name "event/data-editing-row-create"
-                                  :table_id   table-id
-                                  :type       "notification-subscription/system-event"}]}
+                 :payload_type  "notification/system-event"}
                 notification))
 
         (testing "can update its condition"
@@ -1071,3 +1073,10 @@
           (is (=? [{:channel_type "channel/slack"}]
                   (:handlers (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
                                                    (assoc notification :handlers [notification.tu/default-slack-handler]))))))))))
+
+(deftest notification-payload-card-test
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders {:limit 1})}]
+    (mt/user-http-request :crowberto :post 200 "notification/payload"
+                          {:payload_type :notification/card
+                           :payload      {:card_id card-id}
+                           :creator_id   (mt/user->id :crowberto)})))

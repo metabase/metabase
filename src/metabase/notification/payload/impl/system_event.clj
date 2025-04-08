@@ -32,6 +32,7 @@
 
 (mu/defmethod notification.payload/payload :notification/system-event
   [notification-info :- ::notification.payload/Notification]
-  (let [payload                          (:payload notification-info)
-        {:keys [event_topic event_info]} payload]
-    (assoc payload :custom (custom-payload event_topic event_info))))
+  (let [event-info (:event_info notification-info)]
+    (assoc event-info
+           :event_name (-> notification-info :payload :event_name)
+           :custom (custom-payload (-> notification-info :payload :event_name) event-info))))

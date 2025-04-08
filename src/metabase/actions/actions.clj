@@ -5,6 +5,8 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
+   [metabase.events.notification :as events.notification]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.actions :as lib.schema.actions]
@@ -14,6 +16,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
@@ -198,6 +201,48 @@
           (qp.perms/check-query-action-permissions* arg-map))
         (driver/with-driver driver
           (perform-action!* driver action db arg-map))))))
+
+(defn- publish-action-invocation! [invocation-id user-id action-kw args-map]
+  (->> {:action        action-kw
+        :invocation_id invocation-id
+        :actor_id      user-id
+        :args          args-map}
+       (events/publish-event! :event/action.invoked)))
+
+(defn publish-action-success!
+  "Publish an action success event. This is a success event for the action that was invoked."
+  [invocation-id user-id action-kw result]
+  (->> {:action        action-kw
+        :invocation_id invocation-id
+        :actor_id      user-id
+        :result        result}
+       (events/publish-event! :event/action.success)))
+
+(defn- publish-action-failure! [invocation-id user-id action-kw msg info]
+  (->> {:action        action-kw
+        :invocation_id invocation-id
+        :actor_id      user-id
+        :error         (:error info)
+        :message       msg
+        :info          info}
+       (events/publish-event! :event/action.failure)))
+
+(defn perform-with-system-events!
+  "Eventually, all calls to perform-action! should go through this... Proceeding with caution."
+  [action-kw args-map & {:as opts}]
+  (let [invocation-id (nano-id/nano-id)
+        user-id       api/*current-user-id*]
+    (publish-action-invocation! invocation-id user-id action-kw args-map)
+    (try
+      (let [result (perform-action! action-kw args-map opts)]
+        (publish-action-success! invocation-id user-id action-kw result)
+        result)
+      (catch Exception e
+        (let [msg  (ex-message e)
+              info (ex-data e)
+              info (with-meta info (merge (meta info) {:exception e}))]
+          (publish-action-failure! invocation-id user-id action-kw msg info)
+          (throw e))))))
 
 ;;;; Action definitions.
 

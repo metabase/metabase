@@ -26,6 +26,7 @@ import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Button, Flex, Modal, Stack } from "metabase/ui";
 import type {
+  ActionType,
   CreateTableNotificationRequest,
   NotificationHandler,
   SystemEvent,
@@ -34,47 +35,73 @@ import type {
   UpdateTableNotificationRequest,
 } from "metabase-types/api";
 
-import type { TableNotificationTriggerOption } from "./types";
+type TableNotificationTriggerOption = {
+  value: {
+    eventName: SystemEvent;
+    action: ActionType;
+  };
+  label: string;
+  action: ActionType;
+};
 
 // Template loading functions
-const loadTemplate = async (event: SystemEvent): Promise<any> => {
-  switch (event) {
-    case "event/data-editing-row-create":
-      return import(
-        "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/insert.json"
-      );
-    case "event/data-editing-row-update":
-      return import(
-        "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/update.json"
-      );
-    case "event/data-editing-row-delete":
-      return import(
-        "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/delete.json"
-      );
-    default:
-      return null;
+const loadTemplate = async (
+  event: SystemEvent,
+  action?: ActionType,
+): Promise<any> => {
+  if (event === "event/action.success" && action) {
+    switch (action) {
+      case "row/create":
+        return import(
+          "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/insert.json"
+        );
+      case "row/update":
+        return import(
+          "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/update.json"
+        );
+      case "row/delete":
+        return import(
+          "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/delete.json"
+        );
+      default:
+        return null;
+    }
   }
+  return null;
 };
 
 // Format JSON for tooltip display
 const formatJsonForTooltip = (json: any) => {
   return json ? JSON.stringify(json, null, 2) : "";
 };
+
 const NOTIFICATION_TRIGGER_OPTIONS_MAP: Record<
-  SystemEvent,
+  ActionType,
   TableNotificationTriggerOption
 > = {
-  "event/data-editing-row-create": {
-    value: "event/data-editing-row-create",
+  "row/create": {
+    value: {
+      eventName: "event/action.success",
+      action: "row/create",
+    },
     label: t`When new records are created`,
+    action: "row/create",
   },
-  "event/data-editing-row-update": {
-    value: "event/data-editing-row-update",
+  "row/update": {
+    value: {
+      eventName: "event/action.success",
+      action: "row/update",
+    },
     label: t`When any cell changes it's value`,
+    action: "row/update",
   },
-  "event/data-editing-row-delete": {
-    value: "event/data-editing-row-delete",
+  "row/delete": {
+    value: {
+      eventName: "event/action.success",
+      action: "row/delete",
+    },
     label: t`When a record is deleted`,
+    action: "row/delete",
   },
 };
 
@@ -113,14 +140,16 @@ export const CreateOrEditTableNotificationModal = ({
   const [templateJson, setTemplateJson] = useState<string>("");
 
   const isEditMode = !!notification;
-  const subscription = requestBody?.subscriptions[0];
 
-  // Load JSON template when event_name changes
+  // Load JSON template when event_name and action change in the payload
   useEffect(() => {
     const loadTemplateForEvent = async () => {
-      if (subscription?.event_name) {
+      if (requestBody?.payload?.event_name) {
         try {
-          const templateModule = await loadTemplate(subscription.event_name);
+          const templateModule = await loadTemplate(
+            requestBody.payload.event_name,
+            requestBody.payload.action,
+          );
           const formattedJson = formatJsonForTooltip(templateModule.default);
           setTemplateJson(formattedJson);
         } catch (error) {
@@ -133,7 +162,7 @@ export const CreateOrEditTableNotificationModal = ({
     };
 
     loadTemplateForEvent();
-  }, [subscription?.event_name]);
+  }, [requestBody?.payload?.event_name, requestBody?.payload?.action]);
 
   const { data: channelSpec, isLoading: isLoadingChannelInfo } =
     useGetChannelInfoQuery();
@@ -147,20 +176,26 @@ export const CreateOrEditTableNotificationModal = ({
 
   const triggerOptions = useMemo(
     () =>
-      Object.keys(NOTIFICATION_TRIGGER_OPTIONS_MAP).map(
-        (trigger) => NOTIFICATION_TRIGGER_OPTIONS_MAP[trigger as SystemEvent],
+      (["row/create", "row/update", "row/delete"] as ActionType[]).map(
+        (action) => ({
+          value: action,
+          label: NOTIFICATION_TRIGGER_OPTIONS_MAP[action].label,
+          option: NOTIFICATION_TRIGGER_OPTIONS_MAP[action],
+        }),
       ),
     [],
   );
 
   useEffect(() => {
     if (tableId && channelSpec && user && hookChannels && !requestBody) {
+      const defaultOption = NOTIFICATION_TRIGGER_OPTIONS_MAP["row/create"];
       setRequestBody(
         isEditMode
           ? { ...notification }
           : getDefaultTableNotificationRequest({
               tableId,
-              eventName: triggerOptions[0].value,
+              eventName: defaultOption.value.eventName,
+              action: defaultOption.value.action,
               currentUserId: user.id,
               channelSpec,
               hookChannels,
@@ -234,7 +269,7 @@ export const CreateOrEditTableNotificationModal = ({
     );
   }
 
-  if (!requestBody || !subscription) {
+  if (!requestBody || !requestBody.payload) {
     return null;
   }
 
@@ -265,18 +300,21 @@ export const CreateOrEditTableNotificationModal = ({
             <AutoWidthSelect
               data-testid="notification-event-select"
               data={triggerOptions}
-              value={subscription.event_name}
+              value={requestBody.payload.action}
               onChange={(value) => {
                 if (value) {
-                  setRequestBody({
-                    ...requestBody,
-                    subscriptions: [
-                      {
-                        ...subscription,
-                        event_name: value,
+                  const selectedOption =
+                    NOTIFICATION_TRIGGER_OPTIONS_MAP[value as ActionType];
+                  if (selectedOption) {
+                    setRequestBody({
+                      ...requestBody,
+                      payload: {
+                        ...requestBody.payload,
+                        event_name: selectedOption.value.eventName,
+                        action: selectedOption.value.action,
                       },
-                    ],
-                  });
+                    });
+                  }
                 }
               }}
             />
