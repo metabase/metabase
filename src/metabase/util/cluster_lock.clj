@@ -18,8 +18,7 @@
   (let [msg (ex-message err)]
     (boolean (or (re-find #"ERROR: canceling statement due to user request" msg) ;; error text on postgres
                  (re-find #"Query timed out" msg) ;; error text on mysql
-                 (re-find #"Query execution was interrupted" msg) ;;error text on mariadb
-                 ))))
+                 (re-find #"Query execution was interrupted" msg))))) ;; error text on mariadb
 
 (def ^:private default-retry-config
   {:max-attempts 5
@@ -64,12 +63,7 @@
             [:map
              [:lock-name                     :keyword]
              [:timeout-seconds   {:optional true} :int]
-             [:retry-config      {:optional true} [:map
-                                                   [:max-attempts            {:optional true} :int]
-                                                   [:initial-interval-millis {:optional true} :int]
-                                                   [:multiplier              {:optional true} :int]
-                                                   [:randomization-factor    {:optional true} :int]
-                                                   [:max-interval-millis     {:optional true} :int]]]]]
+             [:retry-config      {:optional true} [:ref ::retry/retry-overrides]]]]
    thunk :- ifn?]
   (cond
     (= (mdb/db-type) :h2) (thunk) ;; h2 does not respect the query timeout when taking
