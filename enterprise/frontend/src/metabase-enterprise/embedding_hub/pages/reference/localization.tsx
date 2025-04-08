@@ -16,7 +16,19 @@ import {
   Title,
 } from "metabase/ui";
 
+import type { ColorScheme } from "../../color-context";
+import { useColors } from "../../color-context";
+
 export function LocalizationReferencePage() {
+  const { cardBackground } = useColors();
+
+  // Get the actual background color based on selection
+  const getBackgroundColor = (selection: ColorScheme) => {
+    return selection === "white" ? "white" : color("bg-light");
+  };
+
+  const cardBg = getBackgroundColor(cardBackground);
+
   // Mock data to simulate available locales and timezones
   const mockLocales = [
     { value: "en", label: "English" },
@@ -51,7 +63,7 @@ export function LocalizationReferencePage() {
       </Text>
 
       {/* General Localization Settings Card */}
-      <Card p="xl" mt="xl" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="xl" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`General Localization Settings`}</Title>
         <Text mb="lg">
           {jt`Configure regional settings that affect how content is localized across the application.`}
@@ -117,7 +129,7 @@ export function LocalizationReferencePage() {
         p="xl"
         mt="2rem"
         mb="2rem"
-        bg={color("bg-light")}
+        bg={cardBg}
         withBorder
         shadow="none"
       >

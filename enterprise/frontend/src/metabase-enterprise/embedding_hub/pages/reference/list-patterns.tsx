@@ -17,7 +17,19 @@ import {
   Title,
 } from "metabase/ui";
 
+import type { ColorScheme } from "../../color-context";
+import { useColors } from "../../color-context";
+
 export function ListPatternsReferencePage() {
+  const { cardBackground } = useColors();
+
+  // Get the actual background color based on selection
+  const getBackgroundColor = (selection: ColorScheme) => {
+    return selection === "white" ? "white" : color("bg-light");
+  };
+
+  const cardBg = getBackgroundColor(cardBackground);
+
   // Mock data for user list example
   const mockUsers = [
     {
@@ -76,7 +88,7 @@ export function ListPatternsReferencePage() {
       <Text mb="xl">{t`This page demonstrates various list patterns and table layouts for displaying collections of items, such as users, databases, or dashboards.`}</Text>
 
       {/* List Actions and Filtering Pattern */}
-      <Card p="xl" mt="xl" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="xl" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`List Actions and Filtering Pattern`}</Title>
         <Text mb="lg">{t`Standard patterns for positioning action buttons and filters at the top of a list.`}</Text>
         <Divider mb="xl" />
@@ -256,7 +268,7 @@ export function ListPatternsReferencePage() {
       </Card>
 
       {/* Standard Table List Pattern */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="2rem" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Standard Table List Pattern`}</Title>
         <Text mb="lg">{t`The standard pattern for displaying tabular data with multiple columns and actions.`}</Text>
         <Divider mb="xl" />
@@ -351,7 +363,7 @@ export function ListPatternsReferencePage() {
       </Card>
 
       {/* Card List Pattern */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="2rem" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Card List Pattern`}</Title>
         <Text mb="lg">{t`An alternative pattern that displays items as individual cards for more visual emphasis.`}</Text>
         <Divider mb="xl" />
@@ -451,7 +463,7 @@ export function ListPatternsReferencePage() {
       </Card>
 
       {/* Empty States Pattern */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="2rem" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Empty States Pattern`}</Title>
         <Text mb="lg">{t`How to display empty lists in a helpful way.`}</Text>
         <Divider mb="xl" />
@@ -514,7 +526,7 @@ export function ListPatternsReferencePage() {
       </Card>
 
       {/* Bulk Actions Pattern */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="2rem" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Bulk Actions Pattern`}</Title>
         <Text mb="lg">{t`How to handle operations on multiple items at once.`}</Text>
         <Divider mb="xl" />

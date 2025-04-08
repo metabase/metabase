@@ -21,21 +21,33 @@ import {
   Title,
 } from "metabase/ui";
 
+import type { ColorScheme } from "../../color-context";
+import { useColors } from "../../color-context";
+
 export function ReferencePage() {
+  const { cardBackground } = useColors();
+
+  // Get the actual background color based on selection
+  const getBackgroundColor = (selection: ColorScheme) => {
+    return selection === "white" ? "white" : color("bg-light");
+  };
+
+  const cardBg = getBackgroundColor(cardBackground);
+
   return (
     <>
       <Title>{t`Admin UI Patterns`}</Title>
       <Text mb="xl">{t`This page serves as a reference for Metabase admin UI design patterns to maintain consistency across the application.`}</Text>
 
       {/* Card Design Pattern */}
-      <Card p="xl" mt="xl" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="xl" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Card Design Pattern`}</Title>
         <Text mb="lg">{t`The standard card component used throughout the admin interface with consistent styling.`}</Text>
         <Divider mb="md" />
         <Box p="md">
           <Text fw={600} mb="xs">{t`Specifications:`}</Text>
           <ul>
-            <li>{t`White background`}</li>
+            <li>{t`Configurable background color (via Color Tester)`}</li>
             <li>{t`Light gray border (1px)`}</li>
             <li>{t`Border radius: 4-6px`}</li>
             <li>{t`Internal padding: 24px`}</li>
@@ -46,7 +58,7 @@ export function ReferencePage() {
       </Card>
 
       {/* Site Information Section Example */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="2rem" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Site Information Section`}</Title>
         <Text mb="lg">{t`A common section for site-wide configuration.`}</Text>
         <Divider mb="xl" />
@@ -80,7 +92,7 @@ export function ReferencePage() {
       </Card>
 
       {/* Toggle Settings Section Example */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="2rem" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Toggle Settings Pattern`}</Title>
         <Text mb="lg">{t`Used for enabling or disabling features.`}</Text>
         <Divider mb="xl" />
@@ -119,7 +131,7 @@ export function ReferencePage() {
       </Card>
 
       {/* Form Layout Pattern */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="2rem" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Form Layout Pattern`}</Title>
         <Text mb="lg">{t`Mixed form elements combined in a logical layout.`}</Text>
         <Divider mb="xl" />
@@ -197,7 +209,7 @@ export function ReferencePage() {
       </Card>
 
       {/* List Display Pattern */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="2rem" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`List Display Pattern`}</Title>
         <Text mb="lg">{t`Display lists of items with status indicators and actions.`}</Text>
         <Divider mb="xl" />
@@ -261,7 +273,7 @@ export function ReferencePage() {
       </Card>
 
       {/* Search and Filter Pattern */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="2rem" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Search and Filter Pattern`}</Title>
         <Text mb="lg">{t`Controls for searching and filtering content.`}</Text>
         <Divider mb="xl" />
@@ -347,7 +359,7 @@ export function ReferencePage() {
       </Card>
 
       {/* Dropdown Selection Pattern */}
-      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="2rem" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs">{t`Selection Controls Pattern`}</Title>
         <Text mb="lg">{t`Pattern for selection inputs and dropdowns.`}</Text>
         <Divider mb="xl" />
@@ -390,7 +402,7 @@ export function ReferencePage() {
       </Card>
 
       {/* Danger Zone Pattern */}
-      <Card p="xl" mt="2rem" mb="2rem" bg={color("bg-light")} withBorder shadow="none">
+      <Card p="xl" mt="2rem" mb="2rem" bg={cardBg} withBorder shadow="none">
         <Title order={2} mb="xs" c={color("danger")}>{t`Danger Zone Pattern`}</Title>
         <Text mb="lg">{t`Used for destructive actions that should be handled with care.`}</Text>
         <Divider mb="xl" />

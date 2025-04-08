@@ -5,6 +5,7 @@ import { Route } from "metabase/hoc/Title";
 import { EmbeddingLayout } from "./layout";
 import {
   AppearancePage,
+  ColorTesterPage,
   InteractiveSettingsPage,
   ListPatternsReferencePage,
   LocalizationReferencePage,
@@ -29,6 +30,7 @@ export const getRoutes = () => (
       <Route path="ui-patterns" component={ReferencePage} />
       <Route path="localization" component={LocalizationReferencePage} />
       <Route path="list-patterns" component={ListPatternsReferencePage} />
+      <Route path="color-tester" component={ColorTesterPage} />
     </Route>
   </Route>
 );

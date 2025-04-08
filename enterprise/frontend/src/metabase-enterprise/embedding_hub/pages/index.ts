@@ -5,5 +5,6 @@ export {
   LocalizationReferencePage,
   ReferencePage,
   ListPatternsReferencePage,
+  ColorTesterPage,
 } from "./reference";
 export { StaticEmbeddingPage } from "./static";

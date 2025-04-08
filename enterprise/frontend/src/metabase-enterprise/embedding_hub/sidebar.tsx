@@ -93,6 +93,15 @@ export function Sidebar() {
             location.pathname,
           )}
         />
+        <NavLink
+          variant="admin"
+          label="Color Tester"
+          component={Link}
+          to="/admin/embedding/reference/color-tester"
+          active={/^\/admin\/embedding\/reference\/color-tester/.test(
+            location.pathname,
+          )}
+        />
       </NavLink>
     </>
   );
