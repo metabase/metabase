@@ -166,6 +166,11 @@
     (boolean? expression)
     {:base_type :type/Boolean}
 
+    (mbql.u/is-clause? :value expression)
+    (let [[_ value options] expression]
+      (or (not-empty (select-keys options type-info-columns))
+          (select-keys (infer-expression-type value) type-info-columns)))
+
     (mbql.u/is-clause? :field expression)
     (col-info-for-field-clause {} expression)
 

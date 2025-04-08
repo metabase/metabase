@@ -33,12 +33,15 @@
   "Operates on rows in the database, supply an action-kw: :bulk/create, :bulk/update, :bulk/delete.
   The input `rows` is given different semantics depending on the action type, see actions/perform-action!."
   [action-kw table-id rows]
-  (actions/perform-with-system-events!
-   action-kw
-   {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
-    :table-id table-id
-    :arg      rows}
-   {:policy :data-editing}))
+  ;; TODO make this work for multi instances by using the metabase_cluster_lock table
+  ;; https://github.com/metabase/metabase/pull/56173/files
+  (locking #'perform-bulk-action!
+    (actions/perform-with-system-events!
+     action-kw
+     {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
+      :table-id table-id
+      :arg      rows}
+     {:policy :data-editing})))
 
 (defn insert!
   "Inserts rows into the table, recording their creation as an event. Returns the inserted records.
@@ -46,7 +49,6 @@
   are required, that work must be done before calling this function."
   [table-id rows]
   (let [res (perform-bulk-action! :bulk/create table-id rows)]
-    ;; TODO if we are inserting via webhook endpoint, we have no user id - but schema requires it.
     (when-some [user-id api/*current-user-id*]
       (doseq [row (:created-rows res)]
         (actions/publish-action-success!

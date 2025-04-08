@@ -196,7 +196,7 @@
    {:keys [table-id]}] :- [:map [:table-id ms/PositiveInt]]
   (api/check-superuser)
   (let [_       (api/check-404 (t2/select-one :model/Table table-id))
-        token   (str (random-uuid))
+        token   (u/generate-nano-id)
         user-id api/*current-user-id*]
     (t2/insert! :table_webhook_token {:token token, :table_id table-id, :creator_id user-id})
     {:table_id table-id

@@ -37,7 +37,7 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RowValue, SeriesSettings } from "metabase-types/api";
+import type { RowValue, SeriesSettings, XAxisScale } from "metabase-types/api";
 
 import type {
   ChartMeasurements,
@@ -295,7 +295,14 @@ export const computeContinuousScaleBarWidth = (
   boundaryWidth: number,
   barSeriesCount: number,
   stackedOrSingleSeries: boolean,
+  xAxisScale?: XAxisScale,
 ) => {
+  const isBarWidthSensibleToXAxisScale =
+    xAxisScale !== "log" && xAxisScale !== "pow";
+  if (!isBarWidthSensibleToXAxisScale) {
+    return 1;
+  }
+
   let barWidth =
     (boundaryWidth / (xAxisModel.intervalsCount + 2)) *
     CHART_STYLE.series.barWidth;
@@ -312,6 +319,7 @@ export const computeBarWidth = (
   boundaryWidth: number,
   barSeriesCount: number,
   isStacked: boolean,
+  xAxisScale?: XAxisScale,
 ) => {
   const stackedOrSingleSeries = isStacked || barSeriesCount === 1;
   const isNumericOrTimeSeries =
@@ -323,6 +331,7 @@ export const computeBarWidth = (
       boundaryWidth,
       barSeriesCount,
       stackedOrSingleSeries,
+      xAxisScale,
     );
   }
 
@@ -474,6 +483,7 @@ const buildEChartsBarSeries = (
       chartMeasurements.boundaryWidth,
       barSeriesCount,
       isStacked,
+      settings["graph.x_axis.scale"],
     ),
     encode: {
       y: seriesModel.dataKey,

@@ -30,30 +30,27 @@
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :put 402 url))
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 (str url "/delete"))))))
 
-(defn- toggle-data-editing-enabled! [on-or-off]
-  (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing (boolean on-or-off)}}))
-
 (deftest table-operations-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/with-empty-h2-app-db
       (with-open [table-ref (data-editing.tu/open-test-table!)]
         (let [table-id @table-ref
               url      (data-editing.tu/table-url table-id)]
-          (toggle-data-editing-enabled! true)
+          (data-editing.tu/toggle-data-editing-enabled! true)
           (testing "Initially the table is empty"
             (is (= [] (table-rows table-id))))
 
           (testing "POST should insert new rows"
-            (is (= {:created-rows [{:id 1 :name "Pidgey"     :song "Car alarms"}
-                                   {:id 2 :name "Spearow"    :song "Hold music"}
+            (is (= {:created-rows [{:id 1 :name "Pidgey" :song "Car alarms"}
+                                   {:id 2 :name "Spearow" :song "Hold music"}
                                    {:id 3 :name "Farfetch'd" :song "The land of lisp"}]}
                    (mt/user-http-request :crowberto :post 200 url
-                                         {:rows [{:name "Pidgey"     :song "Car alarms"}
-                                                 {:name "Spearow"    :song "Hold music"}
+                                         {:rows [{:name "Pidgey" :song "Car alarms"}
+                                                 {:name "Spearow" :song "Hold music"}
                                                  {:name "Farfetch'd" :song "The land of lisp"}]})))
 
-            (is (= [[1 "Pidgey"     "Car alarms"]
-                    [2 "Spearow"    "Hold music"]
+            (is (= [[1 "Pidgey" "Car alarms"]
+                    [2 "Spearow" "Hold music"]
                     [3 "Farfetch'd" "The land of lisp"]]
                    (table-rows table-id))))
 
@@ -64,7 +61,7 @@
                                          {:rows [{:id 1 :song "Join us now and share the software"}
                                                  {:id 2 :name "Speacolumn"}]})))
 
-            (is (= [[1 "Pidgey"     "Join us now and share the software"]
+            (is (= [[1 "Pidgey" "Join us now and share the software"]
                     [2 "Speacolumn" "Hold music"]
                     [3 "Farfetch'd" "The land of lisp"]]
                    (table-rows table-id))))
@@ -237,7 +234,7 @@
 (deftest coercion-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/with-empty-h2-app-db
-      (toggle-data-editing-enabled! true)
+      (data-editing.tu/toggle-data-editing-enabled! true)
       (let [user :crowberto
             req mt/user-http-request
             create!
@@ -391,7 +388,7 @@
 (deftest webhook-ingest-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/with-empty-h2-app-db
-      (toggle-data-editing-enabled! true)
+      (data-editing.tu/toggle-data-editing-enabled! true)
       (with-open [test-table (data-editing.tu/open-test-table!
                               {:id [:int]
                                :v [:text]}
@@ -401,6 +398,11 @@
                                :post (url %1)
                                {:request-options {:body (.getBytes (json/encode %2))}})
               status         (comp :status req)
+              result         (comp
+                              (fn [req]
+                                (is (= 200 (:status req)))
+                                (:body req))
+                              req)
               create-url     "ee/data-editing/webhook"
               create         #(:body (mt/user-http-request-full-response :crowberto :post create-url {:table-id %}))
               delete-url     #(format "ee/data-editing/webhook/%s" %)
@@ -413,15 +415,15 @@
           (testing "empty rows"
             (are [input code]
                  (= code (status token input))
-              nil  200
+              nil  400
               {}   400
-              []   200
+              []   400
               [{}] 400))
           (testing "one row in array"
-            (is (= 200 (status token [{:id 1, :v "a"}])))
+            (is (= {:created 1} (result token [{:id 1, :v "a"}])))
             (is (= [[1 "a"]] (table-rows table-id))))
           (testing "multiple rows in array"
-            (is (= 200 (status token [{:id 2, :v "b"} {:id 3, :v "c"}])))
+            (is (= {:created 2} (result token [{:id 2, :v "b"} {:id 3, :v "c"}])))
             (is (= [[1 "a"] [2 "b"] [3 "c"]] (table-rows table-id))))
           (testing "missing pk"
             (is (= 400 (status token [{:v "d"}]))))
@@ -435,12 +437,12 @@
             (is (= 400 (status token [{:id 1, :not_a_column "a"}]))))
           (testing "data editing disabled"
             (try
-              (toggle-data-editing-enabled! false)
+              (data-editing.tu/toggle-data-editing-enabled! false)
               (is (= 400 (status token [{:id 4, :v "d"}])))
-              (toggle-data-editing-enabled! true)
-              (is (= 200 (status token [{:id 4, :v "d"}])))
+              (data-editing.tu/toggle-data-editing-enabled! true)
+              (is (= {:created 1} (result token [{:id 4, :v "d"}])))
               (finally
-                (toggle-data-editing-enabled! true))))
+                (data-editing.tu/toggle-data-editing-enabled! true))))
           (testing "token deleted"
             (delete token)
             (is (= 404 (status token [{:id 5, :v "e"}])))))))))
@@ -450,7 +452,7 @@
 (deftest field-values-invalidated-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/with-empty-h2-app-db
-      (toggle-data-editing-enabled! true)
+      (data-editing.tu/toggle-data-editing-enabled! true)
       (with-open [table (data-editing.tu/open-test-table! {:id 'auto-inc-type, :n [:text]} {:primary-key [:id]})]
         (let [table-id     @table
               url          (data-editing.tu/table-url table-id)

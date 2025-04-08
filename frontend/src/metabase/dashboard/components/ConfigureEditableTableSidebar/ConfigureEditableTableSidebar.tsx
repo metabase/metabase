@@ -4,7 +4,10 @@ import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useSelector } from "metabase/lib/redux";
 import { ActionIcon, Box, Flex, Icon, Tabs } from "metabase/ui";
 
-import { getSidebar } from "../../selectors";
+import { getDashCardById, getSidebar } from "../../selectors";
+
+import { ConfigureEditableTableColumns } from "./ConfigureEditableTableColumns";
+import { ConfigureEditableTableFilters } from "./ConfigureEditableTableFilters";
 
 interface ConfigureEditableTableSidebarProps {
   onClose: () => void;
@@ -14,6 +17,14 @@ export function ConfigureEditableTableSidebar({
   onClose,
 }: ConfigureEditableTableSidebarProps) {
   const dashcardId = useSelector(getSidebar).props.dashcardId;
+  const dashcard = useSelector((state) =>
+    dashcardId !== undefined ? getDashCardById(state, dashcardId) : undefined,
+  );
+
+  if (!dashcard) {
+    // TODO: show error state
+    return null;
+  }
 
   return (
     <Sidebar data-testid="add-table-sidebar">
@@ -32,12 +43,10 @@ export function ConfigureEditableTableSidebar({
 
         <Box p="md">
           <Tabs.Panel value="columns">
-            <div>DashcardID: {dashcardId}</div>
-            <ConfigureEditableTableColumns />
+            <ConfigureEditableTableColumns dashcard={dashcard} />
           </Tabs.Panel>
           <Tabs.Panel value="filters">
-            <div>DashcardID: {dashcardId}</div>
-            <ConfigureEditableTableFilters />
+            <ConfigureEditableTableFilters dashcard={dashcard} />
           </Tabs.Panel>
           <Tabs.Panel value="actions">
             <div>Not implemented</div>
@@ -46,12 +55,4 @@ export function ConfigureEditableTableSidebar({
       </Tabs>
     </Sidebar>
   );
-}
-
-function ConfigureEditableTableColumns() {
-  return <div>Columns Content</div>;
-}
-
-function ConfigureEditableTableFilters() {
-  return <div>Filters Content</div>;
 }

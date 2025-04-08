@@ -21,7 +21,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import MetadataTableColumnList from "../MetadataTableColumnList";
+import { MetadataTableColumnList } from "../MetadataTableColumnList";
 import MetadataTableSchema from "../MetadataTableSchema";
 
 import {

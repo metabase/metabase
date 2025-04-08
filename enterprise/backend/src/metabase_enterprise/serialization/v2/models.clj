@@ -90,6 +90,7 @@
    "Session"
    "TablePrivileges"
    "TaskHistory"
+   "Undo"
    "User"
    "UserKeyValue"
    "UserParameterValue"

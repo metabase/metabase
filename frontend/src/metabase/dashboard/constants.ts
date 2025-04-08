@@ -27,6 +27,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   dashboards: {},
   dashcards: {},
   dashcardData: {},
+  editingDashcardDataOverride: {},
   parameterValues: {},
   draftParameterValues: {},
   loadingDashCards: {
@@ -66,6 +67,6 @@ export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   hideParameters: null,
   font: null,
   theme: "light",
-  downloadsEnabled: true,
+  downloadsEnabled: { pdf: true, dashcard: true },
   withFooter: true,
 };

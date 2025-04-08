@@ -87,27 +87,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       });
     }
   },
-  placeholderSeries: [
-    {
-      card: {
-        display: "pie",
-        visualization_settings: { "pie.show_legend": false },
-        dataset_query: { type: "query" },
-      },
-      data: {
-        rows: [
-          ["Doohickey", 3976],
-          ["Gadget", 4939],
-          ["Gizmo", 4784],
-          ["Widget", 5061],
-        ],
-        cols: [
-          { name: "Category", base_type: "type/Category" },
-          { name: "Count", base_type: "type/Integer" },
-        ],
-      },
-    },
-  ] as RawSeries,
+  hasEmptyState: true,
   settings: {
     ...metricSetting("pie.metric", {
       section: t`Data`,
