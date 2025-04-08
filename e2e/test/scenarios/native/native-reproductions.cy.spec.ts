@@ -476,3 +476,37 @@ describe("issue 55951", () => {
     }));
   }
 });
+
+describe("issue 54799", () => {
+  const questionDetails = {
+    native: {
+      query: "select 100, 200",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  it("it should be possible to select multiple ranges and run those (metabase#54799)", () => {
+    cy.findByTestId("visibility-toggler").click();
+
+    cy.get("[data-testid=cell-data]").contains("100").should("be.visible");
+    cy.get("[data-testid=cell-data]").contains("200").should("be.visible");
+
+    const macOSX = Cypress.platform === "darwin";
+
+    H.NativeEditor.get().findByText("select").dblclick();
+    H.NativeEditor.get().findByText("200").dblclick({
+      metaKey: macOSX,
+      ctrlKey: !macOSX,
+    });
+
+    getRunQueryButton().click();
+
+    cy.get("[data-testid=cell-data]").contains("100").should("not.exist");
+    cy.get("[data-testid=cell-data]").contains("200").should("be.visible");
+  });
+});
