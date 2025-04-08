@@ -47,7 +47,7 @@ import {
 import { CHART_STYLE } from "../constants/style";
 import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
 
-import { getFormattingOptionsWithoutScaling } from "./util";
+import { getFormattingOptionsWithoutScaling, getHexColor } from "./util";
 
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,
@@ -185,7 +185,9 @@ export const getCardSeriesModels = (
           card.name,
         );
 
-      const color = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
+      const color = getHexColor(
+        settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
+      );
 
       const dataKey = getDatasetKey(metric.column, cardId);
 
@@ -247,7 +249,9 @@ export const getCardSeriesModels = (
         card.name,
       );
 
-    const color = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
+    const color = getHexColor(
+      settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
+    );
 
     const dataKey = getDatasetKey(metric.column, cardId, breakoutValue);
 
