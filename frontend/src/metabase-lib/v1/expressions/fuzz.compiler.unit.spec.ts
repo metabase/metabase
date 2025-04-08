@@ -1,6 +1,8 @@
 import process from "process";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+
 import { query } from "./__support__/shared";
 import { compileExpression } from "./compiler";
 import { generateExpression } from "./test/generator";
@@ -20,17 +22,27 @@ const fuzz = process.env.MB_FUZZ ? describe : _.noop;
 const MAX_SEED = 10_000;
 
 function compile(expression: string, startRule: StartRule = "expression") {
+  const stageIndex = -1;
+
+  const columns = Lib.expressionableColumns(query, stageIndex);
+
   const result = compileExpression({
     source: expression,
     query,
-    stageIndex: -1,
+    stageIndex,
     startRule,
-    resolve: false,
+    resolver() {
+      return columns[0];
+    },
   });
   if (result.error) {
     throw result.error;
   }
 }
+
+beforeAll(() => {
+  console.warn = jest.fn();
+});
 
 describe("metabase-lib/v1/expressions/compiler", () => {
   // quick sanity check before the real fuzzing
