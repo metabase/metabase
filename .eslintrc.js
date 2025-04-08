@@ -195,6 +195,7 @@ module.exports = {
         "*.unit.spec.*",
         "frontend/src/metabase/admin/**/*",
         "frontend/src/metabase/setup/**/*",
+        "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
         "stories-data.*",
