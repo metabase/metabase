@@ -15,6 +15,7 @@
    [metabase.query-processor.middleware.pivot-export :as pivot-export]
    [metabase.query-processor.middleware.results-metadata :as results-metadata]
    [metabase.query-processor.middleware.visualization-settings :as viz-settings]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -35,6 +36,7 @@
    #'qp.add-rows-truncated/add-rows-truncated
    #'qp.add-timezone-info/add-timezone-info
    #'qp.middleware.enterprise/merge-sandboxing-metadata
+   #'qp.pivot/merge-base-pivot-query-meatdata
    #'qp.add-dimension-projections/remap-results
    #'pivot-export/add-data-for-pivot-export
    #'large-int/convert-large-int-to-string
