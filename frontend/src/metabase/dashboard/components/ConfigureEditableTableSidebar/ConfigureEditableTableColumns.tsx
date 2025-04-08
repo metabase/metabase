@@ -135,11 +135,18 @@ type EditableTableColumnSettingItem = ReturnType<
 
 function useEditableTableColumnSettingItems(dashcard: DashboardCard) {
   return useMemo(() => {
-    const fields = dashcard.card.result_metadata ?? [];
+    const fieldsWithRemmapedColumns = dashcard.card.result_metadata ?? [];
     const settings = mergeSettings(
       dashcard.card.visualization_settings,
       dashcard.visualization_settings,
     );
+
+    const fields = fieldsWithRemmapedColumns.filter((field) => {
+      if ("remapped_from" in field) {
+        return !field.remapped_from;
+      }
+      return true;
+    });
 
     const columnDisplaySettings = settings["table.columns"] ?? [];
     const columnEditableSettings = settings["table.editableColumns"] ?? [];
