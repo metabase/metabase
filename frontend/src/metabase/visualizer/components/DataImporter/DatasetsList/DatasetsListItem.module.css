@@ -9,10 +9,18 @@
   display: none;
 }
 
+.RemoveButton {
+  display: none;
+}
+
 .DatasetsListItem:hover {
   color: var(--mb-color-brand);
 
   .InfoIcon {
+    display: unset;
+  }
+
+  .RemoveButton {
     display: unset;
   }
 

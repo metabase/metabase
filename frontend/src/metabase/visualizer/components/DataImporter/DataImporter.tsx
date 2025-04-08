@@ -23,7 +23,6 @@ import { DatasetsList } from "./DatasetsList/DatasetsList";
 
 export const DataImporter = ({ className }: { className?: string }) => {
   const [search, setSearch] = useState("");
-  const [activeTab] = useState<string | null>("explore");
   const [showDatasets, handlers] = useDisclosure(false);
 
   const dataSources = useSelector(getDataSources);
@@ -82,10 +81,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
               overflowY: "auto",
             }}
           >
-            <DatasetsList
-              search={debouncedSearch}
-              mode={activeTab === "explore" ? "both" : "add"}
-            />
+            <DatasetsList search={debouncedSearch} />
           </Flex>
         </Flex>
       ) : (

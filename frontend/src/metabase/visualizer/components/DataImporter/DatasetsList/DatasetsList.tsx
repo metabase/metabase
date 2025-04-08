@@ -25,10 +25,9 @@ function shouldIncludeDashboardQuestion(
 
 interface DatasetsListProps {
   search: string;
-  mode: "swap" | "add" | "both";
 }
 
-export function DatasetsList({ search, mode }: DatasetsListProps) {
+export function DatasetsList({ search }: DatasetsListProps) {
   const dashboardId = useSelector(getDashboard)?.id;
   const dispatch = useDispatch();
   const dataSources = useSelector(getDataSources);
@@ -48,6 +47,14 @@ export function DatasetsList({ search, mode }: DatasetsListProps) {
       }
     },
     [dispatch, dataSourceIds],
+  );
+
+  const onRemove = useCallback(
+    (item: VisualizerDataSource) => {
+      // remove data source
+      dispatch(removeDataSource(item));
+    },
+    [dispatch],
   );
 
   const onSwap = useCallback(
@@ -115,8 +122,8 @@ export function DatasetsList({ search, mode }: DatasetsListProps) {
           item={item}
           onSwap={onSwap}
           onAdd={onAdd}
+          onRemove={onRemove}
           selected={dataSourceIds.has(item.id)}
-          mode={mode}
         />
       ))}
     </Box>
