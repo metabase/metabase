@@ -44,8 +44,8 @@ describe("resolve", () => {
     ...args: (Lib.ExpressionParts | Lib.ExpressionArg)[]
   ): Lib.ExpressionParts {
     return {
-      // TODO: remove cast here
-      operator: operator as Lib.ExpressionOperator,
+      // @ts-expect-error: TODO
+      operator,
       options: {},
       args,
     };
@@ -390,23 +390,23 @@ describe("resolve", () => {
   });
 
   describe("comparison operators", () => {
-    it.each(["<", "<=", ">", ">="])(
-      "should resolve both args to %s",
-      (operator) => {
+    const operators = ["<", "<=", ">", ">="] as const;
+    operators.forEach((operator) => {
+      it(`should resolve both args to ${operator}`, () => {
         expect(expr(op(operator, A, B)).dimensions).toEqual(["A", "B"]);
         expect(filter(op(operator, A, B)).dimensions).toEqual(["A", "B"]);
         expect(aggregation(op(operator, A, B)).dimensions).toEqual(["A", "B"]);
         expect(
           aggregation(op("count-where", op(operator, A, B))).dimensions,
         ).toEqual(["A", "B"]);
-      },
-    );
+      });
+    });
   });
 
   describe("number operators", () => {
-    it.each(["+", "-", "*", "/"])(
-      "should resolve all %s args correctly",
-      (operator) => {
+    const operators = ["+", "-", "*", "/"] as const;
+    operators.forEach((operator) => {
+      it(`should resolve all ${operator} args correctly`, () => {
         expect(expr(op(operator, A, B, C))).toEqual({
           dimensions: ["A", "B", "C"],
           segments: [],
@@ -425,14 +425,14 @@ describe("resolve", () => {
           metrics: ["A", "B", "C"],
           expression: expect.any(Object),
         });
-      },
-    );
+      });
+    });
   });
 
   describe("logic operators", () => {
-    it.each(["and", "or"])(
-      "should resolve all args to %s correctly",
-      (operator) => {
+    const operators = ["and", "or"] as const;
+    operators.forEach((operator) => {
+      it(`should resolve all args to ${operator} correctly`, () => {
         expect(expr(op(operator, A, B, C))).toEqual({
           dimensions: [],
           metrics: [],
@@ -451,8 +451,8 @@ describe("resolve", () => {
           segments: ["A", "B", "C"],
           expression: expect.any(Object),
         });
-      },
-    );
+      });
+    });
 
     it("should resolve not args correctly", () => {
       expect(expr(op("not", A))).toEqual({
