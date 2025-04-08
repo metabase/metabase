@@ -937,7 +937,7 @@ export const getAllNativeEditorSelectedText = createSelector(
         getOffsetForQueryAndPosition(queryText, range.end),
       ),
     );
-    return selectedText.join(" ");
+    return selectedText.join("");
   },
 );
 

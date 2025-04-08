@@ -480,7 +480,7 @@ describe("issue 55951", () => {
 describe("issue 54799", () => {
   const questionDetails = {
     native: {
-      query: "select 100, 200",
+      query: "select 'foo', 'bar'",
     },
   };
 
@@ -490,23 +490,36 @@ describe("issue 54799", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
   });
 
-  it("it should be possible to select multiple ranges and run those (metabase#54799)", () => {
-    cy.findByTestId("visibility-toggler").click();
-
-    cy.get("[data-testid=cell-data]").contains("100").should("be.visible");
-    cy.get("[data-testid=cell-data]").contains("200").should("be.visible");
-
+  function select(el: Cypress.Chainable, pos: Cypress.PositionType = "center") {
     const macOSX = Cypress.platform === "darwin";
-
-    H.NativeEditor.get().findByText("select").dblclick();
-    H.NativeEditor.get().findByText("200").dblclick({
+    el.dblclick(pos, {
       metaKey: macOSX,
       ctrlKey: !macOSX,
     });
+  }
+
+  it("it should be possible to select multiple ranges and run those (metabase#54799)", () => {
+    cy.findByTestId("visibility-toggler").click();
+
+    cy.get("[data-testid=cell-data]").contains("foo").should("be.visible");
+    cy.get("[data-testid=cell-data]").contains("bar").should("be.visible");
+
+    select(H.NativeEditor.get().findByText("select"));
+    select(H.NativeEditor.get().findByText("'foo'"));
+    select(H.NativeEditor.get().findByText("'foo'"), "left");
+    select(H.NativeEditor.get().findByText("'bar'"));
+    select(H.NativeEditor.get().findByText("'bar'"), "right");
 
     getRunQueryButton().click();
 
-    cy.get("[data-testid=cell-data]").contains("100").should("not.exist");
-    cy.get("[data-testid=cell-data]").contains("200").should("be.visible");
+    cy.get("[data-testid=cell-data]").contains(/^foo$/).should("not.exist");
+    cy.get("[data-testid=cell-data]").contains(/^bar$/).should("not.exist");
+
+    cy.get("[data-testid=cell-data]")
+      .contains(/^'foobar'$/)
+      .should("be.visible");
+    cy.get("[data-testid=cell-data]")
+      .contains(/foobar/)
+      .should("be.visible");
   });
 });
