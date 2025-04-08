@@ -30,12 +30,12 @@ export const TaskModal = ({ params }: Props) => {
   };
 
   const handleDownload = () => {
-    const filename = task ? `task-${task.id}.json` : "task.json";
+    const filename = getFilename(task);
     const blob = new Blob([code], { type: "text/json" });
     openSaveDialog(filename, blob);
   };
 
-  if (error || isLoading || !task) {
+  if (error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
 
@@ -79,6 +79,10 @@ export const TaskModal = ({ params }: Props) => {
     </ModalContent>
   );
 };
+
+function getFilename(task: Task | undefined) {
+  return task ? `task-${task.id}.json` : "task.json";
+}
 
 function formatTaskDetails(task: Task | undefined): string {
   return task ? JSON.stringify(task.task_details, null, 2) : "";
