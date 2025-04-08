@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { type NumberValue, parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 
-import { getMBQLName as defaultGetMBQLName } from "../config";
+import { MBQL_CLAUSES, getMBQLName as defaultGetMBQLName } from "../config";
 import { CompileError } from "../errors";
 import {
   isBigIntLiteral,
@@ -202,14 +202,27 @@ function compileFunctionCall(node: Node, opts: Options): Lib.ExpressionParts {
 
   const text = node.token?.text.trim().toLowerCase();
   const operator = opts.getMBQLName(text) ?? text;
+  const args = compileArgList(node.children[0], opts);
+  const options: Lib.ExpressionOptions = {};
 
   assert(isOperator(operator, opts), t`Invalid operator`);
 
-  return withNode(node, {
-    operator,
-    options: {},
-    args: compileArgList(node.children[0], opts),
-  });
+  const clause = MBQL_CLAUSES[operator];
+  const hasOptions = clause?.hasOptions ?? false;
+
+  if (hasOptions) {
+    const last = args.at(-1);
+    if (last === "include-current") {
+      args.pop();
+      options["include-current"] = true;
+    }
+    if (last === "case-insensitive") {
+      args.pop();
+      options["case-sensitive"] = false;
+    }
+  }
+
+  return withNode(node, { operator, options, args });
 }
 
 function compileArgList(
