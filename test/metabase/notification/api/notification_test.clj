@@ -355,8 +355,7 @@
                                                         :type "notification-subscription/cron"
                                                         :cron_schedule "0 0 0 * * ?"
                                                         :ui_display_type nil
-                                                        :table_id nil
-                                                        :table nil}]
+                                                        :table_id nil}]
                                        :active false}}}
                  (mt/latest-audit-log-entry))))))))
 

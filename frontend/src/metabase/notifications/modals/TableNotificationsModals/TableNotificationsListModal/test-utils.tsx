@@ -6,7 +6,6 @@ import { TableNotificationsListModal } from "metabase/notifications/modals/Table
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type { TableNotification, User } from "metabase-types/api";
 import {
-  createMockNotificationSystemEventSubscription,
   createMockTableNotification,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -95,16 +94,12 @@ export const createNotificationForUser = (
     id: userId * 100 + index, // Ensure unique IDs
     creator: createMockUser({ id: userId, first_name: `User ${userId}` }),
     creator_id: userId,
-    // These should remain null according to the type definition
-    payload: null,
+    // Use payload to make each notification unique for testing
+    payload: {
+      event_name: "event/action.success",
+      table_id: index + 1,
+      action: "row/create",
+    },
     payload_id: null,
-    // Use subscriptions to make each notification unique for testing
-    subscriptions: [
-      {
-        ...createMockNotificationSystemEventSubscription(),
-        id: userId * 10 + index,
-        table_id: index + 1,
-      },
-    ],
   };
 };
