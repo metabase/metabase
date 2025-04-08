@@ -1,4 +1,4 @@
-import { type FocusEvent, useState } from "react";
+import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
@@ -21,11 +21,9 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   columnDisplayName: string;
-  shouldCreate?: (query: string, values: string[]) => boolean;
   autoFocus?: boolean;
+  onCreate?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
-  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
-  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 export function SearchValuePicker({
@@ -34,11 +32,9 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   columnDisplayName,
-  shouldCreate,
   autoFocus,
+  onCreate,
   onChange,
-  onFocus,
-  onBlur,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
@@ -68,7 +64,7 @@ export function SearchValuePicker({
     searchValue,
     selectedValues,
   );
-  const notFoundMessage = getNothingFoundMessage(
+  const nothingFoundMessage = getNothingFoundMessage(
     columnDisplayName,
     searchError,
     canSearch,
@@ -92,23 +88,16 @@ export function SearchValuePicker({
 
   return (
     <MultiAutocomplete
-      data={visibleOptions}
-      value={selectedValues}
-      searchValue={searchValue}
+      values={selectedValues}
+      options={visibleOptions}
       placeholder={t`Search by ${columnDisplayName}`}
       autoFocus={autoFocus}
-      aria-label={t`Filter value`}
-      shouldCreate={shouldCreate}
       rightSection={isSearching ? <Loader size="xs" /> : undefined}
-      nothingFoundMessage={notFoundMessage}
+      nothingFoundMessage={nothingFoundMessage}
+      aria-label={t`Filter value`}
+      onCreate={onCreate}
       onChange={onChange}
       onSearchChange={handleSearchChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      comboboxProps={{
-        withinPortal: false,
-        floatingStrategy: "fixed",
-      }}
     />
   );
 }
