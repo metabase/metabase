@@ -1,8 +1,6 @@
 (ns metabase.events.schema
   (:require
-   [malli.json-schema :as mjs]
    [malli.util :as mut]
-   [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.models.view-log-impl :as view-log-impl]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]

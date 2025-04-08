@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.events :as events]
    [metabase.events.notification :as events.notification]
-   [metabase.events.schema :as events.schema]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]

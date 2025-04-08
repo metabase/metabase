@@ -5,12 +5,12 @@
    [malli.transform :as mtx]
    [metabase.events :as events]
    [metabase.events.schema :as events.schema]
-   [metabase.lib.schema.common :as common]
    [metabase.models.task-history :as task-history]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -109,7 +109,7 @@
                                         :gen/return "orders"}
                                        :string]]])
 
-(mr/def ::nano-id ::common/non-blank-string)
+(mr/def ::nano-id ms/NonBlankString)
 
 (def ^:private table-id-hydrate-schemas
   (events.schema/hydrated-schemas [:table_id pos-int?]
