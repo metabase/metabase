@@ -12,6 +12,7 @@ import type {
 } from "metabase-types/api";
 
 import type { ColumnExtractionTag } from "./extractions";
+import type { DefinedClauseName } from "./v1/expressions";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -258,45 +259,7 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperator =
-  | "+"
-  | "-"
-  | "*"
-  | "/"
-  | "="
-  | "!="
-  | ">"
-  | "<"
-  | ">="
-  | "<="
-  | "between"
-  | "case"
-  | "if"
-  | "contains"
-  | "does-not-contain"
-  | "is-null"
-  | "not-null"
-  | "is-empty"
-  | "not-empty"
-  | "starts-with"
-  | "ends-with"
-  | "concat"
-  | "interval"
-  | "time-interval"
-  | "relative-time-interval"
-  | "relative-datetime"
-  | "datetime-add"
-  | "inside"
-  | "field"
-  | "metric"
-  | "segment"
-  | "offset"
-  | "value";
-  | "and"
-  | "or"
-  | "not"
-  | "coalesce"
-  | "value";
+export type ExpressionOperator = DefinedClauseName | "value";
 
 export type ExpressionArg =
   | boolean
