@@ -29,14 +29,34 @@
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
+(defn- unwrap-expression-parts
+  [x]
+  #?(:clj x
+     :cljs (js->clj x :keywordize-keys true)))
+
+(defn- untagged-expression-parts?
+  [x]
+  (and (map? x)
+       (not (contains? x :type))
+       (contains? x :operator)
+       (contains? x :options)
+       (contains? x :args)))
+
 (defmethod ->op-arg :default
   [x]
   (if (and (vector? x)
            (keyword? (first x)))
     ;; MBQL clause
     (mapv ->op-arg x)
+    ;; expression-parts that might need conversion
+    (let [conv (unwrap-expression-parts x)]
+      (if (untagged-expression-parts? conv)
+        (->op-arg {:lib/type :mbql/expression-parts
+                   :operator (keyword (:operator conv))
+                   :options  (:options conv)
+                   :args (:args conv)})
     ;; Something else - just return it
-    x))
+        x))))
 
 (defmethod ->op-arg :dispatch-type/sequential
   [xs]
