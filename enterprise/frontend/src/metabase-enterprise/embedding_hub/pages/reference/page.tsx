@@ -2,11 +2,15 @@ import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import {
+  Badge,
   Box,
   Button,
   Card,
+  Checkbox,
   Divider,
   Group,
+  Input,
+  Radio,
   Select,
   Space,
   Stack,
@@ -112,6 +116,234 @@ export function ReferencePage() {
             <Switch defaultChecked size="md" />
           </Group>
         </Stack>
+      </Card>
+
+      {/* Form Layout Pattern */}
+      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+        <Title order={2} mb="xs">{t`Form Layout Pattern`}</Title>
+        <Text mb="lg">{t`Mixed form elements combined in a logical layout.`}</Text>
+        <Divider mb="xl" />
+
+        <Stack gap="xl">
+          <Box>
+            <Text fw={600} mb="md">{t`Database Connection Settings`}</Text>
+
+            <Group align="flex-start" grow>
+              <Stack gap="md">
+                <TextInput
+                  label={t`Host`}
+                  placeholder="localhost"
+                  required
+                />
+                <TextInput
+                  label={t`Port`}
+                  placeholder="5432"
+                  required
+                />
+              </Stack>
+
+              <Stack gap="md">
+                <TextInput
+                  label={t`Database Name`}
+                  placeholder="metabase_db"
+                  required
+                />
+                <Select
+                  label={t`Connection Type`}
+                  placeholder="Select a type"
+                  defaultValue="direct"
+                  data={[
+                    { value: 'direct', label: 'Direct Connection' }
+                  ]}
+                />
+              </Stack>
+            </Group>
+
+            <Space h="md" />
+
+            <Group align="flex-start" grow>
+              <TextInput
+                label={t`Username`}
+                placeholder="database_user"
+              />
+              <TextInput
+                label={t`Password`}
+                placeholder="••••••••"
+                type="password"
+              />
+            </Group>
+
+            <Space h="md" />
+
+            <Radio.Group
+              label={t`SSL Options`}
+              defaultValue="disabled"
+            >
+              <Stack mt="xs">
+                <Radio value="disabled" label={t`No SSL`} />
+                <Radio value="enabled" label={t`Use SSL`} />
+                <Radio value="verify" label={t`Use SSL with certificate verification`} />
+              </Stack>
+            </Radio.Group>
+          </Box>
+
+          <Divider />
+
+          <Group position="right">
+            <Button variant="subtle">{t`Cancel`}</Button>
+            <Button>{t`Save connection`}</Button>
+          </Group>
+        </Stack>
+      </Card>
+
+      {/* List Display Pattern */}
+      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+        <Title order={2} mb="xs">{t`List Display Pattern`}</Title>
+        <Text mb="lg">{t`Display lists of items with status indicators and actions.`}</Text>
+        <Divider mb="xl" />
+
+        <Stack gap="md">
+          <Box p="md" style={{ border: `1px solid ${color("border")}`, borderRadius: '4px' }}>
+            <Group justify="space-between">
+              <Group gap="md">
+                <Box style={{ width: '8px', height: '8px', borderRadius: '50%', background: color("success") }}></Box>
+                <Box>
+                  <Text fw={600}>Sales Analytics</Text>
+                  <Text size="sm" c={color("text-medium")}>PostgreSQL • Last updated 2 hours ago</Text>
+                </Box>
+                <Badge color="green">Active</Badge>
+              </Group>
+              <Group gap="sm">
+                <Button variant="subtle" size="sm">{t`Edit`}</Button>
+                <Button variant="subtle" size="sm">{t`Sync`}</Button>
+              </Group>
+            </Group>
+          </Box>
+
+          <Box p="md" style={{ border: `1px solid ${color("border")}`, borderRadius: '4px' }}>
+            <Group justify="space-between">
+              <Group gap="md">
+                <Box style={{ width: '8px', height: '8px', borderRadius: '50%', background: color("success") }}></Box>
+                <Box>
+                  <Text fw={600}>User Data</Text>
+                  <Text size="sm" c={color("text-medium")}>MongoDB • Last updated 1 day ago</Text>
+                </Box>
+                <Badge color="green">Active</Badge>
+              </Group>
+              <Group gap="sm">
+                <Button variant="subtle" size="sm">{t`Edit`}</Button>
+                <Button variant="subtle" size="sm">{t`Sync`}</Button>
+              </Group>
+            </Group>
+          </Box>
+
+          <Box p="md" style={{ border: `1px solid ${color("border")}`, borderRadius: '4px' }}>
+            <Group justify="space-between">
+              <Group gap="md">
+                <Box style={{ width: '8px', height: '8px', borderRadius: '50%', background: color("error") }}></Box>
+                <Box>
+                  <Text fw={600}>Marketing Campaigns</Text>
+                  <Text size="sm" c={color("text-medium")}>MySQL • Last updated 3 days ago</Text>
+                </Box>
+                <Badge color="red">Error</Badge>
+              </Group>
+              <Group gap="sm">
+                <Button variant="subtle" size="sm">{t`Edit`}</Button>
+                <Button variant="subtle" size="sm">{t`Diagnose`}</Button>
+              </Group>
+            </Group>
+          </Box>
+        </Stack>
+
+        <Box mt="lg">
+          <Button variant="outline">{t`Add new database`}</Button>
+        </Box>
+      </Card>
+
+      {/* Search and Filter Pattern */}
+      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+        <Title order={2} mb="xs">{t`Search and Filter Pattern`}</Title>
+        <Text mb="lg">{t`Controls for searching and filtering content.`}</Text>
+        <Divider mb="xl" />
+
+        <Group justify="space-between" mb="lg">
+          <Box style={{ position: 'relative', width: '300px' }}>
+            <TextInput
+              placeholder={t`Search by name or description...`}
+              style={{ width: '100%' }}
+            />
+            <Box style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}>
+              <i className="fa fa-search" style={{ color: color('text-light') }}/>
+            </Box>
+          </Box>
+
+          <Group gap="sm">
+            <Select
+              placeholder={t`Filter by type`}
+              clearable
+              data={[
+                { value: 'question', label: 'Questions' }
+              ]}
+            />
+            <Button variant="outline">{t`Apply filters`}</Button>
+          </Group>
+        </Group>
+
+        <Divider mb="md" />
+
+        <Stack gap="md">
+          <Group justify="space-between" pb="sm">
+            <Group gap="sm">
+              <Checkbox id="select-all" />
+              <Text>{t`Select all`}</Text>
+            </Group>
+            <Group gap="sm">
+              <Button variant="subtle" size="sm">{t`Move`}</Button>
+              <Button variant="subtle" size="sm">{t`Archive`}</Button>
+            </Group>
+          </Group>
+
+          <Box p="sm" style={{ border: `1px solid ${color("border")}`, borderRadius: '4px' }}>
+            <Group justify="space-between">
+              <Group gap="sm">
+                <Checkbox id="item-1" />
+                <Text>{t`Monthly Revenue Dashboard`}</Text>
+                <Badge>Dashboard</Badge>
+              </Group>
+              <Text size="sm" c={color("text-medium")}>Updated 2 days ago</Text>
+            </Group>
+          </Box>
+
+          <Box p="sm" style={{ border: `1px solid ${color("border")}`, borderRadius: '4px' }}>
+            <Group justify="space-between">
+              <Group gap="sm">
+                <Checkbox id="item-2" />
+                <Text>{t`Customer Segmentation`}</Text>
+                <Badge>Question</Badge>
+              </Group>
+              <Text size="sm" c={color("text-medium")}>Updated 4 days ago</Text>
+            </Group>
+          </Box>
+
+          <Box p="sm" style={{ border: `1px solid ${color("border")}`, borderRadius: '4px' }}>
+            <Group justify="space-between">
+              <Group gap="sm">
+                <Checkbox id="item-3" />
+                <Text>{t`Product Analytics`}</Text>
+                <Badge>Dashboard</Badge>
+              </Group>
+              <Text size="sm" c={color("text-medium")}>Updated 1 week ago</Text>
+            </Group>
+          </Box>
+        </Stack>
+
+        <Group justify="space-between" mt="xl">
+          <Text size="sm" c={color("text-medium")}>{t`Showing 3 of 24 items`}</Text>
+          <Group gap="sm">
+            <Button variant="subtle" disabled size="sm">{t`Previous`}</Button>
+            <Button variant="subtle" size="sm">{t`Next`}</Button>
+          </Group>
+        </Group>
       </Card>
 
       {/* Dropdown Selection Pattern */}
