@@ -104,6 +104,16 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
+  it("should accept values on enter", async () => {
+    const { input, onChange } = setup();
+    await userEvent.type(input, "a{enter}bc{enter}def");
+    expect(onChange).toHaveBeenCalledWith(["a", "bc", "def"]);
+    expect(input).toHaveValue("def");
+
+    await userEvent.click(document.body);
+    expect(input).toHaveValue("");
+  });
+
   it("should accept a value when no comma has been entered", async () => {
     const { input, onChange } = setup();
     await userEvent.type(input, "foo");

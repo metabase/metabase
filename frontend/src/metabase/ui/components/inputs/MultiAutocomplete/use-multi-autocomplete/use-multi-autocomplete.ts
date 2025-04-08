@@ -121,6 +121,15 @@ export function useMultiAutocomplete({
 
   const handleFieldKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (
+      event.key === "Enter" &&
+      combobox.selectedOptionIndex < 0 &&
+      fieldSelection.length > 0
+    ) {
+      event.preventDefault();
+      resetFieldState();
+    }
+
+    if (
       event.key === "Backspace" &&
       fieldValue.length === 0 &&
       fieldSelection.index > 0 &&
