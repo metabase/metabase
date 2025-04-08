@@ -90,8 +90,8 @@ export function getNewPivotOptions(question: Question) {
   const settings = question.settings();
 
   return {
-    new_pivot_cols: settings["pivot.cols"] ?? [],
-    new_pivot_rows: settings["pivot.rows"] ?? [],
+    new_pivot_cols: settings?.["pivot.cols"] ?? [],
+    new_pivot_rows: settings?.["pivot.rows"] ?? [],
   };
 }
 

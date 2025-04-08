@@ -6,7 +6,10 @@ import { PLUGIN_API } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
-import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
+import {
+  getNewPivotOptions,
+  getPivotOptions,
+} from "metabase-lib/v1/queries/utils/pivot";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -41,6 +44,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
     return (params, ...rest) => {
       const { pivot_rows, pivot_cols, show_row_totals, show_column_totals } =
         getPivotOptions(question);
+      const newPivotOptions = getNewPivotOptions(question);
       return api(
         {
           ...params,
@@ -48,6 +52,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
           pivot_cols,
           show_row_totals,
           show_column_totals,
+          ...newPivotOptions,
         },
         ...rest,
       );
@@ -128,8 +133,8 @@ export async function runQuestionQuery(
       datasetQueryWithParameters,
       cancelDeferred
         ? {
-            cancelled: cancelDeferred.promise,
-          }
+          cancelled: cancelDeferred.promise,
+        }
         : {},
     );
   };
