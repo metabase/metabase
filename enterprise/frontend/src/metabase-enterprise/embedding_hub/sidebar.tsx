@@ -65,7 +65,26 @@ export function Sidebar() {
         to="/admin/embedding/reference"
         leftSection={<Icon name="reference" />}
         active={/^\/admin\/embedding\/reference/.test(location.pathname)}
-      />
+      >
+        <NavLink
+          variant="admin"
+          label="UI Patterns"
+          component={Link}
+          to="/admin/embedding/reference/ui-patterns"
+          active={/^\/admin\/embedding\/reference\/ui-patterns/.test(
+            location.pathname,
+          )}
+        />
+        <NavLink
+          variant="admin"
+          label="Localization"
+          component={Link}
+          to="/admin/embedding/reference/localization"
+          active={/^\/admin\/embedding\/reference\/localization/.test(
+            location.pathname,
+          )}
+        />
+      </NavLink>
     </>
   );
 }

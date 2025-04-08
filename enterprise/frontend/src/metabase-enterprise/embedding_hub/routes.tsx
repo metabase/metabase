@@ -6,6 +6,7 @@ import { EmbeddingLayout } from "./layout";
 import {
   AppearancePage,
   InteractiveSettingsPage,
+  LocalizationReferencePage,
   OverviewPage,
   ReferencePage,
   StaticEmbeddingPage,
@@ -22,6 +23,10 @@ export const getRoutes = () => (
       <Route path="user-management" component={UserManagementPage} />
     </Route>
     <Route path="appearance" component={AppearancePage} />
-    <Route path="reference" component={ReferencePage} />
+    <Route path="reference">
+      <IndexRedirect to="ui-patterns" />
+      <Route path="ui-patterns" component={ReferencePage} />
+      <Route path="localization" component={LocalizationReferencePage} />
+    </Route>
   </Route>
 );
