@@ -5,6 +5,7 @@ import { isEqual } from "underscore";
 import {
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
+  useGetNotificationPayloadExampleMutation,
   useListChannelsQuery,
   useUpdateNotificationMutation,
 } from "metabase/api";
@@ -42,32 +43,6 @@ type TableNotificationTriggerOption = {
   };
   label: string;
   action: ActionType;
-};
-
-// Template loading functions
-const loadTemplate = async (
-  event: SystemEvent,
-  action?: ActionType,
-): Promise<any> => {
-  if (event === "event/action.success" && action) {
-    switch (action) {
-      case "row/create":
-        return import(
-          "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/insert.json"
-        );
-      case "row/update":
-        return import(
-          "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/update.json"
-        );
-      case "row/delete":
-        return import(
-          "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/delete.json"
-        );
-      default:
-        return null;
-    }
-  }
-  return null;
 };
 
 // Format JSON for tooltip display
@@ -141,35 +116,14 @@ export const CreateOrEditTableNotificationModal = ({
 
   const isEditMode = !!notification;
 
-  // Load JSON template when event_name and action change in the payload
-  useEffect(() => {
-    const loadTemplateForEvent = async () => {
-      if (requestBody?.payload?.event_name) {
-        try {
-          const templateModule = await loadTemplate(
-            requestBody.payload.event_name,
-            requestBody.payload.action,
-          );
-          const formattedJson = formatJsonForTooltip(templateModule.default);
-          setTemplateJson(formattedJson);
-        } catch (error) {
-          console.error("Error loading template:", error);
-          setTemplateJson("");
-        }
-      } else {
-        setTemplateJson("");
-      }
-    };
-
-    loadTemplateForEvent();
-  }, [requestBody?.payload?.event_name, requestBody?.payload?.action]);
-
   const { data: channelSpec, isLoading: isLoadingChannelInfo } =
     useGetChannelInfoQuery();
   const { data: hookChannels } = useListChannelsQuery();
 
   const [createNotification] = useCreateNotificationMutation();
   const [updateNotification] = useUpdateNotificationMutation();
+  const [getNotificationPayloadExample] =
+    useGetNotificationPayloadExampleMutation();
 
   const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
   const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
@@ -213,6 +167,39 @@ export const CreateOrEditTableNotificationModal = ({
     userCanAccessSettings,
     tableId,
     notification,
+  ]);
+
+  // Get example payload when action changes
+  useEffect(() => {
+    const fetchExamplePayload = async () => {
+      if (
+        !requestBody?.payload?.event_name ||
+        !requestBody?.payload?.action ||
+        !user
+      ) {
+        return;
+      }
+
+      const result = await getNotificationPayloadExample({
+        payload_type: "notification/system-event",
+        payload: {
+          event_name: requestBody.payload.event_name as "event/action.success",
+          action: requestBody.payload.action as ActionType,
+        },
+        creator_id: user.id,
+      });
+
+      if (result.data) {
+        setTemplateJson(formatJsonForTooltip(result.data.payload));
+      }
+    };
+
+    fetchExamplePayload();
+  }, [
+    getNotificationPayloadExample,
+    requestBody?.payload?.action,
+    requestBody?.payload?.event_name,
+    user,
   ]);
 
   const onCreateOrEditAlert = async () => {

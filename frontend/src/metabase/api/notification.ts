@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import type {
   AlertNotification,
   CreateNotificationRequest,
+  GetNotificationPayloadExampleRequest,
+  GetNotificationPayloadExampleResponse,
   ListNotificationsRequest,
   Notification,
   NotificationId,
@@ -91,6 +93,16 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getNotificationPayloadExample: builder.mutation<
+      GetNotificationPayloadExampleResponse,
+      GetNotificationPayloadExampleRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/notification/payload`,
+        body,
+      }),
+    }),
   }),
 });
 
@@ -105,6 +117,7 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
+  useGetNotificationPayloadExampleMutation,
 } = notificationApi;
 
 export const useTableNotificationsQuery = (
