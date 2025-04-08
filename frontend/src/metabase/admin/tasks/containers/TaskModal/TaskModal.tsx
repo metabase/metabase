@@ -51,8 +51,8 @@ export const TaskModal = ({ params }: TaskModalProps) => {
         <CodeBlock
           basicSetup={{
             /**
-             * Hide line numbers when there's only 1 line to avoid confusion
-             * whether the line number is or isn't a part of the log.
+             * Hide line numbers when there's only one line to avoid
+             * confusion about whether it's part of the log output.
              */
             lineNumbers: linesCount > 1,
           }}
