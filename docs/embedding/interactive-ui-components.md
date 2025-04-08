@@ -21,11 +21,11 @@ Here's an example using the URL constructor to add parameters to the URL for the
 const mods = "logo=false&top_nav=true&search=true&new_button=true";
 
 app.get("/sso/metabase", restrict, (req, res) => {
-    const ssoUrl = new URL("/auth/sso", METABASE_SITE_URL);
-    ssoUrl.searchParams.set("jwt", signUserToken(req.session.user));
-    ssoUrl.searchParams.set("return_to", `${req.query.return_to ?? "/"}?${mods}`);
-  
-    res.redirect(ssoUrl);
+  const ssoUrl = new URL("/auth/sso", METABASE_SITE_URL);
+  ssoUrl.searchParams.set("jwt", signUserToken(req.session.user));
+  ssoUrl.searchParams.set("return_to", `${req.query.return_to ?? "/"}?${mods}`);
+
+  res.redirect(ssoUrl);
 });
 ```
 
@@ -98,13 +98,13 @@ Available entity types are:
 - `table`
 - `model`
 
-You can separate entity types with a comma, like: 
+You can separate entity types with a comma, like:
 
 ```
 entity_types=table,model
 ```
 
-The default behavior for the data picker is to show all entity types.
+The default behavior for the data picker is to show both tables and models. Metrics aren't displayed.
 
 ## `header`
 
@@ -176,4 +176,4 @@ top_nav=false
 
 ![Top nav bar](./images/top-nav.png)
 
-`search`, `new_button`, and `breadcrumbs` all depend on `top_nav` being set to `true`. If these three children (`search`, `new_button`, and `breadcrumbs`) are all false, Metabase will hide the top nav bar. 
+`search`, `new_button`, and `breadcrumbs` all depend on `top_nav` being set to `true`. If these three children (`search`, `new_button`, and `breadcrumbs`) are all false, Metabase will hide the top nav bar.
