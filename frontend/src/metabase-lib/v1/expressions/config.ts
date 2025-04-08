@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { OPERATOR } from "./tokenizer";
-import type { MBQLClauseMap } from "./types";
+import type { MBQLClauseFunctionConfig } from "./types";
 
 export const EDITOR_QUOTES = {
   // specifies where different quoting is used:
@@ -35,8 +35,21 @@ export const OPERATOR_PRECEDENCE: Record<string, number> = {
   or: 5,
 };
 
+function defineClauses<
+  const T extends Record<string, MBQLClauseFunctionConfig>,
+>(clauses: T): Record<keyof T, MBQLClauseFunctionConfig> {
+  for (const [name, clause] of Object.entries(clauses)) {
+    if (clause.name !== undefined && clause.name !== name) {
+      console.warn("Mismatched name for MBQL_CLAUSES " + name);
+    }
+    clause.name = name;
+  }
+
+  return clauses;
+}
+
 // `type` and `args` types have no effect. Type checking is done by MBQL lib.
-export const MBQL_CLAUSES: MBQLClauseMap = {
+export const MBQL_CLAUSES = defineClauses({
   // aggregation functions
   count: { displayName: `Count`, type: "aggregation", args: [] },
   "cum-count": {
@@ -572,14 +585,9 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     hasOptions: true,
     requiresFeature: "convert-timezone",
   },
-};
+});
 
-for (const [name, clause] of Object.entries(MBQL_CLAUSES)) {
-  if (clause.name !== undefined && clause.name !== name) {
-    console.warn("Mismatched name for MBQL_CLAUSES " + name);
-  }
-  clause.name = name;
-}
+export type DefinedClauseName = keyof typeof MBQL_CLAUSES;
 
 // Reserved token names
 const MBQL_TO_EXPRESSION_NAME = new Map(
