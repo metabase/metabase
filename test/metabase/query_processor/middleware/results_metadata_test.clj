@@ -138,7 +138,7 @@
       (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
              (card-metadata card))))))
 
-(deftest save-result-metadata-test-3
+(deftest save-result-metadata-test-4
   (testing "test that card result metadata does not generate an UPDATE statement when unchanged"
     (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT NAME FROM VENUES"})}]
       (is (nil? (card-metadata card)))
