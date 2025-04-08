@@ -2,6 +2,8 @@
   (:require
    [mb.hawk.parallel]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor.empty-string-is-null
+    :as sql.qp.empty-string-is-null]
    [metabase.test.initialize :as initialize]))
 
 (defn -notify-all-databases-updated! []
@@ -19,3 +21,8 @@
        ~@body
        (finally
          (-notify-all-databases-updated!)))))
+
+(defn empty-string-is-null?
+  "Does driver treat an empty string as null?"
+  [driver]
+  (isa? driver/hierarchy driver ::sql.qp.empty-string-is-null/empty-string-is-null))

@@ -480,11 +480,13 @@
    [:field "MyTrue"  {:base_type :type/Boolean}]
    [:field "MyFalse" {:base_type :type/Boolean}]])
 
-(def ^:private standard-literal-expression-row-formats
-  [str str int int 3.0 mt/boolish->bool mt/boolish->bool])
+(defn- standard-literal-expression-row-formats
+  [driver]
+  [(mt/format-nil->empty-str driver) str int int 3.0 mt/boolish->bool mt/boolish->bool])
 
-(def ^:private standard-literal-expression-row-formats-with-id
-  (into [int] standard-literal-expression-row-formats))
+(defn- standard-literal-expression-row-formats-with-id
+  [driver]
+  (into [int] (standard-literal-expression-row-formats driver)))
 
 (def ^:private standard-literal-expression-values
   (map second (vals standard-literal-expression-defs)))
@@ -495,7 +497,8 @@
       (is (= [[1 "" "foo" 0 12345 1.234 true false]
               [2 "" "foo" 0 12345 1.234 true false]]
              (mt/formatted-rows
-              standard-literal-expression-row-formats-with-id
+              (standard-literal-expression-row-formats-with-id driver/*driver*)
+              #_format-nil-values? true
               (mt/run-mbql-query orders
                 {:expressions standard-literal-expression-defs
                  :fields      (into [$id] standard-literal-expression-refs)
@@ -509,7 +512,8 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
         (is (= expected
                (mt/formatted-rows
-                standard-literal-expression-row-formats
+                (standard-literal-expression-row-formats driver/*driver*)
+                #_format-nil-values? true
                 (mt/run-mbql-query orders
                   {:expressions standard-literal-expression-defs
                    :fields      standard-literal-expression-refs
@@ -521,7 +525,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
       (is (= [(into [1] standard-literal-expression-values)]
              (mt/formatted-rows
-              standard-literal-expression-row-formats-with-id
+              (standard-literal-expression-row-formats-with-id driver/*driver*)
+              #_format-nil-values? true
               (mt/run-mbql-query venues
                 {:fields       (into [$id] standard-literal-expression-column-refs)
                  :source-query {:source-table $$venues
@@ -551,7 +556,8 @@
       (is (= [(into [1] standard-literal-expression-values)
               (into [2] standard-literal-expression-values)]
              (mt/formatted-rows
-              standard-literal-expression-row-formats-with-id
+              (standard-literal-expression-row-formats-with-id driver/*driver*)
+              #_format-nil-values? true
               (mt/run-mbql-query orders
                 {:expressions standard-literal-expression-defs
                  :fields      (into [$id] standard-literal-expression-refs)
@@ -565,7 +571,8 @@
       (let [orders-count 18760]
         (is (= [(conj (vec standard-literal-expression-values) orders-count)]
                (mt/formatted-rows
-                (conj standard-literal-expression-row-formats int)
+                (conj (standard-literal-expression-row-formats driver/*driver*) int)
+                #_format-nil-values? true
                 (mt/run-mbql-query orders
                   {:expressions standard-literal-expression-defs
                    :aggregation [:count]
@@ -634,7 +641,8 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
         (is (= expected
                (mt/formatted-rows
-                standard-literal-expression-row-formats
+                (standard-literal-expression-row-formats driver/*driver*)
+                #_format-nil-values? true
                 (mt/run-mbql-query orders
                   {:expressions standard-literal-expression-defs
                    :fields      standard-literal-expression-refs
