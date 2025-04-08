@@ -4,6 +4,7 @@
    [metabase.config :as config]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (defn- user-attribute
@@ -22,7 +23,7 @@
      (let [database-name (get (:login_attributes user) attr-name)]
        (cond
          (nil? user)
-         (throw (ex-info "Anonymous users cannot access a database with routing enabled." {}))
+         (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400}))
 
          (= database-name "__METABASE_ROUTER__")
          (u/the-id db-or-id)
@@ -34,18 +35,20 @@
 
          ;; non-superusers get an error
          (nil? database-name)
-         (throw (ex-info "Required user attribute is missing. Cannot route to a Destination Database."
+         (throw (ex-info (tru "Required user attribute is missing. Cannot route to a Destination Database.")
                          {:database-name database-name
-                          :router-database-id (u/the-id db-or-id)}))
+                          :router-database-id (u/the-id db-or-id)
+                          :status-code 400}))
 
          :else
          (or (t2/select-one-pk :model/Database
                                :router_database_id (u/the-id db-or-id)
                                :name database-name)
-             (throw (ex-info (format "Database Routing error: No Destination Database with slug `%s` found."
-                                     database-name)
+             (throw (ex-info (tru "Database Routing error: No Destination Database with slug `{0}` found."
+                                  database-name)
                              {:database-name database-name
-                              :router-database-id (u/the-id db-or-id)}))))))))
+                              :router-database-id (u/the-id db-or-id)
+                              :status-code 400}))))))))
 
 ;; We want, at all times, a guarantee that we are not hitting a router *or* destination database without being
 ;; intentional about it. It would be bad to EITHER:
