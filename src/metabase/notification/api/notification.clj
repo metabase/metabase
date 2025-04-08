@@ -264,7 +264,7 @@
       (when (card-notification? <>)
         (u/ignore-exceptions
           (messages/send-you-unsubscribed-notification-card-email!
-           (update <> :payload t2/hydrate :card)
+           <>
            [(:email @api/*current-user*)])))
       (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
                                                               :user-id api/*current-user-id*}))))
