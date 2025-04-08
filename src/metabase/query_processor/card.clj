@@ -18,6 +18,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
@@ -294,10 +295,11 @@
                             :visualization-settings merged-viz}
                      (and (= (:type card) :model) (seq (:result_metadata card)))
                      (assoc :metadata/model-metadata (:result_metadata card)))]
-    (qp.store/store-miscellaneous-value! [::card-stored-metadata] (:result_metadata card))
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
-      (runner query info))))
+      (qp.store/with-metadata-provider (:database_id card)
+        (qp.results-metadata/store-previous-result-metadata! card)
+        (runner query info)))))

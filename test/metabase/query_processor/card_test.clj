@@ -8,6 +8,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -228,4 +229,4 @@
       (mt/with-metadata-provider (mt/id)
         (run-query-for-card (u/the-id card))
         (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
-               (qp.store/miscellaneous-value [::qp.card/card-stored-metadata])))))))
+               (qp.store/miscellaneous-value [::qp.results-metadata/card-stored-metadata])))))))

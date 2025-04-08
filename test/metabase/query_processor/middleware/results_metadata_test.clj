@@ -143,20 +143,21 @@
     (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT NAME FROM VENUES"})}]
       (is (nil? (card-metadata card)))
       (mt/with-metadata-provider (mt/id)
-        (qp.store/store-miscellaneous-value! [:metabase.query-processor.card/card-stored-metadata]
-                                             [{:base_type :type/Text
-                                               :database_type "CHARACTER VARYING"
-                                               :display_name "NAME"
-                                               :effective_type :type/Text
-                                               :field_ref [:field "NAME" {:base-type :type/Text}]
-                                               :fingerprint {:global {:distinct-count 100, :nil% 0.0}
-                                                             :type {:type/Text {:average-length 15.63
-                                                                                :percent-email 0.0
-                                                                                :percent-json 0.0
-                                                                                :percent-state 0.0
-                                                                                :percent-url 0.0}}}
-                                               :name "NAME"
-                                               :semantic_type :type/Name}])
+        (middleware.results-metadata/store-previous-result-metadata!
+         {:result_metadata
+          [{:base_type :type/Text
+            :database_type "CHARACTER VARYING"
+            :display_name "NAME"
+            :effective_type :type/Text
+            :field_ref [:field "NAME" {:base-type :type/Text}]
+            :fingerprint {:global {:distinct-count 100, :nil% 0.0}
+                          :type {:type/Text {:average-length 15.63
+                                             :percent-email 0.0
+                                             :percent-json 0.0
+                                             :percent-state 0.0
+                                             :percent-url 0.0}}}
+            :name "NAME"
+            :semantic_type :type/Name}]})
         (let [result (qp/process-query
                       (qp/userland-query
                        (mt/native-query {:query "SELECT NAME FROM VENUES"})

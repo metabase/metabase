@@ -30,7 +30,7 @@
                ;; don't want to update metadata when we use a Card as a source Card.
                (not (:qp/source-card-id query))
                ;; Only update changed metadata
-               (not= metadata (qp.store/miscellaneous-value [:metadata.query-processor.card/card-stored-metadata])))
+               (not= metadata (qp.store/miscellaneous-value [::card-stored-metadata])))
       (t2/update! :model/Card card-id {:result_metadata metadata
                                        :updated_at      :updated_at}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
@@ -89,3 +89,8 @@
     (let [record! (partial record-metadata! query)]
       (fn record-and-return-metadata!-rff* [metadata]
         (insights-xform metadata record! (rff metadata))))))
+
+(defn store-previous-result-metadata!
+  "Store the previous value of a card's result metadata in the qp.store"
+  [card]
+  (qp.store/store-miscellaneous-value! [::card-stored-metadata] (:result_metadata card)))
