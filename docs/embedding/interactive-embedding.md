@@ -287,6 +287,29 @@ Shown by default in the top nav bar. Collection breadcrumbs show the path to the
 breadcrumbs=false
 ```
 
+### `entity_types`
+
+![Entity types in the data picker](./images/data-picker.png)
+
+In the data picker, you can show or hide different entity types. For example, you may only want to show models.
+
+```
+entity_types=model
+```
+
+Available entity types are:
+
+- `table`
+- `model`
+
+You can separate entity types with a comma, like: 
+
+```
+entity_types=table,model
+```
+
+The default behavior for the data picker is to show all entity types.
+
 ### `header`
 
 Visible by default on question and dashboard pages.
