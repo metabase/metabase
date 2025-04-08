@@ -3,7 +3,10 @@ import { t } from "ttag";
 import { type NumberValue, parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 
-import { MBQL_CLAUSES, getMBQLName as defaultGetMBQLName } from "../config";
+import {
+  getMBQLName as defaultGetMBQLName,
+  getClauseDefinition,
+} from "../config";
 import { CompileError } from "../errors";
 import {
   isBigIntLiteral,
@@ -205,7 +208,7 @@ function compileFunctionCall(node: Node, opts: Options): Lib.ExpressionParts {
 
   assert(isOperator(operator, opts), t`Invalid operator`);
 
-  const clause = MBQL_CLAUSES[operator];
+  const clause = getClauseDefinition(operator);
   const hasOptions = clause?.hasOptions ?? false;
 
   if (hasOptions) {

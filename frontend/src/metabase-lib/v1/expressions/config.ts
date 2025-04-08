@@ -589,6 +589,19 @@ export const MBQL_CLAUSES = defineClauses({
 
 export type DefinedClauseName = keyof typeof MBQL_CLAUSES;
 
+export function isDefinedClause(name: string): name is DefinedClauseName {
+  return name in MBQL_CLAUSES;
+}
+
+export function getClauseDefinition(
+  name: string,
+): MBQLClauseFunctionConfig | undefined {
+  if (isDefinedClause(name)) {
+    return MBQL_CLAUSES[name];
+  }
+  return undefined;
+}
+
 // Reserved token names
 const MBQL_TO_EXPRESSION_NAME = new Map(
   Object.entries(MBQL_CLAUSES).map(([mbql, { displayName }]) => [
@@ -600,13 +613,15 @@ const EXPRESSION_TO_MBQL_NAME = new Map(
   Object.entries(MBQL_CLAUSES).map(([mbql, { displayName }]) => [
     // case-insensitive
     displayName.toLowerCase(),
-    mbql,
+    mbql as DefinedClauseName,
   ]),
 );
 export function getExpressionName(mbqlName: string) {
   return MBQL_TO_EXPRESSION_NAME.get(mbqlName);
 }
-export function getMBQLName(expressionName: string) {
+export function getMBQLName(
+  expressionName: string,
+): DefinedClauseName | undefined {
   // case-insensitive
   return EXPRESSION_TO_MBQL_NAME.get(expressionName.trim().toLowerCase());
 }

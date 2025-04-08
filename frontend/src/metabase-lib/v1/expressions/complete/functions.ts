@@ -1,9 +1,10 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
 
+import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { EXPRESSION_FUNCTIONS, MBQL_CLAUSES } from "../config";
+import { EXPRESSION_FUNCTIONS, getClauseDefinition } from "../config";
 import { GROUP } from "../pratt";
 import { getDatabase } from "../utils";
 
@@ -36,7 +37,8 @@ export function suggestFunctions({
 
   const database = getDatabase(query, metadata);
   const functions = [...EXPRESSION_FUNCTIONS]
-    .map((name) => MBQL_CLAUSES[name])
+    .map(getClauseDefinition)
+    .filter(isNotNull)
     .filter((clause) => clause && database?.hasFeature(clause.requiresFeature))
     .filter(function disableOffsetInFilterExpressions(clause) {
       const isOffset = clause.name === "offset";

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { getClauseDefinition, getMBQLName } from "./config";
 import { ResolverError } from "./errors";
 import type { ExpressionType } from "./types";
 import { getNode } from "./utils";
@@ -49,11 +49,11 @@ export function resolve({
     } catch (err) {
       // A second chance when field is not found:
       // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
-      const func = getMBQLName(name);
-      if (func && MBQL_CLAUSES[func].args.length === 0) {
+      const operator = getMBQLName(name);
+      const clause = operator && getClauseDefinition(operator);
+      if (clause && clause?.args.length === 0) {
         return {
-          // @ts-expect-error: TODO
-          operator: func,
+          operator,
           options: {},
           args: [],
         };
@@ -62,7 +62,7 @@ export function resolve({
     }
   }
 
-  const clause = MBQL_CLAUSES[operator];
+  const clause = getClauseDefinition(operator);
   if (!clause) {
     throw new ResolverError(
       t`Unknown function ${operator}`,
