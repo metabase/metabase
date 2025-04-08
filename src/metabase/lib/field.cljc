@@ -231,16 +231,16 @@
       (str/join ": " path))))
 
 (defn get-value-from-js-map
-  "Retrieve a value from a map-like JavaScript object."
+  "Retrieve a value from a map-like object"
   [obj field default-value]
   (try
-    (let [field-str (name (keyword field))]
-      (if (and (some? obj) (.hasOwnProperty obj field-str))
-        (aget obj field-str)
+    (let [res (get obj (keyword field))]
+      (if (some? res)
+        res
         default-value))
-    (catch js/Error e
-      (log/info "Error accessing property:" (pr-str e))
-      default-value)))
+      (catch #?(:clj Exception :cljs js/Error) e
+        (log/info "Error accessing property:" (pr-str e))
+        default-value)))
 
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.

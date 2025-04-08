@@ -7,6 +7,7 @@
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.json :as mw.json]
+   [metabase.server.middleware.content-translation :as mw.content-translation]
    [metabase.server.middleware.log :as mw.log]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -54,6 +55,7 @@
    #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
    #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
    #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
+   #'mw.content-translation/add-translations    ; middleware to add translations of user-generated content
    #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
    #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params
    #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
