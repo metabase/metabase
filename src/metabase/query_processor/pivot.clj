@@ -650,17 +650,7 @@
         (add-breakouts pivot-col-cols)
         (lib/aggregate (lib/count)))))
 
-(defn merge-base-pivot-query-meatdata
-  "Post-processing middleware. Replaces columns in metadata of pivot query with the columns of the base (un-pivoted) query."
-  [{::keys [non-pivoted-cols]} rff]
-  (fn merge-base-pivot-query-metadata-rff* [metadata]
-    (if non-pivoted-cols
-      (rff (assoc metadata
-                  :cols non-pivoted-cols
-                  :pivot_cols (:cols metadata)))
-      (rff metadata))))
-
-(defn* run-pivot-query
+(defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
   yourself."
   ([query]
@@ -690,7 +680,7 @@
                                      (assoc-in [:middleware :pivot-options] {:pivot-rows new-pivot-rows
                                                                              :pivot-cols new-pivot-cols
                                                                              :pivot-measures ["COUNT"]})
-                                     (assoc ::non-pivoted-cols (original-cols original-query)))
+                                     (assoc :non-pivoted-cols (original-cols original-query)))
                all-queries       (generate-queries query {})
                column-mapping-fn (make-column-mapping-fn query)]
            (process-multiple-queries all-queries rff column-mapping-fn))
