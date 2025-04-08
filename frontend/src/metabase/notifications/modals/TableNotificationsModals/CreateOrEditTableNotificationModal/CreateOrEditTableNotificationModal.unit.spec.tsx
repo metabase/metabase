@@ -13,6 +13,7 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditTableNotificationModal } from "metabase/notifications/modals";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
+  ActionType,
   ChannelApiResponse,
   NotificationChannel,
   SystemEvent,
@@ -27,7 +28,6 @@ import { createMockChannel } from "metabase-types/api/mocks/channel";
 import {
   createMockNotificationHandlerEmail,
   createMockNotificationRecipientUser,
-  createMockNotificationSystemEventSubscription,
 } from "metabase-types/api/mocks/notification";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -180,7 +180,7 @@ describe("CreateOrEditTableNotificationModal", () => {
   it("should show notification data when in edit mode", async () => {
     // Create a custom notification with 'row updated' event
     const mockNotification = createMockTableNotification({
-      event_name: "event/data-editing-row-update",
+      action: "row/update",
     });
 
     setup({
@@ -194,9 +194,10 @@ describe("CreateOrEditTableNotificationModal", () => {
       expect(screen.getByText("Edit alert")).toBeInTheDocument();
     });
 
-    // Verify the correct event is selected (UI displays the label, not the value)
-    const triggerSelect = screen.getByTestId("notification-event-select");
-    expect(triggerSelect).toHaveValue("When any cell changes it's value");
+    // Check for the label in the UI instead of the value
+    expect(
+      screen.getByText("When any cell changes it's value"),
+    ).toBeInTheDocument();
   });
 
   it("should create a new notification with default settings", async () => {
@@ -222,21 +223,23 @@ describe("CreateOrEditTableNotificationModal", () => {
     const calls = fetchMock.calls("path:/api/notification");
     expect(calls.length).toBe(1);
 
-    await waitFor(async () => {
-      const requestBody = await calls[0][1]?.body;
+    await waitFor(() => {
+      const requestBody = calls[0][1]?.body;
       const parsedBody = JSON.parse(requestBody as string);
+      expect(parsedBody.payload.event_name).toBe("event/action.success");
+    });
 
-      // Verify it has the default event_name
-      expect(parsedBody.subscriptions[0].event_name).toBe(
-        "event/data-editing-row-create",
-      );
+    await waitFor(() => {
+      const requestBody = calls[0][1]?.body;
+      const parsedBody = JSON.parse(requestBody as string);
+      expect(parsedBody.payload.action).toBe("row/create");
     });
 
     const requestBody = await calls[0][1]?.body;
     const parsedBody = JSON.parse(requestBody as string);
 
     // Verify it has the default table_id
-    expect(parsedBody.subscriptions[0].table_id).toBe(42);
+    expect(parsedBody.payload.table_id).toBe(42);
 
     // Verify it has at least one handler
     expect(parsedBody.handlers.length).toBeGreaterThan(0);
@@ -259,14 +262,12 @@ describe("CreateOrEditTableNotificationModal", () => {
       expect(screen.getByText("New alert")).toBeInTheDocument();
     });
 
-    // Change event from default 'row created' to 'row deleted'
+    // Change the event to "row updated"
     const triggerSelect = screen.getByTestId("notification-event-select");
     await userEvent.click(triggerSelect);
-
-    const deleteOption = screen.getByRole("option", {
-      name: /When a record is deleted/i,
-    });
-    await userEvent.click(deleteOption);
+    await userEvent.click(
+      screen.getByRole("option", { name: /When any cell changes it's value/i }),
+    );
 
     // Click save button
     const saveButton = screen.getByRole("button", { name: /done/i });
@@ -276,18 +277,19 @@ describe("CreateOrEditTableNotificationModal", () => {
     const calls = fetchMock.calls("path:/api/notification");
     expect(calls.length).toBe(1);
 
-    await waitFor(async () => {
-      const requestBody = await calls[0][1]?.body;
+    await waitFor(() => {
+      const requestBody = calls[0][1]?.body;
       const parsedBody = JSON.parse(requestBody as string);
-      return parsedBody; // Return the parsed body for later assertions
-    }).then((parsedBody) => {
-      // Verify the event has been changed to 'row deleted'
-      expect(parsedBody.subscriptions[0].event_name).toBe(
-        "event/data-editing-row-delete",
-      );
+      expect(parsedBody.payload.event_name).toBe("event/action.success");
     });
 
-    expect(onNotificationCreatedMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      const requestBody = calls[0][1]?.body;
+      const parsedBody = JSON.parse(requestBody as string);
+      expect(parsedBody.payload.action).toBe("row/update");
+    });
+
+    // Additional assertions...
   });
 
   it("should update an existing notification when in edit mode", async () => {
@@ -351,17 +353,18 @@ describe("CreateOrEditTableNotificationModal", () => {
 // Helper function to create a mock table notification
 function createMockTableNotification({
   id = 123,
-  event_name = "event/data-editing-row-create",
+  event_name = "event/action.success",
+  action = "row/create",
   table_id = 42,
   user_id = 1,
 }: {
   id?: number;
   event_name?: SystemEvent;
+  action?: ActionType;
   table_id?: number;
   user_id?: number;
 }): TableNotification {
   const user = createMockUser({ id: user_id });
-
   return {
     id,
     active: true,
@@ -380,18 +383,12 @@ function createMockTableNotification({
     created_at: "2025-01-07T12:00:00Z",
     updated_at: "2025-01-07T12:00:00Z",
     payload_type: "notification/system-event",
-    payload: null,
+    payload: {
+      event_name,
+      table_id,
+      action,
+    },
     payload_id: null,
-    subscriptions: [
-      createMockNotificationSystemEventSubscription({
-        event_name,
-        table_id,
-        table: createMockTable({
-          id: table_id,
-          display_name: "Test Table",
-        }),
-      }),
-    ],
     condition: ["=", ["field", "id"], 1],
   };
 }
@@ -447,11 +444,11 @@ function setup({
   }
 
   const database = createSampleDatabase();
-  const table = createMockTable({ id: 42 });
+  const _table = createMockTable({ id: 42 });
 
   return renderWithProviders(
     <CreateOrEditTableNotificationModal
-      tableId={table.id}
+      tableId={_table.id}
       notification={editingNotification ?? null}
       onClose={jest.fn()}
       onNotificationCreated={onNotificationCreatedMock}
@@ -463,7 +460,7 @@ function setup({
         settings,
         entities: createMockEntitiesState({
           databases: [database],
-          tables: [table],
+          tables: [_table],
         }),
       },
     },

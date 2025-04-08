@@ -41,6 +41,7 @@ type NotificationSystemEventPayload = {
     event_name: SystemEvent;
     table_id: TableId;
     action: ActionType;
+    table?: Table; // hydrated on the BE
   };
   payload_id: null;
 };

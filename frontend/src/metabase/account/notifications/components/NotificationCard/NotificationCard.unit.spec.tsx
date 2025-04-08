@@ -1,21 +1,21 @@
 import { fireEvent, screen } from "@testing-library/react";
 
 import { renderWithTheme } from "__support__/ui";
-import type {
-  QuestionNotificationListItem,
-  TableNotificationListItem,
-} from "metabase/account/notifications/types";
-import type { AlertNotification, SystemEvent } from "metabase-types/api";
+import type { ActionType, AlertNotification } from "metabase-types/api";
 import {
   createMockAlertNotification,
   createMockNotificationCronSubscription,
   createMockNotificationHandlerEmail,
   createMockNotificationHandlerSlack,
   createMockNotificationRecipientUser,
-  createMockNotificationSystemEventSubscription,
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import type {
+  QuestionNotificationListItem,
+  TableNotificationListItem,
+} from "../../types";
 
 import { NotificationCard } from "./NotificationCard";
 
@@ -27,32 +27,36 @@ const getQuestionAlertItem = (
 });
 
 const getTableNotificationItem = (
-  eventName: SystemEvent,
+  action: ActionType,
   tableName = "Sample Table",
-): TableNotificationListItem => ({
-  item: {
-    id: 123,
-    active: true,
-    creator_id: 1,
-    creator: createMockUser(),
-    handlers: [createMockNotificationHandlerEmail()],
-    created_at: "2025-01-07T12:00:00Z",
-    updated_at: "2025-01-07T12:00:00Z",
-    payload_type: "notification/system-event",
-    payload: null,
-    payload_id: null,
-    subscriptions: [
-      createMockNotificationSystemEventSubscription({
-        event_name: eventName,
-        table: createMockTable({
-          display_name: tableName,
-        }),
-      }),
-    ],
-    condition: ["=", ["field", "id"], 1],
-  },
-  type: "table-notification",
-});
+): TableNotificationListItem => {
+  const mockTable = createMockTable({
+    id: 42,
+    display_name: tableName,
+  });
+
+  return {
+    item: {
+      id: 123,
+      active: true,
+      creator_id: 1,
+      creator: createMockUser(),
+      handlers: [createMockNotificationHandlerEmail()],
+      created_at: "2025-01-07T12:00:00Z",
+      updated_at: "2025-01-07T12:00:00Z",
+      payload_type: "notification/system-event",
+      payload: {
+        event_name: "event/action.success",
+        action: action,
+        table_id: mockTable.id,
+      },
+      payload_id: null,
+      condition: ["=", ["field", "id"], 1],
+      table: mockTable,
+    } as any, // Cast to any to allow adding the table property
+    type: "table-notification",
+  };
+};
 
 describe("NotificationCard", () => {
   it("should render a question alert", () => {
@@ -206,9 +210,7 @@ describe("NotificationCard", () => {
   });
 
   it("should render a table notification with 'row created' event", () => {
-    const tableNotification = getTableNotificationItem(
-      "event/data-editing-row-create",
-    );
+    const tableNotification = getTableNotificationItem("row/create");
     const user = createMockUser();
 
     renderWithTheme(
@@ -232,9 +234,7 @@ describe("NotificationCard", () => {
   });
 
   it("should render a table notification with 'row updated' event", () => {
-    const tableNotification = getTableNotificationItem(
-      "event/data-editing-row-update",
-    );
+    const tableNotification = getTableNotificationItem("row/update");
     const user = createMockUser();
 
     renderWithTheme(
@@ -254,9 +254,7 @@ describe("NotificationCard", () => {
   });
 
   it("should render a table notification with 'row deleted' event", () => {
-    const tableNotification = getTableNotificationItem(
-      "event/data-editing-row-delete",
-    );
+    const tableNotification = getTableNotificationItem("row/delete");
     const user = createMockUser();
 
     renderWithTheme(
@@ -276,10 +274,7 @@ describe("NotificationCard", () => {
   });
 
   it("should render a table notification with custom table name", () => {
-    const tableNotification = getTableNotificationItem(
-      "event/data-editing-row-create",
-      "Orders",
-    );
+    const tableNotification = getTableNotificationItem("row/create", "Orders");
     const user = createMockUser();
 
     renderWithTheme(

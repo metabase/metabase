@@ -87,8 +87,10 @@
                                              (into {} (for [nc notification-cards]
                                                         [[:notification/card (:id nc)] nc])))
                                            :notification/system-event
-                                           (let [system-events (t2/select :model/NotificationSystemEvent
-                                                                          :id [:in payload-ids])]
+                                           (let [system-events (t2/hydrate
+                                                                (t2/select :model/NotificationSystemEvent
+                                                                           :id [:in payload-ids])
+                                                                :table)]
                                              (into {} (for [se system-events]
                                                         [[:notification/system-event (:id se)] se])))
                                            {[payload-type nil] nil})))]
@@ -429,7 +431,8 @@
   [:map
    [:event_name :keyword]
    [:action     {:optional true} [:maybe :keyword]]
-   [:table_id   {:optional true} [:maybe ms/PositiveInt]]])
+   [:table_id   {:optional true} [:maybe ms/PositiveInt]]
+   [:table      {:optional true} [:maybe :map]]])
 
 ;;------------------------------------------------------------------------------------------------;;
 ;;                                         Permissions                                             ;;
@@ -575,7 +578,7 @@
   (t2/hydrate notification-or-notifications
               :creator
               :payload
-              [:subscriptions :table]
+              :subscriptions
               [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
