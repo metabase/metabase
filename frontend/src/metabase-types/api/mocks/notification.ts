@@ -4,12 +4,9 @@ import type {
   NotificationHandlerEmail,
   NotificationHandlerSlack,
   NotificationRecipientUser,
-  NotificationSystemEventSubscription,
   TableNotification,
 } from "metabase-types/api";
 import { createMockUserInfo } from "metabase-types/api/mocks/user";
-
-import { createMockTable } from "./table";
 
 export const createMockAlertNotification = (
   opts?: Partial<AlertNotification>,
@@ -106,23 +103,6 @@ export const createMockNotificationCronSubscription = (
   created_at: "2025-01-07T18:40:47.245205+03:00",
   cron_schedule: "0 0 9 * * ?",
   ui_display_type: "cron/builder",
-  ...opts,
-});
-
-export const createMockNotificationSystemEventSubscription = (
-  opts?: Partial<NotificationSystemEventSubscription>,
-): NotificationSystemEventSubscription => ({
-  id: 11,
-  notification_id: 10,
-  type: "notification-subscription/system-event",
-  event_name: "event/action.success",
-  action: "row/create",
-  table_id: 42,
-  table: createMockTable(),
-  created_at: "2025-01-07T18:40:47.245205+03:00",
-  updated_at: "2025-01-07T18:40:47.245205+03:00",
-  ui_display_type: null,
-  cron_schedule: null,
   ...opts,
 });
 

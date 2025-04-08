@@ -304,7 +304,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     // Create a notification with 'row created' event
     const mockNotification = createMockTableNotification({
       id: notificationId,
-      event_name: "event/data-editing-row-create",
+      event_name: "event/action.success",
     });
 
     setup({
@@ -341,9 +341,7 @@ describe("CreateOrEditTableNotificationModal", () => {
       return parsedBody; // Return the parsed body for later assertions
     }).then((parsedBody) => {
       // Verify the event has been changed to 'row updated'
-      expect(parsedBody.subscriptions[0].event_name).toBe(
-        "event/data-editing-row-update",
-      );
+      expect(parsedBody.payload.action).toBe("row/update");
     });
 
     expect(onNotificationUpdatedMock).toHaveBeenCalledTimes(1);
