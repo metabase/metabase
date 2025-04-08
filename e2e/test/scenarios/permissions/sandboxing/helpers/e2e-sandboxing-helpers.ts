@@ -310,6 +310,8 @@ export const widgetViewer: NormalUser = {
 };
 
 export const signInAs = (user: NormalUser) => {
+  cy.signOut();
+  cy.request("DELETE", "/api/session");
   cy.clearCookies();
   cy.log(`Sign in as user via an API call: ${user.email}`);
   return cy
@@ -432,7 +434,7 @@ export const configureSandboxPolicy = (
 
 const getQuestionName = (
   response: DatasetResponse,
-  questions: CollectionItem[],
+  questions: SimpleCollectionItem[],
 ) => {
   let questionName;
   if (questions.length === 1) {
@@ -500,14 +502,12 @@ export function rowsShouldContainOnlyOneCategory({
   );
 
   responses.forEach((response) => {
-    const { questionDesc } = getQuestionDescription(response, questions);
-    cy.log(`Results contain only ${productCategory}s in: ${questionDesc}`);
+    const { questionName } = getQuestionName(response, questions);
+    cy.log(`Results contain only ${productCategory}s in: ${questionName}`);
     expect(
       response?.body.data.is_sandboxed,
-      `Response is sandboxed for: ${questionDesc}`,
+      `Response is sandboxed for: ${questionName}`,
     ).to.be.true;
-
-    const { questionName } = getQuestionName(response, questions);
 
     expect(
       JSON.stringify(response.body),
@@ -738,7 +738,7 @@ export const runWithoutCachingThenWithCaching = (
   { questions }: { questions: CollectionItem[] },
 ) => {
   callback({ isCachingEnabled: false });
-  cy.signInAsAdmin().then(() => {
+  signInAsAdmin().then(() => {
     cacheUnsandboxedResults(questions).then(() => {
       callback({ isCachingEnabled: true });
     });
@@ -771,6 +771,8 @@ export const waitForUserToBeLoggedIn = (user: NormalUser) => {
 };
 
 export const signInAsAdmin = () => {
+  cy.signOut();
+  cy.request("DELETE", "/api/session");
   cy.clearCookies();
-  cy.signInAsAdmin();
+  return cy.signInAsAdmin();
 };
