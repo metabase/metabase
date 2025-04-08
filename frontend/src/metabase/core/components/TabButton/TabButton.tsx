@@ -215,6 +215,7 @@ export function RenameableTabButton({
   renameMenuLabel = t`Rename`,
   renameMenuIndex = 0,
   canRename = true,
+  tabIndex,
   ...props
 }: RenameableTabButtonProps) {
   const { value: selectedValue } = useContext(TabContext);
