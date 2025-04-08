@@ -31,7 +31,6 @@ export function resolve({
 }: Options<Lib.ExpressionParts | Lib.ExpressionArg>):
   | Lib.ExpressionParts
   | Lib.ExpressionArg {
-  // @ts-expect-error: TODO - add value to ExpressionOperator
   if (!Lib.isExpressionParts(expression) || expression.operator === "value") {
     return expression;
   }

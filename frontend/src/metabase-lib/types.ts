@@ -295,7 +295,8 @@ export type ExpressionOperator =
   | "and"
   | "or"
   | "not"
-  | "coalesce";
+  | "coalesce"
+  | "value";
 
 export type ExpressionArg =
   | boolean
