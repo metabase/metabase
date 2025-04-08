@@ -67,8 +67,8 @@
   The pivot-grouping column indicates which breakouts were used to compute a given row. We used that column
   to split apart the data and convert field refs to indices"
   [data]
-  (let [group-index   (u/index-of pivot-group-column? (:cols data))
-        columns       (columns-without-pivot-group (:cols data))
+  (let [group-index   (u/index-of pivot-group-column? (:pivot_cols data))
+        columns       (columns-without-pivot-group (:pivot_cols data))
         breakouts     (filter #(= (keyword (:source %)) :breakout) columns)
         num-breakouts (count breakouts)
         pivot-data    (->> (:rows data)
