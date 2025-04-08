@@ -38,7 +38,6 @@ export const createQuestionAlert = ({
     subscriptions: [
       {
         type: "notification-subscription/cron",
-        event_name: null,
         cron_schedule,
       },
     ],

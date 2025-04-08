@@ -13,6 +13,7 @@ import type {
   QuestionNotificationListItem,
   TableNotificationListItem,
 } from "metabase/account/notifications/types";
+import { isTableNotification } from "metabase/api/notification";
 import Link from "metabase/core/components/Link/Link";
 import {
   canArchive,
@@ -49,7 +50,9 @@ export const NotificationCard = <
 
   const enabledChannelsMap = getNotificationEnabledChannelsMap(item);
 
-  const subscription = item.subscriptions[0];
+  // Handle different notification types
+  const isTable = isTableNotification(item);
+  const subscription = isTable ? null : item.subscriptions?.[0];
 
   const onUnsubscribeClick = useCallback(() => {
     onUnsubscribe(listItem);
@@ -80,7 +83,7 @@ export const NotificationCard = <
                   subscription.type === "notification-subscription/cron" && (
                     <span>{formatNotificationSchedule(subscription)}</span>
                   )}
-                {" · "}
+                {!isTable && " · "}
                 {<span>{formatCreatorMessage(item, user.id)}</span>}
               </Group>
             </Group>

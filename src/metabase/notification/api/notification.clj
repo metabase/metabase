@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
@@ -65,11 +66,11 @@
 
                               table_id
                               (-> (sql.helpers/left-join
-                                   :notification_subscription
+                                   :notification_system_event
                                    [:and
-                                    [:= :notification_subscription.notification_id :notification.id]
+                                    [:= :notification_system_event.id :notification.payload_id]
                                     [:= :notification.payload_type "notification/system-event"]])
-                                  (sql.helpers/where [:= :notification_subscription.table_id table_id]))
+                                  (sql.helpers/where [:= :notification_system_event.table_id table_id]))
 
                               (and (nil? legacy-active) (not (true? include_inactive)))
                               (sql.helpers/where [:= :notification.active true])
@@ -164,6 +165,19 @@
     (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
 
+(api.macros/defendpoint :post "/payload"
+  "Return the payload of a notification"
+  [_route _query body :- ::models.notification/NotificationWithPayload]
+  (api/create-check :model/Notification body)
+  {:payload (notification/notification-payload (cond-> body
+                                                 (= :notification/system-event (:payload_type body))
+                                                 (assoc :event_info (events/event-info-example (-> body :payload :event_name) (:payload body)))))
+   :schema (case (:payload_type body)
+             :notification/system-event
+             (defendpoint.open-api/schema->json-schema (events/event-schema (-> body :payload :event_name) (:payload body)))
+             ;; TODO for :notification/card
+             {})})
+
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"
   [updated-notification existing-notification]
@@ -246,14 +260,14 @@
   (let [notification (get-notification notification-id)]
     (api/check-403 (models.notification/current-user-is-recipient? notification))
     (models.notification/unsubscribe-user! notification-id user-id)
-    (u/prog1 (get-notification notification-id)
-      (when (card-notification? <>)
-        (u/ignore-exceptions
-          (messages/send-you-unsubscribed-notification-card-email!
-           (update <> :payload t2/hydrate :card)
-           [(:email @api/*current-user*)])))
-      (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
-                                                              :user-id api/*current-user-id*}))))
+    (when (card-notification? notification)
+      (u/ignore-exceptions
+        (messages/send-you-unsubscribed-notification-card-email!
+         notification
+         [(:email @api/*current-user*)])))
+    (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
+                                                            :user-id api/*current-user-id*})
+    notification))
 
 (api.macros/defendpoint :post "/:id/unsubscribe"
   "Unsubscribe current user from a notification."

@@ -64,7 +64,7 @@ export const NotificationList = ({
               />
             );
           case "table-notification": {
-            const subscription = listItem.item.subscriptions[0];
+            const payload = listItem.item.payload;
             return (
               <NotificationCard
                 key={`${listItem.type}-${listItem.item.id}`}
@@ -74,8 +74,8 @@ export const NotificationList = ({
                 onUnsubscribe={onUnsubscribe}
                 onArchive={onArchive}
                 entityLink={Urls.tableView(
-                  subscription.table!.db_id,
-                  subscription.table_id,
+                  payload.table!.db_id,
+                  payload.table_id,
                 )}
               />
             );

@@ -1,43 +1,53 @@
 (ns metabase.events.schema
   (:require
+   [malli.json-schema :as mjs]
    [malli.util :as mut]
+   [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.models.view-log-impl :as view-log-impl]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn event-schema
+(defmulti event-schema
   "Get the Malli schema we should use for events of `topic`. By default, this looks in our registry for a schema
   matching the event topic name; if it fails to find one, it falls back to `:map`."
-  [topic :- keyword?]
+  {:arglists '([topic event-info])}
+  (fn [topic _event-info] topic))
+
+(defmethod event-schema :default
+  [topic _event-info]
   (or (mr/registered-schema topic)
       :map))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defn- with-hydrate
-  "Given a malli entry schema of a map, return a new entry schema with an additional option
-  to hydrate information when sending system event notifications.
+(defn hydrated-schemas
+  "Returns a pair of schemas that can be used to hydrate a schema and its hydrated schema.
 
-    (events.notification/hydrate! [:map
-                                    (-> [:user_id :int] (with-hydrate :user [:model/User :email]))]
-                                  {:user_id 1})
+    (#'metabase.events.notification/hydrate!
+       (into [:map]
+             (hydrated-schemas
+              [:user_id pos-int?]
+              :user
+              [:model/User :email]
+              [:user [:map {:closed true}
+                      [:email         ms/Email]]]))
+       {:user_id 3})
     ;; => {:user_id 1
            :user    {:email \"ngoc@metabase.com\"}}"
-  [entry-schema k model]
+  [entry-schema k model hydrated-schema]
   (assert (#{2 3} (count entry-schema)) "entry-schema must have 2 or 3 elements")
-  (let [[entry-key option schema] (if (= 2 (count entry-schema))
-                                    [(first entry-schema) {} (second entry-schema)]
-                                    entry-schema)]
-    [entry-key (assoc option :hydrate {:key   k
-                                       :model model})
-     schema]))
+  (let [merge-options (fn [entry-schema new-options]
+                        (if (= 2 (count entry-schema))
+                          (let [[k s] entry-schema]
+                            [k new-options s])
+                          (let [[k o s] entry-schema]
+                            [k (merge o new-options) s])))]
+    [(merge-options entry-schema {:hydrate {:key   k
+                                            :model model}})
+     hydrated-schema]))
 
-(def ^:private user-hydrate
+(def user-hydrate
+  "Hydrate user information when sending system event notifications."
   [:model/User :first_name :last_name :email])
-
-(def ^:private table-hydrate
-  [:model/Table :name])
 
 ;; collection events
 
@@ -58,8 +68,7 @@
 (mr/def :event/dashboard-delete ::dashboard)
 
 (mr/def ::dashboard-with-dashcards
-  (-> (event-schema ::dashboard)
-      (mut/assoc :dashcards [:sequential [:map [:id pos-int?]]])))
+  (mut/assoc (mr/resolve-schema ::dashboard) :dashcards [:sequential [:map [:id pos-int?]]]))
 
 (mr/def :event/dashboard-remove-cards ::dashboard-with-dashcards)
 (mr/def :event/dashboard-add-cards    ::dashboard-with-dashcards)
@@ -169,13 +178,13 @@
 ;; alert schemas
 
 (mr/def :event/alert-create
-  [:map {:closed true}
-   (-> [:user-id pos-int?]
-       (with-hydrate :user user-hydrate))
-   [:object [:and
-             [:fn #(t2/instance-of? :model/Pulse %)]
-             [:map
-              [:card [:fn #(t2/instance-of? :model/Card %)]]]]]])
+  (-> [:map {:closed true}
+       [:object [:and
+                 [:fn #(t2/instance-of? :model/Pulse %)]
+                 [:map
+                  [:card [:fn #(t2/instance-of? :model/Card %)]]]]]]
+      (into (hydrated-schemas [:user-id pos-int?]
+                              :user user-hydrate [:user [:map [:email ms/Email]]]))))
 
 ;; pulse schemas
 
@@ -205,24 +214,3 @@
   [:map {:closed true}
    [:user-id [:maybe pos-int?]]
    [:model [:or :keyword :string]]])
-
-(mr/def ::data-editing-events
-  [:map #_{:closed true}
-   (-> [:table_id pos-int?] (with-hydrate :table table-hydrate))
-   (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))])
-
-(mr/def :event/data-editing-row-create [:merge
-                                        ::data-editing-events
-                                        [:map
-                                         [:created_row :map]]])
-(mr/def :event/data-editing-row-update [:merge
-                                        ::data-editing-events
-                                        [:map
-                                         ;; there could be no changes when update
-                                         [:update [:maybe :map]]
-                                         [:after  [:maybe :map]]
-                                         [:before :map]]])
-(mr/def :event/data-editing-row-delete [:merge
-                                        ::data-editing-events
-                                        [:map
-                                         [:deleted_row :map]]])
