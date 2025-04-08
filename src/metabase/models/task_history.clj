@@ -67,8 +67,11 @@
 (mu/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"
   [limit  :- [:maybe ms/PositiveInt]
-   offset :- [:maybe ms/IntGreaterThanOrEqualToZero]]
+   offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
+   status :- [:maybe [:enum :started :success :failed]]]
   (t2/select :model/TaskHistory (merge {:order-by [[:started_at :desc]]}
+                                       (when status
+                                         {:where [:= :status (name status)]})
                                        (when limit
                                          {:limit limit})
                                        (when offset

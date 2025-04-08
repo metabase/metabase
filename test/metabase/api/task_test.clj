@@ -124,3 +124,45 @@
                  [:jobs      [:sequential
                               [:map-of :any :any]]]]
                 (mt/user-http-request :crowberto :get 200 "task/info")))))
+
+(deftest status-filtering-test
+  (testing "Check that paging information is applied when provided and included in the response"
+    (t2/delete! :model/TaskHistory)
+    (let [now (t/zoned-date-time)]
+      (mt/with-temp [:model/TaskHistory
+                     _
+                     {:status "success"
+                      :task "success"
+                      :started_at (t/minus now (t/hours 1))
+                      :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
+
+                     :model/TaskHistory
+                     _
+                     {:status :failed
+                      :task "failed"
+                      :started_at (t/zoned-date-time)
+                      :ended_at (t/zoned-date-time)}
+
+                     :model/TaskHistory
+                     _
+                     {:status :started
+                      :task "started"
+                      :started_at (t/zoned-date-time)}]
+        (letfn [(test-filtering-response
+                  [status]
+                  (testing (format "Filtering for %s response works correctly" status)
+                    (let [response (mt/user-http-request :crowberto :get 200 "task/" :status status)]
+                      (is (= 1 (-> response :data count)))
+                      (is (= status (-> response :data first :task)))
+                      (is (= status (-> response :data first :status))))))]
+          (test-filtering-response "success")
+          (test-filtering-response "started")
+          (test-filtering-response "failed"))
+        (testing "No filter in query params returns all tasks"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/")]
+            (is (= 3 (-> response :data count)))))
+        (testing "nil filter in query params returns all tasks"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/" :status nil)]
+            (is (= 3 (-> response :data count)))))
+        (testing "Error is returned for unexpected status values"
+          (is (contains? (mt/user-http-request :crowberto :get 500 "task/" :status 1) :error)))))))
