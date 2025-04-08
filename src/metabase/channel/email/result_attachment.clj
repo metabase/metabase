@@ -89,8 +89,8 @@
     result :result
     :as part}]
   (when (pos-int? (:row_count result))
-    (let [realize-data-rows (requiring-resolve 'metabase.channel.shared/realize-data-rows)
-          result            (:result (realize-data-rows part))
+    (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
+          result            (:result (maybe-realize-data-rows part))
           visualizer-title (when (and dashcard (get-in dashcard [:visualization_settings :visualization]))
                              (not-empty (get-in dashcard [:visualization_settings :visualization :settings :card.title])))
           filename-prefix  (or visualizer-title original-card-name)]

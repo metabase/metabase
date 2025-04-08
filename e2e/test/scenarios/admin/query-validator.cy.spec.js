@@ -21,9 +21,7 @@ describe("query validator", { tags: "@external" }, () => {
         "Query Validator",
       );
       cy.visit("/admin/settings/general");
-      cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).should(
-        "not.exist",
-      );
+      cy.findByTestId("query-analysis-enabled-setting").should("not.exist");
     });
   });
 
@@ -38,11 +36,9 @@ describe("query validator", { tags: "@external" }, () => {
     it("enable query analysis setting", () => {
       cy.visit("/admin/settings/general");
 
-      cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).should(
-        "have.attr",
-        "checked",
-      );
-      cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).click();
+      cy.findByTestId("query-analysis-enabled-setting")
+        .findByText("Enabled")
+        .click();
 
       cy.findByRole("link", { name: /troubleshooting/i }).click();
 
@@ -93,13 +89,13 @@ describe("query validator", { tags: "@external" }, () => {
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
         ({ body: tables }) => {
           const scoreboardTable = tables.find(
-            table => table.name === SCOREBOARD_TABLE,
+            (table) => table.name === SCOREBOARD_TABLE,
           );
 
           cy.request(`/api/table/${scoreboardTable.id}/query_metadata`).then(
             ({ body: { fields } }) => {
               const teamNameField = fields.find(
-                field => field.name === "team_name",
+                (field) => field.name === "team_name",
               );
 
               H.createQuestion({
@@ -118,12 +114,14 @@ describe("query validator", { tags: "@external" }, () => {
 
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
         ({ body: tables }) => {
-          const colorsTable = tables.find(table => table.name === COLORS_TABLE);
+          const colorsTable = tables.find(
+            (table) => table.name === COLORS_TABLE,
+          );
 
           cy.request(`/api/table/${colorsTable.id}/query_metadata`).then(
             ({ body: { fields } }) => {
               const colorNameField = fields.find(
-                field => field.name === "name",
+                (field) => field.name === "name",
               );
 
               H.createQuestion({
@@ -192,8 +190,7 @@ describe("OSS", { tags: "@OSS" }, () => {
       "Query Validator",
     );
     cy.visit("/admin/settings/general");
-    cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).should(
-      "not.exist",
-    );
+
+    cy.findByTestId("query-analysis-enabled-setting").should("not.exist");
   });
 });

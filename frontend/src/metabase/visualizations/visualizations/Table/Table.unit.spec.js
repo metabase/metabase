@@ -53,9 +53,9 @@ const setup = ({ display, visualization_settings = {} }) => {
       ),
     );
 
-    const handleChange = update => {
+    const handleChange = (update) => {
       onChange(update);
-      setQuestion(q => {
+      setQuestion((q) => {
         const newQuestion = q.updateSettings(update);
         return new Question(thaw(newQuestion.card()), metadata);
       });
@@ -69,7 +69,7 @@ const setup = ({ display, visualization_settings = {} }) => {
             card: question.card(),
             data: {
               rows: [],
-              cols: ordersFields.map(field =>
+              cols: ordersFields.map((field) =>
                 createMockColumn({
                   ...field,
                   id: Number(field.id),
@@ -93,7 +93,7 @@ const setup = ({ display, visualization_settings = {} }) => {
 };
 
 // these visualizations share column settings, so all the tests should work for both
-["table", "object"].forEach(display => {
+["table", "object"].forEach((display) => {
   describe(`${display} column settings`, () => {
     it("should show you related columns in structured queries", async () => {
       setup({ display });
@@ -167,12 +167,12 @@ const setup = ({ display, visualization_settings = {} }) => {
 
 describe("table.pivot", () => {
   describe("getHidden", () => {
-    const createMockSeriesWithCols = cols => [
+    const createMockSeriesWithCols = (cols) => [
       createMockSingleSeries(
         createMockCard(),
         createMockDataset({
           data: createMockDatasetData({
-            cols: cols.map(name => createMockColumn({ name })),
+            cols: cols.map((name) => createMockColumn({ name })),
           }),
         }),
       ),
@@ -234,15 +234,26 @@ describe("text_wrapping", () => {
       expect(settings["text_wrapping"]).toBeUndefined();
     });
 
-    it("should be hidden when view_as is not null or auto", () => {
+    it("should be hidden when view_as is image", () => {
       const stringColumn = createMockStringColumn();
       const settings = Table.columnSettings(stringColumn);
 
       const isHidden = settings["text_wrapping"].getHidden(stringColumn, {
-        view_as: "link",
+        view_as: "image",
       });
 
       expect(isHidden).toBe(true);
+    });
+
+    it("should be not valid when view_as is image", () => {
+      const stringColumn = createMockStringColumn();
+      const settings = Table.columnSettings(stringColumn);
+
+      const isValid = settings["text_wrapping"].isValid(stringColumn, {
+        view_as: "image",
+      });
+
+      expect(isValid).toBe(false);
     });
 
     it("should be visible when view_as is null", () => {
@@ -265,6 +276,28 @@ describe("text_wrapping", () => {
       });
 
       expect(isHidden).toBe(false);
+    });
+
+    it("should be visible when view_as is link", () => {
+      const stringColumn = createMockStringColumn();
+      const settings = Table.columnSettings(stringColumn);
+
+      const isHidden = settings["text_wrapping"].getHidden(stringColumn, {
+        view_as: "link",
+      });
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should be valid when view_as is link", () => {
+      const stringColumn = createMockStringColumn();
+      const settings = Table.columnSettings(stringColumn);
+
+      const isValid = settings["text_wrapping"].isValid(stringColumn, {
+        view_as: "link",
+      });
+
+      expect(isValid).toBe(true);
     });
 
     it("should default to false", () => {

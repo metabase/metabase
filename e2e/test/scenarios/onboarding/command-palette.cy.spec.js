@@ -18,8 +18,8 @@ describe("command palette", () => {
     cy.intercept(
       "GET",
       "**/search?q=Company&context=command-palette&include_dashboard_questions=true&limit=20",
-      req => {
-        req.reply(res => {
+      (req) => {
+        req.reply((res) => {
           const orderedNames = ["Products", "Orders", "Reviews", "People"];
           res.body.data = res.body.data.sort((a, b) => {
             return orderedNames.indexOf(a.name) - orderedNames.indexOf(b.name);
@@ -380,5 +380,64 @@ describe("command palette", () => {
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("be.visible");
     });
+  });
+});
+
+describe("shortcuts", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should render a shortcuts modal, and global shortcuts should be available", () => {
+    cy.visit("/");
+    cy.findByTestId("greeting-message").should("exist");
+    H.openShortcutModal();
+
+    H.shortcutModal().within(() => {
+      cy.findByRole("tab", { name: "General" }).should("exist");
+      cy.findByRole("tab", { name: "Dashboard" }).should("exist");
+    });
+    cy.realPress("Escape");
+    H.shortcutModal().should("not.exist");
+
+    // Test a few global shortcuts
+    cy.realPress("c");
+    cy.findByRole("dialog", { name: /collection/i }).should("exist");
+    cy.realPress("Escape");
+    cy.realPress("d");
+    cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
+    cy.realPress("Escape");
+
+    cy.realPress("b").realPress("d");
+    cy.location("pathname").should("contain", "browse/databases");
+    cy.realPress("Escape");
+  });
+
+  it("should support dashboard shortcuts", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.openShortcutModal();
+    cy.realPress("Escape");
+
+    cy.realPress("o");
+    H.openNavigationSidebar();
+    H.navigationSidebar()
+      .findByRole("tab", { name: /bookmarks/i })
+      .should("contain.text", "Orders in a dashboard");
+    cy.realPress("o");
+    H.navigationSidebar()
+      .findByRole("tab", { name: /bookmarks/i })
+      .should("not.exist");
+
+    cy.realPress("e");
+    cy.findByTestId("edit-bar").should(
+      "contain.text",
+      "You're editing this dashboard",
+    );
+    cy.realPress("f");
+    cy.findByRole("menu", { name: /add a filter/i }).should("exist");
+    cy.realPress("Escape");
+    cy.realPress("e");
+    cy.findByTestId("edit-bar").should("not.exist");
   });
 });

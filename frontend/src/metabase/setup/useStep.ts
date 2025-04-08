@@ -9,8 +9,8 @@ import {
 import type { SetupStep } from "./types";
 
 export const useStep = (stepName: SetupStep) => {
-  const isStepActive = useSelector(state => getIsStepActive(state, stepName));
-  const isStepCompleted = useSelector(state =>
+  const isStepActive = useSelector((state) => getIsStepActive(state, stepName));
+  const isStepCompleted = useSelector((state) =>
     getIsStepCompleted(state, stepName),
   );
   const isSetupCompleted = useSelector(getIsSetupCompleted);

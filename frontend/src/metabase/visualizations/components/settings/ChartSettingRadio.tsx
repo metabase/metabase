@@ -30,7 +30,7 @@ export const ChartSettingRadio = ({
     <Radio.Group
       value={encodeWidgetValue(value)}
       className={className}
-      onChange={value => onChange(decodeWidgetValue(value))}
+      onChange={(value) => onChange(decodeWidgetValue(value))}
     >
       <Stack gap="xs">
         {options.map(({ name, value: optionValue }) => (

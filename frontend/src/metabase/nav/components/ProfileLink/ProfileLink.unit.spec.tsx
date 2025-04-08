@@ -86,7 +86,7 @@ describe("ProfileLink", () => {
 
       await openMenu();
 
-      REGULAR_ITEMS.forEach(title => {
+      REGULAR_ITEMS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
       expect(screen.queryByText("Admin settings")).not.toBeInTheDocument();
@@ -97,7 +97,7 @@ describe("ProfileLink", () => {
 
       await openMenu();
 
-      ADMIN_ITEMS.forEach(title => {
+      ADMIN_ITEMS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
     });
@@ -109,7 +109,7 @@ describe("ProfileLink", () => {
 
       await openMenu();
 
-      REGULAR_ITEMS.forEach(title => {
+      REGULAR_ITEMS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
       expect(screen.queryByText("Admin settings")).not.toBeInTheDocument();
@@ -120,7 +120,7 @@ describe("ProfileLink", () => {
 
       await openMenu();
 
-      HOSTED_ITEMS.forEach(title => {
+      HOSTED_ITEMS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
     });

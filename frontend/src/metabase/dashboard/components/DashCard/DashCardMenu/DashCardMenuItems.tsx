@@ -101,7 +101,7 @@ export const DashCardMenuItems = ({
 
     if (customItems) {
       items.push(
-        ...customItems.map(item => {
+        ...customItems.map((item) => {
           const customItem =
             typeof item === "function"
               ? item({ question: transformSdkQuestion(question) })
@@ -128,7 +128,7 @@ export const DashCardMenuItems = ({
     onEditVisualization,
   ]);
 
-  return menuItems.map(item => {
+  return menuItems.map((item) => {
     const { iconName, key, ...rest } = item;
 
     return (

@@ -55,6 +55,15 @@ config:
       user: metabase
       password: metasample123
       dbname: sample
+  api-keys:
+  - name: Admin API key
+    group: admin
+    creator: first@example.com
+    key: mb_firsttestapikey123
+  - name: All Users API key
+    group: all-users
+    creator: first@example.com
+    key: mb_secondtestapikey456
   settings:
     admin-email: null
     aggregated-query-row-limit: null
@@ -217,7 +226,7 @@ config:
     saml-slo-enabled: false
     saml-user-provisioning-enabled: true
     scim-enabled: null
-    search-engine: appdb
+    search-engine: in-place
     search-typeahead-enabled: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax

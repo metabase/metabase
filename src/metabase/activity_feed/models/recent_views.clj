@@ -249,6 +249,7 @@
                          :card.id
                          :card.database_id
                          :card.display
+                         :card.card_schema
                          :card.result_metadata
                          :card.visualization_settings
                          [:dashboard.id :dashboard_id]

@@ -11,6 +11,7 @@ import type {
   OffsetExpression,
   SegmentFilter,
   StringLiteral,
+  ValueExpression,
 } from "metabase-types/api";
 
 import { FUNCTIONS, OPERATORS } from "./config";
@@ -50,10 +51,18 @@ export function isBooleanLiteral(expr: unknown): expr is BooleanLiteral {
 }
 
 export function isNumberLiteral(expr: unknown): expr is NumericLiteral {
-  return typeof expr === "number";
+  return typeof expr === "number" || typeof expr === "bigint";
 }
 
-export function isValue(expr: unknown) {
+export function isIntegerLiteral(expr: unknown): expr is NumericLiteral {
+  return typeof expr === "number" && Number.isInteger(expr);
+}
+
+export function isFloatLiteral(expr: unknown): expr is NumericLiteral {
+  return typeof expr === "number" && !Number.isInteger(expr);
+}
+
+export function isValue(expr: unknown): expr is ValueExpression {
   return Array.isArray(expr) && expr[0] === "value";
 }
 
@@ -61,7 +70,7 @@ export function isOperator(expr: unknown): expr is CallExpression {
   return (
     Array.isArray(expr) &&
     OPERATORS.has(expr[0]) &&
-    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
+    expr.slice(1).every((arg) => isExpression(arg) || isOptionsObject(arg))
   );
 }
 
@@ -71,10 +80,14 @@ export function isOptionsObject(obj: unknown): obj is CallOptions {
 
 export function isFunction(expr: unknown): expr is CallExpression {
   return (
-    Array.isArray(expr) &&
+    isCallExpression(expr) &&
     FUNCTIONS.has(expr[0]) &&
-    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
+    expr.slice(1).every((arg) => isExpression(arg) || isOptionsObject(arg))
   );
+}
+
+export function isCallExpression(expr: unknown): expr is CallExpression {
+  return Array.isArray(expr) && typeof expr[0] === "string";
 }
 
 export function isDimension(expr: unknown): expr is FieldReference {

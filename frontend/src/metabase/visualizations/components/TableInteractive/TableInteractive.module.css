@@ -2,8 +2,17 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
+
+  .bodyCellWithImage {
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
 }
 
 .pivotedFirstColumn {
   border-right: 1px solid var(--mb-color-border);
+}
+
+.bodyCellWithImage img {
+  vertical-align: middle;
 }

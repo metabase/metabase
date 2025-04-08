@@ -11,6 +11,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.setting :as setting]
@@ -189,6 +190,28 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SQL Driver Methods                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :integer]
+  [driver [_ value]]
+  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :split-part]
+  [driver [_ text divider position]]
+  [:coalesce
+   [:at
+    [:split
+     (sql.qp/->honeysql driver text)
+     (sql.qp/->honeysql driver divider)]
+    [:safe_ordinal (sql.qp/->honeysql driver position)]]
+   ""])
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "STRING" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :date]
+  [driver [_ value]]
+  [:parse_date (sql.qp/->honeysql driver value) "%Y-%m-%d"])
 
 ;; TODO -- all this [[temporal-type]] stuff below can be replaced with the more generalized
 ;; [[h2x/with-database-type-info]] stuff we've added. [[h2x/with-database-type-info]] was inspired by this BigQuery code
@@ -649,7 +672,7 @@
   nfc-path)
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver [_field _id-or-name {::add/keys [source-table], :as _opts} :as field-clause]]
+  [driver [_field id-or-name {::add/keys [source-table source-alias], :as opts} :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
@@ -658,9 +681,17 @@
       ;; SQL QP parent method, and we can access that inside other things like [[sql.qp/date]] implementations which it
       ;; may call in turn.
       (let [field-clause (with-temporal-type field-clause (temporal-type field-clause))
-            result       (parent-method driver field-clause)]
-        (cond-> result
-          (not (temporal-type result)) (with-temporal-type (temporal-type field-clause)))))))
+            stored-field  (when (integer? id-or-name)
+                            (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+            result       (parent-method driver field-clause)
+            result       (cond-> result
+                           (not (temporal-type result))
+                           (with-temporal-type (temporal-type field-clause)))]
+        (if (and (lib.field/json-field? stored-field)
+                 (or (::sql.qp/forced-alias opts)
+                     (= source-table ::add/source)))
+          (keyword source-alias)
+          result)))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
   [driver clause]

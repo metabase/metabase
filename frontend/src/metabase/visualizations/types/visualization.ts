@@ -118,7 +118,6 @@ export interface VisualizationProps {
   errorIcon?: IconName | null;
   actionButtons?: ReactNode;
   fontFamily: string;
-  isPlaceholder?: boolean;
   isFullscreen: boolean;
   isQueryBuilder: boolean;
   isEmbeddingSdk: boolean;
@@ -145,8 +144,10 @@ export interface VisualizationProps {
   width: number;
   height: number;
 
-  visualizationIsClickable: (clickObject?: ClickObject) => boolean;
-  getExtraDataForClick?: (clickObject?: ClickObject) => Record<string, unknown>;
+  visualizationIsClickable: (clickObject: ClickObject | null) => boolean;
+  getExtraDataForClick?: (
+    clickObject: ClickObject | null,
+  ) => Record<string, unknown>;
 
   onRender: ({
     yAxisSplit,
@@ -159,7 +160,7 @@ export interface VisualizationProps {
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
-  onVisualizationClick: (clickObject?: ClickObject) => void;
+  onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
     settings: VisualizationSettings,
     question?: Question,
@@ -303,6 +304,7 @@ export type VisualizationDefinition = {
   identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;
+  hasEmptyState?: boolean;
 
   maxMetricsSupported?: number;
   maxDimensionsSupported?: number;
@@ -321,8 +323,6 @@ export type VisualizationDefinition = {
 
   settings: VisualizationSettingsDefinitions;
 
-  placeHolderSeries?: Series;
-
   transformSeries?: (series: Series) => TransformedSeries;
   isSensible: (data: DatasetData) => boolean;
   // checkRenderable throws an error if a visualization is not renderable
@@ -333,5 +333,4 @@ export type VisualizationDefinition = {
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
-  placeholderSeries: RawSeries;
 };

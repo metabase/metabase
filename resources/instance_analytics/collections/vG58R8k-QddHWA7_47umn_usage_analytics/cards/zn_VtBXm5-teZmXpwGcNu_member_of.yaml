@@ -148,6 +148,7 @@ serdes/meta:
   label: member_of
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: null
 source_card_id: lTp-ATFsCUFEr9I0fMEaO

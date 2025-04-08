@@ -276,12 +276,12 @@ function PreviousValueComparison({
     )}`;
   };
 
-  const detailCandidates = valueCandidates.map(valueStr =>
+  const detailCandidates = valueCandidates.map((valueStr) =>
     getDetailCandidate(valueStr),
   );
   const fullDetailDisplay = detailCandidates[0];
   const fittedDetailDisplay = detailCandidates.find(
-    e =>
+    (e) =>
       measureTextWidth(innerText(e), {
         size: fontSize,
         family: fontFamily,
@@ -423,7 +423,7 @@ Object.assign(SmartScalar, {
         settings,
       ) => [
         // try and find a selected field setting
-        cols.find(col => col.name === settings["scalar.field"]) ||
+        cols.find((col) => col.name === settings["scalar.field"]) ||
           // fall back to the second column
           cols[1] ||
           // but if there's only one column use that
@@ -439,18 +439,17 @@ Object.assign(SmartScalar, {
   },
 
   // Smart scalars need to have a breakout
-  checkRenderable(
-    [
-      {
-        data: { insights },
-      },
-    ],
-    settings,
-  ) {
+  checkRenderable([
+    {
+      data: { insights },
+    },
+  ]) {
     if (!insights || insights.length === 0) {
       throw new ChartSettingsError(
         t`Group only by a time field to see how this has changed over time`,
       );
     }
   },
+
+  hasEmptyState: true,
 });

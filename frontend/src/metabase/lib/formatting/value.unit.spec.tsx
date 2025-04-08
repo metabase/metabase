@@ -45,10 +45,10 @@ describe("link", () => {
       link_url: "http://google.ca",
     });
     expect(
-      screen.getByText(content => content.startsWith("foo")),
+      screen.getByText((content) => content.startsWith("foo")),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(content => content.endsWith("bar")),
+      screen.getByText((content) => content.endsWith("bar")),
     ).toBeInTheDocument();
     expect(screen.getByText("23.12")).toBeInTheDocument();
   });
@@ -70,5 +70,24 @@ describe("link", () => {
       number_separators: ".",
     });
     expect(screen.getByText("23.12346")).toBeInTheDocument();
+  });
+
+  it("should preserve number separator formatting when displayed as a link with no URL set", () => {
+    setup(100000.0, {
+      view_as: "link",
+      number_style: "decimal",
+      number_separators: ".,",
+    });
+    expect(screen.getByText("100,000")).toBeInTheDocument();
+  });
+
+  it("should preserve number separator formatting when displayed as a link with a custom URL", () => {
+    setup(100000.0, {
+      view_as: "link",
+      number_style: "decimal",
+      number_separators: ".,",
+      link_url: "http://example.com",
+    });
+    expect(screen.getByText("100,000")).toBeInTheDocument();
   });
 });

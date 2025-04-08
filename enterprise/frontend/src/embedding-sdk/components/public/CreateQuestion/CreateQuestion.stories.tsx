@@ -17,7 +17,7 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: StoryFn<CreateQuestionComponentProps> = args => {
+const Template: StoryFn<CreateQuestionComponentProps> = (args) => {
   return (
     <Flex p="xl">
       <CreateQuestion {...args} />

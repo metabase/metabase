@@ -132,7 +132,7 @@ describe("scenarios > question > native", () => {
       cy.findByLabelText("Name").type("Products on Category");
       cy.findByText("Save").click();
 
-      cy.wait("@card").should(xhr => {
+      cy.wait("@card").should((xhr) => {
         const requestBody = xhr.request?.body;
         expect(requestBody?.parameters?.length).to.equal(1);
         const parameter = requestBody.parameters[0];
@@ -190,7 +190,7 @@ describe("scenarios > question > native", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This has a value");
 
-    FILTERS.forEach(operator => {
+    FILTERS.forEach((operator) => {
       cy.log("Apply a filter");
       H.filter();
       H.popover().findByText("V").click();
@@ -265,7 +265,7 @@ describe("scenarios > question > native", () => {
       cy.findByText("Save").click();
 
       // parameters[] should reflect the template tags
-      cy.wait("@card").then(xhr => {
+      cy.wait("@card").then((xhr) => {
         const requestBody = xhr.request?.body;
         expect(requestBody?.parameters?.length).to.equal(2);
         cy.wrap(xhr.response.body.id).as("questionId");
@@ -275,10 +275,10 @@ describe("scenarios > question > native", () => {
     cy.findByText("Not now").click();
 
     // Now load the question again and parameters[] should still be there
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       cy.intercept("GET", `/api/card/${questionId}`).as("cardQuestion");
       cy.visit(`/question/${questionId}?cat=Gizmo&stars=3`);
-      cy.wait("@cardQuestion").should(xhr => {
+      cy.wait("@cardQuestion").should((xhr) => {
         const responseBody = xhr.response?.body;
         expect(responseBody?.parameters?.length).to.equal(2);
       });
@@ -417,41 +417,55 @@ describe("scenarios > question > native", () => {
     },
   );
 
-  it("should be able to handle two sidebars on different screen sizes", () => {
-    const questionDetails = {
-      name: "13332",
-      native: {
-        query: "select * from PRODUCTS limit 5",
-      },
-    };
+  it(
+    "should be able to handle two sidebars on different screen sizes",
+    { tags: "@flaky" },
+    () => {
+      const questionDetails = {
+        name: "13332",
+        native: {
+          query: "select * from PRODUCTS limit 5",
+        },
+      };
 
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+      function setViewport(width, height) {
+        cy.viewport(width, height);
+        cy.wait(100); // wait for UI to re-render to avoid flakiness
+      }
 
-    cy.log("open editor on a normal screen size");
-    cy.findByTestId("visibility-toggler").click();
+      H.createNativeQuestion(questionDetails, { visitQuestion: true });
 
-    dataReferenceSidebar().should("be.visible");
+      cy.log("open editor on a normal screen size");
+      cy.findByTestId("visibility-toggler").click();
 
-    cy.findByTestId("visibility-toggler").click();
+      dataReferenceSidebar()
+        .should("be.visible")
+        // means data is loaded
+        .should("contain", "Sample Database");
 
-    cy.log("open editor on a small screen size");
-    cy.viewport(1279, 800);
+      cy.findByTestId("visibility-toggler").click();
+      dataReferenceSidebar().should("not.be.visible");
 
-    cy.findByTestId("visibility-toggler").click();
-    dataReferenceSidebar().should("not.be.visible");
+      cy.log("open editor on a small screen size");
+      setViewport(1279, 800);
 
-    cy.log("open visualization settings sidebar, order matters");
-    cy.findByTestId("viz-type-button").click();
+      cy.log("try to open data reference sidebar on a mid size screen");
+      cy.findByTestId("visibility-toggler").click();
+      dataReferenceSidebar().should("not.be.visible");
 
-    cy.log("open data reference sidebar");
-    cy.findByTestId("native-query-editor-sidebar").icon("reference").click();
+      cy.log("open visualization settings sidebar, order matters");
+      cy.findByTestId("viz-type-button").click();
 
-    cy.log("set small viewport");
-    cy.viewport(800, 800);
+      cy.log("open data reference sidebar");
+      cy.findByTestId("native-query-editor-sidebar").icon("reference").click();
 
-    cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
-    cy.findByTestId("sidebar-right").invoke("width").should("be.gt", 350);
-  });
+      cy.log("set small viewport");
+      setViewport(800, 800);
+
+      cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
+      cy.findByTestId("sidebar-right").invoke("width").should("be.gt", 350);
+    },
+  );
 });
 
 // causes error in cypress 13
@@ -500,7 +514,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
   });
 
   it("should not display the query when you do not have native access to the data source", () => {
-    cy.get("@questionId").then(questionId =>
+    cy.get("@questionId").then((questionId) =>
       cy.visit(`/question/${questionId}`),
     );
 

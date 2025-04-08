@@ -48,7 +48,7 @@ export default class EmailAttachmentPicker extends Component {
   }
 
   _getCardsWithAttachments() {
-    return this.props.cards.filter(card => {
+    return this.props.cards.filter((card) => {
       return card.include_csv || card.include_xls;
     });
   }
@@ -60,14 +60,16 @@ export default class EmailAttachmentPicker extends Component {
       isEnabled: selectedCards.length > 0,
       selectedAttachmentType:
         this.attachmentTypeFor(selectedCards) || this.DEFAULT_ATTACHMENT_TYPE,
-      selectedCardIds: new Set(selectedCards.map(card => getCardIdPair(card))),
+      selectedCardIds: new Set(
+        selectedCards.map((card) => getCardIdPair(card)),
+      ),
       isFormattingEnabled: getInitialFormattingState(selectedCards),
       isPivotingEnabled: getInitialPivotingState(selectedCards),
     };
   }
 
   canConfigurePivoting() {
-    return this.props.cards.some(card => card.display === "pivot");
+    return this.props.cards.some((card) => card.display === "pivot");
   }
 
   shouldUpdateState(newState, currentState) {
@@ -93,7 +95,7 @@ export default class EmailAttachmentPicker extends Component {
 
     setPulse({
       ...pulse,
-      cards: pulse.cards.map(card => {
+      cards: pulse.cards.map((card) => {
         card.include_csv = selectedCardIds.has(getCardIdPair(card)) && isCsv;
         card.include_xls = selectedCardIds.has(getCardIdPair(card)) && isXls;
         card.format_rows = isCsv && isFormattingEnabled; // Excel always uses formatting
@@ -104,19 +106,18 @@ export default class EmailAttachmentPicker extends Component {
   }
 
   cardIds() {
-    return new Set(this.props.cards.map(card => getCardIdPair(card)));
+    return new Set(this.props.cards.map((card) => getCardIdPair(card)));
   }
 
   cardIdsToCards(cardIds) {
     const { pulse } = this.props;
-
-    return pulse.cards.filter(card => cardIds.has(getCardIdPair(card)));
+    return pulse.cards.filter((card) => cardIds.has(getCardIdPair(card)));
   }
 
   attachmentTypeFor(cards) {
-    if (cards.some(c => c.include_xls)) {
+    if (cards.some((c) => c.include_xls)) {
       return "xlsx";
-    } else if (cards.some(c => c.include_csv)) {
+    } else if (cards.some((c) => c.include_csv)) {
       return "csv";
     } else {
       return null;
@@ -126,14 +127,14 @@ export default class EmailAttachmentPicker extends Component {
   /*
    * Called when the attachment type toggle (csv/xls) is clicked
    */
-  setAttachmentType = newAttachmentType => {
+  setAttachmentType = (newAttachmentType) => {
     this.updatePulseCards(newAttachmentType, this.state.selectedCardIds);
   };
 
   /*
    * Called when attachments are enabled/disabled at all
    */
-  toggleAttach = includeAttachment => {
+  toggleAttach = (includeAttachment) => {
     if (!includeAttachment) {
       this.disableAllCards();
     }
@@ -184,7 +185,7 @@ export default class EmailAttachmentPicker extends Component {
 
   onToggleFormatting = () => {
     this.setState(
-      prevState => ({
+      (prevState) => ({
         ...prevState,
         isFormattingEnabled: !prevState.isFormattingEnabled,
       }),
@@ -199,7 +200,7 @@ export default class EmailAttachmentPicker extends Component {
 
   onTogglePivoting = () => {
     this.setState(
-      prevState => ({
+      (prevState) => ({
         ...prevState,
         isPivotingEnabled: !prevState.isPivotingEnabled,
       }),
@@ -300,7 +301,7 @@ export default class EmailAttachmentPicker extends Component {
                     onChange={this.onToggleAll}
                   />
                 </li>
-                {cards.map(card => (
+                {cards.map((card) => (
                   <li key={card.id}>
                     <Checkbox
                       mb="1rem"
@@ -324,14 +325,14 @@ export default class EmailAttachmentPicker extends Component {
 
 function getInitialFormattingState(cards) {
   if (cards.length > 0) {
-    return cards.some(card => !!card.format_rows);
+    return cards.some((card) => !!card.format_rows);
   }
   return true;
 }
 
 function getInitialPivotingState(cards) {
   if (cards.length > 0) {
-    return cards.some(card => !!card.pivot_results);
+    return cards.some((card) => !!card.pivot_results);
   }
   return false;
 }

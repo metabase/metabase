@@ -1,15 +1,12 @@
-import type {
-  CallExpression,
-  CaseOptions,
-  Expression,
-} from "metabase-types/api";
+import type { CallExpression, Expression } from "metabase-types/api";
 
 import { MBQL_CLAUSES } from "./config";
 import {
   isBooleanLiteral,
   isCaseOrIf,
   isCaseOrIfOperator,
-  isNumberLiteral,
+  isFloatLiteral,
+  isIntegerLiteral,
   isOptionsObject,
   isStringLiteral,
 } from "./matchers";
@@ -38,8 +35,8 @@ export function applyPasses(
  *
  * ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
  */
-export const adjustCaseOrIf: CompilerPass = tree =>
-  modify(tree, node => {
+export const adjustCaseOrIf: CompilerPass = (tree) =>
+  modify(tree, (node) => {
     if (isCallExpression(node) && isCaseOrIfOperator(node[0])) {
       const [operator, ...operands] = node;
       const pairs: [Expression, Expression][] = [];
@@ -53,11 +50,10 @@ export const adjustCaseOrIf: CompilerPass = tree =>
         pairs.push([tst, val]);
       }
       if (operands.length > 2 * pairCount) {
-        const defaultValue = operands[operands.length - 1];
-        let options: CaseOptions = defaultValue as CaseOptions;
-        if (!isOptionsObject(defaultValue)) {
-          options = { default: defaultValue };
-        }
+        const lastOperand = operands[operands.length - 1];
+        const options = isOptionsObject(lastOperand)
+          ? lastOperand
+          : { default: lastOperand };
         return withAST([operator, pairs, options], node);
       }
       return withAST([operator, pairs], node);
@@ -70,8 +66,8 @@ export const adjustCaseOrIf: CompilerPass = tree =>
  *
  * ["offset", X, Y] becomes ["offset", {}, X, Y]
  */
-export const adjustOffset: CompilerPass = tree =>
-  modify(tree, node => {
+export const adjustOffset: CompilerPass = (tree) =>
+  modify(tree, (node) => {
     if (Array.isArray(node)) {
       const [operator] = node;
       if (operator === "offset") {
@@ -95,27 +91,35 @@ export const adjustOffset: CompilerPass = tree =>
  * ["contains", X, Y, "case-insensitive"] becomes ["contains", X, Y, {"case-sensitive": false}]
  * ["contains", X, Y] becomes ["contains", X, Y]
  */
-export const adjustOptions: CompilerPass = tree =>
-  modify(tree, node => {
+export const adjustOptions: CompilerPass = (tree) =>
+  modify(tree, (node) => {
     if (isCallExpression(node)) {
       const [operator, ...operands] = node;
       if (operands.length > 0) {
         const clause = MBQL_CLAUSES[operator];
         if (clause && clause.hasOptions) {
-          if (operands.length > clause.args.length) {
-            // the last one holds the function options
-            const index = operands.length - 1;
-            const options = operands[index];
-
-            // HACK: very specific to some string/time functions for now
-            if (options === "case-insensitive") {
-              operands[index] = { "case-sensitive": false };
-            } else if (options === "include-current") {
-              operands[index] = { "include-current": true };
-            }
-
-            return withAST([operator, ...operands], node);
+          const index = operands.length - 1;
+          const last = operands[index];
+          if (last === "case-insensitive") {
+            operands[index] = { "case-sensitive": false };
+          } else if (last === "include-current") {
+            operands[index] = { "include-current": true };
           }
+          return withAST([operator, ...operands], node);
+          //   if (operands.length > clause.args.length) {
+          //     // the last one holds the function options
+          //     const index = operands.length - 1;
+          //     const options = operands[index];
+          //
+          //     // HACK: very specific to some string/time functions for now
+          //     if (options === "case-insensitive") {
+          //       operands[index] = { "case-sensitive": false };
+          //     } else if (options === "include-current") {
+          //       operands[index] = { "include-current": true };
+          //     }
+          //
+          //     return withAST([operator, ...operands], node);
+          //   }
         }
       }
     }
@@ -135,8 +139,8 @@ export const adjustOptions: CompilerPass = tree =>
  * so we need to adjust its position here or insert an empty options object if
  * there is none.
  */
-export const adjustMultiArgOptions: CompilerPass = tree =>
-  modify(tree, node => {
+export const adjustMultiArgOptions: CompilerPass = (tree) =>
+  modify(tree, (node) => {
     if (isCallExpression(node)) {
       const [operator, ...args] = node;
       const clause = MBQL_CLAUSES[operator];
@@ -163,8 +167,8 @@ export const adjustMultiArgOptions: CompilerPass = tree =>
  *
  * Assumes adjustCaseOrIf has already been run
  */
-export const adjustBooleans: CompilerPass = tree =>
-  modify(tree, node => {
+export const adjustBooleans: CompilerPass = (tree) =>
+  modify(tree, (node) => {
     if (isCaseOrIf(node)) {
       const [operator, pairs, options] = node;
       return [
@@ -210,13 +214,27 @@ function isBooleanField(input: unknown) {
   return false;
 }
 
-export const adjustTopLevelLiteral: CompilerPass = tree => {
-  if (
-    isStringLiteral(tree) ||
-    isNumberLiteral(tree) ||
-    isBooleanLiteral(tree)
-  ) {
-    return ["value", tree];
+export const adjustBigIntLiteral: CompilerPass = (tree) =>
+  modify(tree, (node) => {
+    if (typeof node === "bigint") {
+      return withAST(
+        ["value", String(node), { base_type: "type/BigInteger" }],
+        node,
+      );
+    } else {
+      return node;
+    }
+  });
+
+export const adjustTopLevelLiteral: CompilerPass = (tree) => {
+  if (isStringLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Text" }];
+  } else if (isBooleanLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Boolean" }];
+  } else if (isIntegerLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Integer" }];
+  } else if (isFloatLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Float" }];
   } else {
     return tree;
   }
@@ -231,7 +249,7 @@ function modify(node: Expression, transform: Transform): Expression {
     return withAST(
       transform([
         operator,
-        ...operands.map(sub => modify(sub as Expression, transform)),
+        ...operands.map((sub) => modify(sub as Expression, transform)),
       ]),
       node,
     );
@@ -258,8 +276,9 @@ function withAST(
 const DEFAULT_PASSES = [
   adjustOptions,
   adjustOffset,
-  adjustCaseOrIf,
   adjustMultiArgOptions,
+  adjustBigIntLiteral,
   adjustTopLevelLiteral,
+  adjustCaseOrIf,
   adjustBooleans,
 ];

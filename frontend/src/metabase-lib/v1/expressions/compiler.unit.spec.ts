@@ -43,14 +43,33 @@ function aggregation(source: string) {
 
 describe("old recursive-parser tests", () => {
   it("should parse numeric literals", () => {
-    expect(expr("0")).toEqual(["value", 0]);
-    expect(expr("42")).toEqual(["value", 42]);
-    expect(expr("1.0")).toEqual(["value", 1]);
-    expect(expr("0.123")).toEqual(["value", 0.123]);
+    expect(expr("0")).toEqual(["value", 0, { base_type: "type/Integer" }]);
+    expect(expr("42")).toEqual(["value", 42, { base_type: "type/Integer" }]);
+    expect(expr("1.0")).toEqual(["value", 1, { base_type: "type/Integer" }]);
+    expect(expr("0.123")).toEqual([
+      "value",
+      0.123,
+      { base_type: "type/Float" },
+    ]);
+    expect(expr("9223372036854775807")).toEqual([
+      "value",
+      "9223372036854775807",
+      { base_type: "type/BigInteger" },
+    ]);
   });
 
   it("should parse string literals", () => {
-    // the strings are wrapped in length because top-level literals are not allowed
+    expect(expr("'Universe'")).toEqual([
+      "value",
+      "Universe",
+      { base_type: "type/Text" },
+    ]);
+    expect(expr('"answer"')).toEqual([
+      "value",
+      "answer",
+      { base_type: "type/Text" },
+    ]);
+    expect(expr('"\\""')).toEqual(["value", '"', { base_type: "type/Text" }]);
     expect(expr("length('Universe')")).toEqual(["length", "Universe"]);
     expect(expr('length("answer")')).toEqual(["length", "answer"]);
     expect(expr('length("\\"")')).toEqual(["length", '"']);
@@ -75,15 +94,15 @@ describe("old recursive-parser tests", () => {
   });
 
   it("should parse unary expressions", () => {
-    expect(expr("+6")).toEqual(["value", 6]);
-    expect(expr("++7")).toEqual(["value", 7]);
-    expect(expr("-+8")).toEqual(["value", -8]);
+    expect(expr("+6")).toEqual(["value", 6, { base_type: "type/Integer" }]);
+    expect(expr("++7")).toEqual(["value", 7, { base_type: "type/Integer" }]);
+    expect(expr("-+8")).toEqual(["value", -8, { base_type: "type/Integer" }]);
   });
 
   it("should flatten unary expressions", () => {
     expect(expr("--5")).toEqual(["-", -5]);
-    expect(expr("- 6")).toEqual(["value", -6]);
-    expect(expr("+-7")).toEqual(["value", -7]);
+    expect(expr("- 6")).toEqual(["value", -6, { base_type: "type/Integer" }]);
+    expect(expr("+-7")).toEqual(["value", -7, { base_type: "type/Integer" }]);
     expect(expr("sqrt(-1)")).toEqual(["sqrt", -1]);
     expect(expr("- [Total]")).toEqual(["-", total]);
     expect(expr("-[Total]")).toEqual(["-", total]);
@@ -207,7 +226,7 @@ describe("old recursive-parser tests", () => {
   it.each([
     {
       source: "contains('A', 'case-insensitive')",
-      expression: ["contains", "A", "case-insensitive"],
+      expression: ["contains", "A", { "case-sensitive": false }],
     },
     {
       source: "contains('A', 'B', 'case-insensitive')",
@@ -238,6 +257,71 @@ describe("old recursive-parser tests", () => {
     {
       source: "endsWith('A', 'B', 'C',, 'case-insensitive')",
       expression: ["ends-with", { "case-sensitive": false }, "A", "B", "C"],
+    },
+    {
+      source: "case(contains('A', 'B', 'C'), 1, 2)",
+      expression: [
+        "case",
+        [[["contains", {}, "A", "B", "C"], 1]],
+        { default: 2 },
+      ],
+    },
+    {
+      source: "case(contains('A', 'B', 'case-insensitive'), 1, 2)",
+      expression: [
+        "case",
+        [[["contains", "A", "B", { "case-sensitive": false }], 1]],
+        { default: 2 },
+      ],
+    },
+    {
+      source: "case(contains('A', 'B', 'C', 'case-insensitive'), 1, 2)",
+      expression: [
+        "case",
+        [[["contains", { "case-sensitive": false }, "A", "B", "C"], 1]],
+        { default: 2 },
+      ],
+    },
+    {
+      source:
+        "case(contains('A', 'B', 'C', 'case-insensitive'), 1, contains('D', 'E', 'F', 'case-insensitive'), 2, 3)",
+      expression: [
+        "case",
+        [
+          [["contains", { "case-sensitive": false }, "A", "B", "C"], 1],
+          [["contains", { "case-sensitive": false }, "D", "E", "F"], 2],
+        ],
+        { default: 3 },
+      ],
+    },
+    {
+      source:
+        "case(contains('A', 'B', 'case-insensitive'), 9223372036854775807, 0)",
+      expression: [
+        "case",
+        [
+          [
+            ["contains", "A", "B", { "case-sensitive": false }],
+            ["value", "9223372036854775807", { base_type: "type/BigInteger" }],
+          ],
+        ],
+        { default: 0 },
+      ],
+    },
+    {
+      source:
+        "case(contains('A', 'B', 'case-insensitive'), 0, 9223372036854775807)",
+      expression: [
+        "case",
+        [[["contains", "A", "B", { "case-sensitive": false }], 0]],
+        {
+          default: [
+            "value",
+            "9223372036854775807",
+            { base_type: "type/BigInteger" },
+          ],
+        },
+      ],
     },
     {
       source: "interval([Created At], -1, 'days', 'include-current')",

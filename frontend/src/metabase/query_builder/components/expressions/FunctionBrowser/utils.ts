@@ -15,10 +15,10 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 const EXPRESSION_CLAUSES = Array.from(EXPRESSION_FUNCTIONS).map(
-  name => MBQL_CLAUSES[name],
+  (name) => MBQL_CLAUSES[name],
 );
 const AGGREGATION_CLAUSES = Array.from(AGGREGATION_FUNCTIONS).map(
-  name => MBQL_CLAUSES[name],
+  (name) => MBQL_CLAUSES[name],
 );
 
 export function getSearchPlaceholder(startRule: StartRule) {
@@ -73,11 +73,11 @@ export function getFilteredClauses({
   const clauses = getClauses(startRule);
   const filteredClauses = clauses
     .filter(
-      clause =>
+      (clause) =>
         database?.hasFeature(clause.requiresFeature) &&
         clause.displayName.toLowerCase().includes(filter.toLowerCase()),
     )
-    .map(clause =>
+    .map((clause) =>
       clause.name && database
         ? getHelpText(clause.name, database, reportTimezone)
         : null,
@@ -85,16 +85,16 @@ export function getFilteredClauses({
     .filter(isNotNull);
 
   const filteredCategories = new Set(
-    filteredClauses.map(clause => clause.category),
+    filteredClauses.map((clause) => clause.category),
   );
 
   return Array.from(filteredCategories)
     .sort()
-    .map(category => ({
+    .map((category) => ({
       category,
       displayName: getCategoryName(category),
       clauses: filteredClauses
-        .filter(clause => clause.category === category)
+        .filter((clause) => clause.category === category)
         .sort(byName),
     }));
 }

@@ -77,7 +77,7 @@ describe("DashboardEmptyState", () => {
   // Editing mode is always the same for both an empty dashboard and an empty dashboard tab
   it.each(["dashboard", "dashboard tab"])(
     "renders %s empty state in editing mode",
-    context => {
+    (context) => {
       const { addQuestion } = setup({
         isDashboardEmpty: context === "dashboard",
         isEditing: true,

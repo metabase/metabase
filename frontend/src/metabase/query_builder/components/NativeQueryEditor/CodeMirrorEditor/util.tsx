@@ -240,10 +240,10 @@ export function matchCardIdAtCursor(
 
 export const getReferencedCardIds = createSelector(
   (query: Lib.Query) => Lib.templateTags(query),
-  tags =>
+  (tags) =>
     Object.values(tags)
-      .filter(tag => tag.type === "card")
-      .map(tag => tag["card-id"])
+      .filter((tag) => tag.type === "card")
+      .map((tag) => tag["card-id"])
       .filter(isNotNull),
   {
     argsMemoizeOptions: { resultEqualityCheck: shallowEqual },
@@ -271,3 +271,18 @@ export const getPlaceholderText = (engine?: string | null): string => {
       return "";
   }
 };
+
+export function getSelectedRanges(state: EditorState): Range[] {
+  const value = state.doc.toString();
+  return state.selection.ranges.map((range) =>
+    convertSelectionToRange(value, range),
+  );
+}
+
+export function areRangesEqual(a: Range, b: Range): boolean {
+  return a.start === b.start && a.end === b.end;
+}
+
+export function areAllRangesEqual(a: Range[], b: Range[]): boolean {
+  return a.length === b.length && a.every((a, i) => areRangesEqual(a, b[i]));
+}

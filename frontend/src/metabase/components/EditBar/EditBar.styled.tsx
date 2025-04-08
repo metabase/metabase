@@ -17,7 +17,7 @@ export const Root = styled(FullWidthContainer, {
   position: relative;
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
-  background-color: ${props =>
+  background-color: ${(props) =>
     alpha(color(props.admin ? "accent7" : "brand"), 0.85)};
 
   .${ButtonsS.Button} {
@@ -29,13 +29,13 @@ export const Root = styled(FullWidthContainer, {
   }
 
   .${ButtonsS.ButtonPrimary} {
-    color: ${props => color(props.admin ? "text-dark" : "brand")};
+    color: ${(props) => color(props.admin ? "text-dark" : "brand")};
     background-color: var(--mb-color-bg-white);
   }
 
   .${ButtonsS.Button}:hover {
     color: var(--mb-color-text-white);
-    background-color: ${props => color(props.admin ? "accent7" : "brand")};
+    background-color: ${(props) => color(props.admin ? "accent7" : "brand")};
   }
 `;
 

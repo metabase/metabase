@@ -243,7 +243,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields as in the database", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
-      setTableOrder("Database");
+      verifyTableOrder("Database");
       H.openProductsTable();
       assertTableHeader([
         "ID",
@@ -291,11 +291,13 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields in the custom order", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
-      //moveField(0, 200);
-      H.moveDnDKitElement(cy.findAllByTestId("grabber").first(), {
-        vertical: 200,
+      cy.findByLabelText("Edit column order").click();
+      H.modal().findByLabelText("Sort").should("have.text", "Database");
+      H.moveDnDKitElement(H.modal().findByLabelText("ID"), {
+        vertical: 50,
       });
       cy.wait("@updateFieldOrder");
+      H.modal().findByLabelText("Sort").should("have.text", "Custom");
       H.openProductsTable();
       assertTableHeader([
         "Ean",
@@ -634,7 +636,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 });
 
 const setDataModelPermissions = ({ tableIds = [] }) => {
-  const permissions = Object.fromEntries(tableIds.map(id => [id, "all"]));
+  const permissions = Object.fromEntries(tableIds.map((id) => [id, "all"]));
 
   cy.updatePermissionsGraph({
     [ALL_USERS_GROUP]: {
@@ -676,7 +678,7 @@ const setValueAndBlurInput = (oldValue, newValue) => {
   cy.findByDisplayValue(oldValue).clear().type(newValue).blur();
 };
 
-const clearAndBlurInput = oldValue => {
+const clearAndBlurInput = (oldValue) => {
   cy.findByDisplayValue(oldValue).clear().blur();
 };
 
@@ -684,17 +686,23 @@ const searchAndSelectValue = (newValue, searchText = newValue) => {
   H.popover().findByText(newValue).click();
 };
 
-const getFieldSection = fieldName => {
+const getFieldSection = (fieldName) => {
   return cy.findByLabelText(fieldName);
 };
 
-const setTableOrder = order => {
-  cy.findByLabelText("Sort").click();
+const verifyTableOrder = (order) => {
+  cy.findByLabelText("Edit column order").click();
+  H.modal().findByLabelText("Sort").should("have.text", order);
+};
+
+const setTableOrder = (order) => {
+  cy.findByLabelText("Edit column order").click();
+  H.modal().findByLabelText("Sort").click();
   H.popover().findByText(order).click();
   cy.wait("@updateTable");
 };
 
-const assertTableHeader = columns => {
+const assertTableHeader = (columns) => {
   cy.findAllByTestId("header-cell").should("have.length", columns.length);
 
   columns.forEach((column, index) => {

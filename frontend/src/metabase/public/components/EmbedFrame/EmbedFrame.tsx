@@ -71,7 +71,7 @@ export type EmbedFrameBaseProps = Partial<{
   setParameterValueToDefault: (id: ParameterId) => void;
   children: ReactNode;
   dashboardTabs: ReactNode;
-  downloadsEnabled: boolean;
+  pdfDownloadsEnabled: boolean;
   withFooter: boolean;
 }>;
 
@@ -101,13 +101,13 @@ export const EmbedFrame = ({
   titled,
   theme,
   hide_parameters,
-  downloadsEnabled = true,
+  pdfDownloadsEnabled = true,
   withFooter = true,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const hasEmbedBranding = useSelector(
-    state => !getSetting(state, "hide-embed-branding?"),
+    (state) => !getSetting(state, "hide-embed-branding?"),
   );
 
   const isPublicDashboard = Boolean(
@@ -136,7 +136,7 @@ export const EmbedFrame = ({
     .join(",");
 
   const isFooterEnabled =
-    withFooter && (hasEmbedBranding || downloadsEnabled || actionButtons);
+    withFooter && (hasEmbedBranding || pdfDownloadsEnabled || actionButtons);
 
   const finalName = titled ? name : null;
 
@@ -146,7 +146,7 @@ export const EmbedFrame = ({
     : [];
   const hasVisibleParameters = visibleParameters.length > 0;
 
-  const hasHeader = Boolean(finalName || dashboardTabs) || downloadsEnabled;
+  const hasHeader = Boolean(finalName || dashboardTabs) || pdfDownloadsEnabled;
 
   const allowParameterPanelSticky =
     !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
@@ -179,7 +179,7 @@ export const EmbedFrame = ({
             )}
             data-testid="embed-frame-header"
           >
-            {(finalName || downloadsEnabled) && (
+            {(finalName || pdfDownloadsEnabled) && (
               <TitleAndDescriptionContainer>
                 <TitleAndButtonsContainer
                   data-testid="fixed-width-dashboard-header"
@@ -193,7 +193,7 @@ export const EmbedFrame = ({
                     />
                   )}
                   <Box style={{ flex: 1 }} />
-                  {dashboard && downloadsEnabled && (
+                  {dashboard && pdfDownloadsEnabled && (
                     <ExportAsPdfButton dashboard={dashboard} color="brand" />
                   )}
                 </TitleAndButtonsContainer>

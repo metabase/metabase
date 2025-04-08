@@ -14,11 +14,11 @@ import type { Dataset } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
+  getAllNativeEditorSelectedText,
   getCard,
   getFirstQueryResult,
   getIsResultDirty,
   getIsRunning,
-  getNativeEditorSelectedText,
   getOriginalQuestion,
   getOriginalQuestionWithParameterValues,
   getQueryResults,
@@ -157,8 +157,8 @@ export const runQuestionQuery = ({
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,
     })
-      .then(queryResults => dispatch(queryCompleted(question, queryResults)))
-      .catch(error => dispatch(queryErrored(startTime, error)));
+      .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
+      .catch((error) => dispatch(queryErrored(startTime, error)));
 
     dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
   };
@@ -243,7 +243,7 @@ export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(
   QUERY_ERRORED,
   (startTime, error) => {
-    return async dispatch => {
+    return async (dispatch) => {
       if (error && error.isCancelled) {
         return null;
       } else {
@@ -283,7 +283,7 @@ export const runQuestionOrSelectedQuery =
 
     const query = question.query();
     const queryInfo = Lib.queryDisplayInfo(query);
-    const selectedText = getNativeEditorSelectedText(getState());
+    const selectedText = getAllNativeEditorSelectedText(getState());
     if (queryInfo.isNative && selectedText) {
       const selectedQuery = Lib.withNativeQuery(query, selectedText);
       dispatch(

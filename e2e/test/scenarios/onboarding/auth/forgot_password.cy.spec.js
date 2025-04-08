@@ -41,7 +41,7 @@ describe("scenarios > auth > password", { tags: "@external" }, () => {
   });
 });
 
-const getResetLink = html => {
+const getResetLink = (html) => {
   const [, anchor] = html.match(/<a (.*)>/);
   const [, href] = anchor.match(/href="([^"]+)"/);
   return href;

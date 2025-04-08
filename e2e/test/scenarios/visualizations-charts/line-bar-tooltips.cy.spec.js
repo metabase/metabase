@@ -63,12 +63,14 @@ const SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG = {
       "2024-08-02",
     ],
     "source-query": {
-      "source-table": 5,
-      aggregation: [["sum", ["field", 40, { "base-type": "type/Float" }]]],
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+      ],
       breakout: [
         [
           "field",
-          39,
+          ORDERS.CREATED_AT,
           { "base-type": "type/DateTime", "temporal-unit": "month" },
         ],
       ],
@@ -354,7 +356,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     beforeEach(() => {
       setup({
         question: SUM_OF_TOTAL,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -392,7 +394,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: SUM_OF_TOTAL,
         addedSeriesQuestion: AVG_OF_TOTAL,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -465,7 +467,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     beforeEach(() => {
       setup({
         question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -532,7 +534,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         x: 4,
         y: 4,
       },
-    }).then(dashboardId => {
+    }).then((dashboardId) => {
       H.visitDashboard(dashboardId);
     });
     H.cartesianChartCircleWithColor("#A989C5")
@@ -544,10 +546,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     H.assertEChartsTooltip({ header: "2022" });
 
     // Ensuring the circle is not covered by the tooltip element
-    cy.get("@firstCircle").then($circle => {
+    cy.get("@firstCircle").then(($circle) => {
       const circleRect = $circle[0].getBoundingClientRect();
 
-      H.echartsTooltip().then($tooltip => {
+      H.echartsTooltip().then(($tooltip) => {
         const tooltipRect = $tooltip[0].getBoundingClientRect();
         const isCovered =
           circleRect.top < tooltipRect.bottom &&
@@ -563,7 +565,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
   it("tooltips should be hidden when click popover is visible", () => {
     setup({
       question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
-    }).then(dashboardId => {
+    }).then((dashboardId) => {
       H.visitDashboard(dashboardId);
     });
 
@@ -585,7 +587,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
         addedSeriesQuestion: AVG_DISCOUNT_SUM_DISCOUNT,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -605,7 +607,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const updatedAddedAvgSeriesName = "Q2 Custom 1";
       const updatedAddedSumSeriesName = "Q2 Custom 2";
 
-      [...originalSeriesColors, ...addedSeriesColors].forEach(color => {
+      [...originalSeriesColors, ...addedSeriesColors].forEach((color) => {
         showTooltipForCircleInSeries(color, circleIndex);
         H.assertEChartsTooltip({
           header: "2023",
@@ -647,7 +649,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      [...originalSeriesColors, ...addedSeriesColors].forEach(color => {
+      [...originalSeriesColors, ...addedSeriesColors].forEach((color) => {
         showTooltipForCircleInSeries(color, circleIndex);
         H.assertEChartsTooltip({
           header: "2023",
@@ -689,7 +691,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     beforeEach(() => {
       setup({
         question: { ...SUM_OF_TOTAL, display: "bar" },
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -739,7 +741,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: { ...SUM_OF_TOTAL, display: "bar" },
         addedSeriesQuestion: { ...AVG_OF_TOTAL, display: "bar" },
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -818,7 +820,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     it("should show percent change in tooltip for timeseries axis", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -852,7 +854,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     it("should not show percent change when previous month is missing from result data", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -911,7 +913,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     it("should not show if x-axis is not timeseries", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH_ORDINAL,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -953,7 +955,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
         filter: [
           "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
+          ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
           "2024-01-01",
           "2024-05-30",
         ],
@@ -971,7 +973,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
         filter: [
           "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
+          ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
           "2024-03-01",
           "2024-03-31",
         ],
@@ -989,7 +991,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }]],
         filter: [
           "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
+          ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
           "2024-03-09",
           "2024-03-12",
         ],
@@ -1000,7 +1002,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     const DST_DAY_CHANGES = [null, "+27.5%", "-26.16%"];
 
     it("should not omit percent change on April", () => {
-      setup({ question: SUM_OF_TOTAL_APRIL }).then(dashboardId => {
+      setup({ question: SUM_OF_TOTAL_APRIL }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -1023,7 +1025,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should not omit percent change the week after DST begins", () => {
-      setup({ question: SUM_OF_TOTAL_DST_WEEK }).then(dashboardId => {
+      setup({ question: SUM_OF_TOTAL_DST_WEEK }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -1047,7 +1049,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should not omit percent change the day after DST begins", () => {
-      setup({ question: SUM_OF_TOTAL_DST_DAY }).then(dashboardId => {
+      setup({ question: SUM_OF_TOTAL_DST_DAY }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 

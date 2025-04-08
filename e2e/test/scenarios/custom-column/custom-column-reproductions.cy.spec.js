@@ -502,7 +502,7 @@ describe("issue 19745", () => {
   function updateQuestion() {
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
@@ -679,7 +679,7 @@ describe("issue 23862", () => {
           display: "table",
         },
         {
-          callback: xhr => expect(xhr.response.body.error).not.to.exist,
+          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
         },
       );
     });
@@ -800,7 +800,7 @@ describe.skip("issue 25189", () => {
   });
 });
 
-["postgres" /*, "mysql" */].forEach(dialect => {
+["postgres" /*, "mysql" */].forEach((dialect) => {
   describe(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
     const tableName = "colors27745";
 
@@ -1359,7 +1359,7 @@ describe("issue 53527", () => {
     },
   };
 
-  const mbqlQuestionDetails = cardId => ({
+  const mbqlQuestionDetails = (cardId) => ({
     name: "Quotes MBQL",
     query: {
       "source-table": `card__${cardId}`,
@@ -1436,7 +1436,7 @@ describe("issue 54638", () => {
       cy.findByText("Learn more")
         .scrollIntoView()
         .should("be.visible")
-        .then($a => {
+        .then(($a) => {
           expect($a).to.have.attr("target", "_blank");
           // Update attr to open in same tab, since Cypress does not support
           // testing in multiple tabs.
@@ -1509,7 +1509,106 @@ describe("issue #55686", () => {
     H.addCustomColumn();
     H.CustomExpressionEditor.type("not");
 
-    H.CustomExpressionEditor.completion("notnull").should("be.visible");
-    H.CustomExpressionEditor.completion("notempty").should("be.visible");
+    H.CustomExpressionEditor.completion("notNull").should("be.visible");
+    H.CustomExpressionEditor.completion("notEmpty").should("be.visible");
+  });
+});
+
+describe("issue #55940", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should show the correct example for Offset (metabase#55940)", () => {
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+
+    H.CustomExpressionEditor.type("Offset(");
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "Offset(Sum([Total]), -1)");
+  });
+});
+
+describe("issue #55984", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should not overflow the suggestion tooltip when a suggestion name is too long (metabase#55984)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "[Total]",
+      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt",
+    });
+    cy.button("Done").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("[lo");
+    H.CustomExpressionEditor.completions().should(($el) => {
+      expect(H.isScrollableHorizontally($el[0])).to.be.false;
+    });
+  });
+
+  it("should not overflow the suggestion tooltip when a suggestion name is too long and has no spaces (metabase#55984)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "[Total]",
+      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt".replaceAll(
+        " ",
+        "_",
+      ),
+    });
+    cy.button("Done").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("[lo");
+    H.CustomExpressionEditor.completions().should(($el) => {
+      expect(H.isScrollableHorizontally($el[0])).to.be.false;
+    });
+  });
+});
+
+describe("issue 55622", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to mix regular functions with aggregation functions (metabase#55622)", () => {
+    H.openPeopleTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: 'datetimeDiff(Max([Created At]), max([Birth Date]), "minute")',
+      name: "Aggregation",
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 56152", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Should show the help text popover when typing a multi-line expression (metabase#56152)", () => {
+    H.openPeopleTable({ mode: "notebook" });
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type(dedent`
+      datetimeDiff(
+        [Created At],
+    `);
+
+    H.CustomExpressionEditor.helpText().should("be.visible");
   });
 });

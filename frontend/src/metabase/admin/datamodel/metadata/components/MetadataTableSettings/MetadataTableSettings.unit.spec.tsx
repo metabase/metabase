@@ -79,7 +79,7 @@ describe("MetadataTableSettings", () => {
       await userEvent.click(
         screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name),
       );
-      await userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByLabelText("Table settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText(SAMPLE_DB_NO_SCHEMA.name));
@@ -88,7 +88,7 @@ describe("MetadataTableSettings", () => {
       await userEvent.click(
         screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name),
       );
-      await userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByLabelText("Table settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
       await userEvent.click(
@@ -103,14 +103,14 @@ describe("MetadataTableSettings", () => {
       await setup();
 
       await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      await userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByLabelText("Table settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText(SAMPLE_DB.name));
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      await userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByLabelText("Table settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
@@ -126,7 +126,7 @@ describe("MetadataTableSettings", () => {
       await userEvent.click(
         await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       );
-      await userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByLabelText("Table settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
@@ -136,7 +136,7 @@ describe("MetadataTableSettings", () => {
       await userEvent.click(
         screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       );
-      await userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByLabelText("Table settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
@@ -145,7 +145,7 @@ describe("MetadataTableSettings", () => {
       await userEvent.click(
         await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       );
-      await userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByLabelText("Table settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
       await userEvent.click(
@@ -162,7 +162,7 @@ describe("MetadataTableSettings", () => {
       await setup();
 
       await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      await userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByLabelText("Table settings"));
       await userEvent.click(
         await screen.findByRole("button", { name: "Re-scan this table" }),
       );
@@ -177,7 +177,7 @@ describe("MetadataTableSettings", () => {
       await setup();
 
       await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      await userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByLabelText("Table settings"));
       await userEvent.click(
         await screen.findByRole("button", {
           name: "Discard cached field values",

@@ -106,7 +106,7 @@ export function QuestionList({
   const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();
   const list = useMemo(() => {
-    return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
+    return data?.data?.map((item) => Search.wrapEntity(item, dispatch)) ?? [];
   }, [data, dispatch]);
 
   if (collectionId === "personal" && !searchText) {
@@ -131,7 +131,7 @@ export function QuestionList({
   return (
     <>
       <SelectList>
-        {list.map(item => (
+        {list.map((item) => (
           <Flex key={item.id} className={S.QuestionListItemRoot} gap="2px">
             <SelectList.Item
               id={item.id}
@@ -178,7 +178,7 @@ export function QuestionList({
       {isVisualizerModalOpen && (
         <VisualizerModalWithCardId
           cardId={visualizerModalCardId}
-          onSave={visualization => {
+          onSave={(visualization) => {
             dispatch(addCardWithVisualization({ visualization }));
             setVisualizerModalCardId(null);
           }}

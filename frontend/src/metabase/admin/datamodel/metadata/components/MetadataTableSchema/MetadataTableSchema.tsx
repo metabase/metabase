@@ -19,11 +19,11 @@ interface MetadataTableSchemaProps {
 
 const MetadataTableSchema = ({ table }: MetadataTableSchemaProps) => {
   const rootFields = useMemo(() => {
-    return table.fields?.filter(field => field.nfc_path === null) ?? [];
+    return table.fields?.filter((field) => field.nfc_path === null) ?? [];
   }, [table]);
 
   const fieldByParent = useMemo(() => {
-    return _.groupBy(table.fields ?? [], field => field.nfc_path?.[0] ?? "");
+    return _.groupBy(table.fields ?? [], (field) => field.nfc_path?.[0] ?? "");
   }, [table]);
 
   return (
@@ -75,7 +75,9 @@ const ColumnRow = ({ field, isBordered, isSecondary }: ColumnRowProps) => (
     >
       {field.name}
     </ColumnNameCell>
-    <DataTypeCell isBordered={isBordered}>{field.base_type}</DataTypeCell>
+    <DataTypeCell isBordered={isBordered}>
+      {field.getPlainObject().database_type}
+    </DataTypeCell>
     <DataTypeCell isBordered={isBordered} />
   </tr>
 );

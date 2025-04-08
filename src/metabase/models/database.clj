@@ -1,6 +1,7 @@
 (ns metabase.models.database
   (:require
    [clojure.core.match :refer [match]]
+   [clojure.data :as data]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
@@ -153,8 +154,9 @@
       (loop [[test-details & tail] details-to-test]
         (if test-details
           (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
-            (do
-              (log/infof "Successfully connected, migrating to: %s" (pr-str test-details))
+            (let [keys-remaining (-> test-details keys set)
+                  [_ removed _] (data/diff keys-remaining (-> details keys set))]
+              (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
               (t2/update! :model/Database (:id database) {:details test-details})
               test-details)
             (recur tail))
@@ -435,12 +437,13 @@
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :entity_id :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
                :metadata_sync_schedule :name :points_of_interest :refingerprint :settings :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field
                :cache_ttl]
    :transform {:created_at          (serdes/date)
+               :entity_id           (serdes/backfill-entity-id-transformer)
                ;; details should be imported if available regardless of options
                :details             {:export-with-context
                                      (fn [current _ details]

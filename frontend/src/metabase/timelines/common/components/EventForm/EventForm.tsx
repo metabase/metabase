@@ -61,7 +61,7 @@ const EventForm = ({
   }, []);
 
   const timelineOptions = useMemo(() => {
-    return timelines.map(t => ({ name: getTimelineName(t), value: t.id }));
+    return timelines.map((t) => ({ name: getTimelineName(t), value: t.id }));
   }, [timelines]);
 
   return (
@@ -84,7 +84,7 @@ const EventForm = ({
             hasTime={values.time_matters}
             dateFormat={dateSettings?.date_style}
             timeFormat={dateSettings?.time_style}
-            onHasTimeChange={value => setFieldValue("time_matters", value)}
+            onHasTimeChange={(value) => setFieldValue("time_matters", value)}
           />
           <FormTextArea
             name="description"

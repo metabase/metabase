@@ -35,26 +35,25 @@ export default class FunnelNormal extends Component {
       onVisualizationClick,
       visualizationIsClickable,
       settings,
-      isPlaceholder,
     } = this.props;
 
-    const [series] = isPlaceholder ? this.props.series : rawSeries;
+    const [series] = rawSeries;
     const {
       data: { cols, rows },
     } = series;
 
     const dimensionIndex = cols.findIndex(
-      col => col.name === settings["funnel.dimension"],
+      (col) => col.name === settings["funnel.dimension"],
     );
     const metricIndex = cols.findIndex(
-      col => col.name === settings["funnel.metric"],
+      (col) => col.name === settings["funnel.metric"],
     );
 
     const sortedRows = settings["funnel.rows"]
       ? settings["funnel.rows"]
-          .filter(fr => fr.enabled)
-          .map(fr =>
-            rows.find(row => formatNullable(row[dimensionIndex]) === fr.key),
+          .filter((fr) => fr.enabled)
+          .map((fr) =>
+            rows.find((row) => formatNullable(row[dimensionIndex]) === fr.key),
           )
       : rows;
 
@@ -75,7 +74,7 @@ export default class FunnelNormal extends Component {
         jsx,
         majorWidth: 0,
       });
-    const formatPercent = percent => `${(100 * percent).toFixed(2)} %`;
+    const formatPercent = (percent) => `${(100 * percent).toFixed(2)} %`;
 
     // Initial infos (required for step calculation)
     let infos = [
@@ -162,7 +161,7 @@ export default class FunnelNormal extends Component {
 
     const isClickable = onVisualizationClick != null;
 
-    const handleClick = e => {
+    const handleClick = (e) => {
       if (onVisualizationClick && visualizationIsClickable(infos[0].clicked)) {
         onVisualizationClick(e);
       }
@@ -242,7 +241,7 @@ const GraphSection = ({
         height="100%"
         width="100%"
         className={cx(className, CS.absolute)}
-        onMouseMove={e => {
+        onMouseMove={(e) => {
           if (onHoverChange && info.hovered) {
             onHoverChange({
               ...info.hovered,
@@ -251,7 +250,7 @@ const GraphSection = ({
           }
         }}
         onMouseLeave={() => onHoverChange && onHoverChange(null)}
-        onClick={e => {
+        onClick={(e) => {
           if (onVisualizationClick && info.clicked) {
             onVisualizationClick({
               ...info.clicked,
