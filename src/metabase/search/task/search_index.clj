@@ -63,7 +63,7 @@
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
-(jobs/defjob ^{:doc "Ensure a Search Index exists"}
+(task/defjob ^{:doc "Ensure a Search Index exists"}
   SearchIndexInit [_ctx]
   (init!))
 
