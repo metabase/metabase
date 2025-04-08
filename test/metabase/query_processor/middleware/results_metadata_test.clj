@@ -140,7 +140,6 @@
         (middleware.results-metadata/store-previous-result-metadata!
          {:result_metadata
           [{:base_type :type/Text
-            :database_type "CHARACTER VARYING"
             :display_name "NAME"
             :effective_type :type/Text
             :field_ref [:field "NAME" {:base-type :type/Text}]
