@@ -46,7 +46,6 @@ export function computeQuestionPivotTable(options: Options) {
     shouldRun = checkShouldRerunPivotTableQuestion({
       isPivot,
       wasPivot,
-      hasBreakouts,
       currentQuestion,
       question,
     });
@@ -58,17 +57,21 @@ export function computeQuestionPivotTable(options: Options) {
 function checkShouldRerunPivotTableQuestion({
   isPivot,
   wasPivot,
-  hasBreakouts,
   currentQuestion,
   question,
 }: {
   isPivot: boolean;
   wasPivot: boolean;
-  hasBreakouts: boolean;
   currentQuestion?: Question;
   question: Question;
 }) {
-  const isValidPivotTable = isPivot && hasBreakouts;
+  const currentSettings = question?.settings();
+
+  const isValidPivotTable =
+    isPivot &&
+    currentSettings["pivot.rows"]?.length > 0 &&
+    currentSettings["pivot.cols"]?.length > 0;
+
   const displayChange =
     (!wasPivot && isValidPivotTable) || (wasPivot && !isPivot);
 
@@ -76,13 +79,12 @@ function checkShouldRerunPivotTableQuestion({
     return true;
   }
 
-  const currentPivotSettings = currentQuestion?.setting(
-    "pivot_table.column_split",
-  );
-
-  const newPivotSettings = question.setting("pivot_table.column_split");
+  const pivotSettings = ["pivot.rows", "pivot.cols"];
+  const currentPivotSettings = _.pick(currentSettings, pivotSettings);
+  const prevSettings = currentQuestion?.settings();
+  const prevPivotSettings = _.pick(prevSettings, pivotSettings);
 
   return (
-    isValidPivotTable && !_.isEqual(currentPivotSettings, newPivotSettings)
+    isValidPivotTable && !_.isEqual(currentPivotSettings, prevPivotSettings)
   );
 }

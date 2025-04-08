@@ -16,6 +16,8 @@ import { displayNameForColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import { getDefaultDimensionFilter } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -28,16 +30,13 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { partitions, partitions2 } from "./partitions";
+import { partitions } from "./partitions";
 import {
   addMissingCardBreakouts,
   isColumnValid,
   isFormattablePivotColumn,
   updateValueWithCurrentColumns,
 } from "./utils";
-import { getDefaultColumns, getDefaultDimensionFilter, getDefaultDimensions } from "metabase/visualizations/shared/settings/cartesian-chart";
-import { getDefaultDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 
 export const getTitleForColumn = (
   column: DatasetColumn,
@@ -149,9 +148,9 @@ export const settings = {
     widget: "fields",
     addAnother: t`Add pivot row breakout`,
     getDefault: () => {
-      return [null]
+      return [null];
     },
-    getProps: ([{ card, data }]: [{ card: Card, data: DatasetData }]) => {
+    getProps: ([{ card, data }]: RawSeries) => {
       const cols = data?.cols ?? [];
       const options = cols
         .filter(getDefaultDimensionFilter(card.display))
@@ -170,9 +169,9 @@ export const settings = {
     widget: "fields",
     addAnother: t`Add pivot column breakout`,
     getDefault: () => {
-      return [null]
+      return [null];
     },
-    getProps: ([{ card, data }]: [{ card: Card, data: DatasetData }]) => {
+    getProps: ([{ card, data }]: RawSeries) => {
       const cols = data?.cols ?? [];
       const options = cols
         .filter(getDefaultDimensionFilter(card.display))
