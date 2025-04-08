@@ -605,7 +605,7 @@
                                [:expression "case 1"]
                                [:expression "case 2"]
                                [:expression "case 3"]]
-                 :order-by    [[:asc  $id]]
+                 :order-by    [[:asc $id]]
                  :limit       2})))))))
 
 (deftest ^:parallel filter-literal-expression-with-and-or-test
