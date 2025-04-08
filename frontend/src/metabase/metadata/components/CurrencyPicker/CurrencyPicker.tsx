@@ -28,7 +28,7 @@ export const CurrencyPicker = ({ value, onChange, ...props }: Props) => {
         middlewares: {
           flip: true,
           size: {
-            padding: 8,
+            padding: 6,
           },
         },
         position: "bottom-start",
