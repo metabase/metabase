@@ -216,6 +216,18 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
       `/admin/troubleshooting/tasks/${task.id}`,
     );
 
+    cy.log("task details");
+    H.modal()
+      .get(".cm-content")
+      .should("be.visible")
+      .get(".cm-line")
+      .as("lines");
+    cy.get("@lines").eq(0).should("have.text", "{");
+    cy.get("@lines").eq(1).should("have.text", '  "useful": {');
+    cy.get("@lines").eq(2).should("have.text", '    "information": true');
+    cy.get("@lines").eq(3).should("have.text", "  }");
+    cy.get("@lines").eq(4).should("have.text", "}");
+
     cy.log("copy button");
     // mock clipboardData so that copy-to-clipboard doesn't use window.prompt, pausing the tests
     cy.window().then((window) => {
