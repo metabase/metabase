@@ -115,7 +115,6 @@ export const getDefaultQuestionAlertRequest = ({
     subscriptions: [
       {
         type: "notification-subscription/cron",
-        event_name: null,
         cron_schedule: DEFAULT_ALERT_CRON_SCHEDULE,
         ui_display_type: "cron/builder",
       },
