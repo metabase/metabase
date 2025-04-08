@@ -609,6 +609,10 @@
             full-breakout-combination (splice-in-remap breakout-combination remap)]
         (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))))
 
+(defn- add-breakouts
+  [query breakout-cols]
+  (reduce lib/breakout query breakout-cols))
+
 (defn- nest-query
   "Converts a pivot query into a form that selects the raw data as a subquery (with row limit and ordering) and applies
   the aggregations and breakout to the outer query."
@@ -620,31 +624,89 @@
       (m/dissoc-in [:query :limit])
       (m/dissoc-in [:query :order-by])))
 
-(mu/defn run-pivot-query
+(defn- original-cols
+  [query]
+  (-> (qp.store/with-metadata-provider (:database query)
+        (lib/query (qp.store/metadata-provider) query))
+      lib/returned-columns))
+
+(defn- outer-query-with-breakouts
+  [query pivot-row-names pivot-col-names]
+  (let [base-query-cols (original-cols query)
+        pivot-row-cols (reduce
+                        (fn [acc name]
+                          (conj acc
+                                (u/seek (fn [col] (= (:name col) name)) base-query-cols)))
+                        []
+                        pivot-row-names)
+        pivot-col-cols (reduce
+                        (fn [acc name]
+                          (conj acc
+                                (u/seek (fn [col] (= (:name col) name)) base-query-cols)))
+                        []
+                        pivot-col-names)]
+    (-> query
+        (add-breakouts pivot-row-cols)
+        (add-breakouts pivot-col-cols)
+        (lib/aggregate (lib/count)))))
+
+(defn merge-base-pivot-query-meatdata
+  "Post-processing middleware. Replaces columns in metadata of pivot query with the columns of the base (un-pivoted) query."
+  [{::keys [non-pivoted-cols]} rff]
+  (fn merge-base-pivot-query-metadata-rff* [metadata]
+    (if non-pivoted-cols
+      (rff (assoc metadata
+                  :cols non-pivoted-cols
+                  :pivot_cols (:cols metadata)))
+      (rff metadata))))
+
+(defn* run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
   yourself."
   ([query]
    (run-pivot-query query nil))
 
-  ([query :- ::qp.schema/query
-    rff   :- [:maybe ::qp.schema/rff]]
+  ([query #_#_:- ::qp.schema/query
+    rff   #_#_:- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
        ;; TODO
        ;; Using pivot_rows as a proxy for whether this is a plain table query (which we run directly) or a pivoted query
-       (if (= (:pivot_rows query) [])
+       (if (or (= (:new_pivot_rows query) [])
+               (= (:new_pivot_cols query) []))
          (qp/process-query (dissoc query :info)
                            (or rff qp.reducible/default-rff))
-         (let [rff               (or rff qp.reducible/default-rff)
-               nested-query      (nest-query query)
-               query             (lib/query (qp.store/metadata-provider) #_query nested-query)
-               pivot-opts        (or
-                                  (pivot-options query (get query :viz-settings))
-                                  (pivot-options query (get-in query [:info :visualization-settings]))
-                                  (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
+         (let [rff (or rff qp.reducible/default-rff)
+               new-pivot-rows    (:new_pivot_rows query)
+               new-pivot-cols    (:new_pivot_cols query)
+               original-query    query
+               query'            (lib/query (qp.store/metadata-provider)
+                                            (-> query
+                                                (dissoc :new_pivot_rows :new_pivot_cols)
+                                                nest-query))
+               query             (outer-query-with-breakouts query' new-pivot-rows new-pivot-cols)
                query             (-> query
-                                     (assoc-in [:middleware :pivot-options] pivot-opts))
-               all-queries       (generate-queries query pivot-opts)
+                                     (assoc-in [:middleware :pivot-options] {:pivot-rows new-pivot-rows
+                                                                             :pivot-cols new-pivot-cols
+                                                                             :pivot-measures ["COUNT"]})
+                                     (assoc ::non-pivoted-cols (original-cols original-query)))
+               all-queries       (generate-queries query {})
                column-mapping-fn (make-column-mapping-fn query)]
-           (process-multiple-queries all-queries rff column-mapping-fn)))))))
+           (process-multiple-queries all-queries rff column-mapping-fn))
+             ;; (def query query)
+             ;; (def new-pivot-rows new-pivot-rows)
+             ;; (def new-pivot-cols new-pivot-cols))
+
+         #_(let [rff               (or rff qp.reducible/default-rff)
+                 nested-query      (nest-query query)
+                 query             (lib/query (qp.store/metadata-provider) #_query nested-query)
+                 pivot-opts        (or
+                                    (pivot-options query (get query :viz-settings))
+                                    (pivot-options query (get-in query [:info :visualization-settings]))
+                                    (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
+                 query             (-> query
+                                       (assoc-in [:middleware :pivot-options] pivot-opts))
+                 all-queries       (generate-queries query pivot-opts)
+                 column-mapping-fn (make-column-mapping-fn query)]
+             (process-multiple-queries all-queries rff column-mapping-fn)))))))
