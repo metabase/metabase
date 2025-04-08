@@ -64,6 +64,7 @@
    "Notification"
    "NotificationCard"
    "NotificationSubscription"
+   "NotificationSystemEvent"
    "NotificationHandler"
    "NotificationRecipient"
    "Permissions"

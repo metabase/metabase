@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
@@ -163,6 +164,19 @@
       (send-you-were-added-card-notification-email! notification))
     (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
+
+(api.macros/defendpoint :post "/payload"
+  "Return the payload of a notification"
+  [_route _query body :- ::models.notification/NotificationWithPayload]
+  (api/create-check :model/Notification body)
+  {:payload (notification/notification-payload (cond-> body
+                                                 (= :notification/system-event (:payload_type body))
+                                                 (assoc :event_info (events/event-info-example (-> body :payload :event_name) (:payload body)))))
+   :schema (case (:payload_type body)
+             :notification/system-event
+             (defendpoint.open-api/schema->json-schema (events/event-schema (-> body :payload :event_name) (:payload body)))
+             ;; TODO for :notification/card
+             {})})
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"

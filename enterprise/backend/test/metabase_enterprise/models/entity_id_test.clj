@@ -55,6 +55,7 @@
     :model/Notification
     :model/NotificationCard
     :model/NotificationSubscription
+    :model/NotificationSystemEvent
     :model/NotificationHandler
     :model/NotificationRecipient
     :model/ParameterCard
