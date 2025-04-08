@@ -21,6 +21,7 @@ import type {
   VizSettingsKey,
   WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { getHexColor } from "metabase/visualizations/lib/color";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
   SERIES_COLORS_SETTING_KEY,
@@ -47,7 +48,7 @@ import {
 import { CHART_STYLE } from "../constants/style";
 import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
 
-import { getFormattingOptionsWithoutScaling, getHexColor } from "./util";
+import { getFormattingOptionsWithoutScaling } from "./util";
 
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,

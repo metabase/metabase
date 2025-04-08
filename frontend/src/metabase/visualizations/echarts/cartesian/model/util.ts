@@ -1,5 +1,3 @@
-import Color from "color";
-
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type {
   ComputedVisualizationSettings,
@@ -33,10 +31,4 @@ export function getColumnScaling(
     settings.column?.(column) ?? getColumnSettings(settings, column);
   const scale = columnSettings?.scale;
   return Number.isFinite(scale) ? (scale as number) : 1;
-}
-
-export function getHexColor(color: string) {
-  // Convert color values to hex format since Apache Batik (SVG renderer used in static visualizations)
-  // doesn't support functional color notations like hsla(), rgba(), etc.
-  return Color(color).hex();
 }
