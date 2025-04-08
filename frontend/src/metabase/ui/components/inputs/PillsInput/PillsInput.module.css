@@ -1,7 +1,5 @@
 .field {
-  height: 1.375rem;
   font-size: var(--mantine-font-size-md);
-  line-height: 1.375rem;
 
   &::placeholder {
     color: var(--mb-color-text-tertiary);

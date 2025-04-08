@@ -9,13 +9,18 @@
 }
 
 .remove {
-  --remove-button-size: 0.75rem;
+  --cb-size: 1rem;
+  --cb-icon-size: 0.75rem;
 
   padding: 0;
-  border-width: 0;
+  border: none;
+  min-width: var(--cb-size);
+  min-height: var(--cb-size);
 
-  svg {
-    width: var(--remove-button-size) !important;
-    height: var(--remove-button-size) !important;
+  [dir="ltr"] &,
+  [dir="rtl"] & {
+    padding: 0;
+    margin-left: var(--mantine-spacing-xs);
+    margin-right: var(--mantine-spacing-xs);
   }
 }
