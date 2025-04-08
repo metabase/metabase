@@ -499,9 +499,9 @@
   [_ bool]
   [:inline (if bool 1 0)])
 
-(defmethod sql.qp/->honeysql [:sql ::sql.qp/cast-to-text]
+(defmethod sql.qp/->honeysql [:oracle ::sql.qp/cast-to-text]
   [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar(4000)"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
   [_ message]
