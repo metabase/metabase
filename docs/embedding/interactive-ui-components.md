@@ -79,13 +79,13 @@ breadcrumbs=false
 
 ![Entity types in the data picker](./images/data-picker.png)
 
-In the data picker, you can show or hide different entity types. For example, you may only want to show tables.
+You can show or hide different entity types in the data picker, sidebar, and the New button menu. For example, you may only want to show tables.
 
 ```
 entity_types=table
 ```
 
-Setting entity types also affects the sidebar. If only tables are allowed, the sidebar won't show models:
+If only tables are allowed, the sidebar won't show models:
 
 ![Sidebar without models](./images/sidebar-without-models.png)
 
@@ -104,7 +104,13 @@ You can separate entity types with a comma, like:
 entity_types=table,model
 ```
 
-The default behavior for the data picker is to show both tables and models. Metrics aren't displayed.
+The default behavior for the data picker is:
+
+- Show both tables and models.
+- Exclude Metrics
+- Display a simple dropdown menu
+
+If the number of tables and models exceeds 99, Metabase will display a souped-up data picker.
 
 ## `header`
 
