@@ -110,7 +110,7 @@ The default behavior for the data picker is:
 - Exclude Metrics
 - Display a simple dropdown menu
 
-If the number of tables and models exceeds 99, Metabase will display a souped-up data picker.
+If the number of tables and models exceeds 99, Metabase will display a souped-up data picker that lets people navigate databases, tables, and models (if set as an available entity type).
 
 ## `header`
 
