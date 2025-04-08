@@ -16,6 +16,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -4171,3 +4172,67 @@
                     (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
                                           {:dataset_query (lib/->legacy-MBQL query-cycle)
                                            :type card-type-c})))))))))))
+
+(deftest e2e-card-update-invalidates-cache-test
+  (testing "Card update invalidates card's cache (#55955)"
+    (let [existing-config (t2/select-one :model/CacheConfig :model_id 0 :model "root")]
+      (try
+        ;; First delete the existing root config because if that exists (shouldn't, but you know..)
+        ;; with-temp will fail. This is imho simpler then checking whether that exists and based on the result of
+        ;; the query either doing update or insert.
+        (when existing-config
+          (t2/delete! :model/CacheConfig :model_id 0 :model "root"))
+        (mt/with-temp
+          [:model/CacheConfig
+           _
+           {:model_id 0
+            :model "root"
+            :strategy "ttl"
+            :config {:multiplier 99999, :min_duration_ms 1}}
+
+           :model/Card
+           model
+           {:type :model
+            :dataset_query (let [mp (mt/metadata-provider)]
+                             (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                 (lib/limit 10)
+                                 lib.convert/->legacy-MBQL))}]
+          (letfn [;; Query results should get cached on following request.
+                  (card-query-post-request
+                    []
+                    (mt/user-http-request :rasta :post 202 (str "card/" (:id model) "/query")
+                                          {:collection_preview false
+                                           :ignore_cache       false
+                                           :parameters         []}))
+                  ;; Query cache should get invalidated on following request.
+                  (card-put-request [result_metadata]
+                    (mt/user-http-request :rasta :put 200
+                                          (str "card/" (:id model))
+                                          {:result_metadata result_metadata}))]
+            (let [post-response (do (card-query-post-request)
+                                    (card-query-post-request))
+                  raw-results-metadata (get-in post-response [:data :results_metadata :columns])]
+              (testing "Base: Initial query is cached (2nd post request's response)"
+                (is (some? (:cached post-response))))
+              (let [put-resonse (card-put-request (cons (assoc (first raw-results-metadata) :display_name "This is ID")
+                                                        (rest raw-results-metadata)))]
+                (testing "Base: Put changes results_metadata successfully"
+                  (is (= "This is ID"
+                         (-> put-resonse :result_metadata first :display_name))))))
+            (testing "Card request not cached. Preceding post successfully invalidated the cache."
+              (let [post-response (card-query-post-request)
+                    id-display-name (-> post-response :data :results_metadata :columns first :display_name)]
+                (testing "Cache is NOT being used, cache was invalidated"
+                  (is (nil? (:cached post-response))))
+                (testing "Metadata edit persists"
+                  (is (= "This is ID" id-display-name)))))
+            (testing "Last post request cached the query successfully"
+              (let [post-response (card-query-post-request)
+                    id-display-name (-> post-response :data :results_metadata :columns first :display_name)]
+                (testing "Cache is being used."
+                  (is (some? (:cached post-response))))
+                (testing "Metadata edit persists"
+                  (is (= "This is ID" id-display-name)))))))
+        (finally
+          (when existing-config
+            (t2/insert! :model/CacheConfig existing-config)))))))

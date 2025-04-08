@@ -16,6 +16,7 @@ import LeafletGridHeatMap from "./LeafletGridHeatMap";
 import LeafletHeatMap from "./LeafletHeatMap";
 import LeafletMarkerPinMap from "./LeafletMarkerPinMap";
 import LeafletTilePinMap from "./LeafletTilePinMap";
+import S from "./PinMap.module.css";
 
 const WORLD_BOUNDS = [
   [-90, -180],
@@ -245,7 +246,8 @@ export default class PinMap extends Component {
                 "PinMapUpdateButton",
                 ButtonsS.Button,
                 ButtonsS.ButtonSmall,
-                CS.mb1,
+                ButtonsS.ButtonWhite,
+                S.pinMapButton,
                 {
                   [DashboardS.PinMapUpdateButtonDisabled]: disableUpdateButton,
                 },
@@ -264,7 +266,8 @@ export default class PinMap extends Component {
                   "PinMapUpdateButton",
                   ButtonsS.Button,
                   ButtonsS.ButtonSmall,
-                  CS.mb1,
+                  ButtonsS.ButtonWhite,
+                  S.pinMapButton,
                 )}
                 onClick={() => {
                   if (

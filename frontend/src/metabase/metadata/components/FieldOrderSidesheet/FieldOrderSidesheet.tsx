@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Sidesheet } from "metabase/common/components/Sidesheet";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import {
   type DragEndEvent,
   SortableList,
@@ -35,15 +36,23 @@ interface OwnProps {
 }
 
 interface Props extends OwnProps {
-  table: Table;
+  error: unknown;
+  loading: boolean;
+  table?: Table;
 }
 
-const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
+const FieldOrderSidesheetBase = ({
+  error,
+  isOpen,
+  loading,
+  table,
+  onClose,
+}: Props) => {
   const dispatch = useDispatch();
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
-  const items = useMemo(() => getItems(table.fields), [table.fields]);
+  const items = useMemo(() => getItems(table?.fields), [table?.fields]);
   const [customOrder, setCustomOrder] = useState<OrderItemId[] | null>(null);
   const order = useMemo(
     () => customOrder ?? getItemsOrder(items),
@@ -60,6 +69,14 @@ const FieldOrderSidesheetBase = ({ isOpen, table, onClose }: Props) => {
   const handleFieldOrderChange = (value: TableFieldOrder) => {
     dispatch(Tables.actions.updateProperty(table, "field_order", value));
   };
+
+  if (loading || error || !table) {
+    return (
+      <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
+        <LoadingAndErrorWrapper error={error} loading={loading} />
+      </Sidesheet>
+    );
+  }
 
   return (
     <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
@@ -102,6 +119,7 @@ export const FieldOrderSidesheet = _.compose(
       include_sensitive_fields: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     },
+    loadingAndErrorWrapper: false,
     fetchType: "fetchMetadataDeprecated",
     requestType: "fetchMetadataDeprecated",
     selectorName: "getObjectUnfiltered",

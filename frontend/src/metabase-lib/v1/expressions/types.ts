@@ -47,14 +47,27 @@ type MBQLClauseFunctionReturnType =
   | "number"
   | "string";
 
+export type ExpressionType =
+  | "expression"
+  | "boolean"
+  | "aggregation"
+  | "string"
+  | "number"
+  | "datetime"
+  | "any";
+
 export type MBQLClauseFunctionConfig = {
   displayName: string;
   type: MBQLClauseFunctionReturnType;
-  args: string[];
+  args: ExpressionType[];
+  argType?(
+    index: number,
+    args: unknown[],
+    type: ExpressionType,
+  ): ExpressionType;
   requiresFeature?: DatabaseFeature;
   hasOptions?: boolean;
   multiple?: boolean;
-  tokenName?: string;
   name?: string;
 
   validator?: (...args: any) => string | undefined;
