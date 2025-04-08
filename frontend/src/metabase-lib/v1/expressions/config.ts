@@ -36,16 +36,16 @@ export const OPERATOR_PRECEDENCE: Record<string, number> = {
 };
 
 function defineClauses<
-  const T extends Record<string, MBQLClauseFunctionConfig>,
+  const T extends Record<
+    string,
+    Omit<MBQLClauseFunctionConfig, "name"> & { name?: never }
+  >,
 >(clauses: T): Record<keyof T, MBQLClauseFunctionConfig> {
-  for (const [name, clause] of Object.entries(clauses)) {
-    if (clause.name !== undefined && clause.name !== name) {
-      console.warn("Mismatched name for MBQL_CLAUSES " + name);
-    }
-    clause.name = name;
+  const result = {} as Record<keyof T, MBQLClauseFunctionConfig>;
+  for (const name in clauses) {
+    result[name] = { ...clauses[name], name };
   }
-
-  return clauses;
+  return result;
 }
 
 // `type` and `args` types have no effect. Type checking is done by MBQL lib.
