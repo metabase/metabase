@@ -15,7 +15,7 @@
 
     &:not(:last-child) {
       padding-left: 0.5rem;
-      padding-right: 1.75rem;
+      padding-right: 1.5rem;
     }
   }
 }
