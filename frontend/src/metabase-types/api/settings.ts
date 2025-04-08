@@ -308,6 +308,7 @@ interface AdminSettings {
   "active-users-count"?: number;
   "deprecation-notice-version"?: string;
   "embedding-secret-key"?: string;
+  "redirect-all-requests-to-https": boolean;
   "query-caching-min-ttl": number;
   "query-caching-ttl-ratio": number;
   "google-auth-auto-create-accounts-domain": string | null;
