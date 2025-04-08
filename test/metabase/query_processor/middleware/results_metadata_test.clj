@@ -11,6 +11,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -136,6 +137,35 @@
                                                         :query    {:source-table (str "card__" (u/the-id card))}})
       (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
              (card-metadata card))))))
+
+(deftest save-result-metadata-test-4
+  (testing "test that card result metadata does not generate an UPDATE statement when unchanged"
+    (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT NAME FROM VENUES"})}]
+      (is (nil? (card-metadata card)))
+      (mt/with-metadata-provider (mt/id)
+        (middleware.results-metadata/store-previous-result-metadata!
+         {:result_metadata
+          [{:base_type :type/Text
+            :database_type "CHARACTER VARYING"
+            :display_name "NAME"
+            :effective_type :type/Text
+            :field_ref [:field "NAME" {:base-type :type/Text}]
+            :fingerprint {:global {:distinct-count 100, :nil% 0.0}
+                          :type {:type/Text {:average-length 15.63
+                                             :percent-email 0.0
+                                             :percent-json 0.0
+                                             :percent-state 0.0
+                                             :percent-url 0.0}}}
+            :name "NAME"
+            :semantic_type :type/Name}]})
+        (let [result (qp/process-query
+                      (qp/userland-query
+                       (mt/native-query {:query "SELECT NAME FROM VENUES"})
+                       {:card-id    (u/the-id card)
+                        :query-hash (qp.util/query-hash {})}))]
+          (is (partial= {:status :completed}
+                        result))))
+      (is (nil? (card-metadata card))))))
 
 (deftest ^:parallel metadata-in-results-test
   (testing "make sure that queries come back with metadata"
