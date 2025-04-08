@@ -90,7 +90,7 @@
                       e)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
-  [driver & {:keys [schema-names table-names catalog]}]
+  [driver & {:keys [schema-names table-names] {:keys [catalog]} :details}]
   (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
   (sql/format {:select [[:c.column_name :name]
                         [:c.full_data_type :database-type]
@@ -141,7 +141,7 @@
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :databricks
-  [driver & {:keys [schema-names table-names] {:keys [catalog]} :details}]
+  [driver & {:keys [schema-names table-names catalog]}]
   (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
   (sql/format {:select (vec
                         {:fk_kcu.table_schema  "fk-table-schema"
