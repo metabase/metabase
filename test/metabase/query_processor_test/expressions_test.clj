@@ -454,8 +454,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private standard-literal-expression-defs
-  {"empty"    [:value ""    {:base_type :type/Text}]
-   "foo"      [:value "foo" {:base_type :type/Text}]
+  {"foo"      [:value "foo" {:base_type :type/Text}]
    "zero"     [:value 0     {:base_type :type/Integer}]
    "12345"    [:value 12345 {:base_type :type/Integer}]
    "float"    [:value 1.234 {:base_type :type/Float}]
@@ -463,8 +462,7 @@
    "MyFalse"  [:value false {:base_type :type/Boolean}]})
 
 (def ^:private standard-literal-expression-refs
-  [[:expression "empty"]
-   [:expression "foo"]
+  [[:expression "foo"]
    [:expression "zero"]
    [:expression "12345"]
    [:expression "float"]
@@ -472,21 +470,18 @@
    [:expression "MyFalse"]])
 
 (def ^:private standard-literal-expression-column-refs
-  [[:field "empty"   {:base_type :type/Text}]
-   [:field "foo"     {:base_type :type/Text}]
+  [[:field "foo"     {:base_type :type/Text}]
    [:field "zero"    {:base_type :type/Integer}]
    [:field "12345"   {:base_type :type/Integer}]
    [:field "float"   {:base_type :type/Float}]
    [:field "MyTrue"  {:base_type :type/Boolean}]
    [:field "MyFalse" {:base_type :type/Boolean}]])
 
-(defn- standard-literal-expression-row-formats
-  [driver]
-  [(mt/format-nil->empty-str driver) str int int 3.0 mt/boolish->bool mt/boolish->bool])
+(def ^:private standard-literal-expression-row-formats
+  [str int int 3.0 mt/boolish->bool mt/boolish->bool])
 
-(defn- standard-literal-expression-row-formats-with-id
-  [driver]
-  (into [int] (standard-literal-expression-row-formats driver)))
+(def ^:private standard-literal-expression-row-formats-with-id
+  (into [int] standard-literal-expression-row-formats))
 
 (def ^:private standard-literal-expression-values
   (map second (vals standard-literal-expression-defs)))
@@ -494,16 +489,14 @@
 (deftest ^:parallel basic-literal-expression-test
   (testing "basic literal expressions"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
-      (is (= [[1 "" "foo" 0 12345 1.234 true false]
-              [2 "" "foo" 0 12345 1.234 true false]]
+      (is (= [(into [1] standard-literal-expression-values)]
              (mt/formatted-rows
-              (standard-literal-expression-row-formats-with-id driver/*driver*)
-              #_format-nil-values? true
+              standard-literal-expression-row-formats-with-id
               (mt/run-mbql-query orders
                 {:expressions standard-literal-expression-defs
                  :fields      (into [$id] standard-literal-expression-refs)
                  :order-by    [[:asc  $id]]
-                 :limit       2})))))))
+                 :limit       1})))))))
 
 (deftest ^:parallel filter-literal-expression-with-=-!=-test
   (doseq [[and-or eq-ne expected] [[:and :=  [standard-literal-expression-values]]
@@ -512,8 +505,7 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
         (is (= expected
                (mt/formatted-rows
-                (standard-literal-expression-row-formats driver/*driver*)
-                #_format-nil-values? true
+                standard-literal-expression-row-formats
                 (mt/run-mbql-query orders
                   {:expressions standard-literal-expression-defs
                    :fields      standard-literal-expression-refs
@@ -525,8 +517,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
       (is (= [(into [1] standard-literal-expression-values)]
              (mt/formatted-rows
-              (standard-literal-expression-row-formats-with-id driver/*driver*)
-              #_format-nil-values? true
+              standard-literal-expression-row-formats-with-id
               (mt/run-mbql-query venues
                 {:fields       (into [$id] standard-literal-expression-column-refs)
                  :source-query {:source-table $$venues
@@ -556,8 +547,7 @@
       (is (= [(into [1] standard-literal-expression-values)
               (into [2] standard-literal-expression-values)]
              (mt/formatted-rows
-              (standard-literal-expression-row-formats-with-id driver/*driver*)
-              #_format-nil-values? true
+              standard-literal-expression-row-formats-with-id
               (mt/run-mbql-query orders
                 {:expressions standard-literal-expression-defs
                  :fields      (into [$id] standard-literal-expression-refs)
@@ -571,8 +561,7 @@
       (let [orders-count 18760]
         (is (= [(conj (vec standard-literal-expression-values) orders-count)]
                (mt/formatted-rows
-                (conj (standard-literal-expression-row-formats driver/*driver*) int)
-                #_format-nil-values? true
+                (conj standard-literal-expression-row-formats int)
                 (mt/run-mbql-query orders
                   {:expressions standard-literal-expression-defs
                    :aggregation [:count]
@@ -641,13 +630,24 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
         (is (= expected
                (mt/formatted-rows
-                (standard-literal-expression-row-formats driver/*driver*)
-                #_format-nil-values? true
+                standard-literal-expression-row-formats
                 (mt/run-mbql-query orders
                   {:expressions standard-literal-expression-defs
                    :fields      standard-literal-expression-refs
                    :filter      expression
                    :limit       1}))))))))
+
+(deftest ^:parallel empty-string-literal-expression-test
+  (testing "empty string as literal expression"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
+      (is (= [[""]]
+             (mt/formatted-rows
+              [(mt/format-nil->empty-str driver/*driver*)]
+              #_format-nil-values? true
+              (mt/run-mbql-query orders
+                {:expressions {"empty" [:value "" {:base_type :type/Text}]}
+                 :fields      [[:expression "empty"]]
+                 :limit       1})))))))
 
 (deftest ^:parallel nested-and-filtered-literal-expression-test
   (testing "nested and filtered literal expression"
