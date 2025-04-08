@@ -135,9 +135,8 @@ export type NotificationHandler =
 export type ScheduleDisplayType = "cron/builder" | "cron/raw" | null;
 export type NotificationCronSubscription = {
   type: "notification-subscription/cron";
-  event_name: null;
   cron_schedule: string;
-  ui_display_type: ScheduleDisplayType;
+  ui_display_type?: ScheduleDisplayType | null;
 
   // only for existing notifications
   id?: number;
@@ -146,32 +145,7 @@ export type NotificationCronSubscription = {
   updated_at?: string;
 };
 
-export type NotificationSystemEventSubscriptionRequest = {
-  type: "notification-subscription/system-event";
-  event_name: SystemEvent;
-  table_id: TableId;
-  action: ActionType;
-};
-
-export type NotificationSystemEventSubscription = {
-  type: "notification-subscription/system-event";
-
-  event_name: SystemEvent;
-  action: ActionType;
-
-  id?: number;
-  notification_id?: number;
-  table_id: TableId;
-  table?: Table;
-  created_at?: string;
-  updated_at?: string;
-  ui_display_type?: null;
-  cron_schedule?: null;
-};
-
-export type NotificationSubscription =
-  | NotificationCronSubscription
-  | NotificationSystemEventSubscription;
+export type NotificationSubscription = NotificationCronSubscription;
 
 //#endregion
 
