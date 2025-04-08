@@ -56,4 +56,4 @@ jobs:
           gh api repos/metabase/docs.metabase.github.io/dispatches \
             -X POST \
             -f event_type=trigger-workflow \
-            -f client_payload='{"branch":"$BRANCH_NAME"}'
+            -f client_payload:='{"branch_name":"'"$BRANCH_NAME"'"}'
