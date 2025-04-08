@@ -284,11 +284,11 @@ export function isSegmentFilter(
 ) {
   const parts = expressionParts(query, stageIndex, filter);
 
-  if (isSegmentMetadata(parts)) {
-    return true;
-  }
-
-  return parts?.operator === "segment";
+  return (
+    isSegmentMetadata(parts) ||
+    // @ts-expect-error: TODO should we remove this branch?
+    parts?.operator === "segment"
+  );
 }
 
 type UpdateLatLonFilterBounds = {
