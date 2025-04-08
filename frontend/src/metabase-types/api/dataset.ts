@@ -88,6 +88,7 @@ export interface DatasetData {
     query: string;
   };
   is_sandboxed?: boolean;
+  pivot_cols?: DatasetColumn[];
 }
 
 export type JsonQuery = DatasetQuery & {

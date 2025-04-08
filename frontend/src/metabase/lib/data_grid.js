@@ -3,7 +3,7 @@ import _ from "underscore";
 import * as Pivot from "cljs/metabase.pivot.js";
 import { formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
+// import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
@@ -21,15 +21,22 @@ export function multiLevelPivot(data, settings) {
   if (!settings[COLUMN_SPLIT_SETTING]) {
     return null;
   }
-  const columnSplit = migratePivotColumnSplitSetting(
-    settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
-    data.cols,
-  );
 
-  const columns = Pivot.columns_without_pivot_group(data.cols);
+  // const columnSplit = migratePivotColumnSplitSetting(
+  //   settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
+  //   data.pivot_cols,
+  // );
+
+  const columnSplit = {
+    rows: settings["pivot.rows"],
+    cols: settings["pivot.cols"],
+    values: ["count"],
+  };
+
+  const columns = Pivot.columns_without_pivot_group(data.pivot_cols);
 
   const {
-    columns: columnIndexes,
+    cols: columnIndexes,
     rows: rowIndexes,
     values: valueIndexes,
   } = _.mapObject(columnSplit, (columnNames) =>
