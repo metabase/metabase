@@ -1,0 +1,146 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+<rule>
+name: list_pattern_guidelines
+description: Standards for list layouts, filtering, and action patterns in Metabase admin interfaces
+
+filters:
+  # Apply to React component files
+  - type: file_extension
+    pattern: "\\.(jsx|tsx)$"
+  # Apply to components that might include lists
+  - type: path
+    pattern: ".*/components/.*|.*/pages/.*"
+
+You are designing list-based interfaces in Metabase. Follow these consistent patterns:
+
+List Actions and Filter Positioning:
+- Always position the "Create New" action button at the top right of the list
+- Place search field at the left side of the filter row
+- Search fields should be TextInput components with a search icon
+- Search fields should indicate which fields are being searched (e.g., "Search by name or email")
+- Filter results in real-time as users type or select options
+- Limit visible filter dropdowns to a maximum of 3
+- Use a unified "More filters" button/menu for complex filtering with 4+ filters
+- Keep filter controls on the same line when possible
+- Provide a clear way to reset filters to default state
+
+Table List Layout:
+- Include a search bar that filters items in real-time
+- Provide sorting options on applicable columns
+- Use pagination for large datasets (>20 items)
+- Include subtle status indicators (color dots or badges)
+- Keep action buttons right-aligned in the last column
+- Ensure consistent row height for better readability
+
+Card List Layout:
+- Use when visual hierarchy is important
+- Limit content to the most critical information
+- Group related information logically within the card
+- Use badges for status indicators
+- Keep actions in a consistent location (typically the top-right)
+- Consider using expandable cards for items with many details
+
+Empty States:
+- Use appropriate iconography that relates to the missing content
+- Provide a clear, friendly message explaining the empty state
+- Include an action button when applicable
+- Differentiate between "no results" and "no data yet" states
+- Maintain consistency with the application's visual style
+
+Bulk Actions:
+- Display contextual UI elements only when items are selected
+- Show a clear count of selected items
+- Visually highlight selected items in the list
+- Group related bulk actions together
+- Provide confirmation dialogs for destructive bulk actions
+- Consider sticky position for bulk action controls with many items
+
+examples:
+  # Example of proper filter placement
+  - input: |
+      // Bad: Inconsistent filter placement
+      <Box>
+        <Button>{t`Add item`}</Button>
+        <TextInput placeholder="Search..." />
+      </Box>
+
+      // Good: Following the pattern
+      <Group justify="space-between">
+        <TextInput 
+          placeholder={t`Search by name or email`}
+          leftSection={<Icon name="search" />}
+          style={{ width: '300px' }}
+        />
+        <Button>{t`Add item`}</Button>
+      </Group>
+    output: "Correctly positioned filters and actions"
+
+  # Example of proper complex filtering
+  - input: |
+      // Bad: Too many filter dropdowns
+      <Group>
+        <TextInput placeholder="Search..." />
+        <Select data={statusOptions} />
+        <Select data={typeOptions} />
+        <Select data={roleOptions} />
+        <Select data={groupOptions} />
+      </Group>
+
+      // Good: Using a "More filters" pattern
+      <Group justify="space-between">
+        <Group gap="md" align="flex-end">
+          <TextInput 
+            placeholder={t`Search by name`}
+            leftSection={<Icon name="search" />}
+          />
+          <Select data={statusOptions} />
+          <Select data={typeOptions} />
+          <Popover>
+            <Popover.Target>
+              <Button variant="outline" leftSection={<Icon name="filter" />}>{t`More filters`}</Button>
+            </Popover.Target>
+            <Popover.Dropdown>
+              <Stack>
+                <Text fw={600}>{t`Filters`}</Text>
+                <Select data={roleOptions} />
+                <Select data={groupOptions} />
+                <Group justify="flex-end">
+                  <Button variant="subtle">{t`Clear`}</Button>
+                  <Button>{t`Apply`}</Button>
+                </Group>
+              </Stack>
+            </Popover.Dropdown>
+          </Popover>
+        </Group>
+        <Button>{t`Add item`}</Button>
+      </Group>
+    output: "Correctly implemented complex filtering"
+
+  # Example of empty state
+  - input: |
+      // Bad: Unhelpful empty state
+      <Box>
+        <Text>No items.</Text>
+      </Box>
+
+      // Good: Following the pattern
+      <Stack align="center" gap="md" py="xl">
+        <Box style={{ fontSize: 48, color: color("text-light") }}>
+          <Icon name="search" size={32} />
+        </Box>
+        <Title order={3} c={color("text-medium")}>{t`No results found`}</Title>
+        <Text c={color("text-medium")} ta="center">
+          {t`Try adjusting your search or filter to find what you're looking for.`}
+        </Text>
+        <Button variant="outline" mt="md">{t`Clear filters`}</Button>
+      </Stack>
+    output: "Correctly implemented empty state"
+
+metadata:
+  priority: high
+  version: 1.0
+</rule>

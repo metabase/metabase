@@ -77,6 +77,15 @@ export function Sidebar() {
         />
         <NavLink
           variant="admin"
+          label="List Patterns"
+          component={Link}
+          to="/admin/embedding/reference/list-patterns"
+          active={/^\/admin\/embedding\/reference\/list-patterns/.test(
+            location.pathname,
+          )}
+        />
+        <NavLink
+          variant="admin"
           label="Localization"
           component={Link}
           to="/admin/embedding/reference/localization"
