@@ -345,3 +345,7 @@
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index
                                     (t/local-date-time (t/local-date 1970 1 1) object)))
+
+(defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "STRING"]))

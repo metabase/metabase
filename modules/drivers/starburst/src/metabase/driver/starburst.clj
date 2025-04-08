@@ -286,6 +286,10 @@
   [_ bool]
   [:raw (if bool "TRUE" "FALSE")])
 
+(defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+
 (defmethod sql.qp/->honeysql [:starburst :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])

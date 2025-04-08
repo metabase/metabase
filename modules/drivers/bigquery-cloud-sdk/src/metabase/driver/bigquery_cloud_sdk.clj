@@ -741,3 +741,7 @@
 (defmethod driver/prettify-native-form :bigquery-cloud-sdk
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "STRING"]))

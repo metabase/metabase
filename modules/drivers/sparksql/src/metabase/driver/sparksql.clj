@@ -55,6 +55,10 @@
                                                        :else                   source-table)))]
     (parent-method driver field-clause)))
 
+(defmethod sql.qp/->honeysql [:sparksql ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+
 (defn- format-over
   "e.g. ROW_NUMBER() OVER (ORDER BY field DESC) AS __rownum__"
   [_fn [expr partition]]

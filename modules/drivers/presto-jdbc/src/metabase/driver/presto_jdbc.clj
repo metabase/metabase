@@ -135,6 +135,10 @@
   [_ bool]
   [:raw (if bool "TRUE" "FALSE")])
 
+(defmethod sql.qp/->honeysql [:presto-jdbc ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+
 (defmethod sql.qp/->honeysql [:presto-jdbc (Class/forName "[B")]
   [_driver bs]
   [:from_base64 (u/encode-base64-bytes bs)])

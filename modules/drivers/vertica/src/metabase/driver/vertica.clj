@@ -149,6 +149,10 @@
    nil
    args))
 
+(defmethod sql.qp/->honeysql [:vertica ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "long varchar"]))
+
 (defmethod sql.qp/datetime-diff [:vertica :year]
   [driver _unit x y]
   (let [months (sql.qp/datetime-diff driver :month x y)]
