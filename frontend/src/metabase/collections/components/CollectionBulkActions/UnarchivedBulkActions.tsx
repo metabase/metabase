@@ -57,11 +57,15 @@ export const UnarchivedBulkActions = ({
     [
       {
         id: "collection-move",
-        perform: handleBulkMoveStart,
+        perform: () => {
+          handleBulkMoveStart();
+        },
       },
       {
         id: "collection-trash",
-        perform: handleBulkArchive,
+        perform: () => {
+          handleBulkArchive();
+        },
       },
     ],
     [selected],

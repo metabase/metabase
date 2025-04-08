@@ -1,6 +1,7 @@
 const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
+  ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -412,6 +413,29 @@ describe("shortcuts", () => {
     cy.realPress("b").realPress("d");
     cy.location("pathname").should("contain", "browse/databases");
     cy.realPress("Escape");
+
+    cy.realPress("[");
+    H.navigationSidebar().should("not.be.visible");
+    cy.realPress("[");
+    H.navigationSidebar().should("be.visible");
+
+    cy.realPress("p");
+    cy.location("pathname").should(
+      "equal",
+      `/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
+    );
+
+    cy.realPress("t");
+    cy.location("pathname").should("equal", "/trash");
+
+    H.navigationSidebar().findByText("Our analytics").click();
+
+    cy.findAllByTestId("collection-entry-check").eq(2).click();
+    cy.findAllByTestId("collection-entry-check").eq(3).click();
+
+    cy.realPress(["MetaLeft", "m"]);
+
+    cy.findByRole("dialog", { name: "Move 2 items?" }).should("exist");
   });
 
   it("should support dashboard shortcuts", () => {
