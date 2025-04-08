@@ -1,4 +1,8 @@
-import { type MantineThemeOverride, PillsInput } from "@mantine/core";
+import {
+  type MantineThemeOverride,
+  PillsInput,
+  PillsInputField,
+} from "@mantine/core";
 
 import S from "./PillsInput.module.css";
 
@@ -7,8 +11,10 @@ export const pillsInputOverrides: MantineThemeOverride["components"] = {
     defaultProps: {
       variant: "default",
     },
+  }),
+  PillsInputField: PillsInputField.extend({
     classNames: {
-      input: S.input,
+      field: S.field,
     },
   }),
 };
