@@ -1,9 +1,11 @@
 (ns ^:mb/driver-tests metabase.driver.snowflake-test
   (:require
+   [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -561,9 +563,17 @@
                         (is (= details-to-succeed
                                (database/maybe-test-and-migrate-details! (assoc (t2/select-one :model/Database (mt/id))
                                                                                 :details details))))
-                        (is (=? [{:level :info, :message "Attempting to connect to 4 possible legacy details"}
-                                 {:level :info, :message #"^Successfully connected, migrating to: .*"}]
-                                (messages)))))
+                        (let [success-re #"^Successfully connected, migrating to: (.*)"
+                              msgs (messages)
+                              migrating-to (edn/read-string (str/replace (:message (second msgs)) success-re "$1"))
+                              success-keys (set (keys details-to-succeed))
+                              [_ keys-removed _] (data/diff success-keys (set (keys details)))]
+                          (is (=? [{:level :info, :message "Attempting to connect to 4 possible legacy details"}
+                                   {:level :info, :message success-re}]
+                                  msgs))
+                          (is (= {:keys success-keys
+                                  :keys-removed keys-removed}
+                                 migrating-to)))))
                     (is (= (-> details-to-succeed
                                (cond-> uses-secret? (assoc :private-key-id secret-id))
                                (dissoc :private-key-options :private-key-value :private-key-path))

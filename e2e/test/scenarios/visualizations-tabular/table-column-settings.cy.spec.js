@@ -550,7 +550,7 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.findByText("Wrap text").click();
       });
 
-      H.assertRowHeight(0, 52);
+      H.assertRowHeight(0, 53);
 
       H.popover().within(() => {
         cy.findByText("Wrap text").click();
