@@ -291,11 +291,19 @@ breadcrumbs=false
 
 ![Entity types in the data picker](./images/data-picker.png)
 
-In the data picker, you can show or hide different entity types. For example, you may only want to show models.
+In the data picker, you can show or hide different entity types. For example, you may only want to show tables.
 
 ```
-entity_types=model
+entity_types=table
 ```
+
+Setting entity types also affects the sidebar. If only tables are allowed, the sidebar won't show models:
+
+![Sidebar without models](./images/sidebar-without-models.png)
+
+The new button dropdown (if `new_button=true`) will also exclude models:
+
+![New button](./images/new-button-dropdown.png)
 
 Available entity types are:
 
