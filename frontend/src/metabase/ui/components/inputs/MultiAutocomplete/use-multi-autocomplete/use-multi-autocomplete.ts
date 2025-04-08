@@ -12,7 +12,6 @@ import {
 const DELIMITERS = [",", "\t", "\n"];
 const QUOTE_CHAR = '"';
 const ESCAPE_CHAR = "\\";
-const SPECIAL_CHARS_REGEX = /[,\t\n"\\]/g;
 const FIELD_PLACEHOLDER = null;
 
 type UseMultiAutocompleteProps = {
@@ -383,8 +382,8 @@ function parseCsv(rawValue: string): string[] {
 }
 
 function escapeCsv(value: string): string {
-  if (SPECIAL_CHARS_REGEX.test(value)) {
-    return `${QUOTE_CHAR}${value.replaceAll(SPECIAL_CHARS_REGEX, (s) => `${ESCAPE_CHAR}${s}`)}${QUOTE_CHAR}`;
+  if (/[\t\n"\\,]/g.test(value)) {
+    return `${QUOTE_CHAR}${value.replaceAll(/[\t\n"\\]/g, (s) => `${ESCAPE_CHAR}${s}`)}${QUOTE_CHAR}`;
   }
   return value;
 }

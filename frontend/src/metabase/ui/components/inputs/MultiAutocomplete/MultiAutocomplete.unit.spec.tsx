@@ -318,22 +318,37 @@ describe("MultiAutocomplete", () => {
     expect(onChange).toHaveBeenLastCalledWith(["2", "3"]);
   });
 
-  it("should escape the selected value when editing", async () => {
+  it("should quote the selected value when editing", async () => {
     const { input, onChange, onSearchChange } = setup({
       initialValues: ["a,b"],
     });
     await userEvent.click(screen.getByText("a,b"));
-    expect(input).toHaveValue('"a\\,b"');
+    expect(input).toHaveValue('"a,b"');
     expect(onChange).not.toHaveBeenCalled();
 
     await userEvent.click(input);
     await userEvent.type(input, "{selectall}{arrowright}{arrowleft}c");
-    expect(input).toHaveValue('"a\\,bc"');
+    expect(input).toHaveValue('"a,bc"');
     expect(onChange).toHaveBeenCalledWith(["a,bc"]);
     expect(onSearchChange).toHaveBeenLastCalledWith("a,bc");
   });
 
-  it("should escape the selected option label when editing", async () => {
+  it("should escape the selected value when editing", async () => {
+    const { input, onChange, onSearchChange } = setup({
+      initialValues: ['a"b'],
+    });
+    await userEvent.click(screen.getByText('a"b'));
+    expect(input).toHaveValue('"a\\"b"');
+    expect(onChange).not.toHaveBeenCalled();
+
+    await userEvent.click(input);
+    await userEvent.type(input, "{selectall}{arrowright}{arrowleft}c");
+    expect(input).toHaveValue('"a\\"bc"');
+    expect(onChange).toHaveBeenCalledWith(['a"bc']);
+    expect(onSearchChange).toHaveBeenLastCalledWith('a"bc');
+  });
+
+  it("should quote the selected option label when editing", async () => {
     const { input, onChange } = setup({
       initialValues: ["1"],
       options: [
@@ -343,7 +358,7 @@ describe("MultiAutocomplete", () => {
       ],
     });
     await userEvent.click(screen.getByText("a,b"));
-    expect(input).toHaveValue('"a\\,b"');
+    expect(input).toHaveValue('"a,b"');
     expect(getOption("a,b")).toBeInTheDocument();
     expect(getOption("a,b,c")).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
