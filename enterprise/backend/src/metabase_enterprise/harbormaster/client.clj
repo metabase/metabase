@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.auth :as api.auth]
    [metabase.cloud-migration.core :as cloud-migration]
+   [metabase.config :as config]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -57,17 +58,24 @@
 (mr/def :hm-client/http-reply [:tuple [:enum :ok :error] :map])
 
 (defn- send-request [request-method-fn store-api-url url request]
-  (try
-    (request-method-fn
-     (str store-api-url (+slash-prefix url))
-     request)
-    (catch Exception e
-      (log/errorf e "Error making request to %s" url)
-      {:ex-data (ex-data e)
-       :request request
-       :url     url})))
+  (let [response (try
+                   (request-method-fn
+                    (str store-api-url (+slash-prefix url))
+                    request)
+                   (catch Exception e
+                     (log/errorf e "Error making request to %s" url)
+                     {:ex-data (ex-data e)
+                      :request request
+                      :url     url}))]
+    (when config/is-dev?
+      (log/info "Harbormaster client request:"
+                {:method   request-method-fn
+                 :url      url
+                 :request  request
+                 :response response})
+      response)))
 
-(defn- decode-respones [unparsed-response url request]
+(defn- decode-response [unparsed-response url request]
   (if (some? (:ex-data unparsed-response)) ;; skip decoding failed responses
     unparsed-response
     (try
@@ -103,6 +111,6 @@
                             body (assoc :body (json/encode body)))
         request-method-fn (->requestor method)
         unparsed-response (send-request request-method-fn store-api-url url request)
-        response          (decode-respones unparsed-response url request)
+        response          (decode-response unparsed-response url request)
         success?          (calculate-success response url request)]
     [(if success? :ok :error) response]))

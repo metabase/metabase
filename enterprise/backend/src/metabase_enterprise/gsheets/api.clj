@@ -194,7 +194,6 @@
   before."
   []
   (when-not (gsheets.settings/show-google-sheets-integration)
-    (reset-gsheets-status!)
     (error-response-in-body (tru "Google Sheets integration is not enabled.") {:status-code 402}))
   {:email (hm-service-account-email)})
 
@@ -218,7 +217,6 @@
   (let [attached-dwh (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
     (when-not (some? attached-dwh)
       (snowplow/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
-      (reset-gsheets-status!)
       (error-response-in-body (tru "No attached dwh found.")))
 
     (let [[status response] (hm-create-gdrive-conn! url)
@@ -237,10 +235,8 @@
                      :created-by-id  created-by-id
                      :db-id          attached-dwh})
           (analytics/inc! :metabase-gsheets/connection-creation-began))
-        (do
-          (reset-gsheets-status!)
-          (error-response-in-body
-           (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions.")))))))
+        (error-response-in-body
+         (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions."))))))
 
 (defn- gsheets-safe
   "Return the gsheets setting, or fetch it from the db if it's not in the cache."
@@ -252,16 +248,18 @@
                   json/decode+kw))))
 
 (defn- handle-get-folder []
-  (let [saved-setting (gsheets-safe)
+  (let [cannot-check-message (tru "Unable to check google drive connection")
+        saved-setting (gsheets-safe)
         conn-id (:gdrive/conn-id saved-setting)
         hm-response (if (empty? saved-setting)
                       [:error nil]
                       (try (hm-get-gdrive-conn conn-id)
-                           (catch Exception _
-                             (reset-gsheets-status!)
-                             (error-response-in-body
-                              (tru "Unable to find google drive connection, please try again.")
-                              {:gdrive/conn-id conn-id}))))
+                           (catch Exception e
+                             (do
+                               (log/errorf e "Exception getting status of connection %s." conn-id)
+                               (error-response-in-body
+                                cannot-check-message
+                                {:gdrive/conn-id conn-id})))))
         [hm-status {hm-body :body}] hm-response]
     (if (= :ok hm-status)
       (let [{:keys [status last-sync-at last-sync-started-at]
@@ -269,9 +267,9 @@
         (cond
           (= "error" status)
           (do
-            (reset-gsheets-status!)
             (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
-            (error-response-in-body (tru "Problem syncing google drive folder, please recreate the connection.")))
+            (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body))
+            (error-response-in-body (or (:error-detail hm-body) cannot-check-message)))
 
           (= "active" status)
           (assoc (setting->response saved-setting)
@@ -289,10 +287,8 @@
       (if (empty? saved-setting)
         {:status "not-connected"}
         (do
-          (reset-gsheets-status!)
-          (error-response-in-body
-           (tru "Unable to find google drive connection.")
-           {:status-code 404}))))))
+          (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body))
+          (error-response-in-body cannot-check-message))))))
 
 (api.macros/defendpoint :get "/folder" :- :gsheets/response
   "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
