@@ -192,6 +192,20 @@ export type UpdateNotificationRequest =
   | UpdateAlertNotificationRequest
   | UpdateTableNotificationRequest;
 
+export type GetNotificationPayloadExampleRequest = {
+  payload_type: NotificationPayloadType;
+  payload: {
+    event_name: SystemEvent;
+    action: ActionType;
+  };
+  creator_id: UserId;
+};
+
+export type GetNotificationPayloadExampleResponse = {
+  payload: any;
+  schema: any;
+};
+
 type BaseNotification = {
   id: NotificationId;
   active: boolean;

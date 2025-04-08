@@ -3,10 +3,9 @@ import { t } from "ttag";
 import { isEqual } from "underscore";
 
 import {
-  skipToken,
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
-  useGetNotificationPayloadExampleDataQuery,
+  useGetNotificationPayloadExampleMutation,
   useListChannelsQuery,
   useUpdateNotificationMutation,
 } from "metabase/api";
@@ -123,37 +122,8 @@ export const CreateOrEditTableNotificationModal = ({
 
   const [createNotification] = useCreateNotificationMutation();
   const [updateNotification] = useUpdateNotificationMutation();
-
-  const payloadParams = useMemo(() => {
-    if (requestBody?.payload?.event_name && requestBody?.payload?.action) {
-      return {
-        payload_type: "notification/system-event",
-        payload: {
-          event_name: requestBody.payload.event_name,
-          action: requestBody.payload.action,
-        },
-        creator_id: user?.id || 1,
-      };
-    }
-    return undefined;
-  }, [
-    requestBody?.payload?.event_name,
-    requestBody?.payload?.action,
-    user?.id,
-  ]);
-
-  const { data: payloadData } = useGetNotificationPayloadExampleDataQuery(
-    payloadParams ?? skipToken,
-  );
-
-  // Update the template JSON when payload data changes
-  useEffect(() => {
-    if (payloadData) {
-      setTemplateJson(formatJsonForTooltip(payloadData.payload));
-    } else {
-      setTemplateJson("");
-    }
-  }, [payloadData]);
+  const [getNotificationPayloadExample] =
+    useGetNotificationPayloadExampleMutation();
 
   const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
   const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
@@ -197,6 +167,39 @@ export const CreateOrEditTableNotificationModal = ({
     userCanAccessSettings,
     tableId,
     notification,
+  ]);
+
+  // Get example payload when action changes
+  useEffect(() => {
+    const fetchExamplePayload = async () => {
+      if (
+        !requestBody?.payload?.event_name ||
+        !requestBody?.payload?.action ||
+        !user
+      ) {
+        return;
+      }
+
+      const result = await getNotificationPayloadExample({
+        payload_type: "notification/system-event",
+        payload: {
+          event_name: requestBody.payload.event_name as "event/action.success",
+          action: requestBody.payload.action as ActionType,
+        },
+        creator_id: user.id,
+      });
+
+      if (result.data) {
+        setTemplateJson(formatJsonForTooltip(result.data.payload));
+      }
+    };
+
+    fetchExamplePayload();
+  }, [
+    getNotificationPayloadExample,
+    requestBody?.payload?.action,
+    requestBody?.payload?.event_name,
+    user,
   ]);
 
   const onCreateOrEditAlert = async () => {
