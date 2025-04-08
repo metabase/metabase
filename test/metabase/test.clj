@@ -211,6 +211,7 @@
   cols
   first-row
   formatted-rows+column-names
+  format-nil->empty-str
   format-rows-by
   formatted-rows
   nest-query
