@@ -7,7 +7,7 @@ redirect_from:
   - /docs/latest/operations-guide
   - /docs/latest/faq
 ---
-<!-- bump docs test -->
+<!-- bump docs test 2 -->
 # Metabase documentation
 
 ![Metabase dashboard](./images/metabase-product-screenshot.png)
