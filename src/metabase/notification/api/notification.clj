@@ -260,14 +260,14 @@
   (let [notification (get-notification notification-id)]
     (api/check-403 (models.notification/current-user-is-recipient? notification))
     (models.notification/unsubscribe-user! notification-id user-id)
-    (u/prog1 (get-notification notification-id)
-      (when (card-notification? <>)
-        (u/ignore-exceptions
-          (messages/send-you-unsubscribed-notification-card-email!
-           <>
-           [(:email @api/*current-user*)])))
-      (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
-                                                              :user-id api/*current-user-id*}))))
+    (when (card-notification? notification)
+      (u/ignore-exceptions
+        (messages/send-you-unsubscribed-notification-card-email!
+         notification
+         [(:email @api/*current-user*)])))
+    (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
+                                                            :user-id api/*current-user-id*})
+    notification))
 
 (api.macros/defendpoint :post "/:id/unsubscribe"
   "Unsubscribe current user from a notification."
