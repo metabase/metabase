@@ -21,8 +21,8 @@
 (deftest gsheets-calls-fail-when-not-activated
   (mt/with-premium-features #{:etl-connections :attached-dwh}
     (mt/with-temporary-setting-values [api-key nil]
-      (is (partial= {:message "Missing api-key."}
-                    (mt/user-http-request :crowberto :get 500 "ee/gsheets/service-account"))))))
+      (is (partial= {:message "Google Sheets integration is not enabled."}
+                    (mt/user-http-request :crowberto :get 402 "ee/gsheets/service-account"))))))
 
 (deftest gsheets-calls-fail-when-missing-attached-dwh
   (mt/with-temporary-setting-values [api-key "some"]
@@ -40,8 +40,8 @@
 (deftest gsheets-calls-fail-when-there-is-no-mb-api-key
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
     (mt/with-temporary-setting-values [api-key nil]
-      (is (= "Missing api-key."
-             (:message (mt/user-http-request :crowberto :get 500 "ee/gsheets/service-account")))))))
+      (is (= "Google Sheets integration is not enabled."
+             (:message (mt/user-http-request :crowberto :get 402 "ee/gsheets/service-account")))))))
 
 (def happy-responses (read-string (slurp (io/resource "gsheets/mock_hm_responses.edn"))))
 
@@ -88,9 +88,14 @@
   "https://drive.google.com/drive/expected-gdrive-link")
 
 (def ^:private
-  gsheet-link
+  sheet-link
   "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
   "https://docs.google.com/spreadsheets/expected-sheet-link")
+
+(def ^:private
+  gsheet-error-link
+  "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "https://docs.google.com/spreadsheets/error-gdrive-link")
 
 (def ^:private
   gdrive-active-link
@@ -106,6 +111,11 @@
   gdrive-initializing-link
   "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
   "80b0635a-f0d9-4103-9ac8-389df7fd250a")
+
+(def ^:private
+  gdrive-error-link
+  "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "93662bf7-b1c7-442b-80ec-18dee23894fa")
 
 (defmacro with-sample-db-as-dwh [& body]
   "We need an attached dwh for these tests, so let's have the sample db fill in for us:"
@@ -135,8 +145,20 @@
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
       (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
         (is (partial=
-             {:status "syncing", :url gsheet-link}
-             (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gsheet-link})))))))
+             {:status "syncing", :url sheet-link}
+             (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url sheet-link})))))))
+
+(deftest post-error-test
+  (with-sample-db-as-dwh
+    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+      (mt/with-temporary-setting-values [gsheets nil]
+        (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+          (let [result (mt/user-http-request :crowberto :post 500 "ee/gsheets/folder" {:url gsheet-error-link})]
+            (is (partial=
+                 {:message "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions.", :errors true}
+                 result)))
+          (let [saved (gsheets)]
+            (is (= {} saved))))))))
 
 (deftest folder-syncing-test
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
@@ -203,7 +225,13 @@
                 (testing "current state info doesn't get persisted"
                   (is (nil? (:sync_started_at (gsheets))))
                   (is (nil? (:last_sync_at (gsheets))))
-                  (is (nil? (:last_sync_at (gsheets)))))))))))))
+                  (is (nil? (:last_sync_at (gsheets)))))))))
+        (testing "when error response"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-error-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+              (let [response (mt/user-http-request :crowberto :get 500 "ee/gsheets/folder")]
+                (is (partial= {:errors true, :message "Unable to check google drive connection"}
+                              response))))))))))
 
 (deftest delete-folder-test
   (with-sample-db-as-dwh
