@@ -99,7 +99,6 @@ export const createMockNotificationCronSubscription = (
   id: 10,
   notification_id: 10,
   type: "notification-subscription/cron",
-  event_name: null,
   created_at: "2025-01-07T18:40:47.245205+03:00",
   cron_schedule: "0 0 9 * * ?",
   ui_display_type: "cron/builder",
