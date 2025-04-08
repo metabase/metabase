@@ -1,9 +1,7 @@
 (ns metabase-enterprise.data-editing.notification-test
   (:require
    [clojure.test :refer :all]
-   [malli.core :as mc]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
-   [metabase.events :as events]
    [metabase.events.notification :as events.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]))

@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
@@ -174,7 +173,7 @@
                                                  (assoc :event_info (events/event-info-example (-> body :payload :event_name) (:payload body)))))
    :schema (case (:payload_type body)
              :notification/system-event
-             (defendpoint.open-api/schema->json-schema (events/event-schema (-> body :payload :event_name) (:payload body)))
+             (api.macros/schema->json-schema (events/event-schema (-> body :payload :event_name) (:payload body)))
              ;; TODO for :notification/card
              {})})
 

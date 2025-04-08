@@ -34,7 +34,7 @@
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api metabase.actions.core}
-   :uses #{analytics api driver legacy-mbql lib model-persistence models query-processor search util}}
+   :uses #{analytics api driver events legacy-mbql lib model-persistence models query-processor search util}}
 
   activity-feed
   {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
@@ -204,7 +204,7 @@
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
-   :uses #{api channel driver models notification premium-features util}}
+   :uses #{api config channel driver models notification premium-features util}}
 
   formatter
   {:api  #{metabase.formatter}
