@@ -2,20 +2,11 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type {
-  MetabotChatContext,
-  MetabotHistory,
-  MetabotReaction,
-} from "metabase-types/api";
+import type { MetabotChatContext, MetabotHistory } from "metabase-types/api";
 
 import { sendMessageRequest } from "./actions";
 
-type ConfirmationOptions =
-  | { [key: string]: MetabotReaction[] | undefined }
-  | undefined;
-
 export interface MetabotState {
-  confirmationOptions: ConfirmationOptions | undefined;
   isProcessing: boolean;
   lastSentContext: MetabotChatContext | undefined;
   lastHistoryValue: MetabotHistory | undefined;
@@ -26,7 +17,6 @@ export interface MetabotState {
 }
 
 export const metabotInitialState: MetabotState = {
-  confirmationOptions: undefined,
   isProcessing: false,
   lastSentContext: undefined,
   lastHistoryValue: undefined,
@@ -62,14 +52,6 @@ export const metabot = createSlice({
       } else {
         return metabotInitialState;
       }
-    },
-    setConfirmationOptions: (
-      state,
-      action: PayloadAction<ConfirmationOptions>,
-    ) => {
-      // Type cast solves type error of "Type instantiation is excessively deep and possibly infinite."
-      // This approach will be removed in a follow up PR
-      state.confirmationOptions = action.payload as any;
     },
   },
   extraReducers: (builder) => {

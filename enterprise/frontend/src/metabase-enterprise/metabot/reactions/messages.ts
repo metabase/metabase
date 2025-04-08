@@ -1,9 +1,6 @@
-import type {
-  MetabotConfirmationReaction,
-  MetabotMessageReaction,
-} from "metabase-types/api";
+import type { MetabotMessageReaction } from "metabase-types/api";
 
-import { addUserMessage, setConfirmationOptions } from "../state";
+import { addUserMessage } from "../state";
 
 import type { ReactionHandler } from "./types";
 
@@ -12,14 +9,5 @@ export const showMessage: ReactionHandler<MetabotMessageReaction> = (
 ) => {
   return ({ dispatch }) => {
     dispatch(addUserMessage(reaction.message));
-  };
-};
-
-export const requireUserConfirmation: ReactionHandler<
-  MetabotConfirmationReaction
-> = (reaction) => {
-  return ({ dispatch }) => {
-    dispatch(addUserMessage(reaction.description));
-    dispatch(setConfirmationOptions(reaction.options));
   };
 };
