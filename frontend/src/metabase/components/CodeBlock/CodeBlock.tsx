@@ -1,5 +1,8 @@
 import { syntaxHighlighting } from "@codemirror/language";
-import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import CodeMirror, {
+  type BasicSetupOptions,
+  type ReactCodeMirrorRef,
+} from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useMemo, useRef } from "react";
 
@@ -16,6 +19,7 @@ import {
 } from "./utils";
 
 export type CodeBlockProps = {
+  basicSetup?: BasicSetupOptions;
   code: string;
   language: CodeLanguage;
   className?: string;
@@ -23,6 +27,7 @@ export type CodeBlockProps = {
 };
 
 export function CodeBlock({
+  basicSetup,
   code,
   language,
   className,
@@ -50,6 +55,7 @@ export function CodeBlock({
         foldGutter: false,
         highlightActiveLine: false,
         highlightActiveLineGutter: false,
+        ...basicSetup,
       }}
       value={code}
       extensions={extensions}
