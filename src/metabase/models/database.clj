@@ -191,7 +191,11 @@
              (let [humanized-message (some->> (.getMessage e)
                                               (driver/humanize-connection-error-message driver))
                    reason (if (keyword? humanized-message) "user-input" "exception")]
-               (log/error e (u/format-color :red "Health check: failure with error %s {:id %d :reason %s :message %s}" (:name database) (:id database) reason humanized-message))
+               (log/error e (u/format-color :red "Health check: failure with error %s {:id %d :reason %s :message %s}"
+                                            (:name database)
+                                            (:id database)
+                                            reason
+                                            humanized-message))
                (analytics/inc! :metabase-database/status {:driver engine :healthy false :reason reason})))))))))
 
 (defn check-health!
