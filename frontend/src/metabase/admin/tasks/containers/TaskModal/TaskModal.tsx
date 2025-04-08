@@ -11,6 +11,7 @@ import ModalContent from "metabase/components/ModalContent";
 import { openSaveDialog } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Flex, Icon } from "metabase/ui";
+import type { Task } from "metabase-types/api";
 
 import S from "./TaskModal.module.css";
 
@@ -21,10 +22,7 @@ type TaskModalProps = {
 export const TaskModal = ({ params }: TaskModalProps) => {
   const dispatch = useDispatch();
   const { data: task, error, isLoading } = useGetTaskQuery(params.taskId);
-
-  const code = useMemo(() => {
-    return task ? JSON.stringify(task.task_details, null, 2) : "";
-  }, [task]);
+  const code = useMemo(() => formatTaskDetails(task), [task]);
   const linesCount = useMemo(() => code.split("\n").length, [code]);
 
   const handleClose = () => {
@@ -81,3 +79,7 @@ export const TaskModal = ({ params }: TaskModalProps) => {
     </ModalContent>
   );
 };
+
+function formatTaskDetails(task: Task | undefined): string {
+  return task ? JSON.stringify(task.task_details, null, 2) : "";
+}
