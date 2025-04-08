@@ -8,7 +8,7 @@ import { type CompileResult, compileExpression } from "./compiler";
 import {
   COMPARISON_OPERATORS,
   FIELD_MARKERS,
-  MBQL_CLAUSES,
+  getClauseDefinition,
   getMBQLName,
 } from "./config";
 import { DiagnosticError, type ExpressionError, renderError } from "./errors";
@@ -127,7 +127,7 @@ function checkOpenParenthesisAfterFunction(
     if (token.type === IDENTIFIER && source[token.start] !== "[") {
       const functionName = source.slice(token.start, token.end);
       const fn = getMBQLName(functionName);
-      const clause = fn ? MBQL_CLAUSES[fn] : null;
+      const clause = fn && getClauseDefinition(fn);
       if (clause && clause.args.length > 0) {
         const next = tokens[i + 1];
         if (next.type !== GROUP) {
@@ -274,7 +274,7 @@ function checkKnownFunctions({ expression }: { expression: Expression }) {
       return;
     }
 
-    const clause = MBQL_CLAUSES[name];
+    const clause = getClauseDefinition(name);
     if (!clause) {
       throw new DiagnosticError(t`Unknown function ${name}`, getToken(node));
     }
@@ -304,7 +304,7 @@ function checkFunctionSupport({
       return;
     }
     const [name] = node;
-    const clause = MBQL_CLAUSES[name];
+    const clause = getClauseDefinition(name);
     if (!clause) {
       return;
     }
@@ -323,7 +323,7 @@ function checkArgValidator({ expression }: { expression: Expression }) {
       return;
     }
     const [name, ...operands] = node;
-    const clause = MBQL_CLAUSES[name];
+    const clause = getClauseDefinition(name);
     if (!clause) {
       return;
     }
@@ -345,7 +345,7 @@ function checkArgCount({ expression }: { expression: Expression }) {
     }
 
     const [name, ...operands] = node;
-    const clause = MBQL_CLAUSES[name];
+    const clause = getClauseDefinition(name);
     if (!clause || name === "case" || name === "if") {
       return;
     }
