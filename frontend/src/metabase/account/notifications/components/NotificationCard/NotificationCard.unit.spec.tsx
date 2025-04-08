@@ -49,10 +49,10 @@ const getTableNotificationItem = (
         event_name: "event/action.success",
         action: action,
         table_id: mockTable.id,
+        table: mockTable,
       },
       payload_id: null,
       condition: ["=", ["field", "id"], 1],
-      table: mockTable,
     } as any, // Cast to any to allow adding the table property
     type: "table-notification",
   };

@@ -194,10 +194,9 @@ describe("CreateOrEditTableNotificationModal", () => {
       expect(screen.getByText("Edit alert")).toBeInTheDocument();
     });
 
-    // Check for the label in the UI instead of the value
-    expect(
-      screen.getByText("When any cell changes it's value"),
-    ).toBeInTheDocument();
+    // Verify the correct event is selected (UI displays the label, not the value)
+    const triggerSelect = screen.getByTestId("notification-event-select");
+    expect(triggerSelect).toHaveValue("When any cell changes it's value");
   });
 
   it("should create a new notification with default settings", async () => {
@@ -223,20 +222,16 @@ describe("CreateOrEditTableNotificationModal", () => {
     const calls = fetchMock.calls("path:/api/notification");
     expect(calls.length).toBe(1);
 
+    const requestBody = await calls[0][1]?.body;
+    const parsedBody = JSON.parse(requestBody as string);
+
     await waitFor(() => {
-      const requestBody = calls[0][1]?.body;
-      const parsedBody = JSON.parse(requestBody as string);
       expect(parsedBody.payload.event_name).toBe("event/action.success");
     });
 
     await waitFor(() => {
-      const requestBody = calls[0][1]?.body;
-      const parsedBody = JSON.parse(requestBody as string);
       expect(parsedBody.payload.action).toBe("row/create");
     });
-
-    const requestBody = await calls[0][1]?.body;
-    const parsedBody = JSON.parse(requestBody as string);
 
     // Verify it has the default table_id
     expect(parsedBody.payload.table_id).toBe(42);
@@ -277,15 +272,14 @@ describe("CreateOrEditTableNotificationModal", () => {
     const calls = fetchMock.calls("path:/api/notification");
     expect(calls.length).toBe(1);
 
+    const requestBody = await calls[0][1]?.body;
+    const parsedBody = JSON.parse(requestBody as string);
+
     await waitFor(() => {
-      const requestBody = calls[0][1]?.body;
-      const parsedBody = JSON.parse(requestBody as string);
       expect(parsedBody.payload.event_name).toBe("event/action.success");
     });
 
     await waitFor(() => {
-      const requestBody = calls[0][1]?.body;
-      const parsedBody = JSON.parse(requestBody as string);
       expect(parsedBody.payload.action).toBe("row/update");
     });
 
