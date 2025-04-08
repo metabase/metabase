@@ -11,10 +11,9 @@ export type NotificationCardSendCondition =
   | "goal_below"
   | "has_result";
 
-export type SystemEvent =
-  | "event/data-editing-row-create"
-  | "event/data-editing-row-update"
-  | "event/data-editing-row-delete";
+export type SystemEvent = "event/action.success";
+
+export type ActionType = "row/create" | "row/update" | "row/delete";
 
 type NotificationPayloadType =
   | "notification/card"
@@ -38,7 +37,11 @@ type NotificationCardPayload = {
 
 type NotificationSystemEventPayload = {
   payload_type: "notification/system-event";
-  payload: null;
+  payload: {
+    event_name: SystemEvent;
+    table_id: TableId;
+    action: ActionType;
+  };
   payload_id: null;
 };
 
@@ -146,12 +149,14 @@ export type NotificationSystemEventSubscriptionRequest = {
   type: "notification-subscription/system-event";
   event_name: SystemEvent;
   table_id: TableId;
+  action: ActionType;
 };
 
 export type NotificationSystemEventSubscription = {
   type: "notification-subscription/system-event";
 
   event_name: SystemEvent;
+  action: ActionType;
 
   id?: number;
   notification_id?: number;
@@ -187,7 +192,6 @@ export type CreateAlertNotificationRequest = NotificationCardPayload & {
 
 export type CreateTableNotificationRequest = NotificationSystemEventPayload & {
   handlers: NotificationHandler[];
-  subscriptions: NotificationSystemEventSubscriptionRequest[];
   condition: Condition;
 };
 
@@ -206,7 +210,6 @@ export type UpdateTableNotificationRequest = NotificationSystemEventPayload & {
   id: NotificationId;
   active: boolean;
   handlers: NotificationHandler[];
-  subscriptions: NotificationSystemEventSubscription[];
   condition: Condition;
 };
 
@@ -230,7 +233,6 @@ export type AlertNotification = BaseNotification &
 
 export type TableNotification = BaseNotification &
   NotificationSystemEventPayload & {
-    subscriptions: NotificationSystemEventSubscription[];
     condition: Condition;
   };
 
