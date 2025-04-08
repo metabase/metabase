@@ -117,7 +117,6 @@ function compileField(node: Node): Lib.ExpressionParts {
   assert(node.token?.value, "Empty field value");
 
   return withNode(node, {
-    // TODO: remove this cast
     operator: "dimension" as Lib.ExpressionOperator,
     options: {},
     args: [node.token.value],
@@ -130,7 +129,6 @@ function compileIdentifier(node: Node): Lib.ExpressionParts {
 
   const name = node.token.text;
   return withNode(node, {
-    // TODO: remove this cast
     operator: "dimension" as Lib.ExpressionOperator,
     options: {},
     args: [name],

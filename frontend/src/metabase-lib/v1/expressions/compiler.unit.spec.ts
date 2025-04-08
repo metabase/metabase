@@ -145,7 +145,6 @@ describe("old recursive-parser tests", () => {
     expect(expr("trim(ID)")).toEqual(["trim", id]);
   });
 
-  // TODO: text and integer don't work
   it("should parse cast calls", () => {
     expect(expr("text(ID)")).toEqual(["text", id]);
     expect(expr("integer(ID)")).toEqual(["integer", id]);

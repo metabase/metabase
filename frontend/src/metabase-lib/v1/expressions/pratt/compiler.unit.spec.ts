@@ -59,7 +59,6 @@ describe("pratt/compiler", () => {
       });
     });
 
-    /// TODO: Fix w/ some type info
     it("should compile dimensions", () => {
       expect(expr("[Price]")).toEqual({
         operator: "dimension",
