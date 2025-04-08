@@ -8,16 +8,18 @@ import { getNode } from "./utils";
 
 export type Kind = "field" | "metric" | "segment";
 
+export type Resolver = (
+  kind: Kind,
+  name: string,
+  expression?: Lib.ExpressionParts,
+) => Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata;
+
 export function fieldResolver(options: {
   query: Lib.Query;
   stageIndex: number;
   startRule: string;
-}) {
-  return function (
-    kind: Kind,
-    name: string,
-    expression?: Lib.ExpressionParts,
-  ): Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata {
+}): Resolver {
+  return function (kind, name, expression) {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {

@@ -2,7 +2,7 @@ import * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
 import { type ExpressionError, renderError } from "./errors";
-import { fieldResolver } from "./field-resolver";
+import { type Resolver, fieldResolver } from "./field-resolver";
 import { isLiteral } from "./matchers";
 import { compile, lexify, parse } from "./pratt";
 import { resolve } from "./resolver";
@@ -25,27 +25,27 @@ export function compileExpression({
   startRule,
   query,
   stageIndex,
-  resolve: shouldResolve = true,
+  resolver = fieldResolver({
+    query,
+    stageIndex,
+    startRule,
+  }),
 }: {
   source: string;
   startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
-  resolve?: boolean;
+  resolver?: Resolver | null;
 }): CompileResult {
   try {
     const { tokens } = lexify(source);
     const { root } = parse(tokens, { throwOnError: true });
     const compiled = compile(root);
-    const resolved = shouldResolve
+    const resolved = resolver
       ? resolve({
           expression: compiled,
           type: startRule,
-          fn: fieldResolver({
-            query,
-            stageIndex,
-            startRule,
-          }),
+          fn: resolver,
         })
       : compiled;
 
