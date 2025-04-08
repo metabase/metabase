@@ -286,6 +286,7 @@ describe("scenarios > home > custom homepage", () => {
       cy.log(
         "disabling custom-homepage-setting should also remove custom-homepage-dashboard-setting",
       );
+      cy.visit("/admin/settings/general");
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Enabled").should("exist");

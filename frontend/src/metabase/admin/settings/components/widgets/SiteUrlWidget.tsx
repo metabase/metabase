@@ -2,8 +2,8 @@ import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api";
-import { useHasTokenFeature, useToast } from "metabase/common/hooks";
+import { useAdminSetting } from "metabase/api/utils";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import InputWithSelectPrefix from "metabase/components/InputWithSelectPrefix";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { Box, Text } from "metabase/ui";
@@ -14,7 +14,6 @@ export function SiteUrlWidget() {
   const { value, updateSetting, description } = useAdminSetting("site-url");
   const isHosted = useHasTokenFeature("hosting");
   const [errorMessage, setErrorMessage] = useState("");
-  const [sendToast] = useToast();
 
   const handleChange = (newValue: string) => {
     if (newValue === value) {
@@ -26,10 +25,7 @@ export function SiteUrlWidget() {
         const message =
           (response.error as { data: GenericErrorResponse })?.data?.message ||
           t`Error saving Site URL`;
-        sendToast({ message, icon: "warning", toastColor: "danger" });
         setErrorMessage(message);
-      } else {
-        sendToast({ message: t`Changes saved`, icon: "check" });
       }
     });
   };

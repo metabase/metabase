@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
+import type { DashboardId } from "./dashboard";
 import type { UserId } from "./user";
 
 export interface FormattingSettings {
@@ -360,7 +361,7 @@ interface PublicSettings {
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
-  "custom-homepage-dashboard": number | null;
+  "custom-homepage-dashboard": DashboardId | null;
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
