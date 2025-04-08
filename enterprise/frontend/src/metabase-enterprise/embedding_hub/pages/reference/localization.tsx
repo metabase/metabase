@@ -1,7 +1,6 @@
 import { jt, t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Badge,
   Box,
@@ -48,14 +47,14 @@ export function LocalizationReferencePage() {
     <>
       <Title order={1} mb="xs">{t`Localization Settings Reference`}</Title>
       <Text mb="xl">
-        {jt`This page demonstrates the localization settings UI patterns for ${getApplicationName()} admin interfaces.`}
+        {jt`This page demonstrates the localization settings UI patterns for the admin interfaces.`}
       </Text>
 
       {/* General Localization Settings Card */}
       <Card p="xl" mt="xl" bg={color("bg-light")} withBorder shadow="none">
         <Title order={2} mb="xs">{t`General Localization Settings`}</Title>
         <Text mb="lg">
-          {jt`Configure regional settings that affect how ${getApplicationName()} displays content across the application.`}
+          {jt`Configure regional settings that affect how content is localized across the application.`}
         </Text>
         <Divider mb="xl" />
 
@@ -64,7 +63,7 @@ export function LocalizationReferencePage() {
           <Box>
             <Text fw={600} mb="xs">{t`Default Language`}</Text>
             <Text size="sm" mb="sm" c={color("text-medium")}>
-              {jt`The default language for all users across the ${getApplicationName()} UI, system emails, and alerts.`}
+              {jt`The default language for all users.`}
             </Text>
             <Select
               placeholder={t`Select a language`}
