@@ -378,7 +378,7 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 interface PublicSettings {
   "allowed-iframe-hosts": string;
   "anon-tracking-enabled": boolean;
-  "application-font": string;
+  "application-font": string | null;
   "application-font-files": FontFile[] | null;
   "application-name": string;
   "application-favicon-url": string;
@@ -493,9 +493,11 @@ export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 
+export type ColorSettings = Record<string, string>;
+
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export interface EnterpriseSettings extends Settings {
-  "application-colors"?: Record<string, string>;
+  "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;

@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-import { UpsellWhitelabel } from "metabase/admin/upsells";
 import MetabaseSettings from "metabase/lib/settings";
 import { newVersionAvailable } from "metabase/lib/utils";
 import {
@@ -23,6 +22,7 @@ import {
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
+import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
@@ -351,15 +351,32 @@ export const ADMIN_SETTINGS_SECTIONS = {
     settings: [],
     isUpsell: true,
   },
-  whitelabel: {
+  appearance: {
+    // OSS Version
     name: t`Appearance`,
-    getHidden: (settings) => settings["token-features"]?.whitelabel === true,
+    getHidden: (settings) => settings["token-features"]?.whitelabel,
     order: 133,
-    component: (props) => (
-      <UpsellWhitelabel {...props} source="settings-appearance" />
-    ),
-    settings: [],
+    component: () => <AppearanceSettingsPage />,
     isUpsell: true,
+    settings: [],
+  },
+  whitelabel: {
+    // EE Version
+    name: t`Appearance`,
+    getHidden: (settings) => !settings["token-features"]?.whitelabel,
+    order: 134,
+    component: () => <AppearanceSettingsPage />,
+    settings: [],
+  },
+  "whitelabel/branding": {
+    name: t`Appearance`,
+    component: () => <AppearanceSettingsPage />,
+    settings: [],
+  },
+  "whitelabel/conceal-metabase": {
+    name: t`Appearance`,
+    component: () => <AppearanceSettingsPage />,
+    settings: [],
   },
 };
 

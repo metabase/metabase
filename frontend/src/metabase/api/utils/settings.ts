@@ -49,9 +49,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
       }
 
       if (response.error) {
-        const message =
-          (response.error as { data?: { message: string } })?.data?.message ||
-          t`Error saving ${key}`;
+        const message = getErrorMessage(response.error, t`Error saving ${key}`);
 
         sendToast({ message, icon: "warning", toastColor: "danger" });
       } else {
@@ -73,4 +71,23 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     isLoading: settingsLoading || detailsLoading,
     ...apiProps,
   };
+};
+
+export const getErrorMessage = (
+  error: { data: string } | { data: { message: string } } | string,
+  fallback = t`Something went wrong`,
+) => {
+  if (typeof error !== "object") {
+    return fallback;
+  }
+
+  if (typeof error?.data === "string") {
+    return error.data;
+  }
+
+  if (typeof error?.data?.message === "string") {
+    return error.data.message;
+  }
+
+  return fallback;
 };
