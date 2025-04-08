@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
 import { t } from "ttag";
 
@@ -24,10 +24,13 @@ export const CopyButton = ({
   style,
 }: CopyButtonProps) => {
   const [copied, setCopied] = useState(false);
+  const timeoutIdRef = useRef<number>();
 
   const onCopyValue = useCallback(() => {
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+
+    window.clearTimeout(timeoutIdRef.current);
+    timeoutIdRef.current = window.setTimeout(() => setCopied(false), 2000);
     onCopy?.();
   }, [onCopy]);
 
