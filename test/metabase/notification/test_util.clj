@@ -40,6 +40,10 @@
   [_channel-type notification-info _template _recipients]
   [notification-info])
 
+(defmethod channel/render-notification [:channel/metabase-test :notification/system-event]
+  [_channel-type notification-info _template _recipients]
+  [notification-info])
+
 (defmethod notification.payload/payload :notification/testing
   [_notification]
   {::payload? true})
@@ -161,21 +165,21 @@
   `(do-with-card-notification ~props (fn [~bindings] ~@body)))
 
 (defn do-with-system-event-notification!
-  [{:keys [event notification subscriptions handlers]} thunk]
-  (with-temporary-event-topics! [event]
-    (do-with-temp-notification
-     {:notification  (merge {:payload_type :notification/system-event
-                             :creator_id   (mt/user->id :crowberto)}
-                            notification)
-      :subscriptions subscriptions
-      :handlers      handlers}
-     thunk)))
+  [{:keys [notification subscriptions handlers notification-system-event]} thunk]
+  (do-with-temp-notification
+   {:notification  (merge {:payload_type :notification/system-event
+                           :creator_id   (mt/user->id :crowberto)
+                           :payload      notification-system-event}
+                          notification)
+    :subscriptions (map #(merge {:type :notification-subscription/system-event} %) subscriptions)
+    :handlers      handlers}
+   thunk))
 
 (defmacro with-system-event-notification!
   "Macro that sets up a system event notification for testing.
     (with-system-event-notification!
-      [notification {:event         :metabase/big-event
-                     :notification  {:creator_id 1}
+      [notification {:notification  {:creator_id 1}
+                     :notification-system-event {:event_name :event/notification-create}
                      :subscriptions []
                      :handlers      []}]"
   [[notification-binding props] & body]
@@ -277,16 +281,26 @@
    :active      true})
 
 (def channel-template-email-with-handlebars-body
-  "A :model/ChannelTemplate for email channels that has a :event/handlebars-text template."
-  {:channel_type :channel/email
+  "A :model/ChannelTemplate for email channels that has a :email/handlebars-text template."
+  {:name         "Email template"
+   :channel_type :channel/email
    :details      {:type    :email/handlebars-text
-                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
-                  :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}})
+                  :subject "Welcome {{payload.object.first_name}} to {{context.site_name}}"
+                  :body    "Hello {{payload.object.first_name}}! Welcome to {{context.site_name}}!"}})
+
+(def channel-template-slack-with-handlebars-body
+  "A :model/ChannelTemplate for slack channels that has a :slack/handlebars-text template."
+  {:channel_type :channel/slack
+   :details      {:type    :slack/handlebars-text
+                  :body    "Hello {{payload.object.first_name}}! Welcome to {{context.site_name}}!"}})
 
 (def default-email-handler
   (delay {:channel_type :channel/email
           :recipients   [{:type    :notification-recipient/user
                           :user_id (mt/user->id :rasta)}]}))
+
+(def default-testing-handler
+  {:channel_type :channel/metabase-test})
 
 (def default-slack-handler
   {:channel_type :channel/slack

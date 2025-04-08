@@ -28,6 +28,7 @@ describe("dashboard reducers", () => {
       selectedTabId: null,
       dashboards: {},
       dashcardData: {},
+      editingDashcardDataOverride: {},
       dashcards: {},
       isAddParameterPopoverOpen: false,
       isNavigatingBackToDashboard: false,

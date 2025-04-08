@@ -11,6 +11,7 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections :notifications))
@@ -188,7 +189,6 @@
                                  :payload_type  "notification/card"
                                  :subscriptions [{:notification_id (:id created-notification)
                                                   :type "notification-subscription/cron"
-                                                  :event_name nil
                                                   :cron_schedule "0 0 0 * * ?"}]
                                  :handlers [{:recipients [{:id (mt/malli=? int?)
                                                            :type "notification-recipient/user"
@@ -217,6 +217,45 @@
                                                                               :payload      {:card_id card-id}
                                                                               :payload_type "notification/card"})
                    :creator_id)))))))
+
+(deftest notification-with-custom-template-test
+  (mt/with-model-cleanup [:model/Notification]
+    (testing "can create a notification with a template"
+      (let [template     (-> notification.tu/channel-template-email-with-handlebars-body
+                             (update :channel_type u/qualified-name)
+                             (update-in [:details :type] u/qualified-name))
+            notification (mt/user-http-request :crowberto :post 200 "notification"
+                                               {:payload_type  :notification/testing
+                                                :creator_id    (mt/user->id :crowberto)
+                                                :handlers      [(assoc @notification.tu/default-email-handler
+                                                                       :template notification.tu/channel-template-email-with-handlebars-body)]})
+            created-template (-> notification :handlers first :template)]
+        (is (=? template created-template))
+        (testing "and can update the template"
+          (let [updated-notification (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                           (update notification :handlers (fn [[handler]]
+                                                                                            [(assoc-in handler [:template :name] "New Name")])))
+                updated-template    (-> updated-notification :handlers first :template)]
+            (is (=? (-> created-template
+                        (assoc :name "New Name")
+                        (dissoc :updated_at :created_at))
+                    (dissoc updated-template :updated_at :created_at)))))
+
+        (testing "can delete the template"
+          (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                (update notification :handlers (fn [[handler]]
+                                                                 [(dissoc handler :template)])))
+          (is (false? (t2/exists? :model/ChannelTemplate (:id created-template)))))
+
+        ;; TODO: currently can't do this due to how we structure the model spec
+        (testing "and re-create it again"
+          (let [notification       (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                         (update notification :handlers (fn [[handler]]
+                                                                                          [(assoc handler
+                                                                                                  :template template
+                                                                                                  :template_id nil)])))
+                recreated-template (-> notification :handlers first :template)]
+            (is (=? template recreated-template))))))))
 
 (defn- update-cron-subscription
   [{:keys [subscriptions] :as notification} new-schedule ui-display-type]
@@ -314,9 +353,9 @@
                                        :active true}
                             :new      {:subscriptions [{:notification_id (:id notification)
                                                         :type "notification-subscription/cron"
-                                                        :event_name nil
                                                         :cron_schedule "0 0 0 * * ?"
-                                                        :ui_display_type nil}]
+                                                        :ui_display_type nil
+                                                        :table_id nil}]
                                        :active false}}}
                  (mt/latest-audit-log-entry))))))))
 
@@ -422,19 +461,20 @@
           (get-notification third-user-id 403))))))
 
 (deftest get-system-event-permissions-test
-  (notification.tu/with-system-event-notification!
-    [notification {:event :mb-test/permissions
-                   :notification {:creator_id (mt/user->id :rasta)}}]
-    (let [get-notification (fn [user-or-id expected-status]
-                             (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
-      (testing "admin can view"
-        (get-notification :crowberto 200))
+  (notification.tu/with-temporary-event-topics! [:event/test-permissions]
+    (notification.tu/with-system-event-notification!
+      [notification {:notification-system-event {:event_name :event/test-permissions}
+                     :notification              {:creator_id (mt/user->id :rasta)}}]
+      (let [get-notification (fn [user-or-id expected-status]
+                               (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
+        (testing "admin can view"
+          (get-notification :crowberto 200))
 
-      (testing "creator can view"
-        (get-notification :rasta 200))
+        (testing "creator can view"
+          (get-notification :rasta 200))
 
-      (testing "other than that no one can view"
-        (get-notification :lucky 403)))))
+        (testing "other than that no one can view"
+          (get-notification :lucky 403))))))
 
 (defmacro ^:private with-disabled-subscriptions-permissions!
   [& body]
@@ -601,6 +641,14 @@
                        (perms/grant-application-permissions! group :subscription)
                        (create-notification! (:id user) 200)))))))))))))
 
+(defn- list-notification-ids
+  "Return a set of notification ids that match the given user and params."
+  [user noti-ids-set & params]
+  (->> (apply mt/user-http-request user :get 200 "notification" params)
+       (map :id)
+       (filter noti-ids-set)
+       set))
+
 (deftest list-notifications-basic-test
   (testing "GET /api/notification"
     (mt/with-model-cleanup [:model/Notification]
@@ -613,10 +661,7 @@
           (notification.tu/with-card-notification [{rasta-noti-2 :id} {:notification {:creator_id (mt/user->id :rasta)
                                                                                       :active false}}]
             (letfn [(get-notification-ids [user & params]
-                      (->> (apply mt/user-http-request user :get 200 "notification" params)
-                           (map :id)
-                           (filter #{rasta-noti-1 crowberto-noti-1 rasta-noti-2})
-                           set))]
+                      (apply list-notification-ids user #{rasta-noti-1 crowberto-noti-1 rasta-noti-2} params))]
 
               (testing "returns all active notifications by default"
                 (is (= #{rasta-noti-1 crowberto-noti-1}
@@ -634,10 +679,7 @@
                                                                                  :recipients   [{:type    :notification-recipient/user
                                                                                                  :user_id (mt/user->id :lucky)}]}]}]
         (letfn [(get-notification-ids [user & params]
-                  (->> (apply mt/user-http-request user :get 200 "notification" params)
-                       (map :id)
-                       (filter #{rasta-noti})
-                       set))]
+                  (apply list-notification-ids user #{rasta-noti} params))]
 
           (testing "admin can view"
             (is (= #{rasta-noti}
@@ -668,10 +710,7 @@
                                                                                  :recipients   [{:type    :notification-recipient/user
                                                                                                  :user_id (mt/user->id :lucky)}]}]}]
         (letfn [(get-notification-ids [user & params]
-                  (->> (apply mt/user-http-request user :get 200 "notification" params)
-                       (map :id)
-                       (filter #{rasta-noti})
-                       set))]
+                  (apply list-notification-ids user #{rasta-noti} params))]
 
           (testing "admin can view"
             (is (= #{rasta-noti}
@@ -709,13 +748,10 @@
                                                                                                    :user_id (mt/user->id :rasta)}]}]}]
 
           (letfn [(get-notification-ids [user & params]
-                    (->> (apply mt/user-http-request user :get 200 "notification" params)
-                         (map :id)
-                         (filter #{rasta-noti lucky-noti})
-                         sort))]
+                    (apply list-notification-ids user #{rasta-noti lucky-noti} params))]
 
             (testing "return notifications where user is either creator or recipient"
-              (is (= (sort [rasta-noti lucky-noti])
+              (is (= #{rasta-noti lucky-noti}
                      (get-notification-ids :crowberto :creator_or_recipient_id (mt/user->id :rasta)))))))))))
 
 (deftest list-notifications-card-filter-test
@@ -730,10 +766,7 @@
                           :payload
                           :card_id)]
           (letfn [(get-notification-ids [user & params]
-                    (->> (apply mt/user-http-request user :get 200 "notification" params)
-                         (map :id)
-                         (filter #{rasta-noti})
-                         set))]
+                    (apply list-notification-ids user #{rasta-noti} params))]
 
             (testing "admin can view"
               (is (= #{rasta-noti}
@@ -768,10 +801,7 @@
                           :payload
                           :card_id)]
           (letfn [(get-notification-ids [user & params]
-                    (->> (apply mt/user-http-request user :get 200 "notification" params)
-                         (map :id)
-                         (filter #{rasta-noti})
-                         set))]
+                    (apply list-notification-ids user #{rasta-noti} params))]
 
             (testing "can filter by creator_id and recipient_id"
               (is (= #{rasta-noti}
@@ -804,6 +834,21 @@
                                            :creator_id (mt/user->id :rasta)
                                            :recipient_id Integer/MAX_VALUE
                                            :card_id card-id))))))))))
+
+(deftest list-filter-table-notifications-test
+  (let [table-id (mt/id :categories)]
+    (notification.tu/with-system-event-notification!
+      [{noti-id-1 :id} {:notification-system-event {:event_name :event/action.success
+                                                    :action     :row/create
+                                                    :table_id   table-id}}]
+      (notification.tu/with-system-event-notification!
+        [{noti-id-2 :id} {:notification-system-event {:event_name :event/action.success
+                                                      :action :row/create
+                                                      :table_id   table-id}}]
+        (testing "returns notifications for the given table"
+          (is (= #{noti-id-1 noti-id-2}
+                 (list-notification-ids :crowberto #{noti-id-1 noti-id-2}
+                                        :table_id table-id))))))))
 
 (deftest unsubscribe-notification-test
   (mt/with-model-cleanup [:model/Notification]
@@ -887,19 +932,22 @@
                                                                      :handlers     [{:channel_type "channel/email"
                                                                                      :recipients   [{:type    :notification-recipient/user
                                                                                                      :user_id (mt/user->id :lucky)}]}]}]
-          (let [[email] (notification.tu/with-mock-inbox-email!
-                          (with-send-messages-sync!
-                            (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
+          (let [[email :as emails] (notification.tu/with-mock-inbox-email!
+                                     (with-send-messages-sync!
+                                       (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
                 a-href (format "<a href=\".*/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
-            (testing "sends unsubscribe confirmation email"
-              (is (=? {:bcc     #{"lucky@metabase.com"}
-                       :subject "You unsubscribed from an alert"
-                       :body    [{"You’re no longer receiving alerts about" true
-                                  a-href                                    true}]}
-                      (mt/summarize-multipart-single-email email
-                                                           #"You’re no longer receiving alerts about"
-                                                           (re-pattern a-href)))))))))))
+            (testing (format "\nNotification: \n%s\n" notification)
+              (testing (format "\nEmail: \n%s\n" email)
+                (is (= 1 (count emails)))
+                (testing "sends unsubscribe confirmation email"
+                  (is (=? {:bcc     #{"lucky@metabase.com"}
+                           :subject "You unsubscribed from an alert"
+                           :body    [{"You’re no longer receiving alerts about" true
+                                      a-href                                    true}]}
+                          (mt/summarize-multipart-single-email email
+                                                               #"You’re no longer receiving alerts about"
+                                                               (re-pattern a-href)))))))))))))
 
 (deftest unsubscribe-notification-audit-test
   (mt/with-model-cleanup [:model/Notification]
@@ -996,3 +1044,39 @@
               (let [emails (update-notification! noti-id notification
                                                  (assoc-in notification [:payload :send_condition] "goal_above"))]
                 (is (empty? emails))))))))))
+
+(deftest create-system-notification-api-test
+  (mt/with-model-cleanup [:model/Notification]
+    (let [table-id     (mt/id :orders)
+          notification (mt/user-http-request :crowberto :post 200 "notification"
+                                             {:payload_type :notification/system-event
+                                              :payload      {:table_id   table-id
+                                                             :action     :row/create
+                                                             :event_name :event/action.success}
+                                              :creator_id   (mt/user->id :crowberto)
+                                              :condition    [:= [:context "event_info" "table_id"] table-id]
+                                              :handlers     [@notification.tu/default-email-handler]})]
+      (testing "can create a table notification"
+        (is (=? {:condition     ["=" ["context" "event_info" "table_id"] table-id]
+                 :payload       {:event_name "event/action.success"
+                                 :table_id   table-id
+                                 :action     "row/create"}
+                 :creator_id    (mt/user->id :crowberto)
+                 :payload_type  "notification/system-event"}
+                notification))
+
+        (testing "can update its condition"
+          (is (= ["=" ["context" "event_info" "table" "id"] table-id]
+                 (:condition (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                   (assoc notification :condition [:= [:context "event_info" "table" "id"] table-id]))))))
+        (testing "can update its handlers"
+          (is (=? [{:channel_type "channel/slack"}]
+                  (:handlers (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                   (assoc notification :handlers [notification.tu/default-slack-handler]))))))))))
+
+(deftest notification-payload-card-test
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders {:limit 1})}]
+    (mt/user-http-request :crowberto :post 200 "notification/payload"
+                          {:payload_type :notification/card
+                           :payload      {:card_id card-id}
+                           :creator_id   (mt/user->id :crowberto)})))

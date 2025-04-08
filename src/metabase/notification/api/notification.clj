@@ -32,7 +32,9 @@
 
 (defn list-notifications
   "List notifications. See `GET /` for parameters."
-  [{:keys [creator_id creator_or_recipient_id recipient_id card_id payload_type include_inactive legacy-active legacy-user-id]}]
+  [{:keys [creator_id creator_or_recipient_id recipient_id card_id
+           payload_type include_inactive legacy-active legacy-user-id
+           table_id]}]
   (->> (t2/reducible-select :model/Notification
                             (cond-> {:select-distinct [:notification.*]}
                               creator_id
@@ -60,6 +62,14 @@
                                     [:= :notification_card.id :notification.payload_id]
                                     [:= :notification.payload_type "notification/card"]])
                                   (sql.helpers/where [:= :notification_card.card_id card_id]))
+
+                              table_id
+                              (-> (sql.helpers/left-join
+                                   :notification_system_event
+                                   [:and
+                                    [:= :notification_system_event.id :notification.payload_id]
+                                    [:= :notification.payload_type "notification/system-event"]])
+                                  (sql.helpers/where [:= :notification_system_event.table_id table_id]))
 
                               (and (nil? legacy-active) (not (true? include_inactive)))
                               (sql.helpers/where [:= :notification.active true])
@@ -90,22 +100,26 @@
   - `creator_id`: if provided returns only notifications created by this user
   - `recipient_id`: if provided returns only notification that has recipient_id as a recipient
   - `creator_or_recipient_id`: if provided returns only notification that has user_id as creator or recipient
-  - `card_id`: if provided returns only notification that has card_id as payload"
+  - `card_id`: if provided returns only notification that has card_id as payload
+  - `table_id`: if provided returns only system event notification that is associated with a table
+  - `payload_type`: if provided returns only notification with this payload type"
   [_route-params
-   {:keys [creator_id creator_or_recipient_id recipient_id card_id include_inactive payload_type]} :-
+   {:keys [creator_id creator_or_recipient_id recipient_id card_id table_id include_inactive payload_type]} :-
    [:map
     [:creator_id              {:optional true} ms/PositiveInt]
     [:recipient_id            {:optional true} ms/PositiveInt]
     [:creator_or_recipient_id {:optional true} ms/PositiveInt]
     [:card_id                 {:optional true} ms/PositiveInt]
+    [:table_id                {:optional true} ms/PositiveInt]
     [:include_inactive        {:optional true} ms/BooleanValue]
-    [:pyaload_type            {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
+    [:payload_type            {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
   (list-notifications {:creator_id              creator_id
                        :recipient_id            recipient_id
                        :creator_or_recipient_id creator_or_recipient_id
                        :card_id                 card_id
                        :include_inactive        include_inactive
-                       :payload_type            payload_type}))
+                       :payload_type            payload_type
+                       :table_id                table_id}))
 
 (api.macros/defendpoint :get "/:id"
   "Get a notification by id."
@@ -149,6 +163,19 @@
       (send-you-were-added-card-notification-email! notification))
     (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
+
+(api.macros/defendpoint :post "/payload"
+  "Return the payload of a notification"
+  [_route _query body :- ::models.notification/NotificationWithPayload]
+  (api/create-check :model/Notification body)
+  {:payload (notification/notification-payload (cond-> body
+                                                 (= :notification/system-event (:payload_type body))
+                                                 (assoc :event_info (events/event-info-example (-> body :payload :event_name) (:payload body)))))
+   :schema (case (:payload_type body)
+             :notification/system-event
+             (api.macros/schema->json-schema (events/event-schema (-> body :payload :event_name) (:payload body)))
+             ;; TODO for :notification/card
+             {})})
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"
@@ -232,14 +259,14 @@
   (let [notification (get-notification notification-id)]
     (api/check-403 (models.notification/current-user-is-recipient? notification))
     (models.notification/unsubscribe-user! notification-id user-id)
-    (u/prog1 (get-notification notification-id)
-      (when (card-notification? <>)
-        (u/ignore-exceptions
-          (messages/send-you-unsubscribed-notification-card-email!
-           (update <> :payload t2/hydrate :card)
-           [(:email @api/*current-user*)])))
-      (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
-                                                              :user-id api/*current-user-id*}))))
+    (when (card-notification? notification)
+      (u/ignore-exceptions
+        (messages/send-you-unsubscribed-notification-card-email!
+         notification
+         [(:email @api/*current-user*)])))
+    (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
+                                                            :user-id api/*current-user-id*})
+    notification))
 
 (api.macros/defendpoint :post "/:id/unsubscribe"
   "Unsubscribe current user from a notification."

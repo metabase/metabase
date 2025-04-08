@@ -1,0 +1,21 @@
+.inlineEditingTextInput {
+  transition: none;
+  outline: 2px solid var(--mb-base-color-blue-50);
+  outline-offset: -2px;
+  border-color: transparent;
+  box-sizing: border-box;
+  font-weight: 700;
+  background-color: var(--mb-base-color-white);
+  border-radius: 0;
+
+  /* Should be in sync with DEFAULT_FONT_SIZE */
+  font-size: 12.5px;
+
+  /* Properly alignment with BaseCell, to avoid text flickering (BaseCell has only border-bottom 1px) */
+  border-top-width: 0;
+
+  /* Keep outline consistent for inline editing, since focused and non focused state is semantically the same */
+  &:focus {
+    outline: 2px solid var(--mb-base-color-blue-50);
+  }
+}

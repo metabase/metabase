@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.actions :as lib.schema.actions]
@@ -14,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
@@ -22,6 +24,14 @@
   :type :boolean
   :visibility :public
   :database-local :only)
+
+(setting/defsetting database-enable-table-editing
+  (i18n/deferred-tru "Whether to enable table data editing for a specific Database.")
+  :default false
+  :type :boolean
+  :visibility :public
+  :database-local :only
+  :export? true)
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
@@ -131,6 +141,23 @@
 
   nil)
 
+(defn check-data-editing-enabled-for-database!
+  "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
+  [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  ;; for now we reuse the :actions driver feature, but specialise the message
+  (when-not (driver.u/supports? driver :actions db)
+    (throw (ex-info (i18n/tru "{0} Database {1} does not support data editing."
+                              (u/qualified-name driver)
+                              (format "%d %s" db-id (pr-str db-name)))
+                    {:status-code 400, :database-id db-id})))
+
+  (binding [setting/*database-local-values* db-settings]
+    (when-not (database-enable-table-editing)
+      (throw (ex-info (i18n/tru "Data editing is not enabled.")
+                      {:status-code 400, :database-id db-id}))))
+
+  nil)
+
 (defn- database-for-action [action-or-id]
   (t2/select-one :model/Database {:select [:db.*]
                                   :from   :action
@@ -152,7 +179,9 @@
   [action
    arg-map :- [:map
                [:create-row {:optional true} [:maybe ::lib.schema.actions/row]]
-               [:update-row {:optional true} [:maybe ::lib.schema.actions/row]]]]
+               [:update-row {:optional true} [:maybe ::lib.schema.actions/row]]]
+   & {:keys [policy]
+      :or   {policy :model-action}}]
   (let [action  (keyword action)
         spec    (action-arg-map-spec action)
         arg-map (normalize-action-arg-map action arg-map)] ; is arg-map always just a regular query?
@@ -161,11 +190,58 @@
                       (s/explain-data spec arg-map))))
     (let [{driver :engine :as db} (api/check-404 (qp.store/with-metadata-provider (:database arg-map)
                                                    (lib.metadata/database (qp.store/metadata-provider))))]
-      (check-actions-enabled-for-database! db)
+      (case policy
+        :model-action
+        (check-actions-enabled-for-database! db)
+        :data-editing
+        (check-data-editing-enabled-for-database! db))
       (binding [*misc-value-cache* (atom {})]
-        (qp.perms/check-query-action-permissions* arg-map)
+        (when (= :model-action policy)
+          (qp.perms/check-query-action-permissions* arg-map))
         (driver/with-driver driver
           (perform-action!* driver action db arg-map))))))
+
+(defn- publish-action-invocation! [invocation-id user-id action-kw args-map]
+  (->> {:action        action-kw
+        :invocation_id invocation-id
+        :actor_id      user-id
+        :args          args-map}
+       (events/publish-event! :event/action.invoked)))
+
+(defn publish-action-success!
+  "Publish an action success event. This is a success event for the action that was invoked."
+  [invocation-id user-id action-kw result]
+  (->> {:action        action-kw
+        :invocation_id invocation-id
+        :actor_id      user-id
+        :result        result}
+       (events/publish-event! :event/action.success)))
+
+(defn- publish-action-failure! [invocation-id user-id action-kw msg info]
+  (->> {:action        action-kw
+        :invocation_id invocation-id
+        :actor_id      user-id
+        :error         (:error info)
+        :message       msg
+        :info          info}
+       (events/publish-event! :event/action.failure)))
+
+(defn perform-with-system-events!
+  "Eventually, all calls to perform-action! should go through this... Proceeding with caution."
+  [action-kw args-map & {:as opts}]
+  (let [invocation-id (nano-id/nano-id)
+        user-id       api/*current-user-id*]
+    (publish-action-invocation! invocation-id user-id action-kw args-map)
+    (try
+      (let [result (perform-action! action-kw args-map opts)]
+        (publish-action-success! invocation-id user-id action-kw result)
+        result)
+      (catch Exception e
+        (let [msg  (ex-message e)
+              info (ex-data e)
+              info (with-meta info (merge (meta info) {:exception e}))]
+          (publish-action-failure! invocation-id user-id action-kw msg info)
+          (throw e))))))
 
 ;;;; Action definitions.
 

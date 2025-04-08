@@ -7,7 +7,10 @@ import {
   getPositionForNewDashCard,
 } from "metabase/lib/dashboard_grid";
 import { createThunkAction } from "metabase/lib/redux";
-import { loadMetadataForCard } from "metabase/questions/actions";
+import {
+  loadMetadataForCard,
+  loadMetadataForTable,
+} from "metabase/questions/actions";
 import { getDefaultSize } from "metabase/visualizations";
 import type {
   Card,
@@ -16,7 +19,9 @@ import type {
   DashboardCard,
   DashboardId,
   DashboardTabId,
+  TableId,
   VirtualCard,
+  VirtualCardDisplay,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -189,6 +194,33 @@ export const addMarkdownDashCardToDashboard =
     };
     dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
   };
+
+export type AddEditableTableDashCardToDashboardOpts = NewDashCardOpts & {
+  tableId: TableId;
+};
+
+export const addEditableTableDashCardToDashboard =
+  ({ dashId, tabId, tableId }: AddEditableTableDashCardToDashboardOpts) =>
+  (dispatch: Dispatch) => {
+    // this should work as a virtual card until dashboard is saved, then it becomes a normal card. Hence the typecast
+    const card = createVirtualCard("table-editable" as VirtualCardDisplay);
+
+    dispatch(
+      addDashCardToDashboard({
+        dashId,
+        tabId,
+        dashcardOverrides: {
+          card: card as VirtualCard,
+          visualization_settings: {
+            table_id: tableId,
+          },
+        },
+      }),
+    );
+
+    dispatch(loadMetadataForTable(tableId));
+  };
+
 export const addIFrameDashCardToDashboard =
   ({ dashId, tabId }: NewDashCardOpts) =>
   (dispatch: Dispatch) => {
@@ -228,7 +260,7 @@ export const replaceCard =
       .getObject(getState(), { entityId: nextCardId })
       .card();
 
-    await dispatch(
+    dispatch(
       setDashCardAttributes({
         id: dashcardId,
         attributes: {

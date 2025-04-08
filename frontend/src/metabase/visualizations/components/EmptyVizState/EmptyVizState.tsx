@@ -32,7 +32,8 @@ export const EmptyVizState = ({
   const isValidChartType =
     isCardDisplayType(chartType) &&
     chartType !== "table" &&
-    chartType !== "object";
+    chartType !== "object" &&
+    chartType !== "table-editable";
 
   const emptyVizChart = isValidChartType ? chartType : "bar";
 

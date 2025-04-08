@@ -83,10 +83,20 @@ export const getDashboards = (state: State) => state.dashboard.dashboards;
 export const getDashcardDataMap = (state: State) =>
   state.dashboard.dashcardData;
 
+export const getEditingDashcardDataOverrideMap = (state: State) =>
+  state.dashboard.editingDashcardDataOverride;
+
 export const getDashcardData = createSelector(
-  [getDashcardDataMap, (_state: State, dashcardId: DashCardId) => dashcardId],
-  (dashcardDataMap, dashcardId) => {
-    return dashcardDataMap[dashcardId];
+  [
+    getDashcardDataMap,
+    (_state: State, dashcardId: DashCardId) => dashcardId,
+    getIsEditing,
+    getEditingDashcardDataOverrideMap,
+  ],
+  (dashcardDataMap, dashcardId, isEditing, editingDashcardDataMap) => {
+    return isEditing && dashcardId in editingDashcardDataMap
+      ? editingDashcardDataMap[dashcardId]
+      : dashcardDataMap[dashcardId];
   },
 );
 

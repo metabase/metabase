@@ -40,7 +40,7 @@
  * - On older IEs it's set to `flex-basis: 0` which means that the initial main size of flex item is zero.
  *   It is also notable that `flex-basis: 0%` doesn't work correctly on IE.
  *
- *  As a solution, `flex-basis-auto` should always be used in conjunction with `flex-full` when it is
+ *  As a solution, `flexBasisAuto` should always be used in conjunction with `flex-full` when it is
  *  a desired behavior that the element grows with its contents.
 */
 .flexBasisAuto {

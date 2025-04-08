@@ -26,15 +26,15 @@
 (deftest send-notification!*-test
   (testing "sending a notification will call render on all of its handlers"
     (notification.tu/with-notification-testing-setup!
-      (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
-                     :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")
-                     :model/ChannelTemplate tmpl  {:channel_type notification.tu/test-channel-type}]
+      (mt/with-temp [:model/Channel chn-1 notification.tu/default-can-connect-channel
+                     :model/Channel chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")]
         (let [n                 (models.notification/create-notification!
-                                 {:payload_type :notification/system-event}
+                                 {:payload_type :notification/testing}
                                  nil
                                  [{:channel_type notification.tu/test-channel-type
                                    :channel_id   (:id chn-1)
-                                   :template_id  (:id tmpl)
+                                   :template     {:name "my template"
+                                                  :channel_type notification.tu/test-channel-type}
                                    :recipients   [{:type    :notification-recipient/user
                                                    :user_id (mt/user->id :crowberto)}]}
                                   {:channel_type notification.tu/test-channel-type
@@ -45,7 +45,7 @@
                                                    :event_topic :event/test})
               expected-notification-payload (mt/malli=?
                                              [:map
-                                              [:payload_type [:= :notification/system-event]]
+                                              [:payload_type [:= :notification/testing]]
                                               [:context :map]
                                               [:payload :map]])
               renders           (atom [])]
@@ -65,7 +65,7 @@
             (testing "render-notification is called on all handlers with the correct channel and template"
               (is (=? [{:channel-type (keyword notification.tu/test-channel-type)
                         :notification-payload expected-notification-payload
-                        :template     tmpl
+                        :template     {:name "my template"}
                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}
                        {:channel-type (keyword notification.tu/test-channel-type)
                         :notification-payload expected-notification-payload
@@ -674,3 +674,19 @@
                                    vals)]
           (is (> (count consumer-counts) 1))
           (is (every? pos? consumer-counts)))))))
+
+(deftest send-notification-condition-properly-skip-test
+  (doseq [[condition-passed? condition-creator-id] [[true (mt/user->id :crowberto)]
+                                                    [false (mt/user->id :rasta)]]]
+    (notification.tu/with-temp-notification
+      [notification {:notification {:payload_type :notification/testing
+                                    :creator_id   (mt/user->id :crowberto)
+                                    :condition    ["=" ["context" "creator" "id"] condition-creator-id]}
+                     :handlers     [notification.tu/default-testing-handler]}]
+      (let [channel-messages (notification.tu/with-captured-channel-send!
+                               (#'notification.send/send-notification-sync! notification))]
+        (if condition-passed?
+          (testing "received message when condition returns true"
+            (is (= {:channel/metabase-test 1} (update-vals channel-messages count))))
+          (testing "no messages received when condition returns false"
+            (is (empty? channel-messages))))))))

@@ -42,8 +42,7 @@
         test-notification {:internal_id   internal-id
                            :active        true
                            :payload_type  :notification/system-event
-                           :subscriptions [{:type       :notification-subscription/system-event
-                                            :event_name :event/user-invited}]
+                           :payload       {:event_name :event/user-invited}
                            :handlers      [{:active       true
                                             :channel_type :channel/metabase-test
                                             :channel_id   nil

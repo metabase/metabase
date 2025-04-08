@@ -1,6 +1,7 @@
 import type { Card, CardId } from "metabase-types/api/card";
 import type { Channel } from "metabase-types/api/notification-channels";
 import type { PaginationRequest } from "metabase-types/api/pagination";
+import type { Table, TableId } from "metabase-types/api/table";
 import type { UserId, UserInfo } from "metabase-types/api/user";
 
 export type NotificationId = number;
@@ -9,6 +10,14 @@ export type NotificationCardSendCondition =
   | "goal_above"
   | "goal_below"
   | "has_result";
+
+export type SystemEvent = "event/action.success";
+
+export type ActionType = "row/create" | "row/update" | "row/delete";
+
+type NotificationPayloadType =
+  | "notification/card"
+  | "notification/system-event";
 
 //#region Payload union type
 type NotificationCardPayload = {
@@ -26,7 +35,16 @@ type NotificationCardPayload = {
   payload_id?: number;
 };
 
-type NotificationPayload = NotificationCardPayload; // will be populated with more variants later on
+type NotificationSystemEventPayload = {
+  payload_type: "notification/system-event";
+  payload: {
+    event_name: SystemEvent;
+    table_id: TableId;
+    action: ActionType;
+    table?: Table; // hydrated on the BE
+  };
+  payload_id: null;
+};
 
 //#endregion
 
@@ -60,12 +78,24 @@ export type NotificationRecipient =
   | NotificationRecipientUser
   | NotificationRecipientRawValue;
 
+export type TemplateDetails = {
+  type: string;
+  subject?: string;
+  body: string;
+};
+
+export type ChannelTemplate = {
+  name: string;
+  channel_type: string;
+  details: TemplateDetails;
+};
+
 type NotificationHandlerBase = {
   notification_id?: NotificationId;
   template_id?: number | null;
   channel_id?: number | null;
   channel?: Channel | null;
-  template?: unknown | null; // TODO: hydrated template
+  template?: ChannelTemplate | null; // TODO: hydrated template
   active?: boolean;
 
   id?: number;
@@ -105,9 +135,8 @@ export type NotificationHandler =
 export type ScheduleDisplayType = "cron/builder" | "cron/raw" | null;
 export type NotificationCronSubscription = {
   type: "notification-subscription/cron";
-  event_name: null;
   cron_schedule: string;
-  ui_display_type: ScheduleDisplayType;
+  ui_display_type?: ScheduleDisplayType | null;
 
   // only for existing notifications
   id?: number;
@@ -115,6 +144,8 @@ export type NotificationCronSubscription = {
   created_at?: string;
   updated_at?: string;
 };
+
+export type NotificationSubscription = NotificationCronSubscription;
 
 //#endregion
 
@@ -125,6 +156,8 @@ export interface ListNotificationsRequest extends PaginationRequest {
   creator_or_recipient_id?: UserId;
   card_id?: CardId;
   permission_group_id?: number;
+  table_id?: TableId;
+  payload_type?: NotificationPayloadType;
 }
 
 export type CreateAlertNotificationRequest = NotificationCardPayload & {
@@ -132,7 +165,14 @@ export type CreateAlertNotificationRequest = NotificationCardPayload & {
   subscriptions: NotificationCronSubscription[];
 };
 
-export type CreateNotificationRequest = CreateAlertNotificationRequest; // will be populated with more variants later on
+export type CreateTableNotificationRequest = NotificationSystemEventPayload & {
+  handlers: NotificationHandler[];
+  condition: Condition;
+};
+
+export type CreateNotificationRequest =
+  | CreateAlertNotificationRequest
+  | CreateTableNotificationRequest;
 
 export type UpdateAlertNotificationRequest = NotificationCardPayload & {
   id: NotificationId;
@@ -141,18 +181,58 @@ export type UpdateAlertNotificationRequest = NotificationCardPayload & {
   subscriptions: NotificationCronSubscription[];
 };
 
-export type UpdateNotificationRequest = UpdateAlertNotificationRequest; // will be populated with more variants later on
-
-export type Notification = NotificationPayload & {
+export type UpdateTableNotificationRequest = NotificationSystemEventPayload & {
   id: NotificationId;
   active: boolean;
-
   handlers: NotificationHandler[];
-  subscriptions: NotificationCronSubscription[];
+  condition: Condition;
+};
 
+export type UpdateNotificationRequest =
+  | UpdateAlertNotificationRequest
+  | UpdateTableNotificationRequest;
+
+export type GetNotificationPayloadExampleRequest = {
+  payload_type: NotificationPayloadType;
+  payload: {
+    event_name: SystemEvent;
+    action: ActionType;
+  };
+  creator_id: UserId;
+};
+
+export type GetNotificationPayloadExampleResponse = {
+  payload: any;
+  schema: any;
+};
+
+type BaseNotification = {
+  id: NotificationId;
+  active: boolean;
   creator_id: UserId;
   creator: UserInfo;
+  handlers: NotificationHandler[];
 
   updated_at?: string;
   created_at?: string;
 };
+
+export type AlertNotification = BaseNotification &
+  NotificationCardPayload & { subscriptions: NotificationCronSubscription[] };
+
+export type TableNotification = BaseNotification &
+  NotificationSystemEventPayload & {
+    condition: Condition;
+  };
+
+export type Notification = AlertNotification | TableNotification;
+
+// Initial schema for conditional expression.
+// Will be updated later.
+type Operator = "=" | ">" | "<" | ">=" | "<=" | "!=" | "and" | "or";
+type Path = Array<string>;
+type Value = string | number | boolean;
+
+type Expression = [Operator, Path | Expression, Value | Expression];
+
+type Condition = Expression;

@@ -29,7 +29,7 @@
 
 (def ^:private file-schema (mjs/transform ms/File {::mjs/definitions-path "#/components/schemas/"}))
 
-(mu/defn- fix-json-schema :- :metabase.api.open-api/parameter.schema
+(mu/defn fix-json-schema :- :metabase.api.open-api/parameter.schema
   "Clean-up JSON schema to make it more understandable for OpenAPI tools.
 
   Returns a new schema WITH an indicator if it's *NOT* required.
@@ -191,6 +191,11 @@
              (sorted-map)
              (vals endpoints))
      :components {:schemas @*definitions*}}))
+
+(defn schema->json-schema
+  "Convert a malli schema to a OpenAI schema schema."
+  [schema]
+  (-> schema mr/resolve-schema mjs/transform fix-json-schema))
 
 #_:clj-kondo/ignore
 (comment

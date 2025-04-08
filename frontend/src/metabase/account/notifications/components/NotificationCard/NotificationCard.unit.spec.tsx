@@ -1,25 +1,62 @@
 import { fireEvent, screen } from "@testing-library/react";
 
 import { renderWithTheme } from "__support__/ui";
-import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
-import type { Notification } from "metabase-types/api";
+import type { ActionType, AlertNotification } from "metabase-types/api";
 import {
-  createMockNotification,
+  createMockAlertNotification,
   createMockNotificationCronSubscription,
   createMockNotificationHandlerEmail,
   createMockNotificationHandlerSlack,
   createMockNotificationRecipientUser,
+  createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import type {
+  QuestionNotificationListItem,
+  TableNotificationListItem,
+} from "../../types";
 
 import { NotificationCard } from "./NotificationCard";
 
 const getQuestionAlertItem = (
-  opts?: Partial<Notification>,
+  opts?: Partial<AlertNotification>,
 ): QuestionNotificationListItem => ({
-  item: createMockNotification(opts),
+  item: createMockAlertNotification(opts),
   type: "question-notification",
 });
+
+const getTableNotificationItem = (
+  action: ActionType,
+  tableName = "Sample Table",
+): TableNotificationListItem => {
+  const mockTable = createMockTable({
+    id: 42,
+    display_name: tableName,
+  });
+
+  return {
+    item: {
+      id: 123,
+      active: true,
+      creator_id: 1,
+      creator: createMockUser(),
+      handlers: [createMockNotificationHandlerEmail()],
+      created_at: "2025-01-07T12:00:00Z",
+      updated_at: "2025-01-07T12:00:00Z",
+      payload_type: "notification/system-event",
+      payload: {
+        event_name: "event/action.success",
+        action: action,
+        table_id: mockTable.id,
+        table: mockTable,
+      },
+      payload_id: null,
+      condition: ["=", ["field", "id"], 1],
+    } as any, // Cast to any to allow adding the table property
+    type: "table-notification",
+  };
+};
 
 describe("NotificationCard", () => {
   it("should render a question alert", () => {
@@ -33,6 +70,7 @@ describe("NotificationCard", () => {
         isEditable
         onArchive={jest.fn()}
         onUnsubscribe={jest.fn()}
+        entityLink={"/"}
       />,
     );
 
@@ -56,6 +94,7 @@ describe("NotificationCard", () => {
         isEditable
         onArchive={jest.fn()}
         onUnsubscribe={jest.fn()}
+        entityLink={"/"}
       />,
     );
 
@@ -80,6 +119,7 @@ describe("NotificationCard", () => {
         isEditable
         onArchive={jest.fn()}
         onUnsubscribe={jest.fn()}
+        entityLink={"/"}
       />,
     );
 
@@ -103,6 +143,7 @@ describe("NotificationCard", () => {
         isEditable
         onArchive={jest.fn()}
         onUnsubscribe={jest.fn()}
+        entityLink={"/"}
       />,
     );
 
@@ -124,6 +165,7 @@ describe("NotificationCard", () => {
         isEditable
         onArchive={jest.fn()}
         onUnsubscribe={jest.fn()}
+        entityLink={"/"}
       />,
     );
 
@@ -158,12 +200,95 @@ describe("NotificationCard", () => {
         isEditable
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
+        entityLink={"/"}
       />,
     );
 
     fireEvent.click(screen.getByLabelText("close icon"));
     expect(onUnsubscribe).toHaveBeenCalledWith(alert);
     expect(onArchive).not.toHaveBeenCalled();
+  });
+
+  it("should render a table notification with 'row created' event", () => {
+    const tableNotification = getTableNotificationItem("row/create");
+    const user = createMockUser();
+
+    renderWithTheme(
+      <NotificationCard
+        listItem={tableNotification}
+        user={user}
+        isEditable
+        onArchive={jest.fn()}
+        onUnsubscribe={jest.fn()}
+        entityLink={"/"}
+      />,
+    );
+
+    expect(
+      screen.getByText("Sample Table table - Row created"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("mail icon")).toBeInTheDocument();
+    expect(
+      screen.getByText("Created by you on January 7, 2025"),
+    ).toBeInTheDocument();
+  });
+
+  it("should render a table notification with 'row updated' event", () => {
+    const tableNotification = getTableNotificationItem("row/update");
+    const user = createMockUser();
+
+    renderWithTheme(
+      <NotificationCard
+        listItem={tableNotification}
+        user={user}
+        isEditable
+        onArchive={jest.fn()}
+        onUnsubscribe={jest.fn()}
+        entityLink={"/"}
+      />,
+    );
+
+    expect(
+      screen.getByText("Sample Table table - Row updated"),
+    ).toBeInTheDocument();
+  });
+
+  it("should render a table notification with 'row deleted' event", () => {
+    const tableNotification = getTableNotificationItem("row/delete");
+    const user = createMockUser();
+
+    renderWithTheme(
+      <NotificationCard
+        listItem={tableNotification}
+        user={user}
+        isEditable
+        onArchive={jest.fn()}
+        onUnsubscribe={jest.fn()}
+        entityLink={"/"}
+      />,
+    );
+
+    expect(
+      screen.getByText("Sample Table table - Row deleted"),
+    ).toBeInTheDocument();
+  });
+
+  it("should render a table notification with custom table name", () => {
+    const tableNotification = getTableNotificationItem("row/create", "Orders");
+    const user = createMockUser();
+
+    renderWithTheme(
+      <NotificationCard
+        listItem={tableNotification}
+        user={user}
+        isEditable
+        onArchive={jest.fn()}
+        onUnsubscribe={jest.fn()}
+        entityLink={"/"}
+      />,
+    );
+
+    expect(screen.getByText("Orders table - Row created")).toBeInTheDocument();
   });
 
   it("should unsubscribe when user is the creator and subscribed with another user", () => {
@@ -196,6 +321,7 @@ describe("NotificationCard", () => {
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
         isEditable
+        entityLink={"/"}
       />,
     );
 
@@ -217,6 +343,7 @@ describe("NotificationCard", () => {
         isEditable={false}
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
+        entityLink={"/"}
       />,
     );
 
@@ -236,6 +363,7 @@ describe("NotificationCard", () => {
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
         isEditable
+        entityLink={"/"}
       />,
     );
 
@@ -269,6 +397,7 @@ describe("NotificationCard", () => {
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
         isEditable
+        entityLink={"/"}
       />,
     );
 

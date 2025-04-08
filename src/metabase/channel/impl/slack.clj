@@ -4,7 +4,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
-   ;; TODO: integrations.slack should be migrated to channel.slack
+   [metabase.channel.template.core :as channel.template]
    [metabase.integrations.slack :as slack]
    [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
@@ -189,3 +189,44 @@
        :attachments (doall (remove nil?
                                    (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
                                              (create-slack-attachment-data (:dashboard_parts payload))])))})))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           System Event                                          ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(def ^:private action->template
+  {:row/create {:channel_type :channel/slack
+                :details      {:type :slack/handlebars-text
+                               :body (str "# {{payload.actor.first_name}} {{payload.actor.last_name}} has created a row for {{payload.result.table.name}}"
+                                          "\n\n\n"
+                                          "{{#each payload.result.created_row}}\n"
+                                          "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
+                                          "{{/each}}")}}
+   :row/update {:channel_type :channel/slack
+                :details      {:type :slack/handlebars-text
+                               :body (str "# {{payload.actor.first_name}} {{payload.actor.last_name}} has updated a from {{payload.result.table.name}}\n\n"
+                                          "## Update:"
+                                          "\n\n"
+                                          "{{#each payload.result.raw_update}}\n"
+                                          "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
+                                          "{{/each}}")}}
+   :row/delete {:channel_type :channel/slack
+                :details      {:type :slack/handlebars-text
+                               :body (str "# {{payload.actor.first_name}} {{payload.actor.last_name}} has deleted a from {{payload.result.table.name}}"
+                                          "\n\n"
+                                          "{{#each payload.result.deleted_row}}\n"
+                                          "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
+                                          "{{/each}}")}}})
+
+(mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
+  [_channel-type {:keys [payload] :as notification-payload} template recipients]
+  (let [event-name (:event_name payload)
+        template    (or template
+                        (when (= :event/action.success event-name)
+                          (get action->template (:action payload))))]
+    (assert template (str "No template found for event " event-name))
+    (if-not template
+      []
+      (for [channel-id (map notification-recipient->channel-id recipients)]
+        {:channel-id  channel-id
+         :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]}))))

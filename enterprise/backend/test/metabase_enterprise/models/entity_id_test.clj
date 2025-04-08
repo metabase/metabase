@@ -55,6 +55,7 @@
     :model/Notification
     :model/NotificationCard
     :model/NotificationSubscription
+    :model/NotificationSystemEvent
     :model/NotificationHandler
     :model/NotificationRecipient
     :model/ParameterCard
@@ -81,6 +82,7 @@
     :model/TablePrivileges
     :model/TaskHistory
     :model/TimelineEvent
+    :model/Undo
     :model/User
     :model/UserParameterValue
     :model/UserKeyValue

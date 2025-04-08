@@ -121,6 +121,15 @@ export interface Field {
   updated_at: string;
 }
 
+export interface FieldWithMetadata extends Field {
+  database_default?: string;
+  database_indexed: boolean;
+  database_is_auto_increment: boolean;
+  database_is_generated: boolean;
+  database_is_nullable: boolean;
+  database_required: boolean;
+}
+
 export interface FieldFormattingSettings {
   currency?: string;
 }
@@ -155,7 +164,8 @@ export interface GetFieldValuesResponse {
 export interface SearchFieldValuesRequest {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  value: string;
+  // If value is not provided, the endpoint will return all values with limit
+  value?: string;
   limit: number;
 }
 

@@ -10876,6 +10876,55 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v54.2025-03-13T16:14:34
+      author: wotbrew
+      comment: Add metabase_field.database_is_nullable
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_nullable
+                  type: ${boolean.type}
+                  remarks: "Indicates whether the column is nullable"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+  - changeSet:
+      id: v54.2025-03-13T16:14:35
+      author: wotbrew
+      comment: Add metabase_field.database_is_generated
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_generated
+                  type: ${boolean.type}
+                  remarks: "Indicates whether the column is generated/computed"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
+  - changeSet:
+      id: v54.2025-03-13T16:14:36
+      author: wotbrew
+      comment: Add metabase_field.database_default
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_default
+                  type: ${text.type}
+                  remarks: "The columns DEFAULT expression as a dialect specific SQL string."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v54.2025-03-17T18:52:44
       author: noahmoss
       comment: Migrating zh site locales to zh_CN
@@ -10907,6 +10956,79 @@ databaseChangeLog:
       rollback: # nothing to do; zh_CN is backwards compatible
 
   - changeSet:
+      id: v54.2025-03-19T16:00:00
+      author: qnkhuat
+      comment: Add `notification.condition` column
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: condition
+                  type: ${text.type}
+                  remarks: Condition for the notification
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-03-19T16:01:00
+      validCheckSum:
+        - 9:f9ef48517975631bf92a57fb07dd6f5d
+        - 9:5268197f771915386c95802e7d9eda62
+      author: qnkhuat
+      comment: Add `notification_subscription.table_id` column
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: The table id of the subscription, used for filtering system events
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-03-19T16:01:10
+      author: qnkhuat
+      comment: add fk constraint to notification_subscription.table_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_subscription_table_id
+              foreignKeyTableName: notification_subscription
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: notification_subscription
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_notification_subscription_table_id
+            onDelete: CASCADE
+            nullable: true
+
+  - changeSet:
+      id: v54.2025-03-19T16:02:00
+      author: qnkhuat
+      comment: Index notification_subscription.table_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification_subscription
+                indexName: idx_notification_subscription_table_id
+      rollback: #cannot rollback an index on a fk in mysql
+      changes:
+        - createIndex:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: table_id
+            indexName: idx_notification_subscription_table_id
+
+  - changeSet:
       id: v54.2025-03-25T16:34:12
       author: edpaget
       comment: Add index to field_usage query_execution_id column to support faster deletes
@@ -10924,7 +11046,6 @@ databaseChangeLog:
               - column:
                   name: query_execution_id
             indexName: idx_field_usage_query_execution_id
-
   - changeSet:
       id: v54.2025-03-27T17:52:01
       author: luizarakaki
@@ -10988,6 +11109,140 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
+      id: v54.2025-04-02T08:00:00
+      author: qnkhuat
+      comment: create the notification_system_event table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_system_event
+      changes:
+        - createTable:
+            tableName: notification_system_event
+            remarks: System event notification property
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: event_name
+                  remarks: the event name of subscriptions with type :notification-subscription/system-event
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: The table id of the subscription, used for filtering system events
+                  constraints:
+                    nullable: true
+              - column:
+                  name: action
+                  type: varchar(64)
+                  remarks: the action of the event
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v54.2025-04-02T08:01:00
+      author: qnkhuat
+      comment: add fk constraint to notification_system_event.table_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_system_event_table_id
+              foreignKeyTableName: notification_system_event
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: notification_system_event
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_notification_system_event_table_id
+            onDelete: CASCADE
+            nullable: true
+
+  - changeSet:
+      id: v54.2025-04-02T08:02:00
+      author: qnkhuat
+      comment: Index notification_system_event.table_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification_system_event
+                indexName: idx_notification_system_event_table_id
+      rollback: #cannot rollback an index on a fk in mysql
+      changes:
+        - createIndex:
+            tableName: notification_system_event
+            columns:
+              - column:
+                  name: table_id
+            indexName: idx_notification_system_event_table_id
+
+  - changeSet:
+      id: v54.2025-04-02T08:03:00
+      author: qnkhuat
+      comment: Index notification_system_event.action
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification_system_event
+                indexName: idx_notification_system_event_action
+      rollback: #cannot rollback an index on a fk in mysql
+      changes:
+        - createIndex:
+            tableName: notification_system_event
+            columns:
+              - column:
+                  name: action
+            indexName: idx_notification_system_event_action
+
+  - changeSet:
+      id: v54.2025-04-02T08:04:00
+      author: qnkhuat
+      comment: Drop notification_subscription.event_name
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: notification_subscription
+            columnName: event_name
+      changes:
+        - dropColumn:
+            tableName: notification_subscription
+            columnName: event_name
+      rollback:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: event_name
+                  remarks: the event name of subscriptions with type :notification-subscription/system-event
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v55.2025-03-24T16:28:41
       author: bshepherdson
       comment: Add report_card.card_schema
@@ -11020,6 +11275,191 @@ databaseChangeLog:
               - column:
                   name: card_schema
             indexName: idx_report_card_card_schema
+
+  - changeSet:
+      id: v55.2025-03-31T11:01:55
+      author: wotbrew
+      comment: Add table webhook token
+      preConditions:
+      rollback:
+        dropTable:
+            tableName: table_webhook_token
+      changes:
+        - createTable:
+            tableName: table_webhook_token
+            remarks: Table containing webhook tokens, that permit writing or modifying tables without a metabase admin session
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The table the token permits edits for
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_table_webhook_token_table_id
+                    deleteCascade: true
+              - column:
+                  remarks: The token value
+                  name: token
+                  type: varchar(254)
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the token was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The user that created the token
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_table_webhook_token_creator_id
+                    deleteCascade: true
+  - changeSet:
+      id: v55.2025-04-02T10:52:01
+      author: wotbrew
+      comment: Add an index for `table_webhook_token.table_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: table_webhook_token
+                indexName: idx_table_webhook_token_table_id
+      changes:
+        - createIndex:
+            indexName: idx_table_webhook_token_table_id
+            tableName: table_webhook_token
+            columns:
+              - column:
+                  name: table_id
+  - changeSet:
+      id: v55.2025-04-02T10:52:02
+      author: wotbrew
+      comment: Add an index for `table_webhook_token.creator_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: table_webhook_token
+                indexName: idx_table_webhook_token_creator_id
+      changes:
+        - createIndex:
+            indexName: idx_table_webhook_token_creator_id
+            tableName: table_webhook_token
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v55.2025-04-03T10:52:01
+      author: crisptrutski
+      comment: Added undo/redo change tracking table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: data_edit_undo_chain
+      changes:
+        - createTable:
+            tableName: data_edit_undo_chain
+            remarks: Store the state necessary to power undo / redo.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: Batch number for grouped changes (global increment)
+                  name: batch_num
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Reference to the table being modified
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: PK of the row being modified, potentially composite. Stored as a sorted JSON map.
+                  name: row_pk
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who made the change
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Value of the field before the change
+                  name: raw_before
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Value of the field after the change
+                  name: raw_after
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Whether this change has been undone
+                  name: undone
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the change was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the change was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+# TODO create fk constraints
+# TODO use case indexes
+#        - createIndex:
+#            indexName: idx_data_edit_undo_chain_undo_lookup
+#            tableName: data_edit_undo_chain
+#            columns:
+#              - column:
+#                  name: batch_num
+#              - column:
+#                  name: table_id
+#              - column:
+#                  name: user_id
+#              - column:
+#                  name: undone
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -15,18 +15,18 @@
          site-url           "https://metabase.com"
          admin-email        "ngoc@metabase.com"]
         (is (= {:payload_type :notification/system-event
-                :payload      {:event_info  {:foo :bar}
-                               :event_topic :event/user-joined
-                               :custom      {}}
-                :context     {:application_name     "Metabase Test"
-                              :application_color    "#509EE3"
-                              :application_logo_url "http://static.metabase.com/email_logo.png"
-                              :site_name            "Metabase Test"
-                              :site_url             "https://metabase.com"
-                              :admin_email          "ngoc@metabase.com"
-                              :style                {:button true}}
-                :creator     nil}
+                :payload      {:foo          :bar
+                               :event_name   :event/user-joined
+                               :custom       {}}
+                :context      {:application_name     "Metabase Test"
+                               :application_color    "#509EE3"
+                               :application_logo_url "http://static.metabase.com/email_logo.png"
+                               :site_name            "Metabase Test"
+                               :site_url             "https://metabase.com"
+                               :admin_email          "ngoc@metabase.com"
+                               :style                {:button true}}
+                :creator      nil}
                (-> (notification.payload/notification-payload {:payload_type :notification/system-event
-                                                               :payload      {:event_topic :event/user-joined
-                                                                              :event_info {:foo :bar}}})
+                                                               :payload      {:event_name :event/user-joined}
+                                                               :event_info   {:foo :bar}})
                    (update-in [:context :style :button] string?))))))))
