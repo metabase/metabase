@@ -476,3 +476,50 @@ describe("issue 55951", () => {
     }));
   }
 });
+
+describe("issue 54799", () => {
+  const questionDetails = {
+    native: {
+      query: "select 'foo', 'bar'",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  function select(el: Cypress.Chainable, pos: Cypress.PositionType = "center") {
+    const macOSX = Cypress.platform === "darwin";
+    el.dblclick(pos, {
+      metaKey: macOSX,
+      ctrlKey: !macOSX,
+    });
+  }
+
+  it("it should be possible to select multiple ranges and run those (metabase#54799)", () => {
+    cy.findByTestId("visibility-toggler").click();
+
+    cy.get("[data-testid=cell-data]").contains("foo").should("be.visible");
+    cy.get("[data-testid=cell-data]").contains("bar").should("be.visible");
+
+    select(H.NativeEditor.get().findByText("select"));
+    select(H.NativeEditor.get().findByText("'foo'"));
+    select(H.NativeEditor.get().findByText("'foo'"), "left");
+    select(H.NativeEditor.get().findByText("'bar'"));
+    select(H.NativeEditor.get().findByText("'bar'"), "right");
+
+    getRunQueryButton().click();
+
+    cy.get("[data-testid=cell-data]").contains(/^foo$/).should("not.exist");
+    cy.get("[data-testid=cell-data]").contains(/^bar$/).should("not.exist");
+
+    cy.get("[data-testid=cell-data]")
+      .contains(/^'foobar'$/)
+      .should("be.visible");
+    cy.get("[data-testid=cell-data]")
+      .contains(/foobar/)
+      .should("be.visible");
+  });
+});
