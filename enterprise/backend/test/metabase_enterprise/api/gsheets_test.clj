@@ -186,7 +186,7 @@
                               response))
                 (is (pos-int? (:sync_started_at response)))
                 (is (pos-int? (:db_id response)))
-                (is (nil? (:last_sync_at response)))
+                (is (pos-int? (:last_sync_at response)))
                 (is (nil? (:next_sync_at response)))
                 (testing "current state info doesn't get persisted"
                   (is (nil? (:sync_started_at (gsheets)))))))))

@@ -282,6 +282,7 @@
           (or (= "syncing" status) (= "initializing" status))
           (assoc (setting->response saved-setting)
                  :status "syncing"
+                 :last_sync_at (if (nil? last-sync-at) nil (.getEpochSecond ^Instant (t/instant last-sync-at)))
                  :sync_started_at (.getEpochSecond ^Instant (t/instant (or last-sync-started-at (t/instant)))))
 
           :else (throw (ex-info "Unexpected status" {:status status}))))
