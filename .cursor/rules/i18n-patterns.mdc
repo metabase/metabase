@@ -1,0 +1,98 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+ ---
+description: Internationalization patterns for Metabase
+globs: "**/*.{jsx,tsx,js,ts}"
+---
+<rule>
+name: metabase_i18n_patterns
+description: Standards for internationalization in Metabase
+
+filters:
+  # Apply to React component files
+  - type: file_extension
+    pattern: "\\.(jsx|tsx|js|ts)$"
+  # Focus on files with i18n imports
+  - type: content
+    pattern: "import\\s+\\{\\s*t\\s*\\}\\s+from\\s+['\"]ttag['\"]"
+
+You are working with Metabase's internationalization system which uses the ttag library for translations. When translating strings in Metabase, follow these practices:
+
+Core guidelines:
+- Use the `t` tag function for all user-facing strings
+- Avoid string concatenation with t-tagged strings
+- Be careful with interpolating variables in translated strings
+- Be aware of Metabase string usage rules
+
+For application name references:
+1. Import the appropriate selector:
+   ```tsx
+   import { getApplicationName } from "metabase/selectors/whitelabel";
+   ```
+
+2. For strings containing the application name, use one of these patterns:
+   ```tsx
+   {/* Use jsx interpolation for simple cases */}
+   <Text>{t`Welcome to `}{getApplicationName()}</Text>
+   
+   {/* For complete sentences use jt tag from ttag */}
+   import { t, jt } from "ttag";
+   <Text>{jt`This is the ${getApplicationName()} settings page.`}</Text>
+   
+   {/* For strings with multiple replacements */}
+   <Text>{jt`Configure ${getApplicationName()} to use ${databaseName}.`}</Text>
+   ```
+
+3. When Metabase branding is required in strings, add the proper eslint comment:
+   ```tsx
+   {/* eslint-disable-next-line no-literal-metabase-strings -- Explanation of why needed */}
+   <Text>{t`Metabase settings`}</Text>
+   ```
+
+Currency and format handling:
+1. For currency selections, ensure proper type handling:
+   ```tsx
+   <Select
+     defaultValue="USD"
+     data={[
+       { value: "USD", label: "US Dollar ($)" },
+       { value: "EUR", label: "Euro (€)" },
+     ] as Array<{ value: string; label: string }>}
+   />
+   ```
+
+Common pitfalls to avoid:
+1. Don't concatenate strings with the t tag:
+   ```tsx
+   // Bad
+   {t("Hello " + userName + "!")}
+   
+   // Good
+   {jt`Hello ${userName}!`}
+   ```
+   
+2. Don't use variable interpolation inside t`` template literals:
+   ```tsx
+   // Bad
+   {t`Welcome to ${getApplicationName()}`}
+   
+   // Good
+   {jt`Welcome to ${getApplicationName()}`}
+   ```
+
+3. Avoid manual string concatenation for translations:
+   ```tsx
+   // Bad
+   {t("How would you like dates to be displayed throughout " + getApplicationName() + "?")}
+   
+   // Good
+   {jt`How would you like dates to be displayed throughout ${getApplicationName()}?`}
+   ```
+
+metadata:
+  priority: high
+  version: 1.0
+</rule>

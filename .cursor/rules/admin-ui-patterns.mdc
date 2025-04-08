@@ -1,1 +1,161 @@
- 
+---
+description: 
+globs: 
+alwaysApply: false
+---
+ ---
+description: Metabase Admin UI design patterns and styling conventions
+globs: 
+  - "**/*.tsx"
+  - "**/*.jsx"
+---
+<rule>
+name: metabase_admin_ui_patterns
+description: Standards for consistent UI design in Metabase admin interfaces
+
+filters:
+  # Apply to React component files
+  - type: file_extension
+    pattern: "\\.(jsx|tsx)$"
+  # Apply to admin-related files
+  - type: path
+    pattern: ".*/admin/.*|.*/embedding_hub/.*"
+
+You are designing UI for Metabase's admin interfaces. Follow these consistent patterns:
+
+Core Card Component Pattern:
+- Use Card components with `bg={color("bg-light")}` for background
+- Add `withBorder` but use `shadow="none"` for flat design
+- Add padding with `p="xl"` (24px)
+- Add margin between cards with `mt="2rem"` (32px)
+- Use border radius of 4-6px (default from Card component)
+
+Section Headers:
+- Use `<Title order={2} mb="xs">` for card titles
+- Follow with explanatory text using `<Text mb="lg">`
+- Use a `<Divider mb="xl" />` to separate the header from content
+
+Responsive Layouts:
+- Use `<Stack gap="lg">` or `<Stack gap="xl">` for vertical layouts
+- Use `<Group justify="space-between">` for horizontal layouts with space between
+- Use `<Group gap="sm">` for closely grouped horizontal items
+- For forms with multiple columns, use `<Group grow>` with nested `<Stack>` elements
+
+Form Elements:
+- Inputs should have labels and descriptions
+- Align related form fields using Group and Stack
+- Use consistent spacing with gap="md" or gap="lg"
+- Add proper spacing between sections with `<Space h="md" />` or `<Space h="xl" />`
+
+Toggle Settings Pattern:
+- Use Group with justify="space-between" to place text on left, control on right
+- Use Text with fw={600} for setting name
+- Use smaller Text with c={color("text-medium")} for descriptions
+- Use Switch component for toggle controls
+
+List Display Pattern:
+- Wrap each item in a Box with a border: `style={{ border: \`1px solid \${color("border")}\`, borderRadius: '4px' }}`
+- Use p="md" or p="sm" padding within list items
+- Use Group with justify="space-between" for content and actions
+- Use color indicators for status (success, warning, error)
+- Use Badge components for statuses
+
+Search and Filter Pattern:
+- Place search field on left, filters on right
+- Use descriptive placeholders
+- Show bulk actions under the search area
+- Include pagination elements below the content
+
+Button Standards:
+- Primary actions: `<Button>Action</Button>`
+- Secondary actions: `<Button variant="subtle">Action</Button>`
+- Tertiary actions: `<Button variant="outline">Action</Button>`
+- Danger actions: `<Button color={color("danger")}>Action</Button>`
+- Right-align form submission buttons
+
+Danger Zone Pattern:
+- Use title with c={color("danger")} for danger section headers
+- Group destructive actions in a separate card at the bottom
+- Use explicit warning text for each action
+- Use red buttons for destructive actions
+
+Color Usage:
+- bg-light for card backgrounds
+- border for borders (via withBorder or styled borders)
+- text-medium for secondary text
+- success for positive status indicators
+- error/danger for negative status/destructive actions
+
+examples:
+  # Example of proper card pattern
+  - input: |
+      // Bad: Inconsistent card styling
+      <Card p="md" mt="md" shadow="sm">
+        <Title>Card Title</Title>
+        <Text>Description text</Text>
+        <Divider />
+        <Box>Content goes here</Box>
+      </Card>
+      
+      // Good: Following the pattern
+      <Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+        <Title order={2} mb="xs">{t`Card Title`}</Title>
+        <Text mb="lg">{t`Description text`}</Text>
+        <Divider mb="xl" />
+        <Box p="md">Content goes here</Box>
+      </Card>
+    output: "Correctly styled card following admin UI patterns"
+  
+  # Example of proper toggle pattern
+  - input: |
+      // Bad: Inconsistent toggle layout
+      <Box>
+        <Text>Enable Feature</Text>
+        <Text size="sm">Feature description</Text>
+        <Switch />
+      </Box>
+      
+      // Good: Following the pattern
+      <Group justify="space-between">
+        <Box>
+          <Text fw={600}>{t`Enable Feature`}</Text>
+          <Text size="sm" c={color("text-medium")}>
+            {t`Feature description text`}
+          </Text>
+        </Box>
+        <Switch size="md" />
+      </Group>
+    output: "Correctly styled toggle following admin UI patterns"
+
+  # Example of form layout
+  - input: |
+      // Bad: Poor form structure
+      <Box>
+        <TextInput label="Field 1" />
+        <TextInput label="Field 2" />
+        <Button>Submit</Button>
+      </Box>
+      
+      // Good: Structured form layout
+      <Stack gap="lg">
+        <TextInput
+          label={t`Field 1`}
+          description={t`Description for field 1`}
+          placeholder="Enter value"
+        />
+        <TextInput
+          label={t`Field 2`}
+          description={t`Description for field 2`}
+          placeholder="Enter value"
+        />
+        <Group justify="right">
+          <Button variant="subtle">{t`Cancel`}</Button>
+          <Button>{t`Submit`}</Button>
+        </Group>
+      </Stack>
+    output: "Correctly structured form following admin UI patterns"
+
+metadata:
+  priority: high
+  version: 1.0
+</rule>

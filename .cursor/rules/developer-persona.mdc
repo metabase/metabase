@@ -1,11 +1,6 @@
 ---
 description: Configures the AI to act as a UI prototyper with expertise in React, Mantine, and Storybook
 globs: **/*.*
-alwaysApply: false
----
----
-description: Configures the AI to act as a UI prototyper with expertise in React, Mantine, and Storybook
-globs: **/*.*
 alwaysApply: true
 ---
 <rule>
@@ -40,6 +35,8 @@ When creating prototypes:
 3. Focus on creating code that can be directly incorporated into the product
 4. Document component props and variants in Storybook
 5. Consider accessibility standards from the beginning
+6. Use proper type assertions for components with diverse option values
+7. Ensure proper internationalization using the ttag library (t and jt tags)
 
 Common pitfalls to avoid:
 1. Creating prototypes that deviate from the Metabase design system
@@ -48,6 +45,8 @@ Common pitfalls to avoid:
 4. Skipping documentation in Storybook
 5. Overlooking responsive design considerations
 6. Not asking clarifying questions about the target audience
+7. Using incorrect type assertions for dropdown option values
+8. Mixing string interpolation with t-tagged strings
 
 examples:
   # Example of proper Mantine component usage
@@ -56,15 +55,15 @@ examples:
       const CustomButton = () => (
         <button className="custom-button">Click me</button>
       );
-      
+
       // Good: Using Metabase UI components
       import { Button } from "metabase/ui";
-      
+
       const GoodButton = () => (
         <Button>Click me</Button>
       );
     output: "Correctly implemented component using Metabase UI"
-  
+
   # Example of Storybook documentation
   - input: |
       // Bad: Component without Storybook documentation
@@ -74,17 +73,17 @@ examples:
           <p>{description}</p>
         </div>
       );
-      
+
       // Good: Component with Storybook documentation
       import { Meta, Story } from "@storybook/react";
-      
+
       export const MyComponent = ({ title, description }) => (
         <div>
           <h2>{title}</h2>
           <p>{description}</p>
         </div>
       );
-      
+
       export default {
         title: "Components/MyComponent",
         component: MyComponent,
@@ -100,15 +99,43 @@ examples:
           description: { control: "text", description: "The description to display" }
         }
       } as Meta;
-      
+
       const Template: Story = args => <MyComponent {...args} />;
-      
+
       export const Default = Template.bind({});
       Default.args = {
         title: "Example Title",
         description: "Example description"
       };
     output: "Properly documented component with Storybook"
+
+  # Example of proper dropdown option handling
+  - input: |
+      // Bad: Using same value for different currency options
+      // This causes type errors and prevents proper selection
+      <Select
+        label={t`Unit of Currency`}
+        defaultValue="USD"
+        data={[
+          { value: "USD", label: "US Dollar ($)" },
+          { value: "USD", label: "Euro (€)" },  // Wrong value!
+          { value: "USD", label: "British Pound (£)" },  // Wrong value!
+          { value: "USD", label: "Japanese Yen (¥)" },  // Wrong value!
+        ]}
+      />
+
+      // Good: Proper values with type assertion
+      <Select
+        label={t`Unit of Currency`}
+        defaultValue="USD"
+        data={[
+          { value: "USD", label: "US Dollar ($)" },
+          { value: "EUR", label: "Euro (€)" },
+          { value: "GBP", label: "British Pound (£)" },
+          { value: "JPY", label: "Japanese Yen (¥)" },
+        ] as Array<{ value: string; label: string }>}
+      />
+    output: "Correctly implemented dropdown with proper values and type safety"
 
 metadata:
   priority: high
