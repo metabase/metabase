@@ -55,6 +55,7 @@ import {
   setDisplayTheme,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
+  updateCardData,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import { syncParametersAndEmbeddingParams } from "./utils";
@@ -440,6 +441,10 @@ export const dashcardData = createReducer(
       .addCase(clearCardData, (state, action) => {
         const { cardId, dashcardId } = action.payload;
         return dissocIn(state, [dashcardId, cardId]);
+      })
+      .addCase(updateCardData, (state, action) => {
+        const { cardId, dashcardId, result } = action.payload;
+        return assocIn(state, [dashcardId, cardId], result);
       })
       .addCase<string, { type: string; payload: { object?: Card } }>(
         Questions.actionTypes.UPDATE,

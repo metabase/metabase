@@ -21,7 +21,7 @@ interface EditableTableState {
   card: Card | null;
 }
 
-const EditTableDataWithUpdate = PLUGIN_DATA_EDITING.CARD_TABLE_COMPONENT;
+const EditTableDashcard = PLUGIN_DATA_EDITING.CARD_TABLE_COMPONENT;
 
 export class TableEditable extends Component<
   VisualizationProps,
@@ -125,7 +125,9 @@ export class TableEditable extends Component<
     );
 
     return (
-      <EditTableDataWithUpdate
+      <EditTableDashcard
+        dashcardId={dashcard.id}
+        cardId={card.id}
         className={className}
         data={data}
         tableId={card.table_id}

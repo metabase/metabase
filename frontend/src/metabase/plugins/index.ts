@@ -633,6 +633,8 @@ export const PLUGIN_DATA_EDITING = {
   }>,
   // TODO [WRK]: add placeholder component
   CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
+    dashcardId: number;
+    cardId: number;
     data: DatasetData;
     tableId: ConcreteTableId;
     className?: string;

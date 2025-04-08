@@ -19,14 +19,16 @@ import type {
   RowValue,
 } from "metabase-types/api";
 
+import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
+
 export const useTableCRUD = ({
   tableId,
   datasetData,
-  refetchTableDataQuery,
+  stateUpdateStrategy,
 }: {
   tableId: ConcreteTableId;
   datasetData: DatasetData | null | undefined;
-  refetchTableDataQuery?: () => void;
+  stateUpdateStrategy: TableEditingStateUpdateStrategy;
 }) => {
   const [
     isCreateRowModalOpen,
@@ -102,16 +104,15 @@ export const useTableCRUD = ({
         primaryKeyColumnName: pkColumn.name,
       });
 
+      stateUpdateStrategy.onRowsUpdated(response.data?.updated);
       displayErrorIfExists(response.error);
-
-      refetchTableDataQuery?.();
     },
     [
       datasetData,
       updateTableRows,
       tableId,
       displayErrorIfExists,
-      refetchTableDataQuery,
+      stateUpdateStrategy,
     ],
   );
 
@@ -125,8 +126,7 @@ export const useTableCRUD = ({
       displayErrorIfExists(response.error);
       if (!response.error) {
         closeCreateRowModal();
-      } else {
-        refetchTableDataQuery?.();
+        stateUpdateStrategy.onRowsCreated(response.data?.["created-rows"]);
       }
     },
     [
@@ -134,7 +134,7 @@ export const useTableCRUD = ({
       tableId,
       displayErrorIfExists,
       closeCreateRowModal,
-      refetchTableDataQuery,
+      stateUpdateStrategy,
     ],
   );
 
@@ -156,14 +156,18 @@ export const useTableCRUD = ({
 
       closeCreateRowModal();
 
+      const rows = [{ [pkColumn.name]: rowPkValue }];
       const response = await deleteTableRows({
-        rows: [{ [pkColumn.name]: rowPkValue }],
+        rows,
         tableId: tableId,
         primaryKeyColumnName: pkColumn.name,
       });
-      displayErrorIfExists(response.error);
 
-      refetchTableDataQuery?.();
+      if (response.data?.success) {
+        stateUpdateStrategy.onRowsDeleted(rows);
+      }
+
+      displayErrorIfExists(response.error);
     },
     [
       datasetData,
@@ -171,7 +175,7 @@ export const useTableCRUD = ({
       deleteTableRows,
       tableId,
       displayErrorIfExists,
-      refetchTableDataQuery,
+      stateUpdateStrategy,
     ],
   );
 
