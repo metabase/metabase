@@ -32,7 +32,7 @@ export const TaskModal = ({ params }: TaskModalProps) => {
   };
 
   const handleDownload = () => {
-    const filename = task ? `task-${task.id}.json` : `task.json`;
+    const filename = task ? `task-${task.id}.json` : "task.json";
     const blob = new Blob([code], { type: "text/json" });
     openSaveDialog(filename, blob);
   };
