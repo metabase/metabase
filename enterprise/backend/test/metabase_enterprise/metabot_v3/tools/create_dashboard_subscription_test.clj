@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
-   [metabase.api.common :as api]
    [metabase.test :as mt]))
 
 (deftest create-dashboard-subscription-test
@@ -31,7 +30,7 @@
                                                             :dashboard_tab_id dashboard-tab-id-0
                                                             :row 0
                                                             :col 0}]
-      (let [invoke-tool #(binding [api/*current-user-id* user-id]
+      (let [invoke-tool #(mt/with-current-user user-id
                            (metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription %))
             base-data {:dashboard-id dashboard-id
                        :email email
