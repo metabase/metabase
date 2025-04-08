@@ -45,7 +45,7 @@ function build() {
   echo "Building frontend..."
   cd "$FE_FOLDER"
   yarn install
-  yarn build
+  MB_EDITION=ee yarn build
 
   print_step "Copying frontend build to backend..."
 
@@ -54,7 +54,7 @@ function build() {
 
   print_step "Building uberjar..."
   cd "$BE_FOLDER"
-  clojure -X:drivers:build:build/all :steps '[:version :translations :licenses :drivers :uberjar]' # this command skips building the frontend, otherwise we'd overwrite the one we copied in resources/
+  MB_EDITION=ee clojure -X:drivers:build:build/all :steps '[:version :translations :licenses :drivers :uberjar]' # this command skips building the frontend, otherwise we'd overwrite the one we copied in resources/
 }
 
 function start() {
