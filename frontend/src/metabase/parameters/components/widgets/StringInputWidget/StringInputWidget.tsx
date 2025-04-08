@@ -3,10 +3,10 @@ import { t } from "ttag";
 
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { deserializeStringParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { MultiAutocomplete, TextInput } from "metabase/ui";
+import { Box, MultiAutocomplete, TextInput } from "metabase/ui";
 import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
 
-import { Footer, TokenFieldWrapper, WidgetLabel, WidgetRoot } from "../Widget";
+import { Footer, WidgetLabel, WidgetRoot } from "../Widget";
 
 type StringInputWidgetProps = {
   className?: string;
@@ -49,7 +49,7 @@ export function StringInputWidget({
   return (
     <WidgetRoot className={className}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
-      <TokenFieldWrapper>
+      <Box m="sm">
         {isMultiSelect ? (
           <MultiAutocomplete
             values={unsavedValue}
@@ -66,7 +66,7 @@ export function StringInputWidget({
             onChange={handleFieldChange}
           />
         )}
-      </TokenFieldWrapper>
+      </Box>
       <Footer>
         <UpdateFilterButton
           value={initialValue}

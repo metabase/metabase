@@ -15,9 +15,3 @@ export const WidgetLabel = (
 export const Footer = (props: BoxProps & { children: React.ReactNode }) => {
   return <Box className={S.Footer} {...props} />;
 };
-
-export const TokenFieldWrapper = (
-  props: BoxProps & { children: React.ReactNode },
-) => {
-  return <Box m="sm" {...props} />;
-};

@@ -11,14 +11,14 @@ import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import { MultiAutocomplete } from "metabase/ui";
+import { Box, MultiAutocomplete } from "metabase/ui";
 import type {
   Parameter,
   ParameterValue,
   ParameterValueOrArray,
 } from "metabase-types/api";
 
-import { Footer, TokenFieldWrapper, WidgetLabel, WidgetRoot } from "../Widget";
+import { Footer, WidgetLabel, WidgetRoot } from "../Widget";
 
 export type NumberInputWidgetProps = {
   value: ParameterValueOrArray | undefined;
@@ -88,7 +88,7 @@ export function NumberInputWidget({
     <WidgetRoot className={className}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
-        <TokenFieldWrapper>
+        <Box m="sm">
           <MultiAutocomplete
             values={filteredUnsavedArrayValue.map((value) => value?.toString())}
             placeholder={placeholder}
@@ -97,7 +97,7 @@ export function NumberInputWidget({
             onCreate={handleCreate}
             onChange={handleChange}
           />
-        </TokenFieldWrapper>
+        </Box>
       ) : (
         _.times(arity, (i) => (
           <div key={i}>
