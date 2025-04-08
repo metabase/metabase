@@ -22,7 +22,8 @@
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]))
 
 (def ^:private counter (atom 2000))
 
@@ -878,10 +879,8 @@
 (def tested-aggregations
   [;; nullary
    [:count     (fn [query] (lib/aggregate query (lib/count)))]
-   [:cum-count (fn [query] (lib/aggregate query (lib/cum-count)))]
    ;; standard 1st arg col
    [:avg       (aggregate-col-1st-arg-fn lib/avg)]
-   [:cum-sum   (aggregate-col-1st-arg-fn lib/cum-sum)]
    [:distinct  (aggregate-col-1st-arg-fn lib/distinct)]
    [:max       (aggregate-col-1st-arg-fn lib/max)]
    [:min       (aggregate-col-1st-arg-fn lib/min)]
@@ -906,7 +905,17 @@
                                              30))))]])
 
 (def tested-feature-dependent-aggregations
-  [[:percentile-aggregations
+  [;; The old way (post processing middleware) of computing cumulative aggregations does not work with metrics.
+   ;; For details see the https://github.com/metabase/metabase/issues/56390
+   [:window-functions/cumulative
+    :cum-count
+    (fn [query] (lib/aggregate query (lib/cum-count)))]
+
+   [:window-functions/cumulative
+    :cum-sum
+    (aggregate-col-1st-arg-fn lib/cum-sum)]
+
+   [:percentile-aggregations
     :percentile
     (fn [query]
       (lib/aggregate query (lib/percentile (m/find-first (comp #{"Total"} :display-name)
@@ -924,25 +933,17 @@
     :var
     (aggregate-col-1st-arg-fn lib/var)]])
 
-(comment
-  (mb.hawk.core/run-tests [#'metabase.query-processor.middleware.metrics-test/xx-filtered-metric-comparison-test]))
-(deftest xx-filtered-metric-comparison-test
+(deftest filtered-metric-comparison-test
   (mt/test-drivers
     (mt/normal-drivers)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-      (doseq [[operator aggregate] tested-aggregations
-              #_[[:cum-count (fn [query] (lib/aggregate query (lib/cum-count)))]]]
+      (doseq [[operator aggregate] tested-aggregations]
         (testing (format "Result of aggregation with filter is same as of metric with filter for %s" operator)
           (let [base-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                             (lib/filter $
-                                         #_(lib/between (m/find-first (comp #{"User ID"} :display-name)
+                             (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
                                                                       (lib/filterable-columns $))
-                                                        10
-                                                        50)
-                                         (lib/between (m/find-first (comp #{"Created At"} :display-name)
-                                                                    (lib/filterable-columns $))
-                                                      "2017-04-01"
-                                                      "2018-03-31"))
+                                                        "2017-04-01"
+                                                        "2018-03-31"))
                              (lib/breakout $ (lib/with-temporal-bucket
                                                (m/find-first (comp #{"Created At"} :display-name)
                                                              (lib/breakoutable-columns $))
@@ -961,12 +962,6 @@
                               aggregate
                               (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
                     result (qp/process-query query)]
-                #_(def qq query)
-                #_(def pp (metabase.query-processor.preprocess/preprocess qq))
-                #_(def cc (metabase.query-processor.compile/compile qq))
-                #_(def nn (->> cc :query))
-                #_(comment
-                    (def nn (->> cc :query)))
                 (is (every? (fn [[_ aggregation-value metric-value]]
                               (< (abs (- aggregation-value metric-value)) 0.01))
                             (mt/formatted-rows [str 3.0 3.0] result)))))))))))
@@ -976,18 +971,8 @@
     (mt/test-drivers
       (mt/normal-drivers-with-feature feature)
       (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-
         (testing (format "Result of aggregation with filter is same as of metric with filter for %s" operator)
           (let [base-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                             (lib/filter $
-                                         #_(lib/between (m/find-first (comp #{"User ID"} :display-name)
-                                                                      (lib/filterable-columns $))
-                                                        10
-                                                        50)
-                                         (lib/between (m/find-first (comp #{"Created At"} :display-name)
-                                                                    (lib/filterable-columns $))
-                                                      "2017-04-01"
-                                                      "2018-03-31"))
                              (lib/breakout $ (lib/with-temporal-bucket
                                                (m/find-first (comp #{"Created At"} :display-name)
                                                              (lib/breakoutable-columns $))
@@ -1002,13 +987,23 @@
                metric-card
                {:type :metric
                 :dataset_query (lib.convert/->legacy-MBQL metric-query)}]
-              (let [query (-> base-query
-                              aggregate
-                              (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
-                    result (qp/process-query query)]
+              (let [plain-query (as-> base-query $
+                                  (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
+                                                                           (lib/filterable-columns $))
+                                                             "2017-04-01"
+                                                             "2018-03-31"))
+                                  (aggregate $))
+                    query-referencing-a-metric (-> base-query
+                                                   (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
+                    plain-results (qp/process-query plain-query)
+                    metric-results (qp/process-query query-referencing-a-metric)
+                    breakout-indexed-metric-results (into {} (mt/rows metric-results))
+                    results-combined (mapv (fn [[breakout-val _ag-val :as result-row]]
+                                             (conj result-row (get breakout-indexed-metric-results breakout-val)))
+                                           (mt/rows plain-results))]
                 (is (every? (fn [[_ aggregation-value metric-value]]
                               (< (abs (- aggregation-value metric-value)) 0.01))
-                            (mt/formatted-rows [str 3.0 3.0] result)))))))))))
+                            results-combined))))))))))
 
 (deftest next-stage-reference-test
   (mt/test-drivers
@@ -1021,15 +1016,10 @@
              metric-card
              {:type :metric
               :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                               (lib/filter $
-                                           #_(lib/between (m/find-first (comp #{"User ID"} :display-name)
+                               (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
                                                                         (lib/filterable-columns $))
-                                                          10
-                                                          50)
-                                           (lib/between (m/find-first (comp #{"Created At"} :display-name)
-                                                                      (lib/filterable-columns $))
-                                                        "2017-04-01"
-                                                        "2018-03-31"))
+                                                          "2017-04-01"
+                                                          "2018-03-31"))
                                (aggregate $))}]
             (let [query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                           (lib/aggregate $ (lib.metadata/metric mp (:id metric-card)))
@@ -1050,13 +1040,9 @@
   (mt/test-drivers
     (mt/normal-drivers)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-          filter #(lib/filter %1
-                              #_(%2 (m/find-first (comp #{"User ID"} :display-name)
-                                                  (lib/filterable-columns %1))
-                                    20)
-                              (%2 (m/find-first (comp #{"Created At"} :display-name)
-                                                (lib/filterable-columns %1))
-                                  "2018-04-01"))
+          filter #(lib/filter %1 (%2 (m/find-first (comp #{"Created At"} :display-name)
+                                                   (lib/filterable-columns %1))
+                                     "2018-04-01"))
           breakout #(lib/breakout % (lib/with-temporal-bucket
                                       (m/find-first (comp #{"Created At"} :display-name)
                                                     (lib/breakoutable-columns %))
