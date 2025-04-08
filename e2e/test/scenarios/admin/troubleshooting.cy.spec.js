@@ -1,3 +1,5 @@
+import { createMockTask } from "metabase-types/api/mocks";
+
 const { H } = cy;
 
 describe("scenarios > admin > troubleshooting > help", () => {
@@ -63,7 +65,7 @@ describe("scenarios > admin > troubleshooting > help (EE)", () => {
   });
 });
 
-describe("scenarios > admin > troubleshooting > tasks", () => {
+describe("issue 14636", () => {
   const total = 57;
   const limit = 50;
 
@@ -171,6 +173,64 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
 
     shouldNotBeDisabled("@previous");
     shouldBeDisabled("@next");
+  });
+});
+
+describe("scenarios > admin > troubleshooting > tasks", () => {
+  const task = createMockTask({
+    task_details: {
+      useful: {
+        information: true,
+      },
+    },
+  });
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    // The only reliable way of having a consistent list of tasks is mocking them
+    cy.intercept("GET", "/api/task?limit=50&offset=0", (request) => {
+      request.reply((response) => {
+        response.body.data = [task];
+      });
+    }).as("getTasks");
+
+    cy.intercept("GET", `/api/task/${task.id}`, (request) => {
+      request.reply((response) => {
+        response.body = task;
+      });
+    }).as("getTask");
+  });
+
+  it("shows task modal", () => {
+    cy.visit("/admin/troubleshooting/tasks");
+    cy.wait("@getTasks");
+
+    cy.findByRole("link", { name: "View" }).click();
+    cy.wait("@getTask");
+    cy.location("pathname").should(
+      "eq",
+      `/admin/troubleshooting/tasks/${task.id}`,
+    );
+
+    cy.log("copy button");
+    // mock clipboardData so that copy-to-clipboard doesn't use window.prompt, pausing the tests
+    cy.window().then((window) => {
+      window.clipboardData = {
+        setData: cy.stub(),
+      };
+    });
+    cy.icon("copy").click();
+    cy.window()
+      .its("clipboardData.setData")
+      .should(
+        "be.calledWith",
+        "text",
+        JSON.stringify({ useful: { information: true } }, null, 2),
+      );
+
+    cy.log("download button");
   });
 });
 
