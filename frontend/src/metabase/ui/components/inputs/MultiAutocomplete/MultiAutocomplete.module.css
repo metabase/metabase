@@ -1,33 +1,21 @@
 .pill {
-  --multiselect-pill-font-size: 0.875rem;
-}
+  cursor: default;
 
-.pillList {
-  padding-right: var(--input-right-section-width);
-}
-
-.input {
-  --input-fz: 0.875rem;
-
-  input::placeholder {
-    color: var(--mb-color-text-tertiary);
+  &:hover {
+    background-color: var(--mb-color-brand-alpha-88);
   }
 }
 
-.empty {
-  font-size: 0.875rem;
-}
+@supports (field-sizing: content) {
+  .field {
+    flex: 0 1 auto;
+    min-width: auto;
+    /* stylelint-disable-next-line property-no-unknown */
+    field-sizing: content;
 
-.optionList {
-  padding: 0.75rem;
-}
-
-.option {
-  font-size: 0.875rem;
-  padding: 0.75rem 0.5rem;
-
-  &:hover {
-    color: var(--mb-color-brand);
-    background-color: var(--mb-color-background-hover);
+    &:not(:last-child) {
+      padding-left: 0.5rem;
+      padding-right: 1.5rem;
+    }
   }
 }
