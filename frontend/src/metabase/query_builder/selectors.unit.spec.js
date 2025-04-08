@@ -324,7 +324,7 @@ describe("getIsResultDirty", () => {
         }),
       );
 
-      it("should correctly get selected text when there is are multiple selected ranges", () => {
+      it("should correctly get selected text when there are multiple selected ranges", () => {
         const state = getStateWithSelectedQueryText([
           { start: { row: 2, column: 0 }, end: { row: 2, column: 2 } },
           { start: { row: 0, column: 0 }, end: { row: 0, column: 2 } },
