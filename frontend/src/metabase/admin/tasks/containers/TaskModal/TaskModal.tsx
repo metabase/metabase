@@ -42,12 +42,16 @@ export const TaskModal = ({ params }: TaskModalProps) => {
 
   return (
     <ModalContent title={t`Task details`} onClose={handleClose}>
-      <Box className={S.codeContainer} pos="relative">
+      <Box
+        className={S.codeContainer}
+        p={linesCount > 1 ? 0 : "xs"}
+        pos="relative"
+      >
         <CodeBlock
           basicSetup={{
             /**
              * Hide line numbers when there's only 1 line to avoid confusion
-             * that the first line number is or isn't a part of the log.
+             * whether the line number is or isn't a part of the log.
              */
             lineNumbers: linesCount > 1,
           }}
@@ -55,7 +59,7 @@ export const TaskModal = ({ params }: TaskModalProps) => {
           language="json"
         />
 
-        <Box p={linesCount > 1 ? "sm" : "xs"} pos="absolute" right={0} top={0}>
+        <Box p="sm" pos="absolute" right={0} top={0}>
           <CopyButton value={code} />
         </Box>
       </Box>
