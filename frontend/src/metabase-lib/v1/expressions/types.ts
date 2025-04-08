@@ -69,7 +69,7 @@ export type MBQLClauseFunctionConfig = {
   requiresFeature?: DatabaseFeature;
   hasOptions?: boolean;
   multiple?: boolean;
-  name?: string;
+  name: string;
 
   validator?: (...args: any) => string | undefined;
 };
