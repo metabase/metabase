@@ -3,6 +3,7 @@ import type { Expression } from "metabase-types/api";
 
 import { type ExpressionError, renderError } from "./errors";
 import { fieldResolver } from "./field-resolver";
+import { isLiteral } from "./matchers";
 import { compile, lexify, parse } from "./pratt";
 import { resolve } from "./resolver";
 import type { StartRule } from "./types";
@@ -55,14 +56,8 @@ export function compileExpression({
     // TODO: implement these passes previously handled by the resolver
     // - adjust booleans pass
 
-    const expression = Lib.legacyExpressionForExpressionClause(
-      query,
-      stageIndex,
-      expressionClause,
-    );
-
     return {
-      expression,
+      expression: legacyExpression({ query, stageIndex, expressionClause }),
       expressionClause,
       error: null,
     };
@@ -73,4 +68,42 @@ export function compileExpression({
       error: renderError(error),
     };
   }
+}
+
+function legacyExpression({
+  query,
+  stageIndex,
+  expressionClause,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  expressionClause: Lib.ExpressionClause | Lib.ExpressionArg;
+}) {
+  if (isLiteral(expressionClause)) {
+    return expressionClause;
+  }
+
+  const expression = Lib.legacyExpressionForExpressionClause(
+    query,
+    stageIndex,
+    expressionClause,
+  );
+
+  if (Lib.isColumnMetadata(expressionClause) && "id" in expression) {
+    return ["field", expression.id, { "base-type": expression["base-type"] }];
+  }
+  if (Lib.isColumnMetadata(expressionClause) && "name" in expression) {
+    return [
+      "expression",
+      expression.name,
+      { "base-type": expression["base-type"] },
+    ];
+  }
+  if (Lib.isSegmentMetadata(expressionClause)) {
+    return ["segment", expression.id];
+  }
+  if (Lib.isMetricMetadata(expressionClause)) {
+    return ["metric", expression.id];
+  }
+  return expression;
 }
