@@ -91,6 +91,40 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getNotificationPayloadExample: builder.mutation<
+      any,
+      {
+        payload_type: string;
+        payload: {
+          event_name: string;
+          action?: string;
+        };
+        creator_id: number;
+      }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/notification/payload`,
+        body,
+      }),
+    }),
+    getNotificationPayloadExampleData: builder.query<
+      any,
+      {
+        payload_type: string;
+        payload: {
+          event_name: string;
+          action?: string;
+        };
+        creator_id: number;
+      }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/notification/payload`,
+        body,
+      }),
+    }),
   }),
 });
 
@@ -105,6 +139,8 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
+  useGetNotificationPayloadExampleMutation,
+  useGetNotificationPayloadExampleDataQuery,
 } = notificationApi;
 
 export const useTableNotificationsQuery = (

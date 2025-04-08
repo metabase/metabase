@@ -3,8 +3,10 @@ import { t } from "ttag";
 import { isEqual } from "underscore";
 
 import {
+  skipToken,
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
+  useGetNotificationPayloadExampleDataQuery,
   useListChannelsQuery,
   useUpdateNotificationMutation,
 } from "metabase/api";
@@ -42,32 +44,6 @@ type TableNotificationTriggerOption = {
   };
   label: string;
   action: ActionType;
-};
-
-// Template loading functions
-const loadTemplate = async (
-  event: SystemEvent,
-  action?: ActionType,
-): Promise<any> => {
-  if (event === "event/action.success" && action) {
-    switch (action) {
-      case "row/create":
-        return import(
-          "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/insert.json"
-        );
-      case "row/update":
-        return import(
-          "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/update.json"
-        );
-      case "row/delete":
-        return import(
-          "../../shared/components/NotificationChannels/NotificationChannelsPicker/templates/delete.json"
-        );
-      default:
-        return null;
-    }
-  }
-  return null;
 };
 
 // Format JSON for tooltip display
@@ -141,35 +117,43 @@ export const CreateOrEditTableNotificationModal = ({
 
   const isEditMode = !!notification;
 
-  // Load JSON template when event_name and action change in the payload
-  useEffect(() => {
-    const loadTemplateForEvent = async () => {
-      if (requestBody?.payload?.event_name) {
-        try {
-          const templateModule = await loadTemplate(
-            requestBody.payload.event_name,
-            requestBody.payload.action,
-          );
-          const formattedJson = formatJsonForTooltip(templateModule.default);
-          setTemplateJson(formattedJson);
-        } catch (error) {
-          console.error("Error loading template:", error);
-          setTemplateJson("");
-        }
-      } else {
-        setTemplateJson("");
-      }
-    };
-
-    loadTemplateForEvent();
-  }, [requestBody?.payload?.event_name, requestBody?.payload?.action]);
-
   const { data: channelSpec, isLoading: isLoadingChannelInfo } =
     useGetChannelInfoQuery();
   const { data: hookChannels } = useListChannelsQuery();
 
   const [createNotification] = useCreateNotificationMutation();
   const [updateNotification] = useUpdateNotificationMutation();
+
+  const payloadParams = useMemo(() => {
+    if (requestBody?.payload?.event_name && requestBody?.payload?.action) {
+      return {
+        payload_type: "notification/system-event",
+        payload: {
+          event_name: requestBody.payload.event_name,
+          action: requestBody.payload.action,
+        },
+        creator_id: user?.id || 1,
+      };
+    }
+    return undefined;
+  }, [
+    requestBody?.payload?.event_name,
+    requestBody?.payload?.action,
+    user?.id,
+  ]);
+
+  const { data: payloadData } = useGetNotificationPayloadExampleDataQuery(
+    payloadParams ?? skipToken,
+  );
+
+  // Update the template JSON when payload data changes
+  useEffect(() => {
+    if (payloadData) {
+      setTemplateJson(formatJsonForTooltip(payloadData.payload));
+    } else {
+      setTemplateJson("");
+    }
+  }, [payloadData]);
 
   const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
   const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
