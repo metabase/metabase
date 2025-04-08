@@ -12,7 +12,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Add additional steps here to process docs changes
       - name: Print changed docs files
         run: |
           echo "A change in the docs directory was detected."
