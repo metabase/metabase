@@ -260,7 +260,7 @@ export const replaceCard =
       .getObject(getState(), { entityId: nextCardId })
       .card();
 
-    await dispatch(
+    dispatch(
       setDashCardAttributes({
         id: dashcardId,
         attributes: {

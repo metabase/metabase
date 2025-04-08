@@ -26,6 +26,7 @@ export type ExcludedEmptyVizDisplayTypes =
   | "table"
   | "object"
   | "table-editable";
+
 type SupportedDisplayType = Exclude<
   CardDisplayType,
   ExcludedEmptyVizDisplayTypes

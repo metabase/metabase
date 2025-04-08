@@ -4,7 +4,7 @@
    [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
-   [metabase.events :as events]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (defn apply-coercions
@@ -33,11 +33,15 @@
   "Operates on rows in the database, supply an action-kw: :bulk/create, :bulk/update, :bulk/delete.
   The input `rows` is given different semantics depending on the action type, see actions/perform-action!."
   [action-kw table-id rows]
-  (actions/perform-action! action-kw
-                           {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
-                            :table-id table-id
-                            :arg      rows}
-                           :policy   :data-editing))
+  ;; TODO make this work for multi instances by using the metabase_cluster_lock table
+  ;; https://github.com/metabase/metabase/pull/56173/files
+  (locking #'perform-bulk-action!
+    (actions/perform-with-system-events!
+     action-kw
+     {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
+      :table-id table-id
+      :arg      rows}
+     {:policy :data-editing})))
 
 (defn insert!
   "Inserts rows into the table, recording their creation as an event. Returns the inserted records.
@@ -47,8 +51,10 @@
   (let [res (perform-bulk-action! :bulk/create table-id rows)]
     (when-some [user-id api/*current-user-id*]
       (doseq [row (:created-rows res)]
-        (events/publish-event! :event/data-editing-row-create
-                               {:table_id    table-id
-                                :created_row row
-                                :actor_id    user-id})))
+        (actions/publish-action-success!
+         (nano-id/nano-id)
+         user-id
+         :row/create
+         {:table_id   table-id
+          :created_row row})))
     res))

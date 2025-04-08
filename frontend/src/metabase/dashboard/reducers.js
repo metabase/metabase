@@ -32,6 +32,7 @@ import {
   dashboards,
   dashcardData,
   editingDashboard,
+  editingDashcardDataOverride,
   isAddParameterPopoverOpen,
   isNavigatingBackToDashboard,
   loadingControls,
@@ -217,6 +218,7 @@ export const dashboardReducers = reduceReducers(
     dashcards,
     dashcardData,
     draftParameterValues,
+    editingDashcardDataOverride,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,

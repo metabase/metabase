@@ -79,8 +79,10 @@ import type {
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS = [];
 
-// function to determine the landing page
-export const PLUGIN_LANDING_PAGE = [];
+export const PLUGIN_LANDING_PAGE = {
+  getLandingPage: () => "/",
+  LandingPageWidget: PluginPlaceholder,
+};
 
 export const PLUGIN_REDUX_MIDDLEWARES = [];
 
@@ -203,7 +205,6 @@ export const PLUGIN_LDAP_FORM_FIELDS = {
     settings: {
       [setting: string]: {
         display_name?: string | undefined;
-        warningMessage?: string | undefined;
         description?: string | ReactNode | undefined;
         note?: string | undefined;
       };

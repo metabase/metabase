@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-editing.api
   (:require
-   [clojure.data :refer [diff]]
    [medley.core :as m]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase.actions.core :as actions]
@@ -8,7 +7,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
-   [metabase.events :as events]
    [metabase.events.notification :as events.notification]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -19,15 +17,14 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
-(doseq [topic [:event/data-editing-row-create
-               :event/data-editing-row-update
-               :event/data-editing-row-delete]]
-  (defmethod events.notification/notification-filter-for-topic topic
-    [_topic event-info]
-    (assert (:table_id event-info) "Event info must contain :table_id")
-    [:= :table_id (:table_id event-info)]))
+(defmethod events.notification/notification-filter-for-topic :event/action.success
+  [_topic event-info]
+  [:and
+   [:= :table_id (-> event-info :result :table_id)]
+   [:= :action (u/qualified-name (:action event-info))]])
 
 (defn- qp-result->row-map
   [{:keys [rows cols]}]
@@ -105,18 +102,20 @@
           updated-rows (volatile! [])]
       (doseq [row rows']
         (let [;; well, this is a trick, but I haven't figured out how to do single row update
-              result        (:rows-updated (data-editing/perform-bulk-action! :bulk/update table-id [row]))
-              after-row     (-> (query-db-rows table-id pk-field [row]) vals first)
-              row-before    (get id->db-row (get-row-pk pk-field row))
-              [_ changes _] (diff row-before row)]
+              result     (:rows-updated (data-editing/perform-bulk-action! :bulk/update table-id [row]))
+              after-row  (-> (query-db-rows table-id pk-field [row]) vals first)
+              row-before (get id->db-row (get-row-pk pk-field row))]
           (vswap! updated-rows conj after-row)
           (when (pos-int? result)
-            (events/publish-event! :event/data-editing-row-update
-                                   {:table_id table-id
-                                    :after    after-row
-                                    :before   row-before
-                                    :update   changes
-                                    :actor_id api/*current-user-id*}))))
+            (actions/publish-action-success!
+             (nano-id/nano-id)
+             api/*current-user-id*
+             :row/update
+             {:table_id   table-id
+              :after      after-row
+              :before     row-before
+              :raw_update row}))))
+
       (invalidate-field-values! table-id rows')
       {:updated @updated-rows})))
 
@@ -130,10 +129,12 @@
         id->db-rows (query-db-rows table-id pk-field rows)
         res         (data-editing/perform-bulk-action! :bulk/delete table-id rows)]
     (doseq [row rows]
-      (events/publish-event! :event/data-editing-row-delete
-                             {:table_id    table-id
-                              :deleted_row (get id->db-rows (get-row-pk pk-field row))
-                              :actor_id    api/*current-user-id*}))
+      (actions/publish-action-success!
+       (nano-id/nano-id)
+       api/*current-user-id*
+       :row/delete
+       {:table_id   table-id
+        :deleted_row (get id->db-rows (get-row-pk pk-field row))}))
     res))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
@@ -168,7 +169,7 @@
   [{:keys [db-id]} :- [:map [:db-id ms/PositiveInt]]
    _
    {table-name :name
-    :keys [primary_key columns]}
+    :keys      [primary_key columns]}
    :-
    [:map
     [:name Identifier]
@@ -179,7 +180,7 @@
                 [:type ColumnType]]]]]]
   (api/check-superuser)
   (let [{driver :engine :as database} (api/check-404 (t2/select-one :model/Database db-id))
-        _ (actions/check-data-editing-enabled-for-database! database)
+        _          (actions/check-data-editing-enabled-for-database! database)
         column-map (->> (for [{column-name :name
                                column-type :type} columns]
                           [column-name (ensure-database-type driver column-type)])

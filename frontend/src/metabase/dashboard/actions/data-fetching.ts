@@ -90,7 +90,6 @@ export const CANCEL_FETCH_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_CARD_DATA";
 
 export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
-export const UPDATE_CARD_DATA = "metabase/dashboard/UPDATE_CARD_DATA";
 
 export const SET_LOADING_DASHCARDS_COMPLETE =
   "metabase/dashboard/SET_LOADING_DASHCARDS_COMPLETE";
@@ -553,9 +552,19 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
+export const UPDATE_CARD_DATA = "metabase/dashboard/UPDATE_CARD_DATA";
 export const updateCardData = createAction(
   UPDATE_CARD_DATA,
   (cardId, dashcardId, result) => ({ payload: { cardId, dashcardId, result } }),
+);
+
+export const SET_EDITING_DASHCARD_DATA =
+  "metabase/dashboard/SET_EDITING_DASHCARD_DATA";
+export const setEditingDashcardData = createAction(
+  SET_EDITING_DASHCARD_DATA,
+  (dashcardId, cardId, dataset) => ({
+    payload: { dashcardId, cardId, dataset },
+  }),
 );
 
 function getDatasetQueryParams(datasetQuery: Partial<DatasetQuery> = {}) {
