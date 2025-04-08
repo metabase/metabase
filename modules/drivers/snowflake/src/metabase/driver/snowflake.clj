@@ -896,13 +896,16 @@
                                     pk? (contains? pks lookup)]
                                 (assoc col :pk? pk?))))
                        (transducers/sorted-by (juxt :table-schema :table-name :database-position)))]
-    (cond->> normalize-row
+    (cond-> identity
       ;; Add pre-filter to schemas and tables (schemas are checked first)
+      (seq schema-names)
+      (comp (filter #(contains? schema-names (:schema_name %))))
+
       (seq table-names)
       (comp (filter #(contains? table-names (:table_name %))))
 
-      (seq schema-names)
-      (comp (filter #(contains? schema-names (:schema_name %)))))))
+      :always
+      (comp normalize-row))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :snowflake
   [driver {:keys [schema-names table-names details]}]

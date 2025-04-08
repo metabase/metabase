@@ -304,7 +304,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti describe-fields-pre-process-xf
-  "Returns a transducer for computing metadata about the fields in `db`.
+  "Returns a (possibly stateful) transducer for computing metadata about the fields in `db`.
    Occurs on the results of [[describe-fields-sql]].
    Same args as [[describe-fields]]."
   {:added    "0.53.10"
