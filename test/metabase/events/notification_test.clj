@@ -144,15 +144,19 @@
 (deftest notification-filter-for-topic-test
   (mt/with-model-cleanup [:model/Notification]
     (notification.tu/with-temporary-event-topics! #{:event/filter-by-table-id}
-      (let [table-id (mt/id :users)
-            noti     (models.notification/create-notification! {:payload_type :notification/system-event
-                                                                :payload       {:event_name :event/filter-by-table-id
-                                                                                :table_id      table-id}}
-                                                               []
-                                                               [])]
-
+      (let [noti-user      (:id (models.notification/create-notification! {:payload_type :notification/system-event
+                                                                           :payload       {:event_name :event/filter-by-table-id
+                                                                                           :table_id      (mt/id :users)}}
+                                                                          []
+                                                                          []))
+            noti-product   (:id (models.notification/create-notification! {:payload_type :notification/system-event
+                                                                           :payload       {:event_name :event/filter-by-table-id
+                                                                                           :table_id      (mt/id :products)}}
+                                                                          []
+                                                                          []))]
         (testing "returns notification if filter matches"
-          (is (= [(:id noti)] (map :id (#'events.notification/notifications-for-topic :event/filter-by-table-id {:table_id table-id})))))
+          (is (= [noti-user] (map :id (#'events.notification/notifications-for-topic :event/filter-by-table-id {:table_id (mt/id :users)}))))
+          (is (= [noti-product] (map :id (#'events.notification/notifications-for-topic :event/filter-by-table-id {:table_id (mt/id :products)})))))
         (testing "do not returns notification if filter does not match"
           (is (empty? (#'events.notification/notifications-for-topic :event/filter-by-table-id {})))
-          (is (empty? (#'events.notification/notifications-for-topic :event/filter-by-table-id {:table_id (mt/id :products)}))))))))
+          (is (empty? (#'events.notification/notifications-for-topic :event/filter-by-table-id {:table_id (mt/id :orders)}))))))))

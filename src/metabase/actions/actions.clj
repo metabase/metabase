@@ -244,21 +244,6 @@
           (publish-action-failure! invocation-id user-id action-kw msg info)
           (throw e))))))
 
-(defmulti action-filter-keys {:arglists '([event action event-info])
-                              :doc      "Return a honeysql filter for the given action and event info."}
-  (fn [event action _event-info] [event action]))
-
-(defmethod action-filter-keys :default [_action _event_info])
-
-(defmethod events.notification/notification-filter-for-topic :event/action.success
-  [_topic event-info]
-  (when-let [filter-ks (action-filter-keys (:action event-info))]
-    (into [:and]
-          (for [k filter-ks]
-            (let [v (get event-info k)]
-              (assert (some? v) (str "Event info must contain " k))
-              [:= k v])))))
-
 ;;;; Action definitions.
 
 ;;; Common base spec for *all* Actions. All Actions at least require

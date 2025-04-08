@@ -18,7 +18,6 @@
 
 (p/import-vars
  [metabase.actions.actions
-  action-filter-keys
   cached-value
   check-actions-enabled!
   check-data-editing-enabled-for-database!
