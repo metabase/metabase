@@ -254,7 +254,9 @@
   (let [{:keys [table-id query query-id report-id]} data-source
         model-id (lib.util/legacy-string-table-id->card-id table-id)
         handle-query (fn [query query-id]
-                       (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database query))]
+                       (let [database-id (:database query)
+                             _ (api/read-check :model/Database database-id)
+                             mp (lib.metadata.jvm/application-database-metadata-provider database-id)]
                          [(if query-id
                             (metabot-v3.tools.u/query-field-id-prefix query-id)
                             metabot-v3.tools.u/any-prefix-pattern)

@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
+   [metabase.models.interface :as mi]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -19,11 +20,12 @@
   ([database-id]
    (database-tables database-id nil))
   ([database-id {:keys [all-tables-limit] :or {all-tables-limit max-database-tables}}]
-   (let [tables (t2/select [:model/Table :id :name :schema :description]
+   (let [tables (t2/select [:model/Table :id :db_id :name :schema :description]
                            :db_id database-id
                            :active true
                            :visibility_type nil
                            {:limit all-tables-limit})
+         tables (filter mi/can-read? tables)
          tables (t2/hydrate tables :fields)]
      (mapv (fn [{:keys [fields] :as table}]
              (merge (select-keys table [:name :schema :description])

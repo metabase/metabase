@@ -11,7 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-;; todo: remove this before shipping. This is quick and dirty
+;; This is quick and dirty. Feel free to make it more full fledged or throw it away.
 (defn log
   "Log a payload. Direction should be `:llm.log/fe->be` or similar. This should not be shipping in this form. This is
   not a rolling log, or logging to the console. This pretty prints to the file `llm-payloads`. It is explicitly useful

@@ -439,7 +439,8 @@
         table-id (mt/id :orders)
         query (lib/query mp (lib.metadata/table mp table-id))
         legacy-query (lib.convert/->legacy-MBQL query)
-        query-details (#'metabot-v3.dummy-tools/execute-query query-id legacy-query)
+        query-details (mt/with-current-user (mt/user->id :crowberto)
+                        (#'metabot-v3.dummy-tools/execute-query query-id legacy-query))
         ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field-id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
@@ -457,12 +458,13 @@
                                                                 "DISCOUNT"
                                                                 {:base-type :type/Float}]
                                                                3]}}}}]
-    (testing "Filtering works."
-      (testing "new tool call with query and query-id"
-        (is (=? expected
-                (metabot-v3.tools.filters/filter-records
-                 (assoc input :data-source (select-keys query-details [:query :query-id]))))))
-      (testing "new tool call with just query"
-        (is (=? expected
-                (metabot-v3.tools.filters/filter-records
-                 (assoc input :data-source (select-keys query-details [:query])))))))))
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "Filtering works."
+        (testing "new tool call with query and query-id"
+          (is (=? expected
+                  (metabot-v3.tools.filters/filter-records
+                   (assoc input :data-source (select-keys query-details [:query :query-id]))))))
+        (testing "new tool call with just query"
+          (is (=? expected
+                  (metabot-v3.tools.filters/filter-records
+                   (assoc input :data-source (select-keys query-details [:query]))))))))))

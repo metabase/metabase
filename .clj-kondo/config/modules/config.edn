@@ -637,7 +637,7 @@
 
   enterprise/ai-sql-generation
   {:api #{metabase-enterprise.ai-sql-generation.api}
-   :uses #{api driver enterprise/metabot-v3 util}}
+   :uses #{api driver enterprise/metabot-v3 models util}}
 
   enterprise/airgap
   {:api  #{}
