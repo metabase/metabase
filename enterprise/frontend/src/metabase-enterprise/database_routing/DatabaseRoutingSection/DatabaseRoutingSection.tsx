@@ -93,6 +93,7 @@ export const DatabaseRoutingSection = ({
   return (
     <DatabaseInfoSection
       name={t`Database routing`}
+      // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
       description={t`When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema.`}
       data-testid="database-routing-section"
     >
