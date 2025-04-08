@@ -185,6 +185,8 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     },
   });
 
+  const formattedTaskJson = JSON.stringify(task.task_details, null, 2);
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -224,13 +226,16 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     cy.icon("copy").click();
     cy.window()
       .its("clipboardData.setData")
-      .should(
-        "be.calledWith",
-        "text",
-        JSON.stringify({ useful: { information: true } }, null, 2),
-      );
+      .should("be.calledWith", "text", formattedTaskJson);
+    cy.findByRole("tooltip").should("have.text", "Copied!");
 
     cy.log("download button");
+    cy.button(/Download/).click();
+    cy.readFile(`cypress/downloads/task-${task.id}.json`).should(
+      "deep.equal",
+      // Ideally we'd be comparing strings here, but Cypress auto-parses JSON files
+      task.task_details,
+    );
   });
 });
 
