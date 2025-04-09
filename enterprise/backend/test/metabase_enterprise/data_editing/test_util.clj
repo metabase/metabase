@@ -37,7 +37,7 @@
   (format "ee/data-editing/table/%d" table-id))
 
 (defn alter-appdb-settings! [f & args]
-  (let [id (mt/id)
+  (let [id           (mt/id)
         settings     (t2/select-one-fn :settings :model/Database id)
         new-settings (apply f settings args)]
     (t2/update! :model/Database id {:settings new-settings})))
