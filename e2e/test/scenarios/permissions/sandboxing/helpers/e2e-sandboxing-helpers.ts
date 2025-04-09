@@ -543,7 +543,6 @@ export function rowsShouldContainOnlyOneCategory({
     const rows = response.body.data.rows;
 
     const groupedByCategory = _.groupBy(rows, (row) => row[0] as string);
-    console.log("@m9abl5ts", "groupedByCategory", groupedByCategory);
 
     productCategories.forEach((category) => {
       if (category !== productCategory) {
