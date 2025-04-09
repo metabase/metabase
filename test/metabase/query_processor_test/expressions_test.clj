@@ -570,8 +570,8 @@
 (deftest ^:parallel case-with-literal-expression-test
   (testing "CASE expression using literal expressions"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
-      (is (= [[1 12345 true  "foo"]
-              [2 12345 false "foo"]]
+      (is (= [[1 12345 true  "foobar"]
+              [2 12345 false "foobar"]]
              (mt/formatted-rows
               [int int mt/boolish->bool str]
               (mt/run-mbql-query venues
@@ -579,24 +579,24 @@
                                     {"case 1" [:case
                                                [[[:< [:expression "zero"] 0]
                                                  [:expression "zero"]]
-                                                [[:= false [:expression "True"]]
+                                                [[:= false [:expression "MyTrue"]]
                                                  [:expression "zero"]]
                                                 [[:= "foo" [:expression "foo"]]
                                                  [:expression "12345"]]]
                                                {:default [:expression "zero"]}]
                                      "case 2" [:case
                                                [[[:= $id 1]
-                                                 [:expression "True"]]
+                                                 [:expression "MyTrue"]]
                                                 [[:= $id 2]
-                                                 [:expression "False"]]]]
+                                                 [:expression "MyFalse"]]]]
                                      "case 3" [:case
                                                [[[:= [:concat [:expression "foo"] ""] "bar"]
-                                                 [:expression "empty"]]
+                                                 [:expression "foo"]]
                                                 [[:> [:expression "zero"] 0]
-                                                 [:expression "empty"]]
+                                                 [:expression "foo"]]
                                                 [[:is-null [:expression "foo"]]
-                                                 [:expression "empty"]]]
-                                               {:default [:expression "foo"]}]})
+                                                 [:expression "foo"]]]
+                                               {:default [:concat [:expression "foo"] "bar"]}]})
                  :fields      [$id
                                [:expression "case 1"]
                                [:expression "case 2"]
