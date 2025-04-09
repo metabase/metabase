@@ -688,20 +688,4 @@
                                      (assoc :non-pivoted-cols (original-cols original-query)))
                all-queries       (generate-queries query {})
                column-mapping-fn (make-column-mapping-fn query)]
-           (process-multiple-queries all-queries rff column-mapping-fn))
-             ;; (def query query)
-             ;; (def new-pivot-rows new-pivot-rows)
-             ;; (def new-pivot-cols new-pivot-cols))
-
-         #_(let [rff               (or rff qp.reducible/default-rff)
-                 nested-query      (nest-query query)
-                 query             (lib/query (qp.store/metadata-provider) #_query nested-query)
-                 pivot-opts        (or
-                                    (pivot-options query (get query :viz-settings))
-                                    (pivot-options query (get-in query [:info :visualization-settings]))
-                                    (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
-                 query             (-> query
-                                       (assoc-in [:middleware :pivot-options] pivot-opts))
-                 all-queries       (generate-queries query pivot-opts)
-                 column-mapping-fn (make-column-mapping-fn query)]
-             (process-multiple-queries all-queries rff column-mapping-fn)))))))
+           (process-multiple-queries all-queries rff column-mapping-fn)))))))
