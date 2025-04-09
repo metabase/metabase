@@ -112,10 +112,9 @@
 
 (defn do-with-send-messages-sync!
   [f]
-  (let [orig-send-email! @#'messages/send-email!]
-    (with-redefs [messages/send-email! (fn [& args]
-                                         (deref (apply orig-send-email! args)))]
-      (f))))
+  (mt/with-dynamic-fn-redefs [messages/send-email! (fn [& args]
+                                                     (apply @#'messages/send-email-sync! args))]
+    (f)))
 
 (defmacro with-send-messages-sync!
   [& body]
@@ -892,17 +891,14 @@
                             (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
                 a-href (format "<a href=\".*/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
-            (testing (format "\nEmail: %s\nNotification:%s\n"
-                             email
-                             (pr-str notification))
-              (testing "sends unsubscribe confirmation email"
-                (is (=? {:bcc     #{"lucky@metabase.com"}
-                         :subject "You unsubscribed from an alert"
-                         :body    [{"You’re no longer receiving alerts about" true
-                                    a-href                                    true}]}
-                        (mt/summarize-multipart-single-email email
-                                                             #"You’re no longer receiving alerts about"
-                                                             (re-pattern a-href))))))))))))
+            (testing "sends unsubscribe confirmation email"
+              (is (=? {:bcc     #{"lucky@metabase.com"}
+                       :subject "You unsubscribed from an alert"
+                       :body    [{"You’re no longer receiving alerts about" true
+                                  a-href                                    true}]}
+                      (mt/summarize-multipart-single-email email
+                                                           #"You’re no longer receiving alerts about"
+                                                           (re-pattern a-href)))))))))))
 
 (deftest unsubscribe-notification-audit-test
   (mt/with-model-cleanup [:model/Notification]
