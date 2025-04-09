@@ -201,7 +201,15 @@ Some other things to note about API keys in the config file:
 
 ## Referring to environment variables in the `config.yml`
 
-As shown in the Databases examples above, environment variables can be specified with `{% raw %}{{ template-tags }}{% endraw %}` like `{% raw %}{{ env POSTGRES_TEST_DATA_PASSWORD }}{% endraw %}` or `{% raw %}[[options {{template-tags}}]]{% endraw %}`.
+As shown in the examples above, environment variables can be specified with template tags like so:
+
+```
+{% raw %}
+setting: "{{ env POSTGRES_TEST_DATA_PASSWORD }}"
+{% endraw %}
+```
+
+Note the quote marks wrapping the env var template `"{{ env API_KEY_FROM_ENV }}"`; if you don't include the quotes, the YAML parser won't know it's a string template for Metabase to expand, and Metabase won't know to swap in the env var's value.
 
 Metabase doesn't support recursive expansion, so if one of your environment variables references _another_ environment variable, you're going to have a bad time.
 
