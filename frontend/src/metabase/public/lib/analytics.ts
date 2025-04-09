@@ -19,7 +19,10 @@ type Appearance = {
   bordered: boolean;
   theme: DisplayTheme;
   font: "instance" | "custom";
-  downloads: EmbedResourceDownloadOptions | null;
+  enabled_download_types: EmbedResourceDownloadOptions | null;
+
+  /** @deprecated use `enabled_download_types` instead */
+  downloads: boolean | null;
 };
 
 export const trackStaticEmbedDiscarded = ({
@@ -116,7 +119,8 @@ function normalizeAppearance(
     bordered: displayOptions.bordered,
     theme: displayOptions.theme ?? "light",
     font: displayOptions.font ? "custom" : "instance",
-    downloads: displayOptions.downloads,
+    enabled_download_types: displayOptions.downloads,
+    downloads: null, // `downloads` is deprecated, use `enabled_download_types` instead.
   };
 }
 

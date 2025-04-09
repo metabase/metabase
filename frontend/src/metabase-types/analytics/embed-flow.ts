@@ -12,7 +12,8 @@ type EmbedFlowAppearance = {
   bordered?: boolean;
   theme?: string;
   font?: string;
-  downloads?: EmbedResourceDownloadOptions | null;
+  downloads?: boolean | null;
+  enabled_download_types?: EmbedResourceDownloadOptions | null;
   hide_download_button?: boolean | null;
 };
 

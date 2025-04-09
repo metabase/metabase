@@ -142,32 +142,31 @@
             "boolean",
             "null"
           ],
-          "description": "Indicates if the download button is hidden. It will be null on OSS instance since it's not supported."
+          "description": "Indicates if the download button is hidden. It will be null on OSS instance since it's not supported. This field is deprecated."
         },
         "downloads": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Indicates if downloads are enabled, it will be null on OSS as they can't disable them. This field is deprecated."
+        },
+        "enabled_download_types": {
           "description": "Indicates which download types are enabled, it will be null on OSS as they can't disable them",
-          "anyOf": [
-            {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "pdf": {
               "type": "boolean",
-              "description": "Indicates if downloads are enabled for all types. This is provided for backwards compatibility."
+              "description": "Indicates if PDF exports are enabled. Only applicable to dashboards."
             },
-            {
-              "type": "null"
-            },
-            {
-              "type": "object",
-              "properties": {
-                "pdf": {
-                  "type": "boolean",
-                  "description": "Indicates if PDF exports are enabled. Only applicable to dashboards."
-                },
-                "results": {
-                  "type": "boolean",
-                  "description": "Indicates if dashboard card downloads are enabled."
-                }
-              }
+            "results": {
+              "type": "boolean",
+              "description": "Indicates if dashboard card downloads are enabled."
             }
-          ]
+          }
         }
       }
     },

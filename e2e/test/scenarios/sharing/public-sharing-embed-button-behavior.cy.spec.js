@@ -554,7 +554,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                downloads: { pdf: true, results: true },
+                enabled_download_types: { pdf: true, results: true },
               },
             });
 
@@ -573,7 +573,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                downloads: { pdf: true, results: true },
+                enabled_download_types: { pdf: true, results: true },
               },
             });
 
@@ -599,7 +599,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                downloads: { pdf: true, results: true },
+                enabled_download_types: { pdf: true, results: true },
               },
             });
 
@@ -628,7 +628,7 @@ describe("#39152 sharing an unsaved question", () => {
             H.popover().findByText("Oswald").click();
 
             cy.log(
-              "Assert that it sends `downloads: { pdf: false, results: false }` when both are disabled",
+              "Assert that it sends `enabled_download_types: { pdf: false, results: false }` when both are disabled",
             );
             H.modal()
               .findByLabelText(
@@ -658,7 +658,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: false,
                 font: "custom",
                 theme: "night",
-                downloads: { pdf: false, results: false },
+                enabled_download_types: { pdf: false, results: false },
               },
             });
           });
@@ -676,7 +676,7 @@ describe("#39152 sharing an unsaved question", () => {
               });
 
               cy.log(
-                "Assert that it sends `downloads: { pdf: false, results: true }` when only results download is enabled",
+                "Assert that it sends `enabled_download_types: { pdf: false, results: true }` when only results download is enabled",
               );
 
               // Disable PDF exports
@@ -698,12 +698,12 @@ describe("#39152 sharing an unsaved question", () => {
                   titled: true,
                   font: "instance",
                   theme: "light",
-                  downloads: { pdf: false, results: true },
+                  enabled_download_types: { pdf: false, results: true },
                 },
               });
 
               cy.log(
-                "Assert that it sends `downloads: { pdf: true, results: false }` when only PDF is enabled",
+                "Assert that it sends `enabled_download_types: { pdf: true, results: false }` when only PDF is enabled",
               );
 
               // Enable PDF exports again
@@ -732,7 +732,7 @@ describe("#39152 sharing an unsaved question", () => {
                   titled: true,
                   font: "instance",
                   theme: "light",
-                  downloads: { pdf: true, results: false },
+                  enabled_download_types: { pdf: true, results: false },
                 },
               });
             });
