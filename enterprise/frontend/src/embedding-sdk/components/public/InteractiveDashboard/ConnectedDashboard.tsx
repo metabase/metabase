@@ -4,7 +4,7 @@ import type { ConnectedProps } from "react-redux";
 import _ from "underscore";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
-import type { CommonElementProps } from "embedding-sdk/types/props";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import * as dashboardActions from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
@@ -95,7 +95,7 @@ type ConnectedDashboardProps = {
   ) => void;
 
   plugins?: MetabasePluginsConfig;
-} & Pick<CommonElementProps, "className"> &
+} & Pick<CommonStylingProps, "className"> &
   DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
   DashboardLoaderWrapperProps &

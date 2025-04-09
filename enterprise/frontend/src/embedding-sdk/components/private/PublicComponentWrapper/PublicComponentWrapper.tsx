@@ -6,13 +6,13 @@ import { SdkError } from "embedding-sdk/components/private/PublicComponentWrappe
 import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus, getUsageProblem } from "embedding-sdk/store/selectors";
-import type { CommonElementProps } from "embedding-sdk/types/props";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 
 import { RenderOnlyInSdkProvider } from "../SdkContext";
 
 export type PublicComponentWrapperProps = {
   children: React.ReactNode;
-} & CommonElementProps;
+} & CommonStylingProps;
 
 const PublicComponentWrapperInner = React.forwardRef<
   HTMLDivElement,

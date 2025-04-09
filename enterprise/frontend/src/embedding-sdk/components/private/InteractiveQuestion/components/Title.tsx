@@ -1,12 +1,12 @@
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
-import type { CommonElementProps } from "embedding-sdk/types/props";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 
 /**
  * @interface
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionTitleProps = CommonElementProps;
+export type InteractiveQuestionTitleProps = CommonStylingProps;
 
 /**
  * Displays a title based on the question's state. Shows:

@@ -1,4 +1,4 @@
-import type { CommonElementProps } from "embedding-sdk/types/props";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
 import {
   FilterPicker as InnerFilterPicker,
@@ -17,7 +17,7 @@ import { useFilterHandlers } from "../hooks/use-filter-handlers";
 type Props = {
   filterItem?: SDKFilterItem;
   withIcon?: boolean;
-} & CommonElementProps &
+} & CommonStylingProps &
   Pick<InnerFilterPickerProps, "onClose" | "onBack">;
 
 const FilterPickerInner = ({

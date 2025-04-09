@@ -18,7 +18,7 @@ import type {
 } from "embedding-sdk/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
-import type { CommonElementProps } from "embedding-sdk/types/props";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
@@ -44,7 +44,7 @@ import "metabase/css/vendor.css";
  * @category MetabaseProvider
  */
 export interface MetabaseProviderProps
-  extends Omit<CommonElementProps, "style"> {
+  extends Omit<CommonStylingProps, "style"> {
   /**
    * The children of the MetabaseProvider component.
    */

@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import type { CommonElementProps } from "embedding-sdk/types/props";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import CS from "metabase/css/core/index.css";
 import {
   getAdHocQuestionDescription,
@@ -42,7 +42,7 @@ export const getQuestionTitle = ({
   return t`New question`;
 };
 
-type QuestionTitleProps = GetQuestionTitleProps & CommonElementProps;
+type QuestionTitleProps = GetQuestionTitleProps & CommonStylingProps;
 
 export const QuestionTitle = ({
   question,

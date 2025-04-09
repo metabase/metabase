@@ -9,7 +9,7 @@ import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-trans
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
-import type { CommonElementProps } from "embedding-sdk/types/props";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { isNotNull } from "metabase/lib/types";
@@ -87,7 +87,7 @@ export type CollectionBrowserProps = {
    * A function to call when an item is clicked.
    */
   onClick?: (item: CollectionItem) => void;
-} & CommonElementProps;
+} & CommonStylingProps;
 
 export const CollectionBrowserInner = ({
   collectionId = "personal",

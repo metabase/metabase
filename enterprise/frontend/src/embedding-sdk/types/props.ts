@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-export type CommonElementProps = {
+export type CommonStylingProps = {
   /**
    * A custom class name to be added to the root element.
    */

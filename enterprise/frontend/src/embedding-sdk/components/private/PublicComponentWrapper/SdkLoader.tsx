@@ -1,9 +1,9 @@
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoaderComponent } from "embedding-sdk/store/selectors";
-import type { CommonElementProps } from "embedding-sdk/types/props";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { Center, Loader } from "metabase/ui";
 
-export const SdkLoader = ({ className, style }: CommonElementProps) => {
+export const SdkLoader = ({ className, style }: CommonStylingProps) => {
   const CustomLoader = useSdkSelector(getLoaderComponent);
 
   const LoaderComponent = CustomLoader || Loader;
