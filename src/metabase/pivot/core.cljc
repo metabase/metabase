@@ -419,6 +419,13 @@
                (transient [])
                row-tree)))))
 
+(defn- update-node
+  [node leaf-nodes]
+  (let [new-children (if (empty? (:children node))
+                       leaf-nodes
+                       (map #(update-node % leaf-nodes) (:children node)))]
+    (merge node {:children new-children})))
+
 (defn display-name-for-col
   "Translated from frontend/src/metabase/lib/formatting/column.ts"
   [column col-settings format-values?]
@@ -430,13 +437,6 @@
          (:display_name column))
         (:display_name column))
       (i18n/tru "(empty)")))
-
-(defn- update-node
-  [node leaf-nodes]
-  (let [new-children (if (empty? (:children node))
-                       leaf-nodes
-                       (map #(update-node % leaf-nodes) (:children node)))]
-    (merge node {:children new-children})))
 
 (defn add-value-column-nodes
   "This might add value column(s) to the bottom of the top header tree. We
@@ -625,6 +625,7 @@
                                                     (transient []) formatted-col-tree-with-totals)))
                     [[]])}))
 
+;; (require '[snitch.core :refer [defn*]])
 (defn process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
