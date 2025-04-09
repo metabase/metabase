@@ -19,7 +19,7 @@ import type {
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
 
-import { removeColumnfromStateUnlessUsedElseWhere } from "./utils";
+import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
 export const pieDropHandler = (
   state: VisualizerHistoryItem,
@@ -116,7 +116,7 @@ export function removeColumnFromPieChart(
     delete state.settings["pie.metric"];
   }
 
-  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+  removeColumnFromStateUnlessUsedElseWhere(state, columnName, [
     "pie.metric",
     "pie.dimension",
   ]);

@@ -7,14 +7,19 @@ import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
  * @param columnName the name of the column to remove
  * @param settingsKeys the settings keys to check against
  */
-export function removeColumnfromStateUnlessUsedElseWhere(
+export function removeColumnFromStateUnlessUsedElseWhere(
   state: VisualizerHistoryItem,
   columnName: string,
   settingsKeys: string[],
 ) {
-  const columnUsedInSettings = settingsKeys.some(
-    (key) => state.settings[key] === columnName,
-  );
+  const columnUsedInSettings = settingsKeys.some((key) => {
+    const setting = state.settings[key];
+    if (Array.isArray(setting)) {
+      return setting.some((item) => item === columnName);
+    }
+
+    return state.settings[key] === columnName;
+  });
 
   if (columnUsedInSettings) {
     return;
