@@ -988,12 +988,31 @@
 ;; When rendering expressions, the FE calls [[expression-parts]], which returns a kind of AST for the expression.
 ;; This form is deliberately different from the MBQL representation.
 
+(defn- transform-expression-parts
+  [x]
+  (walk/postwalk
+   (fn [node]
+     (if (and (map? node)
+              (:operator node)
+              (:args node)
+              (not (:lib/type node))
+              (not (:type node)))
+       (assoc node :lib/type :mbql/expression-parts)
+       node))
+   x))
+
+(defn- expression-parts-js->cljs
+  [x]
+  (-> x
+      (js->clj :keywordize-keys true)
+      transform-expression-parts))
+
 (defn ^:export expression-clause
   "Returns a standalone expression clause for the given `operator`, `options`, and list of arguments."
   [an-operator args options]
   (-> (lib.core/expression-clause
        (keyword an-operator)
-       args
+       (mapv expression-parts-js->cljs args)
        (js->clj options :keywordize-keys true))
       lib.core/normalize))
 
