@@ -20,15 +20,15 @@
        (cond (= fc 1) (first filters)
              (> fc 1) (apply lib/and filters))))))
 
-(def aggregations-pred-1st-arg
+(def ^:private aggregations-pred-1st-arg
   #{:count-where
     :sum-where})
 
-(def nullary-aggregations
+(def ^:private nullary-aggregations
   #{:count
     :cum-count})
 
-(def aggregations-col-1st-arg
+(def ^:private aggregations-col-1st-arg
   #{:avg
     :cum-sum
     :distinct
