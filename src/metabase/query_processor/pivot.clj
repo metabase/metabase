@@ -647,8 +647,8 @@
          (qp/process-query (dissoc query :info)
                            (or rff qp.reducible/default-rff))
          (let [rff (or rff qp.reducible/default-rff)
-               new-pivot-rows    (:new_pivot_rows query)
-               new-pivot-cols    (:new_pivot_cols query)
+               new-pivot-rows    (filter some? (:new_pivot_rows query))
+               new-pivot-cols    (filter some? (:new_pivot_cols query))
                original-query    query
                query'            (lib/query (qp.store/metadata-provider)
                                             (-> query
