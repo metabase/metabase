@@ -234,7 +234,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     });
 
     // Verify no additional dataset queries were made after re-renders
-    cy.wait(500);
+    cy.wait(1000);
     cy.get("@datasetQuery.all").should("have.length", 1);
   });
 });
