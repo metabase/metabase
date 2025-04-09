@@ -223,8 +223,8 @@
   "Helper function that mocks email/send-email! to capture emails in a vector and returns them."
   [thunk]
   (let [emails (atom [])]
-    (with-redefs [email/send-email! (fn [_ email]
-                                      (swap! emails conj email))]
+    (mt/with-dynamic-fn-redefs [email/send-email! (fn [_ email]
+                                                    (swap! emails conj email))]
       (thunk)
       @emails)))
 
