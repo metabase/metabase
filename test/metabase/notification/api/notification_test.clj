@@ -889,7 +889,7 @@
           (let [[email] (notification.tu/with-mock-inbox-email!
                           (with-send-messages-sync!
                             (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
-                a-href (format "<a href=\".*/question/%d\">My Card</a>."
+                a-href (format "<a href=\"https://testmb.com/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
             (testing "sends unsubscribe confirmation email"
               (is (=? {:bcc     #{"lucky@metabase.com"}
