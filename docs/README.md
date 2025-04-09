@@ -294,3 +294,4 @@ If you’d like more technical resources to set up your data stack with Metabase
 
 hello from the new site
 hi
+hi
