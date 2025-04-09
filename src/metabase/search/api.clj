@@ -133,7 +133,7 @@
 
   A search query that has both filters applied will only return models and cards."
   [_route-params
-   {:keys [q context archived models verified ids]
+   {:keys                               [q context archived models verified ids]
     calculate-available-models          :calculate_available_models
     created-at                          :created_at
     created-by                          :created_by
@@ -144,7 +144,8 @@
     model-ancestors                     :model_ancestors
     search-engine                       :search_engine
     search-native-query                 :search_native_query
-    table-db-id                         :table_db_id}
+    table-db-id                         :table_db_id
+    include-metadata                    :include_metadata}
    :- [:map
        [:q                                   {:optional true} [:maybe ms/NonBlankString]]
        [:context                             {:optional true} [:maybe :keyword]]
@@ -162,7 +163,8 @@
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:calculate_available_models          {:optional true} [:maybe true?]]
-       [:include_dashboard_questions         {:default false} [:maybe :boolean]]]]
+       [:include_dashboard_questions         {:default false} [:maybe :boolean]]
+       [:include_metadata                    {:default false} [:maybe :boolean]]]]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
     (u/prog1 (search/search
@@ -190,7 +192,8 @@
                 :verified                            verified
                 :ids                                 (set ids)
                 :calculate-available-models?         calculate-available-models
-                :include-dashboard-questions?        include-dashboard-questions}))
+                :include-dashboard-questions?        include-dashboard-questions
+                :include-metadata?                   include-metadata}))
       (analytics/inc! :metabase-search/response-ok))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
