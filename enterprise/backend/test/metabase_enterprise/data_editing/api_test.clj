@@ -233,6 +233,24 @@
          :primary_key ["id"]}
         400))))
 
+(deftest create-table-auto-inc-test
+  (mt/with-premium-features #{:table-data-editing}
+    (data-editing.tu/toggle-data-editing-enabled! true)
+    (let [db-id      (mt/id)
+          url        (format "ee/data-editing/database/%d/table" db-id)
+          user       :crowberto
+          table-name (str "test_table_" (System/currentTimeMillis))
+          req-body   {:name table-name
+                      :columns [{:name "id", :type "auto_incrementing_int_pk"}
+                                {:name "n",  :type "int"}]
+                      :primary_key ["id"]}
+          _          (mt/user-http-request user :post 200 url req-body)
+          db         (t2/select-one :model/Database db-id)
+          table-id   (data-editing.tu/sync-new-table! db table-name)
+          create!    #(mt/user-http-request user :post 200 (table-url table-id) {:rows %})]
+      (create! [{:n 1} {:n 2}])
+      (is (= [[1 1] [2 2]] (table-rows table-id))))))
+
 (deftest coercion-test
   (mt/with-premium-features #{:table-data-editing}
     (data-editing.tu/toggle-data-editing-enabled! true)

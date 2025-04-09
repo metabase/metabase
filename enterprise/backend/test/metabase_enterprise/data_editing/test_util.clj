@@ -14,18 +14,22 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- create-test-table! [driver db table-name column-map create-table-opts]
-  (let [_     (driver/create-table! driver
-                                    (mt/id)
-                                    table-name
-                                    column-map
-                                    create-table-opts)
-        table (sync/create-table! db
-                                  {:name         table-name
-                                   :schema       nil
-                                   :display_name table-name})]
+(defn sync-new-table!
+  "Syncs a new table by name, returns the table id."
+  [db table-name]
+  (let [table (sync/create-table! db {:name table-name
+                                      :schema nil
+                                      :display_name table-name})]
     (sync/sync-fields-for-table! db table)
     (:id table)))
+
+(defn- create-test-table! [driver db table-name column-map create-table-opts]
+  (let [_  (driver/create-table! driver
+                                 (mt/id)
+                                 table-name
+                                 column-map
+                                 create-table-opts)]
+    (sync-new-table! db table-name)))
 
 (defn table-url
   "Returns the URL for data editing of the table with the given ID."
