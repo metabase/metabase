@@ -145,21 +145,29 @@
           "description": "Indicates if the download button is hidden. It will be null on OSS instance since it's not supported."
         },
         "downloads": {
-          "type": [
-            "object",
-            "null"
-          ],
           "description": "Indicates which download types are enabled, it will be null on OSS as they can't disable them",
-          "properties": {
-            "pdf": {
+          "anyOf": [
+            {
               "type": "boolean",
-              "description": "Indicates if PDF exports are enabled. Only applicable to dashboards."
+              "description": "Indicates if downloads are enabled for all types. This is provided for backwards compatibility."
             },
-            "dashcard": {
-              "type": "boolean",
-              "description": "Indicates if dashboard card downloads are enabled."
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "pdf": {
+                  "type": "boolean",
+                  "description": "Indicates if PDF exports are enabled. Only applicable to dashboards."
+                },
+                "dashcard": {
+                  "type": "boolean",
+                  "description": "Indicates if dashboard card downloads are enabled."
+                }
+              }
             }
-          }
+          ]
         }
       }
     },
