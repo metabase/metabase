@@ -56,7 +56,9 @@
          column-map    (walk/postwalk-replace {'auto-inc-type auto-inc-type} column-map)
          db            (t2/select-one :model/Database (mt/id))
          table-name    (str "temp_table_" (str/replace (random-uuid) "-" "_"))
-         cleanup       #(try (driver/drop-table! driver (mt/id) table-name) (catch Exception _))]
+         cleanup       (fn []
+                         (driver/drop-table! driver (mt/id) table-name)
+                         (t2/delete! :model/Table :name table-name))]
      (try
        (let [table-id (create-test-table! driver db table-name column-map create-table-opts)]
          (reify Closeable
@@ -64,7 +66,7 @@
            (deref [_] table-id)
            (close [_] (cleanup))))
        (catch Exception e
-         (cleanup)
+         (try (cleanup) (catch Exception _))
          (throw e))))))
 
 (defmacro with-temp-test-db!
