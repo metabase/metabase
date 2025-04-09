@@ -41,7 +41,7 @@
   ;; can understand them.
 
   #_:docstring-leading-trailing-whitespace
-  #_:equals-false
+  :equals-false {:level :warning}
   #_:equals-true
   #_:used-underscored-binding
 
