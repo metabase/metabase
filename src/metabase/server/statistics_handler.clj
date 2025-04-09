@@ -65,7 +65,7 @@
       (prometheus/inc! :jetty/responses-total {:code "4xx"}))
     (prometheus/inc! :jetty/responses-bytes-total (.getContentCount response))))
 
-(defn on-complete-listener
+(defn- on-complete-listener
   [request-counter async-counter request-time]
   (proxy [AsyncListener] []
     (onStartAsync [^AsyncEvent event]
