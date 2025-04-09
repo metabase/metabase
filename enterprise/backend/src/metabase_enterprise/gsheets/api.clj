@@ -279,7 +279,7 @@
           (do
             (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
             (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body))
-            (error-response-in-body (or (:error-detail hm-body) cannot-check-message) {:hm/response (loggable-response #p hm-response)}))
+            (error-response-in-body (or (:error-detail hm-body) cannot-check-message) {:hm/response (loggable-response hm-response)}))
 
           (= "active" status)
           (assoc (setting->response saved-setting)

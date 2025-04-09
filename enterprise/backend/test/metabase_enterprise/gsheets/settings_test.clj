@@ -47,7 +47,8 @@
                    :folder_url         "https://example.com"
                    :folder-upload-time 1234567890
                    :gdrive/conn-id     test-uuid
-                   :created-by-id      1})))
+                   :created-by-id      1
+                   :db-id              1})))
           (is (= expected-value @value-updated))))
 
       (testing "old complete values are migrated to current-format"
@@ -77,4 +78,5 @@
                     {:url            "https://example.com"
                      :created-at     1234567890
                      :gdrive/conn-id test-uuid
-                     :created-by-id  1})))))))))
+                     :created-by-id  1
+                     :db-id          1})))))))))
