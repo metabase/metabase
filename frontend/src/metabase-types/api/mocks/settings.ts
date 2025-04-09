@@ -49,12 +49,6 @@ export const createMockEngines = (
       type: "community",
     }),
   }),
-  partnerEngine: createMockEngine({
-    "driver-name": "PartnerEngine",
-    source: createMockEngineSource({
-      type: "partner",
-    }),
-  }),
   ...opts,
 });
 

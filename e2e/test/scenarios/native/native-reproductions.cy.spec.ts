@@ -413,9 +413,13 @@ describe("issue 52806", () => {
     "should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)",
     { tags: "@flaky" },
     () => {
+      cy.intercept("/api/automagic-dashboards/database/*/candidates").as(
+        "candidates",
+      );
       H.visitQuestionAdhoc(questionDetails);
       cy.findByTestId("main-logo-link").click();
       H.modal().button("Discard changes").click();
+      cy.wait("@candidates");
       cy.location().should((location) => expect(location.search).to.eq(""));
     },
   );

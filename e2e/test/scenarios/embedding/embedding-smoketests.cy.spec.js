@@ -162,7 +162,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
               element.textContent ===
               "You can change the font with a paid plan.",
           );
-          cy.findByText("Download buttons").should("not.exist");
+
+          cy.findByText(
+            object === "dashboard"
+              ? "Results (csv, xlsx, json, png)"
+              : "Download (csv, xlsx, json, png)",
+          ).should("not.exist");
+          cy.findByText("Export as PDF").should("not.exist");
 
           cy.findByRole("tab", { name: "Parameters" }).click();
 

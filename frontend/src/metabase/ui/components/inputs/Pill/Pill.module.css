@@ -1,0 +1,26 @@
+.root {
+  height: unset;
+  padding: 1px var(--mantine-spacing-sm);
+  font-weight: bold;
+  font-size: var(--mantine-font-size-md);
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-text-selected);
+  background-color: var(--mb-color-background-selected);
+}
+
+.remove {
+  --cb-size: 1rem;
+  --cb-icon-size: 0.75rem;
+
+  padding: 0;
+  border: none;
+  min-width: var(--cb-size);
+  min-height: var(--cb-size);
+
+  [dir="ltr"] &,
+  [dir="rtl"] & {
+    padding: 0;
+    margin-left: var(--mantine-spacing-xs);
+    margin-right: var(--mantine-spacing-xs);
+  }
+}
