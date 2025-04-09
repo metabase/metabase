@@ -173,7 +173,7 @@
 
 (defn- case-or-if-pairs
   [args]
-  (mapv #(into [] %) (partition 2 args)))
+  (mapv vec (partition 2 args)))
 
 (defn- group-case-or-if-args
   "case and if expression expect the first argument to be a
