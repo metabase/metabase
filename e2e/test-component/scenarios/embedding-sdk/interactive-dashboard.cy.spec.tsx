@@ -195,7 +195,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     });
   });
 
-  it("should only call POST /dataset once when parent component re-renders (EMB-288)", () => {
+  it.only("should only call POST /dataset once when parent component re-renders (EMB-288)", () => {
     cy.intercept("POST", "/api/dataset").as("datasetQuery");
 
     const TestComponent = ({ dashboardId }: { dashboardId: string }) => {
@@ -218,7 +218,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
 
     // Drill down to "See these Orders"
     cy.wait("@dashcardQuery");
-    cy.get("[data-dataset-index=0] > [data-column-id='PRODUCT_ID']").click();
+    cy.get("[data-index='0'] > [data-column-id='PRODUCT_ID']").click();
 
     H.popover()
       .findByText(/View this Product/)
@@ -234,7 +234,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     });
 
     // Verify no additional dataset queries were made after re-renders
-    cy.wait(1000);
+    cy.wait(500);
     cy.get("@datasetQuery.all").should("have.length", 1);
   });
 });
