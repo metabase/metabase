@@ -156,7 +156,7 @@ export const settings = {
     getProps: ([{ card, data }]: RawSeries) => {
       const cols = data?.cols ?? [];
       const options = cols
-        .filter(getDefaultDimensionFilter(card.display))
+        // .filter(getDefaultDimensionFilter(card.display))
         .map(getOptionFromColumn);
       return {
         options,
@@ -177,7 +177,7 @@ export const settings = {
     getProps: ([{ card, data }]: RawSeries) => {
       const cols = data?.cols ?? [];
       const options = cols
-        .filter(getDefaultDimensionFilter(card.display))
+        // .filter(getDefaultDimensionFilter(card.display))
         .map(getOptionFromColumn);
       return {
         options,

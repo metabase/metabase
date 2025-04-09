@@ -625,7 +625,7 @@
                                                     (transient []) formatted-col-tree-with-totals)))
                     [[]])}))
 
-;; (require '[snitch.core :refer [defn*]])
+;;(require '[snitch.core :refer [defn*]])
 (defn process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
