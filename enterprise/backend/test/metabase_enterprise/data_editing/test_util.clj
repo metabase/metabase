@@ -46,7 +46,7 @@
   (alter-appdb-settings! assoc :database-enable-table-editing (boolean on-or-off)))
 
 (defn open-test-table!
-  "Sets up an anonymous table in the appdb. Return a box that can be deref'd for the table-id.
+  "Sets up an anonymous table in the test db (mt/id). Return a box that can be deref'd for the table-id.
 
   Optionally accepts the column map and opts inputs to driver/create-table!.
   The symbol auto-inc-type can be used to denote the driver-specific auto-incrementing type for primary keys.
@@ -61,10 +61,10 @@
      :song  [:text]}
     {:primary-key [:id]}))
   (^Closeable [column-map create-table-opts]
-   (let [driver        :h2
+   (let [db            (t2/select-one :model/Database (mt/id))
+         driver        (:engine db)
          auto-inc-type (driver/upload-type->database-type driver :metabase.upload/auto-incrementing-int-pk)
          column-map    (walk/postwalk-replace {'auto-inc-type auto-inc-type} column-map)
-         db            (t2/select-one :model/Database (mt/id))
          table-name    (str "temp_table_" (str/replace (random-uuid) "-" "_"))
          cleanup       (fn []
                          (driver/drop-table! driver (mt/id) table-name)
