@@ -1,5 +1,6 @@
 import cx from "classnames";
 
+import type Question from "metabase-lib/v1/Question";
 import type {
   ConcreteTableId,
   DatasetData,
@@ -11,6 +12,7 @@ import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useTableCRUD } from "./use-table-crud";
+import { useTableSorting } from "./use-table-sorting";
 
 type EditTableDataWithUpdateProps = {
   tableId: ConcreteTableId;
@@ -18,6 +20,7 @@ type EditTableDataWithUpdateProps = {
   className?: string;
   refetchTableDataQuery: () => void;
   visualizationSettings?: VisualizationSettings;
+  question: Question;
 };
 
 export const EditTableDataWithUpdate = ({
@@ -26,6 +29,7 @@ export const EditTableDataWithUpdate = ({
   className,
   refetchTableDataQuery,
   visualizationSettings,
+  question,
 }: EditTableDataWithUpdateProps) => {
   const {
     isCreateRowModalOpen,
@@ -44,6 +48,10 @@ export const EditTableDataWithUpdate = ({
     visualizationSettings,
   );
 
+  const { getColumnSortDirection } = useTableSorting({
+    question,
+  });
+
   return (
     <div className={cx(S.tableRoot, className)}>
       <EditTableDataGrid
@@ -52,6 +60,7 @@ export const EditTableDataWithUpdate = ({
         onCellValueUpdate={handleCellValueUpdate}
         onRowExpandClick={handleModalOpenAndExpandedRow}
         columnsConfig={columnsConfig}
+        getColumnSortDirection={getColumnSortDirection}
       />
       <EditingBaseRowModal
         opened={isCreateRowModalOpen}
