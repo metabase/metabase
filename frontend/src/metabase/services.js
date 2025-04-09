@@ -52,7 +52,6 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
 
   if (
     question.display() !== "pivot" ||
-    isNative(card) ||
     // if we have metadata for the db, check if it supports pivots
     (question.database() && !question.database().supportsPivots())
   ) {
@@ -124,8 +123,8 @@ export async function runQuestionQuery(
       datasetQueryWithParameters,
       cancelDeferred
         ? {
-            cancelled: cancelDeferred.promise,
-          }
+          cancelled: cancelDeferred.promise,
+        }
         : {},
     );
   };
