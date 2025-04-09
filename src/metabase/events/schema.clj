@@ -45,7 +45,7 @@
 
 (def user-hydrate
   "Hydrate user information when sending system event notifications."
-  [:model/User :first_name :last_name :email])
+  [:model/User :id :first_name :last_name :email])
 
 ;; collection events
 
