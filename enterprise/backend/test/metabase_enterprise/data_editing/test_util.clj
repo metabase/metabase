@@ -76,7 +76,7 @@
            (deref [_] table-id)
            (close [_] (cleanup))))
        (catch Exception e
-         (try (cleanup) (catch Exception _))
+         (try (cleanup) (catch Exception cleanup-ex (.addSuppressed e cleanup-ex)))
          (throw e))))))
 
 (defmacro with-temp-test-db!
