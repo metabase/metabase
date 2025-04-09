@@ -338,7 +338,9 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       H.modal().findByLabelText("Sort").should("have.text", "Custom");
 
-      cy.log("should allow predefined order afterwards (metabase#56482)");
+      cy.log(
+        "should allow switching to predefined order afterwards (metabase#56482)",
+      );
       setTableOrder("Database");
 
       H.modal()
@@ -346,6 +348,22 @@ describe("scenarios > admin > datamodel > editor", () => {
         .should(($items) => {
           expect($items[0].textContent).to.equal("ID");
           expect($items[1].textContent).to.equal("Ean");
+        });
+
+      cy.log("should allow drag & drop afterwards (metabase#56482)"); // extra sanity check
+      H.moveDnDKitElement(H.modal().findByLabelText("ID"), {
+        vertical: 50,
+      });
+      cy.wait("@updateFieldOrder");
+
+      cy.log("should not show loading state after an update (metabase#56482)");
+      cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
+
+      H.modal()
+        .findAllByRole("listitem")
+        .should(($items) => {
+          expect($items[0].textContent).to.equal("Ean");
+          expect($items[1].textContent).to.equal("ID");
         });
     });
 
