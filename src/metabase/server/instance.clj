@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.server.protocols :as server.protocols]
+   [metabase.server.statistics-handler :as statistics-handler]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [ring.adapter.jetty :as ring-jetty]
@@ -14,8 +15,7 @@
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
    (org.eclipse.jetty.ee9.nested Request)
    (org.eclipse.jetty.ee9.servlet ServletHandler ServletContextHandler)
-   (org.eclipse.jetty.server Server)
-   (org.eclipse.jetty.server.handler StatisticsHandler)))
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -101,11 +101,10 @@
         handler         (async-proxy-handler handler timeout)
         servlet-handler (doto (ServletContextHandler.)
                           (.setAllowNullPathInfo true)
-                          (.setServletHandler handler))
-        stats-handler   (doto (StatisticsHandler.)
-                          (.setHandler servlet-handler))]
+                          (.insertHandler (statistics-handler/new-handler))
+                          (.setServletHandler handler))]
     (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
-      (.setHandler stats-handler))))
+      (.setHandler servlet-handler))))
 
 (defn start-web-server!
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a

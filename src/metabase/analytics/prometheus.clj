@@ -15,7 +15,6 @@
    [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics.settings :refer [prometheus-server-port]]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -24,15 +23,11 @@
    [ring.adapter.jetty :as ring-jetty])
   (:import
    (io.prometheus.client Collector
-                         Collector$Type
-                         GaugeMetricFamily
-                         Collector$MetricFamilySamples
-                         Collector$MetricFamilySamples$Sample)
+                         GaugeMetricFamily)
    (io.prometheus.client.hotspot GarbageCollectorExports MemoryPoolsExports StandardExports ThreadExports)
-   (java.util ArrayList Collections List)
+   (java.util ArrayList List)
    (javax.management ObjectName)
-   (org.eclipse.jetty.server Server)
-   (org.eclipse.jetty.server.handler StatisticsHandler)))
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -191,86 +186,43 @@
    (prometheus/gauge :metabase_application/jvm_allocation_rate
                      {:description "Heap allocation rate in bytes/sec."})])
 
-(defn- jetty-stats->map
-  [^StatisticsHandler stats-handler]
-  {:requests_total (.getRequestTotal stats-handler)
-   :requests_active (.getRequestsActive stats-handler)
-   :requests_active_max (.getRequestsActiveMax stats-handler)
-   :request_time_max_seconds (.getRequestTimeMax stats-handler)
-   :request_time_seconds_total (.getRequestTimeTotal stats-handler)
-   :dispatched_total (.getHandleTotal stats-handler)
-   :dispatched_active (.getHandleActive stats-handler)
-   :dispatched_active_max (.getHandleActiveMax stats-handler)
-   :dispatched_time_max (.getHandleTimeMax stats-handler)
-   :dispatched_time_seconds_total (.getHandleTimeTotal stats-handler)
-   :responses_total {:1xx (.getResponses1xx stats-handler)
-                     :2xx (.getResponses2xx stats-handler)
-                     :3xx (.getResponses3xx stats-handler)
-                     :4xx (.getResponses4xx stats-handler)
-                     :5xx (.getResponses5xx stats-handler)}
-   :stats_seconds (.. stats-handler getStatisticsDuration getSeconds)
-   :responses_bytes_total (.getBytesWritten stats-handler)})
-
-(def ^:private jetty-stats
-  {:requests_total {:description "Number of requests" :type :counter}
-   :requests_active {:description "Number of requests currently active" :type :gauge}
-   :requests_active_max {:description "Maximum number of requests that have been active at once" :type :gauge}
-   :request_time_max_seconds {:description "Maximum time spent executing a request" :type :gauge}
-   :request_time_seconds_total {:description "Total time spent executing requests" :type :counter}
-   :dispatched_total {:description "Number of requests handled" :type :counter}
-   :dispatched_active {:description  "Number of active requests being handled" :type :gauge}
-   :dispatched_active_max {:description "Maximum number of active requests being handled" :type :gauge}
-   :dispatched_time_max {:description  "Maximum time spent handling a request" :type :gauge}
-   :dispatched_time_seconds_total {:description "Total time spent handling requests" :type :counter}
-   :responses_total {:description "Total responses grouped by status code" :type :counter}
-   :stats_seconds {:description  "Time in seconds stats have been collected for" :type :gauge}
-   :responses_bytes_total {:description  "Total number of bytes across all responses" :type :counter}})
-
-(defn- jetty-stats-collected
-  [^StatisticsHandler stats-handler]
-  (let [stats (jetty-stats->map stats-handler)
-        array (ArrayList. (count stats))]
-    (doseq [[stat value] stats]
-      (let [{:keys [description type]} (stat jetty-stats)
-            metric-name (str "jetty_" (name stat))
-            metric-type (case type
-                          :counter Collector$Type/COUNTER
-                          :gauge   Collector$Type/GAUGE)
-            metric-value (if (map? value)
-                           (let [value-array (ArrayList. (count value))]
-                             (doseq [[code code-value] value]
-                               (.add value-array
-                                     (Collector$MetricFamilySamples$Sample.
-                                      metric-name
-                                      (Collections/singletonList "code")
-                                      (Collections/singletonList (name code))
-                                      code-value)))
-                             value-array)
-                           (Collections/singletonList (Collector$MetricFamilySamples$Sample.
-                                                       metric-name
-                                                       Collections/EMPTY_LIST
-                                                       Collections/EMPTY_LIST
-                                                       value)))]
-        (.add array (Collector$MetricFamilySamples. metric-name
-                                                    metric-type
-                                                    description
-                                                    metric-value))))
-    array))
-
-(defn- jetty-stats-collector
-  [^StatisticsHandler stats-handler]
-  (proxy [Collector] []
-    (collect
-      ([] (jetty-stats-collected stats-handler))
-      ([_] (jetty-stats-collected stats-handler)))))
-
 (defn- jetty-collectors
   []
-  ;; when in dev you might not have a server setup
-  (when (server/instance)
-    [(collector/named {:namespace "metabase_webserver"
-                       :name      "jetty_stats"}
-                      (jetty-stats-collector (.getHandler (server/instance))))]))
+  [(prometheus/counter :jetty/requests-total
+                       {:description "Number of requests"})
+   (prometheus/gauge :jetty/requests-active
+                     {:description "Number of requests currently active"})
+   (prometheus/gauge :jetty/requests-max
+                     {:description "Maximum number of requests that have been active at once"})
+   (prometheus/gauge :jetty/request-time-max-seconds
+                     {:description "Maximum time spent executing a request"})
+   (prometheus/counter :jetty/request-time-seconds-total
+                       {:description "Total time spent executing requests"})
+   (prometheus/counter :jetty/dispatched-total
+                       {:description "Number of requests handled"})
+   (prometheus/gauge :jetty/dispatched-active
+                     {:description "Number of active requests being handled"})
+   (prometheus/gauge :jetty/dispatched-active-max
+                     {:descrption "Maximum number of active requests handled"})
+   (prometheus/gauge :jetty/dispatched-time-max
+                     {:description "Maximum time spent dispatching a request"})
+   (prometheus/counter :jetty/dispatched-time-seconds-total
+                       {:descrption "Total time spent handling requests"})
+   (prometheus/counter :jetty/async-requests-total
+                       {:descrption "Totql number of async requests"})
+   (prometheus/gauge :jetty/async-requests-waiting
+                     {:description "Currently waiting async requests"})
+   (prometheus/gauge :jetty/async-requests-waiting-max
+                     {:description "Maximum number of waiting async requests"})
+   (prometheus/counter :jetty/async-dispatches-total
+                       {:description "Number of requests that have been asynchronously dispatched"})
+   (prometheus/counter :jetty/expires-total
+                       {:descpription "Number of async requests that have expired"})
+   (prometheus/counter :jetty/responses-total
+                       {:descrption "Total response grouped by status code"
+                        :labels [:code]})
+   (prometheus/counter :jetty/responses-bytes-total
+                       {:description "Total number of bytes across all responses"})])
 
 (defn- product-collectors
   []
