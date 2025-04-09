@@ -30,8 +30,8 @@
         (a/go
           (.setStatus response status-code)
           (.setContentLength response 0)
-          (a/<!! chan-finish-handle)
           (.. response getOutputStream close)
+          (a/<!! chan-finish-handle)
           (.complete async-context))
         (a/<!! chan-finish-handle)))))
 
@@ -48,7 +48,7 @@
 
 (defn- waiting-wrapper
   "Sits above the statistics handler so we can wait for the handler to finish in tests"
-  ^HandlerWrapper [chan-done]
+  ^HandlerWrapper [chan-done-request]
   (proxy [HandlerWrapper] []
     (handle [^String path ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
       (try
@@ -56,8 +56,8 @@
         (finally
           (let [state (.getHttpChannelState base-request)]
             (when (and (.isInitial state) (.isAsyncStarted state))
-              (.addListener state (on-complete-listener chan-done)))
-            (a/>!! chan-done :done)))))))
+              (.addListener state (on-complete-listener chan-done-request))))
+          (a/>!! chan-done-request :done))))))
 
 (defn- do-with-server
   ^LocalConnector [status-code async? thunk]
@@ -164,13 +164,12 @@
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/dispatched-active-max)))
           (a/>!! chan-finish-handle :done) ;; finish the synchronous handler
           (a/<!! chan-done-request) ;; finished the synchronous wrapper
-
-          (a/>!! chan-finish-handle :done) ;; finish the async thread
           (is (prometheus-test/approx= 0 (mt/metric-value system :jetty/dispatched-active)))
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/requests-active)))
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/async-requests-waiting-max)))
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/async-requests-total)))
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/async-requests-waiting)))
+          (a/>!! chan-finish-handle :done) ;; finish the async thread
           (a/<!! chan-done-request) ;; finished the async listener
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/async-requests-waiting-max)))
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/async-requests-total)))
@@ -192,12 +191,12 @@
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/dispatched-active-max)))
           (a/>!! chan-finish-handle :done)
           (a/<!! chan-done-request)
-          (a/>!! chan-finish-handle :done) ;; finish the async thread
           (is (prometheus-test/approx= 0 (mt/metric-value system :jetty/dispatched-active)))
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/requests-active)))
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/async-requests-waiting-max)))
           (is (prometheus-test/approx= 2 (mt/metric-value system :jetty/async-requests-total)))
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/async-requests-waiting)))
+          (a/>!! chan-finish-handle :done) ;; finish the async thread
           (a/<!! chan-done-request)
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/async-requests-waiting-max)))
           (is (prometheus-test/approx= 2 (mt/metric-value system :jetty/async-requests-total)))
@@ -215,7 +214,7 @@
           (a/>!! chan-finish-handle :done)
           (a/<!! chan-done-request)
           (a/>!! chan-finish-handle :done) ;; finish the async thread
-          (a/<!! chan-done-request)
+          (a/<!! chan-done-request)        ;; finished the outer async listener
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/responses-total {:code "3xx"})))))
       (testing "when server responds 500"
         (with-server 500 true
@@ -225,5 +224,5 @@
           (a/>!! chan-finish-handle :done)
           (a/<!! chan-done-request)
           (a/>!! chan-finish-handle :done) ;; finish the async thread
-          (a/<!! chan-done-request)
+          (a/<!! chan-done-request)        ;; finished the outer async listener
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/responses-total {:code "5xx"}))))))))
