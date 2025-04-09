@@ -552,6 +552,12 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
+export const UPDATE_CARD_DATA = "metabase/dashboard/UPDATE_CARD_DATA";
+export const updateCardData = createAction(
+  UPDATE_CARD_DATA,
+  (cardId, dashcardId, result) => ({ payload: { cardId, dashcardId, result } }),
+);
+
 export const SET_EDITING_DASHCARD_DATA =
   "metabase/dashboard/SET_EDITING_DASHCARD_DATA";
 export const setEditingDashcardData = createAction(
