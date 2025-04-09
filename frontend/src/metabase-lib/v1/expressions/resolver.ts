@@ -28,9 +28,11 @@ export function resolve({
   expression,
   type = "expression",
   fn,
-}: Options<Lib.ExpressionParts | Lib.ExpressionArg>):
+}: Options<Lib.ExpressionParts>):
   | Lib.ExpressionParts
-  | Lib.ExpressionArg {
+  | Lib.ColumnMetadata
+  | Lib.MetricMetadata
+  | Lib.SegmentMetadata {
   if (!Lib.isExpressionParts(expression) || expression.operator === "value") {
     return expression;
   }
@@ -76,6 +78,9 @@ export function resolve({
     args: args.map((operand, index, args) => {
       if (index >= clause.args.length && !clause.multiple) {
         // as-is, optional object for e.g. ends-with, time-interval, etc
+        return operand;
+      }
+      if (!Lib.isExpressionParts(operand)) {
         return operand;
       }
       return resolve({
