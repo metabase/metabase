@@ -297,6 +297,10 @@ describe("scenarios > admin > datamodel > editor", () => {
         vertical: 50,
       });
       cy.wait("@updateFieldOrder");
+
+      cy.log("should not show loading state after an update (metabase#56482)");
+      cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
+
       H.modal().findByLabelText("Sort").should("have.text", "Custom");
       H.openProductsTable();
       assertTableHeader([
