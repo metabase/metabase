@@ -510,7 +510,9 @@ describe("scenarios > filters > bulk filtering", () => {
     it("adds multiple is text filters", () => {
       H.popover().within(() => {
         cy.findByText("City").click();
-        cy.findByLabelText("Filter value").type("Indiantown,Indian Valley");
+        cy.findByLabelText("Filter value")
+          .type("Indiantown,Indian Valley")
+          .blur();
         cy.button("Add filter").click();
       });
       applyFilters();
