@@ -37,7 +37,6 @@ export const DataImporter = ({ className }: { className?: string }) => {
   return (
     <Box
       className={`${className} ${S.DataImporter}`}
-      bg="var(--mb-color-bg)"
       style={{ height: "100%" }}
       data-testid="visualizer-data-importer"
     >
