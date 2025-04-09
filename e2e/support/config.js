@@ -66,6 +66,10 @@ const defaultConfig = {
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
 
+    // CLI grep can't handle commas in the name
+    // needed when we want to run only specific tests
+    config.env.grep ??= process.env.GREP;
+
     // cypress-terminal-report
     if (isCI) {
       installLogsPrinter(on, {
