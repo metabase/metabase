@@ -9,6 +9,6 @@ export function getDefaultDisplayOptions(
     background: true,
     bordered: true,
     titled: true,
-    downloads: shouldShownDownloadData ? true : null,
+    downloads: shouldShownDownloadData ? { pdf: true, results: true } : null,
   };
 }
