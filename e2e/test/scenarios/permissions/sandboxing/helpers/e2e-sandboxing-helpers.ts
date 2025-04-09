@@ -477,7 +477,7 @@ export function rowsShouldContainGizmosAndWidgets({
   questions,
 }: {
   responses: DatasetResponse[];
-  questions: CollectionItem[];
+  questions: SimpleCollectionItem[];
 }) {
   expect(responses.length).to.equal(questions.length);
   responses.forEach((response) => {
@@ -715,7 +715,7 @@ export const assertAllResultsAndValuesAreSandboxed = (
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) => {
     rowsShouldContainOnlyOneCategory({
       responses: [response],
-      questions: [adhocQuestionData as unknown as CollectionItem],
+      questions: [adhocQuestionData as unknown as SimpleCollectionItem],
       productCategory,
     });
   });
@@ -737,7 +737,7 @@ export const resultsShouldBeCached = (responses: DatasetResponse[]) => {
   return cy.wrap(responses);
 };
 
-export const cacheUnsandboxedResults = (questions: CollectionItem[]) => {
+export const cacheUnsandboxedResults = (questions: SimpleCollectionItem[]) => {
   const simpleCacheConfiguration: CacheConfig = {
     model: "root",
     model_id: 0,
@@ -760,7 +760,7 @@ export const cacheUnsandboxedResults = (questions: CollectionItem[]) => {
 
 export const runWithoutCachingThenWithCaching = (
   callback: (props: { isCachingEnabled?: boolean }) => void,
-  { questions }: { questions: CollectionItem[] },
+  { questions }: { questions: SimpleCollectionItem[] },
 ) => {
   callback({ isCachingEnabled: false });
   signInAsAdmin().then(() => {
