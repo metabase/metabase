@@ -92,12 +92,24 @@ const customViews = [questionCustomView, modelCustomView];
 
 const savedQuestion: StructuredQuestionDetails = {
   name: "Question showing all products",
-  query: baseQuery,
+  query: {
+    ...baseQuery,
+    fields: [
+      ["field", PRODUCTS.CATEGORY, null],
+      ["field", PRODUCTS.VENDOR, null],
+    ],
+  },
 };
 
 const model: StructuredQuestionDetails = {
   name: "Model showing all products",
-  query: baseQuery,
+  query: {
+    ...baseQuery,
+    fields: [
+      ["field", PRODUCTS.CATEGORY, null],
+      ["field", PRODUCTS.VENDOR, null],
+    ],
+  },
   type: "model",
 };
 
@@ -128,6 +140,7 @@ const ordersImplicitlyJoinedToProducts: StructuredQuestionDetails = {
   name: "Question with Orders implicitly joined to Products",
   query: {
     "source-table": ORDERS_ID,
+    limit: 20,
     fields: [
       [
         "field",
@@ -174,6 +187,11 @@ export const adhocQuestionData = {
     query: {
       "source-table": PRODUCTS_ID,
       filter: [">", ["field", PRODUCTS.PRICE, null], 50],
+      fields: [
+        ["field", PRODUCTS.CATEGORY, null],
+        ["field", PRODUCTS.VENDOR, null],
+        ["field", PRODUCTS.PRICE, null],
+      ],
     },
     limit: 20,
   },
@@ -249,7 +267,13 @@ export const createSandboxingDashboardAndQuestions = () => {
       H.createQuestionAndAddToDashboard(
         {
           name: "Question with custom columns",
-          query: baseQuery,
+          query: {
+            ...baseQuery,
+            fields: [
+              ["field", PRODUCTS.CATEGORY, null],
+              ["field", PRODUCTS.VENDOR, null],
+            ],
+          },
           collection_id: collectionId,
         },
         dashboard.id,
@@ -542,7 +566,7 @@ export function rowsShouldContainOnlyOneCategory({
     // With implicit joins, some rows might have a null product. That's OK.
     const categoriesAreValid =
       categoriesPresent === `["${productCategory}"]` ||
-      categoriesPresent === `["${productCategory}",null]`;
+      categoriesPresent === `["${productCategory}","null"]`;
 
     expect(
       categoriesAreValid,
