@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-editing.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-editing.api]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -22,6 +23,11 @@
 
 (defn- table-url [table-id]
   (format "ee/data-editing/table/%d" table-id))
+
+(use-fixtures :each
+  (fn [f]
+    (mt/with-dynamic-fn-redefs [metabase-enterprise.data-editing.api/require-authz? (constantly true)]
+      (f))))
 
 (deftest feature-flag-required-test
   (mt/with-premium-features #{}
