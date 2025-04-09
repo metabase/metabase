@@ -503,21 +503,24 @@ export function rowsShouldContainOnlyOneCategory({
   responses.forEach((response) => {
     const { questionName } = getQuestionName(response, questions);
     cy.log(`Results contain only ${productCategory}s in: ${questionName}`);
-    expect(
-      response?.body.data.is_sandboxed,
-      `Response is sandboxed for: ${questionName}`,
-    ).to.be.true;
 
     expect(
       JSON.stringify(response.body),
       `No error in ${questionName}`,
     ).not.to.contain("stacktrace");
 
+    expect(
+      response?.body.data.is_sandboxed,
+      `Response is sandboxed for: ${questionName}`,
+    ).to.be.true;
+
     cy.log(`Results contain only ${productCategory}s in: ${questionName}`);
 
     const rows = response.body.data.rows;
 
-    const groupedByCategory = _.groupBy(rows, (row) => row[3] as string);
+    const groupedByCategory = _.groupBy(rows, (row) => row[0] as string);
+    console.log("@m9abl5ts", "groupedByCategory", groupedByCategory);
+
     productCategories.forEach((category) => {
       if (category !== productCategory) {
         expect(
