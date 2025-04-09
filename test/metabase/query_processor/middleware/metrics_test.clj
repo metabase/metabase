@@ -17,13 +17,11 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.log :as log]))
+   [metabase.util.date-2 :as u.date]))
 
 (def ^:private counter (atom 2000))
 
