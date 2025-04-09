@@ -31,7 +31,6 @@ const ChartSettingsWidgetList = ({
       {},
     );
 
-    console.log(widgets);
     return Object.keys(groupedWidgets).map((group, groupIndex, groups) => {
       const lastGroup = groupIndex === groups.length - 1;
       return (

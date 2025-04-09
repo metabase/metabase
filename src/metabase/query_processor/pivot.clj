@@ -613,16 +613,21 @@
   [query breakout-cols]
   (reduce lib/breakout query breakout-cols))
 
+;; TODO: figure out a more reliable way to nest this
 (defn- nest-query
   "Converts a pivot query into a form that selects the raw data as a subquery (with row limit and ordering) and applies
   the aggregations and breakout to the outer query."
   [query]
   (-> query
       (assoc-in [:query :source-query]
-                (select-keys (:query query) [:source-table :source-query :limit :order-by]))
+                (select-keys (:query query) [:source-table :source-query :limit :order-by :aggregation :aggregation-idents :breakout :breakout-idents]))
       (m/dissoc-in [:query :source-table])
       (m/dissoc-in [:query :limit])
-      (m/dissoc-in [:query :order-by])))
+      (m/dissoc-in [:query :order-by])
+      (m/dissoc-in [:query :aggregation])
+      (m/dissoc-in [:query :aggregation-idents])
+      (m/dissoc-in [:query :breakout])
+      (m/dissoc-in [:query :breakout-idents])))
 
 (defn- original-cols
   [query]
@@ -672,14 +677,14 @@
                new-pivot-cols    (filter some? (:new_pivot_cols query))
                original-query    query
                query'            (lib/query (qp.store/metadata-provider)
-                                            (-> query
-                                                (dissoc :new_pivot_rows :new_pivot_cols)
-                                                nest-query))
+                                   (-> query
+                                       (dissoc :new_pivot_rows :new_pivot_cols)
+                                       nest-query))
                query             (outer-query-with-breakouts query' new-pivot-rows new-pivot-cols)
                query             (-> query
                                      (assoc-in [:middleware :pivot-options] {:pivot-rows new-pivot-rows
                                                                              :pivot-cols new-pivot-cols
-                                                                             :pivot-measures ["COUNT"]})
+                                                                             :pivot-measures ["count"]})
                                      (assoc :non-pivoted-cols (original-cols original-query)))
                all-queries       (generate-queries query {})
                column-mapping-fn (make-column-mapping-fn query)]
