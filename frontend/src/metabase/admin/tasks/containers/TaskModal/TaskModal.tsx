@@ -47,16 +47,14 @@ export const TaskModal = ({ params }: Props) => {
         pos="relative"
       >
         <CodeBlock
-          basicSetup={{
-            /**
-             * Hide line numbers when there's only one line:
-             * - Not useful in this case
-             * - Prevents confusion about whether it's part of the log output
-             */
-            lineNumbers: linesCount > 1,
-          }}
           code={code}
           language="json"
+          /**
+           * Hide line numbers when there's only one line:
+           * - Not useful in this case
+           * - Prevents confusion about whether it's part of the log output
+           */
+          lineNumbers={linesCount > 1}
         />
 
         <Box p="sm" pos="absolute" right={0} top={0}>

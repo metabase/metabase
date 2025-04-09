@@ -1,8 +1,5 @@
 import { syntaxHighlighting } from "@codemirror/language";
-import CodeMirror, {
-  type BasicSetupOptions,
-  type ReactCodeMirrorRef,
-} from "@uiw/react-codemirror";
+import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useMemo, useRef } from "react";
 
@@ -19,17 +16,17 @@ import {
 } from "./utils";
 
 export type CodeBlockProps = {
-  basicSetup?: BasicSetupOptions;
   code: string;
   language: CodeLanguage;
+  lineNumbers?: boolean;
   className?: string;
   highlightRanges?: { start: number; end: number }[];
 };
 
 export function CodeBlock({
-  basicSetup,
   code,
   language,
+  lineNumbers = true,
   className,
   highlightRanges,
 }: CodeBlockProps) {
@@ -51,11 +48,10 @@ export function CodeBlock({
     <CodeMirror
       ref={ref}
       basicSetup={{
-        lineNumbers: true,
+        lineNumbers,
         foldGutter: false,
         highlightActiveLine: false,
         highlightActiveLineGutter: false,
-        ...basicSetup,
       }}
       value={code}
       extensions={extensions}
