@@ -37,14 +37,14 @@ interface OwnProps {
 
 interface Props extends OwnProps {
   error: unknown;
-  loading: boolean;
+  fetched: boolean;
   table?: Table;
 }
 
 const FieldOrderSidesheetBase = ({
   error,
+  fetched,
   isOpen,
-  loading,
   table,
   onClose,
 }: Props) => {
@@ -60,6 +60,7 @@ const FieldOrderSidesheetBase = ({
   );
   const sortedItems = useMemo(() => sortItems(items, order), [items, order]);
   const isDragDisabled = sortedItems.length <= 1;
+  const isLoading = !fetched; // matches condition from EntityObjectLoader
 
   const handleSortEnd = ({ itemIds }: DragEndEvent) => {
     setCustomOrder(itemIds);
@@ -70,10 +71,10 @@ const FieldOrderSidesheetBase = ({
     dispatch(Tables.actions.updateProperty(table, "field_order", value));
   };
 
-  if (loading || error || !table) {
+  if (isLoading || error || !table) {
     return (
       <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
-        <LoadingAndErrorWrapper error={error} loading={loading} />
+        <LoadingAndErrorWrapper error={error} loading={isLoading} />
       </Sidesheet>
     );
   }
