@@ -558,6 +558,37 @@ describe("scenarios > admin > datamodel > metadata", () => {
     });
   });
 
+  it("semantic picker should not overflow the screen on smaller viewports (metabase#56442)", () => {
+    const viewportHeight = 400;
+
+    cy.viewport(1280, viewportHeight);
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    cy.findAllByTestId("admin-metadata-table-list-item")
+      .contains("Reviews")
+      .scrollIntoView()
+      .click();
+    cy.findByTestId("column-ID")
+      .scrollIntoView()
+      .findByPlaceholderText("Select a semantic type")
+      .click();
+
+    H.popover().scrollTo("top");
+    H.popover()
+      .findByText("Entity Key")
+      .should(($element) => {
+        const rect = $element[0].getBoundingClientRect();
+        expect(rect.top).greaterThan(0);
+      });
+
+    H.popover().scrollTo("bottom");
+    H.popover()
+      .findByText("No semantic type")
+      .should(($element) => {
+        const rect = $element[0].getBoundingClientRect();
+        expect(rect.bottom).lessThan(viewportHeight);
+      });
+  });
+
   it("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
     cy.visit(
       `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}/field/${REVIEWS.RATING}/general`,
