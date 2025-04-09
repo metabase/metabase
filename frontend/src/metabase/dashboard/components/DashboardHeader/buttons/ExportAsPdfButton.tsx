@@ -10,19 +10,10 @@ import { useDispatch } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { Button, Icon } from "metabase/ui";
-import {
-  getExportTabAsPdfButtonText,
-  saveDashboardPdf,
-} from "metabase/visualizations/lib/save-dashboard-pdf";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { Dashboard } from "metabase-types/api";
 
-export const ExportAsPdfButton = ({
-  dashboard,
-  color,
-}: {
-  dashboard: Dashboard;
-  color?: string;
-}) => {
+export const ExportAsPdfButton = ({ dashboard }: { dashboard: Dashboard }) => {
   const dispatch = useDispatch();
 
   const saveAsPDF = () => {
@@ -47,11 +38,10 @@ export const ExportAsPdfButton = ({
     <Button
       variant="subtle"
       px="0.5rem"
-      leftSection={<Icon name="document" />}
-      color={color || "text-dark"}
+      color="text-dark"
       onClick={() => dispatch(saveAsPDF)}
     >
-      {getExportTabAsPdfButtonText(dashboard.tabs)}
+      <Icon name="download" />
     </Button>
   );
 };
