@@ -81,31 +81,31 @@ function compileRoot(
   const result = compileNode(node.children[0], opts);
   if (isStringLiteral(result)) {
     return {
-      operator: "value" as Lib.ExpressionOperator,
+      operator: "value",
       options: { "base-type": "type/Text" },
       args: [result],
     };
   } else if (isBooleanLiteral(result)) {
     return {
-      operator: "value" as Lib.ExpressionOperator,
+      operator: "value",
       options: { "base-type": "type/Boolean" },
       args: [result],
     };
   } else if (isIntegerLiteral(result)) {
     return {
-      operator: "value" as Lib.ExpressionOperator,
+      operator: "value",
       options: { "base-type": "type/Integer" },
       args: [result],
     };
   } else if (isFloatLiteral(result)) {
     return {
-      operator: "value" as Lib.ExpressionOperator,
+      operator: "value",
       options: { "base-type": "type/Float" },
       args: [result],
     };
   } else if (isBigIntLiteral(result)) {
     return {
-      operator: "value" as Lib.ExpressionOperator,
+      operator: "value",
       options: { "base-type": "type/BigInteger" },
       args: [result],
     };
