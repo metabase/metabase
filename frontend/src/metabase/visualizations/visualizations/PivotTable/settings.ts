@@ -73,75 +73,75 @@ export const settings = {
       return { rows, value };
     },
   },
-  [COLUMN_SPLIT_SETTING]: {
-    section: t`Columns`,
-    widget: "fieldsPartition",
-    persistDefault: true,
-    getHidden: ([{ data }]: [{ data: DatasetData }]) =>
-      // hide the setting widget if there are invalid columns
-      !data || data.cols.some((col) => !isColumnValid(col)),
-    getProps: (
-      [{ data }]: [{ data: DatasetData }],
-      settings: VisualizationSettings,
-    ) => ({
-      value: migratePivotColumnSplitSetting(
-        settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
-        data?.cols ?? [],
-      ),
-      partitions,
-      columns: data == null ? [] : data.cols,
-      settings,
-      getColumnTitle: (column: DatasetColumn) => {
-        return getTitleForColumn(column, settings);
-      },
-    }),
-    getValue: (
-      [{ data }]: [{ data: DatasetData; card: Card }],
-      settings: Partial<VisualizationSettings> = {},
-    ) => {
-      const storedValue = settings[COLUMN_SPLIT_SETTING];
-      if (data == null) {
-        return undefined;
-      }
-      const columnsToPartition = data.cols.filter(
-        (col) => !isPivotGroupColumn(col),
-      );
-      let setting: PivotTableColumnSplitSetting;
-      if (storedValue == null) {
-        const [dimensions, values] = _.partition(
-          columnsToPartition,
-          isDimension,
-        );
-        const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
-          getIn(col, ["fingerprint", "global", "distinct-count"]),
-        );
-
-        let rows;
-        let columns: DatasetColumn[];
-
-        if (dimensions.length < 2) {
-          columns = [];
-          rows = [first];
-        } else if (dimensions.length <= 3) {
-          columns = [first];
-          rows = [second, ...rest];
-        } else {
-          columns = [first, second];
-          rows = rest;
-        }
-        setting = _.mapObject({ rows, columns, values }, (cols) =>
-          cols.map((col) => col.name),
-        );
-      } else {
-        setting = updateValueWithCurrentColumns(
-          storedValue,
-          columnsToPartition,
-        );
-      }
-
-      return addMissingCardBreakouts(setting, columnsToPartition);
-    },
-  },
+  // [COLUMN_SPLIT_SETTING]: {
+  //   section: t`Columns`,
+  //   widget: "fieldsPartition",
+  //   persistDefault: true,
+  //   getHidden: ([{ data }]: [{ data: DatasetData }]) =>
+  //     // hide the setting widget if there are invalid columns
+  //     !data || data.cols.some((col) => !isColumnValid(col)),
+  //   getProps: (
+  //     [{ data }]: [{ data: DatasetData }],
+  //     settings: VisualizationSettings,
+  //   ) => ({
+  //     value: migratePivotColumnSplitSetting(
+  //       settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
+  //       data?.cols ?? [],
+  //     ),
+  //     partitions,
+  //     columns: data == null ? [] : data.cols,
+  //     settings,
+  //     getColumnTitle: (column: DatasetColumn) => {
+  //       return getTitleForColumn(column, settings);
+  //     },
+  //   }),
+  //   getValue: (
+  //     [{ data }]: [{ data: DatasetData; card: Card }],
+  //     settings: Partial<VisualizationSettings> = {},
+  //   ) => {
+  //     const storedValue = settings[COLUMN_SPLIT_SETTING];
+  //     if (data == null) {
+  //       return undefined;
+  //     }
+  //     const columnsToPartition = data.cols.filter(
+  //       (col) => !isPivotGroupColumn(col),
+  //     );
+  //     let setting: PivotTableColumnSplitSetting;
+  //     if (storedValue == null) {
+  //       const [dimensions, values] = _.partition(
+  //         columnsToPartition,
+  //         isDimension,
+  //       );
+  //       const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
+  //         getIn(col, ["fingerprint", "global", "distinct-count"]),
+  //       );
+  //
+  //       let rows;
+  //       let columns: DatasetColumn[];
+  //
+  //       if (dimensions.length < 2) {
+  //         columns = [];
+  //         rows = [first];
+  //       } else if (dimensions.length <= 3) {
+  //         columns = [first];
+  //         rows = [second, ...rest];
+  //       } else {
+  //         columns = [first, second];
+  //         rows = rest;
+  //       }
+  //       setting = _.mapObject({ rows, columns, values }, (cols) =>
+  //         cols.map((col) => col.name),
+  //       );
+  //     } else {
+  //       setting = updateValueWithCurrentColumns(
+  //         storedValue,
+  //         columnsToPartition,
+  //       );
+  //     }
+  //
+  //     return addMissingCardBreakouts(setting, columnsToPartition);
+  //   },
+  // },
   "pivot.rows": {
     section: t`Columns`,
     title: t`Pivot rows`,
@@ -153,7 +153,7 @@ export const settings = {
     getProps: ([{ card, data }]: RawSeries) => {
       const cols = data?.cols ?? [];
       const options = cols
-        .filter(getDefaultDimensionFilter(card.display))
+        // .filter(getDefaultDimensionFilter(card.display))
         .map(getOptionFromColumn);
       return {
         options,
@@ -174,7 +174,7 @@ export const settings = {
     getProps: ([{ card, data }]: RawSeries) => {
       const cols = data?.cols ?? [];
       const options = cols
-        .filter(getDefaultDimensionFilter(card.display))
+        // .filter(getDefaultDimensionFilter(card.display))
         .map(getOptionFromColumn);
       return {
         options,
