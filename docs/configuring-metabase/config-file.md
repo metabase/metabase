@@ -173,7 +173,7 @@ api-keys:
 {% endraw %}
 ```
 
-See below for more on [env vars in the config file](#referring-to-environment-variables-in-the-configyml).
+See below for more on [environment variables in the config file](#referring-to-environment-variables-in-the-configyml).
 
 API keys that you create (the value of the `key`) must have the format `mb_` followed by a [Base64](https://en.wikipedia.org/wiki/Base64) string (if you're wearing formal attire, you'd say a _tetrasexagesimal_ string). So, `mb_` followed by letters and numbers, minimum: 12 characters, maximum: 254 characters. Concretely, the API key you create must satisfy the following regular expression: `mb_[A-Za-z0-9+/=]+`.
 
@@ -209,7 +209,7 @@ setting: "{{ env POSTGRES_TEST_DATA_PASSWORD }}"
 {% endraw %}
 ```
 
-Note the quote marks wrapping the env var template `{% raw %}"{{ env API_KEY_FROM_ENV }}"{% endraw %}`; if you don't include the quotes, the YAML parser won't know it's a string template for Metabase to expand, and Metabase won't know to swap in the env var's value.
+Note the quote marks wrapping the template `{% raw %}"{{ env API_KEY_FROM_ENV }}"{% endraw %}`; if you don't include the quotes, the YAML parser won't know it's a string template for Metabase to expand, and Metabase won't know to swap in the env var's value.
 
 Metabase doesn't support recursive expansion, so if one of your environment variables references _another_ environment variable, you're going to have a bad time.
 
