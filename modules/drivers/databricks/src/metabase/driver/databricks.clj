@@ -31,6 +31,7 @@
                               :describe-fields                 true
                               :describe-fks                    true
                               :expression-aggregations         true
+                              :expression-literals             true
                               :expressions                     true
                               :native-parameters               true
                               :nested-queries                  true
