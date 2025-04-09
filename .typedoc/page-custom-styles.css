@@ -14,6 +14,9 @@
   }
 
   :root:not([data-theme="dark"]) .tsd-signature {
+    /**
+      To display code in code-blocks with the same colors both on light and dark themes
+    */
     --color-ts-keyword: var(--dark-color-ts-keyword);
     --color-ts-project: var(--dark-color-ts-project);
     --color-ts-module: var(--dark-color-ts-module);
@@ -52,6 +55,9 @@
 }
 
 :root[data-theme='light'] .tsd-signature {
+  /**
+    To display code in code-blocks with the same colors both on light and dark themes
+  */
   --color-ts-keyword: var(--dark-color-ts-keyword);
   --color-ts-project: var(--dark-color-ts-project);
   --color-ts-module: var(--dark-color-ts-module);
