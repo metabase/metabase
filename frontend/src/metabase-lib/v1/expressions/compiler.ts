@@ -3,7 +3,6 @@ import type { Expression } from "metabase-types/api";
 
 import { type ExpressionError, renderError } from "./errors";
 import { type Resolver, fieldResolver } from "./field-resolver";
-import { isLiteral } from "./matchers";
 import { compile, lexify, parse } from "./pratt";
 import { resolve } from "./resolver";
 import type { StartRule } from "./types";
@@ -49,15 +48,19 @@ export function compileExpression({
         })
       : compiled;
 
-    const expressionClause = Lib.isExpressionParts(resolved)
-      ? Lib.expressionClause(resolved.operator, resolved.args, resolved.options)
-      : resolved;
+    const expressionClause = toExpressionClause(query, stageIndex, resolved);
 
     // TODO: implement these passes previously handled by the resolver
     // - adjust booleans pass
 
+    const expression = Lib.legacyExpressionForExpressionClause(
+      query,
+      stageIndex,
+      expressionClause,
+    );
+
     return {
-      expression: legacyExpression({ query, stageIndex, expressionClause }),
+      expression,
       expressionClause,
       error: null,
     };
@@ -70,40 +73,33 @@ export function compileExpression({
   }
 }
 
-function legacyExpression({
-  query,
-  stageIndex,
-  expressionClause,
-}: {
-  query: Lib.Query;
-  stageIndex: number;
-  expressionClause: Lib.ExpressionClause | Lib.ExpressionArg;
-}) {
-  if (isLiteral(expressionClause)) {
-    return expressionClause;
+function toExpressionClause(
+  query: Lib.Query,
+  stageIndex: number,
+  parts:
+    | Lib.ExpressionParts
+    | Lib.ColumnMetadata
+    | Lib.MetricMetadata
+    | Lib.SegmentMetadata,
+): Lib.ExpressionClause {
+  if (Lib.isExpressionParts(parts)) {
+    const { operator, args, options } = parts;
+    return Lib.expressionClause(operator, args, options);
+  }
+  if (
+    Lib.isColumnMetadata(parts) ||
+    Lib.isMetricMetadata(parts) ||
+    Lib.isSegmentMetadata(parts)
+  ) {
+    const [operator, id, options] = Lib.legacyRef(query, stageIndex, parts);
+    const cls = Lib.expressionClause(
+      operator as Lib.ExpressionOperator,
+      [id],
+      options,
+    );
+    return cls;
   }
 
-  const expression = Lib.legacyExpressionForExpressionClause(
-    query,
-    stageIndex,
-    expressionClause,
-  );
-
-  if (Lib.isColumnMetadata(expressionClause) && "id" in expression) {
-    return ["field", expression.id, { "base-type": expression["base-type"] }];
-  }
-  if (Lib.isColumnMetadata(expressionClause) && "name" in expression) {
-    return [
-      "expression",
-      expression.name,
-      { "base-type": expression["base-type"] },
-    ];
-  }
-  if (Lib.isSegmentMetadata(expressionClause)) {
-    return ["segment", expression.id];
-  }
-  if (Lib.isMetricMetadata(expressionClause)) {
-    return ["metric", expression.id];
-  }
-  return expression;
+  // This case shoul be unreachable
+  return Lib.expressionClause("value", [parts]);
 }
