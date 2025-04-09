@@ -225,7 +225,6 @@ password: "{{{ MetaPa$$123{{> }}}"
 
 Note the quote marks in `{% raw %}"{{{ MetaPa$$123{{> }}}" {% endraw %}`.
 
-
 ## Disable initial database sync
 
 When loading a data model from a serialized export, you want to disable the scheduler so that the Metabase doesn't try to sync.
