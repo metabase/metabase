@@ -18,9 +18,9 @@ export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 
 export function multiLevelPivot(data, settings) {
-  if (!settings[COLUMN_SPLIT_SETTING]) {
-    return null;
-  }
+  // if (!settings[COLUMN_SPLIT_SETTING]) {
+  //   return null;
+  // }
 
   // const columnSplit = migratePivotColumnSplitSetting(
   //   settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
@@ -144,7 +144,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
   }
 
   // provide some column metadata to maintain consistency
-  const cols = pivotValues.map(function (value, idx) {
+  const cols = pivotValues.map(function(value, idx) {
     if (idx === 0) {
       // first column is always the coldef of the normal column
       return data.cols[normalCol];

@@ -36,8 +36,6 @@ const ChartSettingFieldsPicker = ({
 
   const isDragDisabled = fields?.length <= 1;
 
-  console.log(fields);
-
   return (
     <div>
       {fields?.length >= 0 ? (
