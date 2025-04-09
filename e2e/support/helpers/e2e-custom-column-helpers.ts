@@ -112,6 +112,7 @@ export const CustomExpressionEditor = {
       // CodeMirror elements in Cypress. realType() would work but some of the formulas
       // contain special characters that are not supported by realType().
       CustomExpressionEditor.get().findByRole("textbox").invoke("text", text);
+      CustomExpressionEditor.type(" {backspace}");
       return CustomExpressionEditor;
     }
 
