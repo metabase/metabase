@@ -209,7 +209,7 @@ setting: "{{ env POSTGRES_TEST_DATA_PASSWORD }}"
 {% endraw %}
 ```
 
-Note the quote marks wrapping the env var template `"{{ env API_KEY_FROM_ENV }}"`; if you don't include the quotes, the YAML parser won't know it's a string template for Metabase to expand, and Metabase won't know to swap in the env var's value.
+Note the quote marks wrapping the env var template `{% raw %}"{{ env API_KEY_FROM_ENV }}"{% endraw %}`; if you don't include the quotes, the YAML parser won't know it's a string template for Metabase to expand, and Metabase won't know to swap in the env var's value.
 
 Metabase doesn't support recursive expansion, so if one of your environment variables references _another_ environment variable, you're going to have a bad time.
 
@@ -219,9 +219,12 @@ If a value contains double braces (`{%raw %}}}{% endraw %}` or `{%raw %}{{{% end
 
 ```
 {% raw %}
-password: {{{ MetaPa$$123{{> }}}
+password: "{{{ MetaPa$$123{{> }}}"
 {% endraw %}
 ```
+
+Note the quote marks in `{% raw %}"{{{ MetaPa$$123{{> }}}" {% endraw %}`.
+
 
 ## Disable initial database sync
 
