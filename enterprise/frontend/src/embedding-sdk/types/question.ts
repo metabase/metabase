@@ -19,7 +19,7 @@ export interface SdkQuestionState {
 
 export interface LoadSdkQuestionParams {
   /**
-   * For SQL questions only. A mapping of [SQL parameter names to parameter values](#pass-sql-parameters-to-sql-questions-with-initialsqlparameters), such as `{ product_id: "42"}`
+   * For SQL questions only. A mapping of SQL parameter names to parameter values, such as `{ product_id: "42"}`
    */
   initialSqlParameters?: ParameterValues;
 
