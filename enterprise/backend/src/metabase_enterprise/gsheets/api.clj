@@ -85,6 +85,12 @@
                                         :errors true
                                         :message message})))))
 
+(defn- loggable-response [hm-response]
+  (-> hm-response
+      last
+      (#(or (:ex-data %) %))
+      (#(select-keys % [:status :body]))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -101,12 +107,14 @@
       (= :error status)
       (error-response-in-body
        (tru "Harbormaster returned an error.")
-       {:hm/response response :status-code 502})
+       {:status-code 502
+        :hm/response (loggable-response response)})
 
       :else
       (error-response-in-body
        (tru "Google service-account is not setup in harbormaster.")
-       {:status-code 502}))))
+       {:status-code 502
+        :hm/response (loggable-response response)}))))
 
 (mr/def :gdrive/connection
   [:map {:description "A Harbormaster Gdrive Connection"}
@@ -236,7 +244,8 @@
                      :db-id          attached-dwh})
           (analytics/inc! :metabase-gsheets/connection-creation-began))
         (error-response-in-body
-         (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions."))))))
+         (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions.")
+         {:hm/response (loggable-response response)})))))
 
 (defn- gsheets-safe
   "Return the gsheets setting, or fetch it from the db if it's not in the cache."
@@ -259,7 +268,8 @@
                                (log/errorf e "Exception getting status of connection %s." conn-id)
                                (error-response-in-body
                                 cannot-check-message
-                                {:gdrive/conn-id conn-id})))))
+                                {:gdrive/conn-id conn-id
+                                 :hm/exception e})))))
         [hm-status {hm-body :body}] hm-response]
     (if (= :ok hm-status)
       (let [{:keys [status last-sync-at last-sync-started-at]
@@ -269,7 +279,7 @@
           (do
             (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
             (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body))
-            (error-response-in-body (or (:error-detail hm-body) cannot-check-message)))
+            (error-response-in-body (or (:error-detail hm-body) cannot-check-message) {:hm/response (loggable-response #p hm-response)}))
 
           (= "active" status)
           (assoc (setting->response saved-setting)
@@ -288,7 +298,7 @@
         {:status "not-connected"}
         (do
           (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body))
-          (error-response-in-body cannot-check-message))))))
+          (error-response-in-body cannot-check-message {:hm/response (loggable-response hm-response)}))))))
 
 (api.macros/defendpoint :get "/folder" :- :gsheets/response
   "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
@@ -316,10 +326,12 @@
       (do
         (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync"})
         (analytics/inc! :metabase-gsheets/connection-manually-synced)
-        (hm-sync-conn! (:gdrive/conn-id sheet-config))
-        (assoc (setting->response sheet-config)
-               :status "syncing"
-               :sync_started_at (seconds-from-epoch-now))))))
+        (let [[status response] (hm-sync-conn! (:gdrive/conn-id sheet-config))]
+          (if (= status :ok)
+            (assoc (setting->response sheet-config)
+                   :status "syncing"
+                   :sync_started_at (seconds-from-epoch-now))
+            (error-response-in-body (tru "Error requesting sync") {:hm/response (loggable-response response)})))))))
 
 (api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."

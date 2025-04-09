@@ -164,7 +164,7 @@
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
     (testing "Sync starts"
       (with-redefs [hm.client/make-request (partial mock-make-request (+syncing happy-responses))]
-        (mt/with-temporary-setting-values [gsheets {:url "stored-url" :created-by-id 2}]
+        (mt/with-temporary-setting-values [gsheets {:url "stored-url" :created-by-id 2 :gdrive/conn-id gdrive-syncing-link}]
           (let [response (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder/sync")]
             (is (partial= {:status "syncing", :url "stored-url", :created_by_id 2}
                           response))
@@ -272,16 +272,3 @@
   (is (= "google_spreadsheet" (#'gsheets.api/url-type "https://docs.google.com/spreadsheets/abc")))
   (is (= "google_spreadsheet" (#'gsheets.api/url-type "http://docs.google.com/spreadsheets/abc")))
   (is (thrown-with-msg? Exception #"Invalid URL: https://not.google.com/file" (#'gsheets.api/url-type "https://not.google.com/file"))))
-
-(deftest sync-folder-test
-  (with-sample-db-as-dwh
-    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-      (mt/with-temporary-setting-values [gsheets {:status     "loading",
-                                                  :url        gdrive-link,
-                                                  :created_at 1741624582,
-                                                  :conn_id    "<connection-id>"}]
-        (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
-          (let [response (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder/sync")]
-            (is (partial= {:status "syncing"} response))
-            (is (pos-int? (:sync_started_at response)))
-            (is (nil? (:last_sync_at response)))))))))

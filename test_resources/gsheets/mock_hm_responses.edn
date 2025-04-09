@@ -349,7 +349,7 @@
        :body {:email "service-account@elt-sync.iam.gserviceaccount.com"},
        :trace-redirects []}]
 
- {:method :post, :url "/api/v2/mb/connections/<connection-id>/sync", :body nil}
+ {:method :put, :url "/api/v2/mb/connections/663f3e8a-bfff-4b3f-ad5f-20ceadf929cc/sync", :body nil}
  [:ok {:cached                nil,
        :request-time          12,
        :repeatable?           false,
