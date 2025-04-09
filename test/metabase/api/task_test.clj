@@ -125,6 +125,8 @@
                               [:map-of :any :any]]]]
                 (mt/user-http-request :crowberto :get 200 "task/info")))))
 
+;; this has a race condition potential. If the database the test dataset is created during this test, the sync seems to
+;; be messing up task history.
 (deftest status-filtering-test
   (testing "Check that paging information is applied when provided and included in the response"
     (t2/delete! :model/TaskHistory)
@@ -161,8 +163,9 @@
         (testing "No filter in query params returns all tasks"
           (let [response (mt/user-http-request :crowberto :get 200 "task/")]
             (is (= 3 (-> response :data count)))))
-        (testing "nil filter in query params returns all tasks"
-          (let [response (mt/user-http-request :crowberto :get 200 "task/" :status nil)]
-            (is (= 3 (-> response :data count)))))
+        (testing "Error is returned on explicit nil status"
+          (is (= "enum of :started, :success, :failed"
+                 (get-in (mt/user-http-request :crowberto :get 400 "task/" :status nil) [:errors :status]))))
         (testing "Error is returned for unexpected status values"
-          (is (contains? (mt/user-http-request :crowberto :get 500 "task/" :status 1) :error)))))))
+          (is (= "enum of :started, :success, :failed"
+                 (get-in (mt/user-http-request :crowberto :get 400 "task/" :status 1) [:errors :status]))))))))
