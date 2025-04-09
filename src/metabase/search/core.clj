@@ -37,8 +37,7 @@
   search-context]
 
  [search.ingestion
-  bulk-ingest!
-  get-next-batch!]
+  bulk-ingest!]
 
  [search.spec
   define-spec])
