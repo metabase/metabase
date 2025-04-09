@@ -410,7 +410,7 @@
                        search-results)
         card-metadata (if (empty? card-ids)
                         {}
-                        (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))]
+                        (t2/select-pk->fn :result_metadata [:model/Card :id :result_metadata] :id [:in card-ids]))]
     (map (fn [{:keys [model id] :as item}]
            (if (= model "card")
              (assoc item :result_metadata (card-metadata id))
