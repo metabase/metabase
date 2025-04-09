@@ -52,6 +52,13 @@
      (lib.metadata.calculation/type-of query stage-number aggregation))
    :type/*))
 
+(defmethod lib.schema.expression/type-of-method :metadata/metric
+  [metric-metadata]
+  (or
+   (when-let [[aggregation] (not-empty (:aggregation (metric-definition metric-metadata)))]
+     (lib.schema.expression/type-of aggregation))
+   :type/*))
+
 (defmethod lib.metadata.calculation/type-of-method :metric
   [query stage-number [_tag _opts metric-id-or-name]]
   (or (when-let [metric-metadata (resolve-metric query metric-id-or-name)]

@@ -18,6 +18,7 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -161,6 +162,10 @@
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/column
   [_query _stage-number column-metadata]
+  (column-metadata-effective-type column-metadata))
+
+(defmethod lib.schema.expression/type-of-method :metadata/column
+  [column-metadata]
   (column-metadata-effective-type column-metadata))
 
 (defmethod lib.metadata.calculation/type-of-method :field
