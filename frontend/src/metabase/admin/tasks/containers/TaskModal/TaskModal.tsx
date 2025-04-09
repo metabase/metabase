@@ -22,7 +22,7 @@ interface Props {
 export const TaskModal = ({ params }: Props) => {
   const dispatch = useDispatch();
   const { data: task, error, isLoading } = useGetTaskQuery(params.taskId);
-  const code = useMemo(() => formatTaskDetails(task), [task]);
+  const code = formatTaskDetails(task);
   const linesCount = useMemo(() => code.split("\n").length, [code]);
 
   const handleClose = () => {
