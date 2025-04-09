@@ -58,13 +58,15 @@ export function ScatterFloatingWell() {
       }}
       ref={setNodeRef}
     >
-      <WellItem onRemove={handleRemove}>
-        <Text truncate>
-          {bubbleSize
-            ? t`Bubble size` + `: ${bubbleSize.display_name}`
-            : t`Bubble size`}
-        </Text>
-      </WellItem>
+      {bubbleSize ? (
+        <WellItem onRemove={handleRemove}>
+          <Text truncate>
+            {t`Bubble size` + `: ${bubbleSize.display_name}`}
+          </Text>
+        </WellItem>
+      ) : (
+        <Text c="text-light">{t`Bubble size`}</Text>
+      )}
     </Box>
   );
 }
