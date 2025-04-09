@@ -349,7 +349,7 @@ export const GRAPH_TREND_SETTINGS = {
     title: t`Trend line`,
     widget: "toggle",
     default: false,
-    getHidden: series => {
+    getHidden: (series, vizSettings) => {
       const { insights } = series[0].data;
       return (
         !insights ||
