@@ -571,6 +571,43 @@
                    :aggregation [:count]
                    :breakout    standard-literal-expression-refs}))))))))
 
+(deftest ^:parallel case-with-literal-expression-test
+  (testing "CASE expression using literal expressions"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
+      (is (= [[1 12345 true  "foo"]
+              [2 12345 false "foo"]]
+             (mt/formatted-rows
+              [int int mt/boolish->bool str]
+              (mt/run-mbql-query venues
+                {:expressions (into standard-literal-expression-defs
+                                    {"case 1" [:case
+                                               [[[:< [:expression "zero"] 0]
+                                                 [:expression "zero"]]
+                                                [[:= false [:expression "True"]]
+                                                 [:expression "zero"]]
+                                                [[:= "foo" [:expression "foo"]]
+                                                 [:expression "12345"]]]
+                                               {:default [:expression "zero"]}]
+                                     "case 2" [:case
+                                               [[[:= $id 1]
+                                                 [:expression "True"]]
+                                                [[:= $id 2]
+                                                 [:expression "False"]]]]
+                                     "case 3" [:case
+                                               [[[:= [:concat [:expression "foo"] ""] "bar"]
+                                                 [:expression "empty"]]
+                                                [[:> [:expression "zero"] 0]
+                                                 [:expression "empty"]]
+                                                [[:is-null [:expression "foo"]]
+                                                 [:expression "empty"]]]
+                                               {:default [:expression "foo"]}]})
+                 :fields      [$id
+                               [:expression "case 1"]
+                               [:expression "case 2"]
+                               [:expression "case 3"]]
+                 :order-by    [[:asc $id]]
+                 :limit       2})))))))
+
 (deftest ^:parallel filter-literal-expression-with-and-or-test
   (doseq [[op expected] [[:and []]
                          [:or  [[true false]]]]]

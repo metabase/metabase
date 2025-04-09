@@ -11,6 +11,8 @@
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
+   [jvm-alloc-rate-meter.core :as alloc-rate-meter]
+   [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics.settings :refer [prometheus-server-port]]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.server.core :as server]
@@ -179,7 +181,11 @@
                     (MemoryPoolsExports.))
    (collector/named {:namespace "metabase_application"
                      :name      "jvm_threads"}
-                    (ThreadExports.))])
+                    (ThreadExports.))
+   (prometheus/histogram :metabase_application/jvm_hiccups
+                         {:description "Duration in milliseconds of system-induced pauses."})
+   (prometheus/gauge :metabase_application/jvm_allocation_rate
+                     {:description "Heap allocation rate in bytes/sec."})])
 
 (defn- jetty-collectors
   []
@@ -309,6 +315,9 @@
                            (keyword? v) (u/qualified-name v)
                            :else v))))
 
+(def ^:private jvm-hiccup-thread (atom nil))
+(def ^:private jvm-alloc-rate-thread (atom nil))
+
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
   will throw."
@@ -323,6 +332,14 @@
                                 (product-collectors)))]
     (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
       (prometheus/inc registry metric (qualified-vals labels) value))
+    (when @jvm-hiccup-thread (@jvm-hiccup-thread))
+    (reset! jvm-hiccup-thread
+            (hiccup-meter/start-hiccup-meter
+             #(prometheus/observe (:registry system) :metabase_application/jvm_hiccups (/ % 1e6))))
+    (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
+    (reset! jvm-alloc-rate-thread
+            (alloc-rate-meter/start-alloc-rate-meter
+             #(prometheus/observe (:registry system) :metabase_application/jvm_allocation_rate %)))
     registry))
 
 (defn- start-web-server!
@@ -359,6 +376,8 @@
   (when system
     (locking #'system
       (when system
+        (when @jvm-hiccup-thread (@jvm-hiccup-thread))
+        (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
         (try (stop-web-server system)
              (prometheus/clear (.-registry system))
              (alter-var-root #'system (constantly nil))

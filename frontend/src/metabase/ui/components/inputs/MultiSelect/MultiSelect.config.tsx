@@ -1,4 +1,4 @@
-import { MultiSelect, Pill } from "@mantine/core";
+import { MultiSelect } from "@mantine/core";
 
 import { DefaultSelectItem, selectOverrides } from "../Select";
 
@@ -28,17 +28,7 @@ export const multiSelectOverrides = {
     },
     classNames: {
       ...(selectOverrides?.Select?.classNames ?? {}),
-      wrapper: S.MultiSelectWrapper,
       input: S.MultiSelectInput,
-      inputField: S.MultiSelectInputField,
-      pillsList: S.MultiSelectPillsList,
-      pill: S.MultiSelectPill,
-    },
-  }),
-  Pill: Pill.extend({
-    classNames: {
-      root: S.MultiSelectPill,
-      remove: S.MultiSelectPillRemove,
     },
   }),
 };
