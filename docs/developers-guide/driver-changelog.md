@@ -9,6 +9,10 @@ title: Driver interface changelog
 - Added a feature `:test/arrays` and multimethod `native-array-query` to enable the testing of array types for
   databases that support them.
 
+## Metabase 0.53.10
+
+- Added `metabase.driver.sql-jdbc.sync/describe-fields-pre-process-xf` for JDBC drivers. This allows manipulating the results of `metabase.driver.sql-jdbc.sync/describe-fields-sql` without reimplementing `driver/describe-fields`.
+
 ## Metabase 0.53.0
 
 - Added the multimethod `bad-connection-details` to allow mocking bad connection parameters for tests.
