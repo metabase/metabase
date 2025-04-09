@@ -223,7 +223,7 @@ password: "{{{ MetaPa$$123{{> }}}"
 {% endraw %}
 ```
 
-Note the quote marks in `{% raw %}"{{{ MetaPa$$123{{> }}}" {% endraw %}`.
+Note the quote marks in `{% raw %}"{{{ MetaPa$$123{{> }}}"{% endraw %}`.
 
 ## Disable initial database sync
 
