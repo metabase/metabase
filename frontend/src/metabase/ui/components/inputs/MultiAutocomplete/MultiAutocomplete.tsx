@@ -2,7 +2,6 @@ import {
   type BoxProps,
   Combobox,
   type ComboboxItem,
-  OptionsDropdown,
   Pill,
   PillsInput,
   Text,
@@ -15,6 +14,7 @@ import { t } from "ttag";
 import { Icon } from "../../icons";
 
 import S from "./MultiAutocomplete.module.css";
+import { OptionsDropdown } from "./OptionsDropdown";
 import { useMultiAutocomplete } from "./use-multi-autocomplete";
 
 export type MultiAutocompleteProps = BoxProps & {
