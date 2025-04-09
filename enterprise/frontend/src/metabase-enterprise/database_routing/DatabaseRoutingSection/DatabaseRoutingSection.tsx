@@ -138,7 +138,8 @@ export const DatabaseRoutingSection = ({
                 </Text>
               </Text>
               <Tooltip
-                label={t`This attribute determins which destination database the person can query. The value must match the slug of the destination database.`}
+                label={t`This attribute determines which destination database the person can query. The value must match the slug of the destination database.`}
+                maw="20rem"
                 withArrow
               >
                 <Select
