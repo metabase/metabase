@@ -13,7 +13,7 @@ import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-edi
 import { useTableCRUD } from "./use-table-crud";
 import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-dashcard-update-strategy";
 
-type EditTableDashcardProps = {
+type EditTableDashcardVisualizationProps = {
   dashcardId: number;
   cardId: number;
   tableId: ConcreteTableId;
@@ -23,14 +23,14 @@ type EditTableDashcardProps = {
   visualizationSettings?: VisualizationSettings;
 };
 
-export const EditTableDashcard = ({
+export const EditTableDashcardVisualization = ({
   dashcardId,
   cardId,
   tableId,
   data,
   className,
   visualizationSettings,
-}: EditTableDashcardProps) => {
+}: EditTableDashcardVisualizationProps) => {
   const stateUpdateStrategy = useTableEditingStateDashcardUpdateStrategy(
     dashcardId,
     cardId,

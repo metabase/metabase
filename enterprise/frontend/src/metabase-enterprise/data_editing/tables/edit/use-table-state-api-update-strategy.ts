@@ -53,6 +53,7 @@ export function useTableEditingStateApiUpdateStrategy(
               data.cols,
             );
 
+            // TODO: consider optimization (https://github.com/metabase/metabase/pull/56427/files#r2036106565)
             for (const row of data.rows) {
               for (const updatedRow of updatedRows) {
                 if (row[pkColumnIndex] === updatedRow[pkColumnIndex]) {
