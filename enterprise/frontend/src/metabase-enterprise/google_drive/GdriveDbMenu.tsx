@@ -127,9 +127,7 @@ function MenuSyncStatus() {
   const nextSync = folderInfo?.next_sync_at;
   const folderStatus = folderInfo?.status;
 
-  const lastSyncRelative = lastSync
-    ? dayjs.unix(lastSync).fromNow()
-    : t`unknown`;
+  const lastSyncRelative = lastSync ? dayjs.unix(lastSync).fromNow() : null;
 
   const nextSyncOverDue =
     !lastSync || !nextSync || dayjs.unix(nextSync).isBefore(dayjs());
@@ -145,13 +143,15 @@ function MenuSyncStatus() {
       ) : (
         <Text fw="bold">{t`Next sync ${nextSyncRelative}`}</Text>
       )}
-      <Text fz="sm">{t`Last synced ${lastSyncRelative}`}</Text>
+      {lastSyncRelative && (
+        <Text fz="sm">{t`Last synced ${lastSyncRelative}`}</Text>
+      )}
     </>
   );
 }
 
 const SyncingText = () => (
-  <Flex justify="space-between">
+  <Flex justify="space-between" align="center">
     <Text fw="bold">{t`Syncing`}</Text>
     <Loader size="xs" />
   </Flex>
