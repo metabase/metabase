@@ -212,7 +212,7 @@ export const LookAndFeelSettings = ({
                   labelPosition="left"
                   size="sm"
                   variant="stretch"
-                  checked={displayOptions.downloads.dashcard}
+                  checked={displayOptions.downloads.results}
                   onChange={(e) => {
                     if (!displayOptions.downloads) {
                       return;
@@ -221,7 +221,7 @@ export const LookAndFeelSettings = ({
                     onChangeDisplayOptions({
                       ...displayOptions,
                       downloads: {
-                        dashcard: e.target.checked,
+                        results: e.target.checked,
                         pdf: isDashboard
                           ? displayOptions.downloads.pdf
                           : e.target.checked, // ! PDF exports are not supported for questions, so we match the dashcard download's state.

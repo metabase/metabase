@@ -608,5 +608,5 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   areDownloadsEnabled: (_args: {
     hide_download_button?: boolean | null;
     downloads?: string | boolean | null;
-  }) => ({ pdf: true, dashcard: true }),
+  }) => ({ pdf: true, results: true }),
 };

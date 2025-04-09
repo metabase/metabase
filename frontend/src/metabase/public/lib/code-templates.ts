@@ -27,9 +27,9 @@ function transformEmbeddingDisplayToHashOptions(
 ): EmbeddingHashOptions {
   const downloads = match(displayOptions.downloads)
     .with(null, () => null) // do not include the "downloads" parameter at all, used for OSS.
-    .with({ pdf: true, dashcard: false }, () => "pdf")
-    .with({ pdf: false, dashcard: true }, () => "results")
-    .with({ pdf: false, dashcard: false }, () => false)
+    .with({ pdf: true, results: false }, () => "pdf")
+    .with({ pdf: false, results: true }, () => "results")
+    .with({ pdf: false, results: false }, () => false)
     .otherwise(() => true);
 
   return { ...displayOptions, downloads };
