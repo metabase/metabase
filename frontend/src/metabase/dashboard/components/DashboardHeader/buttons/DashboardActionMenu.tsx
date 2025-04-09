@@ -60,10 +60,6 @@ const DashboardActionMenuInner = ({
   useRegisterShortcut(
     [
       {
-        id: "move-dashboard",
-        perform: () => canEdit && dispatch(push(`${location?.pathname}/move`)),
-      },
-      {
         id: "trash-dashboard",
         perform: () => dispatch(push(`${location?.pathname}/archive`)),
       },

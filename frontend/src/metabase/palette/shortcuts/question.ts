@@ -51,11 +51,6 @@ export const questionShortcuts = {
     shortcut: ["d"],
     shortcutGroup: "question",
   },
-  "move-question": {
-    name: t`Move question`,
-    shortcut: ["$mod+m"],
-    shortcutGroup: "question",
-  },
   "trash-question": {
     name: t`Send question to trash`,
     shortcut: ["$mod+backspace"],
