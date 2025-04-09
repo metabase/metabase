@@ -32,8 +32,14 @@
   [table-id]
   (format "ee/data-editing/table/%d" table-id))
 
+(defn alter-appdb-settings! [f & args]
+  (let [id (mt/id)
+        settings     (t2/select-one-fn :settings :model/Database id)
+        new-settings (apply f settings args)]
+    (t2/update! :model/Database id {:settings new-settings})))
+
 (defn toggle-data-editing-enabled! [on-or-off]
-  (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing (boolean on-or-off)}}))
+  (alter-appdb-settings! assoc :database-enable-table-editing (boolean on-or-off)))
 
 (defn open-test-table!
   "Sets up an anonymous table in the appdb. Return a box that can be deref'd for the table-id.
@@ -75,5 +81,5 @@
   Use (mt/id), (mt/db) etc to get the database id and database object."
   [& body]
   `(actions.tu/with-actions-test-data
-     (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing true}})
+     (toggle-data-editing-enabled! true)
      ~@body))
