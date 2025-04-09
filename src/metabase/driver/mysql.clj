@@ -979,17 +979,14 @@
                     [table-name privileges])))
           table-names)))
 
-;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
-;; name, but coerces boolean fields since mysql returns them as 0/1 integers
-(defmethod driver/describe-fields :mysql
-  [driver database & args]
-  (eduction
-   (map (fn [col]
-          (-> col
-              (update :pk? pos?)
-              (update :database-required pos?)
-              (update :database-is-auto-increment pos?))))
-   (apply (get-method driver/describe-fields :sql-jdbc) driver database args)))
+;; Coerces boolean fields since mysql returns them as 0/1 integers
+(defmethod sql-jdbc.sync/describe-fields-pre-process-xf :mysql
+  [_driver _db & _args]
+  (map (fn [col]
+         (-> col
+             (update :pk? pos?)
+             (update :database-required pos?)
+             (update :database-is-auto-increment pos?)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
   [driver & {:keys [table-names details]}]
@@ -1014,7 +1011,8 @@
                 [:raw "c.table_name not in ('innodb_table_stats', 'innodb_index_stats')"]
                 (when-let [db-name ((some-fn :db :dbname) details)]
                   [:= :c.table_schema db-name])
-                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]}
+                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]
+               :order-by [:c.table_name :c.ordinal_position]}
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :mysql
