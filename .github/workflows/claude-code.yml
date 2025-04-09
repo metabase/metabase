@@ -1,0 +1,51 @@
+name: Update Loki Snapshots
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  generate-pull-request:
+    if: contains(github.event.issue.labels.*.name, 'claude-code')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ref: ${{ github.head_ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22"
+
+      - name: Install Claude Code
+        shell: bash
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run Claude Code
+        id: run-claude
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "
+          Solve the following task:
+          <task-to-solve>
+            ${{ github.event.issue.title }}
+            ${{ github.event.issue.body }}
+          </task-to-solve>" --allowedTools Edit
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          BRANCH_NAME="${{ github.event.issue.number }}-claude-code"
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
+          git checkout -b ${BRANCH_NAME}
+          git add .
+          git commit -m "Claude Code implementation for issue #${{ github.event.issue.number }} ${{ github.event.issue.title }}"
+          git push origin ${BRANCH_NAME}
+        env:
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
