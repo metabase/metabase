@@ -161,7 +161,7 @@
                   "type": "boolean",
                   "description": "Indicates if PDF exports are enabled. Only applicable to dashboards."
                 },
-                "dashcard": {
+                "results": {
                   "type": "boolean",
                   "description": "Indicates if dashboard card downloads are enabled."
                 }
