@@ -51,11 +51,6 @@ export const questionShortcuts = {
     shortcut: ["d"],
     shortcutGroup: "question",
   },
-  "duplicate-question": {
-    name: t`Duplicate question`,
-    shortcut: ["$mod+d"],
-    shortcutGroup: "question",
-  },
   "move-question": {
     name: t`Move question`,
     shortcut: ["$mod+m"],

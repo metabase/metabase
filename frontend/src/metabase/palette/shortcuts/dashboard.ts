@@ -30,11 +30,6 @@ export const dashboardShortcuts = {
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
-  "copy-dashboard": {
-    name: t`Copy dashboard`,
-    shortcut: ["$mod+c"],
-    shortcutGroup: "dashboard",
-  },
   "move-dashboard": {
     name: t`Move dashboard`,
     shortcut: ["$mod+m"],
