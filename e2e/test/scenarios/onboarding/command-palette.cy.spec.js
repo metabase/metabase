@@ -392,7 +392,9 @@ describe("shortcuts", () => {
 
   it("should render a shortcuts modal, and global shortcuts should be available", () => {
     cy.visit("/");
-    cy.findByTestId("greeting-message").should("exist");
+    cy.findByTestId("home-page")
+      .findByTestId("loading-indicator")
+      .should("not.exist");
     H.openShortcutModal();
 
     H.shortcutModal().within(() => {
