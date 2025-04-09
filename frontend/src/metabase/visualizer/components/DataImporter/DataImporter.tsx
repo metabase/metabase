@@ -71,6 +71,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
               onChange={handleSearchChange}
               placeholder={t`Search for something`}
               leftSection={<Icon name="search" />}
+              autoFocus
             />
           </Box>
           <Flex

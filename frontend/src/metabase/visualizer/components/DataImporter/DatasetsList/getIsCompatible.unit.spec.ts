@@ -24,7 +24,7 @@ describe("getIsCompatible", () => {
     expect(result).toBe(false);
   });
 
-  it("should only match scalars with scalars (assuming the same primary column can be found in both)", () => {
+  it("should not match scalars with anything", () => {
     const primaryColumn = createMockColumn(
       NumberColumn({
         id: 1,
@@ -58,7 +58,7 @@ describe("getIsCompatible", () => {
         currentDataset: { display: "scalar", primaryColumn },
         targetDataset: { display: "scalar", fields: [field] },
       }),
-    ).toBe(true);
+    ).toBe(false);
 
     expect(
       getIsCompatible({

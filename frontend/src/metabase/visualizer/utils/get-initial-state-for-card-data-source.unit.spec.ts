@@ -1,5 +1,7 @@
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart/BarChart";
+import { Funnel } from "metabase/visualizations/visualizations/Funnel";
+import { Scalar } from "metabase/visualizations/visualizations/Scalar";
 import Table from "metabase/visualizations/visualizations/Table/Table";
 import {
   createMockCard,
@@ -16,6 +18,11 @@ import { getInitialStateForCardDataSource } from "./get-initial-state-for-card-d
 registerVisualization(Table);
 // @ts-expect-error -- TODO fix this error?
 registerVisualization(BarChart);
+// @ts-expect-error -- TODO fix this error?
+registerVisualization(Scalar);
+
+// @ts-expect-error -- TODO fix this error?
+registerVisualization(Funnel);
 
 describe("getInitialStateForCardDataSource", () => {
   const dashCard = createMockDashboardCard({
@@ -43,19 +50,12 @@ describe("getInitialStateForCardDataSource", () => {
       dataset,
     );
 
-    expect(initialState.columns).toHaveLength(2);
+    expect(initialState.columns).toHaveLength(1);
     expect(initialState.columnValuesMapping).toEqual({
       COLUMN_1: [
         {
           name: "COLUMN_1",
           originalName: "Foo",
-          sourceId: "card:1",
-        },
-      ],
-      COLUMN_2: [
-        {
-          name: "COLUMN_2",
-          originalName: "Bar",
           sourceId: "card:1",
         },
       ],
@@ -122,5 +122,14 @@ describe("getInitialStateForCardDataSource", () => {
       "graph.metrics": ["COLUMN_2"],
       "scalar.compact_primary_number": true,
     });
+  });
+
+  it("should pick funnel as the display if the original card is a scalar", () => {
+    const initialState = getInitialStateForCardDataSource(
+      createMockCard({ display: "scalar" }),
+      dataset,
+    );
+
+    expect(initialState.display).toEqual("funnel");
   });
 });
