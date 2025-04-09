@@ -68,7 +68,6 @@ function FilterValuePicker({
         fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
-        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         onChange={onChange}
       />
@@ -85,7 +84,6 @@ function FilterValuePicker({
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
         columnDisplayName={columnInfo.displayName}
-        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         comboboxProps={comboboxProps}
         onCreate={onCreate}
