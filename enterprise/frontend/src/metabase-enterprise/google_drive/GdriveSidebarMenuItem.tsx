@@ -34,7 +34,7 @@ export function GdriveSidebarMenuItem({ onClick }: { onClick: () => void }) {
 
   const helperText = match(status)
     .with("not-connected", () => null)
-    .with("syncing", () => t`Importing files...`)
+    .with("syncing", () => t`Syncing files...`)
     .with("active", () => t`Connected`)
     .otherwise(() => null);
 
