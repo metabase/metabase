@@ -122,7 +122,8 @@
        "background-color: " color "; "
        "border-radius: 4px;"))
 
-(defn- default-context
+(defn default-context
+  "Return the default context for the notification."
   []
   ;; DO NOT delete or rename these fields, they are used in the notification templates
   {:application_name     (public-settings/application-name)
@@ -133,18 +134,10 @@
    :admin_email          (public-settings/admin-email)
    :style                {:button (button-style (public-settings/application-color))}})
 
-(defmulti payload
+(defmulti notification-payload
   "Given a notification info, return the notification payload."
   {:arglists '([notification-info])}
   :payload_type)
-
-(mu/defn notification-payload :- ::NotificationPayload
-  "Realize notification-info with :context and :payload."
-  [notification :- ::Notification]
-  (assoc (select-keys notification [:payload_type :condition])
-         :creator (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
-         :payload (payload notification)
-         :context (default-context)))
 
 (defmulti skip-reason
   "Return the reason to skip the notification, or nil if it should be sent."

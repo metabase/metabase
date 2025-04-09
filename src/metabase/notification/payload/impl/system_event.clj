@@ -5,7 +5,8 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (defn- join-url
   [user-id]
@@ -30,9 +31,12 @@
      :user_invited_join_url      (-> event-info :object :id join-url)}
     {}))
 
-(mu/defmethod notification.payload/payload :notification/system-event
+(mu/defmethod notification.payload/notification-payload :notification/system-event
   [notification-info :- ::notification.payload/Notification]
   (let [event-info (:event_info notification-info)]
-    (assoc event-info
-           :event_name (-> notification-info :payload :event_name)
-           :custom (custom-payload (-> notification-info :payload :event_name) event-info))))
+    {:payload_type :notification/system-event
+     :creator      (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification-info))
+     :context      (notification.payload/default-context)
+     :payload      (assoc event-info
+                          :event_name (-> notification-info :payload :event_name)
+                          :custom (custom-payload (-> notification-info :payload :event_name) event-info))}))
