@@ -311,7 +311,6 @@ export const widgetViewer: NormalUser = {
 
 export const signInAs = (user: NormalUser) => {
   cy.signOut();
-  cy.request("DELETE", "/api/session");
   cy.clearCookies();
   cy.log(`Sign in as user via an API call: ${user.email}`);
   return cy
@@ -772,7 +771,6 @@ export const waitForUserToBeLoggedIn = (user: NormalUser) => {
 
 export const signInAsAdmin = () => {
   cy.signOut();
-  cy.request("DELETE", "/api/session");
   cy.clearCookies();
   return cy.signInAsAdmin();
 };
