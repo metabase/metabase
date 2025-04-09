@@ -120,7 +120,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <IndexRedirect to="help" />
           <Route path="help" component={Help} />
           <Route path="tasks" component={TasksApp}>
-            <ModalRoute path=":taskId" modal={TaskModal} />
+            <ModalRoute
+              path=":taskId"
+              modal={TaskModal}
+              modalProps={{
+                // EventSandbox interferes with mouse text selection in CodeMirror editor
+                disableEventSandbox: true,
+              }}
+            />
           </Route>
           <Route path="jobs" component={JobInfoApp}>
             <ModalRoute
