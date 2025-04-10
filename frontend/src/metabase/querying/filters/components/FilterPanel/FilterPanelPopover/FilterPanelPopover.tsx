@@ -50,10 +50,7 @@ export function FilterPanelPopover({
           onClick={() => setIsOpened((isOpened) => !isOpened)}
           onRemoveClick={handleRemove}
         >
-          {
-            // This long display name must be localized in metabase-lib
-            filterInfo.longDisplayName
-          }
+          {filterInfo.longDisplayName}
         </FilterPill>
       </Popover.Target>
       <Popover.Dropdown data-testid="filter-picker-dropdown">
