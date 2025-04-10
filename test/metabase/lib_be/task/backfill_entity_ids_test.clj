@@ -57,10 +57,10 @@
 (deftest ^:synchronized backfill-fields-test
   (testing "Can backfill fields"
     (with-sample-data!
-      (fn [{:keys [db-id table-id field1-id field2-id field3-id]}]
+      (fn [{:keys [db-id table-id field3-id]}]
         (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
         ;; we only backfill 1 random field at a time, so we can't be confident we backfilled any particular field
-        (is (not (empty? (:model/Field @serdes/entity-id-cache))))
+        (is (seq (:model/Field @serdes/entity-id-cache)))
         (is (not (contains? (:model/Field @serdes/entity-id-cache) field3-id)))
         (is (not (contains? (:model/Database @serdes/entity-id-cache) db-id)))
         (is (not (contains? (:model/Table @serdes/entity-id-cache) table-id)))))))
@@ -68,7 +68,7 @@
 (deftest ^:synchronized backfill-all-table-fields-test
   (testing "Will backfill all fields from a given table at once"
     (with-sample-data!
-      (fn [{:keys [table-id field1-id field2-id field3-id]}]
+      (fn [{:keys [field1-id field2-id field3-id]}]
         (t2/select-one :model/Field field1-id)
         (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Field field1-id]))))
         (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Field field2-id]))))
