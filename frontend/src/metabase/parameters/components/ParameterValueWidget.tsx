@@ -70,8 +70,6 @@ export const ParameterValueWidget = ({
 }: ParameterValueWidgetProps) => {
   const [isFocused, setIsFocused] = useState(false);
 
-  console.log("@m91r7vzs", "placeholder", placeholder);
-
   const hasValue = !parameterHasNoDisplayValue(value);
   const hasDefaultValue = !parameterHasNoDisplayValue(parameter.default);
   const fieldHasValueOrFocus = parameter.value != null || isFocused;
@@ -230,8 +228,6 @@ export const ParameterValueWidget = ({
       </Sortable>
     );
   }
-
-  console.log("@m91r5xs0", "placeholder", placeholder);
 
   const placeholderText = isEditing
     ? isDateParameter(parameter)
