@@ -11,6 +11,7 @@ import {
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
@@ -146,6 +147,8 @@ const setup = async ({
   setupAlertsEndpoints(tableCard, []);
 
   setupNotificationChannelsEndpoints({});
+
+  setupDatabasesEndpoints([createMockDatabase()]);
 
   const user = createMockUser();
 

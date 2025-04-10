@@ -5,10 +5,28 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 import type { Dashboard } from "metabase-types/api";
 
+/**
+ * @category CreateDashboardModal
+ */
 export interface CreateDashboardModalProps {
+  /**
+   * Initial collection in which to create a dashboard. You can use predefined system values like `root` or `personal`.
+   */
   initialCollectionId?: SdkCollectionId;
+
+  /**
+   * Whether the modal is open or not.
+   */
   isOpen?: boolean;
+
+  /**
+   * Handler to react on dashboard creation.
+   */
   onCreate: (dashboard: Dashboard) => void;
+
+  /**
+   * Handler to close modal component
+   */
   onClose?: () => void;
 }
 
@@ -43,6 +61,12 @@ const CreateDashboardModalInner = ({
   );
 };
 
+/**
+ * Creates a dashboard
+ *
+ * @function
+ * @category CreateDashboardModal
+ */
 export const CreateDashboardModal = withPublicComponentWrapper(
   CreateDashboardModalInner,
 );
