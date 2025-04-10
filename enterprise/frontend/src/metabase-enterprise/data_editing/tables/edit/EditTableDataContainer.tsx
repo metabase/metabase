@@ -20,6 +20,7 @@ import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useTableCRUD } from "./use-table-crud";
+import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
 
 type EditTableDataContainerProps = {
   params: {
@@ -51,6 +52,8 @@ export const EditTableDataContainer = ({
       : undefined;
   }, [rawDatasetResult]);
 
+  const stateUpdateStrategy = useTableEditingStateApiUpdateStrategy(tableId);
+
   const {
     isCreateRowModalOpen,
     expandedRowIndex,
@@ -62,7 +65,7 @@ export const EditTableDataContainer = ({
     handleCellValueUpdate,
     handleExpandedRowDelete,
     handleModalOpenAndExpandedRow,
-  } = useTableCRUD({ tableId, datasetData });
+  } = useTableCRUD({ tableId, datasetData, stateUpdateStrategy });
 
   useMount(() => {
     dispatch(closeNavbar());
