@@ -198,6 +198,7 @@
             (is (false? (pred (column negative))))))))))
 
 (deftest ^:parallel string?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [exp column] (= exp (lib.types.isa/string? column))
     true  {:effective-type :type/Text :semantic-type :type/SerializedJSON}
     false {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))
