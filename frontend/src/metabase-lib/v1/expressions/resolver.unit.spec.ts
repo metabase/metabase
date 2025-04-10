@@ -5,7 +5,11 @@ import type { StartRule } from "./types";
 
 describe("resolve", () => {
   function collect(
-    expression: Lib.ExpressionParts | Lib.ExpressionArg,
+    expression:
+      | Lib.ExpressionParts
+      | Lib.ColumnMetadata
+      | Lib.MetricMetadata
+      | Lib.SegmentMetadata,
     startRule: StartRule = "expression",
   ) {
     const dimensions: string[] = [];

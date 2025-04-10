@@ -18,17 +18,19 @@ type ResolverFunction = (
   expression?: Lib.ExpressionParts,
 ) => Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata;
 
-type Options<T> = {
-  expression: T;
-  type: ExpressionType;
-  fn: ResolverFunction;
-};
-
 export function resolve({
   expression,
   type = "expression",
   fn,
-}: Options<Lib.ExpressionParts>):
+}: {
+  expression:
+    | Lib.ExpressionParts
+    | Lib.ColumnMetadata
+    | Lib.MetricMetadata
+    | Lib.SegmentMetadata;
+  type: ExpressionType;
+  fn: ResolverFunction;
+}):
   | Lib.ExpressionParts
   | Lib.ColumnMetadata
   | Lib.MetricMetadata
