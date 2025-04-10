@@ -69,12 +69,12 @@ export function Header({
       <Flex align="center" gap="sm" ml="auto">
         <Tooltip label={t`Back`}>
           <ActionIcon disabled={!canUndo} onClick={undo}>
-            <Icon name="chevronleft" />
+            <Icon name="undo" />
           </ActionIcon>
         </Tooltip>
         <Tooltip label={t`Forward`}>
           <ActionIcon disabled={!canRedo} onClick={redo}>
-            <Icon name="chevronright" />
+            <Icon name="redo" />
           </ActionIcon>
         </Tooltip>
         <Button
