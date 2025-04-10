@@ -34,6 +34,19 @@
   [query]
   query)
 
+(defenterprise apply-impersonation-postprocessing
+  "Post-processing middleware to actually bind what's needed for impersonation"
+  metabase-enterprise.impersonation.middleware
+  [query]
+  query)
+
+(defn apply-impersonation-postprocessing-middleware
+  "Helper middleware wrapper for [[apply-impersonation-postprocessing]] to make sure we do [[defenterprise]] dispatch
+  correctly on each QP run rather than just once when we combine all of the QP middleware"
+  [qp]
+  (fn [query rff]
+    ((apply-impersonation-postprocessing qp) query rff)))
+
 (defenterprise apply-download-limit
   "Pre-processing middleware to apply row limits to MBQL export queries if the user has `limited` download perms. This
   does not apply to native queries, which are instead limited by the [[limit-download-result-rows]] post-processing
