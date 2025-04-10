@@ -7,7 +7,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn parse-int [s-or-i]
+(defn parse-int
+  "Parse a string into an integer. Returns nil if parsing fails. Returns the input unchanged if not a string."
+  [s-or-i]
   (if (string? s-or-i)
     (let [s (str/trim s-or-i)]
       (try
@@ -15,7 +17,9 @@
         (catch Exception _ nil)))
     s-or-i))
 
-(defn nrepl-port []
+(defn nrepl-port
+  "Get the nREPL port from the .nrepl-port file. Throws an ex-info with friendly error message if file not found."
+  []
   (try
     (parse-int (slurp ".nrepl-port"))
     (catch java.io.FileNotFoundException _
@@ -38,6 +42,8 @@
      :stderr (str e#)}))"))
 
 (defn nrepl-eval
+  "Evaluate Clojure code in a running nREPL server. With one arg, reads port from .nrepl-port file.
+   With two args, uses the provided port number. Returns and formats the evaluation results."
   ([code]
    (try
      (let [port (nrepl-port)]
