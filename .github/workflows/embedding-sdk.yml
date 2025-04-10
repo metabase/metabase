@@ -30,7 +30,7 @@ jobs:
           filters: .github/file-paths.yaml
 
   embedding-sdk-cli-snippets-type-check:
-    needs: [ files-changed ]
+    needs: [files-changed]
     if: needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
@@ -51,7 +51,7 @@ jobs:
         run: yarn run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    needs: [ files-changed ]
+    needs: [files-changed]
     if: needs.files-changed.outputs.documentation == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
@@ -75,11 +75,17 @@ jobs:
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
     secrets: inherit
 
+  e2e-component-tests-embedding-sdk-cross-version:
+    if: ${{ startsWith(inputs.branch, 'release-x.') }}
+    uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
+    secrets: inherit
+
   embedding-sdk-tests-result:
     needs:
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - sdk-e2e-tests
+      - e2e-component-tests-embedding-sdk-cross-version
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5
