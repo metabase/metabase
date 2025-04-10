@@ -65,7 +65,7 @@
 ### How to evaluate code
 
 #### Keeping parens balanced
-- Alter clojure files one step at a time.
+- Edit clojure files one step at a time.
 - After every change to a clojure form, call `mage -balance-parens-check thefile.clj <line-number>`.
 - If the change results in unbalanced parens, try again until it is balanced.
 
@@ -138,3 +138,5 @@ For effective REPL usage:
 ## Tips
 
 - End all files with a newline.
+- When editing tabular code, where the columns line up, try to keep them aligned.
+- When you see misaligned code elements (like a `goal-met?` function on line 290 that should align with one on line 289), make sure to align them properly.
