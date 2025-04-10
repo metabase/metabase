@@ -40,7 +40,7 @@ export const ColumnsList = () => {
   };
 
   const handleRemoveColumn = (columnRefName: string) => {
-    dispatch(removeColumn({ name: columnRefName }));
+    dispatch(removeColumn({ name: columnRefName, well: "all" }));
   };
 
   return (

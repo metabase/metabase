@@ -66,13 +66,15 @@ const isVerticalDraggedItem = (draggedItem: DraggedItem | null) => {
 
 interface VisualizerProps {
   className?: string;
-  onSave?: (visualization: VisualizerHistoryItem) => void;
+  onSave: (visualization: VisualizerHistoryItem) => void;
+  onClose: () => void;
   saveLabel?: string;
   allowSaveWhenPristine?: boolean;
 }
 
 export const Visualizer = (props: VisualizerProps) => {
-  const { className, onSave, saveLabel, allowSaveWhenPristine } = props;
+  const { className, onSave, saveLabel, allowSaveWhenPristine, onClose } =
+    props;
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const draggedItem = useSelector(getDraggedItem);
@@ -169,6 +171,7 @@ export const Visualizer = (props: VisualizerProps) => {
         {/* top header bar */}
         <Header
           onSave={onSave}
+          onClose={onClose}
           saveLabel={saveLabel}
           allowSaveWhenPristine={allowSaveWhenPristine}
           className={S.Header}

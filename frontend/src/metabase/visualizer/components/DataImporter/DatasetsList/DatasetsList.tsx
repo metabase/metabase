@@ -4,7 +4,7 @@ import { skipToken, useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
-import { Box, Loader } from "metabase/ui";
+import { Flex, Loader } from "metabase/ui";
 import { getDataSources } from "metabase/visualizer/selectors";
 import { createDataSource } from "metabase/visualizer/utils";
 import {
@@ -115,7 +115,7 @@ export function DatasetsList({ search }: DatasetsListProps) {
   }
 
   return (
-    <Box component="ul" data-testid="datasets-list">
+    <Flex gap="xs" direction="column" data-testid="datasets-list">
       {items.map((item, index) => (
         <DatasetsListItem
           key={index}
@@ -126,6 +126,6 @@ export function DatasetsList({ search }: DatasetsListProps) {
           selected={dataSourceIds.has(item.id)}
         />
       ))}
-    </Box>
+    </Flex>
   );
 }
