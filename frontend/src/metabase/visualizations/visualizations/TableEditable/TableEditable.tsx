@@ -2,17 +2,16 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { showConfigureEditableTableSidebar } from "metabase/dashboard/actions";
-import { DashCardActionButton } from "metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionButton";
-import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_DATA_EDITING } from "metabase/plugins";
-import { Flex, Icon, Title } from "metabase/ui";
+import { Flex, Title } from "metabase/ui";
 import LoadingView from "metabase/visualizations/components/Visualization/LoadingView";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
-import type { Card, DashboardCard, DatasetData } from "metabase-types/api";
+import type { Card, DatasetData } from "metabase-types/api";
 
-import { mergeSettings } from "../lib/settings/typed-utils";
+import { mergeSettings } from "../../lib/settings/typed-utils";
+
+import { TableEditableConfigureActionButton } from "./TableEditableConfigureActionButton";
 
 interface EditableTableState {
   data: DatasetData | null;
@@ -33,8 +32,9 @@ export class TableEditable extends Component<
   static disableClickBehavior = true;
   static supportsSeries = false;
   static disableReplaceCard = true;
+  static disableSettingsConfig = true;
 
-  static additionalDashcardActionButtons = [ActionButtonConfigureEditableTable];
+  static additionalDashcardActionButtons = [TableEditableConfigureActionButton];
 
   static isSensible() {
     return false;
@@ -142,29 +142,4 @@ export class TableEditable extends Component<
       />
     );
   }
-}
-
-type ActionButtonConfigureEditableTableProps = {
-  dashcard?: DashboardCard;
-};
-
-function ActionButtonConfigureEditableTable({
-  dashcard,
-}: ActionButtonConfigureEditableTableProps) {
-  const dispatch = useDispatch();
-
-  if (!dashcard) {
-    return null;
-  }
-
-  return (
-    <DashCardActionButton
-      key="configure-editable-table"
-      aria-label={t`Configure`}
-      tooltip={t`Configure`}
-      onClick={() => dispatch(showConfigureEditableTableSidebar(dashcard.id))}
-    >
-      <Icon name="gear" />
-    </DashCardActionButton>
-  );
 }

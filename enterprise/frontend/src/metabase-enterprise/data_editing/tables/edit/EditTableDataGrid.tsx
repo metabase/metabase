@@ -87,9 +87,6 @@ export const EditTableDataGrid = ({
         wrap: false,
         sortDirection,
         header: function EditingHeader() {
-          // const newSortDirection =
-          //   !sortDirection || sortDirection === "asc" ? "desc" : "asc";
-
           return (
             <Box className={S.headerCellContainer}>
               <Ellipsified>{column.display_name}</Ellipsified>
