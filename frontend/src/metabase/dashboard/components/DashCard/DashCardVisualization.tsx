@@ -14,18 +14,9 @@ import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  ActionIcon,
-  Flex,
-  Icon,
-  type IconName,
-  type IconProps,
-  Title,
-  Tooltip,
-} from "metabase/ui";
+import { Flex, type IconName, type IconProps, Title } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -41,6 +32,7 @@ import type {
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
+import { DashCardQuestionDownloadButton } from "./DashCardQuestionDownloadButton";
 import S from "./DashCardVisualization.module.css";
 import type {
   CardSlownessStatus,
@@ -229,21 +221,25 @@ export function DashCardVisualization({
       return null;
     }
 
+    const token = isJWT(dashcard.dashboard_id)
+      ? String(dashcard.dashboard_id)
+      : undefined;
+
+    const uuid = isUuid(dashcard.dashboard_id)
+      ? dashcard.dashboard_id
+      : undefined;
+
     // Only show the download button if the dashboard is public or embedded.
-    if (isPublicOrEmbedded) {
+    if (isPublicOrEmbedded && downloadsEnabled) {
       return (
-        <Tooltip label={t`Download results`}>
-          <ActionIcon
-            c="text-dark"
-            onClick={() => {}}
-            className={cx({
-              [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
-              [cx(CS.hoverChild, CS.hoverChildSmooth)]: true,
-            })}
-          >
-            <Icon name="download" />
-          </ActionIcon>
-        </Tooltip>
+        <DashCardQuestionDownloadButton
+          question={question}
+          result={mainSeries}
+          dashboardId={dashboard.id}
+          dashcardId={dashcard.id}
+          uuid={uuid}
+          token={token}
+        />
       );
     }
 
@@ -254,12 +250,8 @@ export function DashCardVisualization({
         result={mainSeries}
         dashcardId={dashcard.id}
         dashboardId={dashboard.id}
-        token={
-          isJWT(dashcard.dashboard_id)
-            ? String(dashcard.dashboard_id)
-            : undefined
-        }
-        uuid={isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined}
+        token={token}
+        uuid={uuid}
       />
     );
   }, [

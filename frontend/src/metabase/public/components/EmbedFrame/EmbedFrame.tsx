@@ -196,9 +196,8 @@ export const EmbedFrame = ({
                   {dashboard && pdfDownloadsEnabled && (
                     <ExportAsPdfButton
                       dashboard={dashboard}
-                      compact={
-                        !finalName && (hasVisibleParameters || !!dashboardTabs)
-                      }
+                      hasTitle={titled}
+                      hasVisibleParameters={hasVisibleParameters}
                     />
                   )}
                 </TitleAndButtonsContainer>

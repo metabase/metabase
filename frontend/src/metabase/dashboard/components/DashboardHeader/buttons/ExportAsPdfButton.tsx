@@ -18,10 +18,14 @@ import CS from "./ExportAsPdfButton.module.css";
 
 export const ExportAsPdfButton = ({
   dashboard,
-  compact = false,
+
+  hasTitle,
+  hasVisibleParameters,
 }: {
   dashboard: Dashboard;
-  compact?: boolean;
+
+  hasTitle?: boolean;
+  hasVisibleParameters?: boolean;
 }) => {
   const dispatch = useDispatch();
 
@@ -43,13 +47,18 @@ export const ExportAsPdfButton = ({
     );
   };
 
+  const hasDashboardTabs = dashboard?.tabs && dashboard.tabs.length > 1;
+
   return (
     <Tooltip label={t`Download as PDF`}>
       <ActionIcon
         c="text-dark"
         onClick={() => dispatch(saveAsPDF)}
         className={cx({
-          [CS.CompactExportAsPdfButton]: compact,
+          [CS.CompactExportAsPdfButton]:
+            !hasTitle && (hasVisibleParameters || hasDashboardTabs),
+          [CS.ParametersVisibleWithNoTabs]:
+            hasVisibleParameters && !hasDashboardTabs,
         })}
       >
         <Icon name="download" />
