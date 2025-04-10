@@ -154,12 +154,17 @@ function getOption(entry: string | ParameterValue): SelectItem | null {
 }
 
 function getLabel(option: string | ParameterValue): string {
-  return option[1] ?? option[0]?.toString() ?? "";
+  if (Array.isArray(option)) {
+    return String(option[1] ?? option[0] ?? "");
+  }
+
+  return option;
 }
 
 function getValue(option: string | ParameterValue) {
-  if (typeof option === "string") {
-    return option;
+  if (Array.isArray(option)) {
+    return option[0];
   }
-  return option[0];
+
+  return option;
 }
