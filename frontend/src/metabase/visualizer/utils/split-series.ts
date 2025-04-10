@@ -15,7 +15,7 @@ export function shouldSplitVisualizerSeries(
   const dimensionDataSources = _.uniq(
     dimensions
       .map((columnName) => {
-        const mapping = columnValuesMapping[columnName];
+        const mapping = columnValuesMapping[columnName] ?? [];
         if (isDataSourceNameRef(mapping[0])) {
           return;
         }
