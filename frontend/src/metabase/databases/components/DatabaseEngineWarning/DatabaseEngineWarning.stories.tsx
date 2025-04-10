@@ -39,6 +39,16 @@ Template.args = {
         type: "community",
       }),
     }),
+    partnerEngine: createMockEngine({
+      "driver-name": "PartnerEngine",
+      source: createMockEngineSource({
+        type: "partner",
+        contact: {
+          name: "Partners Incorporated",
+          address: "https://example.com/contact",
+        },
+      }),
+    }),
   },
 };
 
@@ -65,6 +75,15 @@ export const Community = {
 
   args: {
     engineKey: "communityEngine",
+    ...Template.args,
+  },
+};
+
+export const Partner = {
+  render: Template,
+
+  args: {
+    engineKey: "partnerEngine",
     ...Template.args,
   },
 };
