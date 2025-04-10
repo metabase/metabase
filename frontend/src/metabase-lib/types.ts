@@ -286,7 +286,8 @@ export type ExpressionOperator =
   | "datetime-add"
   | "inside"
   | "segment"
-  | "offset";
+  | "offset"
+  | "value";
 
 export type ExpressionArg =
   | null

@@ -197,6 +197,24 @@ describe("format", () => {
     });
   });
 
+  describe("printWidth = 52", () => {
+    const { assertFormatted } = setup(52);
+
+    it("formats bigintegers", async () => {
+      await assertFormatted([
+        expression`
+          922337203685477580855
+        `,
+        expression`
+          -922337203685477580855
+        `,
+        expression`
+          [ID] = -922337203685477580855
+        `,
+      ]);
+    });
+  });
+
   describe("formats unknown references", () => {
     const stageIndex = -1;
 

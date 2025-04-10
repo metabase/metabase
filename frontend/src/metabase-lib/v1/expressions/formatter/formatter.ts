@@ -9,6 +9,7 @@ import { isa } from "metabase-lib/v1/types/utils/isa";
 import {
   type EDITOR_QUOTES,
   EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
+  FIELD_MARKERS,
   MBQL_CLAUSES,
   OPERATORS,
   OPERATOR_PRECEDENCE,
@@ -314,7 +315,11 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
       return indent(doc);
     }
 
-    if (!Lib.isExpressionParts(arg)) {
+    if (
+      !Lib.isExpressionParts(arg) ||
+      isValueOperator(arg.operator) ||
+      FIELD_MARKERS.has(arg.operator)
+    ) {
       // Not a call expression so not an operator
       return ind([ln, recurse(path, print, path.node.args[index])]);
     }
