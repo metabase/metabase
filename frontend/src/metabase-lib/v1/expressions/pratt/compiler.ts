@@ -243,7 +243,37 @@ function compileNegative(node: Node): Lib.ExpressionParts | NumberValue {
   if (typeof result.args[0] === "number") {
     return -result.args[0];
   }
+
+  const arg = result.args[0];
+
+  if (Lib.isExpressionParts(arg) && arg.operator === "value") {
+    return negateValueClause(arg);
+  }
   return result;
+}
+
+function negateValueClause(clause: Lib.ExpressionParts): Lib.ExpressionParts {
+  assert(Lib.isExpressionParts(clause), t`Expected expression clause`);
+  assert(clause.operator === "value", t`Expected value clause`);
+  const { options, args } = clause;
+  const [value] = args;
+
+  if (typeof value === "number") {
+    return {
+      operator: "value",
+      options,
+      args: [-value],
+    };
+  }
+  if (typeof value === "string") {
+    const negated = value.startsWith("-") ? value.slice(1) : `-${value}`;
+    return {
+      operator: "value",
+      options,
+      args: [negated],
+    };
+  }
+  assert(false, t`Expected number or string`);
 }
 
 function compileAdditionOp(node: Node): Lib.ExpressionParts {
