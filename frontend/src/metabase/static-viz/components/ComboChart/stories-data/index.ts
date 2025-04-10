@@ -51,6 +51,7 @@ import barStackedSeriesLabelsRotated from "./bar-stacked-series-labels-rotated.j
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
 import barTwoDaysOfWeek from "./bar-two-days-of-week.json";
+import barWidthDstTimezones56424 from "./bar-width-dst-timezones-56424.json";
 import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
 import breakoutNullAndEmptyString from "./breakout-null-and-empty-string.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
@@ -248,4 +249,5 @@ export const data = {
   barStackedAllLabelsTimeseriesWithGap45717,
   offsetBasedTimezone47835,
   noDimensionColumn54755,
+  barWidthDstTimezones56424,
 };
