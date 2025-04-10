@@ -59,7 +59,7 @@ const metadata = createMockMetadata({
           metrics: [
             createMockCard({
               id: METRIC_ID,
-              name: "FOO",
+              name: "Metric",
               type: "metric",
               dataset_query: createMockStructuredDatasetQuery({
                 database: SAMPLE_DB_ID,
@@ -339,6 +339,7 @@ const aggregation: TestCase[] = [
     ["distinct-where", userId, [">", total, 50]],
     "distinct-where aggregation",
   ],
+  ["[Metric]", metric, "Metric reference"],
 ];
 
 const filter: TestCase[] = [
@@ -392,7 +393,6 @@ const filter: TestCase[] = [
     ["not", ["does-not-contain", tax, "John"]],
     "not does not contain",
   ],
-  ["[FOO]", metric, "Metric reference"],
 ];
 
 type TestCase = [string, Expression | undefined, string];
