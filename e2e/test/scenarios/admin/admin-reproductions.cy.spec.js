@@ -247,3 +247,35 @@ describe("(metabase#46714)", () => {
     );
   });
 });
+
+describe("scenarios > admin > database modal > tab navigation (issue #56499)", () => {
+  function editDatabase() {
+    cy.findByTestId("database-connection-info-section")
+      .findByRole("button", { name: "Edit connection details" })
+      .click();
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow tabbing between fields in database editing modal", () => {
+    // Visit the database edit page for the sample DB
+    cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
+
+    // Click the edit button to open the database editing modal
+    editDatabase();
+
+    // Verify we're in the editing modal
+    cy.findByLabelText("Display name").should("be.visible");
+
+    // Start by focusing on the first field
+    cy.findByLabelText("Display name").focus();
+
+    cy.realPress("Tab");
+
+    // next field should be focused
+    cy.focused().should("have.attr", "name").and("include", "details.db");
+  });
+});

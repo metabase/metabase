@@ -83,6 +83,8 @@ export const DatabaseConnectionModalInner = ({
       opened
       onClose={handleCloseModal}
       padding="xl"
+      // Make sure we don't disable keyboard navigation
+      withinPortal={false}
       classNames={{
         content: S.modalRoot,
         header: S.modalHeader,
