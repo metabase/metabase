@@ -153,8 +153,11 @@
   (lib.metadata/metric query (last metric-ref)))
 
 (defmethod expression-parts-method :expression
-  [query stage-number expression-ref]
-  (column-metadata-from-ref query stage-number expression-ref))
+  [_query _stage-number expression-ref]
+  {:lib/type :mbql/expression-parts
+   :operator :expression
+   :options  (lib.options/options expression-ref)
+   :args [(last expression-ref)]})
 
 (mu/defn expression-parts :- [:or ExpressionArg ExpressionParts]
   "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
