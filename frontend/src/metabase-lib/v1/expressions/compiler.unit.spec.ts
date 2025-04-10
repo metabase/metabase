@@ -417,3 +417,25 @@ describe("old recursive-parser tests", () => {
     expect(expr("NOT [Expensive Things]")).toEqual(["not", segment]);
   });
 });
+
+describe("Specific expressions", () => {
+  it("should allow using OFFSET as a CASE argument (metabase#42377)", () => {
+    expect(expr(`Sum(case([Total] > 0, Offset([Total], -1)))`)).toEqual([
+      "sum",
+      [
+        "case",
+        [
+          [
+            [">", ["field", 13, { "base-type": "type/Float" }], 0],
+            [
+              "offset",
+              { "lib/uuid": expect.any(String) },
+              ["field", 13, { "base-type": "type/Float" }],
+              -1,
+            ],
+          ],
+        ],
+      ],
+    ]);
+  });
+});
