@@ -10518,6 +10518,48 @@ databaseChangeLog:
                   remarks: The timestamp at which a user was deactivated
 
   - changeSet:
+      id: v53.2025-04-02T19:37:20
+      author: nvoxland
+      comment: Create the table backing the message queue
+      changes:
+        - createTable:
+            tableName: queue_payload
+            remarks: Lightweight message queue for cross-cluster communication
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: queue_name
+                  type: varchar(254)
+                  remarks: The name of queue this message is in
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the message was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The number of actual messages in the payload
+                  name: num_messages
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: A json-formatted array of messages
+                  name: payload
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v53.2025-02-20T04:49:39
       author: johnswanson
       comment: remove unused cards in usage analytics
