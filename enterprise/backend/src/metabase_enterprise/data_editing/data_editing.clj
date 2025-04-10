@@ -63,8 +63,8 @@
         :created_row row}))
     ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
     (let [pk-cols (t2/select-fn-vec :name [:model/Field :name] :table_id table-id :semantic_type :type/PK)
-          row-pk->old-new-values (->> (for [row rows]
-                                        (let [pks (zipmap pk-cols (map row pk-cols))]
+          row-pk->old-new-values (->> (for [row (:created-rows res)]
+                                        (let [pks (zipmap pk-cols (map #p row #p pk-cols))]
                                           [pks [nil row]]))
                                       (into {}))]
       ;; TODO Circular reference will be fixed when we remove the hacks from this method.

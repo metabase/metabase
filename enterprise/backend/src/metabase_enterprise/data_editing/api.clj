@@ -135,7 +135,7 @@
       (let [row-pk->old-new-values (->> (for [row rows']
                                           ;; TODO fix for composite keys here too
                                           (let [id  (get-row-pk pk-field row)
-                                                pks {pk-field id}]
+                                                pks {(:name pk-field) id}]
                                             [pks [(get id->db-row id)
                                                   (get id->db-row id)]]))
                                         (into {}))]
@@ -169,7 +169,7 @@
     (let [row-pk->old-new-values (->> (for [row rows]
                                         ;; TODO fix for composite keys here too
                                         (let [id  (get-row-pk pk-field row)
-                                              pks {pk-field id}]
+                                              pks {(:name pk-field) id}]
                                           [pks [(get id->db-rows id) nil]]))
                                       (into {}))]
       (undo/track-change! user-id {table-id row-pk->old-new-values}))
@@ -252,12 +252,13 @@
                                  [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
   (api/check-404 (t2/select-one-pk :model/Table table-id))
-  (let [value api/*current-user*]
+  (let [user-id api/*current-user-id*]
     (if no-op
-      (undo/has-undo? true value table-id)
+      {:batch_num (undo/next-batch-num true user-id table-id)}
       ;; IDEA encapsulate this in an action
       ;; IDEA use generic action calling API instead of having this endpoint
-      {:result (undo/undo! value table-id)})))
+      ;; TODO translate errors to http codes
+      {:result (undo/undo! user-id table-id)})))
 
 (api.macros/defendpoint :post "/redo"
   "Redo the last change you made.
@@ -271,12 +272,13 @@
                                  [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
   (api/check-404 (t2/select-one :model/Table table-id))
-  (let [value api/*current-user*]
+  (let [user-id api/*current-user-id*]
     (if no-op
-      (undo/has-undo? false value table-id)
+      {:batch_num (undo/next-batch-num false user-id table-id)}
       ;; IDEA encapsulate this in an action
       ;; IDEA use generic action calling API instead of having this endpoint
-      {:result (undo/redo! value table-id)})))
+      ;; TODO translate errors to http codes
+      {:result (undo/redo! user-id table-id)})))
 
 (api.macros/defendpoint :delete "/webhook/:token"
   "Deletes a webhook endpoint token."
