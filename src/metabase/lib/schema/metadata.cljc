@@ -1,3 +1,9 @@
+(ns metabase.lib.schema.metadata
+  (:require
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli.registry :as mr]))
+
 ;;; Column vs Field?
 ;;;
 ;;; Lately I've been using `Field` to only mean a something that lives in the application database, i.e. something
@@ -18,14 +24,6 @@
 ;;; 'Human readable values' like these can also be entered manually from the GUI, for example for enum columns. How
 ;;; will this affect what MLv2 needs to know or does? Not clear at this point, but we'll probably want to abstract
 ;;; away dealing with Dimensions in the future so the FE QB GUI doesn't need to special case them.
-
-(ns metabase.lib.schema.metadata
-  (:require
-   [malli.util :as mut]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli.registry :as mr]))
 
 (mr/def ::column-source
   [:enum
@@ -126,20 +124,6 @@
    ;; `:values`
    [:human-readable-values [:sequential :any]]])
 
-; ;; Create a custom property to mark fields for translation
-; ;; Using :translate? property in schema definitions
-; (defn add-translation-annotation
-;   "Adds a :translate? annotation to a field in a schema."
-;   [schema field]
-;   (mut/update-properties schema field assoc :translate-content? true))
-
-; ;; Example of how to annotate an existing schema
-; (defn annotate-schema-for-translation
-;   "Annotates fields in a schema that contain user-generated content that should
-;   be translated with the content translation dictionary"
-;   [schema fields-to-translate]
-;   (reduce add-translation-annotation schema fields-to-translate))
-
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -162,7 +146,7 @@
    [:base-type ::lib.schema.common/base-type]
    ;; This is nillable because internal remap columns have `:id nil`.
    [:id             {:optional true} [:maybe ::lib.schema.id/field]]
-   [:display-name   {:optional true :is-translatable-content true} [:maybe :string]]
+   [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
    ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
    [:database-type  {:optional true} [:maybe :string]]
