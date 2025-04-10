@@ -501,7 +501,7 @@ export function multiAutocompleteInput(filter = ":eq(0)") {
 
 export function fieldValuesInput(filter = ":eq(0)") {
   // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByRole("textbox").filter(filter).get("input").last();
+  return cy.findAllByRole("combobox").filter(filter);
 }
 
 export function fieldValuesValue(index) {
