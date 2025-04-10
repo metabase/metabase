@@ -371,13 +371,14 @@
         [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
         [:include-mirror-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
-         database (api/check-404 (if include-mirror-databases?
-                                   (t2/select-one :model/Database :id id)
-                                   (t2/select-one :model/Database :id id :router_database_id nil)))]
+         database               (api/check-404 (if include-mirror-databases?
+                                                 (t2/select-one :model/Database :id id)
+                                                 (t2/select-one :model/Database :id id :router_database_id nil)))
+         router-db-id           (:router_database_id database)]
      (cond-> database
        filter-by-data-access? api/read-check
        (or exclude-uneditable-details?
-           (:router_database_id database)) api/write-check))))
+           router-db-id)      api/write-check))))
 
 (mu/defn- check-database-exists
   ([id] (check-database-exists id {}))
@@ -398,8 +399,7 @@
     true                         (get-database-hydrate-include include)
     true                         add-can-upload
     include-editable-data-model? check-db-data-model-perms
-    (mi/can-write? db)           (->
-                                  (assoc :can-manage true))))
+    (mi/can-write? db)           (assoc :can-manage true)))
 
 (api.macros/defendpoint :get "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables

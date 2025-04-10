@@ -1,7 +1,7 @@
 (ns metabase-enterprise.database-routing.e2e-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.test :as met]
    [metabase.db :as mdb]
    [metabase.driver.h2]
@@ -85,20 +85,23 @@
           (sync/sync-database! router-db)
           (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db)
                                                   :user_attribute "db_name"}]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anonymous access to a Router Database is prohibited."
-                                  (qp/process-query {:database (u/the-id router-db)
-                                                     :type :query
-                                                     :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}})))
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No Mirror Database found for user attribute"
-                                  (mt/with-test-user :crowberto
+            (testing "Anonymous access is prohibited"
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anonymous users cannot access a database with routing enabled."
                                     (qp/process-query {:database (u/the-id router-db)
                                                        :type :query
                                                        :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}))))
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"User attribute missing"
-                                  (mt/with-test-user :rasta
-                                    (qp/process-query {:database (u/the-id router-db)
-                                                       :type :query
-                                                       :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}))))))))))
+            (testing "No destination database matches"
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database Routing error: No Destination Database with slug `nonexistent_database_name` found."
+                                    (mt/with-test-user :crowberto
+                                      (qp/process-query {:database (u/the-id router-db)
+                                                         :type :query
+                                                         :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}})))))
+            (testing "User attribute is missing"
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Required user attribute is missing. Cannot route to a Destination Database."
+                                    (mt/with-test-user :rasta
+                                      (qp/process-query {:database (u/the-id router-db)
+                                                         :type :query
+                                                         :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}})))))))))))
 
 (deftest caching-works
   (mt/with-premium-features #{:database-routing}

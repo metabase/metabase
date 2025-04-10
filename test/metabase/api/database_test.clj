@@ -891,6 +891,7 @@
                      :model/Database _ {:engine ::test-driver}
                      :model/Database _ {:engine ::test-driver}
                      :model/Database _ {:engine ::test-driver}]
+        (mt/user-http-request :rasta :get 200 "database")
         (t2/with-call-count [call-count]
           (mt/user-http-request :rasta :get 200 "database")
           (is (< (call-count) 10)))))))
