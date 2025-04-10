@@ -16,7 +16,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.upload :as-alias upload]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [nano-id.core :as nano-id]
@@ -242,7 +241,7 @@
     {:table_id table-id
      :token token}))
 
-(defn translate-undo-error [e]
+(defn- translate-undo-error [e]
   (case (:error (ex-data e))
     :undo/none            (ex-info (tru "Nothing to do")                                         {:status-code 204} e)
     :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.")                 {:status-code 405} e)
