@@ -20,8 +20,10 @@
 
 ### Clojure
 - **Lint PR:** `./bin/mage kondo-updated master` (or whatever target branch)
-  - Call this one time, record the results, then work through the problems one by one.
+  - Call the command one time at the beginning, record the results, then work through the problems one by one.
   - If the solution is obvious, then please apply the fix. Otherwise skip it.
+  - If you fix all the issues (and verify by rerunning the kondo-updated command), commit the change with a succinct
+    and descriptive commit message.
 - **Lint File:** `./bin/mage kondo <file or files>` (or whatever target branch)
   - Use the linter as a way to know that you are adhering to conventions in place in the codebase
 - **Format:** `./bin/mage cljfmt-files [path]`
