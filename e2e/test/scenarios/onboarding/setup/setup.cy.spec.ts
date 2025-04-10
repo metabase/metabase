@@ -169,7 +169,8 @@ describe("scenarios > setup", () => {
       cy.intercept("/api/user/current").as("getUser");
 
       cy.button("Next").click();
-      cy.wait("@getUser");
+      //This is a fairly slow request, but it needs to complete for the rest of the test assertions to work
+      cy.wait("@getUser", { timeout: 20000 });
 
       // Database
       cy.findByText("Add your data").click(); // remove focus from input;
