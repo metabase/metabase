@@ -1,6 +1,7 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
    [metabase.channel.email.messages :as messages]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.user :as user]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.public-settings :as public-settings]
@@ -31,12 +32,55 @@
      :user_invited_join_url      (-> event-info :object :id join-url)}
     {}))
 
-(mu/defmethod notification.payload/notification-payload :notification/system-event
-  [notification-info :- ::notification.payload/Notification]
+(defn- dispatch-on-event-info
+  [{notification-system-event :payload :as _notification-info}]
+  (let [{:keys [event_info action]} notification-system-event]
+    (if action [event_info action] event_info)))
+
+(defmulti transform-event-info
+  "Transform the event info to a format that is easier to work with in the templates.
+  This is a multi-method because we want to be able to add more event types in the future."
+  {:arglists '([notification-info])}
+  dispatch-on-event-info)
+
+(defmethod transform-event-info [:event/action.success :row/create]
+  [notification-info]
+  #_{:clj-kondo/ignore [:unresolved-symbol]}
+  (lib.util.match/match
+    notification-info
+    {:event_info {:actor    {:first_name  ?first_name
+                             :last_name   ?last_name
+                             :email       ?email
+                             :common_name ?common_name}
+                  :result   {:table_id ?table_id
+                             :table    {:name ?table_name}
+                             :before   ?before
+                             :after    ?after}}}
+    {:editor  {:first_name  ?first_name
+               :last_name   ?last_name
+               :email       ?email
+               :common_name ?common_name}
+     :table   {:id   ?table_id
+               :name ?table_name
+               :url  (str (public-settings/site-url) "/table/" ?table_id)}
+     :record  (merge {:id (get ?after :ID)} ?after)
+     :changes (into {} (for [[k v] ?after
+                             :let [before-val (get ?before k)]
+                             :when (not= v before-val)]
+                         [k {:before before-val :after v}]))
+     :settings (notification.payload/default-settings)}))
+
+(defmethod transform-event-info :default
+  [notification-info]
   (let [event-info (:event_info notification-info)]
     {:payload_type :notification/system-event
      :creator      (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification-info))
-     :context      (notification.payload/default-context)
+     :context      (notification.payload/default-settings)
      :payload      (assoc event-info
                           :event_name (-> notification-info :payload :event_name)
                           :custom (custom-payload (-> notification-info :payload :event_name) event-info))}))
+
+(mu/defmethod notification.payload/notification-payload :notification/system-event
+  [notification-info :- ::notification.payload/Notification]
+  (def notification-info notification-info)
+  (transform-event-info notification-info))

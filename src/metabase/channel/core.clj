@@ -34,20 +34,6 @@
   (fn [channel-type notification-payload _template _recipients]
     [channel-type (:payload_type notification-payload)]))
 
-(defmulti transform-payload
-  "Transform the notification payload to a channel-specific format.
-
-  The message format is channel-specific, one requirement is that it should be the same format that
-  the [[send!]] multimethod expects."
-  {:added    "0.51.0"
-   :arglists '([channel-type notification-payload])}
-  (fn [channel-type notification-payload]
-    [channel-type (:payload_type notification-payload)]))
-
-(defmethod transform-payload :default
-  [_channel-type notification-payload]
-  notification-payload)
-
 (defmulti send!
   "Send a message to a channel."
   {:added    "0.51.0"

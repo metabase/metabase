@@ -122,7 +122,7 @@
        "background-color: " color "; "
        "border-radius: 4px;"))
 
-(defn default-context
+(defn default-settings
   "Return the default context for the notification."
   []
   ;; DO NOT delete or rename these fields, they are used in the notification templates
@@ -138,16 +138,6 @@
   "Given a notification info, return the notification payload."
   {:arglists '([notification-info])}
   :payload_type)
-
-(defmulti transform-payload
-  "Transform the payload for a specific channel to consume."
-  {:arglists '([channel-type notification-payload])}
-  (fn [channel-type notification-payload]
-    [channel-type (:payload_type notification-payload)]))
-
-(defmethod transform-payload :default
-  [_channel-type notification-payload]
-  notification-payload)
 
 (defmulti skip-reason
   "Return the reason to skip the notification, or nil if it should be sent."
