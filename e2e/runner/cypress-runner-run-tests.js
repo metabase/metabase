@@ -53,6 +53,7 @@ const configs = {
     };
 
     const userArgs = await parseArguments(args);
+
     const finalConfig = Object.assign({}, defaultConfig, userArgs);
     return finalConfig;
   },

@@ -67,7 +67,7 @@ export interface EngineFieldOption {
 }
 
 export interface EngineSource {
-  type: "official" | "community";
+  type: "official" | "community" | "partner";
   contact: EngineSourceContact | null;
 }
 

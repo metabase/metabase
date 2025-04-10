@@ -7,7 +7,14 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useUpdateEffect } from "react-use";
 import _ from "underscore";
 
@@ -91,7 +98,8 @@ export const useDataGridInstance = <TData, TValue>({
     }
   }, [controlledColumnSizingMap]);
 
-  useUpdateEffect(() => {
+  // useEffect and useUpdateEffect is triggered after render, which causes flickering for controlled column order
+  useLayoutEffect(() => {
     setColumnOrder(getColumnOrder(controlledColumnOrder ?? [], hasRowIdColumn));
   }, [controlledColumnOrder, hasRowIdColumn]);
 

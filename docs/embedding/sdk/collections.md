@@ -8,14 +8,7 @@ title: Embedded analytics SDK - collections
 
 You can embed Metabase's collection browser so that people can explore items in your Metabase from your application.
 
-## `CollectionBrowser` props
-
-| Prop               | Type                                               | Description                                                                                                                                                                                                                                                                                                                            |
-| ------------------ | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| collectionId       | `number \| 'root' \| 'personal'`                   | The numerical ID of the collection, "personal" for the user's personal collection, or "root" for the root collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. Defaults to "personal" |
-| onClick            | `(item: CollectionItem) => void`                   | An optional click handler that emits the clicked entity.                                                                                                                                                                                                                                                                               |
-| pageSize           | `number`                                           | The number of items to display per page. The default is 25.                                                                                                                                                                                                                                                                            |
-| visibleEntityTypes | `["question", "model", "dashboard", "collection"]` | The types of entities that should be visible. If not provided, all entities will be shown.                                                                                                                                                                                                                                             |
+Docs: [CollectionBrowser](./api/CollectionBrowser.html)
 
 ## Example embedding code with `CollectionBrowser`
 
@@ -30,4 +23,4 @@ With static questions, you set a specific collection as the collection people ca
 1. Set `isSaveEnabled` to true.
 2. Set `targetCollection` to the collection ID you want people to save items to.
 
-For more options, see [Question props](./questions.md#question-props).
+For more options, see [Question props](./questions.md).
