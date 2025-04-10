@@ -1,6 +1,7 @@
 import type { AstPath, Doc, ParserOptions, Plugin } from "prettier";
 import { builders } from "prettier/doc";
 import { format as pformat } from "prettier/standalone";
+import { t } from "ttag";
 
 import { parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
@@ -192,14 +193,22 @@ function formatColumn(
   path: AstPath<Lib.ColumnMetadata>,
   options: FormatOptions,
 ): Doc {
-  const { query, stageIndex } = options;
+  const { query, stageIndex, expressionIndex } = options;
   const column = path.node;
 
   assert(query !== undefined, "Expected query");
   assert(typeof stageIndex === "number", "Expected stageIndex");
   assert(Lib.isColumnMetadata(column), "Expected column");
 
-  const info = Lib.displayInfo(query, stageIndex, column);
+  const columns = Lib.expressionableColumns(query, stageIndex, expressionIndex);
+
+  // find original column so we can get the original display name
+  const found = Lib.findMatchingColumn(query, stageIndex, column, columns);
+  if (!found) {
+    return formatIdentifier(t`Unknown Field`, options);
+  }
+
+  const info = Lib.displayInfo(query, stageIndex, found);
   return formatDimensionName(info.longDisplayName, options);
 }
 
