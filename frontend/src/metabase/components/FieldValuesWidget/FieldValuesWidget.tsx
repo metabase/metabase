@@ -313,18 +313,15 @@ export const FieldValuesWidgetInner = forwardRef<
   };
 
   const onInputChange = (value: string) => {
-    let localValuesMode = valuesMode;
-
     // override "search" mode when searching is unnecessary
-    localValuesMode = isExtensionOfPreviousSearch(
+    const localValuesMode = isExtensionOfPreviousSearch(
       value,
       lastValue,
       options,
       maxResults,
     )
       ? "list"
-      : localValuesMode;
-
+      : valuesMode;
     if (localValuesMode === "search") {
       _search(value);
     }
@@ -335,7 +332,8 @@ export const FieldValuesWidgetInner = forwardRef<
   const search = useRef(
     _.debounce(async (value: string) => {
       if (!value) {
-        setLoadingState("INIT");
+        setLastValue(value);
+        setLoadingState("LOADED");
         return;
       }
 
@@ -379,7 +377,6 @@ export const FieldValuesWidgetInner = forwardRef<
     shouldList({ parameter, fields, disableSearch }) &&
     valuesMode === "list";
   const isLoading = loadingState === "LOADING";
-  const isLoaded = loadingState === "LOADED";
   const hasListValues = hasList({
     parameter,
     fields,
@@ -435,9 +432,11 @@ export const FieldValuesWidgetInner = forwardRef<
               }))}
             placeholder={tokenFieldPlaceholder}
             rightSection={isLoading ? <Loader size="xs" /> : undefined}
-            nothingFoundMessage={
-              isLoaded ? getNothingFoundMessage(fields) : undefined
-            }
+            nothingFoundMessage={getNothingFoundMessage({
+              fields,
+              loadingState,
+              lastValue,
+            })}
             autoFocus={autoFocus}
             comboboxProps={comboboxProps}
             data-testid="token-field"
@@ -488,7 +487,18 @@ const LoadingState = () => (
   </div>
 );
 
-function getNothingFoundMessage(fields: (Field | null)[]) {
+function getNothingFoundMessage({
+  fields,
+  loadingState,
+  lastValue,
+}: {
+  fields: (Field | null)[];
+  loadingState: LoadingStateType;
+  lastValue: string;
+}) {
+  if (loadingState !== "LOADED" || lastValue.length === 0) {
+    return undefined;
+  }
   if (fields.length === 1 && fields[0] != null) {
     return t`No matching ${fields[0]?.display_name} found.`;
   } else {
