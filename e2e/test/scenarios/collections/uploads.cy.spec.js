@@ -19,7 +19,7 @@ H.describeWithSnowplow(
       const testFile = H.VALID_CSV_FILES[0];
       const EMPTY_SCHEMA_NAME = "empty_uploads";
 
-      cy.intercept("PUT", "/api/setting").as("saveSettings");
+      cy.intercept("PUT", "/api/setting/*").as("saveSettings");
       cy.intercept("GET", "/api/database").as("databaseList");
 
       H.restore("postgres-writable");
@@ -43,11 +43,11 @@ H.describeWithSnowplow(
       cy.visit("/admin/settings/uploads");
 
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a database")
+        .findByPlaceholderText("Select a database")
         .click();
       H.popover().findByText("Writable Postgres12").click();
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a schema")
+        .findByPlaceholderText("Select a schema")
         .click();
 
       H.popover().findByText(EMPTY_SCHEMA_NAME).click();

@@ -4,6 +4,7 @@ import { setupSchemaEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { UndoListing } from "metabase/containers/UndoListing";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Database } from "metabase-types/api";
@@ -18,7 +19,6 @@ const TEST_DATABASES = [
     id: 1,
     name: "Db Uno",
     engine: "postgres",
-    settings: { "database-enable-actions": true },
     tables: [
       // we need to mock these tables so that it mocks the schema endpoint
       createMockTable({ schema: "public" }),
@@ -31,13 +31,11 @@ const TEST_DATABASES = [
     id: 2,
     name: "Db Dos",
     engine: "mysql",
-    settings: { "database-enable-actions": true },
   }),
   createMockDatabase({
     id: 3,
     name: "Db Tres",
     engine: "h2",
-    settings: { "database-enable-actions": true },
     tables: [createMockTable({ schema: "public" })],
     features: ["schemas"],
   }),
@@ -45,11 +43,10 @@ const TEST_DATABASES = [
     id: 5,
     name: "Db Cinco",
     engine: "h2",
-    settings: { "database-enable-actions": true },
     tables: [],
     features: ["schemas"],
   }),
-];
+] as Database[];
 
 interface SetupOpts {
   databases?: Database[];
@@ -78,30 +75,27 @@ function setup({
     setupSchemaEndpoints(db);
   });
 
-  const updateSpy = jest.fn(() => Promise.resolve());
-  const savingSpy = jest.fn();
-  const savedSpy = jest.fn();
-  const clearSpy = jest.fn();
+  const updateSpy = jest.fn(() => Promise.resolve({ error: "" }));
 
   renderWithProviders(
-    <UploadSettingsFormView
-      databases={databases.map(({ id }) => checkNotNull(metadata.database(id)))}
-      uploadsSettings={uploadsSettings}
-      updateSettings={updateSpy}
-      saveStatusRef={{
-        current: {
-          setSaving: savingSpy,
-          setSaved: savedSpy,
-          clear: clearSpy,
-        } as any,
-      }}
-    />,
+    <>
+      <UploadSettingsFormView
+        databases={
+          databases.map(({ id }) =>
+            checkNotNull(metadata.database(id)),
+          ) as Database[]
+        }
+        uploadsSettings={uploadsSettings}
+        updateSetting={updateSpy}
+      />
+      <UndoListing />
+    </>,
     { storeInitialState: state },
   );
-  return { updateSpy, savingSpy, savedSpy, clearSpy };
+  return { updateSpy };
 }
 
-describe("Admin > Settings > UploadSetting", () => {
+describe("Admin > Settings > UploadSettingsForm", () => {
   it("should render a description", async () => {
     setup();
     expect(
@@ -118,24 +112,19 @@ describe("Admin > Settings > UploadSetting", () => {
     ).toBeInTheDocument();
   });
 
-  it("should populate a dropdown of actions-enabled DBs", async () => {
-    setup();
-    await userEvent.click(await screen.findByText("Select a database"));
-
-    expect(await screen.findByText("Db Uno")).toBeInTheDocument();
-    expect(await screen.findByText("Db Dos")).toBeInTheDocument();
-    expect(await screen.findByText("Db Tres")).toBeInTheDocument();
-    expect(await screen.findByText("Db Cinco")).toBeInTheDocument();
-  });
-
   it("should populate a dropdown of schema for schema-enabled DBs", async () => {
     setup();
-    await userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(
+      await screen.findByPlaceholderText("Select a database"),
+    );
 
     const dbItem = await screen.findByText("Db Uno");
     await userEvent.click(dbItem);
+    await screen.findByDisplayValue("1");
 
-    const schemaDropdown = await screen.findByText("Select a schema");
+    const schemaDropdown =
+      await screen.findByPlaceholderText("Select a schema");
+    await waitFor(() => expect(schemaDropdown).toBeEnabled());
     await userEvent.click(schemaDropdown);
 
     expect(await screen.findByText("public")).toBeInTheDocument();
@@ -145,12 +134,17 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should be able to submit a db + schema combination selection", async () => {
     const { updateSpy } = setup();
-    await userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(
+      await screen.findByPlaceholderText("Select a database"),
+    );
 
     const dbItem = await screen.findByText("Db Uno");
     await userEvent.click(dbItem);
+    await screen.findByDisplayValue("1");
 
-    const schemaDropdown = await screen.findByText("Select a schema");
+    const schemaDropdown =
+      await screen.findByPlaceholderText("Select a schema");
+    await waitFor(() => expect(schemaDropdown).toBeEnabled());
     await userEvent.click(schemaDropdown);
 
     const schemaItem = await screen.findByText("uploads");
@@ -162,7 +156,8 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-settings": {
+      key: "uploads-settings",
+      value: {
         db_id: 1,
         schema_name: "uploads",
         table_prefix: null,
@@ -172,10 +167,13 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should be able to submit a table prefix for databases without schema", async () => {
     const { updateSpy } = setup();
-    await userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(
+      await screen.findByPlaceholderText("Select a database"),
+    );
 
     const dbItem = await screen.findByText("Db Dos");
     await userEvent.click(dbItem);
+    await screen.findByDisplayValue("2");
 
     const prefixInput = await screen.findByPlaceholderText("upload_");
 
@@ -187,7 +185,8 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-settings": {
+      key: "uploads-settings",
+      value: {
         db_id: 2,
         schema_name: null,
         table_prefix: "my_prefix_",
@@ -197,12 +196,17 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should be able to submit a table prefix for databases with schema", async () => {
     const { updateSpy } = setup();
-    await userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(
+      await screen.findByPlaceholderText("Select a database"),
+    );
 
     const dbItem = await screen.findByText("Db Uno");
     await userEvent.click(dbItem);
+    await screen.findByDisplayValue("1");
 
-    const schemaDropdown = await screen.findByText("Select a schema");
+    const schemaDropdown =
+      await screen.findByPlaceholderText("Select a schema");
+    await waitFor(() => expect(schemaDropdown).toBeEnabled());
     await userEvent.click(schemaDropdown);
 
     const schemaItem = await screen.findByText("uploads");
@@ -217,7 +221,8 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-settings": {
+      key: "uploads-settings",
+      value: {
         db_id: 1,
         schema_name: "uploads",
         table_prefix: "my_prefix_",
@@ -225,9 +230,11 @@ describe("Admin > Settings > UploadSetting", () => {
     });
   });
 
-  it("should call update methods on saveStatusRef", async () => {
-    const { savingSpy, savedSpy } = setup();
-    await userEvent.click(await screen.findByText("Select a database"));
+  it("should show enabled toast", async () => {
+    setup();
+    await userEvent.click(
+      await screen.findByPlaceholderText("Select a database"),
+    );
 
     const dbItem = await screen.findByText("Db Dos");
     await userEvent.click(dbItem);
@@ -241,14 +248,15 @@ describe("Admin > Settings > UploadSetting", () => {
       await screen.findByRole("button", { name: "Enable uploads" }),
     );
 
-    expect(savingSpy).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(savedSpy).toHaveBeenCalledTimes(1));
+    await expectToast("Uploads enabled");
   });
 
   it("should show an error if enabling fails", async () => {
     const { updateSpy } = setup();
-    updateSpy.mockImplementation(() => Promise.reject(new Error("Oh no!")));
-    await userEvent.click(await screen.findByText("Select a database"));
+    updateSpy.mockImplementation(() => Promise.resolve({ error: "oh no!" }));
+    await userEvent.click(
+      await screen.findByPlaceholderText("Select a database"),
+    );
 
     const dbItem = await screen.findByText("Db Dos");
     await userEvent.click(dbItem);
@@ -258,14 +266,15 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-settings": {
+      key: "uploads-settings",
+      value: {
         db_id: 2,
         schema_name: null,
-        table_prefix: "upload_",
+        table_prefix: null,
       },
     });
 
-    expect(await screen.findByText(/There was a problem/i)).toBeInTheDocument();
+    await expectToast(/There was a problem/);
   });
 
   it("should be able to disable uploads", async () => {
@@ -281,7 +290,8 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-settings": {
+      key: "uploads-settings",
+      value: {
         db_id: null,
         schema_name: null,
         table_prefix: null,
@@ -290,30 +300,28 @@ describe("Admin > Settings > UploadSetting", () => {
   });
 
   it("should show an error if disabling fails", async () => {
-    const { updateSpy, savingSpy, clearSpy, savedSpy } = setup({
+    const { updateSpy } = setup({
       uploadsSettings: {
         db_id: 2,
         schema_name: null,
         table_prefix: null,
       },
     });
-    updateSpy.mockImplementation(() => Promise.reject(new Error("Oh no!")));
+    updateSpy.mockImplementation(() => Promise.resolve({ error: "oh no!" }));
     await userEvent.click(
       await screen.findByRole("button", { name: "Disable uploads" }),
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-settings": {
+      key: "uploads-settings",
+      value: {
         db_id: null,
         schema_name: null,
         table_prefix: null,
       },
     });
 
-    expect(await screen.findByText(/There was a problem/i)).toBeInTheDocument();
-    expect(savingSpy).toHaveBeenCalledTimes(1);
-    expect(clearSpy).toHaveBeenCalledTimes(1);
-    expect(savedSpy).not.toHaveBeenCalled();
+    await expectToast(/There was a problem/i);
   });
 
   it("should populate db and schema from existing settings", async () => {
@@ -325,8 +333,11 @@ describe("Admin > Settings > UploadSetting", () => {
       },
     });
 
-    expect(await screen.findByText("Db Uno")).toBeInTheDocument();
-    expect(await screen.findByText("top_secret")).toBeInTheDocument();
+    // mantine select puts 2 inputs in, 1 is hidden
+    expect(await screen.findByDisplayValue("Db Uno")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("1")).toBeInTheDocument();
+
+    expect(await screen.findByDisplayValue("top_secret")).toBeInTheDocument();
   });
 
   it("should populate db and stable prefix from existing settings", async () => {
@@ -338,7 +349,9 @@ describe("Admin > Settings > UploadSetting", () => {
       },
     });
 
-    expect(await screen.findByText("Db Dos")).toBeInTheDocument();
+    // mantine select puts 2 inputs in, 1 is hidden
+    expect(await screen.findByDisplayValue("Db Dos")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("2")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("my_uploads_")).toBeInTheDocument();
   });
 
@@ -350,7 +363,7 @@ describe("Admin > Settings > UploadSetting", () => {
         table_prefix: null,
       },
     });
-    const dbItem = await screen.findByText("Select a database");
+    const dbItem = await screen.findByPlaceholderText("Select a database");
     await userEvent.click(dbItem);
     await userEvent.click(await screen.findByText("Db Cinco"));
 
@@ -370,10 +383,13 @@ describe("Admin > Settings > UploadSetting", () => {
         table_prefix: null,
       },
     });
-    await userEvent.click(await screen.findByText("Db Dos"));
+    await userEvent.click(
+      await screen.findByPlaceholderText("Select a database"),
+    );
 
     const dbItem = await screen.findByText("Db Uno");
     await userEvent.click(dbItem);
+    await screen.findByDisplayValue("1");
 
     expect(
       screen.queryByRole("button", { name: "Enable uploads" }),
@@ -384,7 +400,9 @@ describe("Admin > Settings > UploadSetting", () => {
     expect(updateButton).toBeInTheDocument();
     expect(updateButton).toBeDisabled(); // because no schema is selected
 
-    const schemaDropdown = await screen.findByText("Select a schema");
+    const schemaDropdown =
+      await screen.findByPlaceholderText("Select a schema");
+    await waitFor(() => expect(schemaDropdown).toBeEnabled());
     await userEvent.click(schemaDropdown);
 
     const schemaItem = await screen.findByText("uploads");
@@ -395,7 +413,8 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-settings": {
+      key: "uploads-settings",
+      value: {
         db_id: 1,
         schema_name: "uploads",
         table_prefix: null,
@@ -413,7 +432,9 @@ describe("Admin > Settings > UploadSetting", () => {
 
     it("should show disabled enable button when no schema is selected", async () => {
       setup();
-      await userEvent.click(await screen.findByText("Select a database"));
+      await userEvent.click(
+        await screen.findByPlaceholderText("Select a database"),
+      );
 
       const dbItem = await screen.findByText("Db Uno");
       await userEvent.click(dbItem);
@@ -438,7 +459,9 @@ describe("Admin > Settings > UploadSetting", () => {
 
     it("should enable the enable button when a schemaless db is selected", async () => {
       setup();
-      await userEvent.click(await screen.findByText("Select a database"));
+      await userEvent.click(
+        await screen.findByPlaceholderText("Select a database"),
+      );
 
       const dbItem = await screen.findByText("Db Dos");
       await userEvent.click(dbItem);
@@ -456,10 +479,13 @@ describe("Admin > Settings > UploadSetting", () => {
           table_prefix: null,
         },
       });
-      await userEvent.click(await screen.findByText("Db Dos"));
+      await userEvent.click(
+        await screen.findByPlaceholderText("Select a database"),
+      );
 
       const dbItem = await screen.findByText("Db Uno");
       await userEvent.click(dbItem);
+      await screen.findByDisplayValue("1");
 
       expect(
         screen.queryByRole("button", { name: "Enable uploads" }),
@@ -473,7 +499,8 @@ describe("Admin > Settings > UploadSetting", () => {
       expect(updateButton).toBeInTheDocument();
       expect(updateButton).toBeDisabled(); // because no schema is selected
 
-      const schemaDropdown = await screen.findByText("Select a schema");
+      const schemaDropdown =
+        await screen.findByPlaceholderText("Select a schema");
       await userEvent.click(schemaDropdown);
 
       const schemaItem = await screen.findByText("uploads");
@@ -565,7 +592,9 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should show a warning for h2 databases", async () => {
     setup();
-    await userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(
+      await screen.findByPlaceholderText("Select a database"),
+    );
 
     await userEvent.click(await screen.findByText("Db Cinco")); // h2
 
@@ -580,7 +609,9 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should show an extended warning for h2 databases on hosted instances", async () => {
     setup({ isHosted: true });
-    await userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(
+      await screen.findByPlaceholderText("Select a database"),
+    );
 
     await userEvent.click(await screen.findByText("Db Cinco")); // h2
 
@@ -596,3 +627,10 @@ describe("Admin > Settings > UploadSetting", () => {
     ).toBeInTheDocument();
   });
 });
+
+const expectToast = async (text: string | RegExp) => {
+  return waitFor(() => {
+    const undo = screen.getByTestId("undo-list");
+    expect(within(undo).getByText(text)).toBeInTheDocument();
+  });
+};
