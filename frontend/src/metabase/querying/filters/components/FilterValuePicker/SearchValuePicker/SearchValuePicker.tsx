@@ -3,7 +3,7 @@ import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import { useSearchFieldValuesQuery } from "metabase/api";
-import { Loader, MultiAutocomplete } from "metabase/ui";
+import { type ComboboxProps, Loader, MultiAutocomplete } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
 import { getFieldOptions } from "../utils";
@@ -22,6 +22,7 @@ interface SearchValuePickerProps {
   selectedValues: string[];
   columnDisplayName: string;
   autoFocus?: boolean;
+  comboboxProps?: ComboboxProps;
   onCreate?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
 }
@@ -33,6 +34,7 @@ export function SearchValuePicker({
   selectedValues,
   columnDisplayName,
   autoFocus,
+  comboboxProps,
   onCreate,
   onChange,
 }: SearchValuePickerProps) {
@@ -94,6 +96,7 @@ export function SearchValuePicker({
       autoFocus={autoFocus}
       rightSection={isSearching ? <Loader size="xs" /> : undefined}
       nothingFoundMessage={nothingFoundMessage}
+      comboboxProps={comboboxProps}
       aria-label={t`Filter value`}
       onCreate={onCreate}
       onChange={onChange}

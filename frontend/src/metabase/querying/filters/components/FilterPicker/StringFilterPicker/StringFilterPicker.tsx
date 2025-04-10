@@ -13,7 +13,7 @@ import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { WIDTH } from "../constants";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function StringFilterPicker({
@@ -127,6 +127,7 @@ function StringValueInput({
           stageIndex={stageIndex}
           column={column}
           values={values}
+          comboboxProps={COMBOBOX_PROPS}
           autoFocus
           onChange={onChange}
         />
@@ -140,6 +141,7 @@ function StringValueInput({
         <MultiAutocomplete
           value={values}
           placeholder={t`Enter some text`}
+          comboboxProps={COMBOBOX_PROPS}
           aria-label={t`Filter value`}
           onChange={onChange}
         />

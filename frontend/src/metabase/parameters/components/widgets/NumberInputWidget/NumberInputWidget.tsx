@@ -19,6 +19,7 @@ import type {
 } from "metabase-types/api";
 
 import { Footer, TokenFieldWrapper, WidgetLabel, WidgetRoot } from "../Widget";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
 
 export type NumberInputWidgetProps = {
   value: ParameterValueOrArray | undefined;
@@ -85,7 +86,7 @@ export function NumberInputWidget({
   };
 
   return (
-    <WidgetRoot className={className}>
+    <WidgetRoot className={className} w={WIDTH}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
         <TokenFieldWrapper>
@@ -94,6 +95,7 @@ export function NumberInputWidget({
             data={options}
             placeholder={placeholder}
             autoFocus={autoFocus}
+            comboboxProps={COMBOBOX_PROPS}
             onCreate={handleCreate}
             onChange={handleChange}
           />
