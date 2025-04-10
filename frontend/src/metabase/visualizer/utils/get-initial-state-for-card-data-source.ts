@@ -1,5 +1,4 @@
 import { isNotNull } from "metabase/lib/types";
-import { getColumnVizSettings } from "metabase/visualizations";
 import {
   getDefaultDimensionFilter,
   getDefaultMetricFilter,
@@ -17,6 +16,7 @@ import {
   isVisualizerSupportedVisualization,
 } from "./dashboard-card-supports-visualizer";
 import { createDataSource } from "./data-source";
+import { getColumnVizSettings } from "./viz-settings";
 
 function pickColumnsFromTableToBarChart(
   originalColumns: DatasetColumn[],

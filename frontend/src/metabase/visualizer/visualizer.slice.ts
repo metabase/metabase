@@ -10,10 +10,7 @@ import _ from "underscore";
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { copy } from "metabase/lib/utils";
-import {
-  getColumnVizSettings,
-  isCartesianChart,
-} from "metabase/visualizations";
+import { isCartesianChart } from "metabase/visualizations";
 import type {
   Card,
   CardId,
@@ -36,6 +33,7 @@ import {
   createDataSource,
   createVisualizerColumnReference,
   extractReferencedColumns,
+  getColumnVizSettings,
   getDataSourceIdFromNameRef,
   getDefaultVisualizationName,
   getInitialStateForCardDataSource,
