@@ -43,13 +43,13 @@
                   "artifact-permissions regime will be able to see it if they have permissions for that Collection")
       (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
         (mi/perms-objects-set dashtab :read)
-        (is (= true (mi/can-read? dashtab)))
+        (is (true? (mi/can-read? dashtab)))
         (is (= false (mi/can-write? dashtab)))))
 
     (testing "Do we have *write* Permissions for a dashtab if we have *write* Permissions for the Collection it's in?"
       (binding [api/*current-user-permissions-set* (delay #{(perms/collection-readwrite-path collection)})]
-        (is (= true (mi/can-read? dashtab)))
-        (is (= true (mi/can-write? dashtab)))))
+        (is (true? (mi/can-read? dashtab)))
+        (is (true? (mi/can-write? dashtab)))))
 
     (testing "A user that can't see the Collection that the Dashboard is in can't read and write the dashtab"
       (mt/with-current-user (mt/user->id :lucky)
@@ -58,8 +58,8 @@
 
     (testing "A user that can see the Collection that the Dashboard is in can read and write the dashtab"
       (mt/with-current-user (mt/user->id :rasta)
-        (is (= true (mi/can-read? dashboard)))
-        (is (= true (mi/can-write? dashboard)))))))
+        (is (true? (mi/can-read? dashboard)))
+        (is (true? (mi/can-write? dashboard)))))))
 
 (deftest dependency-test
   (testing "Deleting a dashtab should delete the associated dashboardcards"

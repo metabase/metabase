@@ -81,8 +81,8 @@
   (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
     (mt/with-temporary-setting-values [site-url                       "https://example.com"
                                        redirect-all-requests-to-https true]
-      (is (= true
-             (public-settings/redirect-all-requests-to-https)))
+      (is (true?
+           (public-settings/redirect-all-requests-to-https)))
       (public-settings/site-url! "http://example.com")
       (is (= false
              (public-settings/redirect-all-requests-to-https)))))
@@ -90,11 +90,11 @@
   (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
     (mt/with-temporary-setting-values [site-url                       "https://example.com"
                                        redirect-all-requests-to-https true]
-      (is (= true
-             (public-settings/redirect-all-requests-to-https)))
+      (is (true?
+           (public-settings/redirect-all-requests-to-https)))
       (public-settings/site-url! "https://different.example.com")
-      (is (= true
-             (public-settings/redirect-all-requests-to-https))))))
+      (is (true?
+           (public-settings/redirect-all-requests-to-https))))))
 
 (deftest translate-public-setting
   (mt/with-mock-i18n-bundles! {"zz" {:messages {"Host" "HOST"}}}
@@ -106,9 +106,9 @@
 (deftest tru-translates
   (mt/with-mock-i18n-bundles! {"zz" {:messages {"Host" "HOST"}}}
     (mt/with-user-locale "zz"
-      (is (= true
-             (= (i18n/locale "zz")
-                (i18n/user-locale))))
+      (is (true?
+           (= (i18n/locale "zz")
+              (i18n/user-locale))))
       (is (= "HOST"
              (tru "Host"))))))
 
@@ -173,8 +173,8 @@
           (mt/with-temporary-setting-values [site-url                       "https://example.com"
                                              redirect-all-requests-to-https false]
             (public-settings/redirect-all-requests-to-https! v)
-            (is (= true
-                   (public-settings/redirect-all-requests-to-https)))))
+            (is (true?
+                 (public-settings/redirect-all-requests-to-https)))))
 
         (testing "\n`site-url` is not HTTPS"
           (mt/with-temporary-setting-values [site-url                       "http://example.com"
@@ -359,7 +359,7 @@
     (mt/with-premium-features #{:whitelabel}
       (testing "When whitelabeling is enabled, show-metabase-links setting can be set to boolean"
         (public-settings/show-metabase-links! true)
-        (is (= true (public-settings/show-metabase-links)))
+        (is (true? (public-settings/show-metabase-links)))
 
         (public-settings/show-metabase-links! false)
         (is (= false (public-settings/show-metabase-links)))))
@@ -371,7 +371,7 @@
              #"Setting show-metabase-links is not enabled because feature :whitelabel is not available"
              (public-settings/show-metabase-links! true)))
 
-        (is (= true (public-settings/show-metabase-links)))))))
+        (is (true? (public-settings/show-metabase-links)))))))
 
 (def prevent? #'public-settings/prevent-upgrade?)
 

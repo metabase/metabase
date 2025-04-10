@@ -118,8 +118,8 @@
         [results]    (:operation-results
                       (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps)))]
     (testing "valid operation metadata?"
-      (is (= true
-             (validate-times results))))
+      (is (true?
+           (validate-times results))))
     (testing "valid step metadata?"
       (is (= [true true]
              (map (comp validate-times second) (:steps results)))))
@@ -186,43 +186,43 @@
                                                                  (create-test-sync-summary step-name
                                                                                            (constantly step-log-text)))]
         (testing "has-operation?"
-          (is (= true
-                 (str/includes? results operation))))
+          (is (true?
+               (str/includes? results operation))))
         (testing "has-db-name?"
-          (is (= true
-                 (str/includes? results db-name))))
+          (is (true?
+               (str/includes? results db-name))))
         (testing "has-operation-duration?"
-          (is (= true
-                 (str/includes? results "5.0 s"))))
+          (is (true?
+               (str/includes? results "5.0 s"))))
         (testing "has-step-name?"
-          (is (= true
-                 (str/includes? results step-name))))
+          (is (true?
+               (str/includes? results step-name))))
         (testing "has-step-duration?"
-          (is (= true
-                 (str/includes? results "4.0 s"))))
+          (is (true?
+               (str/includes? results "4.0 s"))))
         (testing "has-log-summary-text?"
-          (is (= true
-                 (str/includes? results step-log-text))))))
+          (is (true?
+               (str/includes? results step-log-text))))))
     (testing (str "The `log-summary-fn` part of step info is optional as not all steps have it. Validate that we"
                   " properly handle that case")
       (let [results (#'sync-util/make-log-sync-summary-str operation
                                                            (mi/instance :model/Database {:name db-name})
                                                            (create-test-sync-summary step-name nil))]
         (testing "has-operation?"
-          (is (= true
-                 (str/includes? results operation))))
+          (is (true?
+               (str/includes? results operation))))
         (testing "has-db-name?"
-          (is (= true
-                 (str/includes? results db-name))))
+          (is (true?
+               (str/includes? results db-name))))
         (testing "has-operation-duration?"
-          (is (= true
-                 (str/includes? results "5.0 s"))))
+          (is (true?
+               (str/includes? results "5.0 s"))))
         (testing "has-step-name?"
-          (is (= true
-                 (str/includes? results step-name))))
+          (is (true?
+               (str/includes? results step-name))))
         (testing "has-step-duration?"
-          (is (= true
-                 (str/includes? results "4.0 s"))))))))
+          (is (true?
+               (str/includes? results "4.0 s"))))))))
 
 (derive ::sync-error-handling-begin ::sync-util/event)
 (derive ::sync-error-handling-end ::sync-util/event)

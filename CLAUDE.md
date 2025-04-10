@@ -57,10 +57,27 @@
     feedback on your code.
 - Follow functional programming principles:
   - Keep functions small, focused, and composable.
-  - Leverage Clojure’s functional programming features—like immutability, higher-order functions, and the standard
+  - Leverage Clojure's functional programming features—like immutability, higher-order functions, and the standard
     library—to write concise, effective code.
 
 ### How to evaluate code
+
+#### Keeping parens balanced
+- After any change to a clojure form, call `mage -balance-parens-check thefile.clj <start-line-number> <end-line-number>`.
+  - Start line number should be the beginning of the top level form, and end will be the line after it closes.
+- After making a change to a clojure file, check its indentation and do not accept the change until it is balanced.
+
+So if you change this file (line numbers on the left) in `yourfile.clj`:
+
+```
+11| +(defn square [x]
+12| -  (* x))
+12| +  (* x x))
+```
+
+After EVERY change: call `mage -balance-parens-check yourfile.clj 12`, which checks if the entire square function is balanced. Always pay close attention to the results: Unbalanced Code Is Unacceptable!
+
+You can also call `mage -balance-parens-check yourfile.clj` without the line number to check the entire file.
 
 #### Bottom-up dev loop:
 1. Write code into a file
