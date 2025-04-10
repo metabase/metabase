@@ -35,7 +35,11 @@
                                       (if (map? x)
                                         (reduce-kv
                                          (fn [acc k {:keys [key model] :as _hydrate-prop}]
-                                           (assoc acc key (when-let [id (get x k)] (t2/select-one model id))))
+                                           (if-let [id (get x k)]
+                                             (-> acc
+                                                 (assoc key (t2/select-one model id))
+                                                 (dissoc k))
+                                             acc))
                                          x
                                          hydrates)
                                         x)))))}}}))
@@ -100,7 +104,7 @@
   (maybe-send-notification-for-topic! topic event-info))
 
 (def ^:private table-hydrate
-  [:model/Table :name])
+  [:model/Table :id :name])
 
 (def ^:private table-hydrate-schema [:table {:optional true}
                                      [:map
