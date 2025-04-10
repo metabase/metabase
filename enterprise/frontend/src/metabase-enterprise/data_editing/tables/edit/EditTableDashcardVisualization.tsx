@@ -1,5 +1,6 @@
 import cx from "classnames";
 
+import type Question from "metabase-lib/v1/Question";
 import type {
   ConcreteTableId,
   DatasetData,
@@ -11,6 +12,7 @@ import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useTableCRUD } from "./use-table-crud";
+import { useTableSorting } from "./use-table-sorting";
 import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-dashcard-update-strategy";
 
 type EditTableDashcardVisualizationProps = {
@@ -19,8 +21,8 @@ type EditTableDashcardVisualizationProps = {
   tableId: ConcreteTableId;
   data: DatasetData;
   className?: string;
-  refetchTableDataQuery: () => void;
   visualizationSettings?: VisualizationSettings;
+  question: Question;
 };
 
 export const EditTableDashcardVisualization = ({
@@ -30,6 +32,7 @@ export const EditTableDashcardVisualization = ({
   data,
   className,
   visualizationSettings,
+  question,
 }: EditTableDashcardVisualizationProps) => {
   const stateUpdateStrategy = useTableEditingStateDashcardUpdateStrategy(
     dashcardId,
@@ -53,6 +56,10 @@ export const EditTableDashcardVisualization = ({
     visualizationSettings,
   );
 
+  const { getColumnSortDirection } = useTableSorting({
+    question,
+  });
+
   return (
     <div className={cx(S.tableRoot, className)}>
       <EditTableDataGrid
@@ -61,6 +68,7 @@ export const EditTableDashcardVisualization = ({
         onCellValueUpdate={handleCellValueUpdate}
         onRowExpandClick={handleModalOpenAndExpandedRow}
         columnsConfig={columnsConfig}
+        getColumnSortDirection={getColumnSortDirection}
       />
       <EditingBaseRowModal
         opened={isCreateRowModalOpen}
