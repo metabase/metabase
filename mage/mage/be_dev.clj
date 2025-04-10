@@ -174,7 +174,9 @@
              (println "data:    " (pr-str (ex-data e))))))))
 
 (comment
-  (balanced-parens? "mage/mage/be_dev.clj" 179) ;soo meta (
+  (balanced-parens? "mage/mage/be_dev.clj" 179)
+                                        ;soo meta :) :| :(
   ;; these cannot trip it up:
-  ")" "}]" #inst "2020" @(atom 1)
+  ")" "}]" #inst "2020" @(atom 1)  #_\)
+  "uncomment this to try, it works, but is unreadable in bb:"  ;;#something-cool 13
   (balanced-parens? "bin/build/test/i18n/create_artifacts/backend_test.clj" 29))
