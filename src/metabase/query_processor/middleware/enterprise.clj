@@ -14,6 +14,13 @@
 
 ;;; (f query) => query
 
+(defenterprise attach-mirror-db-middleware
+  "Pre-processing middleware. Calculates the mirror database that should be used for this query, e.g. for caching
+  purposes. Does not make any changes to the query besides (possibly) adding a `:mirror-database/id` key."
+  metabase-enterprise.database-routing.middleware
+  [query]
+  query)
+
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
@@ -27,6 +34,19 @@
   [query]
   query)
 
+(defenterprise apply-impersonation-postprocessing
+  "Post-processing middleware to actually bind what's needed for impersonation"
+  metabase-enterprise.impersonation.middleware
+  [query]
+  query)
+
+(defn apply-impersonation-postprocessing-middleware
+  "Helper middleware wrapper for [[apply-impersonation-postprocessing]] to make sure we do [[defenterprise]] dispatch
+  correctly on each QP run rather than just once when we combine all of the QP middleware"
+  [qp]
+  (fn [query rff]
+    ((apply-impersonation-postprocessing qp) query rff)))
+
 (defenterprise apply-download-limit
   "Pre-processing middleware to apply row limits to MBQL export queries if the user has `limited` download perms. This
   does not apply to native queries, which are instead limited by the [[limit-download-result-rows]] post-processing
@@ -38,6 +58,19 @@
 ;;;; Execution middleware
 
 ;;; (f qp) => qp
+
+(defenterprise swap-mirror-db
+  "Must be the last middleware before we actually hit the database. If a Router Database is specified, swaps out the
+   Metadata Provider for one that has the appropriate mirror database."
+  metabase-enterprise.database-routing.middleware
+  [qp]
+  qp)
+
+(defn swap-mirror-db-middleware
+  "Helper middleware wrapper for [[swap-mirror-db]] to make sure we do [[defenterprise]] dispatch correctly on each QP run rather than just once when we combine all of the QP middleware"
+  [qp]
+  (fn [query rff]
+    ((swap-mirror-db qp) query rff)))
 
 (defenterprise check-download-permissions
   "Middleware for queries that generate downloads, which checks that the user has permissions to download the results
