@@ -17,6 +17,8 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(declare ^:private fix-incoming-idents)
+
 (mr/def ::future
   [:fn {:error/message "A future"} future?])
 
@@ -43,28 +45,35 @@ saved later when it is ready."
     [:metadata-future ::future]]])
 
 (mu/defn- maybe-async-model-result-metadata :- ::maybe-async-result-metadata
-  [{:keys [query metadata original-metadata valid-metadata?]} :- [:map
+  [{:keys [query metadata original-metadata valid-metadata? entity-id]} :- [:map
                                                                   [:valid-metadata? :any]]]
   (log/debug "Querying for metadata and blending model metadata")
   (let [futur     (legacy-result-metadata-future query)
         metadata' (if valid-metadata?
                     (map mbql.normalize/normalize-source-metadata metadata)
                     original-metadata)
-        result    (deref futur metadata-sync-wait-ms ::timed-out)]
+        result    (deref futur metadata-sync-wait-ms ::timed-out)
+        combiner  (fn [result]
+                    (-> result
+                        (fix-incoming-idents {:type      :model
+                                              :entity_id entity-id})
+                        (qp.util/combine-metadata metadata')))]
     (if (= result ::timed-out)
       {:metadata-future (future
                           (try
-                            (qp.util/combine-metadata @futur metadata')
+                            (combiner @futur)
                             (catch Throwable e
                               (future-cancel futur)
                               (log/errorf e "Error blending model metadata: %s" (ex-message e))
                               metadata')))}
-      {:metadata (qp.util/combine-metadata result metadata')})))
+      {:metadata (combiner result)})))
 
 (mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
-  [query]
+  [query entity-id]
   (log/debug "Querying for metadata")
-  (let [futur (legacy-result-metadata-future query)
+  (let [futur (-> query
+                  (assoc-in [:info :card-entity-id] entity-id)
+                  legacy-result-metadata-future)
         result (deref futur metadata-sync-wait-ms ::timed-out)]
     (if (= result ::timed-out)
       {:metadata-future futur}
@@ -91,7 +100,7 @@ saved later when it is ready."
 
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
-  [{:keys [original-query query metadata original-metadata model?], :as options}]
+  [{:keys [original-query query metadata original-metadata model? entity-id], :as options}]
   (let [valid-metadata? (and metadata (mr/validate analyze/ResultsMetadata metadata))]
     (cond
       (or
@@ -123,7 +132,7 @@ saved later when it is ready."
       (maybe-async-model-result-metadata (assoc options :valid-metadata? valid-metadata?))
 
       :else
-      (maybe-async-recomputed-metadata query))))
+      (maybe-async-recomputed-metadata query entity-id))))
 
 (def ^:private metadata-async-timeout-ms
   "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15
@@ -131,14 +140,16 @@ saved later when it is ready."
   (u/minutes->ms 15))
 
 (defn- valid-ident?
-  "Validates that native queries have the right `native__CardEntityId__ColumnName` idents, and models have idents that
-  always start with `model__CardEntityId__`."
+  "Validates that model columns have idents that always start with `model__CardEntityId__`, and that all idents are
+  nonempty strings.
+
+  Note that this **does not** check that `:type :native` queries have native idents - SQL-based sandboxing stores
+  `:native` queries but returns MBQL-like metadata with IDs and the Field `entity_id`s as idents."
+  ;; TODO: That limitation that prevents checking native queries have native-looking :idents is unfortunate.
+  ;; At least this checks that we never store `native____`, ie. native queries without a card entity_id.
   [column card]
-  (let [native?  (-> card :dataset_query :type (= :native))
-        model?   (= (:type card) :model)
+  (let [model?   (= (:type card) :model)
         valid-fn (cond
-                   (and native? model?) lib/valid-native-model-ident?
-                   native?              lib/valid-native-ident?
                    model?               lib/valid-model-ident?
                    :else                lib/valid-basic-ident?)]
     (valid-fn column (:entity_id card))))
@@ -281,5 +292,6 @@ saved later when it is ready."
   (when-let [invalid (seq (remove #(or (nil? (:ident %))
                                        (valid-ident? % card))
                                   cols))]
+    (tap> [`assert-valid-idents! card invalid])
     (throw (ex-info "Some columns in :result_metadata have bad :idents!"
                     {:invalid invalid}))))

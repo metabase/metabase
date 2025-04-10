@@ -953,23 +953,24 @@
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
   ;; https://github.com/camsaul/toucan2/issues/145 .
   ;; TODO: ^ that's been fixed, this could be refactored
-  (-> card
-      (dissoc :verified-result-metadata?)
-      (assoc :card_schema current-schema-version)
-      t2/changes
-      (->> (into (select-keys card [:id :type :entity_id])))
-      apply-dashboard-question-updates
-      maybe-normalize-query
-      ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
-      ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
-      ;; verified-result-metadata? flag (see #37009).
-      (cond-> #_changes
-       (or (empty? (:result_metadata card))
-           (not verified-result-metadata?))
-        card.metadata/populate-result-metadata)
-      pre-update
-      populate-query-fields
-      maybe-populate-initially-published-at))
+  (let [changes (-> card
+                    (dissoc :verified-result-metadata?)
+                    (assoc :card_schema current-schema-version)
+                    t2/changes)]
+    (-> (into (select-keys card [:id :type :entity_id]) changes)
+        apply-dashboard-question-updates
+        maybe-normalize-query
+        ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
+        ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
+        ;; verified-result-metadata? flag (see #37009).
+        (cond-> #_changes
+          (or (empty? (:result_metadata card))
+              (not verified-result-metadata?)
+              (contains? changes :type))
+          card.metadata/populate-result-metadata)
+        pre-update
+        populate-query-fields
+        maybe-populate-initially-published-at)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -1118,12 +1119,14 @@
                                                 (assoc
                                                  :creator_id (:id creator)
                                                  :parameters (or parameters [])
-                                                 :parameter_mappings (or parameter_mappings []))
+                                                 :parameter_mappings (or parameter_mappings [])
+                                                 :entity_id          (u/generate-nano-id))
                                                 (cond-> (nil? type)
                                                   (assoc :type :question)))
-         {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata {:query    dataset_query
-                                                                                        :metadata result_metadata
-                                                                                        :model?   (model? card-data)})
+         {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata {:query     dataset_query
+                                                                                        :metadata  result_metadata
+                                                                                        :entity-id (:entity_id card-data)
+                                                                                        :model?    (model? card-data)})
          card                               (t2/with-transaction [_conn]
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed

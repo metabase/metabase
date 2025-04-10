@@ -11,6 +11,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
@@ -22,7 +23,8 @@
   "For MBQL queries or native queries with result metadata attached to them already we can infer the columns just by
   preprocessing the query/looking at the last stage of the query."
   [query :- :map]
-  (not-empty (u/ignore-exceptions (qp.preprocess/query->expected-cols query))))
+  (u/prog1 (not-empty (u/ignore-exceptions (qp.preprocess/query->expected-cols query)))
+           (tap> ['metadata-from-preprocessing <>])))
 
 (mu/defn- query-with-limit-1 :- :map
   [query :- :map]
@@ -40,7 +42,7 @@
 
 (mu/defn- result-metadata-rff :- ::qp.schema/rff
   [metadata]
-  (let [cols (:cols metadata)]
+  (let [cols (:cols metadata)]>
     (fn rf
       ([]
        (reduced cols))
@@ -70,7 +72,10 @@
   (let [query  (cond-> query
                  current-user-id (assoc-in [:info :executed-by] current-user-id))
         driver (driver.u/database->driver (:database query))]
-    (driver/query-result-metadata driver query)))
+    (-> (driver/query-result-metadata driver query)
+        (u/prog1 (tap> ['driver-result-metadata <>]))
+        (annotate/annotate-native-cols (get-in query [:info :card-entity-id]))
+        (u/prog1 (tap> ['annotated-result-metadata <>])))))
 
 (mu/defn- add-extra-column-metadata :- :map
   [col            :- :map

@@ -63,8 +63,9 @@
   []
   (str "$$ADHOC[" (u/generate-nano-id) "]"))
 
-(def ^:private placeholder-prefixes
-  #{"$$ADHOC"})
+(def ^:private illegal-substrings
+  #{"$$ADHOC"      ; The tag used in placeholder idents, which should not survive to eg. `:result_metadata` on a Card.
+    "native____"}) ; A native column but generated without the containing Card's `entity_id`. This isn't unique!
 
 (def ^:private placeholder-regex
   #"\$\$ADHOC\[[A-Za-z0-9_-]{21}\]")
@@ -99,7 +100,10 @@
     (map? column-or-ident) :ident))
 
 (defn valid-basic-ident?
-  "Validates a generic ident: a nonempty string, and no illegal placeholders.
+  "Validates a generic ident.
+
+  An ident is a nonempty string which does not contain any of the [[illegal-substrings]]: placeholders or malformed
+  `native____` slugs.
 
   Accepts an optional second argument (a `card-entity-id`) for uniformity with the other validators, but it's unused."
   ([column-or-ident _card-entity-id]
@@ -108,7 +112,7 @@
    (let [ident (->ident column-or-ident)]
      (boolean (and (string? ident)
                    (seq ident)
-                   (nil? (some #(str/index-of ident %) placeholder-prefixes)))))))
+                   (nil? (some #(str/index-of ident %) illegal-substrings)))))))
 
 (defn valid-model-ident?
   "Returns whether a given ident (or `:ident` from the column) is correct for the given model."

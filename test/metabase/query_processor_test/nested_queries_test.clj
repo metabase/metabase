@@ -1016,6 +1016,7 @@
                                                         :type :model
                                                         :name "Model 1"
                                                         :database-id (mt/id)
+                                                        :entity-id     (u/generate-nano-id)
                                                         :dataset-query query}]})
               (check-result (mt/run-mbql-query nil
                               {:source-table "card__1"})))))))))

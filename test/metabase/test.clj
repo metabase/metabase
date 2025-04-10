@@ -207,6 +207,8 @@
 
  [qp.test-util
   boolish->bool
+  card-with-metadata
+  card-with-updated-metadata
   card-with-source-metadata-for-query
   col
   cols
@@ -219,6 +221,7 @@
   normal-drivers
   normal-drivers-with-feature
   normal-drivers-without-feature
+  query->result-metadata
   rows
   rows+column-names
   with-database-timezone-id

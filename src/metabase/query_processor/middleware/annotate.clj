@@ -87,7 +87,7 @@
   [[metabase.query-processor.test-util/metadata->native-form]]."
   [cols card-entity-id]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
-    (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
+    (mapv (fn [{col-name :name :as driver-col-metadata}]
             (let [col-name (name col-name)]
               (merge
                {:display_name (u/qualified-name col-name)
@@ -98,7 +98,8 @@
                ;; valid `:field`, omit the `:field_ref`.
                (when-not (str/blank? col-name)
                  (let [unique-col-name (unique-name-fn col-name)]
-                   {:field_ref [:field unique-col-name {:base-type base-type}]
+                   {:field_ref [:field unique-col-name {:base-type (or (:base_type driver-col-metadata)
+                                                                       (:base-type driver-col-metadata))}]
                     :ident     (lib/native-ident unique-col-name card-entity-id)}))
                driver-col-metadata)))
           cols)))

@@ -176,7 +176,7 @@
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
   [database-id]
-  (t2/select :model/PersistedInfo
+  (let [refreshable (t2/select :model/PersistedInfo
              {:select    [:p.* :c.type :c.archived :c.name]
               :from      [[:persisted_info :p]]
               :left-join [[:report_card :c] [:= :c.id :p.card_id]]
@@ -184,7 +184,11 @@
                           [:= :p.database_id database-id]
                           [:in :p.state (persisted-info/refreshable-states)]
                           [:= :c.archived false]
-                          [:= :c.type "model"]]}))
+                          [:= :c.type "model"]]})
+        plausible (t2/select :model/PersistedInfo :database_id database-id :card_id [:!= nil])]
+    (tap> [`refreshable-models 'refreshable refreshable 'plausible plausible])
+    refreshable
+    ))
 
 (defn- prune-all-deletable!
   "Prunes all deletable PersistInfos, should not be called from tests as
@@ -201,6 +205,7 @@
   (persisted-info/ready-unpersisted-models! database-id)
   (let [database  (t2/select-one :model/Database :id database-id)
         persisted (refreshable-models database-id)
+        _ (tap> [`refresh-tables! 'refreshable-models persisted])
         thunk     (fn []
                     (reduce (partial refresh-with-stats! refresher database)
                             {:success 0, :error 0, :trigger "Scheduled"}

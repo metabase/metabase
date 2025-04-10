@@ -4,11 +4,13 @@
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.lib.core :as lib]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
@@ -387,6 +389,110 @@
               (is (= 1 @update-avg-execution-count)
                   "Cached query execution should not update average query duration")
               (is (= avg-execution-time (query/average-execution-time-ms q-hash))))))))))
+
+(def ^:private expected-inner-metadata
+  (for [[name col-key] [["ID"          :id]
+                        ["NAME"        :name]
+                        ["CATEGORY_ID" :category_id]
+                        ["LATITUDE"    :latitude]
+                        ["LONGITUDE"   :longitude]
+                        ["PRICE"       :price]]]
+    {:name name
+     :ident (mt/ident :venues col-key)}))
+
+(defn- expected-model-metadata [the-model]
+  (for [col expected-inner-metadata]
+    (update col :ident lib/model-ident (:entity_id the-model))))
+
+(deftest multiple-models-e2e-test
+  (testing "caching works across the QP where two models have the same inner query"
+    (let [inner-query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})]
+      (mt/with-temp [:model/Card model1 (mt/card-with-metadata {:dataset_query inner-query
+                                                                :name          "Model 1"
+                                                                :type          :model})
+                     :model/Card model2 (mt/card-with-metadata {:dataset_query inner-query
+                                                                :name          "Model 2"
+                                                                :type          :model})]
+        (testing "both models get :result_metadata containing model :idents"
+          (doseq [the-model [model1 model2]]
+            (is (=? (expected-model-metadata the-model)
+                    (:result_metadata the-model)))))
+
+
+        (with-mock-cache! [save-chan]
+          (let [inner1 (-> (:dataset_query model1)
+                           (assoc :cache-strategy (ttl-strategy))
+                           (assoc-in [:info :card-entity-id] (:entity_id model1)))
+                inner2 (-> (:dataset_query model2)
+                           (assoc :cache-strategy (ttl-strategy))
+                           (assoc-in [:info :card-entity-id] (:entity_id model2)))]
+            (testing (format "\ninner1 = %s\ninner2 = %s" (pr-str inner1) (pr-str inner2))
+              (is (= true
+                     (boolean (#'cache/is-cacheable? inner1)))
+                  "Query should be cacheable")
+              (is (= true
+                     (boolean (#'cache/is-cacheable? inner2)))
+                  "Query should be cacheable")
+
+              (mt/with-clock #t "2020-02-19T04:44:26.056Z[UTC]"
+                #_(let [original-result1 (qp/process-query inner1)
+                      ;; clear any existing values in the `save-chan`
+                      _                (while (a/poll! save-chan))
+                      _                (mt/wait-for-result save-chan)
+                      rerun-inner1     (qp/process-query inner1)
+                      rerun-inner2     (qp/process-query inner2)
+                      ]
+
+                  (testing "\n\nInner queries are cached and have generic metadata"
+                    (doseq [[the-model cached-results] [[model1 rerun-inner1]
+                                                        [model2 rerun-inner2]]]
+                      (testing (:name the-model)
+                        (testing "results should be cached"
+                          (is (=? {:cache/details  {:cached     true
+                                                    :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
+                                                    :hash       some?
+                                                    ;; TODO: this check is not working if the key is not present in the data
+                                                    :cache-hash some?}
+                                   :row_count 5
+                                   :status    :completed}
+                                  (dissoc cached-results :data))))
+                        (testing "should have correct **generic** metadata"
+                          (is (=? expected-inner-metadata
+                                  (-> cached-results :data :results_metadata :columns))))))))
+
+                (let [outer1           (-> (mt/mbql-query nil {:source-table (str "card__" (:id model1))})
+                                           #_(assoc :cache-strategy (ttl-strategy))
+                                           (assoc-in [:info :card-entity-id] (:entity_id model1)))
+                      outer2           (-> (mt/mbql-query nil {:source-table (str "card__" (:id model2))})
+                                           (assoc :cache-strategy (ttl-strategy)))
+                      original-result1 (binding [metabase.query-processor.debug/*debug* true]
+                                         (qp/process-query outer1))
+                      _                (while (a/poll! save-chan))
+                      _                (mt/wait-for-result save-chan)
+                      rerun-outer1     (qp/process-query outer1)
+                      rerun-outer2     (qp/process-query outer2)]
+                  (testing "Original results have correct model metadata"
+                    (is (=? (expected-model-metadata model1)
+                            (-> original-result1 :data :results_metadata :columns))))
+
+                  #_(testing "\n\nOuter queries are cached and have model-specific metadata"
+                    (doseq [[the-model cached-results] [[model1 rerun-outer1]
+                                                        #_[model2 rerun-outer2]]]
+                      (testing (:name the-model)
+                        (testing "results should be cached"
+                          (is (=? {:cache/details  {:cached     true
+                                                    :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
+                                                    :hash       some?
+                                                    ;; TODO: this check is not working if the key is not present in the data
+                                                    :cache-hash some?}
+                                   :row_count 5
+                                   :status    :completed}
+                                  (dissoc cached-results :data))))
+                        (testing "should have correct **generic** metadata"
+                          (is (=? (expected-model-metadata the-model)
+                                  (-> cached-results :data :results_metadata :columns))))))))))))
+        ))
+    ))
 
 (deftest insights-from-cache-test
   (testing "Insights should work on cached results (#12556)"

@@ -475,8 +475,31 @@
 
   Prefer [[metadata-provider-with-card-with-metadata-for-query]] instead of using this going forward."
   [query]
-  {:dataset_query   query
-   :result_metadata (actual-query-results query)})
+  (let [entity-id (u/generate-nano-id)]
+    {:dataset_query   query
+     :entity_id       entity-id
+     :result_metadata (-> query
+                          (assoc-in [:info :card-entity-id] entity-id)
+                          actual-query-results)}))
+
+(defn card-with-metadata
+  "Given a (partial) Card, such as might be passed to `with-temp`, fill in its `:result_metadata` based on the query."
+  [{:keys [dataset_query] :as card}]
+  (let [entity-id (or (:entity_id card) (u/generate-nano-id))]
+    (assoc card
+           :entity_id       entity-id
+           :result_metadata (-> dataset_query
+                                (assoc-in [:info :card-entity-id] entity-id)
+                                actual-query-results))))
+
+(defn card-with-updated-metadata
+  "Like [[card-with-metadata]] but takes an extra argument: a function `(f column-metadata card) => column-metadata`.
+
+  Helper for the decently common case of a query with slightly tweaked metadata."
+  [card metadata-fn]
+  (let [card (card-with-metadata card)]
+    (update card :result_metadata (fn [metadata]
+                                    (mapv #(metadata-fn % card) metadata)))))
 
 (mu/defn metadata-provider-with-cards-for-queries :- ::lib.schema.metadata/metadata-provider
   "Create an MLv2 metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
