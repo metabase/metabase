@@ -18,6 +18,10 @@ import {
   getHasDatabaseWithActionsEnabled,
   getHasNativeWrite,
 } from "metabase/selectors/data";
+import {
+  getUserIsAdmin,
+  getUserPersonalCollectionId,
+} from "metabase/selectors/user";
 
 import {
   type RegisterShortcutProps,
@@ -40,6 +44,9 @@ export const useCommandPaletteBasicActions = ({
     query: { models: ["dataset"], limit: 1 },
     enabled: isLoggedIn,
   });
+
+  const personalCollectionId = useSelector(getUserPersonalCollectionId);
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);
@@ -197,8 +204,41 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
+    if (isAdmin) {
+      actions.push({
+        id: "navigate-admin-settings",
+        perform: () => dispatch(push("/admin/settings")),
+      });
+    }
+
+    if (personalCollectionId) {
+      actions.push({
+        id: "navigate-personal-collection",
+        perform: () => dispatch(push(`/collection/${personalCollectionId}`)),
+      });
+    }
+
+    actions.push(
+      {
+        id: "navigate-user-settings",
+        perform: () => dispatch(push("/account/profile")),
+      },
+      {
+        id: "navigate-trash",
+        perform: () => dispatch(push("/trash")),
+      },
+    );
+
     return [...actions, ...browseActions];
-  }, [dispatch, hasDataAccess, hasNativeWrite, collectionId, openNewModal]);
+  }, [
+    dispatch,
+    hasDataAccess,
+    hasNativeWrite,
+    collectionId,
+    openNewModal,
+    isAdmin,
+    personalCollectionId,
+  ]);
 
   useRegisterShortcut(initialActions, [initialActions]);
 
