@@ -22,7 +22,7 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
-import { Loader, MultiAutocomplete } from "metabase/ui";
+import { type ComboboxProps, Loader, MultiAutocomplete } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -75,6 +75,7 @@ export interface IFieldValuesWidgetProps {
   maxWidth?: number | null;
   minWidth?: number | null;
   width?: number | null;
+  comboboxProps?: Partial<ComboboxProps>;
 
   disableList?: boolean;
   disableSearch?: boolean;
@@ -123,6 +124,7 @@ export const FieldValuesWidgetInner = forwardRef<
     onChange,
     multi,
     autoFocus,
+    comboboxProps,
     className,
     placeholder,
     checkedColor,
@@ -437,6 +439,7 @@ export const FieldValuesWidgetInner = forwardRef<
               isLoaded ? getNothingFoundMessage(fields) : undefined
             }
             autoFocus={autoFocus}
+            comboboxProps={comboboxProps}
             onCreate={(value) => {
               if (isNumericParameter) {
                 const number = parseNumber(value);
