@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useGetFieldValuesQuery } from "metabase/api";
 import { parseNumber } from "metabase/lib/number";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
-import { Center, Loader } from "metabase/ui";
+import { Center, type ComboboxProps, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ListValuePicker } from "./ListValuePicker";
@@ -24,6 +24,7 @@ interface FilterValuePickerProps<T> {
   column: Lib.ColumnMetadata;
   values: T[];
   autoFocus?: boolean;
+  comboboxProps?: ComboboxProps;
   onCreate?: (rawValue: string) => string | null;
   onChange: (newValues: T[]) => void;
 }
@@ -39,6 +40,7 @@ function FilterValuePicker({
   values: selectedValues,
   placeholder,
   autoFocus = false,
+  comboboxProps,
   onCreate,
   onChange,
 }: FilterValuePickerOwnProps) {
@@ -83,6 +85,7 @@ function FilterValuePicker({
         selectedValues={selectedValues}
         columnDisplayName={columnInfo.displayName}
         autoFocus={autoFocus}
+        comboboxProps={comboboxProps}
         onCreate={onCreate}
         onChange={onChange}
       />
@@ -94,6 +97,7 @@ function FilterValuePicker({
       selectedValues={selectedValues}
       placeholder={placeholder}
       autoFocus={autoFocus}
+      comboboxProps={comboboxProps}
       onCreate={onCreate}
       onChange={onChange}
     />
