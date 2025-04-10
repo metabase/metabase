@@ -429,15 +429,6 @@ describe("shortcuts", () => {
 
     cy.realPress("t");
     cy.location("pathname").should("equal", "/trash");
-
-    H.navigationSidebar().findByText("Our analytics").click();
-
-    cy.findAllByTestId("collection-entry-check").eq(2).click();
-    cy.findAllByTestId("collection-entry-check").eq(3).click();
-
-    cy.realPress(["MetaLeft", "m"]);
-
-    cy.findByRole("dialog", { name: "Move 2 items?" }).should("exist");
   });
 
   it("should support dashboard shortcuts", () => {

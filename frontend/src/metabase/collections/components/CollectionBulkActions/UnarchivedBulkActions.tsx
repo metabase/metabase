@@ -56,12 +56,6 @@ export const UnarchivedBulkActions = ({
   useRegisterShortcut(
     [
       {
-        id: "collection-move",
-        perform: () => {
-          handleBulkMoveStart();
-        },
-      },
-      {
         id: "collection-trash",
         perform: () => {
           handleBulkArchive();
