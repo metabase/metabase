@@ -56,17 +56,17 @@ export interface MetabaseProviderProps
   authConfig: MetabaseAuthConfig;
 
   /**
-   * See [Appearance](../appearance.html).
+   * See [Appearance](https://www.metabase.com/docs/latest/embedding/sdk/appearance).
    */
   theme?: MetabaseTheme;
 
   /**
-   * See [Plugins](../plugins.html).
+   * See [Plugins](https://www.metabase.com/docs/latest/embedding/sdk/plugins).
    */
   pluginsConfig?: MetabasePluginsConfig;
 
   /**
-   * See [Global event handlers](../config.html#global-event-handlers).
+   * See [Global event handlers](https://www.metabase.com/docs/latest/embedding/sdk/config#global-event-handlers).
    */
   eventHandlers?: SdkEventHandlersConfig;
 
