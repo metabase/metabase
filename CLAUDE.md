@@ -26,10 +26,12 @@
     and descriptive commit message.
 - **Lint File:** `./bin/mage kondo <file or files>` (or whatever target branch)
   - Use the linter as a way to know that you are adhering to conventions in place in the codebase
+- **Lint Changes:** `./bin/mage kondo-updated HEAD^`
 - **Format:** `./bin/mage cljfmt-files [path]`
 - **Test file:** `clojure -X:dev:test :only namespace/test-name`
+- **Check Indentation** `./bin/mage -balance-parens-check` with optional line-number
 - **Eval Clojure Code** `./bin/mage -eval '<code>'`
-  - See `Sending code to the repl` for more details
+  - See `Sending code to the REPL` for more details
 
 ### ClojureScript
 - **Test:** `yarn test-cljs`
@@ -63,9 +65,9 @@
 ### How to evaluate code
 
 #### Keeping parens balanced
-- After any change to a clojure form, call `mage -balance-parens-check thefile.clj <start-line-number> <end-line-number>`.
-  - Start line number should be the beginning of the top level form, and end will be the line after it closes.
-- After making a change to a clojure file, check its indentation and do not accept the change until it is balanced.
+- Alter clojure files one step at a time.
+- After every change to a clojure form, call `mage -balance-parens-check thefile.clj <line-number>`.
+- If the change results in unbalanced parens, try again until it is balanced.
 
 So if you change this file (line numbers on the left) in `yourfile.clj`:
 
@@ -83,11 +85,11 @@ You can also call `mage -balance-parens-check yourfile.clj` without the line num
 1. Write code into a file
 2. Evaluate the file's namespace and make sure it loads correctly
 3. Call functions in the namespace with test inputs, and observe that the outputs are correct 3.1 Feel free to copy
-   these repl session trials into actual test cases using `deftest` and `is`.
+   these REPL session trials into actual test cases using `deftest` and `is`.
 4. Once you know these functions are good, return to 1, and compose them into the task that you need to build.
 
-#### Sending code to the repl:
-- Send code to the metabase process repl using: `./bin/mage -eval '(+ 1 1)'` where `(+ 1 1)` is your Clojure code.
+#### Sending code to the REPL:
+- Send code to the metabase process REPL using: `./bin/mage -eval '(+ 1 1)'` where `(+ 1 1)` is your Clojure code.
   - This will evaluate it in the user namespace.
   - If the Metabase backend is not running, you'll see an error message with instructions on how to start it. The
     error will tell you whether the REPL server is missing or if there's nothing listening on the port.
@@ -131,3 +133,8 @@ For effective REPL usage:
 - Return data structures as function return values
 - Use `println` for human-readable messages
 - Let errors propagate naturally to stderr
+
+
+## Tips
+
+- End all files with a newline.
