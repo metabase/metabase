@@ -163,7 +163,8 @@
 
     (or *DANGER-allow-replacing-metadata-provider*
         (not (miscellaneous-value [::metadata-provider])))
-    (do
+    ;; Allow replacing the metadata provider once, but it shouldn't affect later calls.
+    (binding [*DANGER-allow-replacing-metadata-provider* false]
       (set-metadata-provider! database-id-or-metadata-providerable)
       (thunk))
 
