@@ -255,7 +255,6 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
   });
 
   it("should work with sandboxing", function () {
-    cy.visit(`admin/permissions/data/group/${COLLECTION_GROUP}/database/3`);
     H.createQuestion({
       name: "Color",
       database: this.leadDbId,
@@ -302,18 +301,38 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         },
       });
 
-      cy.visit(`admin/permissions/data/group/${COLLECTION_GROUP}/database/3`);
-
       signInAs(DB_ROUTER_USERS.userA);
       H.visitQuestion(questionId);
       cy.get('[data-column-id="name"]').should("contain", "destination_one");
       cy.get('[data-column-id="color"]').should("contain", "blue");
       cy.get('[data-column-id="color"]').should("not.contain", "red");
+
+      cy.log("Test sandboxing using a question");
+      cy.signInAsAdmin();
+      H.createNativeQuestion({
+        name: "Red Color",
+        database: this.leadDbId,
+        native: {
+          query: "SELECT * FROM db_identifier WHERE color='red'",
+        },
+      }).then(({ body: { id: redColorQuestionId } }) => {
+        H.blockUserGroupPermissions(COLLECTION_GROUP, this.leadDbId);
+        // @ts-expect-error - this isn't typed yet
+        cy.sandboxTable({
+          table_id: this.leadDb_db_identifier_table_ID,
+          group_id: COLLECTION_GROUP,
+          card_id: redColorQuestionId,
+        });
+        signInAs(DB_ROUTER_USERS.userA);
+        H.visitQuestion(questionId);
+        cy.get('[data-column-id="name"]').should("contain", "destination_one");
+        cy.get('[data-column-id="color"]').should("contain", "red");
+        cy.get('[data-column-id="color"]').should("not.contain", "blue");
+      });
     });
   });
 
   it("should work with impersonation", function () {
-    cy.visit(`admin/permissions/data/group/${COLLECTION_GROUP}/database/3`);
     H.createNativeQuestion({
       name: "Native Color",
       database: this.leadDbId,
@@ -375,8 +394,6 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
           },
         },
       });
-
-      cy.visit(`admin/permissions/data/group/${COLLECTION_GROUP}/database/3`);
 
       signInAs(DB_ROUTER_USERS.userA);
       H.visitQuestion(questionId);
