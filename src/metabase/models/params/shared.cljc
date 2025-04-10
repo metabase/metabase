@@ -82,15 +82,87 @@
     #"^thisyear$"                           (lib/describe-temporal-interval 0 :year)
     #"^(past|next)([0-9]+)([a-z]+)s~?$" :>> (fn [matches] (apply format-relative-date matches))))
 
+#?(:clj (def ^:private day-in (DateTimeFormatter/ofPattern "EEE"
+                                                           ;; always read in en locale
+                                                           (i18n.impl/locale "en"))))
+
+#?(:clj (def ^:private day-out (DateTimeFormatter/ofPattern "EEEE")))
+
+(defn- format-day [value locale]
+  #?(:cljs (let [t (.locale moment)
+                 _ (.locale moment "en") ;; always read in en locale
+                 s (-> value
+                       (moment "ddd")
+                       (.locale locale)
+                       (.format "dddd"))]
+             (.locale moment t)
+             s)
+     :clj (.format (.withLocale ^DateTimeFormatter day-out (i18n.impl/locale locale))
+                   (.parse ^DateTimeFormatter day-in value))))
+
+#?(:clj (def ^:private hour-in (DateTimeFormatter/ofPattern "H"
+                                                            ;; always read in en locale
+                                                            (i18n.impl/locale "en"))))
+
+#?(:clj (def ^:private hour-out (DateTimeFormatter/ofPattern "h a")))
+
+(defn- format-hour [value locale]
+  #?(:cljs (let [t (.locale moment)
+                 _ (.locale moment "en") ;; always read in en locale
+                 s (-> #js{:hour value}
+                       moment
+                       (.locale locale)
+                       (.format "h A"))]
+             (.locale moment t)
+             s)
+     :clj (.format (.withLocale ^DateTimeFormatter hour-out (i18n.impl/locale locale))
+                   (.parse ^DateTimeFormatter hour-in value))))
+
+#?(:clj (def ^:private month-in (DateTimeFormatter/ofPattern "LLL"
+                                                             ;; always read in en locale
+                                                             (i18n.impl/locale "en"))))
+
+#?(:clj (def ^:private month-out (DateTimeFormatter/ofPattern "LLLL")))
+
+(defn- format-month [value locale]
+  #?(:cljs (let [t (.locale moment)
+                 _ (.locale moment "en") ;; always read in en locale
+                 s (-> value
+                       (moment "MMM")
+                       (.locale locale)
+                       (.format "MMMM"))]
+             (.locale moment t)
+             s)
+     :clj (do
+            (.format (.withLocale ^DateTimeFormatter month-out (i18n.impl/locale locale))
+                     (.parse ^DateTimeFormatter month-in value)))))
+
+(defn- format-exclude-unit [value unit locale]
+  (case unit
+    "hours"    (format-hour value locale)
+    "days"     (format-day value locale)
+    "months"   (format-month value locale)
+    "quarters" (trs "Q{0}" value)))
+
+(defmethod formatted-value :date/exclude
+  [_ value locale]
+  (let [[exclude unit & parts] (str/split value #"-")]
+    (assert (= "exclude" exclude) "The exclude string should start with 'exclude-'.")
+    (if (<= (count parts) 2)
+      (trs "Exclude {0}" (str/join ", " (map #(format-exclude-unit % unit locale) parts)))
+      (trs "Exclude {0} selections" (count parts)))))
+
 (defmethod formatted-value :date/all-options
   [_ value locale]
   ;; Test value against a series of regexes (similar to those in metabase/parameters/utils/mbql.js) to determine
   ;; the appropriate formatting, since it is not encoded in the parameter type.
-  ;; TODO: this is incomplete, and only handles simple dates https://github.com/metabase/metabase/issues/39385
   (condp (fn [re value] (->> (re-find re value) second)) value
     #"^(this[a-z]+)$"          :>> #(formatted-value :date/relative % locale)
-    #"^~?([0-9-T:]+)~?$"       :>> #(formatted-value :date/single % locale)
+    #"^~([0-9-T:]+)$"          :>> #(trs "Before {0}" (formatted-value :date/single % locale))
+    #"^([0-9-T:]+)$"           :>> #(trs "On {0}"     (formatted-value :date/single % locale))
+    #"^([0-9-T:]+)~$"          :>> #(trs "After {0}"  (formatted-value :date/single % locale))
     #"^([0-9-T:]+~[0-9-T:]+)$" :>> #(formatted-value :date/range % locale)
+    #"^(exclude-.+)$"          :>> #(formatted-value :date/exclude % locale)
     (formatted-value :date/relative value locale)))
 
 (defn formatted-list
@@ -274,3 +346,4 @@
             (add-values-to-variables tag->normalized-param locale escape-markdown)
             join-consecutive-strings
             strip-optional-blocks)))))
+
