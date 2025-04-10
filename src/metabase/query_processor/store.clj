@@ -157,21 +157,20 @@
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable
    thunk                                :- [:=> [:cat] :any]]
   (cond
-    (or (not (initialized?))
-        *DANGER-allow-replacing-metadata-provider*)
-    (binding [*store*                                        (atom {})
-              *DANGER-allow-replacing-metadata-provider* false]
+    (not (initialized?))
+    (binding [*store* (atom {})]
       (do-with-metadata-provider database-id-or-metadata-providerable thunk))
 
-    ;; existing provider
-    (miscellaneous-value [::metadata-provider])
-    (do
-      (validate-existing-provider database-id-or-metadata-providerable)
+    (or *DANGER-allow-replacing-metadata-provider*
+        (not (miscellaneous-value [::metadata-provider])))
+    ;; Allow replacing the metadata provider once, but it shouldn't affect later calls.
+    (binding [*DANGER-allow-replacing-metadata-provider* false]
+      (set-metadata-provider! database-id-or-metadata-providerable)
       (thunk))
 
     :else
     (do
-      (set-metadata-provider! database-id-or-metadata-providerable)
+      (validate-existing-provider database-id-or-metadata-providerable)
       (thunk))))
 
 (defmacro with-metadata-provider
