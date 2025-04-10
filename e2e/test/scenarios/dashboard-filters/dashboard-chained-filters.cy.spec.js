@@ -160,7 +160,7 @@ describe("scenarios > dashboard > chained filter", () => {
           H.fieldValuesInput().type("An");
         }
         if (has_field_values === "list") {
-          cy.findByRole("textbox").type("An");
+          cy.findByRole("combobox").type("An");
         }
       });
 
