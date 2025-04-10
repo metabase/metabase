@@ -86,7 +86,7 @@ describe("scenarios > admin > localization > content translation", () => {
           it("filter popover", () => {
             H.visitQuestion(productsQuestionId);
 
-            cy.findByTestId("action-buttons").findByText("Filter").click();
+            H.filter();
 
             Object.values(translationsOfColumnNames).forEach((row) => {
               H.popover().within(() => {
@@ -106,7 +106,7 @@ describe("scenarios > admin > localization > content translation", () => {
           it("summarize sidebar", () => {
             H.visitQuestion(productsQuestionId);
             cy.log("Open summarize sidebar");
-            cy.findByTestId("action-buttons").findByText("Summarize").click();
+            H.summarize();
             H.rightSidebar().within(() => {
               cy.log("Summarize sidebar includes all column names in English");
               Object.values(translationsOfColumnNames).forEach((row) => {
@@ -136,7 +136,7 @@ describe("scenarios > admin > localization > content translation", () => {
           it("filter popover", () => {
             H.visitQuestion(productsQuestionId);
             // Filter is 'Filter' in German
-            cy.findByTestId("action-buttons").findByText("Filter").click();
+            H.initiateAction("Filter");
 
             cy.findAllByTestId("dimension-list-item").then(($elements) => {
               const itemNames = $elements.map((_i, el) => el.innerText).get();
@@ -161,12 +161,10 @@ describe("scenarios > admin > localization > content translation", () => {
             });
           });
 
-          it("summarzie sidebar", () => {
+          it("summarize sidebar", () => {
             H.visitQuestion(productsQuestionId);
             cy.log("Open summarize sidebar");
-            cy.findByTestId("action-buttons")
-              .findByText("Zusammenfassen")
-              .click();
+            H.initiateAction("Zusammenfassen");
             H.rightSidebar().within(() => {
               cy.log("Summarize sidebar includes all column names in German");
               Object.values(translationsOfColumnNames).forEach((row) => {
