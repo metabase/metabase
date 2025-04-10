@@ -295,6 +295,22 @@
        (:entity-id entity)
        (cached-entity-id entity))))
 
+(defn- deduplicated-table-entity-ids
+  [fields entity-ids initial-seen]
+  (loop [[{id :id :as field} & more-fields] fields
+         [eid & more-eids] entity-ids
+         seen initial-seen
+         results {}]
+    (if (and field eid)
+      (let [final-eid (if (contains? seen eid)
+                        (deduplicated-entity-id :model/Field field 1 seen)
+                        eid)]
+        (recur more-fields
+               more-eids
+               (conj seen final-eid)
+               (assoc results id final-eid)))
+      results)))
+
 (defn cache-table!
   "Calculates and caches entity-ids for all fields from a given table."
   [table-id]
@@ -303,24 +319,13 @@
       (swap! entity-id-cache
              (fn [cache]
                (let [results
-                     (delay (let [used-entity-ids
-                                  (or (t2/select-fn-set :entity_id
-                                                        :model/Field
-                                                        :entity_id [:in initial-entity-ids])
-                                      #{})
+                     (delay (let [used-entity-ids (t2/select-fn-set :entity_id :model/Field
+                                                                    :entity_id [:in initial-entity-ids])
 
-                                  initial-seen
-                                  (->> cache :model/Field vals (into used-entity-ids (map deref)))]
-                              (->> (map list fields initial-entity-ids)
-                                   (reduce (fn [[results seen] [{id :id :as field} eid]]
-                                             (let [final-eid
-                                                   (if (contains? seen eid)
-                                                     (deduplicated-entity-id :model/Field field 1 seen)
-                                                     eid)]
-                                               [(assoc results id final-eid)
-                                                (conj seen final-eid)]))
-                                           [{} initial-seen])
-                                   first)))]
+                                  seen (into (or used-entity-ids #{})
+                                             (map deref)
+                                             (vals (:model/Field cache)))]
+                              (deduplicated-table-entity-ids fields initial-entity-ids seen)))]
                  (update cache :model/Field
                          (fn [initial-field-eids]
                            (reduce (fn [field-eids {id :id}]

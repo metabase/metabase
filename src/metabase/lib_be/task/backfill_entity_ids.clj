@@ -55,8 +55,7 @@
         (seq new-rows))
       true)
     (catch Exception e
-      (log/error (str "Backfill: Exception fetching entity-ids for " model))
-      (log/error e))))
+      (log/error e (str "Backfill: Exception fetching entity-ids for " model)))))
 
 (defn- add-entity-id!
   "Adds an entity-id to the model with a given id.  Returns [model id] on success and nil on failure."
@@ -67,8 +66,7 @@
       [model id]
       (catch Exception e
         (.rollback conn savepoint)
-        (log/error (str "Drain: Exception updating entity-id for " model " with id " id))
-        (log/error e)
+        (log/error e (str "Drain: Exception updating entity-id for " model " with id " id))
         nil))))
 
 (defn- drain-entity-ids!
