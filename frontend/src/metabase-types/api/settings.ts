@@ -141,6 +141,18 @@ export type LoadingMessage =
 
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
+export type GdrivePayload = {
+  status: "not-connected" | "syncing" | "active" | "error";
+  folder_url?: string;
+  created_at?: number;
+  created_by_id?: UserId;
+  sync_started_at?: number;
+  last_sync_at?: number;
+  next_sync_at?: number;
+  db_id?: number;
+  error?: string;
+};
+
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -330,6 +342,7 @@ interface AdminSettings {
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
+  gsheets: Partial<GdrivePayload>;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
@@ -373,12 +386,6 @@ interface PublicSettings {
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
-  gsheets: {
-    status: "not-connected" | "loading" | "complete" | "error";
-    folder_url: string | null;
-    error?: string;
-    "created-by-id"?: UserId;
-  };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
