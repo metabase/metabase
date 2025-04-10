@@ -220,7 +220,7 @@ const getLastRunDatasetQuery = createSelector(
   [getLastRunCard],
   (card) => card && card.dataset_query,
 );
-const getNextRunDatasetQuery = createSelector(
+export const getNextRunDatasetQuery = createSelector(
   [getCard],
   (card) => card && card.dataset_query,
 );
@@ -750,7 +750,12 @@ export const getIsNativeEditorOpen = createSelector(
   (isNative, uiControls) => isNative && uiControls.isNativeEditorOpen,
 );
 
-const getNativeEditorSelectedRange = createSelector(
+export const getNativeEditorSelectedRange = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls && uiControls.nativeEditorSelectedRange?.[0],
+);
+
+const getNativeEditorSelectedRanges = createSelector(
   [getUiControls],
   (uiControls) => uiControls && uiControls.nativeEditorSelectedRange,
 );
@@ -884,7 +889,7 @@ export const getVisibleTimelineEvents = createSelector(
       .value(),
 );
 
-function getOffsetForQueryAndPosition(queryText, { row, column }) {
+export function getOffsetForQueryAndPosition(queryText, { row, column }) {
   const queryLines = queryText.split("\n");
   return (
     // the total length of the previous rows
@@ -918,6 +923,28 @@ export const getNativeEditorSelectedText = createSelector(
     const start = getOffsetForQueryAndPosition(queryText, selectedRange.start);
     const end = getOffsetForQueryAndPosition(queryText, selectedRange.end);
     return queryText.slice(start, end);
+  },
+);
+
+export const getAllNativeEditorSelectedText = createSelector(
+  [getNativeEditorSelectedRanges, getNextRunDatasetQuery],
+  (selectedRanges, query) => {
+    if (
+      selectedRanges == null ||
+      selectedRanges.length === 0 ||
+      query == null ||
+      query.native == null
+    ) {
+      return null;
+    }
+    const queryText = query.native.query;
+    const selectedText = selectedRanges.map((range) =>
+      queryText.slice(
+        getOffsetForQueryAndPosition(queryText, range.start),
+        getOffsetForQueryAndPosition(queryText, range.end),
+      ),
+    );
+    return selectedText.join("");
   },
 );
 

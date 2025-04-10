@@ -24,7 +24,7 @@ export type CodeMirrorEditorProps = {
   onRunQuery?: () => void;
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
-  onSelectionChange?: (range: SelectionRange) => void;
+  onSelectionChange?: (range: SelectionRange[]) => void;
 };
 
 export interface CodeMirrorEditorRef {
@@ -35,8 +35,9 @@ export interface CodeMirrorEditorRef {
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions, useHighlightLines } from "./extensions";
 import {
-  convertSelectionToRange,
+  areAllRangesEqual,
   getPlaceholderText,
+  getSelectedRanges,
   matchCardIdAtCursor,
 } from "./util";
 
@@ -77,18 +78,12 @@ export const CodeMirrorEditor = forwardRef<
   const handleUpdate = useCallback(
     (update: ViewUpdate) => {
       // handle selection changes
-      const value = update.state.doc.toString();
-
       if (onSelectionChange) {
-        const beforeSelection = update.startState.selection.main;
-        const afterSelection = update.state.selection.main;
+        const beforeRanges = getSelectedRanges(update.startState);
+        const afterRanges = getSelectedRanges(update.state);
 
-        if (
-          beforeSelection.head !== afterSelection.head ||
-          beforeSelection.anchor !== afterSelection.anchor
-        ) {
-          // only forward changes if the selection has actually changed
-          onSelectionChange(convertSelectionToRange(value, afterSelection));
+        if (!areAllRangesEqual(beforeRanges, afterRanges)) {
+          onSelectionChange(afterRanges);
         }
       }
       if (onCursorMoveOverCardTag) {
