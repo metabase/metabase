@@ -18,7 +18,7 @@ export const questionShortcuts = {
   },
   "bookmark-question": {
     name: t`Bookmark Question`,
-    shortcut: ["b"],
+    shortcut: ["o"],
     shortcutGroup: "question",
   },
   "question-info-sidebar": {

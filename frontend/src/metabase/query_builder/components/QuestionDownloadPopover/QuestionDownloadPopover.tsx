@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ViewFooterButton } from "metabase/components/ViewFooterButton";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Flex, Popover } from "metabase/ui";
 import type { Dataset } from "metabase-types/api";
@@ -38,6 +39,13 @@ const QuestionDownloadPopover = ({
     token,
     visualizationSettings,
   });
+
+  useRegisterShortcut([
+    {
+      id: "download-question",
+      perform: () => setIsPopoverOpen((value) => !value),
+    },
+  ]);
 
   return (
     <Popover opened={isPopoverOpen} onChange={setIsPopoverOpen}>
