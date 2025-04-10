@@ -1,18 +1,26 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 const { H } = cy;
 
-const sampleDictionary = `
-Language,String,Translation
-de,Title,Titel
-de,Vendor,Anbieter
-de,Rating,Bewertung
-de,Category,Kategorie
-de,Created At,Erstellt am
-de,Price,Preis
-`;
+type Dictionary = { locale: string; msgid: string; msgstr: string }[];
+
+const translationsOfColumnNames: Dictionary = [
+  { locale: "de", msgid: "Title", msgstr: "Titel" },
+  { locale: "de", msgid: "Vendor", msgstr: "Anbieter" },
+  { locale: "de", msgid: "Rating", msgstr: "Bewertung" },
+  { locale: "de", msgid: "Category", msgstr: "Kategorie" },
+  { locale: "de", msgid: "Created At", msgstr: "Erstellt am" },
+  { locale: "de", msgid: "Price", msgstr: "Preis" },
+];
+
+const getCSV = (dictionary: Dictionary) => {
+  return (
+    "Language,String,Translation\n" +
+    dictionary.map((row) => Object.values(row).join(",")).join("\n")
+  );
+};
 
 describe("scenarios > admin > localization > content translation", () => {
   before(() => {
@@ -21,55 +29,167 @@ describe("scenarios > admin > localization > content translation", () => {
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
   });
 
-  describe("should be able to upload a translation dictionary and see the following string translated", () => {
-    before(() => {
-      cy.visit("/admin/settings/localization");
-
-      cy.get("#content-translation-dictionary-upload-input").selectFile(
-        {
-          contents: Cypress.Buffer.from(sampleDictionary),
-          fileName: "content_translations.csv",
-          mimeType: "text/csv",
-        },
-        { force: true },
-      );
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/Dictionary uploaded/g).should("be.visible");
-
-      cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, { locale: "de" });
-
-      H.createQuestion(
-        {
-          name: "Products",
-          query: {
-            "source-table": PRODUCTS_ID,
-          },
-        },
-        { wrapId: true, idAlias: "productsQuestionId" },
-      );
-    });
-
-    describe("On the question page", () => {
+  describe("column names", () => {
+    describe("after uploading related German translations", () => {
       before(() => {
-        cy.get<number>("@productsQuestionId").then((productsQuestionId) => {
-          cy.visitQuestion(productsQuestionId);
-        });
+        cy.visit("/admin/settings/localization");
+
+        const columnNamesCSV = getCSV(translationsOfColumnNames);
+        cy.get("#content-translation-dictionary-upload-input").selectFile(
+          {
+            contents: Cypress.Buffer.from(columnNamesCSV),
+            fileName: "content_translations.csv",
+            mimeType: "text/csv",
+          },
+          { force: true },
+        );
+
+        cy.findByTestId("content-localization-setting")
+          .findByText(/Dictionary uploaded/g)
+          .should("be.visible");
+
+        H.createQuestion(
+          {
+            name: "Products",
+            query: {
+              "source-table": PRODUCTS_ID,
+            },
+          },
+          { wrapId: true, idAlias: "productsQuestionId" },
+        );
       });
 
-      it("column names are localized", () => {
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Titel").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Anbieter").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Bewertung").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Kategorie").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Erstellt am").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Preis").should("be.visible");
+      describe("on the question page", () => {
+        let productsQuestionId = null as unknown as number;
+
+        before(() => {
+          cy.get<number>("@productsQuestionId").then((id) => {
+            productsQuestionId = id;
+          });
+        });
+
+        beforeEach(() => {
+          cy.signInAsNormalUser();
+        });
+
+        describe("when locale is English, column names are NOT localized in", () => {
+          it("column headers", () => {
+            H.visitQuestion(productsQuestionId);
+            cy.findByTestId("table-header").within(() => {
+              translationsOfColumnNames.forEach((row) => {
+                cy.findByText(row.msgid).should("be.visible");
+                cy.findByText(row.msgstr).should("not.exist");
+              });
+            });
+          });
+
+          it("filter popover", () => {
+            H.visitQuestion(productsQuestionId);
+
+            cy.findByTestId("action-buttons").findByText("Filter").click();
+
+            Object.values(translationsOfColumnNames).forEach((row) => {
+              H.popover().within(() => {
+                cy.findByText(row.msgstr).should("not.exist");
+                cy.findByText(row.msgid).click();
+              });
+
+              // Within subsequent popover
+              H.popover().within(() => {
+                cy.findByText(row.msgstr).should("not.exist");
+                cy.findByText(row.msgid).click();
+                // Clicking the column name returns to the main popover
+              });
+            });
+          });
+
+          it("summarize sidebar", () => {
+            H.visitQuestion(productsQuestionId);
+            cy.log("Open summarize sidebar");
+            cy.findByTestId("action-buttons").findByText("Summarize").click();
+            H.rightSidebar().within(() => {
+              cy.log("Summarize sidebar includes all column names in English");
+              Object.values(translationsOfColumnNames).forEach((row) => {
+                cy.findByText(row.msgstr).should("not.exist");
+                cy.findByText(row.msgid).should("be.visible");
+              });
+            });
+          });
+        });
+
+        describe("when locale is German, column names ARE localized in", () => {
+          beforeEach(() => {
+            cy.signInAsNormalUser();
+            cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, { locale: "de" });
+          });
+
+          it("column headers", () => {
+            H.visitQuestion(productsQuestionId);
+            cy.findByTestId("table-header").within(() => {
+              translationsOfColumnNames.forEach((row) => {
+                cy.findByText(row.msgid).should("not.exist");
+                cy.findByText(row.msgstr).should("be.visible");
+              });
+            });
+          });
+
+          it("filter popover", () => {
+            H.visitQuestion(productsQuestionId);
+            // Filter is 'Filter' in German
+            cy.findByTestId("action-buttons").findByText("Filter").click();
+
+            cy.findAllByTestId("dimension-list-item").then(($elements) => {
+              const itemNames = $elements.map((_i, el) => el.innerText).get();
+              expect(
+                itemNames.indexOf("Kategorie"),
+                "Kategorie should be sorted after Erstellt am",
+              ).to.be.greaterThan(itemNames.indexOf("Erstellt am"));
+            });
+
+            Object.values(translationsOfColumnNames).forEach((row) => {
+              H.popover().within(() => {
+                cy.findByText(row.msgid).should("not.exist");
+                cy.findByText(row.msgstr).click();
+              });
+
+              // Within subsequent popover
+              H.popover().within(() => {
+                cy.findByText(row.msgid).should("not.exist");
+                cy.findByText(row.msgstr).click();
+                // Clicking the column name returns to the main popover
+              });
+            });
+          });
+
+          it("summarzie sidebar", () => {
+            H.visitQuestion(productsQuestionId);
+            cy.log("Open summarize sidebar");
+            cy.findByTestId("action-buttons")
+              .findByText("Zusammenfassen")
+              .click();
+            H.rightSidebar().within(() => {
+              cy.log("Summarize sidebar includes all column names in German");
+              Object.values(translationsOfColumnNames).forEach((row) => {
+                cy.findByText(row.msgid).should("not.exist");
+                cy.findByText(row.msgstr).should("be.visible");
+              });
+
+              cy.log("Column names should be sorted in German");
+              cy.findAllByTestId("dimension-list-item").then(($elements) => {
+                const itemNames = $elements.map((_i, el) => el.innerText).get();
+                expect(
+                  itemNames.indexOf("Kategorie"),
+                  "Kategorie should be sorted after Erstellt am",
+                ).to.be.greaterThan(itemNames.indexOf("Erstellt am"));
+              });
+
+              cy.log("Column names should be searchable");
+              cy.findByPlaceholderText(/Finden/).type("kat");
+              cy.findByText("Erstellt am").should("not.exist");
+              cy.findByText("Kategorie").should("be.visible");
+            });
+          });
+        });
       });
     });
   });
