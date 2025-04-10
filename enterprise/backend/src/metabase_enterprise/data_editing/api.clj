@@ -17,9 +17,11 @@
    [metabase.upload :as-alias upload]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [nano-id.core :as nano-id]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -137,7 +139,7 @@
                                           (let [id  (get-row-pk pk-field row)
                                                 pks {(:name pk-field) id}]
                                             [pks [(get id->db-row id)
-                                                  (get id->db-row id)]]))
+                                                  row]]))
                                         (into {}))]
         (undo/track-change! user-id {table-id row-pk->old-new-values}))
 
@@ -240,6 +242,13 @@
     {:table_id table-id
      :token token}))
 
+(defn translate-undo-error [e]
+  (case (:error (ex-data e))
+    :undo/none            (ex-info (tru "Nothing to do")                                         {:status-code 204} e)
+    :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.")                 {:status-code 405} e)
+    :undo/conflict        (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
+    e))
+
 (api.macros/defendpoint :post "/undo"
   "Undo the last change you made.
   For now only supports tables, but in future will support editables for sure.
@@ -257,8 +266,10 @@
       {:batch_num (undo/next-batch-num true user-id table-id)}
       ;; IDEA encapsulate this in an action
       ;; IDEA use generic action calling API instead of having this endpoint
-      ;; TODO translate errors to http codes
-      {:result (undo/undo! user-id table-id)})))
+      (try
+        {:result (undo/undo! user-id table-id)}
+        (catch ExceptionInfo e
+          (throw (translate-undo-error e)))))))
 
 (api.macros/defendpoint :post "/redo"
   "Redo the last change you made.
@@ -278,7 +289,10 @@
       ;; IDEA encapsulate this in an action
       ;; IDEA use generic action calling API instead of having this endpoint
       ;; TODO translate errors to http codes
-      {:result (undo/redo! user-id table-id)})))
+      (try
+        {:result (undo/redo! user-id table-id)}
+        (catch ExceptionInfo e
+          (throw (translate-undo-error e)))))))
 
 (api.macros/defendpoint :delete "/webhook/:token"
   "Deletes a webhook endpoint token."

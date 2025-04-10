@@ -150,7 +150,7 @@
                                                :user-id  user-id
                                                :table-id table-id}))
       :else
-      (do (update-table-data! undo? #p batch)
+      (do (update-table-data! undo? batch)
           (t2/update! :model/Undo
                       {:batch_num (:batch_num (first batch))}
                       {:undone undo?})
