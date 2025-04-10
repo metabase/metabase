@@ -607,12 +607,10 @@
   ;; stage number is not currently used, but it is taken as a parameter for consistency with the rest of MLv2
   ([query         :- ::lib.schema/query
     _stage-number :- :int]
-   (let [database (lib.metadata/database query)
-         features (:features database)]
-     (into []
-           (comp (filter (partial contains? features))
-                 (map raw-join-strategy->strategy-option))
-           [:left-join :right-join :inner-join :full-join]))))
+   (into []
+         (comp (filter (partial lib.metadata/database-supports? query))
+               (map raw-join-strategy->strategy-option))
+         [:left-join :right-join :inner-join :full-join])))
 
 (mu/defn join-clause :- lib.join.util/PartialJoin
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
@@ -760,10 +758,7 @@
          join-aliases-to-ignore (into #{}
                                       (comp (map lib.join.util/current-join-alias)
                                             (drop-while #(not= % existing-join-alias)))
-                                      (joins query stage-number))
-         lhs-column-or-nil      (or lhs-column-or-nil
-                                    (when (join? join-or-joinable)
-                                      (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
+                                      (joins query stage-number))]
      (->> (lib.metadata.calculation/visible-columns query stage-number
                                                     (lib.util/query-stage query stage-number)
                                                     {:include-implicitly-joinable? false})
@@ -802,9 +797,6 @@
                              join-or-joinable)
          join-alias        (when (join? join-or-joinable)
                              (lib.join.util/current-join-alias join-or-joinable))
-         rhs-column-or-nil (or rhs-column-or-nil
-                               (when (join? join-or-joinable)
-                                 (standard-join-condition-rhs (first (join-conditions join-or-joinable)))))
          rhs-column-or-nil (when rhs-column-or-nil
                              (cond-> rhs-column-or-nil
                                ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.

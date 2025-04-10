@@ -265,9 +265,9 @@ describe("scenarios > home > custom homepage", () => {
       cy.visit("/admin/settings/general");
 
       cy.findByTestId("custom-homepage-setting").within(() => {
-        cy.findByText("Disabled").should("exist");
-        cy.findByRole("switch").click();
-        cy.findByText("Enabled").should("exist");
+        cy.findByText("Disabled").should("be.visible");
+        cy.findByText("Disabled").click();
+        cy.findByText("Enabled").should("be.visible");
       });
 
       cy.findByTestId("custom-homepage-dashboard-setting")
@@ -284,12 +284,13 @@ describe("scenarios > home > custom homepage", () => {
       );
 
       cy.log(
-        "disabling custom-homepge-setting should also remove custom-homepage-dashboard-setting",
+        "disabling custom-homepage-setting should also remove custom-homepage-dashboard-setting",
       );
+      cy.visit("/admin/settings/general");
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Enabled").should("exist");
-        cy.findByRole("switch").click();
+        cy.findByText("Enabled").click();
         cy.findByText("Disabled").should("exist");
       });
 
@@ -297,7 +298,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Disabled").should("exist");
-        cy.findByRole("switch").click();
+        cy.findByText("Disabled").click();
         cy.findByText("Enabled").should("exist");
       });
 
@@ -572,7 +573,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
   it("should send snowplow events through admin settings", () => {
     cy.visit("/admin/settings/general");
-    cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+    cy.findByTestId("custom-homepage-setting").findByText("Disabled").click();
 
     cy.findByTestId("custom-homepage-dashboard-setting")
       .findByRole("button")

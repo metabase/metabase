@@ -412,6 +412,7 @@ const createDefaultArgs = (
     selectedTabId: TAB_ID,
     parameterType: "text",
     ...args,
+    downloadsEnabled: { pdf: true, results: false },
   };
 };
 

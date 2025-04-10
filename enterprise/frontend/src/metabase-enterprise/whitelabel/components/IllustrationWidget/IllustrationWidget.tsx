@@ -9,7 +9,7 @@ import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
   IllustrationSettingValue,
-} from "metabase-enterprise/settings/types";
+} from "metabase-types/api";
 
 import { ImageUploadInfoDot } from "../ImageUploadInfoDot";
 

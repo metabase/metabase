@@ -58,12 +58,10 @@ config:
   api-keys:
   - name: Admin API key
     group: admin
-    description: API key with admin permissions.
     creator: first@example.com
     key: mb_firsttestapikey123
   - name: All Users API key
     group: all-users
-    description: API key with permissions of the All Users group.
     creator: first@example.com
     key: mb_secondtestapikey456
   settings:
@@ -228,7 +226,7 @@ config:
     saml-slo-enabled: false
     saml-user-provisioning-enabled: true
     scim-enabled: null
-    search-engine: appdb
+    search-engine: in-place
     search-typeahead-enabled: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax

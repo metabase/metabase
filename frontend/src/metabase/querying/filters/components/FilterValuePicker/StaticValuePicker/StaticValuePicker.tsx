@@ -1,4 +1,3 @@
-import type { FocusEvent } from "react";
 import { t } from "ttag";
 
 import { MultiAutocomplete } from "metabase/ui";
@@ -6,33 +5,27 @@ import { MultiAutocomplete } from "metabase/ui";
 interface StaticValuePickerProps {
   selectedValues: string[];
   placeholder?: string;
-  shouldCreate?: (query: string, values: string[]) => boolean;
   autoFocus?: boolean;
+  onCreate?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
-  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
-  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 export function StaticValuePicker({
   selectedValues,
   placeholder,
-  shouldCreate,
   autoFocus,
+  onCreate,
   onChange,
-  onFocus,
-  onBlur,
 }: StaticValuePickerProps) {
   return (
     <MultiAutocomplete
-      data={[]}
-      value={selectedValues}
+      values={selectedValues}
+      options={[]}
       placeholder={placeholder}
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
-      shouldCreate={shouldCreate}
+      onCreate={onCreate}
       onChange={onChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
     />
   );
 }

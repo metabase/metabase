@@ -16,7 +16,7 @@ describe("[EE - no features] resource downloads plugin", () => {
             hide_download_button,
             downloads,
           }),
-        ).toBe(true);
+        ).toStrictEqual({ pdf: true, results: true });
       },
     );
   });

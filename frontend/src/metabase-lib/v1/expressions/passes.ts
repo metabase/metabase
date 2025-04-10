@@ -5,7 +5,8 @@ import {
   isBooleanLiteral,
   isCaseOrIf,
   isCaseOrIfOperator,
-  isNumberLiteral,
+  isFloatLiteral,
+  isIntegerLiteral,
   isOptionsObject,
   isStringLiteral,
 } from "./matchers";
@@ -97,20 +98,28 @@ export const adjustOptions: CompilerPass = (tree) =>
       if (operands.length > 0) {
         const clause = MBQL_CLAUSES[operator];
         if (clause && clause.hasOptions) {
-          if (operands.length > clause.args.length) {
-            // the last one holds the function options
-            const index = operands.length - 1;
-            const options = operands[index];
-
-            // HACK: very specific to some string/time functions for now
-            if (options === "case-insensitive") {
-              operands[index] = { "case-sensitive": false };
-            } else if (options === "include-current") {
-              operands[index] = { "include-current": true };
-            }
-
-            return withAST([operator, ...operands], node);
+          const index = operands.length - 1;
+          const last = operands[index];
+          if (last === "case-insensitive") {
+            operands[index] = { "case-sensitive": false };
+          } else if (last === "include-current") {
+            operands[index] = { "include-current": true };
           }
+          return withAST([operator, ...operands], node);
+          //   if (operands.length > clause.args.length) {
+          //     // the last one holds the function options
+          //     const index = operands.length - 1;
+          //     const options = operands[index];
+          //
+          //     // HACK: very specific to some string/time functions for now
+          //     if (options === "case-insensitive") {
+          //       operands[index] = { "case-sensitive": false };
+          //     } else if (options === "include-current") {
+          //       operands[index] = { "include-current": true };
+          //     }
+          //
+          //     return withAST([operator, ...operands], node);
+          //   }
         }
       }
     }
@@ -218,12 +227,14 @@ export const adjustBigIntLiteral: CompilerPass = (tree) =>
   });
 
 export const adjustTopLevelLiteral: CompilerPass = (tree) => {
-  if (
-    isStringLiteral(tree) ||
-    isNumberLiteral(tree) ||
-    isBooleanLiteral(tree)
-  ) {
-    return ["value", tree, null];
+  if (isStringLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Text" }];
+  } else if (isBooleanLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Boolean" }];
+  } else if (isIntegerLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Integer" }];
+  } else if (isFloatLiteral(tree)) {
+    return ["value", tree, { base_type: "type/Float" }];
   } else {
     return tree;
   }
