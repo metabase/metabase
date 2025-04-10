@@ -27,7 +27,7 @@ describe("Metabot UI", () => {
       cy.wait("@sessionProperties");
     });
 
-    it("should not be avaiable in OSS", () => {
+    it("should not be available in OSS", () => {
       openMetabotViaShortcutKey(false);
       assertChatVisibility("not.visible");
       cy.findByLabelText("Navigation bar").within(() => {

@@ -2,9 +2,9 @@ import type { StaticResponse } from "cypress/types/net-stubbing";
 
 import { newButton } from "./e2e-ui-elements-helpers";
 
-export function assertChatVisibility(visiblility: "visible" | "not.visible") {
+export function assertChatVisibility(visibility: "visible" | "not.visible") {
   cy.findByTestId("metabot-chat").should(
-    visiblility === "visible" ? "be.visible" : "not.exist",
+    visibility === "visible" ? "be.visible" : "not.exist",
   );
 }
 
