@@ -328,7 +328,6 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
       !Lib.isExpressionParts(arg) ||
       isValueOperator(arg.operator) ||
       FIELD_MARKERS.has(arg.operator)
-    ) {
       // Not a call expression so not an operator
       return ind([ln, recurse(path, print, path.node.args[index])]);
     }
