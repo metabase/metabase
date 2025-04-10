@@ -49,7 +49,7 @@
   {:payload_type :notification/testing
    :creator      (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
    :condition    (:condition notification)
-   :context      (notification.payload/default-context)
+   :context      (notification.payload/default-settings)
    :payload      {::payload?    true}})
 
 (defmacro with-send-notification-sync

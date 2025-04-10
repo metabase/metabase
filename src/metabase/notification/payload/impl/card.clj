@@ -24,7 +24,7 @@
       {:payload_type :notification/card
        :condition    (:condition notification-info)
        :creator      (t2/select-one [:model/User :id :first_name :last_name :email] creator_id)
-       :context      (notification.payload/default-context)
+       :context      (notification.payload/default-settings)
        :payload      {:card_part        part
                       :card             (t2/select-one :model/Card card-id)
                       :style            {:color_text_dark   channel.render/color-text-dark

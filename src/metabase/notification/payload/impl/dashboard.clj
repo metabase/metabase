@@ -34,7 +34,7 @@
       {:payload_type :notification/dashboard
        :condition    (:condition notification-info)
        :creator      (t2/select-one [:model/User :id :first_name :last_name :email] creator_id)
-       :context      (notification.payload/default-context)
+       :context      (notification.payload/default-settings)
        :payload      {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
                                                 (:skip_if_empty dashboard_subscription)
                                                 (remove (fn [{part-type :type :as part}]

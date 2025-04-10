@@ -43,9 +43,8 @@
   {:arglists '([notification-info])}
   dispatch-on-event-info)
 
-(defmethod transform-event-info [:event/action.success :row/create]
+(defmethod transform-event-info [:event/action.success :row/update]
   [notification-info]
-  #_{:clj-kondo/ignore [:unresolved-symbol]}
   (lib.util.match/match
     notification-info
     {:event_info {:actor    {:first_name  ?first_name
@@ -63,7 +62,7 @@
      :table   {:id   ?table_id
                :name ?table_name
                :url  (str (public-settings/site-url) "/table/" ?table_id)}
-     :record  (merge {:id (get ?after :ID)} ?after)
+     :record  ?after
      :changes (into {} (for [[k v] ?after
                              :let [before-val (get ?before k)]
                              :when (not= v before-val)]
@@ -82,5 +81,5 @@
 
 (mu/defmethod notification.payload/notification-payload :notification/system-event
   [notification-info :- ::notification.payload/Notification]
-  (def notification-info notification-info)
   (transform-event-info notification-info))
+
