@@ -1,3 +1,4 @@
+import { collectionShortcuts } from "./collection";
 import { dashboardShortcuts } from "./dashboard";
 import { globalShortcuts } from "./global";
 // import { questionShortcuts } from "./question";
@@ -5,5 +6,6 @@ import { globalShortcuts } from "./global";
 export const shortcuts = {
   ...globalShortcuts,
   ...dashboardShortcuts,
+  ...collectionShortcuts,
   // ...questionShortcuts,
 };
