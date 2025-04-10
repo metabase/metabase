@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useDebounce, usePreviousDistinct } from "react-use";
@@ -13,6 +14,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import resizeObserver from "metabase/lib/resize-observer";
 import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type {
@@ -126,6 +128,8 @@ export function EntityPickerModal<
   disableCloseOnEscape = false,
   children,
 }: EntityPickerModalProps<Id, Model, Item>) {
+  const [modalContentMinWidth, setModalContentMinWidth] = useState(920);
+  const modalContentRef = useRef<HTMLDivElement | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchScope, setSearchScope] =
     useState<EntityPickerSearchScope>("everywhere");
@@ -345,6 +349,33 @@ export function EntityPickerModal<
 
   const titleId = useUniqueId("entity-picker-modal-title-");
 
+  const modalContentResizeHandler = useCallback(
+    (entry: ResizeObserverEntry) => {
+      const width = entry.contentRect.width;
+      setModalContentMinWidth((currentWidth) =>
+        currentWidth < width ? width : currentWidth,
+      );
+    },
+    [],
+  );
+
+  const modalContentCallbackRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      if (element) {
+        resizeObserver.subscribe(element, modalContentResizeHandler);
+        modalContentRef.current = element;
+      } else {
+        if (modalContentRef.current) {
+          resizeObserver.unsubscribe(
+            modalContentRef.current,
+            modalContentResizeHandler,
+          );
+        }
+      }
+    },
+    [modalContentResizeHandler],
+  );
+
   return (
     <Modal.Root
       opened={open}
@@ -366,7 +397,10 @@ export function EntityPickerModal<
       <Modal.Content
         className={S.modalContent}
         aria-labelledby={titleId}
-        w="57.5rem"
+        miw={`min(${modalContentMinWidth}px, 80vw)`}
+        w="fit-content"
+        maw="80vw"
+        ref={modalContentCallbackRef}
       >
         <Modal.Header
           px="2.5rem"
