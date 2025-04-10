@@ -70,6 +70,7 @@
 /storybook-static
 /target
 /test-report-*
+/temp
 **/cli-snippets-tmp/**
 \#*\#
 bin/node_modules/

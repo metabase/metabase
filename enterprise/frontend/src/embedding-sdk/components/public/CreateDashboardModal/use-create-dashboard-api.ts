@@ -8,14 +8,26 @@ import type { CreateDashboardProperties } from "metabase/dashboard/containers/Cr
 
 export interface CreateDashboardValues
   extends Omit<CreateDashboardProperties, "collection_id"> {
+  /**
+   * Collection in which to create a new dashboard. You can use predefined system values like `root` or `personal`.
+   */
   collectionId: SdkCollectionId;
 }
 
+/**
+ * Creates a dashboard
+ *
+ * @function
+ * @category CreateDashboardModal
+ */
 export const useCreateDashboardApi = () => {
   const store = useSdkStore();
 
   const [createDashboard] = useCreateDashboardMutation();
 
+  /**
+   * @function
+   */
   const handleCreateDashboard = useCallback(
     async ({ collectionId = "personal", ...rest }: CreateDashboardValues) => {
       const realCollectionId = getCollectionNumericIdFromReference(
@@ -32,6 +44,9 @@ export const useCreateDashboardApi = () => {
   );
 
   return {
+    /**
+     * @param options
+     */
     createDashboard: handleCreateDashboard,
   };
 };

@@ -1,8 +1,8 @@
 import type { Query } from "history";
-import type { CSSProperties } from "react";
 import { pick } from "underscore";
 
 import type { SdkDashboardId } from "embedding-sdk/types/dashboard";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import {
   useDashboardFullscreen,
@@ -14,16 +14,52 @@ import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated
 import { isNotNull } from "metabase/lib/types";
 
 export type SdkDashboardDisplayProps = {
+  /**
+   * The ID of the dashboard.
+   * This is either:
+   *  - the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+   *  - the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data
+   */
   dashboardId: SdkDashboardId;
+
+  /**
+   * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.\
+   *
+   * @remarks
+   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](../../authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
+   */
   initialParameters?: Query;
+
+  /**
+   * Whether the dashboard should display a title.
+   */
   withTitle?: boolean;
+
+  /**
+   * Whether the dashboard cards should display a title.
+   */
   withCardTitle?: boolean;
+
+  /**
+   * Whether to hide the download button.
+   */
   withDownloads?: boolean;
+
+  /**
+   * Whether to display the footer.
+   */
   withFooter?: boolean;
+
+  /**
+   * A list of [parameters to hide](../../../public-links.html#appearance-parameters).
+   *
+   * @remarks
+   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](../../authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
+   **/
   hiddenParameters?: string[];
-  className?: string;
-  style?: CSSProperties;
-};
+} & CommonStylingProps;
 
 export const useSdkDashboardParams = ({
   dashboardId: initialDashboardId,
