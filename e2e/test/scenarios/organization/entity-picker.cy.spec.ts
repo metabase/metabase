@@ -1108,6 +1108,10 @@ describe("scenarios > organization > entity picker", () => {
         .findByLabelText(/Where do you/)
         .click();
       H.entityPickerModalTab("Browse").click();
+
+      // wait for data to avoid flakiness
+      H.entityPickerModalLevel(1).should("contain", "First collection");
+
       closeAndAssertModal(H.entityPickerModal);
       closeAndAssertModal(() =>
         cy.findByRole("heading", { name: /Duplicate/ }),
