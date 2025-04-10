@@ -102,6 +102,7 @@ export const LegendCaption = ({
             maw="22em"
           >
             <LegendDescriptionIcon
+              data-testid="legend-description-icon"
               name="info"
               className={cx(CS.hoverChild, CS.hoverChildSmooth)}
             />

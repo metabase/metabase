@@ -26,8 +26,8 @@ export const LegendDescriptionIcon = styled(
   forwardRef<HTMLDivElement, IconProps>(
     function LegendDescriptionIcon(props, ref) {
       return (
-        <Box component="span" ref={ref}>
-          <Icon {...props} name={props.name ?? "info"} />
+        <Box component="span" ref={ref} className={props.className}>
+          <Icon name={props.name ?? "info"} mt="2px" />
         </Box>
       );
     },

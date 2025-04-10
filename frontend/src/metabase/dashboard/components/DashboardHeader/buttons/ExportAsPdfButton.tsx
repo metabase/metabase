@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -13,7 +14,15 @@ import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { Dashboard } from "metabase-types/api";
 
-export const ExportAsPdfButton = ({ dashboard }: { dashboard: Dashboard }) => {
+import CS from "./ExportAsPdfButton.module.css";
+
+export const ExportAsPdfButton = ({
+  dashboard,
+  compact = false,
+}: {
+  dashboard: Dashboard;
+  compact?: boolean;
+}) => {
   const dispatch = useDispatch();
 
   const saveAsPDF = () => {
@@ -36,7 +45,13 @@ export const ExportAsPdfButton = ({ dashboard }: { dashboard: Dashboard }) => {
 
   return (
     <Tooltip label={t`Download as PDF`}>
-      <ActionIcon c="text-dark" onClick={() => dispatch(saveAsPDF)}>
+      <ActionIcon
+        c="text-dark"
+        onClick={() => dispatch(saveAsPDF)}
+        className={cx({
+          [CS.CompactExportAsPdfButton]: compact,
+        })}
+      >
         <Icon name="download" />
       </ActionIcon>
     </Tooltip>

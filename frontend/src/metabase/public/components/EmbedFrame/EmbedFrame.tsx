@@ -180,7 +180,7 @@ export const EmbedFrame = ({
             data-testid="embed-frame-header"
           >
             {(finalName || pdfDownloadsEnabled) && (
-              <TitleAndDescriptionContainer>
+              <TitleAndDescriptionContainer hasTitle={!!finalName}>
                 <TitleAndButtonsContainer
                   data-testid="fixed-width-dashboard-header"
                   isFixedWidth={dashboard?.width === "fixed"}
@@ -194,7 +194,12 @@ export const EmbedFrame = ({
                   )}
                   <Box style={{ flex: 1 }} />
                   {dashboard && pdfDownloadsEnabled && (
-                    <ExportAsPdfButton dashboard={dashboard} />
+                    <ExportAsPdfButton
+                      dashboard={dashboard}
+                      compact={
+                        !finalName && (hasVisibleParameters || !!dashboardTabs)
+                      }
+                    />
                   )}
                 </TitleAndButtonsContainer>
               </TitleAndDescriptionContainer>
@@ -210,7 +215,7 @@ export const EmbedFrame = ({
               </DashboardTabsContainer>
             )}
 
-            <Separator className={EmbedFrameS.Separator} />
+            {finalName && <Separator className={EmbedFrameS.Separator} />}
           </Header>
         )}
 
