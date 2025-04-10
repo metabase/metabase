@@ -142,24 +142,26 @@ type SelectItem = {
   label: string;
 };
 
-function getOption(entry: string | ParameterValue): SelectItem | null {
-  const value = getValue(entry)?.toString();
+function getOption(entry: string | number | ParameterValue): SelectItem | null {
+  const value = getValue(entry);
   const label = getLabel(entry);
 
   if (!value) {
     return null;
   }
 
-  return { value, label };
+  return { value: String(value), label: String(label ?? value) };
 }
 
-function getLabel(option: string | ParameterValue): string {
-  return option[1] ?? option[0]?.toString() ?? "";
-}
-
-function getValue(option: string | ParameterValue) {
-  if (typeof option === "string") {
-    return option;
+function getLabel(option: string | number | ParameterValue) {
+  if (Array.isArray(option)) {
+    return option[1];
   }
-  return option[0];
+}
+
+function getValue(option: string | number | ParameterValue) {
+  if (Array.isArray(option)) {
+    return option[0];
+  }
+  return String(option);
 }
