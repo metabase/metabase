@@ -129,24 +129,32 @@
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
   ;; and redirect them back to us
   [req]
+  (println "SSO GET" req)
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
+        token-requested? (= "true" (get-in req [:params :token]))
         redirect-url (if (nil? redirect)
                        (do
                          (log/warn "Warning: expected `redirect` param, but none is present")
                          (public-settings/site-url))
                        (if (sso-utils/relative-uri? redirect)
                          (str (public-settings/site-url) redirect)
-                         redirect))]
+                         redirect))
+        ;; Add token parameter to the redirect URL if requested
+        redirect-with-token (if token-requested?
+                              (str redirect-url
+                                   (if (.contains redirect-url "?") "&" "?")
+                                   "token=true")
+                              redirect-url)]
     (sso-utils/check-sso-redirect redirect-url)
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
-            relay-state  (u/encode-base64 redirect-url)]
+            relay-state  (u/encode-base64 redirect-with-token)]
         (saml/idp-redirect-response {:request-id       (str "id-" (random-uuid))
                                      :sp-name          (sso-settings/saml-application-name)
                                      :issuer           (sso-settings/saml-application-name)
-                                     :acs-url          (acs-url)
+                                     i want my app to redirect to 5173 after (not hardcoded but whereever that is in the code) . i                       :acs-url          (acs-url)
                                      :idp-url          idp-url
                                      :credential       (sp-cert-keystore-details)
                                      :relay-state      relay-state
@@ -185,20 +193,28 @@
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
   ;; `(get-in saml-info [:assertions :attrs])
   [{:keys [params], :as request}]
+  (println "SSO POST" params request)
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [continue-url  (u/ignore-exceptions
                         (when-let [s (some-> (:RelayState params) u/decode-base64)]
                           (when-not (str/blank? s)
-                            s)))]
-    (sso-utils/check-sso-redirect continue-url)
+                            s)))
+        ;; Check for token param in the relay state/continue URL
+        token-requested? (and continue-url
+                              (re-find #"[?&]token=true" continue-url))
+        ;; Clean the continue URL by removing our token parameter if present
+        clean-continue-url (if token-requested?
+                             (str/replace continue-url #"[?&]token=true(&|$)" "$1")
+                             continue-url)]
+    (sso-utils/check-sso-redirect clean-continue-url)
     (try
       (let [saml-response (saml/validate-response request
                                                   {:idp-cert (idp-cert)
                                                    :sp-private-key (sp-cert-keystore-details)
                                                    :acs-url (acs-url)
-                                                   ;; remove :in-response-to validation since we're not
-                                                   ;; tracking that in metabase
+                                                  ;; remove :in-response-to validation since we're not
+                                                  ;; tracking that in metabase
                                                    :response-validators [:issuer
                                                                          :signature
                                                                          :require-authenticated]
@@ -220,9 +236,22 @@
                             :email           email
                             :group-names     groups
                             :user-attributes attrs
-                            :device-info     (request/device-info request)})
-            response      (response/redirect (or continue-url (public-settings/site-url)))]
-        (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))
+                            :device-info     (request/device-info request)})]
+
+        ;; Check if token was requested
+        (if token-requested?
+          ;; If token was requested, return the session ID in JSON response
+          {:status 200
+           :body {:success true
+                  :session_id (:key session)  ;; Use the existing session ID
+                  :user {:email email
+                         :first_name first-name
+                         :last_name last-name}}}
+
+          ;; Otherwise, proceed with the normal redirect flow
+          (let [response (response/redirect (or clean-continue-url (public-settings/site-url)))]
+            (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
+
       (catch Throwable e
         (log/error e "SAML response validation failed")
         (throw (ex-info (tru "Unable to log in: SAML response validation failed")

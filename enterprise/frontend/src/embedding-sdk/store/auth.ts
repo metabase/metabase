@@ -161,21 +161,98 @@ export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn = async (
 ) => {
   const response = await fetch(url, {
     method: "GET",
-    credentials: "include",
+    //    credentials: "include",
   });
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch the session, HTTP status: ${response.status}`,
-    );
-  }
-
-  const asText = await response.text();
-
   try {
-    return JSON.parse(asText);
-  } catch (ex) {
-    return asText;
+    const data = await response.json();
+
+    if (data.redirectUrl) {
+      // Handle SAML auth via popup with messaging
+      const authUrl = new URL(data.redirectUrl);
+
+      // Add token=true parameter to get JSON response
+      if (!authUrl.searchParams.has("token")) {
+        authUrl.searchParams.append("token", "true");
+      }
+
+      // Return a promise that will resolve with the session token
+      return new Promise((resolve, reject) => {
+        // Set up listener for messages from popup
+        const handleMessage = (event) => {
+          // Verify message contains session data
+          if (event.data && event.data.sessionId) {
+            // Clean up listener
+            window.removeEventListener("message", handleMessage);
+            clearInterval(checkClosed);
+
+            // Create and return a valid session object
+            resolve({
+              id: event.data.sessionId,
+              exp: Math.floor(Date.now() / 1000) + 3600,
+              iat: Math.floor(Date.now() / 1000),
+              status: "ok",
+            });
+          }
+        };
+
+        // Add message listener
+        window.addEventListener("message", handleMessage);
+
+        // Open popup for authentication
+        const popup = window.open(
+          authUrl.toString(),
+          "samlAuth",
+          "width=600,height=600,left=200,top=200",
+        );
+
+        if (!popup) {
+          reject(
+            new Error("Popup blocked - please allow popups for authentication"),
+          );
+          return;
+        }
+
+        // Check if popup was closed before authentication completed
+        const checkClosed = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkClosed);
+            window.removeEventListener("message", handleMessage);
+            reject(new Error("Authentication window was closed"));
+          }
+        }, 500);
+      });
+    }
+
+    // No redirectUrl, continue with normal flow
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch the session, HTTP status: ${response.status}`,
+      );
+    }
+
+    const asText = await response.text();
+
+    try {
+      return JSON.parse(asText);
+    } catch (ex) {
+      return asText;
+    }
+  } catch (error) {
+    // If parsing JSON fails, continue with original error handling
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch the session, HTTP status: ${response.status}`,
+      );
+    }
+
+    const asText = await response.text();
+
+    try {
+      return JSON.parse(asText);
+    } catch (ex) {
+      return asText;
+    }
   }
 };
 
