@@ -53,9 +53,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Skip the postgres implementation of describe fields as it has to handle custom enums which redshift doesn't support.
-(defmethod driver/describe-fields :redshift
+(defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
   [driver database & args]
-  (apply (get-method driver/describe-fields :sql-jdbc) driver database args))
+  (apply (get-method sql-jdbc.sync/describe-fields-pre-process-xf :sql-jdbc) driver database args))
 
 (def ^:private get-tables-sql
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
