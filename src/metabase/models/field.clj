@@ -126,7 +126,7 @@
   [field]
   (-> field
       (dissoc :is_defective_duplicate :unique_field_helper)
-      serdes/add-entity-id))
+      serdes/add-field-entity-id))
 
 (t2/define-before-insert :model/Field
   [field]

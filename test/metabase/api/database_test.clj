@@ -181,11 +181,10 @@
                         (map :schema)))))))
       (testing "`?include=tables.fields` -- should be able to include Tables and Fields"
         (letfn [(field-details* [field]
-                  (dissoc (assoc (into {} (t2/hydrate field [:target :has_field_values] :has_field_values))
-                                 :base_type        "type/Text"
-                                 :visibility_type  "normal"
-                                 :has_field_values "search")
-                          :table))]
+                  (assoc (into {} (t2/hydrate field [:target :has_field_values] :has_field_values))
+                         :base_type        "type/Text"
+                         :visibility_type  "normal"
+                         :has_field_values "search"))]
           (is (= {:tables [(assoc (table-details t1) :fields [(field-details* f1)])
                            (assoc (table-details t2) :fields [(field-details* f2)
                                                               (field-details* f3)])]}

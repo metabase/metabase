@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [medley.core :as m]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :refer [defsetting]]
    [metabase.task :as task]
@@ -32,7 +33,7 @@
   :export?    true
   :default    3000)
 
-(defn- get-rows-to-drain!
+(defn- get-rows-to-drain
   "Fetches the next *drain-batch-size* rows from serdes/entity-id-cache"
   []
   (->> (for [[model inner] @serdes/entity-id-cache
@@ -44,8 +45,12 @@
   "Given a model, gets a batch of objects from the db and adds entity-ids.  Returns whether there is more rows to backfill."
   [model]
   (try
-    (if (empty? (get-rows-to-drain!))
-      (let [new-rows (t2/select model :entity_id nil {:limit *backfill-batch-size*})]
+    (if (empty? (get-rows-to-drain))
+      (let [new-rows (t2/select model :entity_id nil {:limit (if (= model :model/Field)
+                                                               ;; Backfill fields one at a time because we cache all
+                                                               ;; fields from a given table at once
+                                                               1
+                                                               *backfill-batch-size*)})]
         (log/info "Backfill: Added " (count new-rows) " rows of " model " to the entity-id cache")
         (seq new-rows))
       true)
@@ -53,40 +58,28 @@
       (log/error (str "Backfill: Exception fetching entity-ids for " model))
       (log/error e))))
 
+(defn- add-entity-id!
+  "Adds an entity-id to the model with a given id.  Returns [model id] on success and nil on failure."
+  [^java.sql.Connection conn model id entity-id]
+  (let [savepoint (.setSavepoint conn)]
+    (try
+      (t2/update! (t2/table-name model) id {:entity_id entity-id})
+      [model id]
+      (catch Exception e
+        (.rollback conn savepoint)
+        (log/error (str "Drain: Exception updating entity-id for " model " with id " id))
+        (log/error e)
+        nil))))
+
 (defn- drain-entity-ids!
   "Fetches *drain-batch-size* rows from serdes/entity-id-cache, writes those entity-ids into the db, and then removes
   those rows from the cache."
   []
-  (t2/with-transaction [^java.sql.Connection conn]
-    (let [vals (->> (for [[model inner] @serdes/entity-id-cache
-                          [id entity-id] inner]
-                      [model id @entity-id])
-                    (take *drain-batch-size*))
-          failures (->> (for [[model id entity-id] vals]
-                          (let [savepoint (.setSavepoint conn)]
-                            (try
-                              ;; Need to bind *skip-entity-id-calc* to true or else update! will call select, see that
-                              ;; we already have the entity-id in question (because we just added it in after-select),
-                              ;; and refuse to do anything
-                              (binding [serdes/*skip-entity-id-calc* true]
-                                (t2/update! model id {:entity_id entity-id}))
-                              nil
-                              (catch Exception e
-                                (.rollback conn savepoint)
-                                (log/error (str "Drain: Exception updating entity-id for " model " with id " id))
-                                (log/error e)
-                                [model id]))))
-                        (filter some?)
-                        set)]
+  (t2/with-transaction [conn]
+    (let [vals (get-rows-to-drain)
+          successes (into #{} (keep #(apply add-entity-id! conn %)) vals)]
       (when (seq vals)
-        (swap! serdes/entity-id-cache
-               (fn [cache]
-                 (reduce (fn [c [model id]]
-                           (if (contains? failures [model id])
-                             c
-                             (update c model #(dissoc % id))))
-                         cache
-                         vals)))
+        (swap! serdes/entity-id-cache #(reduce m/dissoc-in % successes))
         (log/info "Drain: Updated entity ids for " (count vals) " rows")))))
 
 (def ^:private backfill-job-key "metabase.lib-be.task.backfill-entity-ids.job")
@@ -113,8 +106,7 @@
 (comment
   ;; Deletes all entity ids for when you want to test the backfill job
   (doseq [model (set (flatten (seq next-model)))]
-    (binding [serdes/*skip-entity-id-calc* true]
-      (t2/update! model {} {:entity_id nil}))))
+    (t2/update! (t2/table-name model) {} {:entity_id nil})))
 
 (defn- backfill-job-running?
   "Checks if a backfill entity ids job is currently running"

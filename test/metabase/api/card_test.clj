@@ -3582,17 +3582,15 @@
                                   :query_type :native
                                   :database_id (mt/id)}]
     (testing "Simple card"
-      (is (=?
-           {:fields api.test-util/all-have-entity-ids?
-            :tables api.test-util/all-have-entity-ids?
-            :databases api.test-util/all-have-entity-ids?}
-           (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata")))))
+      (is (=? {:fields api.test-util/all-have-entity-ids?
+               :tables api.test-util/all-have-entity-ids?
+               :databases api.test-util/all-have-entity-ids?}
+              (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata")))))
     (testing "Parameterized native query"
-      (is (=?
-           {:fields api.test-util/all-have-entity-ids?
-            :tables api.test-util/all-have-entity-ids?
-            :databases api.test-util/all-have-entity-ids?}
-           (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata")))))))
+      (is (=? {:fields api.test-util/all-have-entity-ids?
+               :tables api.test-util/all-have-entity-ids?
+               :databases api.test-util/all-have-entity-ids?}
+              (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata")))))))
 
 (deftest card-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"

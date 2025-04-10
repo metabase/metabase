@@ -16,9 +16,9 @@
   (mt/with-temp
     [:model/Database {db-id :id :as db} {}
      :model/Table {table-id :id :as table} {}
-     :model/Field {field1-id :id :as field1} {}
-     :model/Field {field2-id :id :as field2} {}
-     :model/Field {field3-id :id :as field3} {:entity_id "an entity id_________"}
+     :model/Field {field1-id :id :as field1} {:table_id table-id}
+     :model/Field {field2-id :id :as field2} {:table_id table-id}
+     :model/Field {field3-id :id :as field3} {:entity_id "an entity id_________" :table_id table-id}
      :model/Card {card-id :id :as card}]
     (reset! serdes/entity-id-cache {})
     (f {:db-id db-id
@@ -38,7 +38,8 @@
   (testing "Can backfill databases"
     (with-sample-data!
       (fn [{:keys [db-id table-id field1-id]}]
-        (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Database)
+        (binding [backfill-entity-ids/*backfill-batch-size* 5000]
+          (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Database))
         (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Database db-id]))))
         (is (not (contains? (:model/Table @serdes/entity-id-cache) table-id)))
         (is (not (contains? (:model/Field @serdes/entity-id-cache) field1-id)))))))
@@ -47,7 +48,8 @@
   (testing "Can backfill tables"
     (with-sample-data!
       (fn [{:keys [db-id table-id field1-id]}]
-        (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Table)
+        (binding [backfill-entity-ids/*backfill-batch-size* 5000]
+          (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Table))
         (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Table table-id]))))
         (is (not (contains? (:model/Database @serdes/entity-id-cache) db-id)))
         (is (not (contains? (:model/Field @serdes/entity-id-cache) field1-id)))))))
@@ -56,13 +58,21 @@
   (testing "Can backfill fields"
     (with-sample-data!
       (fn [{:keys [db-id table-id field1-id field2-id field3-id]}]
-        (binding [backfill-entity-ids/*backfill-batch-size* 5000]
-          (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Field))
-        (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Field field1-id]))))
-        (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Field field2-id]))))
+        (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
+        ;; we only backfill 1 random field at a time, so we can't be confident we backfilled any particular field
+        (is (not (empty? (:model/Field @serdes/entity-id-cache))))
         (is (not (contains? (:model/Field @serdes/entity-id-cache) field3-id)))
         (is (not (contains? (:model/Database @serdes/entity-id-cache) db-id)))
         (is (not (contains? (:model/Table @serdes/entity-id-cache) table-id)))))))
+
+(deftest ^:synchronized backfill-all-table-fields-test
+  (testing "Will backfill all fields from a given table at once"
+    (with-sample-data!
+      (fn [{:keys [table-id field1-id field2-id field3-id]}]
+        (t2/select-one :model/Field field1-id)
+        (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Field field1-id]))))
+        (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Field field2-id]))))
+        (is (not (contains? (:model/Field @serdes/entity-id-cache) field3-id)))))))
 
 (deftest ^:synchronized backfill-cards-test
   (testing "Can backfill cards"
@@ -136,10 +146,7 @@
             (is (= table-eid (:entity_id (t2/select-one :model/Table :id table-id))))
             (is (= field1-eid (:entity_id (t2/select-one :model/Field :id field1-id))))
             (is (= field2-eid (:entity_id (t2/select-one :model/Field :id field2-id)))))
-          (is (= {:model/Database {}
-                  :model/Table {}
-                  :model/Field {}
-                  :model/Card {}}
+          (is (= {}
                  @serdes/entity-id-cache)))))))
 
 (deftest ^:synchronized drain-does-not-clear-unused-entries-test
@@ -170,9 +177,7 @@
                                           :model/Field {field1-id (delay field1-eid)
                                                         field2-id field2-eid-delay}})
           (#'backfill-entity-ids/drain-entity-ids!)
-          (is (= {:model/Database {}
-                  :model/Table {}
-                  :model/Field {field2-id field2-eid-delay}}
+          (is (= {:model/Field {field2-id field2-eid-delay}}
                  @serdes/entity-id-cache)))))))
 
 (deftest ^:synchronized select-uses-cached-eids-when-present-test
@@ -180,12 +185,12 @@
     (with-sample-data!
       (fn [{:keys [db-id table-id field1-id field2-id card-id]}]
         (let [[db-eid table-eid field1-eid field2-eid card-eid] (repeatedly 5 u/generate-nano-id)]
+          (t2/update! (t2/table-name :model/Card) card-id {:entity_id nil})
           (reset! serdes/entity-id-cache {:model/Database {db-id (delay db-eid)}
                                           :model/Table {table-id (delay table-eid)}
                                           :model/Field {field1-id (delay field1-eid)
                                                         field2-id (delay field2-eid)}
                                           :model/Card {card-id (delay card-eid)}})
-          (#'backfill-entity-ids/drain-entity-ids!)
           (is (= db-eid (:entity_id (t2/select-one :model/Database :id db-id))))
           (is (= table-eid (:entity_id (t2/select-one :model/Table :id table-id))))
           (is (= field1-eid (:entity_id (t2/select-one :model/Field :id field1-id))))

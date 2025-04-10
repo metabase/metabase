@@ -4693,11 +4693,10 @@
      :model/DashboardCardSeries _                   {:dashboardcard_id dashcard-id-1,
                                                      :card_id series-id-2
                                                      :position 1}]
-    (is (=?
-         {:fields api.test-util/all-have-entity-ids?
-          :tables api.test-util/all-have-entity-ids?
-          :databases api.test-util/all-have-entity-ids?}
-         (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))))))
+    (is (=? {:fields api.test-util/all-have-entity-ids?
+             :tables api.test-util/all-have-entity-ids?
+             :databases api.test-util/all-have-entity-ids?}
+            (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))))))
 
 (deftest dashboard-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"

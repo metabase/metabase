@@ -398,7 +398,6 @@
                                           :semantic_type      :type/FK
                                           :fk_target_field_id (:id fk-field)}]
       (let [expected-target (-> fk-field
-                                (dissoc :table)
                                 (update :base_type u/qualified-name)
                                 (update :visibility_type u/qualified-name))
             get-field       (fn []
@@ -433,7 +432,6 @@
                                           :semantic_type      :type/FK
                                           :fk_target_field_id (:id fk-field-1)}]
       (let [expected-target (-> fk-field-2
-                                (dissoc :table)
                                 (update :base_type u/qualified-name)
                                 (update :visibility_type u/qualified-name))
             update-target   (fn []

@@ -547,6 +547,7 @@
   (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
                 "Table (EE #390)\n")
     (let [cols          (fn []
+                          ;; TODO: it would be nice to check entity_id and ident in this test
                           (map #(dissoc % :entity_id :ident)
                                (mt/cols
                                 (mt/run-mbql-query venues
