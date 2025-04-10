@@ -42,7 +42,7 @@
 
   #_:docstring-leading-trailing-whitespace
   #_:equals-false
-  #_:equals-true
+  :equals-true {:level :warning}
   #_:used-underscored-binding
 
   ;;
