@@ -68,6 +68,7 @@ export const DB_ROUTER_USERS = {
     login_attributes: {
       destination_database: "destination_one",
       color: "blue",
+      db_role: "blue_role",
     },
     user_group_memberships: [
       { id: ALL_USERS_GROUP, is_group_manager: false },
@@ -165,5 +166,42 @@ export function createDbWithIdentifierTable({ dbName }: { dbName: string }) {
   cy.task("connectAndQueryDB", {
     connectionConfig: dbConfig,
     query: "SELECT color FROM db_identifier;",
+  });
+
+  // Create database roles for impersonation
+  cy.task("connectAndQueryDB", {
+    connectionConfig: dbConfig,
+    query: `
+      DO $$
+      BEGIN
+          -- Create role if it doesn't exist
+          IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'blue_role') THEN
+              CREATE ROLE blue_role;
+          END IF;
+
+          -- Revoke existing privileges first
+          REVOKE ALL ON db_identifier FROM blue_role;
+          
+          -- Drop policy if it exists
+          IF EXISTS (
+              SELECT 1 FROM pg_policies 
+              WHERE tablename = 'db_identifier' 
+              AND policyname = 'blue_policy'
+          ) THEN
+              DROP POLICY blue_policy ON db_identifier;
+              RAISE NOTICE 'Dropped existing blue_policy';
+          END IF;
+          
+          -- Grant fresh permissions
+          GRANT SELECT ON db_identifier TO blue_role;
+          ALTER TABLE db_identifier ENABLE ROW LEVEL SECURITY;
+        
+        -- Create policy
+          CREATE POLICY blue_policy ON db_identifier 
+          FOR SELECT TO blue_role 
+          USING (color = 'blue');
+      END
+      $$;
+  `,
   });
 }

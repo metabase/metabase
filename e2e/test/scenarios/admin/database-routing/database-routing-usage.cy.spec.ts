@@ -264,7 +264,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
       },
     }).then(({ body: { id: questionId } }) => {
       cy.log("Sandboxing a destination db should have no effect");
-      H.blockUserGroupPermissions(ALL_USERS_GROUP, 6);
+      H.blockUserGroupPermissions(ALL_USERS_GROUP, this.destinationOneDbId);
       // @ts-expect-error - this isn't typed yet
       cy.sandboxTable({
         table_id: this.destinationOneDb_db_identifier_table_ID,
@@ -296,7 +296,81 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
       );
       cy.updatePermissionsGraph({
         [ALL_USERS_GROUP]: {
-          6: {
+          [this.destinationOneDbId]: {
+            "view-data": DataPermissionValue.UNRESTRICTED,
+          },
+        },
+      });
+
+      cy.visit(`admin/permissions/data/group/${COLLECTION_GROUP}/database/3`);
+
+      signInAs(DB_ROUTER_USERS.userA);
+      H.visitQuestion(questionId);
+      cy.get('[data-column-id="name"]').should("contain", "destination_one");
+      cy.get('[data-column-id="color"]').should("contain", "blue");
+      cy.get('[data-column-id="color"]').should("not.contain", "red");
+    });
+  });
+
+  it("should work with impersonation", function () {
+    cy.visit(`admin/permissions/data/group/${COLLECTION_GROUP}/database/3`);
+    H.createNativeQuestion({
+      name: "Native Color",
+      database: this.leadDbId,
+      native: {
+        query: "SELECT * FROM db_identifier;",
+      },
+    }).then(({ body: { id: questionId } }) => {
+      cy.log("Impersonating a destination db should have no effect");
+      H.blockUserGroupPermissions(ALL_USERS_GROUP, this.destinationOneDbId);
+      cy.updatePermissionsGraph(
+        {
+          [COLLECTION_GROUP]: {
+            [this.destinationOneDbId]: {
+              "view-data": DataPermissionValue.IMPERSONATED,
+            },
+          },
+        },
+        [
+          {
+            db_id: this.destinationOneDbId,
+            group_id: COLLECTION_GROUP,
+            attribute: "db_role",
+          },
+        ],
+      );
+
+      signInAs(DB_ROUTER_USERS.userA);
+      H.visitQuestion(questionId);
+      cy.get('[data-column-id="name"]').should("contain", "destination_one");
+      cy.get('[data-column-id="color"]').should("contain", "blue");
+      cy.get('[data-column-id="color"]').should("contain", "red");
+
+      cy.signInAsAdmin();
+      H.blockUserGroupPermissions(ALL_USERS_GROUP, this.leadDbId);
+      cy.updatePermissionsGraph(
+        {
+          [COLLECTION_GROUP]: {
+            [this.leadDbId]: {
+              "view-data": DataPermissionValue.IMPERSONATED,
+            },
+          },
+        },
+        [
+          {
+            db_id: this.leadDbId,
+            group_id: COLLECTION_GROUP,
+            attribute: "db_role",
+          },
+        ],
+      );
+
+      cy.log(
+        "Unrestricted access on the destination db should not affect impersonation",
+      );
+      cy.updatePermissionsGraph({
+        [ALL_USERS_GROUP]: {
+          [this.destinationOneDbId]: {
             "view-data": DataPermissionValue.UNRESTRICTED,
           },
         },
