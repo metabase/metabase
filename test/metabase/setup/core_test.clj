@@ -36,8 +36,8 @@
     (t2/with-call-count [call-count]
       ;; call has-user-setup several times.
       (dotimes [_ 5]
-        (is (= true
-               (setup/has-user-setup))))
+        (is (true?
+             (setup/has-user-setup))))
       ;; `has-user-setup` should have done at most one application database call, as opposed to one call per call to
       ;; the getter
       (is (contains? #{0 1} (call-count)))))
@@ -55,8 +55,8 @@
                   10)))))) ;; in dev/test we check settings for an override
   (testing "Switch back to the 'normal' app DB; value should still be cached for it"
     (t2/with-call-count [call-count]
-      (is (= true
-             (setup/has-user-setup)))
+      (is (true?
+           (setup/has-user-setup)))
       (is (zero? (call-count))))))
 
 (deftest has-example-dashboard-id-setting-test

@@ -332,14 +332,14 @@
       :assert
       {:email
        (fn [_ [email]]
-         (is (= true (some? email))
+         (is (true? (some? email))
              "Should have a message in the inbox")
          (when email
            (let [filename (-> email :message last :content)
                  exists?  (some-> filename io/file .exists)]
              (testing "File should exist"
-               (is (= true
-                      exists?)))
+               (is (true?
+                    exists?)))
              (testing (str "tmp file = %s" filename)
                (testing "Slurp in the generated CSV and count the lines found in the file"
                  (when exists?

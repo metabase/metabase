@@ -183,8 +183,8 @@
 (deftest return-cached-results-test
   (testing "if we run the query twice, the second run should return cached results"
     (with-mock-cache! [save-chan]
-      (is (= true
-             (cacheable?)))
+      (is (true?
+           (cacheable?)))
       (run-query)
       (mt/wait-for-result save-chan)
       (is (= :cached
@@ -248,7 +248,7 @@
 (deftest ignore-cached-results-should-still-save-test
   (testing "...but if it's set those results should still be cached for next time."
     (with-mock-cache! [save-chan]
-      (is (= true (cacheable?)))
+      (is (true? (cacheable?)))
       (run-query :middleware {:ignore-cached-results? true})
       (mt/wait-for-result save-chan)
       (is (= :cached (run-query))))))
@@ -278,9 +278,9 @@
       (mt/wait-for-result save-chan)
       (let [query-hash (qp.util/query-hash (test-query nil))]
         (testing "Cached results should exist"
-          (is (= true
-                 (i/cached-results cache/*backend* query-hash (ttl-strategy)
-                                   some?))))
+          (is (true?
+               (i/cached-results cache/*backend* query-hash (ttl-strategy)
+                                 some?))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
@@ -330,8 +330,8 @@
       (with-mock-cache! [save-chan]
         (let [query (assoc query :cache-strategy (ttl-strategy))]
           (testing (format "query = %s" (pr-str query))
-            (is (= true
-                   (boolean (#'cache/is-cacheable? query)))
+            (is (true?
+                 (boolean (#'cache/is-cacheable? query)))
                 "Query should be cacheable")
 
             (mt/with-clock #t "2020-02-19T04:44:26.056Z[UTC]"
@@ -592,8 +592,8 @@
            (fn [rff]
              (qp/process-query query rff)))
           (mt/wait-for-result save-chan))
-        (is (= true
-               (:cached (:cache/details (qp/process-query query))))
+        (is (true?
+             (:cached (:cache/details (qp/process-query query))))
             "Results should be cached")
         (let [uncached-results (with-open [ostream (java.io.PipedOutputStream.)
                                            istream (java.io.PipedInputStream. ostream)
