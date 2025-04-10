@@ -149,8 +149,8 @@
     :display-name (i18n/tru "Unknown Segment")}))
 
 (defmethod expression-parts-method :metric
-  [query stage-number metric-ref]
-  (lib.metadata.calculation/metadata query stage-number metric-ref))
+  [query _stage-number metric-ref]
+  (lib.metadata/metric query (last metric-ref)))
 
 (defmethod expression-parts-method :expression
   [query stage-number expression-ref]
