@@ -158,6 +158,7 @@
                       {:name "tunnel-private-key"}
                       {:name "tunnel-private-key-passphrase"}
                       {:name "advanced-options"}
+                      {:name "destination-database"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}

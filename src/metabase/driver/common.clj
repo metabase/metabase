@@ -114,12 +114,19 @@
     :placeholder  "******"
     :visible-if   {"tunnel-auth-option" "ssh-key"}}])
 
+(def destination-database-option
+  "Map representing the 'is this a destination database' option"
+  {:name "destination-database"
+   :type :hidden
+   :default false})
+
 (def advanced-options-start
   "Map representing the start of the advanced option section in a DB connection form. Fields in this section should
   have their visibility controlled using the `visible-if` property."
   {:name    "advanced-options"
    :type    :section
-   :default false})
+   :default false
+   :visible-if {"destination-database" false}})
 
 (def auto-run-queries
   "Map representing the `auto-run-queries` option in a DB connection form."
@@ -130,8 +137,7 @@
    :description  (deferred-tru
                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
                        "This is on by default but you can turn it off if performance is slow."))
-   :visible-if   {"advanced-options" true
-                  "destination-database" false}})
+   :visible-if   {"advanced-options" true}})
 
 (def let-user-control-scheduling
   "Map representing the `let-user-control-scheduling` option in a DB connection form."
@@ -149,8 +155,7 @@
    :description  (deferred-tru
                   (str "This is a lightweight process that checks for updates to this database’s schema. "
                        "In most cases, you should be fine leaving this set to sync hourly."))
-   :visible-if   {"let-user-control-scheduling" true
-                  "destination-database" false}})
+   :visible-if   {"let-user-control-scheduling" true}})
 
 (def cache-field-values-schedule
   "Map representing the `schedules.cache_field_values` option in a DB connection form, which should be only visible if
@@ -162,16 +167,14 @@
                        "filters in dashboards and questions. This can be a somewhat resource-intensive process, "
                        "particularly if you have a very large database. When should Metabase automatically scan "
                        "and cache field values?"))
-   :visible-if   {"let-user-control-scheduling" true
-                  "destination-database" false}})
+   :visible-if   {"let-user-control-scheduling" true}})
 
 (def json-unfolding
   "Map representing the `json-unfolding` option in a DB connection form"
   {:name         "json-unfolding"
    :display-name (deferred-tru "Allow unfolding of JSON columns")
    :type         :boolean
-   :visible-if   {"advanced-options" true
-                  "destination-database" false}
+   :visible-if   {"advanced-options" true}
    :description  (deferred-tru
                   (str "This enables unfolding JSON columns into their component fields. "
                        "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
@@ -190,7 +193,7 @@
 
 (def default-advanced-options
   "Vector containing the three most common options present in the advanced option section of the DB connection form."
-  [auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
+  [destination-database-option auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
 
 (def default-options
   "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection

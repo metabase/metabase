@@ -46,7 +46,10 @@ export const DestinationDatabaseConnectionModalInner = ({
 
   const destinationDatabase = useMemo<Partial<Database> | undefined>(() => {
     return isNewDatabase
-      ? { engine: primaryDbReq.currentData?.engine }
+      ? {
+          engine: primaryDbReq.currentData?.engine,
+          details: { "destination-database": true },
+        }
       : destinationDbReq.currentData;
   }, [isNewDatabase, primaryDbReq.currentData, destinationDbReq.currentData]);
 
