@@ -500,7 +500,7 @@ export function multiAutocompleteInput(filter = ":eq(0)") {
 }
 
 export function fieldValuesInput(filter = ":eq(0)") {
-  return cy.findAllByRole("combobox").filter(filter);
+  return cy.findByPlaceholderText(/Search/).filter(filter);
 }
 
 export function fieldValuesValue(index) {
