@@ -440,6 +440,7 @@ export const FieldValuesWidgetInner = forwardRef<
             }
             autoFocus={autoFocus}
             comboboxProps={comboboxProps}
+            data-testid="token-field"
             onCreate={(value) => {
               if (isNumericParameter) {
                 const number = parseNumber(value);

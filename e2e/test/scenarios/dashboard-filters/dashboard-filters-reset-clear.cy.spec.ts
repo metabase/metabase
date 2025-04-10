@@ -750,8 +750,8 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
       cy.log("update filter value");
 
       filter(numberFilter.name).click();
-      cy.findByTestId("token-field").icon("close").click();
-      cy.findByTestId("token-field").findByRole("textbox").type("3");
+      cy.findByTestId("token-field").findByLabelText("Remove").click();
+      cy.findByTestId("token-field").findByRole("combobox").type("3");
       cy.realPress("Tab");
       H.popover().findByText("Update filter").click();
 
