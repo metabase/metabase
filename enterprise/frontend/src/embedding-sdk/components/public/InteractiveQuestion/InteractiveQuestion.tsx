@@ -34,7 +34,7 @@ import { withPublicComponentWrapper } from "embedding-sdk/components/private/Pub
 import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/components/public/InteractiveQuestion/types";
 
 /**
- * @hidden
+ * @interface
  */
 export type BaseInteractiveQuestionProps =
   InteractiveQuestionQuestionIdProps & {

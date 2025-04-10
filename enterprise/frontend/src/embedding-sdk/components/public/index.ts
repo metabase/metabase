@@ -20,7 +20,6 @@ export {
 } from "./InteractiveDashboard";
 export {
   InteractiveQuestion,
-  type BaseInteractiveQuestionProps,
   type InteractiveQuestionProps,
   type InteractiveQuestionBackButtonProps,
   type InteractiveQuestionBreakoutDropdownProps,
