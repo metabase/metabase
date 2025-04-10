@@ -122,7 +122,6 @@ export const DashCardPlaceholder = Object.assign(DashCardPlaceholderInner, {
   hidden: true,
   disableSettingsConfig: true,
   supportPreviewing: false,
-  supportsSeries: false,
 
   checkRenderable: () => {
     // always renderable

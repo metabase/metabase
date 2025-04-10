@@ -535,7 +535,6 @@ class Visualization extends PureComponent<
   render() {
     const {
       actionButtons,
-      canRemoveSeries,
       canToggleSeriesVisibility,
       className,
       dashboard,
@@ -589,7 +588,6 @@ class Visualization extends PureComponent<
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
-      onRemoveSeries,
       onSelectTimelineEvents,
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
@@ -777,7 +775,6 @@ class Visualization extends PureComponent<
                     CS.flexBasisNone,
                   )}
                   card={series[0].card} // convenience for single-series visualizations
-                  canRemoveSeries={canRemoveSeries}
                   canToggleSeriesVisibility={canToggleSeriesVisibility}
                   clicked={clicked}
                   data={series[0].data} // convenience for single-series visualizations
@@ -837,7 +834,6 @@ class Visualization extends PureComponent<
                   onOpenTimelines={onOpenTimelines}
                   onRender={this.onRender}
                   onRenderError={this.onRenderError}
-                  onRemoveSeries={onRemoveSeries}
                   onSelectTimelineEvents={onSelectTimelineEvents}
                   onTogglePreviewing={onTogglePreviewing}
                   onUpdateVisualizationSettings={onUpdateVisualizationSettings}

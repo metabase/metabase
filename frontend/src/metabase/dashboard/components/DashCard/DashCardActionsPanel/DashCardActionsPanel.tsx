@@ -7,7 +7,6 @@ import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
-import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type {
   DashCardId,
   Dashboard,
@@ -17,7 +16,6 @@ import type {
 } from "metabase-types/api";
 
 import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
-import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
 import S from "./DashCardActionsPanel.module.css";
@@ -34,7 +32,6 @@ interface Props {
   hasError: boolean;
   isTrashedOnRemove: boolean;
   onRemove: (dashcard: DashboardCard) => void;
-  onAddSeries: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
   onReplaceAllDashCardVisualizationSettings: (
     dashcardId: DashCardId,
@@ -61,7 +58,6 @@ function DashCardActionsPanelInner({
   hasError,
   isTrashedOnRemove,
   onRemove,
-  onAddSeries,
   onReplaceCard,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateVisualizationSettings,
@@ -72,12 +68,8 @@ function DashCardActionsPanelInner({
   className,
   onEditVisualization,
 }: Props) {
-  const {
-    disableSettingsConfig,
-    supportPreviewing,
-    supportsSeries,
-    disableClickBehavior,
-  } = getVisualizationRaw(series) ?? {};
+  const { disableSettingsConfig, supportPreviewing, disableClickBehavior } =
+    getVisualizationRaw(series) ?? {};
 
   const buttons = [];
 
@@ -112,14 +104,6 @@ function DashCardActionsPanelInner({
 
     onReplaceCard(dashcard);
   }, [dashcard, onReplaceCard]);
-
-  const handleAddSeries = useCallback(() => {
-    if (!dashcard) {
-      return;
-    }
-
-    onAddSeries(dashcard);
-  }, [dashcard, onAddSeries]);
 
   const handleRemoveCard = useCallback(() => {
     if (!dashcard) {
@@ -221,16 +205,6 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    if (supportsSeries && !isVisualizerDashboardCard(dashcard)) {
-      buttons.push(
-        <AddSeriesButton
-          key="add-series-button"
-          series={series}
-          onClick={handleAddSeries}
-        />,
-      );
-    }
-
     if (dashcard && isActionDashCard(dashcard)) {
       buttons.push(
         <ActionSettingsButtonConnected
