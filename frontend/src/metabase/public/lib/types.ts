@@ -22,7 +22,7 @@ export type EmbedResourceParameter = {
 
 export type EmbedResourceDownloadOptions = {
   pdf: boolean;
-  dashcard: boolean;
+  results: boolean;
 };
 
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
@@ -42,7 +42,7 @@ export type EmbeddingDisplayOptions = {
   titled: boolean;
   /** this is deprecated in favor of `downloads`, but it's still supported */
   hide_download_button?: boolean | null;
-  downloads: boolean | null;
+  downloads: EmbedResourceDownloadOptions | null;
 };
 
 /**
@@ -55,7 +55,9 @@ export type EmbeddingAdditionalHashOptions = {
   locale?: string;
 };
 
-export type EmbeddingHashOptions = EmbeddingDisplayOptions &
+export type EmbeddingHashOptions = {
+  downloads: string | boolean | null;
+} & Omit<EmbeddingDisplayOptions, "downloads"> &
   EmbeddingAdditionalHashOptions;
 
 export type CodeSampleParameters = {

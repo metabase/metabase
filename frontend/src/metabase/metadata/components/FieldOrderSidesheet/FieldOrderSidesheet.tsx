@@ -1,5 +1,6 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useMemo, useState } from "react";
+import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -27,8 +28,6 @@ import { getId, getItems, getItemsOrder, sortItems } from "./lib";
  */
 const BUTTON_OUTLINE_WIDTH = 2;
 
-type OrderItemId = string | number;
-
 interface OwnProps {
   tableId: TableId;
   isOpen: boolean;
@@ -37,14 +36,14 @@ interface OwnProps {
 
 interface Props extends OwnProps {
   error: unknown;
-  loading: boolean;
+  fetched: boolean;
   table?: Table;
 }
 
 const FieldOrderSidesheetBase = ({
   error,
+  fetched,
   isOpen,
-  loading,
   table,
   onClose,
 }: Props) => {
@@ -52,17 +51,19 @@ const FieldOrderSidesheetBase = ({
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
-  const items = useMemo(() => getItems(table?.fields), [table?.fields]);
-  const [customOrder, setCustomOrder] = useState<OrderItemId[] | null>(null);
-  const order = useMemo(
-    () => customOrder ?? getItemsOrder(items),
-    [customOrder, items],
+  const initialItems = useMemo(() => getItems(table?.fields), [table?.fields]);
+  const initialOrder = useMemo(
+    () => getItemsOrder(initialItems),
+    [initialItems],
   );
+  const [items, setItems] = useState(initialItems);
+  const [order, setOrder] = useState(initialOrder);
   const sortedItems = useMemo(() => sortItems(items, order), [items, order]);
   const isDragDisabled = sortedItems.length <= 1;
+  const isLoading = !fetched; // matches condition from EntityObjectLoader
 
   const handleSortEnd = ({ itemIds }: DragEndEvent) => {
-    setCustomOrder(itemIds);
+    setOrder(itemIds);
     dispatch(Tables.actions.setFieldOrder(table, itemIds));
   };
 
@@ -70,10 +71,24 @@ const FieldOrderSidesheetBase = ({
     dispatch(Tables.actions.updateProperty(table, "field_order", value));
   };
 
-  if (loading || error || !table) {
+  /**
+   * Right after performing drag and drop the items would shortly flicker back to the original order,
+   * and then back to the new one. These deep compare effects help avoid this flicker.
+   *
+   * Fields are mapped to items because using a field as a dep here results in an infinite loop.
+   */
+  useDeepCompareEffect(() => {
+    setOrder(initialOrder);
+  }, [initialOrder]);
+
+  useDeepCompareEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
+
+  if (isLoading || error || !table) {
     return (
       <Sidesheet isOpen={isOpen} title={t`Edit column order`} onClose={onClose}>
-        <LoadingAndErrorWrapper error={error} loading={loading} />
+        <LoadingAndErrorWrapper error={error} loading={isLoading} />
       </Sidesheet>
     );
   }
