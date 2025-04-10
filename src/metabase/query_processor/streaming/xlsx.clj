@@ -1,6 +1,5 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
@@ -652,7 +651,21 @@
         (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
       (setup-header-row! sheet (count ordered-cols))
       {:workbook swb
-       :sheet    sheet})))
+       :sheet    sheet
+       :pivot    pivot-table})))
+
+(defn- adjust-pivot-area-reference!
+  "Adjusts the source cells for a pivot table to match the number of rows written, to avoid extra blank lines in the
+  pivot table."
+  [pivot row-count col-count]
+  (-> pivot
+      .getPivotCacheDefinition
+      .getCTPivotCacheDefinition
+      .getCacheSource
+      .getWorksheetSource
+      (.setRef (format "A1:%s%d"
+                       (CellReference/convertNumToColString (dec col-count))
+                       (inc row-count)))))
 
 (defn- init-workbook
   [{:keys [ordered-cols col-settings format-rows?]}]
@@ -675,7 +688,8 @@
   (let [workbook-data      (volatile! nil)
         cell-styles        (volatile! nil)
         typed-cell-styles  (volatile! nil)
-        pivot-grouping-idx (volatile! nil)]
+        pivot-grouping-idx (volatile! nil)
+        pivot-row-count    (volatile! 0)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
@@ -727,11 +741,16 @@
           (when (or (not group)
                     (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
             (add-row! sheet (inc row-num) row' ordered-cols' col-settings @cell-styles @typed-cell-styles)
+            (vswap! pivot-row-count inc)
             (when (= (inc row-num) *auto-sizing-threshold*)
               (autosize-columns! sheet)))))
 
-      (finish! [_ {:keys [row_count]}]
-        (let [{:keys [workbook sheet]} @workbook-data]
+      (finish! [_ {:keys [row_count data]}]
+        (let [{:keys [workbook sheet pivot]} @workbook-data]
+          (when (:pivot? data)
+            (adjust-pivot-area-reference! pivot @pivot-row-count
+                                          ;; Decrement column count here to account for pivot-grouping column
+                                          (dec (count (:cols data)))))
           (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
             ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
             (autosize-columns! sheet))
