@@ -32,8 +32,9 @@ export function getCompatibleSemanticTypes(
       return false;
     }
 
-    // "Category" is the semantic type for Booleans
-    if (option.id === TYPE.Category && isa(fieldType, TYPE.Boolean)) {
+    // "Category" semantic type of any field
+    // This should be removed when when Category derivation in types.cljc is handled properly.
+    if (option.id === TYPE.Category) {
       return true;
     }
 
