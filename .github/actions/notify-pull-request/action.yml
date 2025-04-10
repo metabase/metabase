@@ -5,11 +5,44 @@ inputs:
   include-log:
     required: false
     default: true
+  remove-previous-comment:
+    required: false
+    type: boolean
+    default: false
 
 runs:
   using: "composite"
   steps:
-    - uses: actions/github-script@v7
+    - name: Remove previous pull-request comment
+      uses: actions/github-script@v7
+      if: inputs.remove-previous-comment == 'true'
+      with:
+        script: |
+          const { owner, repo } = context.repo;
+
+          const { data: comments } = await github.rest.issues.listComments({
+            owner,
+            repo,
+            issue_number: context.issue.number,
+          }).catch(console.error);
+
+          if (!comments) {
+            return;
+          }
+
+          const message = "${{ inputs.message }}";
+          const comment = comments.find((comment) => comment.body.includes(message));
+
+          if (comment) {
+            await github.rest.issues.deleteComment({
+              owner,
+              repo,
+              comment_id: comment.id,
+            });
+          }
+
+    - name: Notify pull-request
+      uses: actions/github-script@v7
       id: notify-pull-request
       with:
         result-encoding: string
@@ -21,7 +54,7 @@ runs:
             return;
           }
 
-          const message = "${{ inputs.message }}"
+          const message = "${{ inputs.message }}";
           const shouldIncludeLog = ${{ inputs.include-log }}.toString() === "true";
           const author = context.payload.sender.login;
 
