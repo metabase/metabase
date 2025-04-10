@@ -1,4 +1,4 @@
-import type { ComboboxItem } from "@mantine/core";
+import type { ComboboxData, ComboboxItem } from "@mantine/core";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
 
@@ -21,11 +21,16 @@ function TestInput({ initialValue, onChange, ...props }: TestInputProps) {
   return <MultiAutocomplete {...props} value={value} onChange={handleChange} />;
 }
 
-const REMAPPED_DATA: ComboboxItem[] = [
+const REMAPPED_DATA: ComboboxData = [
   { value: "1", label: "One" },
   { value: "2", label: "Two" },
   { value: "3", label: "Three" },
   { value: "4", label: "Four" },
+];
+
+const GROUPED_DATA: ComboboxData = [
+  { group: "A", items: ["A1", "A2"] },
+  { group: "B", items: ["B1", "B2"] },
 ];
 
 type SetupOpts = {
@@ -422,6 +427,28 @@ describe("MultiAutocomplete", () => {
     expect(queryOption("Two")).not.toBeInTheDocument();
     expect(queryOption("Three")).not.toBeInTheDocument();
     expect(onChange).toHaveBeenLastCalledWith(["1", "2", "3"]);
+  });
+
+  it("should work with grouped options", async () => {
+    const { input, onChange } = setup({ data: GROUPED_DATA });
+    await userEvent.click(input);
+    await userEvent.click(getOption("A1"));
+    expect(onChange).toHaveBeenLastCalledWith(["A1"]);
+
+    await userEvent.click(input);
+    expect(queryOption("A1")).not.toBeInTheDocument();
+    expect(getOption("A2")).toBeInTheDocument();
+    expect(getOption("B1")).toBeInTheDocument();
+    expect(getOption("B2")).toBeInTheDocument();
+
+    await userEvent.type(input, "B");
+    expect(queryOption("A1")).not.toBeInTheDocument();
+    expect(queryOption("A2")).not.toBeInTheDocument();
+    expect(getOption("B1")).toBeInTheDocument();
+    expect(getOption("B2")).toBeInTheDocument();
+
+    await userEvent.click(getOption("B2"));
+    expect(onChange).toHaveBeenLastCalledWith(["A1", "B2"]);
   });
 
   it("should ignore duplicates when there are different string representations of the underlying value", async () => {
