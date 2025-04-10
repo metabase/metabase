@@ -2,6 +2,7 @@ import type {
   BreakoutChartColumns,
   CartesianChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
+import { SERIES_COLORS_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { SingleSeries } from "metabase-types/api";
 import {
@@ -147,6 +148,28 @@ describe("series", () => {
           dataKey: "1:count",
           name: "foo",
           tooltipName: "foo",
+        });
+      });
+
+      it("should convert series colors to hex format (metabase#56232)", () => {
+        const rawSeries = [metricSeries];
+        const cardsColumns = [metricColumns];
+
+        const result = getCardsSeriesModels(
+          rawSeries,
+          cardsColumns,
+          [],
+          createMockComputedVisualizationSettings({
+            [SERIES_COLORS_SETTING_KEY]: {
+              [metricColumns.metrics[0].column.name]: "hsla(358, 71%, 62%, 1)",
+            },
+          }),
+        );
+
+        expect(result).toHaveLength(1);
+        expect(result[0]).toMatchObject({
+          dataKey: "1:count",
+          color: "#E3595E",
         });
       });
 
