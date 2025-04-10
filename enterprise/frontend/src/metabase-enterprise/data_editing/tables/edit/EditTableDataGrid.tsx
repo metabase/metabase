@@ -53,6 +53,20 @@ export const EditTableDataGrid = ({
     [cols, columnsConfig],
   );
 
+  const columnVisibility = useMemo(
+    () =>
+      columnsConfig
+        ? columnsConfig.reduce(
+            (acc, { name, enabled }) => ({
+              ...acc,
+              [name]: enabled,
+            }),
+            {},
+          )
+        : undefined,
+    [columnsConfig],
+  );
+
   const columnSizingMap = useMemo(() => ({}), []);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
@@ -106,6 +120,7 @@ export const EditTableDataGrid = ({
     columnOrder,
     columnSizingMap,
     columnsOptions,
+    columnVisibility,
   });
 
   // Optional

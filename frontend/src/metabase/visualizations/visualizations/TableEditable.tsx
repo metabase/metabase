@@ -124,6 +124,22 @@ export class TableEditable extends Component<
       dashcard.visualization_settings,
     );
 
+    // This is a potential bottleneck, however there's no straightforward optimization inside a class component
+    // However based on props and state configuration it shouldn't be a problem for now
+    const hasVisibleColumns =
+      !visualizationSettings?.["table.columns"] ||
+      visualizationSettings?.["table.columns"].some((column) => column.enabled);
+
+    if (!hasVisibleColumns) {
+      return (
+        <Flex align="center" justify="center" h="100%">
+          <Title p="md" order={2}>
+            {t`No results!`}
+          </Title>
+        </Flex>
+      );
+    }
+
     return (
       <EditTableDataWithUpdate
         className={className}
