@@ -1,5 +1,4 @@
 import { isNotNull } from "metabase/lib/types";
-import { getColumnVizSettings } from "metabase/visualizations";
 import type { Card, DatasetColumn, RawSeries } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
@@ -13,6 +12,7 @@ import {
   extractReferencedColumns,
 } from "./column";
 import { createDataSource } from "./data-source";
+import { getColumnVizSettings } from "./viz-settings";
 
 type ColumnInfo = {
   columnRef: VisualizerColumnReference;
