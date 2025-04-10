@@ -151,7 +151,12 @@
 
 (defmethod expression-parts-method :metric
   [query _stage-number metric-ref]
-  (lib.metadata/metric query (last metric-ref)))
+  (let [metric-id (last metric-ref)]
+    (if-let [metric (lib.metadata/metric query metric-id)]
+      metric
+      {:lib/type :metadata/metric
+       :id metric-id
+       :display-name (i18n/tru "Unknown Metric")})))
 
 (defmethod expression-parts-method :expression
   [_query _stage-number expression-ref]
