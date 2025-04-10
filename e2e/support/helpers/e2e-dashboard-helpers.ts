@@ -6,7 +6,13 @@ import type {
 } from "metabase-types/api";
 
 import { visitDashboard } from "./e2e-misc-helpers";
-import { menu, popover, sidebar, sidesheet } from "./e2e-ui-elements-helpers";
+import {
+  menu,
+  modal,
+  popover,
+  sidebar,
+  sidesheet,
+} from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(
@@ -73,6 +79,25 @@ export function showDashcardVisualizationSettings(index = 0) {
     .within(() => {
       cy.findByLabelText("Show visualization options").click();
     });
+}
+
+export function showDashcardVisualizerModalSettings(index = 0) {
+  getDashboardCard(index)
+    .realHover()
+    .within(() => {
+      cy.findByLabelText("Edit visualization").click();
+    });
+  return modal().within(() => {
+    // TODO: replace this with data-testid
+    // when https://github.com/metabase/metabase/pull/56483 is merged
+    cy.findByText("Settings").click();
+  });
+}
+
+export function saveDashcardVisualizerModalSettings() {
+  modal().within(() => {
+    cy.findByText("Save").click();
+  });
 }
 
 export function editDashboard() {

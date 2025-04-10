@@ -55,8 +55,13 @@ H.describeWithSnowplow("scenarios > dashboard cards > sections", () => {
 
     selectQuestion("Orders, Count, Grouped by Created At (year)");
 
+    overwriteDashCardTitle(
+      1,
+      "Orders, Count, Grouped by Created At (year)",
+      "Line chart",
+    );
+    // TODO: if the mapping is done before the title is changed, the mapping is lost
     mapDashCardToFilter(H.getDashboardCard(1), "Category");
-    overwriteDashCardTitle(H.getDashboardCard(1), "Line chart");
 
     H.goToTab("Tab 1");
     H.saveDashboard();
@@ -144,14 +149,10 @@ function selectQuestion(question) {
   H.dashboardGrid().findByText(question).should("exist");
 }
 
-function overwriteDashCardTitle(dashcardElement, textTitle) {
-  H.findDashCardAction(dashcardElement, "Show visualization options").click({
-    force: true,
-  });
-  H.modal().within(() => {
-    cy.findByLabelText("Title").type(`{selectall}{del}${textTitle}`).blur();
-    cy.button("Done").click();
-  });
+function overwriteDashCardTitle(index, originalTitle, newTitle) {
+  H.showDashcardVisualizerModalSettings(index);
+  cy.findByDisplayValue(originalTitle).clear().type(newTitle).blur();
+  H.saveDashcardVisualizerModalSettings();
 }
 
 function filterPanel() {

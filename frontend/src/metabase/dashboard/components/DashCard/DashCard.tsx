@@ -27,6 +27,7 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import {
   getInitialStateForCardDataSource,
   isVisualizerDashboardCard,
+  isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
 import { getInitialStateForMultipleSeries } from "metabase/visualizer/utils/get-initial-state-for-multiple-series";
 import type {
@@ -314,22 +315,28 @@ function DashCardInner({
       [dashcard, navigateToNewCardFromDashboard],
     );
 
-  const onEditVisualizationClick = useCallback(() => {
-    let initialState: Partial<VisualizerHistoryItem>;
-
-    if (isVisualizerDashboardCard(dashcard)) {
-      initialState = dashcard.visualization_settings
-        ?.visualization as Partial<VisualizerHistoryItem>;
-    } else if (series.length > 1) {
-      initialState = getInitialStateForMultipleSeries(series);
-    } else {
-      initialState = getInitialStateForCardDataSource(
-        series[0].card,
-        series[0],
-      );
+  const onEditVisualizationClick = useMemo(() => {
+    if (!isVisualizerSupportedVisualization(dashcard.card.display)) {
+      return;
     }
 
-    onEditVisualization?.(dashcard, initialState);
+    return () => {
+      let initialState: Partial<VisualizerHistoryItem>;
+
+      if (isVisualizerDashboardCard(dashcard)) {
+        initialState = dashcard.visualization_settings
+          ?.visualization as Partial<VisualizerHistoryItem>;
+      } else if (series.length > 1) {
+        initialState = getInitialStateForMultipleSeries(series);
+      } else {
+        initialState = getInitialStateForCardDataSource(
+          series[0].card,
+          series[0],
+        );
+      }
+
+      onEditVisualization?.(dashcard, initialState);
+    };
   }, [dashcard, series, onEditVisualization]);
 
   return (

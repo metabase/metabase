@@ -389,11 +389,11 @@ describe("scenarios > visualizations > legend", () => {
     }
 
     H.showDashboardCardActions(0);
-    H.getDashboardCard(0).findByLabelText("Show visualization options").click();
+    H.getDashboardCard(0).findByLabelText("Edit visualization").click();
 
     H.modal().within(() => {
       ensureCanNotToggleSeriesVisibility();
-      cy.button("Cancel").click();
+      cy.realPress("Escape");
     });
 
     H.showDashboardCardActions(0);
@@ -401,7 +401,7 @@ describe("scenarios > visualizations > legend", () => {
 
     H.modal().within(() => {
       ensureCanNotToggleSeriesVisibility();
-      cy.button("Cancel").click();
+      cy.realPress("Escape");
     });
 
     H.getDashboardCard(0).within(() => {
