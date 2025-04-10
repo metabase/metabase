@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Badge,
   Box,
@@ -26,6 +27,8 @@ import { useColors } from "../../color-context";
 
 export function ReferencePage() {
   const { cardBackground } = useColors();
+  // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins
+  const appName = "Metabase";
 
   // Get the actual background color based on selection
   const getBackgroundColor = (selection: ColorScheme) => {
@@ -37,7 +40,7 @@ export function ReferencePage() {
   return (
     <>
       <Title>{t`Admin UI Patterns`}</Title>
-      <Text mb="xl">{t`This page serves as a reference for Metabase admin UI design patterns to maintain consistency across the application.`}</Text>
+      <Text mb="xl">{t`This page serves as a reference for ${appName} admin UI design patterns to maintain consistency across the application.`}</Text>
 
       {/* Card Design Pattern */}
       <Card p="xl" mt="xl" bg={cardBg} withBorder shadow="none">
@@ -66,29 +69,29 @@ export function ReferencePage() {
         <Stack gap="lg">
           <TextInput
             label={t`Site Name`}
-            description={t`The name used for this instance of Metabase.`}
-            placeholder="Metabase"
-            defaultValue="Metabase"
+            description={t`The name used for this instance of ${appName}.`}
+            placeholder={appName}
+            defaultValue={appName}
           />
 
           <Textarea
             label={t`Site Description`}
-            description={t`A description of your Metabase instance displayed on the login page.`}
+            description={t`A description of your ${appName} instance displayed on the login page.`}
             placeholder="Enter a description..."
             minRows={3}
           />
 
           <TextInput
             label={t`Site URL`}
-            description={t`The base URL of this Metabase instance. Used for emails and embedding.`}
-            placeholder="https://metabase.example.com"
-            defaultValue="https://metabase.example.com"
+            description={t`The base URL of this ${appName} instance. Used for emails and embedding.`}
+            placeholder="https://example.com"
+            defaultValue="https://example.com"
           />
         </Stack>
 
-        <Box mt="xl">
+        <Group justify="right" mt="xl">
           <Button>{t`Save changes`}</Button>
-        </Box>
+        </Group>
       </Card>
 
       {/* Toggle Settings Section Example */}
@@ -128,6 +131,10 @@ export function ReferencePage() {
             <Switch defaultChecked size="md" />
           </Group>
         </Stack>
+
+        <Box mt="lg">
+          <Button variant="outline">{t`Add new database`}</Button>
+        </Box>
       </Card>
 
       {/* Form Layout Pattern */}
@@ -407,29 +414,43 @@ export function ReferencePage() {
         <Text mb="lg">{t`Used for destructive actions that should be handled with care.`}</Text>
         <Divider mb="xl" />
 
-        <Box p="md">
-          <Group justify="space-between">
-            <Box>
-              <Text fw={600}>{t`Reset to defaults`}</Text>
-              <Text size="sm" c={color("text-medium")}>
-                {t`Reset all settings to their default values.`}
-              </Text>
-            </Box>
-            <Button color="red" variant="outline">{t`Reset`}</Button>
-          </Group>
-        </Box>
+        <Stack gap="xl">
+          <Box p="md">
+            <Group justify="space-between">
+              <Box>
+                <Text fw={600}>{t`Delete all saved queries`}</Text>
+                <Text size="sm" c={color("text-medium")}>
+                  {t`Permanently delete all saved queries and their results. This action cannot be undone and will remove all historical data.`}
+                </Text>
+              </Box>
+              <Button color={color("danger")} variant="outline">{t`Delete all queries`}</Button>
+            </Group>
+          </Box>
 
-        <Box p="md" mt="md">
-          <Group justify="space-between">
-            <Box>
-              <Text fw={600}>{t`Clear cache`}</Text>
-              <Text size="sm" c={color("text-medium")}>
-                {t`Clear the application cache. This can sometimes resolve issues with displaying data.`}
-              </Text>
-            </Box>
-            <Button color={color("danger")} variant="filled">{t`Clear`}</Button>
-          </Group>
-        </Box>
+          <Box p="md">
+            <Group justify="space-between">
+              <Box>
+                <Text fw={600}>{t`Revoke all API tokens`}</Text>
+                <Text size="sm" c={color("text-medium")}>
+                  {t`Immediately invalidate all API tokens. All integrations will stop working until new tokens are generated.`}
+                </Text>
+              </Box>
+              <Button color={color("danger")} variant="outline">{t`Revoke all tokens`}</Button>
+            </Group>
+          </Box>
+
+          <Box p="md">
+            <Group justify="space-between">
+              <Box>
+                <Text fw={600}>{t`Reset to factory defaults`}</Text>
+                <Text size="sm" c={color("text-medium")}>
+                  {t`Reset all settings to their original state. This will remove all customizations, user preferences, and stored configurations.`}
+                </Text>
+              </Box>
+              <Button color={color("danger")} variant="filled">{t`Reset everything`}</Button>
+            </Group>
+          </Box>
+        </Stack>
       </Card>
     </>
   );

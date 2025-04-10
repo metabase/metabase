@@ -73,6 +73,21 @@ Danger Zone Pattern:
 - Group destructive actions in a separate card at the bottom
 - Use explicit warning text for each action
 - Use red buttons for destructive actions
+- NEVER include save buttons in danger zones - each action should be immediate and final
+- Only include truly destructive actions that cannot be easily undone
+- Each action must be uniquely destructive (not toggles or settings that could go elsewhere)
+- Always show a confirmation dialog before executing the action
+- Include clear, specific consequences in the description of each action
+- Examples of appropriate danger zone actions:
+  - Permanently delete data
+  - Reset to factory defaults
+  - Revoke all access tokens
+  - Clear all caches
+- Examples of inappropriate danger zone actions:
+  - Toggle maintenance mode (not destructive)
+  - Update configuration (use regular settings cards instead)
+  - Disable features (use toggle patterns instead)
+  - Any action that can be easily reversed
 
 Color Usage:
 - bg-light for card backgrounds
@@ -86,9 +101,12 @@ Settings Grouping Guidelines:
 - Keep card sections focused on a single conceptual area
 - Limit each card to a maximum of 8 settings
 - Use dividers between related sub-sections within a card
-- Each card should have its own save button that applies to all settings in that card
+- Save buttons should only be used when there are multiple settings that work together as a group
+  - Example: A form with multiple inputs that need to be saved together
+  - Do not use save buttons for exclusive options or single toggles that can take effect immediately
+  - When in doubt, consider if the settings need to be validated or saved as a group
 - Multi-section cards should use headings with Text fw={600} mb="sm" for each section
-- Save buttons should be right-aligned and placed at the bottom of each card
+- When used, save buttons should be right-aligned and placed at the bottom of each card
 
 examples:
   # Example of proper card pattern
