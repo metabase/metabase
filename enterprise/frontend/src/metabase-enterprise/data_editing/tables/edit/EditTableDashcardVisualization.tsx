@@ -21,7 +21,6 @@ type EditTableDashcardVisualizationProps = {
   tableId: ConcreteTableId;
   data: DatasetData;
   className?: string;
-  refetchTableDataQuery: () => void;
   visualizationSettings?: VisualizationSettings;
   question: Question;
 };

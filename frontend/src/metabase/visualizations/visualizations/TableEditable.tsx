@@ -2,10 +2,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import {
-  fetchCardData,
-  showConfigureEditableTableSidebar,
-} from "metabase/dashboard/actions";
+import { showConfigureEditableTableSidebar } from "metabase/dashboard/actions";
 import { DashCardActionButton } from "metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionButton";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_DATA_EDITING } from "metabase/plugins";
@@ -81,19 +78,6 @@ export class TableEditable extends Component<
     });
   }
 
-  handleCardDataRefresh = () => {
-    const { dispatch, dashcard } = this.props;
-    const { card } = this.state;
-
-    if (!card || !dashcard) {
-      return null;
-    }
-
-    return dispatch(
-      fetchCardData(card, dashcard, { ignoreCache: true, reload: true }),
-    );
-  };
-
   render() {
     const { dashcard, className, metadata } = this.props;
     const { data, card, question } = this.state;
@@ -153,7 +137,6 @@ export class TableEditable extends Component<
         className={className}
         data={data}
         tableId={card.table_id}
-        refetchTableDataQuery={this.handleCardDataRefresh}
         visualizationSettings={visualizationSettings}
         question={question}
       />

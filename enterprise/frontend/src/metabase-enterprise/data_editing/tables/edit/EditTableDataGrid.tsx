@@ -33,7 +33,7 @@ type EditTableDataGridProps = {
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onRowExpandClick: (rowIndex: number) => void;
   columnsConfig?: EditableTableColumnConfig;
-  getColumnSortDirection: (
+  getColumnSortDirection?: (
     column: DatasetColumn,
   ) => OrderByDirection | undefined;
 };
@@ -77,7 +77,7 @@ export const EditTableDataGrid = ({
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((column, columnIndex) => {
-      const sortDirection = getColumnSortDirection(column);
+      const sortDirection = getColumnSortDirection?.(column);
 
       const options: ColumnOptions<RowValues, RowValue> = {
         id: column.name,
