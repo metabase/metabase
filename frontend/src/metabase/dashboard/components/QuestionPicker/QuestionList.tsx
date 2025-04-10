@@ -24,7 +24,6 @@ import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal"
 import type { CardId, CollectionId } from "metabase-types/api";
 
 import S from "./QuestionList.module.css";
-import { convertCardToInitialState } from "./convert-question-to-initial-state";
 
 interface QuestionListProps {
   searchText: string;
@@ -204,10 +203,5 @@ const VisualizerModalWithCardId = (
     return null;
   }
 
-  return (
-    <VisualizerModal
-      initialState={convertCardToInitialState(card)}
-      {...otherProps}
-    />
-  );
+  return <VisualizerModal initialState={{ cardId: card.id }} {...otherProps} />;
 };

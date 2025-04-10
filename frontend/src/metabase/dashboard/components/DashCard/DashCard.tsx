@@ -327,7 +327,7 @@ function DashCardInner({
     } else {
       initialState = getInitialStateForCardDataSource(
         series[0].card,
-        series[0].data?.cols ?? [],
+        series[0],
       );
     }
 
