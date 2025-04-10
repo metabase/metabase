@@ -5,7 +5,6 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
-   [metabase.lib.content-translation :as lib.content-translation]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -230,18 +229,6 @@
     (when (every? some? path)
       (str/join ": " path))))
 
-(defn get-value-from-js-map
-  "Retrieve a value from a map-like object"
-  [obj field default-value]
-  (try
-    (let [res (get obj (keyword field))]
-      (if (some? res)
-        res
-        default-value))
-      (catch #?(:clj Exception :cljs js/Error) e
-        (log/info "Error accessing property:" (pr-str e))
-        default-value)))
-
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/column
@@ -257,9 +244,6 @@
                        hide-bin-bucket?    :lib/hide-bin-bucket?
                        :as                 field-metadata} style]
   (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
-        translations (lib.content-translation/get-content-translations)
-        humanized-name (get-value-from-js-map translations humanized-name humanized-name)
-        simple-display-name (get-value-from-js-map translations simple-display-name simple-display-name)
         field-display-name (or simple-display-name
                                (when (and parent-id
                                           ;; check that we haven't nested yet
@@ -279,11 +263,11 @@
                                       (not (str/includes? field-display-name " → ")))
                              (or
                               (when fk-field-id
-                                 ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
-                                 ;; "ID" dropped instead.
-                                 ;; This is very intentional: one table might have several FKs to one foreign table, each with different
-                                 ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
-                                 ;; See #30109 for more details.
+                                ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+                                ;; "ID" dropped instead.
+                                ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+                                ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+                                ;; See #30109 for more details.
                                 (if-let [field (lib.metadata/field query fk-field-id)]
                                   (-> (lib.metadata.calculation/display-info query stage-number field)
                                       :display-name
@@ -314,10 +298,7 @@
                             temporal-unit (assoc :unit temporal-unit)
                             binning       (assoc ::binning binning)
                             source-field  (assoc :fk-field-id source-field))]
-    (let
-     [translations (lib.content-translation/get-content-translations)
-      display-name (lib.metadata.calculation/display-name query stage-number field-metadata style)]
-      (get-value-from-js-map translations display-name display-name))
+    (lib.metadata.calculation/display-name query stage-number field-metadata style)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
 
