@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { refreshCurrentUser } from "metabase/redux/user";
 import type { UserInfo } from "metabase-types/store";
 
 import { submitUser } from "../../actions";
@@ -24,6 +25,7 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
 
   const handleSubmit = async (user: UserInfo) => {
     await dispatch(submitUser(user)).unwrap();
+    await dispatch(refreshCurrentUser());
   };
 
   if (!isStepActive) {

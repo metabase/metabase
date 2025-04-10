@@ -170,7 +170,7 @@ describe("scenarios > setup", () => {
 
       cy.button("Next").click();
       //This is a fairly slow request, but it needs to complete for the rest of the test assertions to work
-      cy.wait("@getUser", { timeout: 20000 });
+      cy.wait("@getUser");
 
       // Database
       cy.findByText("Add your data").click(); // remove focus from input;
