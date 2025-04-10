@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
+   [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -213,6 +214,44 @@
     (t2/insert! :table_webhook_token {:token token, :table_id table-id, :creator_id user-id})
     {:table_id table-id
      :token token}))
+
+(api.macros/defendpoint :post "/undo"
+  "Undo the last change you made.
+  For now only supports tables, but in future will support editables for sure.
+  Maybe actions, workflows, etc.
+  Could even generalize to things like edits to dashboard definitions themselves."
+  [_
+   _
+   {:keys [table-id no-op]}] :- [:map
+                                 [:table-id ms/PositiveInt]
+                                 [:no-op {:optional true} ms/BooleanValue]]
+  (check-permissions)
+  (api/check-404 (t2/select-one-pk :model/Table table-id))
+  (let [value api/*current-user*]
+    (if no-op
+      (undo/has-undo? true value table-id)
+      ;; IDEA encapsulate this in an action
+      ;; IDEA use generic action calling API instead of having this endpoint
+      {:result (undo/undo! value table-id)})))
+
+(api.macros/defendpoint :post "/redo"
+  "Redo the last change you made.
+  For now only supports tables, but in future will support editables for sure.
+  Maybe actions, workflows, etc.
+  Could even generalize to things like edits to dashboard definitions themselves."
+  [_
+   _
+   {:keys [table-id no-op]}] :- [:map
+                                 [:table-id ms/PositiveInt]
+                                 [:no-op {:optional true} ms/BooleanValue]]
+  (check-permissions)
+  (api/check-404 (t2/select-one :model/Table table-id))
+  (let [value api/*current-user*]
+    (if no-op
+      (undo/has-undo? false value table-id)
+      ;; IDEA encapsulate this in an action
+      ;; IDEA use generic action calling API instead of having this endpoint
+      {:result (undo/redo! value table-id)})))
 
 (api.macros/defendpoint :delete "/webhook/:token"
   "Deletes a webhook endpoint token."
