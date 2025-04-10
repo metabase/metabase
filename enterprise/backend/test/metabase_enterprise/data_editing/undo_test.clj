@@ -61,59 +61,59 @@
 
             (is (= [] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-id table-id))
-            (is (not (undo/has-undo? false user-id table-id)))
+            (is (undo/next-batch-num true user-id table-id))
+            (is (not (undo/next-batch-num false user-id table-id)))
             (is (= {table-id [[:create {:id 1, :name "Snorkmaiden", :favourite_food "orc"}]]}
                    (undo/undo! user-id table-id)))
             (is (= [[1 "Snorkmaiden" "orc"]] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-id table-id))
-            (is (undo/has-undo? false user-id table-id))
+            (is (undo/next-batch-num true user-id table-id))
+            (is (undo/next-batch-num false user-id table-id))
             (is (= {table-id [[:update {:id 1, :name "Snorkmaiden", :favourite_food "pork"}]]}
                    (undo/undo! user-id table-id)))
             (is (= [[1 "Snorkmaiden" "pork"]] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-id table-id))
-            (is (undo/has-undo? false user-id table-id))
+            (is (undo/next-batch-num true user-id table-id))
+            (is (undo/next-batch-num false user-id table-id))
             ;; This doesn't tell the FE which rows to hide
             (is (= {table-id [[:delete {:id 1}]]}
                    (undo/undo! user-id table-id)))
             (is (= [] (table-rows table-id)))
 
-            (is (not (undo/has-undo? true user-id table-id)))
-            (is (undo/has-undo? false user-id table-id))
+            (is (not (undo/next-batch-num true user-id table-id)))
+            (is (undo/next-batch-num false user-id table-id))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"No previous versions found"
                  (undo/undo! user-id table-id)))
 
-            (is (not (undo/has-undo? true user-id table-id)))
-            (is (undo/has-undo? false user-id table-id))
+            (is (not (undo/next-batch-num true user-id table-id)))
+            (is (undo/next-batch-num false user-id table-id))
             (is (= {table-id [[:create {:id 1, :name "Snorkmaiden", :favourite_food "pork"}]]}
                    (undo/redo! user-id table-id)))
             (is (= [[1 "Snorkmaiden" "pork"]] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-id table-id))
-            (is (undo/has-undo? false user-id table-id))
+            (is (undo/next-batch-num true user-id table-id))
+            (is (undo/next-batch-num false user-id table-id))
             (is (= {table-id [[:update {:id 1, :name "Snorkmaiden", :favourite_food "orc"}]]}
                    (undo/redo! user-id table-id)))
             (is (= [[1 "Snorkmaiden" "orc"]] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-id table-id))
-            (is (undo/has-undo? false user-id table-id))
+            (is (undo/next-batch-num true user-id table-id))
+            (is (undo/next-batch-num false user-id table-id))
             (is (= {table-id [[:delete {:id 1}]]}
                    (undo/redo! user-id table-id)))
             (is (= [] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-id table-id))
-            (is (not (undo/has-undo? false user-id table-id)))
+            (is (undo/next-batch-num true user-id table-id))
+            (is (not (undo/next-batch-num false user-id table-id)))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"No subsequent versions found"
                  (undo/redo! user-id table-id)))
 
-            (is (undo/has-undo? true user-id table-id))
-            (is (not (undo/has-undo? false user-id table-id)))))))))
+            (is (undo/next-batch-num true user-id table-id))
+            (is (not (undo/next-batch-num false user-id table-id)))))))))
 
 ;; I'm OK reducing this scenario's scope once we have e2e tests.
 ;; Until then, I think this is ideal.
@@ -141,90 +141,90 @@
 
             (is (= [] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-2 table-id))
-            (is (not (undo/has-undo? false user-2 table-id)))
+            (is (undo/next-batch-num true user-2 table-id))
+            (is (not (undo/next-batch-num false user-2 table-id)))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"Blocked by other changes"
                  (undo/undo! user-2 table-id)))
 
-            (is (undo/has-undo? true user-1 table-id))
-            (is (not (undo/has-undo? false user-1 table-id)))
+            (is (undo/next-batch-num true user-1 table-id))
+            (is (not (undo/next-batch-num false user-1 table-id)))
             (is (= {table-id [[:create {:id 2, :name "Moominswole", :power 9001}]]}
                    (undo/undo! user-1 table-id)))
             (is (= [[2 "Moominswole" 9001]] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-1 table-id))
-            (is (undo/has-undo? false user-1 table-id))
+            (is (undo/next-batch-num true user-1 table-id))
+            (is (undo/next-batch-num false user-1 table-id))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"Blocked by other changes"
                  (undo/undo! user-1 table-id)))
 
-            (is (undo/has-undo? true user-1 table-id))
-            (is (undo/has-undo? false user-1 table-id))
-            (is (undo/has-undo? true user-2 table-id))
-            (is (not (undo/has-undo? false user-2 table-id)))
+            (is (undo/next-batch-num true user-1 table-id))
+            (is (undo/next-batch-num false user-1 table-id))
+            (is (undo/next-batch-num true user-2 table-id))
+            (is (not (undo/next-batch-num false user-2 table-id)))
             (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 9001}]]}
                    (undo/undo! user-2 table-id)))
             (is (= [[2 "Moomintroll" 9001]] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-1 table-id))
-            (is (undo/has-undo? false user-1 table-id))
+            (is (undo/next-batch-num true user-1 table-id))
+            (is (undo/next-batch-num false user-1 table-id))
             (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 3}]]}
                    (undo/undo! user-1 table-id)))
             (is (= [[2 "Moomintroll" 3]] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-1 table-id))
-            (is (undo/has-undo? false user-1 table-id))
+            (is (undo/next-batch-num true user-1 table-id))
+            (is (undo/next-batch-num false user-1 table-id))
             (is (= {table-id [[:delete {:id 2}]]}
                    (undo/undo! user-1 table-id)))
             (is (= [] (table-rows table-id)))
 
-            (is (not (undo/has-undo? true user-1 table-id)))
-            (is (undo/has-undo? false user-1 table-id))
+            (is (not (undo/next-batch-num true user-1 table-id)))
+            (is (undo/next-batch-num false user-1 table-id))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"No previous versions found"
                  (undo/undo! user-1 table-id)))
 
-            (is (not (undo/has-undo? true user-1 table-id)))
-            (is (undo/has-undo? false user-1 table-id))
+            (is (not (undo/next-batch-num true user-1 table-id)))
+            (is (undo/next-batch-num false user-1 table-id))
             (is (= {table-id [[:create {:id 2, :name "Moomintroll", :power 3}]]}
                    (undo/redo! user-1 table-id)))
             (is (= [[2 "Moomintroll" 3]] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-1 table-id))
-            (is (undo/has-undo? false user-1 table-id))
+            (is (undo/next-batch-num true user-1 table-id))
+            (is (undo/next-batch-num false user-1 table-id))
             (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 9001}]]}
                    (undo/redo! user-1 table-id)))
             (is (= [[2 "Moomintroll" 9001]] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-1 table-id))
-            (is (undo/has-undo? false user-1 table-id))
+            (is (undo/next-batch-num true user-1 table-id))
+            (is (undo/next-batch-num false user-1 table-id))
             (is (= {table-id [[:update {:id 2, :name "Moominswole", :power 9001}]]}
                    (undo/redo! user-2 table-id)))
             (is (= [[2 "Moominswole" 9001]] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-1 table-id))
-            (is (undo/has-undo? false user-1 table-id))
+            (is (undo/next-batch-num true user-1 table-id))
+            (is (undo/next-batch-num false user-1 table-id))
             (is (= {table-id [[:delete {:id 2}]]}
                    (undo/redo! user-1 table-id)))
             (is (= [] (table-rows table-id)))
 
-            (is (undo/has-undo? true user-1 table-id))
-            (is (not (undo/has-undo? false user-1 table-id)))
+            (is (undo/next-batch-num true user-1 table-id))
+            (is (not (undo/next-batch-num false user-1 table-id)))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"No subsequent versions found"
                  (undo/redo! user-1 table-id)))
 
-            (is (undo/has-undo? true user-2 table-id))
-            (is (not (undo/has-undo? false user-2 table-id)))
+            (is (undo/next-batch-num true user-2 table-id))
+            (is (not (undo/next-batch-num false user-2 table-id)))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"No subsequent versions found"
                  (undo/redo! user-2 table-id)))
 
-            (is (undo/has-undo? true user-1 table-id))
-            (is (not (undo/has-undo? false user-1 table-id)))))))))
+            (is (undo/next-batch-num true user-1 table-id))
+            (is (not (undo/next-batch-num false user-1 table-id)))))))))
