@@ -9,6 +9,7 @@ import addContext from "mochawesome/addContext";
 import "./commands";
 
 const isCI = Cypress.env("CI");
+const isNetworkThrottlingEnabled = Cypress.env("ENABLE_NETWORK_THROTTLING");
 
 // remove default html output on test failure
 configure({
@@ -169,5 +170,16 @@ beforeEach(function () {
     console.log(`test name: ${testName}\n\n"this test should be ran against OSS jar. Make sure you have MB_EDITION=oss set and go to e2e/support/cypress.js and temporarily remove the skipOn(true) to run the test"
     `);
     cy.skipOn(true);
+  }
+
+  // enable network throttling, primarily used for stress test at CI
+  if (isNetworkThrottlingEnabled) {
+    cy.intercept("GET", "**", (req) => {
+      req.reply((res) => {
+        res.setDelay(300);
+        res.setThrottle(1440); // 1.44Mb, same as slow 4g in chrome dev tools
+        res.send();
+      });
+    }).as("globalIntercept");
   }
 });
