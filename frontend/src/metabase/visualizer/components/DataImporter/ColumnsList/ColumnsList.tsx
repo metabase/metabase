@@ -51,7 +51,7 @@ export const ColumnsList = () => {
         overflowY: "auto",
       }}
     >
-      {dataSources.map(source => {
+      {dataSources.map((source) => {
         const dataset = datasets[source.id];
         const isLoading = loadingDatasets[source.id];
         const isExpanded = expandedDataSources[source.id];
@@ -90,8 +90,8 @@ export const ColumnsList = () => {
             </Flex>
             {isExpanded && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
-                {dataset.data.cols.map(column => {
-                  const columnReference = referencedColumns.find(ref =>
+                {dataset.data.cols.map((column) => {
+                  const columnReference = referencedColumns.find((ref) =>
                     isReferenceToColumn(column, source.id, ref),
                   );
                   const isSelected = !!columnReference;

@@ -29,7 +29,7 @@ function pickColumnsFromTableToBarChart(
   const columns: DatasetColumn[] = [];
 
   // using "every" to break the loop early
-  originalColumns.every(column => {
+  originalColumns.every((column) => {
     if (!foundMetric && isSuitableMetric(column)) {
       columns.push(column);
       foundMetric = true;
@@ -70,7 +70,7 @@ export function getInitialStateForCardDataSource(
       ? pickColumnsFromTableToBarChart(originalColumns)
       : originalColumns;
 
-  columns.forEach(column => {
+  columns.forEach((column) => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,
@@ -83,7 +83,7 @@ export function getInitialStateForCardDataSource(
   });
 
   const entries = getColumnVizSettings(card.display)
-    .map(setting => {
+    .map((setting) => {
       const originalValue = card.visualization_settings[setting];
 
       if (!originalValue) {
@@ -93,15 +93,15 @@ export function getInitialStateForCardDataSource(
       if (Array.isArray(originalValue)) {
         return [
           setting,
-          originalValue.map(originalColumnName => {
+          originalValue.map((originalColumnName) => {
             const index = columns.findIndex(
-              col => col.name === originalColumnName,
+              (col) => col.name === originalColumnName,
             );
             return state.columns[index].name;
           }),
         ];
       } else {
-        const index = columns.findIndex(col => col.name === originalValue);
+        const index = columns.findIndex((col) => col.name === originalValue);
         if (!state.columns[index]) {
           return;
         }

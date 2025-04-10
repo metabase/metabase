@@ -13,13 +13,13 @@ export function removeColumnfromStateUnlessUsedElseWhere(
   settingsKeys: string[],
 ) {
   const columnUsedInSettings = settingsKeys.some(
-    key => state.settings[key] === columnName,
+    (key) => state.settings[key] === columnName,
   );
 
   if (columnUsedInSettings) {
     return;
   }
 
-  state.columns = state.columns.filter(col => col.name !== columnName);
+  state.columns = state.columns.filter((col) => col.name !== columnName);
   delete state.columnValuesMapping[columnName];
 }

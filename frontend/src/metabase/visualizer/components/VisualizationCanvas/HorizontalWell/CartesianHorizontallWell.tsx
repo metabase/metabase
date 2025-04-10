@@ -36,7 +36,7 @@ export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
     const settings = isMultiseries ? rawSettings : computedSettings;
     const dimensionNames = settings["graph.dimensions"] ?? [];
     return dimensionNames
-      .map(name => columns.find(column => column.name === name))
+      .map((name) => columns.find((column) => column.name === name))
       .filter(isNotNull);
   }, [columns, computedSettings, rawSettings, isMultiseries]);
 
@@ -102,7 +102,7 @@ export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
       }}
       ref={setNodeRef}
     >
-      {dimensions.map(dimension => (
+      {dimensions.map((dimension) => (
         <DimensionWellItem
           key={dimension.name}
           dimension={dimension}

@@ -112,8 +112,8 @@ function isNewAdditionalSeriesCard(
 
     return (
       card.id !== dashcard.card_id &&
-      !prevSeries.some(s => s.id === card.id) &&
-      newSeries.some(s => s.id === card.id)
+      !prevSeries.some((s) => s.id === card.id) &&
+      newSeries.some((s) => s.id === card.id)
     );
   }
 

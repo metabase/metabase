@@ -109,7 +109,7 @@ const cartesianToCartesian = (
   const removedColumns = [...removedMetrics, ...removedDimensions];
 
   return {
-    columns: columns.filter(column => !removedColumns.includes(column.name)),
+    columns: columns.filter((column) => !removedColumns.includes(column.name)),
     columnValuesMapping: _.omit(columnValuesMapping, removedColumns),
     settings: {
       ...otherSettings,
@@ -132,7 +132,7 @@ const cartesianToPie = (
 
   const metric = metrics[0];
   const newColumns = columns.filter(
-    column => column.name === metric || dimensions.includes(column.name),
+    (column) => column.name === metric || dimensions.includes(column.name),
   );
 
   const newColumnValuesMapping: ColumnValuesMapping = {};
@@ -140,7 +140,7 @@ const cartesianToPie = (
     newColumnValuesMapping[metric] = columnValuesMapping[metric];
   }
 
-  dimensions.forEach(dimension => {
+  dimensions.forEach((dimension) => {
     newColumnValuesMapping[dimension] = columnValuesMapping[dimension];
   });
 

@@ -51,7 +51,7 @@ export function StartFromViz() {
     <Flex direction="column" align="center">
       <Title>{t`Pick the type of viz you'd like to make`}</Title>
       <Grid mt="lg" mb="md">
-        {options.map(vizType => {
+        {options.map((vizType) => {
           return (
             <Grid.Col key={vizType.label} span={4} miw={200} mih={180}>
               <>

@@ -53,7 +53,7 @@ export const funnelDropHandler = (
       state.settings["funnel.dimension"] = dimensionColumnName;
     } else {
       const index = state.columns.findIndex(
-        col => col.name === dimensionColumnName,
+        (col) => col.name === dimensionColumnName,
       );
       state.columns[index] = copyColumn(
         dimensionColumnName,
@@ -81,7 +81,7 @@ export const funnelDropHandler = (
       state.settings["funnel.metric"] = metricColumnName;
     } else {
       const index = state.columns.findIndex(
-        col => col.name === metricColumnName,
+        (col) => col.name === metricColumnName,
       );
       state.columns[index] = copyColumn(
         metricColumnName,
@@ -184,7 +184,7 @@ export function removeColumnFromFunnel(
       state.settings = {};
     } else {
       const index = state.columnValuesMapping.METRIC.findIndex(
-        mapping => typeof mapping !== "string" && mapping.name === columnName,
+        (mapping) => typeof mapping !== "string" && mapping.name === columnName,
       );
       if (index >= 0) {
         state.columnValuesMapping.METRIC.splice(index, 1);
@@ -259,9 +259,9 @@ export function combineWithFunnel(
   }
 
   if (!isMadeOfScalars) {
-    const metrics = data.cols.filter(col => isMetric(col));
+    const metrics = data.cols.filter((col) => isMetric(col));
     const dimensions = data.cols.filter(
-      col => isDimension(col) && !isMetric(col),
+      (col) => isDimension(col) && !isMetric(col),
     );
 
     if (!state.settings["funnel.metric"] && metrics.length === 1) {

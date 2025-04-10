@@ -14,7 +14,7 @@ export function shouldSplitVisualizerSeries(
   const dimensions = settings["graph.dimensions"] ?? [];
   const dimensionDataSources = _.uniq(
     dimensions
-      .map(columnName => {
+      .map((columnName) => {
         const mapping = columnValuesMapping[columnName];
         if (isDataSourceNameRef(mapping[0])) {
           return;
@@ -41,7 +41,7 @@ export function splitVisualizerSeries(
 
   const dataSourceIds = _.uniq(
     Object.values(columnValuesMapping)
-      .map(valueSources => {
+      .map((valueSources) => {
         const [valueSource] = valueSources;
         if (!isDataSourceNameRef(valueSource)) {
           return valueSource.sourceId;
@@ -55,29 +55,29 @@ export function splitVisualizerSeries(
     mainCard.visualization_settings["graph.dimensions"] ?? [];
 
   return dataSourceIds.map((dataSourceId, i) => {
-    const columnNames = Object.keys(columnValuesMapping).filter(columnName =>
+    const columnNames = Object.keys(columnValuesMapping).filter((columnName) =>
       columnValuesMapping[columnName].some(
-        valueSource =>
+        (valueSource) =>
           !isDataSourceNameRef(valueSource) &&
           valueSource.sourceId === dataSourceId,
       ),
     );
 
-    const cols = series[0].data.cols.filter(col =>
+    const cols = series[0].data.cols.filter((col) =>
       columnNames.includes(col.name),
     );
 
-    const rows = series[0].data.rows.map(row =>
+    const rows = series[0].data.rows.map((row) =>
       row.filter((_, i) => columnNames.includes(data.cols[i].name)),
     );
 
-    const metrics = allMetrics.filter(columnName =>
+    const metrics = allMetrics.filter((columnName) =>
       columnNames.includes(columnName),
     );
     const [mainMetric] = metrics;
 
     const seriesName =
-      cols.find(col => col.name === mainMetric)?.display_name ??
+      cols.find((col) => col.name === mainMetric)?.display_name ??
       `Series ${i + 1}`;
 
     return {
@@ -88,7 +88,7 @@ export function splitVisualizerSeries(
         visualization_settings: {
           ...mainCard.visualization_settings,
           "graph.metrics": metrics,
-          "graph.dimensions": allDimensions.filter(columnName =>
+          "graph.dimensions": allDimensions.filter((columnName) =>
             columnNames.includes(columnName),
           ),
         },

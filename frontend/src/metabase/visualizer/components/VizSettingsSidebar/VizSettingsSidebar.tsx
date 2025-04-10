@@ -41,7 +41,7 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
       true,
     );
     return widgets.filter(
-      widget => !HIDDEN_SETTING_WIDGETS.includes(widget.id),
+      (widget) => !HIDDEN_SETTING_WIDGETS.includes(widget.id),
     );
   }, [transformedSeries, handleChangeSettings]);
 

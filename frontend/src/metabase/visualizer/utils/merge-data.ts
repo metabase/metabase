@@ -26,26 +26,26 @@ export function mergeVisualizerData({
   const referencedColumns = extractReferencedColumns(columnValuesMapping);
 
   const referencedColumnValuesMap: Record<string, RowValues> = {};
-  referencedColumns.forEach(ref => {
+  referencedColumns.forEach((ref) => {
     const dataset = datasets[ref.sourceId];
     if (!dataset) {
       return;
     }
     const columnIndex = dataset.data.cols.findIndex(
-      col => col.name === ref.originalName,
+      (col) => col.name === ref.originalName,
     );
     if (columnIndex >= 0) {
-      const values = dataset.data.rows.map(row => row[columnIndex]);
+      const values = dataset.data.rows.map((row) => row[columnIndex]);
       referencedColumnValuesMap[ref.name] = values;
     }
   });
 
-  const unzippedRows = columns.map(column =>
+  const unzippedRows = columns.map((column) =>
     (columnValuesMapping[column.name] ?? [])
-      .map(valueSource => {
+      .map((valueSource) => {
         if (isDataSourceNameRef(valueSource)) {
           const id = getDataSourceIdFromNameRef(valueSource);
-          const dataSource = dataSources.find(source => source.id === id);
+          const dataSource = dataSources.find((source) => source.id === id);
           return dataSource?.name ? [dataSource.name] : [];
         }
         const values = referencedColumnValuesMap[valueSource.name];

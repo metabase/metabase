@@ -112,14 +112,14 @@ export const initializeVisualizer = createAsyncThunk(
       ? extractReferencedColumns(initialState.columnValuesMapping)
       : [];
     const dataSourceIds = Array.from(
-      new Set(columnRefs.map(ref => ref.sourceId)),
+      new Set(columnRefs.map((ref) => ref.sourceId)),
     );
     if (extraDataSources.length > 0) {
       dataSourceIds.push(...extraDataSources);
     }
     await Promise.all(
       dataSourceIds
-        .map(sourceId => {
+        .map((sourceId) => {
           const [, cardId] = sourceId.split(":");
           return [
             dispatch(fetchCard(Number(cardId))),
@@ -335,7 +335,7 @@ const visualizerHistoryItemSlice = createSlice({
       }
     },
   },
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder
       .addCase(initializeVisualizer.fulfilled, (state, action) => {
         const initialState = action.payload;
@@ -368,7 +368,7 @@ const visualizerHistoryItemSlice = createSlice({
         state.columnValuesMapping = _.mapObject(
           state.columnValuesMapping,
           (valueSources, columnName) => {
-            const nextValueSources = valueSources.filter(valueSource => {
+            const nextValueSources = valueSources.filter((valueSource) => {
               if (typeof valueSource === "string") {
                 const dataSourceId = getDataSourceIdFromNameRef(valueSource);
                 return dataSourceId !== source.id;
@@ -383,18 +383,18 @@ const visualizerHistoryItemSlice = createSlice({
         );
 
         state.columns = state.columns.filter(
-          column => !columnsToRemove.includes(column.name),
+          (column) => !columnsToRemove.includes(column.name),
         );
-        columnsToRemove.forEach(columName => {
+        columnsToRemove.forEach((columName) => {
           delete state.columnValuesMapping[columName];
         });
-        columnVizSettings.forEach(setting => {
+        columnVizSettings.forEach((setting) => {
           const value = state.settings[setting];
           if (columnsToRemove.includes(value)) {
             delete state.settings[setting];
           } else if (Array.isArray(value)) {
             state.settings[setting] = value.filter(
-              v => !columnsToRemove.includes(v),
+              (v) => !columnsToRemove.includes(v),
             );
           }
         });
@@ -416,19 +416,19 @@ const visualizerSlice = createSlice({
       state.expandedDataSources[action.payload] =
         !state.expandedDataSources[action.payload];
     },
-    toggleDataSideBar: state => {
+    toggleDataSideBar: (state) => {
       state.isDataSidebarOpen = !state.isDataSidebarOpen;
     },
-    toggleVizSettingsSidebar: state => {
+    toggleVizSettingsSidebar: (state) => {
       state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
     },
-    closeVizSettingsSidebar: state => {
+    closeVizSettingsSidebar: (state) => {
       state.isVizSettingsSidebarOpen = false;
     },
-    closeDataSidebar: state => {
+    closeDataSidebar: (state) => {
       state.isDataSidebarOpen = false;
     },
-    undo: state => {
+    undo: (state) => {
       const canUndo = state.past.length > 0;
       if (canUndo) {
         state.future = [state.present, ...state.future];
@@ -436,7 +436,7 @@ const visualizerSlice = createSlice({
         state.past = state.past.slice(0, state.past.length - 1);
       }
     },
-    redo: state => {
+    redo: (state) => {
       const canRedo = state.future.length > 0;
       if (canRedo) {
         state.past = [...state.past, state.present];
@@ -457,7 +457,7 @@ const visualizerSlice = createSlice({
       }
     },
   },
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder
       .addCase(initializeVisualizer.fulfilled, (state, action) => {
         const initialState = action.payload;
@@ -478,7 +478,7 @@ const visualizerSlice = createSlice({
             event: action.payload,
             datasetMap: state.datasets,
             dataSourceMap: Object.fromEntries(
-              state.cards.map(card => {
+              state.cards.map((card) => {
                 const dataSource = createDataSource("card", card.id, card.name);
                 return [dataSource.id, dataSource];
               }),
@@ -490,7 +490,7 @@ const visualizerSlice = createSlice({
         const source = action.payload;
         if (source.type === "card") {
           const cardId = source.sourceId;
-          state.cards = state.cards.filter(card => card.id !== cardId);
+          state.cards = state.cards.filter((card) => card.id !== cardId);
         }
         delete state.expandedDataSources[source.id];
         delete state.loadingDataSources[source.id];
@@ -515,7 +515,7 @@ const visualizerSlice = createSlice({
       })
       .addCase(fetchCard.fulfilled, (state, action) => {
         const card = action.payload;
-        const index = state.cards.findIndex(c => c.id === card.id);
+        const index = state.cards.findIndex((c) => c.id === card.id);
         if (index !== -1) {
           state.cards[index] = card;
         } else {
@@ -558,7 +558,7 @@ const visualizerSlice = createSlice({
         const dataset = datasets[dataSource.id];
 
         const dataSourceMap = Object.fromEntries(
-          cards.map(card => {
+          cards.map((card) => {
             const dataSource = createDataSource("card", card.id, card.name);
             return [dataSource.id, dataSource];
           }),

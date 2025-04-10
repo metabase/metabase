@@ -61,7 +61,7 @@ function getVisualizerRawSeries(rawSeries, dashcardSettings) {
     return acc;
   }, {});
 
-  const dataSources = rawSeries.map(series =>
+  const dataSources = rawSeries.map((series) =>
     createDataSource("card", series.card.id, series.card.name),
   );
 

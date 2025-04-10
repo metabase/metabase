@@ -138,7 +138,7 @@ export function DashCardVisualization({
   downloadsEnabled,
   onEditVisualization,
 }: DashCardVisualizationProps) {
-  const datasets = useSelector(state => getDashcardData(state, dashcard.id));
+  const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
@@ -165,7 +165,7 @@ export function DashCardVisualization({
       cards.push(...dashcard.series);
     }
 
-    const dataSources = cards.map(card =>
+    const dataSources = cards.map((card) =>
       createDataSource("card", card.id, card.name),
     );
 

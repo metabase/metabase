@@ -67,7 +67,7 @@ export const getExpandedDataSources = (state: State) =>
   state.visualizer.expandedDataSources;
 
 export const getIsLoading = createSelector(
-  [state => state.visualizer.loadingDataSources, getLoadingDatasets],
+  [(state) => state.visualizer.loadingDataSources, getLoadingDatasets],
   (loadingDataSources, loadingDatasets) => {
     return (
       Object.values(loadingDataSources).includes(true) ||
@@ -90,14 +90,14 @@ export const getCanRedo = (state: State) => state.visualizer.future.length > 0;
 
 export const getReferencedColumns = createSelector(
   [getVisualizerColumnValuesMapping],
-  mappings => extractReferencedColumns(mappings),
+  (mappings) => extractReferencedColumns(mappings),
 );
 
 /**
  * Returns a list of data sources that are used in the current visualization.
  */
-export const getDataSources = createSelector([getCards], cards =>
-  cards.map(card => createDataSource("card", card.id, card.name)),
+export const getDataSources = createSelector([getCards], (cards) =>
+  cards.map((card) => createDataSource("card", card.id, card.name)),
 );
 
 export const getUsedDataSources = createSelector(
@@ -107,9 +107,9 @@ export const getUsedDataSources = createSelector(
       return dataSources;
     }
     const usedDataSourceIds = new Set(
-      referencedColumns.map(ref => ref.sourceId),
+      referencedColumns.map((ref) => ref.sourceId),
     );
-    return dataSources.filter(dataSource =>
+    return dataSources.filter((dataSource) =>
       usedDataSourceIds.has(dataSource.id),
     );
   },
@@ -145,7 +145,7 @@ const getVisualizerDatasetData = createSelector(
 
 export const getVisualizerDatasetColumns = createSelector(
   [getVisualizerDatasetData],
-  data => data.cols,
+  (data) => data.cols,
 );
 
 const getVisualizerFlatRawSeries = createSelector(
@@ -190,7 +190,7 @@ export const getVisualizerRawSeries = createSelector(
 
 export const getVisualizerTransformedSeries = createSelector(
   [getVisualizerRawSeries],
-  rawSeries => {
+  (rawSeries) => {
     if (rawSeries.length === 0) {
       return [];
     }
@@ -221,7 +221,7 @@ export const getVisualizerPrimaryColumn = createSelector(
     if (isCartesianChart(display)) {
       const dimensionName = settings["graph.dimensions"]?.[0];
       if (dimensionName) {
-        return columns.find(column => column.name === dimensionName);
+        return columns.find((column) => column.name === dimensionName);
       }
     }
 
@@ -231,7 +231,7 @@ export const getVisualizerPrimaryColumn = createSelector(
 
 export const getTabularPreviewSeries = createSelector(
   [getVisualizerFlatRawSeries],
-  rawSeries => {
+  (rawSeries) => {
     if (rawSeries.length === 0) {
       return [];
     }
@@ -255,7 +255,7 @@ export const getTabularPreviewSeries = createSelector(
 export const getCurrentVisualizerState = getCurrentHistoryItem;
 
 export const getIsDirty = createSelector(
-  [getCurrentHistoryItem, state => state.visualizer.initialState],
+  [getCurrentHistoryItem, (state) => state.visualizer.initialState],
   (state, initialState) => {
     return !_.isEqual(state, initialState);
   },
@@ -263,17 +263,17 @@ export const getIsDirty = createSelector(
 
 export const getVisualizerUrlHash = createSelector(
   [getCurrentVisualizerState],
-  state => getStateHash(state),
+  (state) => getStateHash(state),
 );
 
 export const getPastVisualizerUrlHashes = createSelector(
-  [state => state.visualizer.past],
-  items => items.map(getStateHash),
+  [(state) => state.visualizer.past],
+  (items) => items.map(getStateHash),
 );
 
 export const getFutureVisualizerUrlHashes = createSelector(
-  [state => state.visualizer.future],
-  items => items.map(getStateHash),
+  [(state) => state.visualizer.future],
+  (items) => items.map(getStateHash),
 );
 
 function getStateHash(state: VisualizerHistoryItem) {

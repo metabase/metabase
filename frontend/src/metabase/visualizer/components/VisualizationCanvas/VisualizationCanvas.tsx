@@ -31,7 +31,7 @@ import { VerticalWell } from "./VerticalWell";
 import Styles from "./VisualizationCanvas.module.css";
 
 function disableAxisLabels(rawSeries: RawSeries) {
-  return produce(rawSeries, draft => {
+  return produce(rawSeries, (draft) => {
     const settings = draft[0]?.card.visualization_settings;
 
     if (!settings) {

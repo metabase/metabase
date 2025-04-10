@@ -124,7 +124,7 @@ describe("scenarios > dashboard > visualizer", () => {
 
   it("should update an existing dashcard with visualizer", () => {
     cy.get("@ordersCountByCreatedAtQuestionId").then(
-      ordersCountByCreatedAtQuestionId => {
+      (ordersCountByCreatedAtQuestionId) => {
         H.addQuestionToDashboard({
           dashboardId: ORDERS_DASHBOARD_ID,
           cardId: ordersCountByCreatedAtQuestionId,

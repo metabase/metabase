@@ -37,7 +37,7 @@ function PieMetricWell() {
     id: DROPPABLE_ID.PIE_METRIC,
   });
 
-  const metric = columns.find(col => col.name === settings["pie.metric"]);
+  const metric = columns.find((col) => col.name === settings["pie.metric"]);
 
   const isHighlighted = useMemo(() => {
     if (!active || !isDraggedColumnItem(active)) {
@@ -93,7 +93,7 @@ function PieDimensionWell() {
     return isDimension(column);
   }, [active]);
 
-  const dimensions = columns.filter(col =>
+  const dimensions = columns.filter((col) =>
     (settings["pie.dimension"] ?? []).includes(col.name),
   );
 
@@ -111,7 +111,7 @@ function PieDimensionWell() {
         data-testid="pie-dimension-well"
       >
         <Stack>
-          {dimensions.map(dimension => (
+          {dimensions.map((dimension) => (
             <WellItem
               key={dimension.id}
               onRemove={() => handleRemoveDimension(dimension)}

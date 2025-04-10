@@ -95,7 +95,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
           variant="filled"
           size="xs"
           rightSection={<Icon name="trash" />}
-          onClick={e => {
+          onClick={(e) => {
             e.stopPropagation();
             onRemove?.(item);
           }}
@@ -111,7 +111,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
             variant="inverse"
             size="xs"
             rightSection={<Icon name="add" />}
-            onClick={e => {
+            onClick={(e) => {
               e.stopPropagation();
               onAdd?.(item);
             }}
