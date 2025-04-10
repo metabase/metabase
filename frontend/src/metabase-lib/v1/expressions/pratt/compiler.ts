@@ -3,10 +3,7 @@ import { t } from "ttag";
 import { type NumberValue, parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 
-import {
-  getMBQLName as defaultGetMBQLName,
-  getClauseDefinition,
-} from "../config";
+import { getClauseDefinition, getMBQLName } from "../config";
 import { CompileError } from "../errors";
 import {
   isBigIntLiteral,
@@ -39,37 +36,22 @@ import {
 } from "./syntax";
 import { type Node, type NodeType, assert } from "./types";
 
-export type CompileOptions = {
-  getMBQLName?: (expressionName: string) => string | undefined;
-};
+type CompileFn = (node: Node) => Lib.ExpressionParts | Lib.ExpressionArg;
 
-type Options = Required<CompileOptions>;
-type CompileFn = (
-  node: Node,
-  opts: Options,
-) => Lib.ExpressionParts | Lib.ExpressionArg;
-
-export function compile(
-  node: Node,
-  { getMBQLName = defaultGetMBQLName }: CompileOptions = {},
-) {
-  return compileRoot(node, { getMBQLName });
+export function compile(node: Node) {
+  return compileRoot(node);
 }
 
-function compileNode(
-  node: Node,
-  opts: Options,
-): Lib.ExpressionParts | Lib.ExpressionArg {
+function compileNode(node: Node): Lib.ExpressionParts | Lib.ExpressionArg {
   const fn = COMPILE.get(node.type);
   if (!fn) {
     throw new CompileError(t`Invalid node type`, node);
   }
-  return fn(node, opts);
+  return fn(node);
 }
 
 function compileRoot(
   node: Node,
-  opts: Options,
 ):
   | Lib.ExpressionParts
   | Lib.SegmentMetadata
@@ -78,7 +60,7 @@ function compileRoot(
   assert(node.type === ROOT, t`Must be root node`);
   assert(node.children.length === 1, t`Root must have one child`);
 
-  const result = compileNode(node.children[0], opts);
+  const result = compileNode(node.children[0]);
   if (isStringLiteral(result)) {
     return {
       operator: "value",
@@ -138,14 +120,11 @@ function compileIdentifier(node: Node): Lib.ExpressionParts {
   });
 }
 
-function compileGroup(
-  node: Node,
-  opts: Options,
-): Lib.ExpressionParts | Lib.ExpressionArg {
+function compileGroup(node: Node): Lib.ExpressionParts | Lib.ExpressionArg {
   assert(node.type === GROUP, t`Invalid node type`);
   assert(node.children.length === 1, t`Group must have one child`);
 
-  return compileNode(node.children[0], opts);
+  return compileNode(node.children[0]);
 }
 
 function compileString(node: Node): string {
@@ -157,42 +136,41 @@ function compileString(node: Node): string {
 
 function compileLogicalNot(
   node: Node,
-  opts: Options,
 ): Lib.ExpressionParts | Lib.ExpressionArg {
   assert(node.type === LOGICAL_NOT, t`Invalid node type`);
 
-  return compileUnaryOp("not", node, opts);
+  return compileUnaryOp("not", node);
 }
 
-function compileLogicalAnd(node: Node, opts: Options): Lib.ExpressionParts {
+function compileLogicalAnd(node: Node): Lib.ExpressionParts {
   assert(node.type === LOGICAL_AND, t`Invalid node type`);
 
-  return compileInfixOp("and", node, opts);
+  return compileInfixOp("and", node);
 }
 
-function compileLogicalOr(node: Node, opts: Options): Lib.ExpressionParts {
+function compileLogicalOr(node: Node): Lib.ExpressionParts {
   assert(node.type === LOGICAL_OR, t`Invalid node type`);
 
-  return compileInfixOp("or", node, opts);
+  return compileInfixOp("or", node);
 }
 
-function compileComparisonOp(node: Node, opts: Options): Lib.ExpressionParts {
+function compileComparisonOp(node: Node): Lib.ExpressionParts {
   assert(node.type === COMPARISON, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text, opts), t`Invalid operator`);
+  assert(isOperator(node.token.text), t`Invalid operator`);
 
-  return compileInfixOp(node.token.text, node, opts);
+  return compileInfixOp(node.token.text, node);
 }
 
-function compileEqualityOp(node: Node, opts: Options): Lib.ExpressionParts {
+function compileEqualityOp(node: Node): Lib.ExpressionParts {
   assert(node.type === EQUALITY, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text, opts), t`Invalid operator`);
+  assert(isOperator(node.token.text), t`Invalid operator`);
 
-  return compileInfixOp(node.token.text, node, opts);
+  return compileInfixOp(node.token.text, node);
 }
 
-function compileFunctionCall(node: Node, opts: Options): Lib.ExpressionParts {
+function compileFunctionCall(node: Node): Lib.ExpressionParts {
   assert(node.type === CALL, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
   assert(
@@ -201,11 +179,11 @@ function compileFunctionCall(node: Node, opts: Options): Lib.ExpressionParts {
   );
 
   const text = node.token?.text.trim().toLowerCase();
-  const operator = opts.getMBQLName(text) ?? text;
-  const args = compileArgList(node.children[0], opts);
+  const operator = getMBQLName(text) ?? text;
+  const args = compileArgList(node.children[0]);
   const options: Lib.ExpressionOptions = {};
 
-  assert(isOperator(operator, opts), t`Invalid operator`);
+  assert(isOperator(operator), t`Invalid operator`);
 
   const clause = getClauseDefinition(operator);
   const hasOptions = clause?.hasOptions ?? false;
@@ -227,12 +205,11 @@ function compileFunctionCall(node: Node, opts: Options): Lib.ExpressionParts {
 
 function compileArgList(
   node: Node,
-  opts: Options,
 ): (Lib.ExpressionParts | Lib.ExpressionArg)[] {
   assert(node.type === ARG_LIST, t`Invalid node type`);
 
   return node.children.map((child) => {
-    const expr = compileNode(child, opts);
+    const expr = compileNode(child);
     return withNode(child, expr);
   });
 }
@@ -259,40 +236,37 @@ function compileNumber(node: Node): NumberValue | Lib.ExpressionParts {
   return number;
 }
 
-function compileNegative(
-  node: Node,
-  opts: Options,
-): Lib.ExpressionParts | NumberValue {
+function compileNegative(node: Node): Lib.ExpressionParts | NumberValue {
   assert(node.type === NEGATIVE, t`Invalid node type`);
 
-  const result = compileUnaryOp("-", node, opts);
+  const result = compileUnaryOp("-", node);
   if (typeof result.args[0] === "number") {
     return -result.args[0];
   }
   return result;
 }
 
-function compileAdditionOp(node: Node, opts: Options): Lib.ExpressionParts {
+function compileAdditionOp(node: Node): Lib.ExpressionParts {
   assert(node.type === ADD, t`Invalid node type`);
 
-  return compileInfixOp("+", node, opts);
+  return compileInfixOp("+", node);
 }
 
-function compileMulDivOp(node: Node, opts: Options): Lib.ExpressionParts {
+function compileMulDivOp(node: Node): Lib.ExpressionParts {
   assert(node.type === MULDIV_OP, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text, opts), t`Invalid operator`);
+  assert(isOperator(node.token.text), t`Invalid operator`);
 
-  return compileInfixOp(node.token.text, node, opts);
+  return compileInfixOp(node.token.text, node);
 }
 
-function compileSubtractionOp(node: Node, opts: Options): Lib.ExpressionParts {
+function compileSubtractionOp(node: Node): Lib.ExpressionParts {
   assert(node.type === SUB, t`Invalid node type`);
 
-  return compileInfixOp("-", node, opts);
+  return compileInfixOp("-", node);
 }
 
-function compileBoolean(node: Node, _opts: Options): boolean {
+function compileBoolean(node: Node): boolean {
   assert(node.type === BOOLEAN, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
 
@@ -303,7 +277,6 @@ function compileBoolean(node: Node, _opts: Options): boolean {
 function compileUnaryOp(
   operator: Lib.ExpressionOperator,
   node: Node,
-  opts: Options,
 ): Lib.ExpressionParts {
   if (node.children.length > 1) {
     throw new CompileError(t`Unexpected expression`, node.children[1]);
@@ -315,14 +288,13 @@ function compileUnaryOp(
   return withNode(node, {
     operator,
     options: {},
-    args: [compileNode(node.children[0], opts)],
+    args: [compileNode(node.children[0])],
   });
 }
 
 function compileInfixOp(
   operator: Lib.ExpressionOperator,
   node: Node,
-  opts: Options,
 ): Lib.ExpressionParts {
   if (node.children.length > 2) {
     throw new CompileError(t`Unexpected expression`, node.children[2]);
@@ -331,13 +303,13 @@ function compileInfixOp(
     throw new CompileError(t`Expected expression`, node);
   }
 
-  const leftNode = compileNode(node.children[0], opts);
+  const leftNode = compileNode(node.children[0]);
   const left =
     Lib.isExpressionParts(leftNode) && leftNode.operator === operator
       ? leftNode.args
       : [leftNode];
 
-  const rightNode = compileNode(node.children[1], opts);
+  const rightNode = compileNode(node.children[1]);
   const right = [rightNode];
 
   return withNode(node, {
@@ -362,8 +334,8 @@ function withNode<T>(node: Node, expressionParts: T): T {
   return expressionParts;
 }
 
-function isOperator(op: string, opts: Options): op is Lib.ExpressionOperator {
-  const res = opts.getMBQLName(op);
+function isOperator(op: string): op is Lib.ExpressionOperator {
+  const res = getMBQLName(op);
   return res != null;
 }
 
