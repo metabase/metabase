@@ -144,7 +144,7 @@ export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
 export type GdrivePayload = {
   status: "not-connected" | "syncing" | "active" | "error";
-  folder_url?: string;
+  url?: string;
   created_at?: number;
   created_by_id?: UserId;
   sync_started_at?: number;
