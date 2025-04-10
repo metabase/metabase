@@ -181,17 +181,9 @@ function formatBooleanLiteral(node: boolean): Doc {
   return node ? "True" : "False";
 }
 
-function assertQuery(query: Lib.Query | undefined): asserts query is Lib.Query {
-  if (!query) {
-    throw new Error("Expected query");
-  }
-}
-
-function assertStageIndex(
-  stageIndex: number | undefined,
-): asserts stageIndex is number {
-  if (typeof stageIndex !== "number") {
-    throw new Error("Expected stageIndex");
+function assert(condition: any, msg: string): asserts condition {
+  if (!condition) {
+    throw new Error(msg);
   }
 }
 
@@ -199,14 +191,12 @@ function formatColumn(
   path: AstPath<Lib.ColumnMetadata>,
   options: FormatOptions,
 ): Doc {
-  const column = path.node;
-  if (!Lib.isColumnMetadata(column)) {
-    throw new Error("Expected column");
-  }
-
   const { query, stageIndex } = options;
-  assertQuery(query);
-  assertStageIndex(stageIndex);
+  const column = path.node;
+
+  assert(query !== undefined, "Expected query");
+  assert(typeof stageIndex === "number", "Expected stageIndex");
+  assert(Lib.isColumnMetadata(column), "Expected column");
 
   const info = Lib.displayInfo(query, stageIndex, column);
   return formatDimensionName(info.longDisplayName, options);
@@ -217,13 +207,11 @@ function formatMetric(
   options: FormatOptions,
 ): Doc {
   const metric = path.node;
-  if (!Lib.isMetricMetadata(metric)) {
-    throw new Error("Expected metric");
-  }
-
   const { query, stageIndex } = options;
-  assertQuery(query);
-  assertStageIndex(stageIndex);
+
+  assert(query !== undefined, "Expected query");
+  assert(typeof stageIndex === "number", "Expected stageIndex");
+  assert(Lib.isMetricMetadata(metric), "Expected metric");
 
   const displayInfo = Lib.displayInfo(query, stageIndex, metric);
   return formatMetricName(displayInfo.displayName, options);
@@ -234,13 +222,11 @@ function formatSegment(
   options: FormatOptions,
 ) {
   const segment = path.node;
-  if (!Lib.isSegmentMetadata(segment)) {
-    throw new Error("Expected segment");
-  }
-
   const { query, stageIndex } = options;
-  assertQuery(query);
-  assertStageIndex(stageIndex);
+
+  assert(query !== undefined, "Expected query");
+  assert(typeof stageIndex === "number", "Expected stageIndex");
+  assert(Lib.isSegmentMetadata(segment), "Expected segment");
 
   const displayInfo = Lib.displayInfo(query, stageIndex, segment);
   return formatSegmentName(displayInfo.displayName, options);
@@ -252,13 +238,12 @@ function isExpression(op: string): op is "expression" {
 
 function formatExpression(path: AstPath<Lib.ExpressionParts>): Doc {
   const { node } = path;
-  if (!isExpression(node.operator)) {
-    throw new Error("Expected expression");
-  }
+
+  assert(isExpression(node.operator), "Expected expression");
   const name = node.args[0];
-  if (typeof name !== "string") {
-    throw new Error("Expected expression name to be a string");
-  }
+
+  assert(typeof name === "string", "Expected expression name to be a string");
+
   return formatIdentifier(name);
 }
 
@@ -268,13 +253,11 @@ function isDimension(op: string): op is "dimension" {
 
 function formatDimension(path: AstPath<Lib.ExpressionParts>): Doc {
   const { node } = path;
-  if (!isDimension(node.operator)) {
-    throw new Error("Expected dimension");
-  }
+  assert(isDimension(node.operator), "Expected dimension");
+
   const name = node.args[0];
-  if (typeof name !== "string") {
-    throw new Error("Expected dimension name to be a string");
-  }
+  assert(typeof name === "string", "Expected expression name to be a string");
+
   return formatIdentifier(name);
 }
 
@@ -314,9 +297,10 @@ function isOperator(operator: string): boolean {
 function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
   const { node } = path;
 
-  if (!isOperator(node.operator)) {
-    throw new Error(`Expected operator but got ${node.operator}`);
-  }
+  assert(
+    isOperator(node.operator),
+    `Expected operator but got ${node.operator}`,
+  );
 
   const shouldPrefixOperator = isLogicOperator(node.operator);
 
@@ -408,9 +392,7 @@ function formatValueExpression(
     options,
   } = node;
 
-  if (!isValueOperator(operator)) {
-    throw new Error("Expected value");
-  }
+  assert(isValueOperator(operator), "Expected value");
 
   const baseType = options?.["base-type"];
   if (
