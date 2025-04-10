@@ -197,6 +197,7 @@
 
 (deftest ^:parallel can-run-test
   (mu/disable-enforcement
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [can-run? card-type query]
          (= can-run? (lib.query/can-run query card-type))
       true  :question (lib.tu/venues-query)
@@ -235,6 +236,7 @@
 
 (deftest ^:parallel can-save-test
   (mu/disable-enforcement
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [can-save? card-type query]
          (= can-save? (lib.query/can-save query card-type))
       true  :question (lib.tu/venues-query)
