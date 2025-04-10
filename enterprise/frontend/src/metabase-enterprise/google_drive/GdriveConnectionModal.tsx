@@ -49,7 +49,7 @@ export function GdriveConnectionModal({
     return null;
   }
 
-  const { status, folder_url } = gSheetData;
+  const { status, url } = gSheetData;
 
   return (
     isModalOpen &&
@@ -57,7 +57,7 @@ export function GdriveConnectionModal({
       <GoogleSheetsConnectModal
         onClose={onClose}
         serviceAccountEmail={serviceAccountEmail ?? "email not found"}
-        folderUrl={folder_url ?? ""}
+        folderUrl={url ?? ""}
       />
     ) : (
       <GoogleSheetsDisconnectModal onClose={onClose} reconnect={reconnect} />
@@ -223,7 +223,7 @@ function GoogleSheetsDisconnectModal({
   const { data: gdriveInfo } = useGetGsheetsFolderQuery();
 
   const connectingUserId = gdriveInfo?.created_by_id;
-  const folderUrl = gdriveInfo?.folder_url;
+  const folderUrl = gdriveInfo?.url;
 
   const { data: connectingUser } = useGetUserQuery(
     connectingUserId ? connectingUserId : skipToken,
@@ -241,13 +241,16 @@ function GoogleSheetsDisconnectModal({
           onClose();
         }
       })
-      .catch((response) => {
+      .catch((response: { data: { message: string } }) => {
         setErrorMessage(response?.data?.message ?? "Something went wrong");
       });
   };
 
   const userName = getUserName(connectingUser);
-  const relativeConnectionTime = dayjs(gdriveInfo?.created_at).fromNow();
+
+  const relativeConnectionTime = gdriveInfo?.created_at
+    ? dayjs.unix(gdriveInfo.created_at).fromNow()
+    : "";
 
   return (
     <ModalWrapper
