@@ -9,6 +9,7 @@
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.js.svg]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
@@ -130,7 +131,11 @@
                          ((keyword "channel" (name channel-type))
                           (pulse.test-util/with-captured-channel-send-messages!
                             (mt/with-temporary-setting-values [site-url "https://testmb.com"]
-                              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
+                              (with-redefs [metabase.channel.render.js.svg/javascript-visualization
+                                            (fn [& _]
+                                              {:type :svg
+                                               :content "<svg width=\"300\" height=\"130\" xmlns=\"http://www.w3.org/2000/svg\">\n  <rect width=\"200\" height=\"100\" x=\"10\" y=\"10\" rx=\"20\" ry=\"20\" fill=\"blue\" />\n</svg>"})]
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))))))
                     (thunk []
                       (if fixture
                         (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
