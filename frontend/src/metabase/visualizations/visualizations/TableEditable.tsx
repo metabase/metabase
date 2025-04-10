@@ -12,6 +12,7 @@ import { PLUGIN_DATA_EDITING } from "metabase/plugins";
 import { Flex, Icon, Title } from "metabase/ui";
 import LoadingView from "metabase/visualizations/components/Visualization/LoadingView";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardCard, DatasetData } from "metabase-types/api";
 
 import { mergeSettings } from "../lib/settings/typed-utils";
@@ -19,6 +20,7 @@ import { mergeSettings } from "../lib/settings/typed-utils";
 interface EditableTableState {
   data: DatasetData | null;
   card: Card | null;
+  question: Question | null;
 }
 
 const EditTableDataWithUpdate = PLUGIN_DATA_EDITING.CARD_TABLE_COMPONENT;
@@ -53,6 +55,7 @@ export class TableEditable extends Component<
   state: EditableTableState = {
     data: null,
     card: null,
+    question: null,
   };
 
   UNSAFE_componentWillMount() {
@@ -66,12 +69,15 @@ export class TableEditable extends Component<
   }
 
   _updateState({ series }: VisualizationProps) {
+    const { metadata } = this.props;
     const [{ card, data }] = series;
-    // construct a Question that is in-sync with query results
+
+    const question = new Question(card, metadata);
 
     this.setState({
       data,
       card,
+      question,
     });
   }
 
@@ -90,7 +96,7 @@ export class TableEditable extends Component<
 
   render() {
     const { dashcard, className, metadata } = this.props;
-    const { data, card } = this.state;
+    const { data, card, question } = this.state;
 
     if (card?.visualization_settings?.table_id && !data && dashcard?.isAdded) {
       // use case for just added and not yet saved table card
@@ -111,7 +117,7 @@ export class TableEditable extends Component<
       );
     }
 
-    if (!card || !card.table_id || !dashcard) {
+    if (!card || !card.table_id || !dashcard || !question) {
       return null;
     }
 
@@ -131,6 +137,7 @@ export class TableEditable extends Component<
         tableId={card.table_id}
         refetchTableDataQuery={this.handleCardDataRefresh}
         visualizationSettings={visualizationSettings}
+        question={question}
       />
     );
   }

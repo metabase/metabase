@@ -1,7 +1,6 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, Field } from "metabase-types/api";
 
 export const useTableSorting = ({ question }: { question: Question }) => {
   const getColumnSortDirection = (columnOrField: DatasetColumn | Field) => {

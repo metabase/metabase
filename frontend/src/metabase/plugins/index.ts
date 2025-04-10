@@ -639,5 +639,6 @@ export const PLUGIN_DATA_EDITING = {
     className?: string;
     refetchTableDataQuery: () => void;
     visualizationSettings?: VisualizationSettings;
+    question: Question;
   }>,
 };
