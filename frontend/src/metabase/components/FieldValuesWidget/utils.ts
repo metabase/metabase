@@ -329,3 +329,10 @@ export function getValue(option: FieldValue): RowValue {
   }
   return option;
 }
+
+export function getLabel(option: FieldValue): string | undefined {
+  if (Array.isArray(option)) {
+    return option[1];
+  }
+  return undefined;
+}

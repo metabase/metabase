@@ -2,15 +2,13 @@ import cx from "classnames";
 import type { StyleHTMLAttributes } from "react";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { useMount, usePrevious, useUnmount } from "react-use";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import SingleSelectListField from "metabase/components/SingleSelectListField";
-import TokenField, { parseStringValue } from "metabase/components/TokenField";
-import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
 import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
@@ -24,6 +22,7 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
+import { Loader, MultiAutocomplete } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -36,13 +35,13 @@ import type { State } from "metabase-types/store";
 
 import ExplicitSize from "../ExplicitSize";
 
-import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import type { LoadingStateType, ValuesMode } from "./types";
 import {
   canUseCardEndpoints,
   canUseDashboardEndpoints,
   canUseParameterEndpoints,
   dedupeValues,
+  getLabel,
   getNonVirtualFields,
   getTokenFieldPlaceholder,
   getValue,
@@ -50,7 +49,6 @@ import {
   hasList,
   isExtensionOfPreviousSearch,
   isNumeric,
-  isSearchable,
   searchFieldValues,
   shouldList,
   showRemapping,
@@ -96,13 +94,10 @@ export interface IFieldValuesWidgetProps {
   multi?: boolean;
   autoFocus?: boolean;
   className?: string;
-  prefix?: string;
   placeholder?: string;
   checkedColor?: string;
 
-  valueRenderer?: (value: string | number) => JSX.Element;
   optionRenderer?: (option: FieldValue) => JSX.Element;
-  layoutRenderer?: (props: LayoutRendererArgs) => JSX.Element;
 }
 
 export const FieldValuesWidgetInner = forwardRef<
@@ -110,10 +105,7 @@ export const FieldValuesWidgetInner = forwardRef<
   IFieldValuesWidgetProps
 >(function FieldValuesWidgetInner(
   {
-    color,
     maxResults = MAX_SEARCH_RESULTS,
-    alwaysShowOptions = true,
-    style = {},
     formatOptions = {},
     containerWidth,
     maxWidth = 500,
@@ -122,7 +114,6 @@ export const FieldValuesWidgetInner = forwardRef<
     disableList = false,
     disableSearch = false,
     disablePKRemappingForSearch,
-    showOptionsInPopover = false,
     parameter,
     parameters,
     fields,
@@ -133,12 +124,9 @@ export const FieldValuesWidgetInner = forwardRef<
     multi,
     autoFocus,
     className,
-    prefix,
     placeholder,
     checkedColor,
-    valueRenderer,
     optionRenderer,
-    layoutRenderer,
   },
   ref,
 ) {
@@ -182,7 +170,6 @@ export const FieldValuesWidgetInner = forwardRef<
 
   const fetchValues = async (query?: string) => {
     setLoadingState("LOADING");
-    setOptions([]);
 
     let newOptions: FieldValue[] = [];
     let newValuesMode = valuesMode;
@@ -346,7 +333,7 @@ export const FieldValuesWidgetInner = forwardRef<
   const search = useRef(
     _.debounce(async (value: string) => {
       if (!value) {
-        setLoadingState("LOADED");
+        setLoadingState("INIT");
         return;
       }
 
@@ -361,23 +348,8 @@ export const FieldValuesWidgetInner = forwardRef<
       _cancel.current();
     }
 
-    setLoadingState("LOADING");
     search.current(value);
   };
-
-  if (!valueRenderer) {
-    valueRenderer = (value: string | number) => {
-      const option = options.find((option) => getValue(option) === value);
-      return renderValue({
-        fields,
-        formatOptions,
-        value,
-        autoLoad: true,
-        compact: false,
-        displayValue: option?.[1],
-      });
-    };
-  }
 
   if (!optionRenderer) {
     optionRenderer = (option: FieldValue) =>
@@ -388,36 +360,6 @@ export const FieldValuesWidgetInner = forwardRef<
         autoLoad: false,
         displayValue: option[1],
       });
-  }
-
-  if (!layoutRenderer) {
-    layoutRenderer = showOptionsInPopover
-      ? undefined
-      : ({
-          optionsList,
-          isFocused,
-          isAllSelected,
-          isFiltered,
-          valuesList,
-        }: LayoutRendererArgs) => (
-          <div>
-            {valuesList}
-            {renderOptions({
-              alwaysShowOptions,
-              parameter,
-              fields,
-              disableSearch,
-              disablePKRemappingForSearch,
-              loadingState,
-              options,
-              valuesMode,
-              optionsList,
-              isFocused,
-              isAllSelected,
-              isFiltered,
-            })}
-          </div>
-        );
   }
 
   const tokenFieldPlaceholder = getTokenFieldPlaceholder({
@@ -435,20 +377,14 @@ export const FieldValuesWidgetInner = forwardRef<
     shouldList({ parameter, fields, disableSearch }) &&
     valuesMode === "list";
   const isLoading = loadingState === "LOADING";
+  const isLoaded = loadingState === "LOADED";
   const hasListValues = hasList({
     parameter,
     fields,
     disableSearch,
     options,
   });
-
-  const parseFreeformValue = (value: string | undefined) => {
-    if (isNumeric(fields[0], parameter)) {
-      const number = typeof value === "string" ? parseNumber(value) : null;
-      return typeof number === "bigint" ? String(number) : number;
-    }
-    return parseStringValue(value);
-  };
+  const isNumericParameter = isNumeric(fields[0], parameter);
 
   return (
     <ErrorBoundary ref={ref}>
@@ -484,38 +420,45 @@ export const FieldValuesWidgetInner = forwardRef<
             checkedColor={checkedColor}
           />
         ) : (
-          <TokenField
-            prefix={prefix}
-            value={value.filter((v) => v != null)}
-            onChange={onChange}
-            placeholder={tokenFieldPlaceholder}
-            updateOnInputChange
-            // forwarded props
-            multi={multi}
-            autoFocus={autoFocus}
-            color={color}
-            style={{ ...style, minWidth: "inherit" }}
+          <MultiAutocomplete
             className={className}
-            optionsStyle={
-              !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
+            value={value
+              .filter((value) => value != null)
+              .map((value) => String(value))}
+            data={options
+              .filter((option) => getValue(option) != null)
+              .map((option) => ({
+                value: String(getValue(option)),
+                label: String(getLabel(option) ?? getValue(option)),
+              }))}
+            placeholder={tokenFieldPlaceholder}
+            rightSection={isLoading ? <Loader size="xs" /> : undefined}
+            nothingFoundMessage={
+              isLoaded ? getNothingFoundMessage(fields) : undefined
             }
-            // end forwarded props
-            options={options}
-            valueKey="0"
-            valueRenderer={valueRenderer}
-            optionRenderer={optionRenderer}
-            layoutRenderer={layoutRenderer}
-            filterOption={(option, filterString) => {
-              const lowerCaseFilterString = filterString.toLowerCase();
-              return option?.some?.(
-                (value) =>
-                  value != null &&
-                  String(value).toLowerCase().includes(lowerCaseFilterString),
-              );
+            autoFocus={autoFocus}
+            onCreate={(value) => {
+              if (isNumericParameter) {
+                const number = parseNumber(value);
+                return number != null ? String(number) : null;
+              } else {
+                const string = value.trim();
+                return string.length > 0 ? string : null;
+              }
             }}
-            onInputChange={onInputChange}
-            parseFreeformValue={parseFreeformValue}
-            updateOnInputBlur
+            onChange={(values) => {
+              if (isNumericParameter) {
+                onChange(
+                  values.map((value) => {
+                    const number = parseNumber(value);
+                    return typeof number === "bigint" ? String(number) : number;
+                  }),
+                );
+              } else {
+                onChange(values);
+              }
+            }}
+            onSearchChange={onInputChange}
           />
         )}
       </div>
@@ -541,93 +484,11 @@ const LoadingState = () => (
   </div>
 );
 
-const NoMatchState = ({ fields }: { fields: (Field | null)[] }) => {
-  if (fields.length === 1 && !!fields[0]) {
-    const [{ display_name }] = fields;
-
-    return (
-      <OptionsMessage>
-        {jt`No matching ${(
-          <StyledEllipsified key={display_name}>
-            {display_name}
-          </StyledEllipsified>
-        )} found.`}
-      </OptionsMessage>
-    );
-  }
-
-  return <OptionsMessage>{t`No matching result`}</OptionsMessage>;
-};
-
-const EveryOptionState = () => (
-  <OptionsMessage>{t`Including every option in your filter probably won’t do much…`}</OptionsMessage>
-);
-
-interface RenderOptionsProps {
-  alwaysShowOptions: boolean;
-  parameter?: Parameter;
-  fields: Field[];
-  disableSearch: boolean;
-  disablePKRemappingForSearch?: boolean;
-  loadingState: LoadingStateType;
-  options: FieldValue[];
-  valuesMode: ValuesMode;
-  optionsList: React.ReactNode;
-  isFocused: boolean;
-  isAllSelected: boolean;
-  isFiltered: boolean;
-}
-function renderOptions({
-  alwaysShowOptions,
-  parameter,
-  fields,
-  disableSearch,
-  disablePKRemappingForSearch,
-  loadingState,
-  options,
-  valuesMode,
-  optionsList,
-  isFocused,
-  isAllSelected,
-  isFiltered,
-}: RenderOptionsProps) {
-  if (alwaysShowOptions || isFocused) {
-    if (optionsList) {
-      return optionsList;
-    } else if (
-      hasList({
-        parameter,
-        fields,
-        disableSearch,
-        options,
-      }) &&
-      valuesMode === "list"
-    ) {
-      if (isAllSelected) {
-        return <EveryOptionState />;
-      }
-    } else if (
-      isSearchable({
-        parameter,
-        fields,
-        disableSearch,
-        disablePKRemappingForSearch,
-        valuesMode,
-      })
-    ) {
-      if (loadingState === "LOADING") {
-        return <LoadingState />;
-      } else if (loadingState === "LOADED" && isFiltered) {
-        return (
-          <NoMatchState
-            fields={fields.map(
-              (field) =>
-                field.searchField(disablePKRemappingForSearch) as Field | null,
-            )}
-          />
-        );
-      }
-    }
+function getNothingFoundMessage(fields: (Field | null)[]) {
+  if (fields.length === 1 && fields[0] != null) {
+    return t`No matching ${fields[0]?.display_name} found.`;
+  } else {
+    return t`No matching result`;
   }
 }
 
