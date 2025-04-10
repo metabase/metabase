@@ -46,6 +46,11 @@ describe("pratt/compiler", () => {
           "base-type": "type/BigInteger",
         }),
       );
+      expect(expr("-12309109320930192039")).toEqual(
+        value("-12309109320930192039", {
+          "base-type": "type/BigInteger",
+        }),
+      );
 
       expect(expr("1 + 12309109320930192039")).toEqual({
         operator: "+",
@@ -103,6 +108,11 @@ describe("pratt/compiler", () => {
             args: [1, 2],
           },
         ],
+      });
+      expect(expr("-12")).toEqual({
+        operator: "value",
+        options: { "base-type": "type/Integer" },
+        args: [-12],
       });
     });
 

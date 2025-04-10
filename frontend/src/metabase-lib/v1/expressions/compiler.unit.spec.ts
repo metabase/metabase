@@ -438,4 +438,18 @@ describe("Specific expressions", () => {
       ],
     ]);
   });
+
+  it("should support negated numbers", () => {
+    expect(expr(`-10`)).toEqual(["value", -10, { base_type: "type/Integer" }]);
+    expect(expr(`-3.1415`)).toEqual([
+      "value",
+      -3.1415,
+      { base_type: "type/Float" },
+    ]);
+    expect(expr(`-9223372036854775809`)).toEqual([
+      "value",
+      "-9223372036854775809",
+      { base_type: "type/BigInteger" },
+    ]);
+  });
 });
