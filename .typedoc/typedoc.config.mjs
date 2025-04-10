@@ -1,3 +1,6 @@
+const EMBEDDING_SDK_DOCS_MAIN_PAGE_URL =
+  "/docs/latest/embedding/sdk/introduction";
+
 /** @type {Partial<import("typedoc").TypeDocOptions>} */
 const config = {
   name: "Embedding SDK API",
@@ -110,7 +113,7 @@ const config = {
     },
   },
   navigationLinks: {
-    "Back to documentation": "javascript:navigateBack()",
+    "Back to documentation": `javascript:navigateBack({ fallbackUrl: '${EMBEDDING_SDK_DOCS_MAIN_PAGE_URL}' })`,
   },
 };
 

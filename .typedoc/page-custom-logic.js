@@ -1,18 +1,10 @@
+const INTERNAL_MODULE_NAME = "internal";
 const GENERATED_DOC_RETURN_URL_LOCAL_STORAGE_KEY = "generatedDocReturnUrl";
-const GENERATED_DOC_RETURN_URL_LINK_TEXT = "Back";
 
-/**
- * Checks if the given URL is an embedding SDK API docs page.
- */
 const isEmbeddingSdkApiDocsPage = (href) =>
   href.includes("/embedding/sdk/api/");
 
-/**
- * Sets up the "Back to documentation" link in the generated docs.
- * When a user comes from non-api page, we store the referrer and show the `back` link that n redirects to that referrer.
- * When user comes to the API page directly, we remove the `back` link.
- */
-const setupReturnUrlLink = () => {
+const storeReturnUrl = () => {
   const ref = document.referrer;
 
   const isRefFromNonApiPage = ref && !isEmbeddingSdkApiDocsPage(ref);
@@ -20,28 +12,13 @@ const setupReturnUrlLink = () => {
   if (isRefFromNonApiPage) {
     sessionStorage.setItem(GENERATED_DOC_RETURN_URL_LOCAL_STORAGE_KEY, ref);
   }
-
-  const backLink = Array.from(
-    document.querySelectorAll("#tsd-toolbar-links > a"),
-  ).find((a) =>
-    // Sadly the links don't have any unique identifiers, so we have to rely on the text
-    a.textContent.trim().includes(GENERATED_DOC_RETURN_URL_LINK_TEXT),
-  );
-
-  const returnUrl = sessionStorage.getItem(
-    GENERATED_DOC_RETURN_URL_LOCAL_STORAGE_KEY,
-  );
-
-  if (backLink && !returnUrl) {
-    backLink.remove();
-  }
 };
 
 /**
  * Called from `navigationLinks` field of `typedoc.config.mjs
- * Navigate sto the stored by the `setupReturnUrlLink` link
  */
-const navigateBack = () => {
+// eslint-disable-next-line no-unused-vars
+const navigateBack = ({ fallbackUrl }) => {
   const returnUrl = sessionStorage.getItem(
     GENERATED_DOC_RETURN_URL_LOCAL_STORAGE_KEY,
   );
@@ -50,16 +27,10 @@ const navigateBack = () => {
     sessionStorage.removeItem(GENERATED_DOC_RETURN_URL_LOCAL_STORAGE_KEY);
 
     location.href = returnUrl;
+  } else {
+    location.href = fallbackUrl;
   }
 };
-
-/**
- * Disclaimer:
- * Right now it's unclear how to generate the `internal` module but completely exclude it from all navigation/etc using
- * default typedoc config.
- *
- * So this file is a manual workaround to hide the `internal` module from the navigation and the main page.
- */
 
 /**
  * Redirects from the "internal" module index page to the main index page
@@ -69,7 +40,8 @@ const setupRedirectsFromInternalModule = () => {
   const indexPage = href.replace(/(.*\/html)\/.*/, "$1/index.html");
 
   const isInternalModule =
-    href.endsWith("internal.html") || href.endsWith("internal");
+    href.endsWith(`${INTERNAL_MODULE_NAME}.html`) ||
+    href.endsWith(INTERNAL_MODULE_NAME);
 
   if (isInternalModule) {
     location.replace(indexPage);
@@ -132,28 +104,26 @@ const setupWordBreaks = () => {
 };
 
 /**
- * Removes a content section with the given name
+ * Removes the "internal" kind item from the main content menu of a main page
  */
-const removeContentSection = (sectionName) => {
-  const summarySelector = `.tsd-accordion-summary[data-key="section-${sectionName}"]`;
-  const elementsToHide = document.querySelectorAll(
-    `
-      .tsd-panel-group.tsd-member-group.tsd-accordion:has(${summarySelector}),
-      .tsd-page-navigation-section:has(${summarySelector})
-    `,
+const removeContentMenuInternalItem = () => {
+  const internalItem = document.querySelector(
+    `.col-content dt#${INTERNAL_MODULE_NAME}`,
   );
 
-  elementsToHide.forEach((element) => {
-    element.remove();
-  });
+  if (!internalItem) {
+    return;
+  }
+
+  internalItem.remove();
 };
 
 /**
- * Removes the `internal` menu item from the left navigation menu
+ * Removes the `internal` menu item from the site (left) menu
  */
-const removeRightNavigationMenuInternalItems = () => {
+const removeSiteMenuInternalItems = () => {
   const internalModuleItem = document.querySelector(
-    '.tsd-navigation .tsd-accordion ul > li:has(summary[data-key="other$internal"])',
+    `.site-menu .tsd-accordion li:has(summary[data-key="other$${INTERNAL_MODULE_NAME}"])`,
   );
 
   if (!internalModuleItem) {
@@ -164,26 +134,24 @@ const removeRightNavigationMenuInternalItems = () => {
 };
 
 /**
- * Removes the "internal" item from the `other` category of the content menu
+ * Removes the `internal` menu item from the page (right) menu
  */
-const removeContentMenuInternalItems = () => {
-  const internalCategoryItem = document.querySelector(
-    ".tsd-member-summaries > #internal",
+const removePageMenuInternalItems = () => {
+  const internalModuleItem = document.querySelector(
+    `.page-menu .tsd-accordion a[href="#${INTERNAL_MODULE_NAME}"]`,
   );
 
-  if (!internalCategoryItem) {
+  if (!internalModuleItem) {
     return;
   }
 
-  internalCategoryItem.remove();
+  internalModuleItem.remove();
 };
 
 const removePageElements = () => {
-  const CONTENT_SECTIONS_TO_REMOVE = ["Modules"];
-
-  CONTENT_SECTIONS_TO_REMOVE.forEach(removeContentSection);
-  removeRightNavigationMenuInternalItems();
-  removeContentMenuInternalItems();
+  removeContentMenuInternalItem();
+  removeSiteMenuInternalItems();
+  removePageMenuInternalItems();
 };
 
 const observer = new MutationObserver(removePageElements);
@@ -194,7 +162,7 @@ observer.observe(document.body, {
 });
 
 const init = () => {
-  setupReturnUrlLink();
+  storeReturnUrl();
   setupRedirectsFromInternalModule();
   setupWordBreaks();
 };
