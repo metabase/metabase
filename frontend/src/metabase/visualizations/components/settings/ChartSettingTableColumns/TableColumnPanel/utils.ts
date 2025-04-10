@@ -1,3 +1,4 @@
+import type { TCFunc } from "metabase/i18n/components/ContentTranslationContext";
 import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
