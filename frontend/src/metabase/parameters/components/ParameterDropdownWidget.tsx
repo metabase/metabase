@@ -15,10 +15,7 @@ import type {
   FieldFilterUiParameter,
   UiParameter,
 } from "metabase-lib/v1/parameters/types";
-import {
-  getNumberParameterArity,
-  getStringParameterArity,
-} from "metabase-lib/v1/parameters/utils/operators";
+import { getNumberParameterArity } from "metabase-lib/v1/parameters/utils/operators";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
@@ -26,6 +23,7 @@ import {
   isNumberParameter,
   isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
+import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { ParameterFieldWidget } from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import { TemporalUnitWidget } from "./widgets/TemporalUnitWidget";
@@ -150,14 +148,14 @@ export const ParameterDropdownWidget = ({
 
   return (
     <StringInputWidget
+      className={className}
+      parameter={parameter}
       value={normalizedValue}
       setValue={setValueOrDefault}
-      className={className}
-      autoFocus
-      placeholder={isEditing ? t`Enter a default value…` : undefined}
-      arity={getStringParameterArity(parameter)}
       label={getParameterWidgetTitle(parameter)}
-      parameter={parameter}
+      placeholder={isEditing ? t`Enter a default value…` : undefined}
+      autoFocus
+      isMultiSelect={getIsMultiSelect(parameter)}
     />
   );
 };
