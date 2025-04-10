@@ -724,7 +724,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.filterWidget().click();
 
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("Antwan Fisher");
+        H.fieldValuesSearchInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 
@@ -755,7 +755,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.filterWidget().click();
 
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("Antwan Fisher");
+        H.fieldValuesSearchInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 

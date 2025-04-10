@@ -509,7 +509,7 @@ const getParameterMapping = ({ card_id }) => ({
 function setSearchFilter(label) {
   H.filterWidget().click();
   H.popover().within(() => {
-    H.fieldValuesInput().type(label);
+    H.fieldValuesSearchInput().type(label);
   });
 
   // eslint-disable-next-line no-unsafe-element-filtering

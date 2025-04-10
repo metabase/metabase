@@ -669,7 +669,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.filterWidget().contains("Hello").click();
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("{backspace}World{enter}{esc}");
+        H.fieldValuesSearchInput().type("{backspace}World{enter}{esc}");
         cy.button("Update filter").click();
       });
 
@@ -751,7 +751,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .click();
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("John Doe{enter}{esc}");
+        H.fieldValuesSearchInput().type("John Doe{enter}{esc}");
         cy.button("Add filter").click();
       });
 
@@ -760,7 +760,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .click();
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("{backspace}World{enter}{esc}");
+        H.fieldValuesSearchInput().type("{backspace}World{enter}{esc}");
         cy.button("Update filter").click();
       });
 

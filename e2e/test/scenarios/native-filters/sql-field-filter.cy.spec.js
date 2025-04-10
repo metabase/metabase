@@ -78,7 +78,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.toggleRequired();
       H.filterWidget().click();
       H.popover().within(() => {
-        H.fieldValuesInput().type("10,");
+        H.fieldValuesSearchInput().type("10,");
         cy.findByText("Update filter").click();
       });
       H.filterWidget().icon("revert").click();

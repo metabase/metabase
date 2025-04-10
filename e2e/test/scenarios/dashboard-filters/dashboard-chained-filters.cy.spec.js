@@ -80,7 +80,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.dashboardParametersPopover().within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput().type("An");
+          H.fieldValuesSearchInput().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -99,7 +99,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput()
+          H.fieldValuesSearchInput()
             .type("{backspace}{backspace}")
             // close the suggestion list
             .blur();
@@ -125,7 +125,7 @@ describe("scenarios > dashboard > chained filter", () => {
       H.filterWidget().contains("Location 1").click();
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput().type("An");
+          H.fieldValuesSearchInput().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -140,7 +140,7 @@ describe("scenarios > dashboard > chained filter", () => {
       if (has_field_values === "search") {
         cy.findByTestId("parameter-value-dropdown").within(() => {
           // close the suggestion list
-          H.fieldValuesInput().blur();
+          H.fieldValuesSearchInput().blur();
         });
       }
 
@@ -157,7 +157,7 @@ describe("scenarios > dashboard > chained filter", () => {
       H.filterWidget().contains("Location 1").click();
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput().type("An");
+          H.fieldValuesSearchInput().type("An");
         }
         if (has_field_values === "list") {
           cy.findByRole("combobox").type("An");
