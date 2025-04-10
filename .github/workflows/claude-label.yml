@@ -1,0 +1,47 @@
+name: Handle Claude Label
+
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [labeled]
+
+jobs:
+  claude:
+    # This job only runs if a label starting with "claude:" was added
+    if: startsWith(github.event.label.name, 'claude:')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract values
+        id: extract
+        run: |
+          # Extract script part from label
+          LABEL="${{ github.event.label.name }}"
+          SCRIPT="${LABEL#claude:}"
+          echo "Script part: $SCRIPT"
+          echo "script=$SCRIPT" >> $GITHUB_OUTPUT
+
+          # Extract URL based on whether it's an issue or PR
+          if [[ "${{ github.event_name }}" == "issues" ]]; then
+            URL="${{ github.event.issue.html_url }}"
+          else
+            URL="${{ github.event.pull_request.html_url }}"
+          fi
+          echo "URL: $URL"
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Run Claude Code
+        # run: ./bin/claude-print what is the current directory
+        # run: ./bin/claude-print /project:${{ steps.extract.outputs.script }} ${{ steps.extract.outputs.url }}
+        run: ./bin/claude-print /project:${{ steps.extract.outputs.script }} https://github.com/metabase/metabase/issues/56587
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

@@ -133,3 +133,4 @@ modules/drivers/*/.lsp/*
 .aider*
 /config.yml
 CLAUDE.local.md
+claude-print-output.json
