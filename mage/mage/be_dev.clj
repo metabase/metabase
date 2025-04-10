@@ -4,6 +4,8 @@
    #_:clj-kondo/ignore
    [clojure.pprint :as pp]
    [clojure.string :as str]
+   [clojure.tools.reader :as reader]
+   [clojure.tools.reader.reader-types :as rt]
    [mage.color :as c]
    [mage.util :as u]))
 
