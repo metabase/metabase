@@ -397,7 +397,7 @@ export function EntityPickerModal<
       <Modal.Content
         className={S.modalContent}
         aria-labelledby={titleId}
-        miw={modalContentMinWidth}
+        miw={`min(${modalContentMinWidth}px, 80vw)`}
         w="fit-content"
         maw="80vw"
         ref={modalContentCallbackRef}
