@@ -19,8 +19,11 @@
 - **Type Check:** `yarn type-check`
 
 ### Clojure
-- **Lint:** `./bin/mage kondo [path]`
-  - Always use the linter as a way to know that you are adhering to conventions in place in the codebase
+- **Lint PR:** `./bin/mage kondo-updated master` (or whatever target branch)
+  - Call this one time, record the results, then work through the problems one by one.
+  - If the solution is obvious, then please apply the fix. Otherwise skip it.
+- **Lint File:** `./bin/mage kondo <file or files>` (or whatever target branch)
+  - Use the linter as a way to know that you are adhering to conventions in place in the codebase
 - **Format:** `./bin/mage cljfmt-files [path]`
 - **Test file:** `clojure -X:dev:test :only namespace/test-name`
 - **Eval Clojure Code** `./bin/mage -eval '<code>'`
