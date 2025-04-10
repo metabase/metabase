@@ -90,10 +90,10 @@ export function NumberInputWidget({
       {arity === "n" ? (
         <TokenFieldWrapper>
           <MultiAutocomplete
-            values={filteredUnsavedArrayValue.map((value) => value?.toString())}
+            value={filteredUnsavedArrayValue.map((value) => value?.toString())}
+            data={options}
             placeholder={placeholder}
             autoFocus={autoFocus}
-            options={options}
             onCreate={handleCreate}
             onChange={handleChange}
           />

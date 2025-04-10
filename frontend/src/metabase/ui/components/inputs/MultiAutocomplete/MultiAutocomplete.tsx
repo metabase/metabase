@@ -1,7 +1,7 @@
 import {
   type BoxProps,
   Combobox,
-  type ComboboxItem,
+  type ComboboxLikeProps,
   OptionsDropdown,
   Pill,
   PillsInput,
@@ -17,30 +17,40 @@ import { Icon } from "../../icons";
 import S from "./MultiAutocomplete.module.css";
 import { useMultiAutocomplete } from "./use-multi-autocomplete";
 
-export type MultiAutocompleteProps = BoxProps & {
-  values: string[];
-  options: ComboboxItem[];
-  placeholder?: string;
-  autoFocus?: boolean;
-  rightSection?: ReactNode;
-  nothingFoundMessage?: ReactNode;
-  "aria-label"?: string;
-  onCreate?: (rawValue: string) => string | null;
-  onChange: (newValues: string[]) => void;
-  onSearchChange?: (newValue: string) => void;
-};
+export type MultiAutocompleteProps = BoxProps &
+  ComboboxLikeProps & {
+    value: string[];
+    placeholder?: string;
+    autoFocus?: boolean;
+    rightSection?: ReactNode;
+    nothingFoundMessage?: ReactNode;
+    "aria-label"?: string;
+    onCreate?: (rawValue: string) => string | null;
+    onChange: (newValues: string[]) => void;
+    onSearchChange?: (newValue: string) => void;
+  };
 
 export function MultiAutocomplete({
-  values,
-  options,
+  value,
+  data = [],
+  filter,
+  limit,
   placeholder,
   autoFocus,
   rightSection,
   nothingFoundMessage,
+  maxDropdownHeight,
+  dropdownOpened,
+  defaultDropdownOpened,
+  selectFirstOptionOnChange,
+  withScrollArea,
   "aria-label": ariaLabel,
   onCreate,
   onChange,
   onSearchChange,
+  onDropdownOpen,
+  onDropdownClose,
+  onOptionSubmit,
   ...otherProps
 }: MultiAutocompleteProps) {
   const {
@@ -61,8 +71,8 @@ export function MultiAutocomplete({
     handlePillsInputClick,
     handleOptionSubmit,
   } = useMultiAutocomplete({
-    values,
-    options,
+    values: value,
+    data,
     onCreate,
     onChange,
     onSearchChange,
@@ -131,21 +141,22 @@ export function MultiAutocomplete({
           </PillsInput>
         </Combobox.DropdownTarget>
         <OptionsDropdown
+          value={value}
           data={filteredOptions}
           search={searchValue}
+          filter={filter}
+          limit={limit}
+          maxDropdownHeight={maxDropdownHeight}
           nothingFoundMessage={nothingFoundMessage}
           hiddenWhenEmpty={!nothingFoundMessage}
-          filter={undefined}
-          limit={undefined}
-          maxDropdownHeight={undefined}
           unstyled={false}
           labelId={undefined}
-          withScrollArea={undefined}
+          withScrollArea={withScrollArea}
           scrollAreaProps={undefined}
           aria-label={undefined}
         />
       </Combobox>
-      <Combobox.HiddenInput value={values} />
+      <Combobox.HiddenInput value={value} />
     </>
   );
 }

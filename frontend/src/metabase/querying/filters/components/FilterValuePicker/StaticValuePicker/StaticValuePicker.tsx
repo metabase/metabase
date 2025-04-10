@@ -19,8 +19,7 @@ export function StaticValuePicker({
 }: StaticValuePickerProps) {
   return (
     <MultiAutocomplete
-      values={selectedValues}
-      options={[]}
+      value={selectedValues}
       placeholder={placeholder}
       autoFocus={autoFocus}
       aria-label={t`Filter value`}

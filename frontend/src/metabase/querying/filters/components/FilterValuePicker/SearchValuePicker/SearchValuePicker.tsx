@@ -88,8 +88,8 @@ export function SearchValuePicker({
 
   return (
     <MultiAutocomplete
-      values={selectedValues}
-      options={visibleOptions}
+      value={selectedValues}
+      data={visibleOptions}
       placeholder={t`Search by ${columnDisplayName}`}
       autoFocus={autoFocus}
       rightSection={isSearching ? <Loader size="xs" /> : undefined}
