@@ -2,15 +2,13 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Button, Flex, Modal, Text } from "metabase/ui";
+import { Button, Flex, Modal, type ModalProps, Text } from "metabase/ui";
 
-interface ConfirmModal {
-  opened: boolean | undefined;
+interface ConfirmModal extends ModalProps {
   "data-testid"?: string;
   title: string | ReactNode;
   content?: string;
   message?: string | ReactNode;
-  onClose?: () => void;
   onConfirm?: () => void;
   confirmButtonText?: string;
   confirmButtonPrimary?: boolean;
@@ -18,12 +16,11 @@ interface ConfirmModal {
 }
 
 export const ConfirmModal = ({
-  opened,
   "data-testid": dataTestId,
   title,
   content,
   message = t`Are you sure you want to do this?`,
-  onClose = _.noop,
+  onClose,
   onConfirm = _.noop,
   confirmButtonText = t`Yes`,
   confirmButtonPrimary = false,
@@ -32,7 +29,6 @@ export const ConfirmModal = ({
 }: ConfirmModal) => (
   <Modal
     data-testid={dataTestId}
-    opened={Boolean(opened)}
     title={title}
     onClose={onClose}
     size="lg"

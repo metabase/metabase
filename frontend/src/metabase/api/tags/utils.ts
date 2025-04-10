@@ -284,6 +284,9 @@ export function provideDatabaseTags(
 ): TagDescription<TagType>[] {
   return [
     idTag("database", database.id),
+    ...(database.router_database_id
+      ? [idTag("database", database.router_database_id)]
+      : []),
     ...(database.tables ? provideTableListTags(database.tables) : []),
   ];
 }

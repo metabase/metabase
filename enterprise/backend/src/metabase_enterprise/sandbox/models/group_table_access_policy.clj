@@ -44,7 +44,7 @@
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
   [table-id]
-  (into {} (for [col (request/with-current-user nil
+  (into {} (for [col (request/as-admin
                        ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
                         {:database (database/table-id->database-id table-id)
                          :type     :query

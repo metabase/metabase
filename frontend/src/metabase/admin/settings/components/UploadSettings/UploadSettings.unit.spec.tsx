@@ -4,8 +4,6 @@ import { setupSchemaEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import type { UploadsSettings } from "metabase-types/api/settings";
@@ -72,7 +70,6 @@ function setup({
       "is-hosted?": isHosted,
     }),
   });
-  const metadata = getMetadata(state);
 
   databases.forEach((db) => {
     setupSchemaEndpoints(db);
@@ -85,7 +82,7 @@ function setup({
 
   renderWithProviders(
     <UploadSettingsFormView
-      databases={databases.map(({ id }) => checkNotNull(metadata.database(id)))}
+      databases={databases}
       uploadsSettings={uploadsSettings}
       updateSettings={updateSpy}
       saveStatusRef={{

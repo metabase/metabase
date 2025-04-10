@@ -76,6 +76,7 @@ const MetadataHeader = ({
             databases={databases}
             selectedDatabaseId={selectedDatabaseId}
             setDatabaseFn={onSelectDatabase}
+            data-testid="metdata-editor-database-select"
           />
         </Text>
       </Flex>

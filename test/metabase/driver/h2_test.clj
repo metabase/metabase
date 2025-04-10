@@ -271,10 +271,10 @@
 (deftest ^:parallel check-read-only-test
   (testing "read only statements should pass"
     (are [query] (nil?
-                  (#'h2/check-read-only-statements
-                   {:database (u/the-id (mt/db))
-                    :engine :h2
-                    :native {:query query}}))
+                  (mt/with-metadata-provider (mt/id)
+                    (#'h2/check-read-only-statements
+                     {:engine :h2
+                      :native {:query query}})))
       "select * from orders"
       "select 1; select 2;"
       "explain select * from orders"
@@ -290,11 +290,11 @@
     (are [query] (thrown?
                   clojure.lang.ExceptionInfo
                   #"Only SELECT statements are allowed in a native query."
-                  (#'h2/check-read-only-statements
-                   {:database (u/the-id (mt/db))
-                    :engine :h2
-                    :native {:query query}}))
-      "update venues set name = 'bill'"
+                  (mt/with-metadata-provider (mt/id)
+                    (#'h2/check-read-only-statements
+                     {:engine :h2
+                      :native {:query query}}))
+                  "update venues set name = 'bill'")
       "insert into venues (name) values ('bill')"
       "delete venues"
       "select 1; update venues set name = 'bill'; delete venues;"
