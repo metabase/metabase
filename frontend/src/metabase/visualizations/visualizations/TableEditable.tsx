@@ -23,7 +23,7 @@ interface EditableTableState {
   question: Question | null;
 }
 
-const EditTableDataWithUpdate = PLUGIN_DATA_EDITING.CARD_TABLE_COMPONENT;
+const EditTableDashcardVisualization = PLUGIN_DATA_EDITING.CARD_TABLE_COMPONENT;
 
 export class TableEditable extends Component<
   VisualizationProps,
@@ -130,8 +130,26 @@ export class TableEditable extends Component<
       dashcard.visualization_settings,
     );
 
+    // This is a potential bottleneck, however there's no straightforward optimization inside a class component
+    // However based on props and state configuration it shouldn't be a problem for now
+    const hasVisibleColumns =
+      !visualizationSettings?.["table.columns"] ||
+      visualizationSettings?.["table.columns"].some((column) => column.enabled);
+
+    if (!hasVisibleColumns) {
+      return (
+        <Flex align="center" justify="center" h="100%">
+          <Title p="md" order={2}>
+            {t`No results!`}
+          </Title>
+        </Flex>
+      );
+    }
+
     return (
-      <EditTableDataWithUpdate
+      <EditTableDashcardVisualization
+        dashcardId={dashcard.id}
+        cardId={card.id}
         className={className}
         data={data}
         tableId={card.table_id}

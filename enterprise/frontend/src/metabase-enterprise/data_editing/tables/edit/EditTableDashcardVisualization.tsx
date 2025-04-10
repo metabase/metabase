@@ -13,8 +13,11 @@ import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useTableCRUD } from "./use-table-crud";
 import { useTableSorting } from "./use-table-sorting";
+import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-dashcard-update-strategy";
 
-type EditTableDataWithUpdateProps = {
+type EditTableDashcardVisualizationProps = {
+  dashcardId: number;
+  cardId: number;
   tableId: ConcreteTableId;
   data: DatasetData;
   className?: string;
@@ -23,14 +26,20 @@ type EditTableDataWithUpdateProps = {
   question: Question;
 };
 
-export const EditTableDataWithUpdate = ({
+export const EditTableDashcardVisualization = ({
+  dashcardId,
+  cardId,
   tableId,
   data,
   className,
-  refetchTableDataQuery,
   visualizationSettings,
   question,
-}: EditTableDataWithUpdateProps) => {
+}: EditTableDashcardVisualizationProps) => {
+  const stateUpdateStrategy = useTableEditingStateDashcardUpdateStrategy(
+    dashcardId,
+    cardId,
+  );
+
   const {
     isCreateRowModalOpen,
     expandedRowIndex,
@@ -42,7 +51,7 @@ export const EditTableDataWithUpdate = ({
     handleCellValueUpdate,
     handleExpandedRowDelete,
     handleModalOpenAndExpandedRow,
-  } = useTableCRUD({ tableId, datasetData: data, refetchTableDataQuery });
+  } = useTableCRUD({ tableId, datasetData: data, stateUpdateStrategy });
 
   const columnsConfig = useEditableTableColumnConfigFromVisualizationSettings(
     visualizationSettings,

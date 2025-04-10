@@ -179,7 +179,7 @@ export function ConfigureEditableTableColumns({
                 onSort={handleUpdateColumnSorting}
               />
               <ChartSettingActionIcon
-                icon={item.editable ? "pencil" : "line_style_solid"}
+                icon={item.editable ? "pencil" : "edit_disabled"}
                 onClick={() => handleUpdateEditable(item.name, !item.editable)}
               />
             </>
