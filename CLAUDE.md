@@ -23,6 +23,8 @@
   - Always use the linter as a way to know that you are adhering to conventions in place in the codebase
 - **Format:** `./bin/mage cljfmt-files [path]`
 - **Test file:** `clojure -X:dev:test :only namespace/test-name`
+- **Eval Clojure Code** `./bin/mage -eval '<code>'`
+  - See `Sending code to the repl` for more details
 
 ### ClojureScript
 - **Test:** `yarn test-cljs`
@@ -51,7 +53,7 @@
 
 ### How to evaluate code
 
-#### The bottom-up dev loop looks something like this:
+#### Bottom-up dev loop:
 1. Write code into a file
 2. Evaluate the file's namespace and make sure it loads correctly
 3. Call functions in the namespace with test inputs, and observe that the outputs are correct
@@ -62,6 +64,43 @@
 - Send code to the metabase process repl using: `./bin/mage -eval '(+ 1 1)'` where `(+ 1 1)` is your Clojure code.
   - This will evaluate it in the user namespace.
   - If that fails, tell the user to start a metabase clojure repl.
-- To evaluate code in a namespace (here `metabase.api.table/fix-schema`):
-  - `./bin/mage -eval '(require (quote [metabase.api.table])) (in-ns (quote metabase.api.table)) (fix-schema {:schema 123})'`
-  - note: `./bin/mage -eval` wraps your code in a `do`, so you can write multiple expressions and they'll "just work".
+
+##### Working with files and namespaces:
+
+The simplest and most reliable way to work with your code is:
+
+1. **Load a file and call functions with fully qualified names**:
+   ```
+   ./bin/mage -eval '(load-file "path/to/your/file.clj") (your.namespace/your-function arg1 arg2)'
+   ```
+   
+   Example:
+   ```
+   ./bin/mage -eval '(load-file "dev/src/dev/nocommit/eight_queens.clj") (dev.nocommit.eight-queens/solve-n-queens 4)'
+   ```
+
+##### Understanding the response:
+
+The `./bin/mage -eval` command returns three separate, independent outputs:
+- `value`: The return value of the last expression (best for data structures)
+- `stdout`: Any printed output from `println` etc. (best for messages)
+- `stderr`: Any error messages (best for warnings and errors)
+
+Example call:
+``` bash
+./bin/mage -eval '(println "Hello, world!") '\''({0 1, 1 3, 2 0, 3 2} {0 2, 1 0, 2 3, 3 1})'
+```
+
+Example response:
+```
+ns: user
+session: 32a35206-871c-4553-9bc9-f49491173d1c
+value:  ({0 1, 1 3, 2 0, 3 2} {0 2, 1 0, 2 3, 3 1})
+stdout:  Hello, world!
+stderr:
+```
+
+For effective REPL usage:
+- Return data structures as function return values
+- Use `println` for human-readable messages
+- Let errors propagate naturally to stderr
