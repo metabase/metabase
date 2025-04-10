@@ -7,6 +7,7 @@ import {
   PillsInput,
   Text,
   Tooltip,
+  type __InputWrapperProps,
   extractStyleProps,
 } from "@mantine/core";
 import type { ReactNode } from "react";
@@ -18,6 +19,7 @@ import S from "./MultiAutocomplete.module.css";
 import { useMultiAutocomplete } from "./use-multi-autocomplete";
 
 export type MultiAutocompleteProps = BoxProps &
+  __InputWrapperProps &
   ComboboxLikeProps & {
     value: string[];
     placeholder?: string;
@@ -35,6 +37,16 @@ export function MultiAutocomplete({
   data = [],
   filter,
   limit,
+  label,
+  description,
+  error,
+  required,
+  withAsterisk,
+  labelProps,
+  descriptionProps,
+  errorProps,
+  inputContainer,
+  inputWrapperOrder,
   placeholder,
   autoFocus,
   rightSection,
@@ -44,6 +56,7 @@ export function MultiAutocomplete({
   defaultDropdownOpened,
   selectFirstOptionOnChange,
   withScrollArea,
+  comboboxProps,
   "aria-label": ariaLabel,
   onCreate,
   onChange,
@@ -99,11 +112,22 @@ export function MultiAutocomplete({
         withinPortal={false}
         floatingStrategy="fixed"
         onOptionSubmit={handleOptionSubmit}
+        {...comboboxProps}
       >
         <Combobox.DropdownTarget>
           <PillsInput
             {...styleProps}
+            label={label}
+            description={description}
+            error={error}
+            required={required}
             rightSection={rightSection ?? infoIcon}
+            withAsterisk={withAsterisk}
+            labelProps={labelProps}
+            descriptionProps={descriptionProps}
+            errorProps={errorProps}
+            inputContainer={inputContainer}
+            inputWrapperOrder={inputWrapperOrder}
             onClick={handlePillsInputClick}
           >
             <Pill.Group role="list" onClick={handlePillGroupClick}>
