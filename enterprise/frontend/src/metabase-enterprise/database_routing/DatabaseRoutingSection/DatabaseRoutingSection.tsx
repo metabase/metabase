@@ -93,7 +93,8 @@ export const DatabaseRoutingSection = ({
   return (
     <DatabaseInfoSection
       name={t`Database routing`}
-      description={t`Run queries against a separate database with the same schema based on a user attribute.`}
+      // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+      description={t`When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema.`}
       data-testid="database-routing-section"
     >
       <Flex justify="space-between" align="center">
@@ -131,19 +132,25 @@ export const DatabaseRoutingSection = ({
           <Box mb="xl">
             <Flex justify="space-between" align="center">
               <Text>
-                {t`User attribute to use for connection slug`}{" "}
+                {t`User attribute to match destination database`}{" "}
                 <Text component="span" c="error">
                   *
                 </Text>
               </Text>
-              <Select
-                data-testid="db-routing-user-attribute"
-                placeholder={t`Choose an attribute`}
-                data={userAttributeOptions}
-                disabled={!isAdmin || !!disabledFeatMsg}
-                value={userAttribute}
-                onChange={handleUserAttributeChange}
-              />
+              <Tooltip
+                label={t`This attribute determines which destination database the person can query. The value must match the slug of the destination database.`}
+                maw="20rem"
+                withArrow
+              >
+                <Select
+                  data-testid="db-routing-user-attribute"
+                  placeholder={t`Choose an attribute`}
+                  data={userAttributeOptions}
+                  disabled={!isAdmin || !!disabledFeatMsg}
+                  value={userAttribute}
+                  onChange={handleUserAttributeChange}
+                />
+              </Tooltip>
             </Flex>
             {errMsg && <Error>{errMsg}</Error>}
           </Box>
