@@ -8,7 +8,7 @@ import * as Lib from "metabase-lib";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MIN_WIDTH } from "../constants";
+import { WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function BooleanFilterPicker({
@@ -63,7 +63,7 @@ export function BooleanFilterPicker({
   return (
     <Box
       component="form"
-      miw={MIN_WIDTH}
+      miw={WIDTH}
       data-testid="boolean-filter-picker"
       onSubmit={handleFormSubmit}
     >

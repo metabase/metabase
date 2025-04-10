@@ -15,7 +15,7 @@ import { NumberFilterInput } from "../../NumberFilterInput";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { WIDTH } from "../constants";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
@@ -154,6 +154,7 @@ function CoordinateValueInput({
           column={column}
           values={values.filter(isNotNull)}
           autoFocus
+          comboboxProps={COMBOBOX_PROPS}
           onChange={onChange}
         />
       </Box>
