@@ -318,7 +318,7 @@ describe("scenarios > dashboard > title drill", () => {
         // update the parameter filter to a new value
         H.filterWidget().contains("Doohickey").click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().type("{backspace}Gadget,");
+          H.fieldValuesInput().type("{backspace}Gadget,{esc}");
           cy.findByText("Update filter").click();
         });
 
