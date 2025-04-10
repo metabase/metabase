@@ -14,9 +14,18 @@ import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, type IconName, type IconProps, Title } from "metabase/ui";
+import {
+  ActionIcon,
+  Flex,
+  Icon,
+  type IconName,
+  type IconProps,
+  Title,
+  Tooltip,
+} from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -218,6 +227,24 @@ export function DashCardVisualization({
 
     if (!shouldShowDashCardMenu) {
       return null;
+    }
+
+    // Only show the download button if the dashboard is public or embedded.
+    if (isPublicOrEmbedded) {
+      return (
+        <Tooltip label={t`Download results`}>
+          <ActionIcon
+            c="text-dark"
+            onClick={() => {}}
+            className={cx({
+              [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
+              [cx(CS.hoverChild, CS.hoverChildSmooth)]: true,
+            })}
+          >
+            <Icon name="download" />
+          </ActionIcon>
+        </Tooltip>
+      );
     }
 
     return (

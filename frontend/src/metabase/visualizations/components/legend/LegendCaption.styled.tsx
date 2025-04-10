@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
 import { lighten } from "metabase/lib/colors";
-import { Icon, type IconProps } from "metabase/ui";
+import { Box, Icon, type IconProps } from "metabase/ui";
 
 import { LegendLabel as BaseLegendLabel } from "./LegendLabel";
 
@@ -23,9 +23,13 @@ export const LegendLabelIcon = styled(Icon)`
 `;
 
 export const LegendDescriptionIcon = styled(
-  forwardRef<SVGSVGElement, IconProps>(
+  forwardRef<HTMLDivElement, IconProps>(
     function LegendDescriptionIcon(props, ref) {
-      return <Icon {...props} name={props.name ?? "info"} ref={ref} />;
+      return (
+        <Box component="span" ref={ref}>
+          <Icon {...props} name={props.name ?? "info"} />
+        </Box>
+      );
     },
   ),
 )`
