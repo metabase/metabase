@@ -147,14 +147,14 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
       signInAs(DB_ROUTER_USERS.userWrongAttribute);
       H.visitQuestion(questionId);
       cy.findByTestId("query-visualization-root").findByText(
-        "No Mirror Database found for user attribute",
+        "Database Routing error: No Destination Database with slug `wrong_destination` found.",
       );
 
       cy.log("User with no attribute");
       signInAs(DB_ROUTER_USERS.userNoAttribute);
       H.visitQuestion(questionId);
       cy.findByTestId("query-visualization-root").findByText(
-        "User attribute missing, cannot lookup Mirror Database",
+        "Required user attribute is missing. Cannot route to a Destination Database.",
       );
     });
 
@@ -201,14 +201,14 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
       signInAs(DB_ROUTER_USERS.userWrongAttribute);
       H.visitQuestion(questionId);
       cy.findByTestId("query-visualization-root").findByText(
-        "No Mirror Database found for user attribute",
+        "Database Routing error: No Destination Database with slug `wrong_destination` found.",
       );
 
       cy.log("User with no attribute");
       signInAs(DB_ROUTER_USERS.userNoAttribute);
       H.visitQuestion(questionId);
       cy.findByTestId("query-visualization-root").findByText(
-        "User attribute missing, cannot lookup Mirror Database",
+        "Required user attribute is missing. Cannot route to a Destination Database.",
       );
     });
   });
