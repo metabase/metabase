@@ -138,7 +138,8 @@
 
 (defmethod expression-parts-method :field
   [query stage-number field-ref]
-  (column-metadata-from-ref query stage-number field-ref))
+  (let [stripped-ref (lib.options/update-options field-ref #(dissoc % :lib/expression-name))]
+    (column-metadata-from-ref query stage-number stripped-ref)))
 
 (defmethod expression-parts-method :segment
   [query _stage-number segment-ref]
