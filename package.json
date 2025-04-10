@@ -424,7 +424,7 @@
     "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk/",
     "embedding-sdk:tsc": "tsc --project tsconfig.sdk.json",
     "embedding-sdk:docs:generate:pure": "typedoc --options ./.typedoc/typedoc.config.mjs",
-    "embedding-sdk:docs:generate": "yarn run build && yarn run build-embedding-sdk && yarn run embedding-sdk:docs:generate:pure",
+    "embedding-sdk:docs:generate": "yarn run build-embedding-sdk && yarn run embedding-sdk:docs:generate:pure",
     "embedding-sdk:cli-snippets:type-check": "./bin/embedding-sdk/type-check-embedding-sdk-cli-snippets.sh",
     "embedding-sdk:docs-snippets:type-check": "./bin/embedding-sdk/type-check-embedding-sdk-docs-snippets.sh",
     "embedding-sdk:clean": "rm -rf resources/embedding-sdk/dist && rm -rf resources/embedding-sdk/.tsbuildinfo",
