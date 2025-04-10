@@ -1,77 +1,56 @@
 import type { LocationDescriptor } from "history";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
-import { useMount } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import title from "metabase/hoc/Title";
-import { connect } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { Modal } from "metabase/ui";
-import Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseData, DatabaseId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type {
+  DatabaseData,
+  DatabaseEditErrorType,
+  DatabaseId,
+} from "metabase-types/api";
 
-import {
-  DatabaseEditConnectionForm,
-  type DatabaseEditErrorType,
-} from "../components/DatabaseEditConnectionForm";
-import { initializeDatabase, reset } from "../database";
-import { getEditingDatabase, getInitializeError } from "../selectors";
+import { DatabaseEditConnectionForm } from "../components/DatabaseEditConnectionForm";
 
 import S from "./DatabaseConnectionModal.module.css";
 
-const mapStateToProps = (state: State) => {
-  const database = getEditingDatabase(state);
-
-  return {
-    database: database ? new Database(database) : undefined,
-    initializeError: getInitializeError(state),
-    isAdmin: getUserIsAdmin(state),
-  };
-};
-
-const mapDispatchToProps = {
-  reset,
-  initializeDatabase,
-  onChangeLocation: push,
-};
-
 export const DatabaseConnectionModalInner = ({
-  database,
-  initializeError,
-  onChangeLocation,
   route,
   params,
-  reset,
-  initializeDatabase,
 }: {
-  database?: Database;
   initializeError?: DatabaseEditErrorType;
-  onChangeLocation: (location: LocationDescriptor) => void;
   route: Route;
-  params: { databaseId?: DatabaseId };
-  reset: () => void;
-  initializeDatabase: (databaseId: DatabaseId | undefined) => Promise<void>;
+  location: LocationDescriptor;
+  params: { databaseId: string };
 }) => {
+  const dispatch = useDispatch();
+
   const addingNewDatabase = params.databaseId === undefined;
-  useMount(async () => {
-    if (!database || database.id !== params.databaseId) {
-      reset();
-      await initializeDatabase(params.databaseId);
-    }
-  });
+
+  const databaseReq = useGetDatabaseQuery(
+    addingNewDatabase ? skipToken : { id: parseInt(params.databaseId, 10) },
+  );
+  const database = databaseReq.currentData ?? {
+    id: undefined,
+    is_attached_dwh: false,
+    router_user_attribute: undefined,
+  };
 
   const handleCloseModal = () => {
-    return database?.id
-      ? onChangeLocation(`/admin/databases/${database?.id}`)
-      : onChangeLocation(`/admin/databases`);
+    dispatch(
+      database?.id
+        ? push(`/admin/databases/${database.id}`)
+        : push(`/admin/databases`),
+    );
   };
 
   const handleOnSubmit = (savedDB: { id: DatabaseId }) => {
     if (addingNewDatabase) {
-      onChangeLocation(`/admin/databases/${savedDB?.id}?created=true`);
+      dispatch(push(`/admin/databases/${savedDB.id}?created=true`));
     } else {
       handleCloseModal();
     }
@@ -91,18 +70,23 @@ export const DatabaseConnectionModalInner = ({
     >
       <DatabaseEditConnectionForm
         database={database}
-        initializeError={initializeError}
+        isAttachedDWH={database?.is_attached_dwh ?? false}
+        initializeError={databaseReq.error}
         onSubmitted={handleOnSubmit}
         onCancel={handleCloseModal}
         route={route}
+        config={{
+          engine: {
+            fieldState: database
+              ? PLUGIN_DB_ROUTING.getPrimaryDBEngineFieldState(database)
+              : "disabled",
+          },
+        }}
       />
     </Modal>
   );
 };
 
-export const DatabaseConnectionModal = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  title(
-    ({ database }: { database: DatabaseData }) => database && database.name,
-  ),
+export const DatabaseConnectionModal = title(
+  ({ database }: { database: DatabaseData }) => database && database.name,
 )(DatabaseConnectionModalInner);

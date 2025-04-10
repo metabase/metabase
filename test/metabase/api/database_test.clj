@@ -81,10 +81,11 @@
     (mt/object-defaults :model/Database)
     (select-keys db [:created_at :id :entity_id :details :updated_at :timezone :name :dbms_version
                      :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled])
-    {:engine               (u/qualified-name (:engine db))
-     :settings             {}
-     :features             (map u/qualified-name (driver.u/features driver db))
-     :initial_sync_status "complete"})))
+    {:engine                (u/qualified-name (:engine db))
+     :settings              {}
+     :features              (map u/qualified-name (driver.u/features driver db))
+     :initial_sync_status   "complete"
+     :router_user_attribute nil})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
@@ -627,7 +628,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details)
+    (is (= (merge (dissoc (db-details) :details :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -865,7 +866,7 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> #{:features :native_permissions :can_upload}
+        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
                                 (disj :details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
@@ -890,6 +891,7 @@
                      :model/Database _ {:engine ::test-driver}
                      :model/Database _ {:engine ::test-driver}
                      :model/Database _ {:engine ::test-driver}]
+        (mt/user-http-request :rasta :get 200 "database")
         (t2/with-call-count [call-count]
           (mt/user-http-request :rasta :get 200 "database")
           (is (< (call-count) 10)))))))
