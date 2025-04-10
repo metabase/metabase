@@ -13,9 +13,7 @@ import {
   getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
-import ModalS from "metabase/css/components/modal.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {
@@ -73,7 +71,6 @@ import {
 } from "../grid-utils";
 import { getDashcardDataMap } from "../selectors";
 
-import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
 import DashCardS from "./DashCard/DashCard.module.css";
 import { FIXED_WIDTH } from "./Dashboard/DashboardComponents";
@@ -93,7 +90,6 @@ interface DashboardGridState {
     desktop: ReactGridLayout.Layout[];
     mobile: ReactGridLayout.Layout[];
   };
-  addSeriesModalDashCard: BaseDashboardCard | null;
   replaceCardModalDashCard: BaseDashboardCard | null;
   isDragging: boolean;
   isAnimationPaused: boolean;
@@ -203,7 +199,6 @@ class DashboardGridInner extends Component<
         props.dashboard.dashcards,
         this.state?.initialCardSizes,
       ),
-      addSeriesModalDashCard: null,
       replaceCardModalDashCard: null,
       isDragging: false,
       isAnimationPaused: true,
@@ -393,35 +388,6 @@ class DashboardGridInner extends Component<
     return hasScroll ? Math.ceil(actualHeight) : Math.floor(actualHeight);
   }
 
-  renderAddSeriesModal() {
-    // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    const { addSeriesModalDashCard } = this.state;
-
-    const isOpen =
-      !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
-    return (
-      <Modal
-        className={cx(
-          ModalS.Modal,
-          DashboardS.Modal,
-          DashboardS.AddSeriesModal,
-        )}
-        data-testid="add-series-modal"
-        isOpen={isOpen}
-      >
-        {isOpen && (
-          <AddSeriesModal
-            dashcard={addSeriesModalDashCard}
-            dashcardData={this.props.dashcardData}
-            fetchCardData={this.props.fetchCardData}
-            setDashCardAttributes={this.props.setDashCardAttributes}
-            onClose={() => this.setState({ addSeriesModalDashCard: null })}
-          />
-        )}
-      </Modal>
-    );
-  }
-
   renderReplaceCardModal() {
     const { addUndo, replaceCard, setDashCardAttributes, dashboard } =
       this.props;
@@ -515,10 +481,6 @@ class DashboardGridInner extends Component<
     });
   };
 
-  onDashCardAddSeries = (dc: BaseDashboardCard) => {
-    this.setState({ addSeriesModalDashCard: dc });
-  };
-
   onReplaceCard = (dashcard: BaseDashboardCard) => {
     this.setState({ replaceCardModalDashCard: dashcard });
   };
@@ -572,7 +534,6 @@ class DashboardGridInner extends Component<
         isXray={this.props.isXray}
         withTitle={this.props.withCardTitle}
         onRemove={this.onDashCardRemove}
-        onAddSeries={this.onDashCardAddSeries}
         onReplaceCard={this.onReplaceCard}
         onUpdateVisualizationSettings={
           this.props.onUpdateDashCardVisualizationSettings
@@ -738,7 +699,6 @@ class DashboardGridInner extends Component<
         }}
       >
         {width > 0 ? this.renderGrid() : <div />}
-        {this.renderAddSeriesModal()}
         {this.renderReplaceCardModal()}
         {this.renderVisualizerModal()}
       </Flex>

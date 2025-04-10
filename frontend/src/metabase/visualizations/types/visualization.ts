@@ -169,9 +169,7 @@ export interface VisualizationProps {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;
 
-  canRemoveSeries?: (seriesIndex: number) => boolean;
   canToggleSeriesVisibility?: boolean;
-  onRemoveSeries?: (event: MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
 
   dispatch: Dispatch;
@@ -211,10 +209,7 @@ export type VisualizationPassThroughProps = {
   totalNumGridCols?: number;
   onTogglePreviewing?: () => void;
 
-  // frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx
-  canRemoveSeries?: (seriesIndex: number) => boolean;
   showAllLegendItems?: boolean;
-  onRemoveSeries?: (event: MouseEvent, removedIndex: number) => void;
 
   onHeaderColumnReorder?: (columnName: string) => void;
 
@@ -315,7 +310,6 @@ export type VisualizationDefinition = {
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
-  supportsSeries?: boolean;
   supportsVisualizer?: boolean;
 
   minSize: VisualizationGridSize;

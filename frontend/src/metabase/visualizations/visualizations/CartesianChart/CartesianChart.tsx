@@ -58,8 +58,6 @@ function _CartesianChart(props: VisualizationProps) {
     onChangeCardAndRun,
     onHoverChange,
     canToggleSeriesVisibility,
-    canRemoveSeries,
-    onRemoveSeries,
   } = props;
 
   const settings = useMemo(
@@ -172,8 +170,6 @@ function _CartesianChart(props: VisualizationProps) {
         onToggleSeriesVisibility={
           canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
         }
-        canRemoveSeries={canRemoveSeries}
-        onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}
         width={outerWidth}
         height={outerHeight}

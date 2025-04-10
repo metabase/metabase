@@ -77,7 +77,6 @@ export interface DashCardProps {
   /** Bool if removing the dashcard will queue the card to be trashed on dashboard save */
   isTrashedOnRemove: boolean;
   onRemove: (dashcard: StoreDashcard) => void;
-  onAddSeries: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
   navigateToNewCardFromDashboard?: (
@@ -127,7 +126,6 @@ function DashCardInner({
   withTitle = true,
   isTrashedOnRemove,
   onRemove,
-  onAddSeries,
   onReplaceCard,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
@@ -383,7 +381,6 @@ function DashCardInner({
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
-            onAddSeries={onAddSeries}
             onRemove={onRemove}
             onReplaceCard={onReplaceCard}
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
