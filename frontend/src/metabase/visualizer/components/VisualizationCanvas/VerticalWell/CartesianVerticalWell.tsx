@@ -37,7 +37,7 @@ export function CartesianVerticalWell() {
     const settings = isMultiseries ? rawSettings : computedSettings;
     const metricNames = settings["graph.metrics"] ?? [];
     return metricNames
-      .map(name => columns.find(column => column.name === name))
+      .map((name) => columns.find((column) => column.name === name))
       .filter(isNotNull);
   }, [columns, computedSettings, rawSettings, isMultiseries]);
 
@@ -73,7 +73,7 @@ export function CartesianVerticalWell() {
           writingMode: "sideways-lr",
         }}
       >
-        {metrics.map(metric => (
+        {metrics.map((metric) => (
           <MetricWellItem
             key={metric.name}
             metric={metric}

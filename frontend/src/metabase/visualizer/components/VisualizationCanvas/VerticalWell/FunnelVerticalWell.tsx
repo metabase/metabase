@@ -26,7 +26,7 @@ export function FunnelVerticalWell() {
   });
 
   const metric = columns.find(
-    column => column.name === settings["funnel.metric"],
+    (column) => column.name === settings["funnel.metric"],
   );
 
   const isHighlighted = useMemo(() => {

@@ -31,7 +31,7 @@ function checkColumnMappingExists(
   }
 
   return columnValueSources.some(
-    source =>
+    (source) =>
       typeof source !== "string" &&
       compareColumnReferences(source, valueSource),
   );
@@ -42,7 +42,7 @@ export function createVisualizerColumnReference(
   column: DatasetColumn,
   otherReferencedColumns: VisualizerColumnReference[],
 ): VisualizerColumnReference {
-  const existingRef = otherReferencedColumns.find(ref =>
+  const existingRef = otherReferencedColumns.find((ref) =>
     isReferenceToColumn(column, dataSource.id, ref),
   );
   if (existingRef) {
@@ -51,12 +51,12 @@ export function createVisualizerColumnReference(
 
   let nameIndex = otherReferencedColumns.length + 1;
   let hasDuplicate = otherReferencedColumns.some(
-    ref => ref.name === `COLUMN_${nameIndex}`,
+    (ref) => ref.name === `COLUMN_${nameIndex}`,
   );
   while (hasDuplicate) {
     nameIndex++;
     hasDuplicate = otherReferencedColumns.some(
-      ref => ref.name === `COLUMN_${nameIndex}`,
+      (ref) => ref.name === `COLUMN_${nameIndex}`,
     );
   }
 
@@ -83,7 +83,7 @@ export function copyColumn(
     ] as FieldLiteral,
   };
 
-  if (existingColumns.some(col => col.display_name === copy.display_name)) {
+  if (existingColumns.some((col) => col.display_name === copy.display_name)) {
     copy.display_name = `${copy.display_name} (${dataSourceName})`;
   }
 

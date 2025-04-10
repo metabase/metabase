@@ -44,15 +44,15 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
   });
 
   const dimension = columns.find(
-    column => column.name === settings["funnel.dimension"],
+    (column) => column.name === settings["funnel.dimension"],
   );
 
   const rows = settings?.["funnel.rows"] ?? [];
-  const rowKeys = rows.map(row => row.key);
+  const rowKeys = rows.map((row) => row.key);
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    const newIndex = rows.findIndex(row => row.key === over?.id);
-    const oldIndex = rows.findIndex(row => row.key === active.id);
+    const newIndex = rows.findIndex((row) => row.key === over?.id);
+    const oldIndex = rows.findIndex((row) => row.key === active.id);
     const nextRows = arrayMove(rows, oldIndex, newIndex);
 
     const dimension = settings["funnel.dimension"];
@@ -112,7 +112,7 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
             display="flex"
             style={{ flexDirection: "row", gap: "1rem" }}
           >
-            {rows.map(row => (
+            {rows.map((row) => (
               <FunnelWellItem
                 key={row.key}
                 component="li"

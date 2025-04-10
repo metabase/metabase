@@ -36,12 +36,12 @@ export function VisualizationPicker({
   }, [series]);
 
   const [sensibleOptions, nonsensibleOptions] = useMemo(
-    () => _.partition(vizOptions, option => option.isSensible),
+    () => _.partition(vizOptions, (option) => option.isSensible),
     [vizOptions],
   );
 
   const selectedOption = useMemo(
-    () => vizOptions.find(option => option.value === value),
+    () => vizOptions.find((option) => option.value === value),
     [value, vizOptions],
   );
 

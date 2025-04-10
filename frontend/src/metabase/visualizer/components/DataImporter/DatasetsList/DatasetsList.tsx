@@ -32,7 +32,7 @@ export function DatasetsList({ search }: DatasetsListProps) {
   const dispatch = useDispatch();
   const dataSources = useSelector(getDataSources);
   const dataSourceIds = useMemo(
-    () => new Set(dataSources.map(s => s.id)),
+    () => new Set(dataSources.map((s) => s.id)),
     [dataSources],
   );
 
@@ -60,7 +60,7 @@ export function DatasetsList({ search }: DatasetsListProps) {
   const onSwap = useCallback(
     (item: VisualizerDataSource) => {
       // remove all data sources
-      dataSources.forEach(dataSource => {
+      dataSources.forEach((dataSource) => {
         dispatch(removeDataSource(dataSource));
       });
 
@@ -95,13 +95,13 @@ export function DatasetsList({ search }: DatasetsListProps) {
       result.data.length === 0
     ) {
       return allRecents
-        .filter(maybeCard =>
+        .filter((maybeCard) =>
           ["card", "dataset", "metric"].includes(maybeCard.model),
         )
-        .map(card => createDataSource("card", card.id, card.name));
+        .map((card) => createDataSource("card", card.id, card.name));
     }
     return result.data
-      .map(item =>
+      .map((item) =>
         typeof item.id === "number" &&
         shouldIncludeDashboardQuestion(item, dashboardId)
           ? createDataSource("card", item.id, item.name)

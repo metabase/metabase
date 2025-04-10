@@ -61,9 +61,9 @@ export function getCardIdsFromColumnValueMappings(
 ) {
   const referencedColumns = extractReferencedColumns(columnValuesMapping);
   const usedDataSourceIds = Array.from(
-    new Set(referencedColumns.map(ref => ref.sourceId)),
+    new Set(referencedColumns.map((ref) => ref.sourceId)),
   );
-  return usedDataSourceIds.map(id => {
+  return usedDataSourceIds.map((id) => {
     const { sourceId } = parseDataSourceId(id);
     return sourceId;
   });

@@ -46,7 +46,7 @@ export const pieDropHandler = (
       );
     } else {
       const index = state.columns.findIndex(
-        col => col.name === metricColumnName,
+        (col) => col.name === metricColumnName,
       );
       state.columns[index] = copyColumn(
         metricColumnName,
@@ -108,7 +108,7 @@ export function removeColumnFromPieChart(
 
   if (dimensions.includes(columnName)) {
     state.settings["pie.dimension"] = dimensions.filter(
-      dimension => dimension !== columnName,
+      (dimension) => dimension !== columnName,
     );
   }
 
@@ -127,9 +127,9 @@ export function combineWithPieChart(
   { data }: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const metrics = data.cols.filter(col => isMetric(col));
+  const metrics = data.cols.filter((col) => isMetric(col));
   const dimensions = data.cols.filter(
-    col => isDimension(col) && !isMetric(col),
+    (col) => isDimension(col) && !isMetric(col),
   );
 
   if (!state.settings["pie.metric"] && metrics.length === 1) {

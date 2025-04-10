@@ -21,7 +21,7 @@ export function formatVisualizerClickObject(
   }
 
   if (Array.isArray(object.data)) {
-    object.data = object.data.map(item => {
+    object.data = object.data.map((item) => {
       const col = item.col
         ? findRealColumn(item.col, originalSeries, columnValuesMapping)
         : item.col;
@@ -33,7 +33,7 @@ export function formatVisualizerClickObject(
   }
 
   if (Array.isArray(object.dimensions)) {
-    object.dimensions = object.dimensions.map(item => {
+    object.dimensions = object.dimensions.map((item) => {
       const column = item.column
         ? findRealColumn(item.column, originalSeries, columnValuesMapping)
         : item.column;
@@ -70,9 +70,9 @@ function findRealColumn(
   }
 
   const cardId = parseDataSourceId(valueSource.sourceId).sourceId;
-  const cardSeries = originalSeries.find(series => series.card.id === cardId);
+  const cardSeries = originalSeries.find((series) => series.card.id === cardId);
 
   return cardSeries?.data?.cols?.find(
-    col => col.name === valueSource.originalName,
+    (col) => col.name === valueSource.originalName,
   );
 }

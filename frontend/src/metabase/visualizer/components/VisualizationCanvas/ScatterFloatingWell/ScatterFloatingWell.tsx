@@ -34,7 +34,7 @@ export function ScatterFloatingWell() {
   }, [active]);
 
   const bubbleSize = columns.find(
-    col => col.name === settings["scatter.bubble"],
+    (col) => col.name === settings["scatter.bubble"],
   );
 
   const handleRemove = useCallback(() => {

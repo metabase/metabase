@@ -24,7 +24,7 @@ function mapColumnVizSettings(
   columnInfos: ColumnInfo[],
 ): Record<string, string | string[]> {
   const entries = getColumnVizSettings(card.display)
-    .map(setting => {
+    .map((setting) => {
       const originalValue = card.visualization_settings[setting];
       if (!originalValue) {
         return null;
@@ -32,9 +32,9 @@ function mapColumnVizSettings(
 
       if (Array.isArray(originalValue)) {
         const mappedColumns = originalValue
-          .map(originalColumnName => {
+          .map((originalColumnName) => {
             const columnInfo = columnInfos.find(
-              info => info.columnRef.originalName === originalColumnName,
+              (info) => info.columnRef.originalName === originalColumnName,
             );
             return columnInfo?.columnRef.name;
           })
@@ -43,7 +43,7 @@ function mapColumnVizSettings(
         return mappedColumns.length > 0 ? [setting, mappedColumns] : null;
       } else {
         const columnInfo = columnInfos.find(
-          info => info.columnRef.originalName === originalValue,
+          (info) => info.columnRef.originalName === originalValue,
         );
         return columnInfo?.columnRef.name
           ? [setting, columnInfo.columnRef.name]
@@ -62,7 +62,7 @@ function processColumnsForDataSource(
 ): ColumnInfo[] {
   const columnInfos: ColumnInfo[] = [];
 
-  columns.forEach(column => {
+  columns.forEach((column) => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,

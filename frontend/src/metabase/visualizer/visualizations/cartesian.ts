@@ -109,7 +109,9 @@ export function replaceMetricColumnAsScatterBubbleSize(
     !metrics.includes(currentBubbleName) &&
     !dimensions.includes(currentBubbleName)
   ) {
-    state.columns = state.columns.filter(col => col.name !== currentBubbleName);
+    state.columns = state.columns.filter(
+      (col) => col.name !== currentBubbleName,
+    );
     delete state.columnValuesMapping[currentBubbleName];
   }
 
@@ -280,7 +282,7 @@ export function removeColumnFromCartesianChart(
         removeDimensionFromMultiSeriesChart(state, columnName);
       } else {
         state.settings["graph.dimensions"] = dimensions.filter(
-          dimension => dimension !== columnName,
+          (dimension) => dimension !== columnName,
         );
       }
     }
@@ -289,7 +291,7 @@ export function removeColumnFromCartesianChart(
   if (state.settings["graph.metrics"]) {
     const metrics = state.settings["graph.metrics"];
     state.settings["graph.metrics"] = metrics.filter(
-      metric => metric !== columnName,
+      (metric) => metric !== columnName,
     );
   }
 
@@ -311,9 +313,9 @@ function removeDimensionFromMultiSeriesChart(
   const originalDimensions = [...(state.settings["graph.dimensions"] ?? [])];
 
   const dimensionColumnMap = Object.fromEntries(
-    originalDimensions.map(dimension => [
+    originalDimensions.map((dimension) => [
       dimension,
-      state.columns.find(col => col.name === dimension),
+      state.columns.find((col) => col.name === dimension),
     ]),
   );
   const column = dimensionColumnMap[columnName];
@@ -323,20 +325,20 @@ function removeDimensionFromMultiSeriesChart(
   // all dimensions of the same type to avoid invalid states.
   if (isDate(column)) {
     state.settings["graph.dimensions"] = originalDimensions.filter(
-      name => !isDate(dimensionColumnMap[name]),
+      (name) => !isDate(dimensionColumnMap[name]),
     );
   } else if (isCategory(column)) {
     state.settings["graph.dimensions"] = originalDimensions.filter(
-      name => !isCategory(dimensionColumnMap[name]),
+      (name) => !isCategory(dimensionColumnMap[name]),
     );
   }
 
   const removedColumns = originalDimensions.filter(
-    name => !state.settings["graph.dimensions"]?.includes(name),
+    (name) => !state.settings["graph.dimensions"]?.includes(name),
   );
 
-  removedColumns.forEach(name => {
-    state.columns = state.columns.filter(col => col.name !== name);
+  removedColumns.forEach((name) => {
+    state.columns = state.columns.filter((col) => col.name !== name);
     delete state.columnValuesMapping[name];
   });
 }
@@ -353,12 +355,12 @@ export function maybeImportDimensionsFromOtherDataSources(
     let matchingDimension: DatasetColumn | undefined = undefined;
     if (isDate(newDimension)) {
       const dimensions = dataset.data.cols.filter(
-        col => isDimension(col) && !isMetric(col),
+        (col) => isDimension(col) && !isMetric(col),
       );
       matchingDimension = dimensions.find(isDate);
     } else if (newDimension.id) {
       matchingDimension = dataset.data.cols.find(
-        col => col.id === newDimension.id,
+        (col) => col.id === newDimension.id,
       );
     }
 
@@ -383,28 +385,29 @@ export function isCompatibleWithCartesianChart(
   { data }: Dataset,
 ) {
   const ownDimensions = state.settings["graph.dimensions"] ?? [];
-  const ownDimensionColumns = state.columns.filter(col =>
+  const ownDimensionColumns = state.columns.filter((col) =>
     ownDimensions.includes(col.name),
   );
   const [ownTimeDimensions, ownOtherDimensions] = _.partition(
     ownDimensionColumns,
-    col => isDate(col),
+    (col) => isDate(col),
   );
 
   const dimensionColumns = data.cols.filter(
-    col => isDimension(col) && !isMetric(col),
+    (col) => isDimension(col) && !isMetric(col),
   );
-  const [timeDimensions, otherDimensions] = _.partition(dimensionColumns, col =>
-    isDate(col),
+  const [timeDimensions, otherDimensions] = _.partition(
+    dimensionColumns,
+    (col) => isDate(col),
   );
 
   let isCompatible = false;
   if (ownTimeDimensions.length > 0) {
-    isCompatible = timeDimensions.some(col => isDate(col));
+    isCompatible = timeDimensions.some((col) => isDate(col));
   }
   if (ownOtherDimensions.length > 0) {
-    isCompatible = otherDimensions.every(col =>
-      ownOtherDimensions.some(ownCol => ownCol.id === col.id),
+    isCompatible = otherDimensions.every((col) =>
+      ownOtherDimensions.some((ownCol) => ownCol.id === col.id),
     );
   }
 
@@ -416,12 +419,12 @@ export function combineWithCartesianChart(
   { data }: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const metrics = data.cols.filter(col => isMetric(col));
+  const metrics = data.cols.filter((col) => isMetric(col));
   const dimensions = data.cols.filter(
-    col => isDimension(col) && !isMetric(col),
+    (col) => isDimension(col) && !isMetric(col),
   );
 
-  metrics.forEach(column => {
+  metrics.forEach((column) => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,
@@ -430,7 +433,7 @@ export function combineWithCartesianChart(
     addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
   });
 
-  dimensions.forEach(column => {
+  dimensions.forEach((column) => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,

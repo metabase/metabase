@@ -171,7 +171,7 @@ export function getColumnVizSettings(display: VisualizationDisplay) {
   const settings = visualization?.settings ?? {};
 
   // TODO Come up with a better condition
-  return Object.keys(settings).filter(key => {
+  return Object.keys(settings).filter((key) => {
     return isDataSetting(settings[key] ?? {});
   });
 }

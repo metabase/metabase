@@ -30,7 +30,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
 
   const handleSearchChange: React.ChangeEventHandler<HTMLInputElement> =
-    useCallback(e => {
+    useCallback((e) => {
       setSearch(e.target.value);
     }, []);
 

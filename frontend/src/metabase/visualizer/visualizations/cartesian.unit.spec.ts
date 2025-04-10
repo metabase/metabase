@@ -49,13 +49,13 @@ describe("cartesian", () => {
 
         // First column is automatically added as a dimension
         addColumnToCartesianChart(state, column1, column1Ref, dataSource);
-        expect(state.columns.map(c => c.name)).toEqual(["COLUMN_1"]);
+        expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
         expect(Object.keys(state.columnValuesMapping)).toEqual(["COLUMN_1"]);
         expect(state.settings).toEqual({ "graph.dimensions": ["COLUMN_1"] });
 
         // Second column is automatically added as a metric
         addColumnToCartesianChart(state, column2, column2Ref, dataSource);
-        expect(state.columns.map(c => c.name)).toEqual([
+        expect(state.columns.map((c) => c.name)).toEqual([
           "COLUMN_1",
           "COLUMN_2",
         ]);
@@ -70,7 +70,7 @@ describe("cartesian", () => {
 
         // Third column is automatically added as a the bubble size
         addColumnToCartesianChart(state, column3, column3Ref, dataSource);
-        expect(state.columns.map(c => c.name)).toEqual([
+        expect(state.columns.map((c) => c.name)).toEqual([
           "COLUMN_1",
           "COLUMN_2",
           "COLUMN_3",
@@ -115,7 +115,7 @@ describe("cartesian", () => {
         dataSource,
       );
 
-      expect(state.columns.map(c => c.name)).toEqual(["COLUMN_1"]);
+      expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(state.columnValuesMapping).toEqual({
         COLUMN_1: [
           {
@@ -152,7 +152,7 @@ describe("cartesian", () => {
       );
 
       // Check that we only have the second column
-      expect(state.columns.map(c => c.name)).toEqual(["COLUMN_2"]);
+      expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_2"]);
       expect(state.columnValuesMapping).toEqual({
         COLUMN_2: [
           {
@@ -192,7 +192,10 @@ describe("cartesian", () => {
       );
 
       // Check that we have both columns where they should be
-      expect(state.columns.map(c => c.name)).toEqual(["COLUMN_1", "COLUMN_2"]);
+      expect(state.columns.map((c) => c.name)).toEqual([
+        "COLUMN_1",
+        "COLUMN_2",
+      ]);
       expect(state.columnValuesMapping).toEqual({
         COLUMN_1: [
           {
@@ -237,7 +240,7 @@ describe("cartesian", () => {
       removeColumnFromCartesianChart(state, "COLUMN_1");
 
       // Check that we have both columns where they should be
-      expect(state.columns.map(c => c.name)).toEqual(["COLUMN_1"]);
+      expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(state.columnValuesMapping).toEqual({
         COLUMN_1: [
           {
@@ -284,7 +287,10 @@ describe("cartesian", () => {
       );
 
       // Check that we have both columns where they should be
-      expect(state.columns.map(c => c.name)).toEqual(["COLUMN_1", "COLUMN_2"]);
+      expect(state.columns.map((c) => c.name)).toEqual([
+        "COLUMN_1",
+        "COLUMN_2",
+      ]);
       expect(state.columnValuesMapping).toEqual({
         COLUMN_1: [
           {
