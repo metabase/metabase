@@ -667,11 +667,6 @@
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
-  ;; working around a bug #41919. Will be fixed when we can get a release of apache poi 5.3.1. See
-  ;; https://bz.apache.org/bugzilla/show_bug.cgi?id=69323
-  (let [f (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))]
-    (when-not (.exists f)
-      (.mkdirs f)))
   (let [workbook-data      (volatile! nil)
         cell-styles        (volatile! nil)
         typed-cell-styles  (volatile! nil)
