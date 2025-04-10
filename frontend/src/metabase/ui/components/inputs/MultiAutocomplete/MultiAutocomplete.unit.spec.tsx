@@ -1,4 +1,4 @@
-import type { ComboboxData, ComboboxItem } from "@mantine/core";
+import type { ComboboxData } from "@mantine/core";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
 
@@ -35,7 +35,7 @@ const GROUPED_DATA: ComboboxData = [
 
 type SetupOpts = {
   initialValue?: string[];
-  data?: ComboboxItem[];
+  data?: ComboboxData;
   placeholder?: string;
   autoFocus?: boolean;
   rightSection?: ReactNode;
