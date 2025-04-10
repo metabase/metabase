@@ -225,9 +225,9 @@ export function ListPatternsReferencePage() {
                           placeholder={t`Select period`}
                           data={[
                             { value: "all", label: "Any time" },
-                            { value: "today", label: "Today" },
-                            { value: "week", label: "This week" },
-                            { value: "month", label: "This month" },
+                            { value: "all", label: "Today" },
+                            { value: "all", label: "This week" },
+                            { value: "all", label: "This month" },
                           ]}
                         />
                       </Box>
@@ -395,6 +395,7 @@ export function ListPatternsReferencePage() {
               style={{
                 border: `1px solid ${color("border")}`,
                 borderRadius: "4px",
+                background: "white",
               }}
             >
               <Group justify="space-between">
@@ -473,6 +474,7 @@ export function ListPatternsReferencePage() {
           style={{
             border: `1px solid ${color("border")}`,
             borderRadius: "4px",
+            background: "white",
           }}
         >
           <Stack align="center" gap="md" py="xl">
@@ -497,6 +499,7 @@ export function ListPatternsReferencePage() {
           style={{
             border: `1px solid ${color("border")}`,
             borderRadius: "4px",
+            background: "white",
           }}
         >
           <Stack align="center" gap="md" py="xl">
