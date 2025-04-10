@@ -1,0 +1,62 @@
+name: Handle Claude Label
+
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [labeled]
+
+jobs:
+  claude:
+    # This job only runs if a label starting with `claude:` was added.
+    # It will extract the claude slash command name as whatever is after the `claude:` label prefix,
+    # then call claude in headless mode with the project command and the URL of the labelled issue/pr as prompt
+
+    # e.g. if you label https://github.com/metabase/metabase/issues/56587 with `claude:fix-issue-ci`,
+    # the prompt will be `/project:fix-issue-ci https://github.com/metabase/metabase/issues/56587`
+
+    # The two labels we're using right now are `claude:fix-issue-ci` and `claude:fix-pr-ci`.
+
+    # To add new functionality, add a new project command in `.claude/commands/NAME.md`, then make a GitHub label called `claude:NAME`.
+    # More on project commands at https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#create-custom-slash-commands
+    if: startsWith(github.event.label.name, 'claude:')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Extract values
+        id: extract
+        run: |
+          # Extract command part from label
+          LABEL="${{ github.event.label.name }}"
+          COMMAND="${LABEL#claude:}"
+          echo "Command part: $COMMAND"
+          echo "command=$COMMAND" >> $GITHUB_OUTPUT
+
+          # Extract URL based on whether it's an issue or PR
+          if [[ "${{ github.event_name }}" == "issues" ]]; then
+            URL="${{ github.event.issue.html_url }}"
+          else
+            URL="${{ github.event.pull_request.html_url }}"
+          fi
+          echo "URL: $URL"
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Set git user
+        run: |
+          git config --global user.name "Metabase Automation"
+          git config --global user.email "github-automation@metabase.com"
+
+      - name: Run Claude Code
+        run: ./bin/claude-print /project:${{ steps.extract.outputs.command }} ${{ steps.extract.outputs.url }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
