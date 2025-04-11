@@ -181,7 +181,7 @@ export const EmbedFrame = ({
             )}
             data-testid="embed-frame-header"
           >
-            {(finalName || pdfDownloadsEnabled) && (
+            {(finalName || headerButtons || pdfDownloadsEnabled) && (
               <TitleAndDescriptionContainer hasTitle={!!finalName}>
                 <TitleAndButtonsContainer
                   data-testid="fixed-width-dashboard-header"
