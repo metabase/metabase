@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import { useCallback, useState } from "react";
 
 import { render, screen } from "__support__/ui";
@@ -12,7 +12,7 @@ const TestTimeInput = ({ onChange, ...props }: TimeInputProps) => {
   const [value, setValue] = useState(props.value);
 
   const handleChange = useCallback(
-    (value: Moment) => {
+    (value: Dayjs) => {
       setValue(value);
       onChange?.(value);
     },
@@ -24,7 +24,7 @@ const TestTimeInput = ({ onChange, ...props }: TimeInputProps) => {
 
 describe("TimeInput", () => {
   it("should set time in 12-hour clock", async () => {
-    const value = moment({ hours: 0, minutes: 0 });
+    const value = dayjs().hour(0).minute(0);
     const onChange = jest.fn();
 
     render(<TestTimeInput value={value} onChange={onChange} />);
@@ -34,13 +34,13 @@ describe("TimeInput", () => {
     await userEvent.type(screen.getByLabelText("Minutes"), "20");
 
     const expected = value.clone();
-    expected.hours(5);
-    expected.minutes(20);
+    expected.hour(5);
+    expected.minute(20);
     expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
   it("should set time in 24-hour clock", async () => {
-    const value = moment({ hours: 0, minutes: 0 });
+    const value = dayjs().hour(0).minute(0);
     const onChange = jest.fn();
 
     render(
@@ -52,37 +52,37 @@ describe("TimeInput", () => {
     await userEvent.type(screen.getByLabelText("Minutes"), "10");
 
     const expected = value.clone();
-    expected.hours(15);
-    expected.minutes(10);
+    expected.hour(15);
+    expected.minute(10);
     expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
   it("should change meridiem to am", async () => {
-    const value = moment({ hours: 12, minutes: 20 });
+    const value = dayjs().hour(12).minute(20);
     const onChange = jest.fn();
 
     render(<TestTimeInput value={value} onChange={onChange} />);
     await userEvent.click(screen.getByText("AM"));
 
     const expected = value.clone();
-    expected.hours(0);
+    expected.hour(0);
     expect(onChange).toHaveBeenCalledWith(expected);
   });
 
   it("should change meridiem to pm", async () => {
-    const value = moment({ hours: 10, minutes: 20 });
+    const value = dayjs().hour(10).minute(20);
     const onChange = jest.fn();
 
     render(<TestTimeInput value={value} onChange={onChange} />);
     await userEvent.click(screen.getByText("PM"));
 
     const expected = value.clone();
-    expected.hours(22);
+    expected.hour(22);
     expect(onChange).toHaveBeenCalledWith(expected);
   });
 
   it("should clear time", async () => {
-    const value = moment({ hours: 2, minutes: 10 });
+    const value = dayjs().hour(2).minute(10);
     const onClear = jest.fn();
 
     render(<TestTimeInput value={value} onClear={onClear} />);
@@ -93,8 +93,8 @@ describe("TimeInput", () => {
     await userEvent.click(screen.getByLabelText("Remove time"));
 
     const expected = value.clone();
-    expected.hours(0);
-    expected.minutes(0);
+    expected.hour(0);
+    expected.minute(0);
     expect(onClear).toHaveBeenCalledWith(expected);
   });
 });

@@ -1,6 +1,6 @@
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import { useField } from "formik";
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 
@@ -38,13 +38,13 @@ const FormDateInput = forwardRef(function FormDateInput(
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
 
   const date = useMemo(() => {
-    return value ? moment.parseZone(value) : undefined;
+    return value ? dayjs.parseZone(value) : undefined;
   }, [value]);
 
   const handleChange = useCallback(
-    (date: Moment | undefined) => {
+    (date: Dayjs | undefined) => {
       if (date) {
-        setValue(date.toISOString(true));
+        setValue(date.toISOString());
       } else {
         setValue(nullable ? null : undefined);
       }

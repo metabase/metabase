@@ -1,5 +1,5 @@
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import type {
   ChangeEvent,
   FocusEvent,
@@ -22,7 +22,7 @@ export type DateInputAttributes = Omit<
 >;
 
 export interface DateInputProps extends DateInputAttributes {
-  value?: Moment;
+  value?: Dayjs;
   inputRef?: Ref<HTMLInputElement>;
   hasTime?: boolean;
   hasCalendar?: boolean;
@@ -30,7 +30,7 @@ export interface DateInputProps extends DateInputAttributes {
   timeFormat?: string;
   error?: boolean;
   fullWidth?: boolean;
-  onChange?: (value?: Moment) => void;
+  onChange?: (value?: Dayjs) => void;
   onCalendarClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
 
@@ -58,7 +58,7 @@ const DateInput = forwardRef(function DateInput(
   const dateTimeFormat = `${dateFormat}, ${timeFormat}`;
 
   const now = useMemo(() => {
-    return moment();
+    return dayjs();
   }, []);
 
   const nowText = useMemo(() => {
@@ -108,7 +108,7 @@ const DateInput = forwardRef(function DateInput(
       setInputText(newText);
 
       const formats = hasTime ? mixedTimeFormats : [dateFormat];
-      const newValue = moment(newText, formats);
+      const newValue = dayjs(newText, formats);
 
       if (newValue.isValid()) {
         onChange?.(newValue);

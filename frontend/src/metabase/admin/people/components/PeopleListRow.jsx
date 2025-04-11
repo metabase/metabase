@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
@@ -73,7 +73,7 @@ const PeopleListRow = ({
       <td>{user.email}</td>
       {showDeactivated ? (
         <Fragment>
-          <td>{moment(user.updated_at).fromNow()}</td>
+          <td>{dayjs(user.updated_at).fromNow()}</td>
           <td>
             <Tooltip label={t`Reactivate this account`}>
               <span>
@@ -102,7 +102,7 @@ const PeopleListRow = ({
             )}
           </td>
           <td>
-            {user.last_login ? moment(user.last_login).fromNow() : t`Never`}
+            {user.last_login ? dayjs(user.last_login).fromNow() : t`Never`}
           </td>
           <td className={CS.textRight}>
             {isAdmin && (

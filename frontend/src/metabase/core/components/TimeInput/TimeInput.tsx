@@ -1,5 +1,5 @@
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import type { Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
@@ -19,12 +19,12 @@ import {
 const TIME_FORMAT_12 = "h:mm A";
 
 export interface TimeInputProps {
-  value: Moment;
+  value: Dayjs;
   timeFormat?: string;
   autoFocus?: boolean;
   hasClearButton?: boolean;
-  onChange?: (value: Moment) => void;
-  onClear?: (value: Moment) => void;
+  onChange?: (value: Dayjs) => void;
+  onClear?: (value: Dayjs) => void;
 }
 
 /**
@@ -44,18 +44,18 @@ const TimeInput = forwardRef(function TimeInput(
   const is24HourMode = timeFormat === "HH:mm";
   const hoursText = value.format(is24HourMode ? "HH" : "hh");
   const minutesText = value.format("mm");
-  const isAm = value.hours() < 12;
+  const isAm = value.hour() < 12;
   const isPm = !isAm;
-  const amText = moment.localeData().meridiem(0, 0, false);
-  const pmText = moment.localeData().meridiem(12, 0, false);
+  const amText = dayjs.localeData().meridiem?.(0, 0, false) || "AM";
+  const pmText = dayjs.localeData().meridiem?.(12, 0, false) || "PM";
 
   const handleHoursChange = useCallback(
     (hours: number = 0) => {
       const newValue = value.clone();
       if (is24HourMode) {
-        newValue.hours(hours % 24);
+        newValue.hour(hours % 24);
       } else {
-        newValue.hours((hours % 12) + (isAm ? 0 : 12));
+        newValue.hour((hours % 12) + (isAm ? 0 : 12));
       }
       onChange?.(newValue);
     },
@@ -65,7 +65,7 @@ const TimeInput = forwardRef(function TimeInput(
   const handleMinutesChange = useCallback(
     (minutes: number = 0) => {
       const newValue = value.clone();
-      newValue.minutes(minutes % 60);
+      newValue.minute(minutes % 60);
       onChange?.(newValue);
     },
     [value, onChange],
@@ -74,7 +74,7 @@ const TimeInput = forwardRef(function TimeInput(
   const handleAmClick = useCallback(() => {
     if (isPm) {
       const newValue = value.clone();
-      newValue.hours(newValue.hours() - 12);
+      newValue.hour(newValue.hour() - 12);
       onChange?.(newValue);
     }
   }, [value, isPm, onChange]);
@@ -82,15 +82,15 @@ const TimeInput = forwardRef(function TimeInput(
   const handlePmClick = useCallback(() => {
     if (isAm) {
       const newValue = value.clone();
-      newValue.hours(newValue.hours() + 12);
+      newValue.hour(newValue.hour() + 12);
       onChange?.(newValue);
     }
   }, [value, isAm, onChange]);
 
   const handleClearClick = useCallback(() => {
     const newValue = value.clone();
-    newValue.hours(0);
-    newValue.minutes(0);
+    newValue.hour(0);
+    newValue.minute(0);
     onClear?.(newValue);
   }, [value, onClear]);
 

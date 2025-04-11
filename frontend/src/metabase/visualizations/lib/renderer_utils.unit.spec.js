@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 import {
   getXValues,
@@ -122,7 +122,7 @@ describe("getXValues", () => {
     series._raw = series;
     const settings = { "graph.dimensions": ["date"] };
     const [xVal] = getXValues({ settings, series });
-    expect(moment.isMoment(xVal)).toBe(true);
+    expect(dayjs.isDayjs(xVal)).toBe(true);
   });
 
   it("should sort values according to parsed value", () => {
@@ -181,8 +181,8 @@ describe("parseXValue", () => {
   it("should use options as part of the cache key", () => {
     const value1 = parseXValue("2018-08-23", { isTimeseries: true });
     const value2 = parseXValue("2018-08-23", { isTimeseries: false });
-    expect(moment.isMoment(value1)).toBe(true);
-    expect(moment.isMoment(value2)).toBe(false);
+    expect(dayjs.isDayjs(value1)).toBe(true);
+    expect(dayjs.isDayjs(value2)).toBe(false);
   });
 
   it("should warn repeatedly (despite caching)", () => {

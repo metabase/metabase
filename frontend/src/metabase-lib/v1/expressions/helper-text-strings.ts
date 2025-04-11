@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { t } from "ttag";
 
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -32,8 +32,8 @@ const getNowAtTimezone = (
   reportTimezone: string | undefined,
 ) =>
   timezone && reportTimezone
-    ? moment().tz(reportTimezone).format("LT")
-    : moment().format("LT");
+    ? dayjs().tz(reportTimezone).format("LT")
+    : dayjs().format("LT");
 
 const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {

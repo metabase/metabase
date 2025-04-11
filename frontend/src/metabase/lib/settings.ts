@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -246,7 +246,7 @@ class MetabaseSettings {
 
     if (ts) {
       // app DB stores this timestamp in UTC, so convert it to the local zone to render
-      return moment
+      return dayjs
         .utc(parseTimestamp(ts))
         .local()
         .format("MMMM Do YYYY, h:mm:ss a");

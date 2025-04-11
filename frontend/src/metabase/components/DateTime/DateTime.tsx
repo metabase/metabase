@@ -1,5 +1,5 @@
-// eslint-disable-next-line no-restricted-imports -- legacy usage
-import type { Moment } from "moment-timezone";
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import { forwardRef } from "react";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
@@ -7,7 +7,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import type { DatetimeUnit } from "metabase-types/api";
 
 type DateTimeProps = {
-  value: string | Date | number | Moment;
+  value: string | Date | number | Dayjs;
   componentProps?: React.ComponentProps<"span">;
   unit?: DatetimeUnit;
 };
@@ -21,8 +21,10 @@ const DateTime = forwardRef<HTMLSpanElement, DateTimeProps>(function DateTime(
   ref,
 ) {
   const options = MetabaseSettings.formattingOptions();
+  // Convert Dayjs to Date to ensure compatibility
+  const valueToFormat = dayjs.isDayjs(value) ? value.toDate() : value;
   const formattedTime = formatDateTimeWithUnit(
-    value,
+    valueToFormat,
     unit ?? "default",
     options,
   );
