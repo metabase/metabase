@@ -33,7 +33,7 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
       width,
       height,
       onInit,
-      notMerge = true,
+      notMerge = false,
     }: EChartsRendererProps,
     ref,
   ) {
