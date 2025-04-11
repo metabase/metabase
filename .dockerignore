@@ -10,7 +10,10 @@ target/*
 .shadow-cljs
 .github
 .vscode
+.clj-kondo
+.git
 hooks/*
+load_test/*
 test/*
 test_config/*
 test_modules/*
@@ -22,3 +25,4 @@ node_modules
 
 Dockerfile
 .dockerignore
+
