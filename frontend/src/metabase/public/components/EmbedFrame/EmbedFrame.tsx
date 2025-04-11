@@ -148,7 +148,8 @@ export const EmbedFrame = ({
     : [];
   const hasVisibleParameters = visibleParameters.length > 0;
 
-  const hasHeader = Boolean(finalName || dashboardTabs) || pdfDownloadsEnabled;
+  const hasHeader =
+    Boolean(finalName || dashboardTabs) || pdfDownloadsEnabled || headerButtons;
 
   const allowParameterPanelSticky =
     !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
