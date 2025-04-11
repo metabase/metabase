@@ -33,6 +33,7 @@
     <Logger name="org.quartz" level="INFO"/>
     <Logger name="net.snowflake.client.jdbc.SnowflakeConnectString" level="ERROR"/>
     <Logger name="net.snowflake.client.core.SessionUtil" level="FATAL"/>
+    <logger name="tc" level="DEBUG"/>
 
     <Root level="WARN">
       <AppenderRef ref="STDOUT"/>
