@@ -105,6 +105,7 @@ e2e_ci: &e2e_ci
   - ".github/actions/prepare-cypress/**"
   - ".github/actions/run-snowplow-micro/**"
   - ".github/workflows/e2e-*"
+  - ".github/workflows/uberjar.yml"
 
 e2e_specs: &e2e_specs
   - "**/*.cy.*.js"
