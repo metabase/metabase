@@ -223,6 +223,7 @@ export const EmbedFrame = ({
           </Header>
         )}
 
+        {/* show floating header buttons if there is no title */}
         {headerButtons && !titled ? headerButtons : null}
 
         <span ref={parameterPanelRef} />
