@@ -49,10 +49,6 @@ export function compileExpression({
       : compiled;
 
     const expressionClause = Lib.expressionClause(resolved);
-
-    // TODO: implement these passes previously handled by the resolver
-    // - adjust booleans pass
-
     const expression = Lib.legacyExpressionForExpressionClause(
       query,
       stageIndex,
