@@ -8,10 +8,12 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors/server-error-types";
 import { useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
+import { getPermissionErrorMessage } from "metabase/visualizations/lib/errors";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -38,7 +40,43 @@ export function VisualizationError({
 }: VisualizationErrorProps) {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isNative = question && Lib.queryDisplayInfo(question.query()).isNative;
-  if (error && typeof error.status === "number") {
+
+  // Check for permissions error first
+  if (
+    error &&
+    (error.status === 403 ||
+      error.error_type === SERVER_ERROR_TYPES.missingPermissions ||
+      (typeof error === "object" &&
+        error?.type === SERVER_ERROR_TYPES.missingPermissions))
+  ) {
+    return (
+      <div
+        className={cx(
+          className,
+          QueryBuilderS.QueryError2,
+          CS.flex,
+          CS.justifyCenter,
+        )}
+      >
+        <div
+          className={cx(
+            QueryBuilderS.QueryErrorImage,
+            QueryBuilderS.QueryErrorImageQueryError,
+            CS.mr4,
+          )}
+        />
+        <div className={QueryBuilderS.QueryError2Details}>
+          <h1 className={CS.textBold}>{t`Permissions error`}</h1>
+          <p className={QueryBuilderS.QueryErrorMessageText}>
+            {getPermissionErrorMessage()}
+          </p>
+          <Box mt="1rem">
+            <Icon name="key" size={24} />
+          </Box>
+        </div>
+      </div>
+    );
+  } else if (error && typeof error.status === "number") {
     // Assume if the request took more than 15 seconds it was due to a timeout
     // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
     if (duration > VISUALIZATION_SLOW_TIMEOUT) {

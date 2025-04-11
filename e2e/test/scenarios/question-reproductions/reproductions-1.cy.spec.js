@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -1218,6 +1222,72 @@ function renameColumn(columnId, name) {
 function renameTable(tableId, name) {
   cy.request("PUT", `/api/table/${tableId}`, { display_name: name });
 }
+
+describe("issue 54912", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should show permissions error not generic query error when a user lacks data permissions (metabase#54912)", () => {
+    // First create a separate collection
+    cy.request("POST", "/api/collection", {
+      name: "Test Collection",
+      color: "#000000",
+    }).then(({ body: { id: collectionId } }) => {
+      // Create a question in that collection
+      cy.createQuestion({
+        name: "Test Question",
+        collection_id: collectionId,
+        query: { "source-table": ORDERS_ID },
+      }).then(({ body: { id: questionId } }) => {
+        // Now modify permissions to restrict data access but allow collection access
+        cy.request("PUT", `/api/collection/${collectionId}/permissions`, {
+          groups: {
+            [USER_GROUPS.ALL_USERS_GROUP]: "read",
+          },
+        });
+
+        // Set up permissions to block data access
+        cy.request("GET", "/api/permissions/graph").then(
+          ({ body: permissionsGraph }) => {
+            const graph = permissionsGraph.groups;
+            // Remove data access for "All Users" for Orders table
+            graph[USER_GROUPS.ALL_USERS_GROUP][SAMPLE_DB_ID]["schemas"][
+              "PUBLIC"
+            ][ORDERS_ID] = {
+              "data-permission": "none",
+              "download-permission": "none",
+            };
+
+            cy.request("PUT", "/api/permissions/graph", {
+              groups: graph,
+              revision: permissionsGraph.revision,
+            });
+          },
+        );
+
+        // Now sign in as a normal user and try to view the question
+        cy.signOut();
+        cy.signInAsNormalUser();
+
+        cy.visit(`/question/${questionId}`);
+
+        // Verify we get a clear permissions error, not a generic error
+        cy.findByText("Permissions error").should("be.visible");
+        cy.findByText(
+          "Sorry, you don't have permission to see this card.",
+        ).should("be.visible");
+        cy.get("[name='key']").should("be.visible");
+
+        // The error should not have generic query error messaging
+        cy.findByText("There was a problem with your question").should(
+          "not.exist",
+        );
+      });
+    });
+  });
+});
 
 describe("issue 20809", () => {
   const questionDetails = {
