@@ -22,10 +22,11 @@
 (defn- validation-error? [e]
   (::validation-error (ex-data e)))
 
-;; just print ordered maps like normal maps.
-(defmethod print-method flatland.ordered.map.OrderedMap
-  [m writer]
-  (print-method (into {} m) writer))
+#?(:bb :no-op
+   :clj ;; just print ordered maps like normal maps.
+   (defmethod print-method flatland.ordered.map.OrderedMap
+     [m writer]
+     (print-method (into {} m) writer)))
 
 (defn- require-database-change-log! [migrations]
   (when-not (contains? migrations :databaseChangeLog)
@@ -158,7 +159,10 @@
 (def ^:private filename
   "../../resources/migrations/001_update_migrations.yaml")
 
-(defn- migrations []
+(def ^:private bb-filename
+  "resources/migrations/001_update_migrations.yaml")
+
+(defn- migrations [filename]
   (let [file (io/file filename)]
     (assert (.exists file) (format "%s does not exist" filename))
     (letfn [(fix-vals [x]
@@ -168,8 +172,8 @@
                     :else           x))]
       (fix-vals (yaml/parse-string (slurp file))))))
 
-(defn- validate-all []
-  (validate-migrations (migrations)))
+(defn- validate-all [filename]
+  (validate-migrations (migrations filename)))
 
 (defn -main
   "Entry point for Clojure CLI task `lint-migrations-file`. Run it with
@@ -178,7 +182,7 @@
   []
   (println "Check Liquibase migrations file...")
   (try
-    (validate-all)
+    (validate-all #?(:bb bb-filename :clj filename))
     (println "Ok.")
     (System/exit 0)
     (catch ExceptionInfo e
