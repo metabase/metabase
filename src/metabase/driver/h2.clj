@@ -402,8 +402,7 @@
   [driver [_ value]]
   ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
   ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
-  ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST. We
-  ;; only need to do this for string literals, since numbers and booleans get inlined directly.
+  ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.
   ;;
   ;; https://linear.app/metabase/issue/QUE-726/
   ;; https://github.com/h2database/h2database/issues/1383

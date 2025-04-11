@@ -1429,7 +1429,8 @@
   ;; usually get replaced with a parameter placeholder like ?. For some databases, this causes a problem as the
   ;; database engine cannot determine the type of the value in an expression like `SELECT ? AS "FOO"`. Drivers that
   ;; need special handling for literal string expressions can provide an implementation for this method, e.g. to add
-  ;; an explicit CAST to the appropriate text type for the given driver. See the H2 driver for an example.
+  ;; an explicit CAST to the appropriate text type for the given driver. See the H2 driver for an example. We
+  ;; only need to do this for string literals, since numbers and booleans get inlined directly.
   ;;
   ;; Most databases don't require special handling, so just compile the unwrapped value.
   (->honeysql driver value))
