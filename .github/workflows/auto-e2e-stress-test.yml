@@ -39,16 +39,15 @@ jobs:
 
       - name: Find and run affected tests
         run: |
-          BASE_BRANCH=${{ github.event.pull_request.base.ref }}
-          HEAD_REF=${{ github.head_ref || github.ref_name }}
-
           echo "Running cypress-test-finder against base branch: $BASE_BRANCH"
           echo "Using head ref: $HEAD_REF"
 
           # Run with --execute to automatically trigger workflows
-          node cypress-test-finder.js --base=$BASE_BRANCH --ref=$HEAD_REF --execute
+          node cypress-test-finder.js --base="$BASE_BRANCH" --ref="$HEAD_REF" --execute
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
 
       - name: Add PR comment
         uses: actions/github-script@v7
