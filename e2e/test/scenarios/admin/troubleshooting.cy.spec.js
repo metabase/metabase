@@ -111,7 +111,7 @@ describe("issue 14636", () => {
 
     /** type: {Row} */
     const row = {
-      id: page + 1,
+      id: 1,
       task: tasks[page],
       db_id: 1,
       started_at: "2023-03-04T01:45:26.005475-08:00",
@@ -125,7 +125,10 @@ describe("issue 14636", () => {
     const pageRows = [limit, total - limit];
     const length = pageRows[page];
 
-    const stubbedRows = Array.from({ length }, () => row);
+    const stubbedRows = Array.from({ length }, (_, index) => ({
+      ...row,
+      id: index + 1,
+    }));
     return stubbedRows;
   }
 
@@ -144,13 +147,14 @@ describe("issue 14636", () => {
     cy.visit("/admin/troubleshooting/tasks");
     cy.wait("@first");
 
+    cy.location("search").should("eq", "");
+
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Troubleshooting logs");
     cy.findByLabelText("Previous page").as("previous");
     cy.findByLabelText("Next page").as("next");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("1 - 50");
+    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("field values scanning");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -162,10 +166,12 @@ describe("issue 14636", () => {
     cy.get("@next").click();
     cy.wait("@second");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(`51 - ${total}`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("1 - 50").should("not.exist");
+    cy.location("search").should("eq", "?page=1");
+
+    cy.findByLabelText("pagination")
+      .findByText(`51 - ${total}`)
+      .should("be.visible");
+    cy.findByLabelText("pagination").findByText("1 - 50").should("not.exist");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("analyze");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -173,6 +179,27 @@ describe("issue 14636", () => {
 
     shouldNotBeDisabled("@previous");
     shouldBeDisabled("@next");
+
+    cy.get("@previous").click();
+
+    cy.location("search").should("eq", "");
+
+    cy.log("pagination should affect browser history");
+    cy.go("back");
+    cy.location("pathname").should("eq", "/admin/troubleshooting/tasks");
+    cy.location("search").should("eq", "?page=1");
+    cy.go("back");
+    cy.location("pathname").should("eq", "/admin/troubleshooting/tasks");
+    cy.location("search").should("eq", "");
+  });
+
+  it("should respect page query param on page load", () => {
+    cy.visit("/admin/troubleshooting/tasks?page=1");
+    cy.wait("@second");
+
+    cy.findByLabelText("pagination")
+      .findByText(`51 - ${total}`)
+      .should("be.visible");
   });
 });
 
