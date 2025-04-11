@@ -37,10 +37,25 @@ Responsive Layouts:
 - For forms with multiple columns, use `<Group grow>` with nested `<Stack>` elements
 
 Form Elements:
-- Inputs should have labels and descriptions
-- Align related form fields using Group and Stack
-- Use consistent spacing with gap="md" or gap="lg"
-- Add proper spacing between sections with `<Space h="md" />` or `<Space h="xl" />`
+- For cards with multiple settings:
+  - Inputs should have labels and descriptions
+  - Align related form fields using Group and Stack
+  - Use consistent spacing with gap="md" or gap="lg"
+  - Add proper spacing between sections with `<Space h="md" />` or `<Space h="xl" />`
+- For cards with a single setting:
+  - Use the card's title as the setting label
+  - Use the card's description text to describe the setting
+  - Place the input directly after the `<Divider>`
+  - Do not repeat the label/description in the input component
+  - Example:
+    ```tsx
+    <Card p="xl" bg={color("bg-light")} withBorder shadow="none">
+      <Title order={2} mb="xs">{t`Map Tile Server`}</Title>
+      <Text mb="lg">{t`Configure the map tile server used for rendering maps.`}</Text>
+      <Divider mb="xl" />
+      <TextInput placeholder="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
+    </Card>
+    ```
 
 Toggle Settings Pattern:
 - Use Group with justify="space-between" to place text on left, control on right
@@ -148,6 +163,29 @@ examples:
         <Switch size="md" />
       </Group>
     output: "Correctly styled toggle following admin UI patterns"
+
+  # Example of single setting pattern
+  - input: |
+      // Bad: Redundant label and description
+      <Card p="xl" bg={color("bg-light")} withBorder shadow="none">
+        <Title order={2} mb="xs">{t`Map Tile Server`}</Title>
+        <Text mb="lg">{t`Configure the map tile server used for rendering maps.`}</Text>
+        <Divider mb="xl" />
+        <TextInput
+          label={t`Map Tile Server`}
+          description={t`Configure the map tile server used for rendering maps.`}
+          placeholder="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+      </Card>
+
+      // Good: Using card title and description
+      <Card p="xl" bg={color("bg-light")} withBorder shadow="none">
+        <Title order={2} mb="xs">{t`Map Tile Server`}</Title>
+        <Text mb="lg">{t`Configure the map tile server used for rendering maps.`}</Text>
+        <Divider mb="xl" />
+        <TextInput placeholder="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      </Card>
+    output: "Correctly styled single setting following admin UI patterns"
 
   # Example of form layout
   - input: |

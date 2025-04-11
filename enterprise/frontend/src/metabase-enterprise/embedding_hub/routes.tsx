@@ -9,6 +9,7 @@ import {
   InteractiveSettingsPage,
   ListPatternsReferencePage,
   LocalizationReferencePage,
+  MapSettingsPage,
   OverviewPage,
   ReferencePage,
   StaticEmbeddingPage,
@@ -25,6 +26,7 @@ export const getRoutes = () => (
       <Route path="user-management" component={UserManagementPage} />
     </Route>
     <Route path="appearance" component={AppearancePage} />
+    <Route path="maps" component={MapSettingsPage} />
     <Route path="reference">
       <IndexRedirect to="ui-patterns" />
       <Route path="ui-patterns" component={ReferencePage} />

@@ -60,6 +60,14 @@ export function Sidebar() {
       />
       <NavLink
         variant="admin"
+        label="Maps"
+        component={Link}
+        to="/admin/embedding/maps"
+        leftSection={<Icon name="location" />}
+        active={/^\/admin\/embedding\/maps/.test(location.pathname)}
+      />
+      <NavLink
+        variant="admin"
         label="UI Reference"
         component={Link}
         to="/admin/embedding/reference"
