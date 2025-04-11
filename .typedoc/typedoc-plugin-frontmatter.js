@@ -13,6 +13,11 @@ export function load(app) {
 
   app.renderer.on(PageEvent.END, (page) => {
     const frontmatterGlobals = app.options.getValue("frontmatterGlobals");
+
+    const model = page.model;
+    const title = model.name || "Embedded analytics SDK documentation";
+    frontmatterGlobals.title = title;
+
     const yamlItems = Object.entries(frontmatterGlobals)
       .map(([key, value]) => `${key}: ${value}`)
       .join("\n");
