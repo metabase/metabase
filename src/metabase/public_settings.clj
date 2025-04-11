@@ -881,6 +881,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :sso_saml                       (premium-features/enable-sso-saml?)
                       :upload_management              (premium-features/enable-upload-management?)
                       :whitelabel                     (premium-features/enable-whitelabeling?)
+                      :development-mode               (premium-features/development-mode?)
                       :llm_autodescription            (premium-features/enable-llm-autodescription?)})
   :doc        false)
 
