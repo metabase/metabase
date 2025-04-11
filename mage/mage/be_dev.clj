@@ -2,8 +2,8 @@
   (:require
    [bencode.core :as bencode]
    [clojure.string :as str]
-   [clojure.tools.reader :as reader]
-   [clojure.tools.reader.reader-types :as rt]
+   [edamame.core :as edamame]
+   [flatland.ordered.map :as m]
    [mage.color :as c]
    [mage.util :as u]))
 
@@ -83,23 +83,31 @@
                      (c/green "  clj -M:dev:ee:ee-dev:drivers:drivers-dev:dev-start\n\n")
                      "If you prefer a different way to start the backend, please use that instead."))))))
 
-(defn- strict-readable? [s]
-  (let [rdr (rt/string-push-back-reader s)]
-    (try
-      (loop []
-        (let [form (reader/read {:eof ::done} rdr)]
-          (when-not (= form ::done)
-            (recur))))
-      true
-      (catch Exception _ false))))
+(defn find-data-readers []
+  (let [reader-tags (conj (keys (read-string
+                                 (slurp "resources/data_readers.clj")))
+                          'js)]
+    (zipmap reader-tags (map (fn [tag]
+                               #_:clj-kondo/ignore
+                               (eval `(fn [v] (list (quote ~tag) v))))
+                             reader-tags))))
 
-(defn- balanced-parens-in-content?
-  [content]
-  (try {:balanced (strict-readable? content)}
-       (catch Exception e
-         (throw (ex-info (str "Part is unbalanced. " (ex-message e))
-                         (assoc (ex-data e)
-                                :cause :unbalanced))))))
+(defn balanced-parens-in-content? [s]
+  (try
+    (edamame/parse-string-all s {:all true
+                                 :map m/ordered-map
+                                 :auto-resolve name
+                                 :features #{:cljs :bb}
+                                 :read-cond :allow
+                                 :readers (find-data-readers)
+                                 :eof ::done
+                                 :row-key :line
+                                 :col-key :column})
+    {:balanced true}
+    (catch Exception e
+      {:balanced false
+       :reason (ex-message e)
+       :data (ex-data e)})))
 
 (defn- top-level-form-chunk [content]
   (let [next-int! (let [*i (atom 0)] (fn [] (swap! *i inc)))]
@@ -113,29 +121,36 @@
      [[]]
      (partition-all 2 1 (str/split-lines content)))))
 
-(defn- line-bounds [top-level-chunks line-number]
-  (if-let [hit (first (filter (fn [chunk] (<= (first chunk) line-number (last chunk)))
-                              top-level-chunks))]
-    {:start (first hit)
-     ;; end is exclusive, so add 1:
-     :end (inc (last hit))}
-    (throw (ex-info "Line number not found in any top-level form." {:cause :line-number-not-found}))))
+(defn- line-bounds [content line-number]
+  (let [top-level-chunks (top-level-form-chunk content)]
+    (if-let [hit (first (filter (fn [chunk] (<= (first chunk) line-number (last chunk)))
+                                top-level-chunks))]
+      {:start (first hit)
+       ;; end is exclusive, so add 1:
+       :end (inc (last hit))}
+      (throw (ex-info "Line number not found in any top-level form." {:cause :line-number-not-found})))))
 
 (comment
 
-  (line-bounds
-   (top-level-form-chunk
-    (str/join "\n"                         ;; line
-              ["(ns)"                      ;; 1
-               ""                          ;; 2
-               "(defn square [x] (* x x))" ;; 3
-               ""                          ;; 4
-               "(defn cube [x] "           ;; 5
-               "  (* x x x))"              ;; 6
-               ""                          ;; 7
-               ]))
-   5))
-
+  (mapv
+   (juxt identity
+         #(line-bounds
+           (str/join "\n"                         ;; line
+                     ["(ns)"                      ;; 1
+                      ""                          ;; 2
+                      "(defn square [x] (* x x))" ;; 3
+                      ""                          ;; 4
+                      "(defn cube [x] "           ;; 5
+                      "  (* x x x))"              ;; 6
+                      ""                          ;; 7
+                      ])
+           %))
+   [1 3 4 5])
+;; => [[1 {:start 1, :end 2}]
+;;     [3 {:start 2, :end 4}]
+;;     [4 {:start 4, :end 7}]
+;;     [5 {:start 4, :end 7}]]
+  )
 (defn- bp-usage [reason]
   (println)
   (println "Usage: bb be-dev/balanced-parens file-path starting-line-number ending-line-number")
@@ -152,31 +167,57 @@
   [file & [line-number]]
   (let [content (try (slurp file) (catch Exception _ (bp-usage :missing-file)))]
     (if-not line-number
-      (when (balanced-parens-in-content? content)
-        #_:clj-kondo/ignore
-        (prn {:balanced true :whole-file true}))
+      #_:clj-kondo/ignore
+      (let [result (balanced-parens-in-content? content)]
+        (prn result)
+        result)
       (try (let [line-number (try (if (int? line-number) line-number (Integer/parseInt line-number))
                                   (catch Exception _ (bp-usage :invalid-line-number)))
-                 top-level-chunks (top-level-form-chunk content)
-                 {:keys [start end]} (line-bounds top-level-chunks line-number)
                  lines (str/split-lines content)
-                 corpus (str/join "\n" (take (- end start) (drop start lines)))]
-             (println "Checking chunk: \n----")
+                 line-count (count lines)
+                 _ (when (> line-number line-count)
+                     (throw (ex-info (str "Line number " line-number " is greater than the number of lines in the file (" line-count ").")
+                                     {:cause :line-number-too-high})))
+
+                 {:keys [start end]} (line-bounds content line-number)
+                 corpus (str/join "\n" (take (- end start) (drop (dec start) lines)))]
+             (println (str "Checking chunk containing line " line-number ": \n----"))
              (println corpus)
              (println "----")
-             (when (balanced-parens-in-content? corpus)
+             (let [result (assoc
+                           (balanced-parens-in-content? corpus)
+                           :starting-at (str/join "\n" [(nth lines (dec start)) (nth lines start)]))]
                #_:clj-kondo/ignore
-               (prn {:balanced true
-                     :range [start end]
-                     :start (str/join "\n" [(nth lines (dec start)) (nth lines start)])})))
+               (prn result)
+               result))
            (catch Exception e
              (println "message: " (ex-message e))
              (println "data:    " (pr-str (ex-data e))))))))
 
 (comment
+
+  (balanced-parens? "test/metabase/models/card_test.clj" 20)
+  (println corpus)
+
+  (balanced-parens-in-content? corpus)
+
   (balanced-parens? "mage/mage/be_dev.clj" 179)
                                         ;soo meta :) :| :(
   ;; these cannot trip it up:
   ")" "}]" #inst "2020" @(atom 1)  #_\)
   "uncomment this to try, it works, but is unreadable in bb:"  ;;#something-cool 13
   (balanced-parens? "bin/build/test/i18n/create_artifacts/backend_test.clj" 29))
+
+(comment
+
+  (require '[babashka.fs :as fs])
+  (defn run-all []
+    (keep (fn [f] (let [result (balanced-parens? f)] (when-not (:balanced result) [f result])))
+          (str/split-lines (str/join "\n"
+                                     (concat (fs/glob "." "**/*.clj")
+                                             (fs/glob "." "**/*.cljc")
+                                             (fs/glob "." "**/*.cljs"))))))
+
+  ;; run all files in the current directory and subdirectories, including in /jars:
+  ;; filtering out readable ones:
+  (= (run-all) []))
