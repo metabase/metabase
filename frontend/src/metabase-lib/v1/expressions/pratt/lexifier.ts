@@ -70,19 +70,15 @@ export function lexify(source: string) {
 
     if (node.type.name === "Reference") {
       const value = source.slice(node.from, node.to);
-      let start = node.from + 1;
-      let end = node.to - 1;
       if (value.at(0) !== "[") {
-        start = node.from;
         error(node, t`Missing opening bracket`);
       } else if (value.at(-1) !== "]") {
-        end = node.to;
         error(node, t`Missing a closing bracket`);
       }
 
       return token(node, {
         type: FIELD,
-        value: source.slice(start, end),
+        value: unquoteString(source.slice(node.from, node.to)),
       });
     }
 

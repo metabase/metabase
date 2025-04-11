@@ -88,14 +88,15 @@ export function unquoteString(string: string) {
     }
     return str;
   } else if (quote === "[") {
-    return unescapeString(string).slice(1, -1);
+    const end = string.endsWith("]") ? string.length - 1 : string.length;
+    return unescapeString(string.slice(1, end));
   } else {
     throw new Error("Unknown quoting: " + string);
   }
 }
 
 // The opposite of escapeString
-export function unescapeString(string: string) {
+function unescapeString(string: string) {
   let str = "";
   for (let i = 0; i < string.length; ++i) {
     const ch1 = string[i];

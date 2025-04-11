@@ -451,8 +451,8 @@ describe("lexify", () => {
 
     it("handles invalid escape sequences", () => {
       const cases = [
-        ["'\\x22'", "x22"],
-        ["'\\wat'", "wat"],
+        ["'\\x22'", "\\x22"],
+        ["'\\wat'", "\\wat"],
       ];
 
       for (const [expression, value] of cases) {
@@ -667,8 +667,12 @@ describe("lexify", () => {
     });
 
     it("should allow escaping brackets within bracket identifiers", () => {
-      const cases = ["[T\\[]", "[T\\]]", "[T\\[A\\]]"];
-      for (const expression of cases) {
+      const cases = [
+        ["[T\\[]", "T["],
+        ["[T\\]]", "T]"],
+        ["[T\\[A\\]]", "T[A]"],
+      ];
+      for (const [expression, value] of cases) {
         const { tokens, errors } = lexify(expression);
         expect(errors).toHaveLength(0);
         expect(tokens).toEqual(
@@ -677,7 +681,7 @@ describe("lexify", () => {
               type: FIELD,
               pos: 0,
               text: expression,
-              value: expression.slice(1, -1),
+              value,
             },
             { type: END_OF_INPUT, pos: expression.length, text: "\n" },
           ].map(asToken),
