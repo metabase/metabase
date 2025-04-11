@@ -38,6 +38,7 @@ export default class AccordionList extends Component {
       searchText: "",
       cursor: null,
       scrollToAlignment: "start",
+      keyboardNavString: "",
     };
 
     this._cache = new CellMeasurerCache({
@@ -47,6 +48,7 @@ export default class AccordionList extends Component {
 
     /** @type {React.RefObject<HTMLDivElement>} */
     this.listRootRef = createRef();
+    this._keyboardNavTimeout = null;
   }
 
   static propTypes = {
@@ -104,6 +106,9 @@ export default class AccordionList extends Component {
     "data-testid": PropTypes.string,
 
     withBorders: PropTypes.bool,
+
+    // Add new enableKeyboardNavigation prop
+    enableKeyboardNavigation: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -135,6 +140,7 @@ export default class AccordionList extends Component {
     getItemStyles: (item) => {},
     hasInitialFocus: true,
     showSpinner: (_item) => false,
+    enableKeyboardNavigation: false,
   };
 
   componentDidMount() {
@@ -179,6 +185,12 @@ export default class AccordionList extends Component {
     if (this._forceUpdateTimeout != null) {
       clearTimeout(this._forceUpdateTimeout);
       this._forceUpdateTimeout = null;
+    }
+
+    // Clear the keyboard navigation timeout
+    if (this._keyboardNavTimeout != null) {
+      clearTimeout(this._keyboardNavTimeout);
+      this._keyboardNavTimeout = null;
     }
   }
 
@@ -369,6 +381,66 @@ export default class AccordionList extends Component {
       }
 
       this.toggleSection(cursor.sectionIndex);
+    }
+
+    if (this.props.enableKeyboardNavigation && /[a-zA-Z]/.test(event.key)) {
+      const { sections, renderItemName } = this.props;
+      const { keyboardNavString } = this.state;
+
+      // Clear existing timeout and set a new one
+      if (this._keyboardNavTimeout) {
+        clearTimeout(this._keyboardNavTimeout);
+      }
+
+      // Set timeout to clear the keyboard navigation string after 1 second
+      this._keyboardNavTimeout = setTimeout(() => {
+        this.setState({ keyboardNavString: "" });
+        this._keyboardNavTimeout = null;
+      }, 1000);
+
+      // Append the key to the keyboard navigation string
+      const newKeyboardNavString = keyboardNavString + event.key.toLowerCase();
+      this.setState({ keyboardNavString: newKeyboardNavString });
+
+      // Find the first item that starts with the keyboard navigation string
+      for (
+        let sectionIndex = 0;
+        sectionIndex < sections.length;
+        sectionIndex++
+      ) {
+        const section = sections[sectionIndex];
+        if (!section.items) {
+          continue;
+        }
+
+        for (let itemIndex = 0; itemIndex < section.items.length; itemIndex++) {
+          const item = section.items[itemIndex];
+          const itemName = (renderItemName(item) || "")
+            .toString()
+            .toLowerCase();
+
+          if (itemName.startsWith(newKeyboardNavString)) {
+            const newCursor = { sectionIndex, itemIndex };
+            this.setState(
+              {
+                cursor: newCursor,
+                scrollToAlignment: "center",
+              },
+              () => {
+                // After state update, ensure scrolling to the found item
+                if (this.isVirtualized() && this._list) {
+                  const rows = this.getRows();
+                  const scrollToIndex = rows.findIndex(this.isRowSelected);
+                  if (scrollToIndex >= 0) {
+                    this._list.scrollToRow(scrollToIndex);
+                  }
+                }
+              },
+            );
+            return;
+          }
+        }
+      }
     }
 
     const searchRow = this.getRows().findIndex((row) => row.type === "search");
@@ -686,7 +758,7 @@ export default class AccordionList extends Component {
 
     const defaultListStyle = {
       // HACK - Ensure the component can scroll
-      // This is a temporary fix to handle cases where the parent component doesn’t pass in the correct `maxHeight`
+      // This is a temporary fix to handle cases where the parent component doesn't pass in the correct `maxHeight`
       overflowY: "auto",
       outline: "none",
     };
