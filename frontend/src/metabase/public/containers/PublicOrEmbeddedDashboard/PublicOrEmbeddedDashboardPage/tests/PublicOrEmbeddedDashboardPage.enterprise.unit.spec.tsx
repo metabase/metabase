@@ -52,6 +52,14 @@ describe("PublicOrEmbeddedDashboardPage", () => {
   });
 
   describe("locale hash parameter on static embeds (metabase#50182)", () => {
+    it('should set the locale to "en" by default', async () => {
+      await setupEnterprise();
+
+      expect(
+        screen.getByRole("button", { name: "Export as PDF" }),
+      ).toBeInTheDocument();
+    });
+
     it('should not set the locale to "ko" without "whitelabel" feature', async () => {
       const expectedLocale = "ko";
       await setupEnterprise({ hash: { locale: expectedLocale } });

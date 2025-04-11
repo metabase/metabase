@@ -59,7 +59,7 @@ export const DashCardQuestionDownloadButton = ({
               CS.hoverChildSmooth,
             )}
             loading={isDownloadingData}
-            aria-label="Download results"
+            aria-label={t`Download results`}
           >
             <Icon name="download" />
           </ActionIcon>

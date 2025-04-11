@@ -40,6 +40,14 @@ describe("PublicOrEmbeddedQuestion", () => {
   });
 
   describe("locale hash parameter on static embeds (metabase#50182)", () => {
+    it('should set the locale to "en" by default', async () => {
+      await setupEnterprise();
+
+      expect(
+        await screen.findByRole("button", { name: "Download results" }),
+      ).toBeInTheDocument();
+    });
+
     it('should not set the locale to "ko" without "whitelabel" feature', async () => {
       const expectedLocale = "ko";
       await setupEnterprise({ hash: { locale: expectedLocale } });
