@@ -121,7 +121,7 @@ jobs:
           path: bin/docker/
       - name: Move the ${{ matrix.edition }} uberjar to the context dir
         run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
-      - name: Add partner drivers to the container
+      - name: Deploy ee-extra build to registries
         if: ${{ matrix.edition == 'ee-extra' }}
         uses: ./.github/actions/build-ee-extra
         with:
