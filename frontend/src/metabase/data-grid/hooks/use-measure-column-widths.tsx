@@ -225,7 +225,10 @@ export const useMeasureColumnWidths = <TData, TValue>(
       }
 
       if (measureRootRef.current) {
-        document.body.removeChild(measureRootRef.current);
+        // TODO: Testing whether try/catching helps avoid the error
+        try {
+          document.body.removeChild(measureRootRef.current);
+        } catch (e) {}
         measureRootRef.current = undefined;
       }
     };

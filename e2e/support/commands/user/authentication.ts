@@ -2,11 +2,11 @@ import { USERS } from "e2e/support/cypress_data";
 declare global {
   namespace Cypress {
     interface Chainable {
-      signIn: (user?: keyof typeof USERS, options?: LoginOptions) => void;
-      signInAsAdmin: () => void;
-      signInAsNormalUser: () => void;
-      signInAsSandboxedUser: () => void;
-      signInAsImpersonatedUser: () => void;
+      signIn: (user?: keyof typeof USERS, options?: LoginOptions) => Chainable;
+      signInAsAdmin: () => Chainable;
+      signInAsNormalUser: () => Chainable;
+      signInAsSandboxedUser: () => Chainable;
+      signInAsImpersonatedUser: () => Chainable;
       signOut: () => void;
     }
   }
@@ -60,8 +60,9 @@ Cypress.Commands.add(
     cy.log(`Logging in as ${user}`);
 
     const { email: username, password } = USERS[user];
-    cy.request("POST", "/api/session", { username, password }).then(
-      (response) => {
+    return cy
+      .request("POST", "/api/session", { username, password })
+      .then((response) => {
         if (setupCache) {
           cy.log("saving login token for user", user);
           cy.getCookie("metabase.DEVICE").then((deviceCookie) => {
@@ -71,8 +72,7 @@ Cypress.Commands.add(
             };
           });
         }
-      },
-    );
+      });
   },
 );
 
@@ -81,15 +81,15 @@ Cypress.Commands.add("signInAsAdmin", () => {
 });
 
 Cypress.Commands.add("signInAsNormalUser", () => {
-  cy.signIn("normal");
+  return cy.signIn("normal");
 });
 
 Cypress.Commands.add("signInAsSandboxedUser", () => {
-  cy.signIn("sandboxed");
+  return cy.signIn("sandboxed");
 });
 
 Cypress.Commands.add("signInAsImpersonatedUser", () => {
-  cy.signIn("impersonated");
+  return cy.signIn("impersonated");
 });
 
 Cypress.Commands.add("signOut", () => {
