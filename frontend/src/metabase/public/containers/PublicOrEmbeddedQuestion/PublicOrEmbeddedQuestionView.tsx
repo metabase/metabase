@@ -73,6 +73,7 @@ export function PublicOrEmbeddedQuestionView({
         result={result}
         uuid={uuid}
         token={token}
+        floating={!titled}
       />
     ) : null;
 

@@ -148,8 +148,7 @@ export const EmbedFrame = ({
     : [];
   const hasVisibleParameters = visibleParameters.length > 0;
 
-  const hasHeader =
-    Boolean(finalName || dashboardTabs) || pdfDownloadsEnabled || headerButtons;
+  const hasHeader = Boolean(finalName || dashboardTabs) || pdfDownloadsEnabled;
 
   const allowParameterPanelSticky =
     !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
@@ -184,7 +183,7 @@ export const EmbedFrame = ({
             )}
             data-testid="embed-frame-header"
           >
-            {(finalName || headerButtons || pdfDownloadsEnabled) && (
+            {(finalName || pdfDownloadsEnabled) && (
               <TitleAndDescriptionContainer hasTitle={!!finalName}>
                 <TitleAndButtonsContainer
                   data-testid="fixed-width-dashboard-header"
@@ -223,6 +222,8 @@ export const EmbedFrame = ({
             {finalName && <Separator className={EmbedFrameS.Separator} />}
           </Header>
         )}
+
+        {headerButtons && !titled ? headerButtons : null}
 
         <span ref={parameterPanelRef} />
         {hasVisibleParameters && (

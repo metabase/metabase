@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -11,8 +12,11 @@ import {
   useDownloadData,
 } from "../QuestionDownloadWidget/use-download-data";
 
+import S from "./QuestionDownloadPopover.module.css";
+
 export type QuestionDownloadPopoverProps = {
   className?: string;
+  floating?: boolean;
 } & Pick<UseDownloadDataParams, "question" | "result"> &
   Partial<Omit<UseDownloadDataParams, "question" | "result">>;
 
@@ -25,6 +29,7 @@ const QuestionDownloadPopover = ({
   uuid,
   token,
   visualizationSettings,
+  floating,
 }: QuestionDownloadPopoverProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -41,7 +46,7 @@ const QuestionDownloadPopover = ({
   return (
     <Popover opened={isPopoverOpen} onChange={setIsPopoverOpen}>
       <Popover.Target>
-        <Flex className={className}>
+        <Flex className={cx(className, { [S.FloatingButton]: floating })}>
           <Tooltip label={t`Download results`} disabled={isPopoverOpen}>
             <ActionIcon
               c="var(--mb-color-text-primary)"
