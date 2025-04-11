@@ -347,13 +347,14 @@ export const FieldValuesWidgetInner = forwardRef<
   const search = useRef(
     _.debounce(async (value: string) => {
       if (!value) {
+        setOptions([]);
         setLoadingState("LOADED");
-        return;
+        setLastValue(value);
+      } else {
+        setLoadingState("LOADING");
+        await fetchValues(value);
+        setLastValue(value);
       }
-
-      await fetchValues(value);
-
-      setLastValue(value);
     }, 500),
   );
 
@@ -362,7 +363,6 @@ export const FieldValuesWidgetInner = forwardRef<
       _cancel.current();
     }
 
-    setLoadingState("LOADING");
     search.current(value);
   };
 
