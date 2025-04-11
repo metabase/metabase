@@ -7,12 +7,12 @@ import {
   useSearchFieldValuesQuery,
 } from "metabase/api";
 import {
-  Box,
   type ComboboxItem,
   type ComboboxProps,
-  Flex,
   Loader,
   MultiAutocomplete,
+  MultiAutocompleteOption,
+  MultiAutocompleteValue,
 } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
@@ -147,12 +147,7 @@ function RemappedValue({
   }
 
   const option = getFieldOption(remappedValue);
-  return (
-    <Flex component="span" gap="sm">
-      <span>{option.label}</span>
-      <Box opacity={0.5}>{option.value}</Box>
-    </Flex>
-  );
+  return <MultiAutocompleteValue value={option.value} label={option.label} />;
 }
 
 type RemappedOptionProps = {
@@ -165,10 +160,5 @@ function RemappedOption({ option, isRemapped }: RemappedOptionProps) {
     return option.value;
   }
 
-  return (
-    <Flex flex={1} justify="space-between" gap="sm">
-      <span>{option.label}</span>
-      <Box opacity={0.5}>{option.value}</Box>
-    </Flex>
-  );
+  return <MultiAutocompleteOption value={option.value} label={option.label} />;
 }
