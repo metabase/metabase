@@ -713,7 +713,22 @@ describe("issue 42957", () => {
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Collections").click();
 
-      cy.findByText("Collection without models").should("not.exist");
+      // wait for data to load
+      H.entityPickerModalLevel(1).should("contain", "Orders, Count");
+
+      // open filter
+      cy.findByRole("button", { name: /Filter/ }).click();
+    });
+
+    H.popover().findByLabelText("Saved questions").click();
+
+    H.entityPickerModal().within(() => {
+      // close filter
+      cy.findByRole("button", { name: /Filter/ }).click();
+      H.entityPickerModalLevel(1).should(
+        "not.contain",
+        "Collection without models",
+      );
     });
   });
 });
