@@ -33,9 +33,9 @@ function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
     () => Lib.aggregateByCount(query, stageIndex),
     [query, stageIndex],
   );
-  const { data, isFetching } = useGetAdhocQueryQuery(
-    Lib.toLegacyQuery(countQuery),
-  );
+  const { data, isFetching } = useGetAdhocQueryQuery({
+    query: Lib.toLegacyQuery(countQuery),
+  });
   const count = data?.data?.rows?.[0]?.[0];
 
   const previewUrl = Urls.newQuestion({

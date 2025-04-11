@@ -124,7 +124,7 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.log("Reported as a regression since v0.37.0");
     cy.wait("@dataset").then((xhr) => {
-      expect(xhr.request.body.query.filter).not.to.contain("Texas");
+      expect(xhr.request.body.query.query.filter).not.to.contain("Texas");
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State is TX");

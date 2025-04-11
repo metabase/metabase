@@ -29,8 +29,10 @@ export const PreviewQueryModal = ({
   const sourceQuery = question.query();
   const parameters = useSelector(getNextRunParameters);
   const payload = {
-    ...Lib.toLegacyQuery(sourceQuery),
-    parameters,
+    query: {
+      ...Lib.toLegacyQuery(sourceQuery),
+      parameters,
+    },
     pretty: false,
   };
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);

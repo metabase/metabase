@@ -121,8 +121,6 @@ describe("metabase/services > runQuestionQuery", () => {
         collection_preview: false,
         ignore_cache: false,
         parameters: [],
-        pivot_cols: [],
-        pivot_rows: [],
       });
     });
 
@@ -161,8 +159,6 @@ describe("metabase/services > runQuestionQuery", () => {
         collection_preview: false,
         ignore_cache: false,
         parameters: [],
-        pivot_cols: [],
-        pivot_rows: [],
       });
     });
   });
@@ -175,8 +171,11 @@ describe("metabase/services > runQuestionQuery", () => {
 
       const call = fetchMock.lastCall("path:/api/dataset");
       expect(await call?.request?.json()).toEqual({
-        ...question.datasetQuery(),
-        parameters: [],
+        query: {
+          ...question.datasetQuery(),
+          parameters: [],
+        },
+        context: "ad-hoc",
       });
     });
 
@@ -187,10 +186,13 @@ describe("metabase/services > runQuestionQuery", () => {
 
       const call = fetchMock.lastCall("path:/api/dataset/pivot");
       expect(await call?.request?.json()).toEqual({
-        ...question.datasetQuery(),
-        parameters: [],
-        pivot_cols: [],
-        pivot_rows: [],
+        query: {
+          ...question.datasetQuery(),
+          parameters: [],
+          pivot_cols: [],
+          pivot_rows: [],
+        },
+        context: "ad-hoc",
       });
     });
 

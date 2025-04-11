@@ -35,7 +35,7 @@ export const NotebookNativePreview = (): JSX.Element => {
 
   const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery, question.type());
-  const payload = Lib.toLegacyQuery(sourceQuery);
+  const payload = { query: Lib.toLegacyQuery(sourceQuery) };
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
 
   const showLoader = isFetching;

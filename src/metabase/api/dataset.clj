@@ -27,6 +27,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -81,16 +82,22 @@
                                       rff)
             (qp/process-query (update query :info merge info) rff)))))))
 
+(mr/def ::dataset-context
+  [:enum {:decode/json keyword} :ad-hoc :dashboard-ad-hoc])
+
 (api.macros/defendpoint :post "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   query :- [:map
-             [:database {:optional true} [:maybe :int]]]]
+   {:keys [query context]} :- [:map
+                               [:query [:map
+                                        [:database {:optional true} [:maybe :int]]]]
+                               [:context {:default :ad-hoc} ::dataset-context]]]
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)))
+       qp/userland-query-with-default-constraints)
+   {:context context}))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
@@ -181,9 +188,11 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map
-                                           [:database ms/PositiveInt]
-                                           [:pretty   {:default true} [:maybe :boolean]]]]
+   {{:keys [database] :as query} :query
+    pretty                       :pretty} :- [:map
+                                              [:query [:map
+                                                       [:database ms/PositiveInt]]]
+                                              [:pretty {:default true} :boolean]]]
   (model-persistence/with-persisted-substituion-disabled
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
@@ -196,13 +205,16 @@
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
-   {:keys [database] :as query} :- [:map
-                                    [:database {:optional true} [:maybe ms/PositiveInt]]]]
+   {{:keys [database] :as query} :query
+    context                      :context} :- [:map
+                                               [:query [:map
+                                                        [:database {:optional true} [:maybe ms/PositiveInt]]]]
+                                               [:context {:default :ad-hoc} ::dataset-context]]]
   (when-not database
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
-              :context     :ad-hoc}]
+              :context     context}]
     (qp.streaming/streaming-response [rff :api]
       (qp.pivot/run-pivot-query (assoc query
                                        :constraints (qp.constraints/default-query-constraints)

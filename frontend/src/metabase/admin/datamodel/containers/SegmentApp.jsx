@@ -10,19 +10,12 @@ import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { connect } from "metabase/lib/redux";
 
 import SegmentForm from "../components/SegmentForm";
-import { updatePreviewSummary } from "../datamodel";
-import { getPreviewSummary } from "../selectors";
 
 const mapDispatchToProps = {
-  updatePreviewSummary,
   createSegment: Segments.actions.create,
   updateSegment: Segments.actions.update,
   onChangeLocation: push,
 };
-
-const mapStateToProps = (state, props) => ({
-  previewSummary: getPreviewSummary(state),
-});
 
 const UpdateSegmentFormInner = ({
   route,
@@ -121,4 +114,4 @@ const SegmentApp = (props) => {
   return <CreateSegmentForm {...props} />;
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(SegmentApp);
+export default connect(null, mapDispatchToProps)(SegmentApp);

@@ -145,7 +145,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
         );
         const aggregatedQuery = Lib.aggregateByCount(baseQuery, -1);
         const query = filterByFk(aggregatedQuery, fk.origin, objectId);
-        const finalCard = Question.create({ databaseId, metadata })
+        const finalQuery = Question.create({ databaseId, metadata })
           .setQuery(query)
           .datasetQuery();
 
@@ -155,7 +155,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
         };
 
         try {
-          const result = await MetabaseApi.dataset(finalCard);
+          const result = await MetabaseApi.dataset({ query: finalQuery });
           if (
             result &&
             result.status === "completed" &&

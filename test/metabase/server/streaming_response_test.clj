@@ -93,9 +93,9 @@
              (mt/rows
               (mt/user-http-request :lucky
                                     :post 202 "dataset"
-                                    {:database (mt/id)
-                                     :type     "native"
-                                     :native   {:query {:sleep 10}}})))))))
+                                    {:query {:database (mt/id)
+                                             :type     "native"
+                                             :native   {:query {:sleep 10}}}})))))))
 
 (deftest truly-async-test
   (testing "StreamingResponses should truly be asynchronous, and not block Jetty threads while waiting for results"
@@ -132,9 +132,9 @@
             (let [url           (client/build-url "dataset" nil)
                   session-token (client/authenticate (mt/user->credentials :lucky))
                   request       (client/build-request-map session-token
-                                                          {:database (mt/id)
-                                                           :type     "native"
-                                                           :native   {:query {:sleep 5000}}}
+                                                          {:query {:database (mt/id)
+                                                                   :type     "native"
+                                                                   :native   {:query {:sleep 5000}}}}
                                                           nil)
                   futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
               (is (future? futur))

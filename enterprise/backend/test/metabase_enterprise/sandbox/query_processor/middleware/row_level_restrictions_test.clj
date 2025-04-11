@@ -492,7 +492,7 @@
       (is (= (format "Metabase:: userID: %d queryType: MBQL queryHash: <hash>" (mt/user->id :rasta))
              (run-query-returning-remark!
               (fn []
-                (mt/user-http-request :rasta :post "dataset" (mt/mbql-query venues {:aggregation [[:count]]})))))))))
+                (mt/user-http-request :rasta :post "dataset" {:query (mt/mbql-query venues {:aggregation [[:count]]})}))))))))
 
 (deftest breakouts-test
   (mt/test-drivers (row-level-restrictions-fk-sql-drivers)
