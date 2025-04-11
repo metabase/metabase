@@ -171,6 +171,8 @@ export const EmbedFrame = ({
         className={cx(
           EmbedFrameS.ContentContainer,
           EmbedFrameS.WithThemeBackground,
+          CS.hoverParent,
+          CS.hoverVisibility,
         )}
       >
         {hasHeader && (

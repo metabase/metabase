@@ -63,7 +63,12 @@ export function PublicOrEmbeddedQuestionView({
   const questionResultDownloadButton =
     result && downloadsEnabled ? (
       <QuestionDownloadPopover
-        className={cx(CS.m1, CS.textMediumHover)}
+        className={cx(
+          CS.m1,
+          CS.textMediumHover,
+          CS.hoverChild,
+          CS.hoverChildSmooth,
+        )}
         question={question}
         result={result}
         uuid={uuid}
