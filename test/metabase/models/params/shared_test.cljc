@@ -191,11 +191,73 @@
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "~2022-07-09"}}
-      "July 9\\, 2022"
+      "Before July 9\\, 2022"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "2022-07-09~"}}
+      "After July 9\\, 2022"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "2022-07-09"}}
+      "On July 9\\, 2022"
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "2022-07-06~2022-07-09"}}
       "July 6\\, 2022 \\- July 9\\, 2022"))
+
+  (t/testing "Exclude options are formatted correctly"
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-months-Jul"}}
+      "Exclude July"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-months-Dec"}}
+      "Exclude December"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-months-Dec-Sep"}}
+      "Exclude December\\, September"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-months-Dec-Sep-Jul"}}
+      "Exclude 3 selections"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-hours-0"}}
+      "Exclude 12 AM"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-hours-0-14"}}
+      "Exclude 12 AM\\, 2 PM"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-hours-0-14-16"}}
+      "Exclude 3 selections"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-days-Mon"}}
+      "Exclude Monday"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-days-Wed-Fri"}}
+      "Exclude Wednesday\\, Friday"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-days-Tue-Sat-Sun"}}
+      "Exclude 3 selections"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-quarters-1"}}
+      "Exclude Q1"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-quarters-2-3"}}
+      "Exclude Q2\\, Q3"
+
+      "{{foo}}"
+      {"foo" {:type :date/all-options :value "exclude-quarters-2-1-4"}}
+      "Exclude 3 selections"))
 
   (t/testing "Relative date values are formatted correctly"
     (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
