@@ -84,7 +84,17 @@ export const AdHocQuestionDescription = ({
   }
 
   return (
-    <span className={onClick ? CS.cursorPointer : ""} onClick={onClick}>
+    <span
+      className={onClick ? CS.cursorPointer : ""}
+      onClick={onClick}
+      style={{
+        display: "inline-block",
+        maxWidth: "100%",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
+    >
       {adHocDescription}
     </span>
   );

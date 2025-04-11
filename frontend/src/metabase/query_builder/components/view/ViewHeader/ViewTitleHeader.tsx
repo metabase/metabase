@@ -5,6 +5,7 @@ import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import type { QueryModalType } from "metabase/query_builder/constants";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -155,24 +156,26 @@ export function ViewTitleHeader({
         data-testid="qb-header"
       >
         <DashboardBackButton mr="sm" />
-        {isSaved ? (
-          <SavedQuestionLeftSide
-            question={question}
-            isObjectDetail={isObjectDetail}
-            isAdditionalInfoVisible={isAdditionalInfoVisible}
-            onOpenQuestionInfo={onOpenQuestionInfo}
-            onSave={onSave}
-          />
-        ) : (
-          <AdHocQuestionLeftSide
-            question={question}
-            isObjectDetail={isObjectDetail}
-            isSummarized={isSummarized}
-            isNative={isNative}
-            originalQuestion={originalQuestion}
-            onOpenModal={onOpenModal}
-          />
-        )}
+        <Box style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden" }}>
+          {isSaved ? (
+            <SavedQuestionLeftSide
+              question={question}
+              isObjectDetail={isObjectDetail}
+              isAdditionalInfoVisible={isAdditionalInfoVisible}
+              onOpenQuestionInfo={onOpenQuestionInfo}
+              onSave={onSave}
+            />
+          ) : (
+            <AdHocQuestionLeftSide
+              question={question}
+              isObjectDetail={isObjectDetail}
+              isSummarized={isSummarized}
+              isNative={isNative}
+              originalQuestion={originalQuestion}
+              onOpenModal={onOpenModal}
+            />
+          )}
+        </Box>
         <ViewTitleHeaderRightSide
           question={question}
           result={result}

@@ -2,4 +2,8 @@
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.5rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

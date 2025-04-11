@@ -45,10 +45,20 @@ export function AdHocQuestionLeftSide(
 
   return (
     <Box className={AdHocQuestionLeftSideS.AdHocLeftSideRoot}>
-      <Flex align="center" wrap="nowrap">
+      <Flex
+        align="center"
+        wrap="nowrap"
+        style={{ maxWidth: "100%", overflow: "hidden" }}
+      >
         <ViewHeading
           className={ViewTitleHeaderS.AdHocViewHeading}
           color="medium"
+          style={{
+            maxWidth: "100%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
         >
           {isNative ? (
             t`New question`
