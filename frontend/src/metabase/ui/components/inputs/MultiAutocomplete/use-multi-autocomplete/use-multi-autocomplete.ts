@@ -7,12 +7,13 @@ import {
   isOptionsGroup,
   useCombobox,
 } from "@mantine/core";
+import { useWindowEvent } from "@mantine/hooks";
 import { parse } from "csv-parse/browser/esm/sync";
 import {
   type ChangeEvent,
   type ClipboardEvent,
-  type KeyboardEvent,
   type MouseEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   useMemo,
   useState,
 } from "react";
@@ -145,7 +146,7 @@ export function useMultiAutocomplete({
     }
   };
 
-  const handleFieldKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  const handleFieldKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (
       event.key === "Enter" &&
       combobox.selectedOptionIndex < 0 &&
@@ -241,6 +242,15 @@ export function useMultiAutocomplete({
     combobox.closeDropdown();
     combobox.resetSelectedOption();
   };
+
+  const handleWindowKeydownCapture = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && combobox.dropdownOpened) {
+      event.stopImmediatePropagation();
+      combobox.closeDropdown();
+    }
+  };
+
+  useWindowEvent("keydown", handleWindowKeydownCapture, { capture: true });
 
   return {
     combobox,
