@@ -10,6 +10,7 @@ const STRING_ESCAPE: Record<string, string> = {
   "\n": "\\n",
   "\f": "\\f",
   "\r": "\\r",
+  "\v": "\\v",
 };
 
 const STRING_UNESCAPE: Record<string, string> = {
@@ -18,6 +19,7 @@ const STRING_UNESCAPE: Record<string, string> = {
   n: "\n",
   f: "\f",
   r: "\r",
+  v: "\v",
 };
 
 export function formatStringLiteral(

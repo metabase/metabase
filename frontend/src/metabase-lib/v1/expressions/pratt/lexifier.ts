@@ -2,6 +2,7 @@ import type { SyntaxNodeRef } from "@lezer/common";
 import { t } from "ttag";
 
 import { ParseError } from "../errors";
+import { unquoteString } from "../string";
 import { OPERATOR, tokenize } from "../tokenizer";
 
 import {
@@ -26,17 +27,6 @@ import {
   SUB,
 } from "./syntax";
 import { type NodeType, Token } from "./types";
-
-const escapes = {
-  '"': '"',
-  "'": "'",
-  b: "\b",
-  f: "\f",
-  n: "\n",
-  r: "\r",
-  t: "\t",
-  v: "\x0b",
-};
 
 export function lexify(source: string) {
   const lexs: Token[] = [];
@@ -112,23 +102,18 @@ export function lexify(source: string) {
       const openQuote = source[node.from];
       const closeQuote = source[node.to - 1];
       const penultimate = source[node.to - 2];
+      const prepenultimate = source[node.to - 3];
       if (openQuote === "'" || openQuote === '"') {
-        let end = node.to - 1;
-        if (closeQuote !== openQuote || penultimate === "\\") {
-          end = node.to;
+        if (
+          closeQuote !== openQuote ||
+          (penultimate === "\\" && prepenultimate !== "\\")
+        ) {
           error(node, t`Missing closing quotes`);
         }
 
         return token(node, {
           type: STRING,
-          value: source
-            // remove quotes
-            .slice(node.from + 1, end)
-            // expand escape sequences
-            .replace(/\\./g, (match) => {
-              const ch = match[1];
-              return escapes[ch as keyof typeof escapes] ?? ch;
-            }),
+          value: unquoteString(source.slice(node.from, node.to)),
         });
       }
     }
