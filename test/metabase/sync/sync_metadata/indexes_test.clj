@@ -21,24 +21,30 @@
                                          {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
                                         [[1 2]]])
       (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :indexed))))
-      (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :not-indexed)))))))
+      (is ((complement true?) (t2/select-one-fn :database_indexed :model/Field (mt/id :table :not-indexed)))))))
 
 (deftest sync-composite-indexed-columns-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :index-info) :mongo)
-    (mt/dataset (mt/dataset-definition "composite-index"
-                                       ["table"
-                                        [{:field-name "first" :indexed? false :base-type :type/Integer}
-                                         {:field-name "second" :indexed? false :base-type :type/Integer}]
-                                        [[1 2]]])
-      (try
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                       (sql.tx/create-index-sql driver/*driver* "table" ["first" "second"]))
-        (sync/sync-database! (mt/db))
-        (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :first))))
-        (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :second))))
-        (finally
-        ;; clean the db so this test is repeatable
-          (t2/delete! :model/Database (mt/id)))))))
+  (mt/test-drivers
+    (disj (mt/normal-drivers-with-feature :index-info) :mongo)
+    (let [ds (mt/dataset-definition
+              "composite-index"
+              ["table"
+               [{:field-name "first" :indexed? false :base-type :type/Integer}
+                {:field-name "second" :indexed? false :base-type :type/Integer}]
+               [[1 2]]])]
+      (mt/dataset
+        ds
+        (try
+          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                         (sql.tx/create-index-sql driver/*driver* "table" ["first" "second"]))
+          (sync/sync-database! (mt/db))
+          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :first))))
+          (is ((complement true?) (t2/select-one-fn :database_indexed :model/Field (mt/id :table :second))))
+          (finally
+          ;; clean the db so this test is repeatable
+            (t2/delete! :model/Database (mt/id))
+            (u/ignore-exceptions
+              (tx/destroy-db! driver/*driver* ds))))))))
 
 (driver/register! ::not-support-index-test :abstract? true)
 
