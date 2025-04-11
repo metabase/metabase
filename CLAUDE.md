@@ -12,6 +12,7 @@
 ## Quick Commands
 
 ### JavaScript/TypeScript
+
 - **Lint:** `yarn lint-eslint`
 - **Test:** `yarn test-unit path/to/file.unit.spec.js` or `yarn test-unit -t "pattern"`
 - **Watch:** `yarn test-unit-watch path/to/file.unit.spec.js`
@@ -19,6 +20,7 @@
 - **Type Check:** `yarn type-check`
 
 ### Clojure
+
 - **Lint PR:** `./bin/mage kondo-updated master` (or whatever target branch)
   - Call the command one time at the beginning, record the results, then work through the problems one by one.
   - If the solution is obvious, then please apply the fix. Otherwise skip it.
@@ -26,7 +28,7 @@
     and descriptive commit message.
 - **Lint File:** `./bin/mage kondo <file or files>` (or whatever target branch)
   - Use the linter as a way to know that you are adhering to conventions in place in the codebase
-- **Lint Changes:** `./bin/mage kondo-updated HEAD^`
+- **Lint Changes:** `./bin/mage kondo-updated HEAD`
 - **Format:** `./bin/mage cljfmt-files [path]`
 - **Test file:** `clojure -X:dev:test :only namespace/test-name`
 - **Check Parenthesis Balance** `./bin/mage -balance-parens-check` with optional line-number
@@ -35,6 +37,7 @@
   - See `Sending code to the REPL` for more details
 
 ### ClojureScript
+
 - **Test:** `yarn test-cljs`
 
 ## Clojure REPL-driven development
@@ -66,6 +69,7 @@
 ### How to evaluate code
 
 #### Keeping parens balanced
+
 - Edit clojure files one step at a time.
 - After every change to a clojure form, call `mage -balance-parens-check thefile.clj <line-number>`.
 - If the change results in unbalanced parens, try again until it is balanced.
@@ -82,46 +86,53 @@ After EVERY change: call `mage -balance-parens-check yourfile.clj 12`, which che
 
 You can also call `mage -balance-parens-check yourfile.clj` without the line number to check the entire file.
 
-#### Bottom-up dev loop:
+#### Bottom-up dev loop
+
 1. Write code into a file
 2. Evaluate the file's namespace and make sure it loads correctly
 3. Call functions in the namespace with test inputs, and observe that the outputs are correct 3.1 Feel free to copy
    these REPL session trials into actual test cases using `deftest` and `is`.
 4. Once you know these functions are good, return to 1, and compose them into the task that you need to build.
 
-#### Sending code to the REPL:
+#### Sending code to the REPL
+
 - Send code to the metabase process REPL using: `./bin/mage -eval '(+ 1 1)'` where `(+ 1 1)` is your Clojure code.
   - This will evaluate it in the user namespace.
   - If the Metabase backend is not running, you'll see an error message with instructions on how to start it. The
     error will tell you whether the REPL server is missing or if there's nothing listening on the port.
 
-##### Working with files and namespaces:
+##### Working with files and namespaces
 
 The simplest and most reliable way to work with your code is:
 
 1. **Load a file and call functions with fully qualified names**:
+
    ```
    ./bin/mage -eval '(load-file "path/to/your/file.clj") (your.namespace/your-function arg1 arg2)'
    ```
-   
+
    Example:
+
    ```
    ./bin/mage -eval '(load-file "dev/src/dev/nocommit/eight_queens.clj") (dev.nocommit.eight-queens/solve-n-queens 4)'
    ```
 
-##### Understanding the response:
+##### Understanding the response
 
 The `./bin/mage -eval` command returns three separate, independent outputs:
+
 - `value`: The return value of the last expression (best for data structures)
 - `stdout`: Any printed output from `println` etc. (best for messages)
 - `stderr`: Any error messages (best for warnings and errors)
 
 Example call:
-``` bash
+
+```bash
 ./bin/mage -eval '(println "Hello, world!") '\''({0 1, 1 3, 2 0, 3 2} {0 2, 1 0, 2 3, 3 1})'
 ```
 
 Example response:
+
 ```
 ns: user
 session: 32a35206-871c-4553-9bc9-f49491173d1c
@@ -131,13 +142,14 @@ stderr:
 ```
 
 For effective REPL usage:
+
 - Return data structures as function return values
 - Use `println` for human-readable messages
 - Let errors propagate naturally to stderr
-
 
 ## Tips
 
 - End all files with a newline.
 - When editing tabular code, where the columns line up, try to keep them aligned.
 - When you see misaligned code elements (like a `goal-met?` function on line 290 that should align with one on line 289), make sure to align them properly.
+
