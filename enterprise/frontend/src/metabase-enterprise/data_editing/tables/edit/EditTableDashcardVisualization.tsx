@@ -2,6 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import { formatRowCount } from "metabase-lib/v1/queries/utils/row-count";
 import type {
@@ -15,6 +16,7 @@ import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useTableCRUD } from "./use-table-crud";
+import { useTableSorting } from "./use-table-sorting";
 import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-dashcard-update-strategy";
 
 type EditTableDashcardVisualizationProps = {
@@ -23,8 +25,8 @@ type EditTableDashcardVisualizationProps = {
   tableId: ConcreteTableId;
   data: DatasetData;
   className?: string;
-  refetchTableDataQuery: () => void;
   visualizationSettings?: VisualizationSettings;
+  question: Question;
 };
 
 export const EditTableDashcardVisualization = ({
@@ -34,6 +36,7 @@ export const EditTableDashcardVisualization = ({
   data,
   className,
   visualizationSettings,
+  question,
 }: EditTableDashcardVisualizationProps) => {
   const stateUpdateStrategy = useTableEditingStateDashcardUpdateStrategy(
     dashcardId,
@@ -57,6 +60,10 @@ export const EditTableDashcardVisualization = ({
     visualizationSettings,
   );
 
+  const { getColumnSortDirection } = useTableSorting({
+    question,
+  });
+
   return (
     <Stack className={cx(S.container, className)} gap={0}>
       <Box pos="relative" className={S.gridWrapper}>
@@ -66,6 +73,7 @@ export const EditTableDashcardVisualization = ({
           onCellValueUpdate={handleCellValueUpdate}
           onRowExpandClick={handleModalOpenAndExpandedRow}
           columnsConfig={columnsConfig}
+          getColumnSortDirection={getColumnSortDirection}
         />
       </Box>
 

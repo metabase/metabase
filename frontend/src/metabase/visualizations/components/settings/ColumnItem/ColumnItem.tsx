@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 import type { AccentColorOptions } from "metabase/lib/colors/types";
@@ -25,7 +26,7 @@ export interface ColumnItemProps {
   onEnable?: (target: HTMLElement) => void;
   onColorChange?: (newColor: string) => void;
   accentColorOptions?: AccentColorOptions;
-  additionalActions?: React.ReactNode;
+  additionalActions?: ReactNode;
 }
 
 export const ColumnItem = ({

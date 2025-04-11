@@ -66,3 +66,8 @@
   align-items: center;
   padding: 0 0.75rem;
 }
+
+.sortIndicator {
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+}
