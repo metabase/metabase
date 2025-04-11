@@ -43,7 +43,7 @@ jobs:
           echo "Using head ref: $HEAD_REF"
 
           # Run with --execute to automatically trigger workflows
-          node cypress-test-finder.js --base="$BASE_BRANCH" --ref="$HEAD_REF" --execute
+          node cypress-test-finder.js --base="origin/$BASE_BRANCH" --ref="$HEAD_REF" --execute
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
