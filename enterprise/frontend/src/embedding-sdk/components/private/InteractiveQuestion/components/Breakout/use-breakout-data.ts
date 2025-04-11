@@ -1,10 +1,12 @@
-import type { QuestionStateParams } from "embedding-sdk/types/question";
 import {
   type ListItem as BreakoutListItem,
   getBreakoutListItem,
 } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList";
 import { useBreakoutQueryHandlers } from "metabase/query_builder/hooks";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+
+import { useInteractiveQuestionContext } from "../../context";
 
 export interface SDKBreakoutItem extends BreakoutListItem {
   breakoutIndex: number;
@@ -13,10 +15,10 @@ export interface SDKBreakoutItem extends BreakoutListItem {
   replaceBreakoutColumn: (column: Lib.ColumnMetadata) => void;
 }
 
-export const useBreakoutData = ({
-  question,
-  updateQuestion,
-}: QuestionStateParams): SDKBreakoutItem[] => {
+export const useBreakoutData = (): SDKBreakoutItem[] => {
+  const { updateQuestion, ...interactiveQuestionContext } =
+    useInteractiveQuestionContext();
+  const question = interactiveQuestionContext.question as Question;
   const onQueryChange = (query: Lib.Query) => {
     if (question) {
       updateQuestion(question.setQuery(query), { run: true });
