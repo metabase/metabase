@@ -59,6 +59,8 @@ import {
 } from "./utils";
 
 const MAX_SEARCH_RESULTS = 100;
+const COMBOBOX_WIDTH = 364;
+const DROPDOWN_WIDTH = 314;
 
 function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
   return {
@@ -504,6 +506,11 @@ export const FieldValuesWidgetInner = forwardRef<
               lastValue,
             })}
             autoFocus={autoFocus}
+            w={COMBOBOX_WIDTH}
+            comboboxProps={{
+              width: DROPDOWN_WIDTH,
+              position: "bottom-start",
+            }}
             data-testid="token-field"
             onCreate={(value) => {
               if (isNumericParameter) {
