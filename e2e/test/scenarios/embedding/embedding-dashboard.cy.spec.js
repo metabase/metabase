@@ -311,7 +311,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       openFilterOptions("Id");
       H.popover().within(() => {
         H.fieldValuesSearchInput().type("Aly");
-        cy.contains("Alycia McCullough - 2016");
+        cy.contains("Alycia McCullough");
       });
 
       // close the suggestions popover
@@ -346,7 +346,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       openFilterOptions("User");
       H.popover().within(() => {
         H.fieldValuesSearchInput().type("Aly");
-        cy.contains("Alycia McCullough - 2016");
+        cy.contains("Alycia McCullough");
       });
 
       // close the suggestions popover
