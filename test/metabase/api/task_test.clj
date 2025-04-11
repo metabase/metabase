@@ -275,7 +275,7 @@
     (t2/delete! :model/TaskHistory)
     (testing "Empty vector is returned for empty task list"
       (is (= []
-             (mt/user-http-request :crowberto :get 200 "task/unique_tasks"))))
+             (mt/user-http-request :crowberto :get 200 "task/unique-tasks"))))
     (let [now (t/zoned-date-time)]
       (mt/with-temp
         [;; task a
@@ -319,4 +319,4 @@
           :ended_at (t/zoned-date-time)}]
         (testing "Ordered unique tasks are returned"
           (is (= ["a" "b" "c"]
-                 (mt/user-http-request :crowberto :get 200 "task/unique_tasks"))))))))
+                 (mt/user-http-request :crowberto :get 200 "task/unique-tasks"))))))))

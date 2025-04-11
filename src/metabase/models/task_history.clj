@@ -7,7 +7,6 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -67,10 +66,6 @@
 
 (defn- filter->where
   [{:keys [status task] :as filter}]
-  (when task
-    (assert (string? task)))
-  (when status
-    (assert (keyword? status)))
   (when (not-empty filter)
     (let [task-filter (when task [:= :task task])
           status-filter (when status [:= :status (name status)])]
@@ -78,7 +73,8 @@
                 (conj [:and] task-filter status-filter)
                 (or task-filter status-filter))})))
 
-(mr/def ::filter
+(def Filter
+  "Schema for filter for task history."
   [:maybe [:map [:status {:optional true} (into [:enum] task-history-status)
                  :task   {:optional true} :string]]])
 
