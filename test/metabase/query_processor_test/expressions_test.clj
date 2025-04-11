@@ -642,7 +642,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
       (is (= [[""]]
              (mt/formatted-rows
-              [(mt/format-nil->empty-str driver/*driver*)]
+              [str]
               #_format-nil-values? true
               (mt/run-mbql-query orders
                 {:expressions {"empty" [:value "" {:base_type :type/Text}]}

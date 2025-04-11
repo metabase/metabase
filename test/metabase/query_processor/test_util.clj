@@ -276,19 +276,6 @@
     (1 1M true)  true
     (throw (ex-info "value is not boolish" {:value x}))))
 
-(defn format-nil->empty-str
-  "Return a function that converts nil to an empty string if driver treats empty strings a null.
-
-  Can be used with [[format-rows-by]] to normalize empty strings in results (but don't forget you need to pass
-  `format-nil-values?` when calling the [[format-rows-by]])."
-  [driver]
-  (if-not (driver.tu/empty-string-is-null? driver)
-    str
-    (fn nil->empty-string [value]
-      (if (nil? value)
-        ""
-        (str value)))))
-
 (defn format-rows-by
   "Format the values in result `rows` with the fns at the corresponding indecies in `format-fns`. `rows` can be a
   sequence or any of the common map formats we expect in QP tests.
