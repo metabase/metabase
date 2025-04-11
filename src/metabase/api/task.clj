@@ -13,12 +13,13 @@
 (api.macros/defendpoint :get "/"
   "Fetch a list of recent tasks stored as Task History"
   [_
-   {:keys [status]} :- [:map [:status {:optional true} (into [:enum] task-history/task-history-status)]]]
+   {:keys [_status _task]
+    :as filter} :- ::task-history/filter]
   (validation/check-has-application-permission :monitoring)
   {:total  (t2/count :model/TaskHistory)
    :limit  (request/limit)
    :offset (request/offset)
-   :data   (task-history/all (request/limit) (request/offset) status)})
+   :data   (task-history/all (request/limit) (request/offset) filter)})
 
 (api.macros/defendpoint :get "/:id"
   "Get `TaskHistory` entry with ID."
@@ -31,3 +32,8 @@
   []
   (validation/check-has-application-permission :monitoring)
   (task/scheduler-info))
+
+(api.macros/defendpoint :get "/unique_tasks"
+  [] :- [:vector string?]
+  (validation/check-has-application-permission :monitoring)
+  (task-history/unique-tasks))

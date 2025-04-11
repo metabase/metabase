@@ -7,6 +7,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -44,7 +45,9 @@
                                                                                :order-by [[:ended_at :desc]]})]
     (t2/delete! (t2/table-name :model/TaskHistory) :ended_at [:<= clean-before-date])))
 
-(def ^:private task-history-status #{:started :success :failed})
+(def task-history-status
+  "Allowed status values"
+  #{:started :success :failed})
 
 (defn- assert-task-history-status
   [status]
@@ -64,18 +67,40 @@
   {:task_details mi/transform-json-eliding
    :status       mi/transform-keyword})
 
+(defn- filter->where
+  [{:keys [status task] :as filter}]
+  (when task
+    (assert (string? task)))
+  (when status
+    (assert (keyword? status)))
+  (when (not-empty filter)
+    (let [task-filter (when task [:= :task task])
+          status-filter (when status [:= :status (name status)])]
+      {:where (if (and task-filter status-filter)
+                (conj [:and] task-filter status-filter)
+                (or task-filter status-filter))})))
+
+(mr/def ::filter
+  [:maybe [:map [:status {:optional true} (into [:enum] task-history-status)
+                 :task   {:optional true} :string]]])
+
 (mu/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
-   status :- [:maybe [:enum :started :success :failed]]]
+   filter :- ::filter]
   (t2/select :model/TaskHistory (merge {:order-by [[:started_at :desc]]}
-                                       (when status
-                                         {:where [:= :status (name status)]})
+                                       (filter->where filter)
                                        (when limit
                                          {:limit limit})
                                        (when offset
                                          {:offset offset}))))
+
+(defn unique-tasks
+  "Return _vector_ of all unique tasks' names in alphabetical order."
+  []
+  (vec (t2/select-fn-vec :task [:model/TaskHistory :task] {:group-by [:task]
+                                                           :order-by [:task]})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            with-task-history macro                                             |
