@@ -54,7 +54,7 @@
                                    :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write])
-      (= include :events)
+      (include :events)
       (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
 (api.macros/defendpoint :get "/:id" :- ::Timeline
