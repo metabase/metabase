@@ -1,5 +1,6 @@
 import type {
   CollectionPermissions,
+  DatabaseId,
   GroupsPermissions,
   SettingDefinition,
   SettingKey,
@@ -42,6 +43,10 @@ export interface AdminState {
   settings: {
     settings: SettingDefinition[];
     warnings: Partial<Record<SettingKey, unknown>>;
+  };
+  databases: {
+    deletionError: null | unknown;
+    deletes: DatabaseId[];
   };
 }
 

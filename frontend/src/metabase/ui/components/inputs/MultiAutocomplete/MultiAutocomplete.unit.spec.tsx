@@ -1,4 +1,4 @@
-import type { ComboboxItem } from "@mantine/core";
+import type { ComboboxData } from "@mantine/core";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
 
@@ -6,33 +6,36 @@ import { renderWithProviders, screen } from "__support__/ui";
 
 import { MultiAutocomplete, type MultiAutocompleteProps } from "./";
 
-type TestInputProps = Omit<MultiAutocompleteProps, "values"> & {
-  initialValues: string[];
+type TestInputProps = Omit<MultiAutocompleteProps, "value"> & {
+  initialValue: string[];
 };
 
-function TestInput({ initialValues, onChange, ...props }: TestInputProps) {
-  const [values, setValues] = useState(initialValues);
+function TestInput({ initialValue, onChange, ...props }: TestInputProps) {
+  const [value, setValue] = useState(initialValue);
 
-  const handleChange = (newValues: string[]) => {
-    onChange(newValues);
-    setValues(newValues);
+  const handleChange = (newValue: string[]) => {
+    onChange(newValue);
+    setValue(newValue);
   };
 
-  return (
-    <MultiAutocomplete {...props} values={values} onChange={handleChange} />
-  );
+  return <MultiAutocomplete {...props} value={value} onChange={handleChange} />;
 }
 
-const REMAPPED_OPTIONS: ComboboxItem[] = [
+const REMAPPED_DATA: ComboboxData = [
   { value: "1", label: "One" },
   { value: "2", label: "Two" },
   { value: "3", label: "Three" },
   { value: "4", label: "Four" },
 ];
 
+const GROUPED_DATA: ComboboxData = [
+  { group: "A", items: ["A1", "A2"] },
+  { group: "B", items: ["B1", "B2"] },
+];
+
 type SetupOpts = {
-  initialValues?: string[];
-  options?: ComboboxItem[];
+  initialValue?: string[];
+  data?: ComboboxData;
   placeholder?: string;
   autoFocus?: boolean;
   rightSection?: ReactNode;
@@ -42,8 +45,8 @@ type SetupOpts = {
 };
 
 function setup({
-  initialValues = [],
-  options = [],
+  initialValue = [],
+  data = [],
   placeholder = "Enter some text",
   onCreate,
 }: SetupOpts = {}) {
@@ -52,8 +55,8 @@ function setup({
 
   renderWithProviders(
     <TestInput
-      initialValues={initialValues}
-      options={options}
+      initialValue={initialValue}
+      data={data}
       placeholder={placeholder}
       onCreate={onCreate}
       onChange={onChange}
@@ -283,7 +286,7 @@ describe("MultiAutocomplete", () => {
   });
 
   it("should allow to edit a value", async () => {
-    const { input, onChange } = setup({ initialValues: ["1", "2"] });
+    const { input, onChange } = setup({ initialValue: ["1", "2"] });
     await userEvent.click(screen.getByText("1"));
     expect(input).toHaveValue("1");
     expect(onChange).not.toHaveBeenCalled();
@@ -301,8 +304,8 @@ describe("MultiAutocomplete", () => {
     expect(onChange).toHaveBeenLastCalledWith(["3", "4", "2"]);
   });
 
-  it("should display the remapped value when there are matching options", () => {
-    setup({ initialValues: ["1", "2", "5"], options: REMAPPED_OPTIONS });
+  it("should display the remapped value when there are matching data", () => {
+    setup({ initialValue: ["1", "2", "5"], data: REMAPPED_DATA });
     expect(screen.getByText("One")).toBeInTheDocument();
     expect(screen.getByText("Two")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
@@ -310,8 +313,8 @@ describe("MultiAutocomplete", () => {
 
   it("should use the remapped value when editing", async () => {
     const { input, onChange } = setup({
-      initialValues: ["1", "3"],
-      options: REMAPPED_OPTIONS,
+      initialValue: ["1", "3"],
+      data: REMAPPED_DATA,
     });
     await userEvent.click(screen.getByText("One"));
     expect(input).toHaveValue("One");
@@ -330,7 +333,7 @@ describe("MultiAutocomplete", () => {
 
   it("should quote the selected value when editing", async () => {
     const { input, onChange, onSearchChange } = setup({
-      initialValues: ["a,b"],
+      initialValue: ["a,b"],
     });
     await userEvent.click(screen.getByText("a,b"));
     expect(input).toHaveValue('"a,b"');
@@ -345,7 +348,7 @@ describe("MultiAutocomplete", () => {
 
   it("should escape the selected value when editing", async () => {
     const { input, onChange, onSearchChange } = setup({
-      initialValues: ['a"b'],
+      initialValue: ['a"b'],
     });
     await userEvent.click(screen.getByText('a"b'));
     expect(input).toHaveValue('"a\\"b"');
@@ -360,8 +363,8 @@ describe("MultiAutocomplete", () => {
 
   it("should quote the selected option label when editing", async () => {
     const { input, onChange } = setup({
-      initialValues: ["1"],
-      options: [
+      initialValue: ["1"],
+      data: [
         { value: "1", label: "a,b" },
         { value: "2", label: "a,b,c" },
         { value: "3", label: "a,b,c,d" },
@@ -387,7 +390,7 @@ describe("MultiAutocomplete", () => {
   });
 
   it("should open and close the dropdown correctly", async () => {
-    const { input, onChange } = setup({ options: REMAPPED_OPTIONS });
+    const { input, onChange } = setup({ data: REMAPPED_DATA });
     expect(queryOption("One")).not.toBeInTheDocument();
 
     await userEvent.click(input);
@@ -426,6 +429,28 @@ describe("MultiAutocomplete", () => {
     expect(onChange).toHaveBeenLastCalledWith(["1", "2", "3"]);
   });
 
+  it("should work with grouped options", async () => {
+    const { input, onChange } = setup({ data: GROUPED_DATA });
+    await userEvent.click(input);
+    await userEvent.click(getOption("A1"));
+    expect(onChange).toHaveBeenLastCalledWith(["A1"]);
+
+    await userEvent.click(input);
+    expect(queryOption("A1")).not.toBeInTheDocument();
+    expect(getOption("A2")).toBeInTheDocument();
+    expect(getOption("B1")).toBeInTheDocument();
+    expect(getOption("B2")).toBeInTheDocument();
+
+    await userEvent.type(input, "B");
+    expect(queryOption("A1")).not.toBeInTheDocument();
+    expect(queryOption("A2")).not.toBeInTheDocument();
+    expect(getOption("B1")).toBeInTheDocument();
+    expect(getOption("B2")).toBeInTheDocument();
+
+    await userEvent.click(getOption("B2"));
+    expect(onChange).toHaveBeenLastCalledWith(["A1", "B2"]);
+  });
+
   it("should ignore duplicates when there are different string representations of the underlying value", async () => {
     const { input, onChange } = setup({
       onCreate: (value) => {
@@ -457,7 +482,7 @@ describe("MultiAutocomplete", () => {
   });
 
   it("should handle cases when a value is replaced with 2 values at once", async () => {
-    const { input, onChange } = setup({ initialValues: ["abc"] });
+    const { input, onChange } = setup({ initialValue: ["abc"] });
     await userEvent.click(screen.getByText("abc"));
     await userEvent.type(input, "{arrowleft},");
     expect(input).toHaveValue("");

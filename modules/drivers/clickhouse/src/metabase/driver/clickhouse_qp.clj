@@ -2,7 +2,6 @@
   "CLickHouse driver: QueryProcessor-related definition"
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-version :as clickhouse-version]
@@ -283,13 +282,9 @@
   [driver [_ field]]
   [:'log10 (sql.qp/->honeysql driver field)])
 
-(defn- format-expr
-  [expr]
-  (first (sql/format-expr (sql.qp/->honeysql :clickhouse expr) {:nested true})))
-
 (defmethod sql.qp/->honeysql [:clickhouse :percentile]
-  [_ [_ field p]]
-  [:raw (format "quantile(%s)(%s)" (format-expr p) (format-expr field))])
+  [driver [_ field p]]
+  [:raw "quantile(" (sql.qp/->honeysql driver p) ")(" (sql.qp/->honeysql driver field) ")"])
 
 (defmethod sql.qp/->honeysql [:clickhouse :regex-match-first]
   [driver [_ arg pattern]]
