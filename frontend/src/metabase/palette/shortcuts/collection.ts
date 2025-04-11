@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 export const collectionShortcuts = {
   "collection-trash": {
-    name: t`Trash collection`,
+    name: t`Move collection items to trash`,
     shortcut: ["$mod+backspace"],
     shortcutGroup: "collection",
   },
