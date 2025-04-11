@@ -488,7 +488,6 @@ export const FieldValuesWidgetInner = forwardRef<
           />
         ) : multi ? (
           <MultiAutocomplete
-            className={className}
             value={value
               .filter((value) => value != null)
               .map((value) => String(value))}
