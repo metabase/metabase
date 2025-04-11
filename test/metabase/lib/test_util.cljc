@@ -63,6 +63,7 @@
 (def ^:private cards
   {:cards [{:name          "My Card"
             :id            1
+            :entity-id     (u/generate-nano-id)
             :type          :question
             :dataset-query (lib.tu.macros/mbql-query checkins
                              {:aggregation [[:count]]
@@ -237,7 +238,7 @@
                                 (merge
                                  {:lib/type      :metadata/card
                                   :id            (inc idx)
-                                  :entity_id     eid
+                                  :entity-id     eid
                                   :database-id   (:id (lib.metadata/database metadata-provider))
                                   :name          (str "Mock " (name table) " card")
                                   :dataset-query (if native?
@@ -327,6 +328,25 @@
    meta/metadata-provider
    (providers.mock/mock-metadata-provider
     {:cards (vals (mock-cards))})))
+
+(defn as-model
+  "Given a mock card, make it a model.
+
+  This sets the `:type` of the card, and also adds `model__...` to the `:ident`s in its `:result-metadata`, if any.
+
+  If the `:type` is already `:model`, this does nothing. Randomizes an `:entity-id` if not provided."
+  [card]
+  (if (= (:type card) :model)
+    card ; Do nothing if it's already a model.
+    (let [eid (or (:entity-id card)
+                  (lib/random-ident))]
+      (-> card
+          (assoc :type      :model
+                 :entity-id eid)
+          (m/update-existing :result-metadata
+                             (fn [metadata]
+                               (mapv #(m/update-existing % :ident lib/model-ident eid)
+                                     metadata)))))))
 
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
   "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column

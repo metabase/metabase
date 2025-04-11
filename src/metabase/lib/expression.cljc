@@ -235,6 +235,7 @@
     ;; if there are explicit fields selected, add the expression to them
     (and (vector? (:fields stage))
          add-to-fields?)
+    ;; TODO: Construct this ref with lib/ref rather than hand-rolling it?
     (update :fields conj (lib.options/ensure-uuid [:expression {} (lib.util/expression-name expression)]))))
 
 (mu/defn expression :- ::lib.schema/query

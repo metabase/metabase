@@ -824,7 +824,10 @@
                               {:display_name   column-name
                                :field_ref      [:field column-name {:base-type :type/Integer}]
                                :name           column-name
-                               :ident          (str "native__" card-eid "__" column-name)
+                               ;; Yes, native models have model__card-eid__native__card-end__COLUMN_NAME idents.
+                               :ident          (lib/model-ident
+                                                (lib/native-ident column-name card-eid)
+                                                card-eid)
                                :base_type      :type/Integer
                                :effective_type :type/Integer
                                :semantic_type  nil
@@ -856,23 +859,25 @@
                                     :native   {:template-tags {} :query "select 1 as b1, 2 as b2;"}}
                   :result-metadata [(result-metadata-for eid "B1")
                                     (result-metadata-for eid "B2")]})
-               {:name            "Joined"
-                :id              3
-                :database-id     (meta/id)
-                :type            :model
-                :dataset-query   {:database (meta/id)
-                                  :type     :query
-                                  :query    {:joins
-                                             [{:fields :all,
-                                               :alias "Model B - A1",
-                                               :ident "t3Nz_yY5hISIlmxaJlSsm"
-                                               :strategy :inner-join,
-                                               :condition
-                                               [:=
-                                                [:field "A1" {:base-type :type/Integer}]
-                                                [:field "B1" {:base-type :type/Integer, :join-alias "Model B - A1"}]],
-                                               :source-table "card__2"}],
-                                             :source-table "card__1"}}}]}))))
+               (let [eid (u/generate-nano-id)]
+                 {:name            "Joined"
+                  :id              3
+                  :entity-id       eid
+                  :database-id     (meta/id)
+                  :type            :model
+                  :dataset-query   {:database (meta/id)
+                                    :type     :query
+                                    :query    {:joins
+                                               [{:fields :all,
+                                                 :alias "Model B - A1",
+                                                 :ident "t3Nz_yY5hISIlmxaJlSsm"
+                                                 :strategy :inner-join,
+                                                 :condition
+                                                 [:=
+                                                  [:field "A1" {:base-type :type/Integer}]
+                                                  [:field "B1" {:base-type :type/Integer, :join-alias "Model B - A1"}]],
+                                                 :source-table "card__2"}],
+                                               :source-table "card__1"}}})]}))))
 
 (deftest ^:parallel models-with-joins-and-renamed-columns-test
   (testing "an MBQL model with an explicit join and customized field names generate correct SQL (#40252)"

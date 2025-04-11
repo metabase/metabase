@@ -213,17 +213,14 @@
     (let [uuid (random-uuid)
           uuid-query (mt/native-query {:query (format "select cast('%s' as %s) as x"
                                                       uuid
-                                                      (sql.tx/field-base-type->sql-type driver/*driver* :type/UUID))})
-          results (qp/process-query uuid-query)
-          result-metadata (get-in results [:data :results_metadata :columns])
-          col-metadata (first result-metadata)]
-      (is (= :type/UUID (:base_type col-metadata)))
-      (mt/with-temp [:model/Card card {:type :model
-                                       :result_metadata result-metadata
-                                       :dataset_query uuid-query}]
-        (let [model-query {:database (mt/id)
+                                                      (sql.tx/field-base-type->sql-type driver/*driver* :type/UUID))})]
+      (mt/with-temp [:model/Card card (-> (mt/card-with-source-metadata-for-query uuid-query)
+                                          (assoc :type :model))]
+        (let [col-metadata (first (:result_metadata card))
+              model-query {:database (mt/id)
                            :type :query
                            :query {:source-table (str "card__" (:id card))}}]
+          (is (= :type/UUID (:base_type col-metadata)))
           (are [expected filt]
                (= expected
                   (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
