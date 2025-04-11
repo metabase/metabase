@@ -23,7 +23,7 @@ interface SearchValuePickerProps {
   columnDisplayName: string;
   autoFocus?: boolean;
   comboboxProps?: ComboboxProps;
-  onCreate?: (rawValue: string) => string | null;
+  parseValue?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
 }
 
@@ -35,7 +35,7 @@ export function SearchValuePicker({
   columnDisplayName,
   autoFocus,
   comboboxProps,
-  onCreate,
+  parseValue,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
@@ -98,7 +98,7 @@ export function SearchValuePicker({
       nothingFoundMessage={nothingFoundMessage}
       comboboxProps={comboboxProps}
       aria-label={t`Filter value`}
-      onCreate={onCreate}
+      parseValue={parseValue}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />

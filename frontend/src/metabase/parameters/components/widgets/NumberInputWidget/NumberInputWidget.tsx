@@ -74,7 +74,7 @@ export function NumberInputWidget({
     values.map(getOption).filter((item): item is SelectItem => item !== null) ??
     [];
 
-  const handleCreate = (rawValue: string) => {
+  const parseValue = (rawValue: string) => {
     const number = parseNumber(rawValue);
     return number !== null ? String(number) : null;
   };
@@ -96,7 +96,7 @@ export function NumberInputWidget({
             placeholder={placeholder}
             autoFocus={autoFocus}
             comboboxProps={COMBOBOX_PROPS}
-            onCreate={handleCreate}
+            parseValue={parseValue}
             onChange={handleChange}
           />
         </TokenFieldWrapper>

@@ -1,7 +1,9 @@
 import {
   type BoxProps,
   Combobox,
+  type ComboboxItem,
   type ComboboxLikeProps,
+  type ComboboxLikeRenderOptionInput,
   OptionsDropdown,
   Pill,
   PillsInput,
@@ -27,7 +29,11 @@ export type MultiAutocompleteProps = BoxProps &
     rightSection?: ReactNode;
     nothingFoundMessage?: ReactNode;
     "aria-label"?: string;
-    onCreate?: (rawValue: string) => string | null;
+    parseValue?: (rawValue: string) => string | null;
+    renderValue?: (value: string) => ReactNode;
+    renderOption?: (
+      input: ComboboxLikeRenderOptionInput<ComboboxItem>,
+    ) => ReactNode;
     onChange: (newValues: string[]) => void;
     onSearchChange?: (newValue: string) => void;
   };
@@ -58,7 +64,9 @@ export function MultiAutocomplete({
   withScrollArea,
   comboboxProps,
   "aria-label": ariaLabel,
-  onCreate,
+  parseValue = defaultParseValue,
+  renderValue = defaultRenderValue,
+  renderOption,
   onChange,
   onSearchChange,
   onDropdownOpen,
@@ -86,7 +94,7 @@ export function MultiAutocomplete({
   } = useMultiAutocomplete({
     values: value,
     data,
-    onCreate,
+    parseValue,
     onChange,
     onSearchChange,
   });
@@ -140,7 +148,7 @@ export function MultiAutocomplete({
                     onClick={(event) => handlePillClick(event, valueIndex)}
                     onRemove={() => handlePillRemoveClick(valueIndex)}
                   >
-                    {value}
+                    {renderValue(value)}
                   </Pill>
                 ) : (
                   <Combobox.EventsTarget key="field">
@@ -177,10 +185,20 @@ export function MultiAutocomplete({
           labelId={undefined}
           withScrollArea={withScrollArea}
           scrollAreaProps={undefined}
+          renderOption={renderOption}
           aria-label={undefined}
         />
       </Combobox>
       <Combobox.HiddenInput value={value} />
     </>
   );
+}
+
+function defaultParseValue(value: string) {
+  const trimmedValue = value.trim();
+  return trimmedValue.length > 0 ? trimmedValue : null;
+}
+
+function defaultRenderValue(value: string) {
+  return value;
 }
