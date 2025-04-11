@@ -54,11 +54,7 @@ export const PaletteShortcutsModal = ({
       <Tabs orientation="vertical" defaultValue="global" pt="2rem" h="100%">
         <Tabs.List miw={200}>
           {shortcutGroups.map((shortcutGroup) => (
-            <Tabs.Tab
-              key={shortcutGroup}
-              value={shortcutGroup}
-              data-autofocusgit
-            >
+            <Tabs.Tab key={shortcutGroup} value={shortcutGroup} data-autofocus>
               {GROUP_LABLES[shortcutGroup]}
             </Tabs.Tab>
           ))}
