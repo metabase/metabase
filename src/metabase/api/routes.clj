@@ -11,6 +11,7 @@
    [metabase.api.dashboard]
    [metabase.api.database]
    [metabase.api.dataset]
+   [metabase.api.dictionary]
    [metabase.api.docs]
    [metabase.api.embed]
    [metabase.api.field]
@@ -143,6 +144,7 @@
    "/dashboard"            (+auth 'metabase.api.dashboard)
    "/database"             (+auth 'metabase.api.database)
    "/dataset"              'metabase.api.dataset
+   "/dictionary"           (+auth 'metabase.api.dictionary)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions 'metabase.api.embed)
