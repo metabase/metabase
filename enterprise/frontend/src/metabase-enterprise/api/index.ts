@@ -5,6 +5,7 @@ export * from "./api";
 export * from "./billing-info";
 export * from "./metabot";
 export * from "./gdrive";
+export * from "./db-routing";
 export * from "./query-validation";
 export * from "./scim";
 export * from "./tags";

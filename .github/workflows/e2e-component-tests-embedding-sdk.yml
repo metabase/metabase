@@ -2,6 +2,10 @@ name: E2E Component Tests for Embedding SDK
 
 on:
   workflow_call:
+    inputs:
+      cached-embedding-sdk-dist-artifact-name:
+        required: true
+        type: string
 
 jobs:
   files-changed:
@@ -88,45 +92,11 @@ jobs:
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
-  build-embedding-sdk:
-    needs: [files-changed, get-build-requirements]
-    if: |
-      !cancelled() &&
-      needs.files-changed.outputs.e2e_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    env:
-      MB_EDITION: ee
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
-
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-        shell: bash
-
-      - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
-
-      - name: Upload Embedding SDK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: embedding-sdk-build
-          path: resources/embedding-sdk
-
   e2e-tests:
-    needs: [get-build-requirements, build-uberjar, build-embedding-sdk]
+    needs: [get-build-requirements, build-uberjar]
     if: |
       !cancelled() &&
-      needs.build-uberjar.result == 'success' &&
-      needs.build-embedding-sdk.result == 'success'
+      needs.build-uberjar.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     strategy:
@@ -179,11 +149,11 @@ jobs:
         with:
           m2-cache-key: "cljs"
 
-      - name: Download Embedding SDK artifact
+      - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
         with:
-          name: embedding-sdk-build
-          path: resources/embedding-sdk
+          name: ${{ inputs.cached-embedding-sdk-dist-artifact-name }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start

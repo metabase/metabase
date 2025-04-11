@@ -57,7 +57,8 @@ export type EngineFieldType =
   | "select"
   | "textFile"
   | "info"
-  | "section";
+  | "section"
+  | "hidden";
 
 export type EngineFieldTreatType = "base64";
 
@@ -230,6 +231,7 @@ export const tokenFeatures = [
   "metabot_v3",
   "ai_sql_fixer",
   "ai_sql_generation",
+  "database_routing",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
