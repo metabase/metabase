@@ -45,9 +45,7 @@
                                                                                :order-by [[:ended_at :desc]]})]
     (t2/delete! (t2/table-name :model/TaskHistory) :ended_at [:<= clean-before-date])))
 
-(def task-history-status
-  "Allowed status values"
-  #{:started :success :failed})
+(def ^:private task-history-status #{:started :success :failed})
 
 (defn- assert-task-history-status
   [status]

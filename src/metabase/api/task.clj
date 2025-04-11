@@ -34,6 +34,9 @@
   (task/scheduler-info))
 
 (api.macros/defendpoint :get "/unique_tasks"
+  "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique
+  tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should
+  reflect that."
   [] :- [:vector string?]
   (validation/check-has-application-permission :monitoring)
   (task-history/unique-tasks))
