@@ -17,7 +17,6 @@ import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/uti
 import type { Dashboard, RowValue } from "metabase-types/api";
 
 import { Footer, WidgetRoot } from "../Widget";
-import { COMBOBOX_PROPS, WIDTH } from "../constants";
 
 import { normalizeValue } from "./normalizeValue";
 
@@ -57,7 +56,7 @@ export function ParameterFieldWidget({
     (supportsMultipleValues || unsavedValue.length === numFields);
 
   return (
-    <WidgetRoot w={WIDTH}>
+    <WidgetRoot>
       <div className={CS.p1}>
         {verboseName && !isEqualsOp && (
           <div className={cx(CS.textBold, CS.mb1)}>{verboseName}...</div>
@@ -93,7 +92,6 @@ export function ParameterFieldWidget({
               color="brand"
               minWidth={300}
               maxWidth={400}
-              comboboxProps={COMBOBOX_PROPS}
             />
           );
         })}
