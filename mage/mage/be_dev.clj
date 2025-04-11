@@ -4,8 +4,8 @@
    #_:clj-kondo/ignore
    [clojure.pprint :as pp]
    [clojure.string :as str]
-   [clojure.tools.reader :as reader]
-   [clojure.tools.reader.reader-types :as rt]
+   [edamame.core :as edamame]
+   [flatland.ordered.map :as m]
    [mage.color :as c]
    [mage.util :as u]))
 
