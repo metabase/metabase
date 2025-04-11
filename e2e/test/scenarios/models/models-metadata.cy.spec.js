@@ -83,6 +83,28 @@ describe("scenarios > models metadata", () => {
       });
     });
 
+    it("should correctly handle browser navigation between tabs (metabase#55486)", () => {
+      H.openQuestionActions("Edit metadata");
+      cy.url().should("include", "/metadata");
+
+      // Switch to Query tab
+      cy.findByTestId("editor-tabs-query-name").click();
+      cy.url().should("include", "/query");
+
+      // Navigate back using browser back button
+      cy.go("back");
+      cy.url().should("include", "/metadata");
+
+      // Verify that we're actually on the metadata tab
+      cy.findByLabelText("Display name").should("exist");
+
+      // Navigate back again to exit editor
+      cy.go("back");
+      cy.get("@questionId").then((id) => {
+        cy.location("pathname").should("equal", `/model/${id}-gui-model`);
+      });
+    });
+
     it("clears custom metadata when a model is turned back into a question", () => {
       H.openQuestionActions();
       H.popover().findByTextEnsureVisible("Edit metadata").click();

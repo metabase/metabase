@@ -31,7 +31,11 @@ import {
 import { type QueryParams, initializeQB, setCardAndRun } from "./core";
 import { resetRowZoom, zoomInRow } from "./object-detail";
 import { cancelQuery } from "./querying";
-import { resetUIControls, setQueryBuilderMode } from "./ui";
+import {
+  resetUIControls,
+  setDatasetEditorTab,
+  setQueryBuilderMode,
+} from "./ui";
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
@@ -80,6 +84,21 @@ export const popState = createThunkAction(
 
     const { queryBuilderMode: queryBuilderModeFromURL, ...uiControls } =
       getQueryBuilderModeFromLocation(location);
+
+    // Get the data from URL path to determine if we're in the metadata or query tab
+    const datasetEditorTabFromURL = location.pathname.endsWith("/metadata")
+      ? "metadata"
+      : location.pathname.endsWith("/query")
+        ? "query"
+        : undefined;
+
+    // If we're in dataset editor and there's a tab in the URL, update the tab
+    if (
+      datasetEditorTabFromURL &&
+      getQueryBuilderMode(getState()) === "dataset"
+    ) {
+      await dispatch(setDatasetEditorTab(datasetEditorTabFromURL));
+    }
 
     if (getQueryBuilderMode(getState()) !== queryBuilderModeFromURL) {
       await dispatch(
