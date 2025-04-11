@@ -58,6 +58,7 @@ const baseConfig = {
   testMatch: [
     "<rootDir>/**/*.unit.spec.js",
     "<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}",
+    "<rootDir>/.github/scripts/**/*.unit.spec.{js,ts}",
   ],
   modulePaths: [
     "<rootDir>/frontend/test",

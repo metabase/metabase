@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs_files }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
@@ -25,6 +26,7 @@ jobs:
         id: changes
         with:
           token: ${{ github.token }}
+          list-files: shell
           filters: .github/file-paths.yaml
 
   static-viz-files-changed:
@@ -86,3 +88,5 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
+      skip-build: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.frontend_sources != 'true' }}
+      specs: ${{ needs.files-changed.outputs.e2e_specs }}
