@@ -30,6 +30,9 @@ jobs:
         with:
           node-version: lts/Jod # 22.x.x
 
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
       # - name: Authenticate GitHub CLI
       #   run: |
       #     echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
