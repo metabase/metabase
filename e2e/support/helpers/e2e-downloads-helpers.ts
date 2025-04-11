@@ -1,6 +1,9 @@
 import xlsx, { type Sheet } from "xlsx";
 
-import { getDashboardCardMenu } from "./e2e-dashboard-helpers";
+import {
+  getDashboardCard,
+  getDashboardCardMenu,
+} from "./e2e-dashboard-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
 interface DownloadAndAssertParams {
@@ -91,7 +94,7 @@ export function downloadAndAssert(
 
   if (isEmbed) {
     if (isDashboard) {
-      cy.findByTestId("dashcard").realHover();
+      getDashboardCard().realHover();
       cy.findByTestId("download-question-results-button").click();
     } else {
       cy.findByTestId("download-button").click();
