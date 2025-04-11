@@ -1,6 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
+import { openDashCardCardParameterMapper } from "./helpers/e2e-content-translation-helpers";
+
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 const { H } = cy;
 
@@ -14,6 +16,8 @@ const translationsOfColumnNames: Dictionary = [
   { locale: "de", msgid: "Created At", msgstr: "Erstellt am" },
   { locale: "de", msgid: "Price", msgstr: "Preis" },
 ];
+
+const columnNamesWithTypeText = ["Title", "Category", "Vendor"];
 
 const getCSV = (dictionary: Dictionary) => {
   return (
@@ -115,6 +119,19 @@ describe("scenarios > admin > localization > content translation", () => {
               });
             });
           });
+
+          it("dashcard parameter mapper", () => {
+            openDashCardCardParameterMapper();
+
+            H.popover().within(() => {
+              Object.values(translationsOfColumnNames)
+                .filter((tr) => columnNamesWithTypeText.includes(tr.msgid))
+                .forEach((row) => {
+                  cy.findByText(row.msgstr).should("not.exist");
+                  cy.findByText(row.msgid).should("be.visible");
+                });
+            });
+          });
         });
 
         describe("when locale is German, column names ARE localized in", () => {
@@ -164,7 +181,7 @@ describe("scenarios > admin > localization > content translation", () => {
           it("summarize sidebar", () => {
             H.visitQuestion(productsQuestionId);
             cy.log("Open summarize sidebar");
-            H.initiateAction("Zusammenfassen");
+            H.initiateAction("Zusammenfassen" as "Summarize");
             H.rightSidebar().within(() => {
               cy.log("Summarize sidebar includes all column names in German");
               Object.values(translationsOfColumnNames).forEach((row) => {
@@ -185,6 +202,19 @@ describe("scenarios > admin > localization > content translation", () => {
               cy.findByPlaceholderText(/Finden/).type("kat");
               cy.findByText("Erstellt am").should("not.exist");
               cy.findByText("Kategorie").should("be.visible");
+            });
+          });
+
+          it("dashcard parameter mapper", () => {
+            openDashCardCardParameterMapper();
+
+            H.popover().within(() => {
+              Object.values(translationsOfColumnNames)
+                .filter((tr) => columnNamesWithTypeText.includes(tr.msgid))
+                .forEach((row) => {
+                  cy.findByText(row.msgid).should("not.exist");
+                  cy.findByText(row.msgstr).should("be.visible");
+                });
             });
           });
         });
