@@ -30,7 +30,7 @@ interface DownloadAndAssertParams {
 }
 
 export const exportFromDashcard = (format: string) => {
-  cy.findByRole("button", { name: "Download results" }).click();
+  cy.get("[aria-label='Download results']").click();
 
   popover().within(() => {
     cy.findByText(format).click();
@@ -101,7 +101,7 @@ export function downloadAndAssert(
     }
   }
 
-  cy.findByRole("button", { name: "Download results" }).click();
+  cy.get("[aria-label='Download results']").click();
 
   popover().within(() => {
     cy.findByText(`.${fileType}`).click();
