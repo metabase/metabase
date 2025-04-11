@@ -80,3 +80,9 @@
            (if method (str " USING " method) "")
            (sql.tx/qualify-and-quote driver table-name)
            (str/join ", " (map #(sql.tx/format-and-quote-field-name driver %) field-names)))))
+
+(defmethod sql.tx/drop-index-sql :mysql
+  [driver table-name field-names]
+  (format "DROP INDEX %s on %s"
+          (sql.tx/index-name driver table-name field-names)
+          (sql.tx/qualify-and-quote driver table-name)))

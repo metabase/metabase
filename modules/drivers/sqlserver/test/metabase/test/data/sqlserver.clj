@@ -45,6 +45,12 @@
                  END;"
          (repeat 3 database-name)))
 
+(defmethod sql.tx/drop-index-sql :sqlserver
+  [driver table-name field-names]
+  (format "DROP INDEX %s on %s"
+          (sql.tx/index-name driver table-name field-names)
+          (sql.tx/qualify-and-quote driver table-name)))
+
 (defmethod sql.tx/drop-table-if-exists-sql :sqlserver
   [_ {:keys [database-name]} {:keys [table-name]}]
   (let [db-name database-name]
