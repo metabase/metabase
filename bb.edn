@@ -92,9 +92,12 @@
 
   lint-migrations
   {:doc        "Lint migrations files"
-   :requires   [[lint-migrations-file]]
+   :requires   [[lint-migrations-file]
+                [babashka.process :as p]]
    :examples   [["./bin/mage lint-migrations" "Lint all migrations and print report"]]
-   :task       (do (cli/parse! (current-task)) (lint-migrations-file/-main))}
+   :task       (do (cli/parse! (current-task))
+                   (p/shell "bin/pre-lint-migrations-file.sh")
+                   (lint-migrations-file/-main))}
 
   jar-download
   {:doc        "Given a version, downloads a metabase jar"
