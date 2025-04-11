@@ -162,8 +162,8 @@
 (def ^:private bb-filename
   "resources/migrations/001_update_migrations.yaml")
 
-(defn- migrations [filename]
-  (let [file (io/file filename)]
+(defn- migrations []
+  (let [file (io/file #?(:bb bb-filename :clj filename))]
     (assert (.exists file) (format "%s does not exist" filename))
     (letfn [(fix-vals [x]
                       ;; convert any lazy seqs to regular vectors and maps
@@ -172,8 +172,8 @@
                     :else           x))]
       (fix-vals (yaml/parse-string (slurp file))))))
 
-(defn- validate-all [filename]
-  (validate-migrations (migrations filename)))
+(defn- validate-all []
+  (validate-migrations (migrations)))
 
 (defn -main
   "Entry point for Clojure CLI task `lint-migrations-file`. Run it with
@@ -182,7 +182,7 @@
   []
   (println "Check Liquibase migrations file...")
   (try
-    (validate-all #?(:bb bb-filename :clj filename))
+    (validate-all)
     (println "Ok.")
     (System/exit 0)
     (catch ExceptionInfo e
