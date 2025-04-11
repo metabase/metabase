@@ -53,10 +53,11 @@ export const DashCardQuestionDownloadButton = ({
           <ActionIcon
             c="var(--mb-color-text-primary)"
             onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-            className={cx({
-              [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
-              [cx(CS.hoverChild, CS.hoverChildSmooth)]: true,
-            })}
+            className={cx(
+              SAVING_DOM_IMAGE_HIDDEN_CLASS,
+              CS.hoverChild,
+              CS.hoverChildSmooth,
+            )}
             loading={isDownloadingData}
             data-testid="download-dashcard-results-button"
           >
