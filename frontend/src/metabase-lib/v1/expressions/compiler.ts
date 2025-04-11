@@ -48,7 +48,7 @@ export function compileExpression({
         })
       : compiled;
 
-    const expressionClause = toExpressionClause(query, stageIndex, resolved);
+    const expressionClause = Lib.expressionClause(resolved);
 
     // TODO: implement these passes previously handled by the resolver
     // - adjust booleans pass
@@ -71,35 +71,4 @@ export function compileExpression({
       error: renderError(error),
     };
   }
-}
-
-function toExpressionClause(
-  query: Lib.Query,
-  stageIndex: number,
-  parts:
-    | Lib.ExpressionParts
-    | Lib.ColumnMetadata
-    | Lib.MetricMetadata
-    | Lib.SegmentMetadata,
-): Lib.ExpressionClause {
-  if (Lib.isExpressionParts(parts)) {
-    const { operator, args, options } = parts;
-    return Lib.expressionClause(operator, args, options);
-  }
-  if (
-    Lib.isColumnMetadata(parts) ||
-    Lib.isMetricMetadata(parts) ||
-    Lib.isSegmentMetadata(parts)
-  ) {
-    const [operator, id, options] = Lib.legacyRef(query, stageIndex, parts);
-    const cls = Lib.expressionClause(
-      operator as Lib.ExpressionOperator,
-      [id],
-      options,
-    );
-    return cls;
-  }
-
-  // This case shoul be unreachable
-  return Lib.expressionClause("value", [parts]);
 }
