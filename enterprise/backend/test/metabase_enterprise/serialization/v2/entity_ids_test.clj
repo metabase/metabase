@@ -29,7 +29,7 @@
             (is (= nil
                    (entity-id)))
             (testing "Should return truthy on success"
-              (is (= true (v2.entity-ids/seed-entity-ids!))))
+              (is (true? (v2.entity-ids/seed-entity-ids!))))
             (is (= "998b109c"
                    (entity-id))))
           (testing "Error: duplicate entity IDs"
@@ -70,8 +70,8 @@
                       (some-> (t2/select-one-fn :entity_id :model/Collection :id (:id c)) str/trim))]
               (is (some? (entity-id)))
               (testing "Should return truthy on success"
-                (is (= true
-                       (v2.entity-ids/drop-entity-ids!))))
+                (is (true?
+                     (v2.entity-ids/drop-entity-ids!))))
               (is (nil? (entity-id))))))))
     (testing "empty table"
       (testing "has no entity ids"
@@ -80,8 +80,8 @@
                                               :slug "no_entity_id_collection"}]
             (is (nil? (t2/select-fn-set :entity-id :model/Dashboard)))
             (testing "but doesn't crash drop-entity-ids"
-              (is (= true
-                     (v2.entity-ids/drop-entity-ids!)))
+              (is (true?
+                   (v2.entity-ids/drop-entity-ids!)))
               (is (nil? (t2/select-fn-set :entity-id :model/Dashboard))))))))))
 
 (deftest entity-ids-are-nullable

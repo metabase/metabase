@@ -215,9 +215,9 @@
 
 ;; When there are more rows than the limit, check to ensure a truncation warning is present
 (deftest truncation-warning-when-rows-exceed-max
-  (is (= true
-         (let [html-output (html (#'body/render-truncation-warning 10 100))]
-           (boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))))))
+  (is (true?
+       (let [html-output (html (#'body/render-truncation-warning 10 100))]
+         (boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))))))
 
 (def ^:private test-columns-with-date-semantic-type
   (update test-columns 2 merge {:base_type    :type/Text

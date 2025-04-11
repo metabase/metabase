@@ -59,8 +59,8 @@
 (deftest newly-created-card-test
   (testing "Newly created Card with param referencing Field"
     (testing "in On-Demand DB should get updated FieldValues"
-      (is (= true
-             (field-values-were-updated-for-new-card?! {:db {:is_on_demand true}}))))
+      (is (true?
+           (field-values-were-updated-for-new-card?! {:db {:is_on_demand true}}))))
 
     (testing "in non-On-Demand DB should *not* get updated FieldValues"
       (is (= false

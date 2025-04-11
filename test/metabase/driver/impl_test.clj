@@ -41,8 +41,8 @@
           (tu.async/wait-for-result started-loading-chan 500)
           (is (= ::race-condition-test
                  (driver/the-initialized-driver ::race-condition-test)))
-          (is (= true
-                 @finished-loading)))))))
+          (is (true?
+               @finished-loading)))))))
 
 ;;;; [[driver-multimethods-in-changelog-test]]
 

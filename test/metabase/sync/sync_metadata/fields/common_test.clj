@@ -4,6 +4,7 @@
    [metabase.sync.sync-metadata.fields.common :as common]))
 
 (deftest canonical-names-equal?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [s1 s2 result] (= result (#'common/canonical-names-equal? {:name s1} {:name s2}))
     "id"     "ID"     true
     "Id"     "id"     true
