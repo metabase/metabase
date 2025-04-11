@@ -71,3 +71,5 @@ export { defineMetabaseTheme };
  * @internal
  */
 export { SdkDebugInfo } from "./debug/SdkDebugInfo";
+
+export { MetabotQuestion } from "./MetabotQuestion";

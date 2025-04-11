@@ -1,3 +1,12 @@
+## [0.55.1-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.1-nightly...embedding-sdk-0.55.1-metabot) (2025-04-04)
+
+
+### Features
+
+* **sdk:** Add a Metabot SDK component ([#56271](https://github.com/metabase/metabase/issues/56271)) ([adaa23d](https://github.com/metabase/metabase/commit/adaa23dc4111498e8e7a5a5eed928789a36038f9))
+
+
+
 ## [0.55.1-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.3-nightly...embedding-sdk-0.55.1-nightly) (2025-04-04)
 
 

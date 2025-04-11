@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "master"
-      - metabot-v3-second-try
+      - metabot-v3-main
       - feature-visualizer
       - "internal-tools"
     paths-ignore:
@@ -170,8 +170,8 @@ jobs:
           push: true
 
       # TODO: remove when we're done testing metabot
-      - name: Retag and push images if metabot-v3-second-try (ee) - should be cached at this point
-        if: ${{ (github.ref_name == 'metabot-v3-second-try') && matrix.edition == 'ee' }}
+      - name: Retag and push images if metabot-v3-main (ee) - should be cached at this point
+        if: ${{ (github.ref_name == 'metabot-v3-main') && matrix.edition == 'ee' }}
         uses: docker/build-push-action@v3
         with:
           context: bin/docker/.
