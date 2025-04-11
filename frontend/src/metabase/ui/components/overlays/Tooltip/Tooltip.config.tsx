@@ -24,6 +24,7 @@ export const tooltipOverrides: MantineThemeOverride["components"] = {
     },
     classNames: {
       tooltip: cx(TooltipStyles.tooltip, ZIndex.Overlay),
+      arrow: TooltipStyles.arrow,
     },
   }),
 };
