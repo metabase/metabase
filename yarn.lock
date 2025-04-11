@@ -10927,18 +10927,6 @@ find-test-names@^1.19.0:
     globby "^11.0.4"
     simple-bin-help "^1.7.7"
 
-find-test-names@^1.29.7:
-  version "1.29.7"
-  resolved "https://registry.yarnpkg.com/find-test-names/-/find-test-names-1.29.7.tgz#a014ced692fc367be65f4910fe41eaafb210f7e9"
-  integrity sha512-Ps/+M9+rvYqR/gzvfjsfrdeypfSViGZ7Cn7clOGllTlwBcKVGqwfgllGBJ4XwzGp+PaEZZ1MbG4qT1qp4AD9DQ==
-  dependencies:
-    "@babel/parser" "^7.24.7"
-    "@babel/plugin-syntax-jsx" "^7.24.7"
-    acorn-walk "^8.2.0"
-    debug "^4.3.3"
-    globby "^11.0.4"
-    simple-bin-help "^1.8.0"
-
 find-up-simple@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/find-up-simple/-/find-up-simple-1.0.0.tgz#21d035fde9fdbd56c8f4d2f63f32fd93a1cfc368"
