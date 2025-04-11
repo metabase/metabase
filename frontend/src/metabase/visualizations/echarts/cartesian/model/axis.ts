@@ -38,8 +38,10 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInverval,
+  getTimeSeriesIntervalDuration,
   getTimezoneOrOffset,
   minTimeseriesUnit,
+  normalizeDate,
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
@@ -885,6 +887,11 @@ const getXAxisDateRangeFromSortedXAxisValues = (
   return [minDate, maxDate];
 };
 
+const DAY_INTERVAL: TimeSeriesInterval = {
+  count: 1,
+  unit: "day",
+};
+
 function getTimeSeriesXAxisInfo(
   xValues: RowValue[],
   rawSeries: RawSeries,
@@ -906,10 +913,7 @@ function getTimeSeriesXAxisInfo(
     rawSeries,
     showWarning,
   );
-  const interval = (computeTimeseriesDataInverval(xValues, unit) ?? {
-    count: 1,
-    unit: "day",
-  }) as TimeSeriesInterval;
+  const interval = computeTimeseriesDataInverval(xValues, unit) ?? DAY_INTERVAL;
 
   const range = getXAxisDateRangeFromSortedXAxisValues(xValues);
 
@@ -920,7 +924,19 @@ function getTimeSeriesXAxisInfo(
   let intervalsCount = 0;
 
   if (range) {
-    const [min, max] = range;
+    let [min, max] = range;
+
+    const intervalDurationMs = getTimeSeriesIntervalDuration(interval);
+    const isDayOrMore =
+      intervalDurationMs >= getTimeSeriesIntervalDuration(DAY_INTERVAL);
+
+    // If the interval is a day or more, normalize the dates to UTC to avoid
+    // the interference of timezone differences.
+    if (isDayOrMore) {
+      min = normalizeDate(min);
+      max = normalizeDate(max);
+    }
+
     // A single date counts as one interval
     intervalsCount = Math.abs(
       Math.ceil(max.diff(min, interval.unit) / interval.count),
