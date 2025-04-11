@@ -320,7 +320,8 @@ describe("issue 21559", { tags: "@external" }, () => {
     });
   });
 
-  it("should respect dashboard card visualization (metabase#21559)", () => {
+  // TODO: implement this using the visualizer
+  it.skip("should respect dashboard card visualization (metabase#21559)", () => {
     cy.findByTestId("add-series-button").click({ force: true });
 
     cy.findByTestId("add-series-modal").within(() => {

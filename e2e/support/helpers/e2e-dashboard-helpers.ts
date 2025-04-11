@@ -352,7 +352,7 @@ export function dashboardParametersDoneButton() {
 }
 
 export function dashboardParametersPopover() {
-  return popover({ testId: "parameter-value-dropdown" });
+  return popover({ testId: "parameter-value-dropdown" } as any);
 }
 
 /**
