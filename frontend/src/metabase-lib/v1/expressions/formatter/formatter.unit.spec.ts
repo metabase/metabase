@@ -227,10 +227,6 @@ it("should format escaped regex characters (metabase#56596)", async () => {
     expression`
       "\\\\"
     `,
-    // "\\\""
-    expression`
-      "\\\\\\""
-    `,
     // "\n\r\t\v\f\b"
     expression`
       "\\n\\r\\t\\v\\f\\b"

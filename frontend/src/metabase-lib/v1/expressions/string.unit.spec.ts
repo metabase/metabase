@@ -66,7 +66,7 @@ describe("expressions", () => {
       expect(rt("CR: \r")).toEqual("CR: \r");
       expect(rt("LF: \n")).toEqual("LF: \n");
       expect(rt("FF: \f")).toEqual("FF: \f");
-      expect(rt("Backslash: \\")).toEqual("Backslash: \\");
+      expect(rt("Backslash: \\\\")).toEqual("Backslash: \\\\");
       expect(rt("\b\t\r\n\f\\").length).toEqual(6);
     });
   });

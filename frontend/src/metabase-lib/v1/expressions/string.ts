@@ -11,6 +11,9 @@ const STRING_ESCAPE: Record<string, string> = {
   "\f": "\\f",
   "\r": "\\r",
   "\v": "\\v",
+  "'": "\\'",
+  '"': '\\"',
+  "\\\\": "\\\\",
 };
 
 const STRING_UNESCAPE: Record<string, string> = {
@@ -20,6 +23,9 @@ const STRING_UNESCAPE: Record<string, string> = {
   f: "\f",
   r: "\r",
   v: "\v",
+  '"': '"',
+  "'": "'",
+  "\\": "\\\\",
 };
 
 export function formatStringLiteral(
@@ -56,6 +62,40 @@ export function quoteString(string: string, quote: string) {
   }
 }
 
+export function unquoteString(string: string) {
+  const quote = string.charAt(0);
+  if (quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE) {
+    let str = "";
+    for (let i = 1; i <= string.length - 1; i++) {
+      const ch = string[i];
+      if (ch === BACKSLASH) {
+        const seq = string[i + 1];
+        const unescaped = STRING_UNESCAPE[seq];
+        if (unescaped) {
+          str += unescaped;
+          i++;
+          continue;
+        }
+      }
+      if (ch === quote) {
+        // skip last quote
+        if (i !== string.length - 1) {
+          throw Error("Malformed string");
+        }
+        continue;
+      }
+      str += ch;
+    }
+
+    return str;
+  } else if (quote === "[") {
+    const end = string.endsWith("]") ? string.length - 1 : string.length;
+    return unescapeString(string.slice(1, end));
+  } else {
+    throw new Error("Unknown quoting: " + string);
+  }
+}
+
 // Return a copy with brackets (`[` and `]`) being escaped
 function escapeString(string: string) {
   let str = "";
@@ -67,32 +107,6 @@ function escapeString(string: string) {
     str += ch;
   }
   return str;
-}
-
-export function unquoteString(string: string) {
-  const quote = string.charAt(0);
-  if (quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE) {
-    let str = "";
-    for (let i = 1; i < string.length - 1; ++i) {
-      const ch = string[i];
-      if (ch === BACKSLASH) {
-        const seq = string[i + 1];
-        const unescaped = STRING_UNESCAPE[seq];
-        if (unescaped) {
-          str += unescaped;
-          ++i;
-          continue;
-        }
-      }
-      str += ch;
-    }
-    return str;
-  } else if (quote === "[") {
-    const end = string.endsWith("]") ? string.length - 1 : string.length;
-    return unescapeString(string.slice(1, end));
-  } else {
-    throw new Error("Unknown quoting: " + string);
-  }
 }
 
 // The opposite of escapeString
