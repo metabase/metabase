@@ -346,4 +346,3 @@
             (add-values-to-variables tag->normalized-param locale escape-markdown)
             join-consecutive-strings
             strip-optional-blocks)))))
-
