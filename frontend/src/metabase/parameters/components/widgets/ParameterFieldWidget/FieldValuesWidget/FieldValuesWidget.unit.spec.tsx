@@ -7,8 +7,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWidget";
-import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 import Fields from "metabase/entities/fields";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -20,6 +18,10 @@ import {
   PRODUCT_CATEGORY_VALUES,
 } from "metabase-types/api/mocks/presets";
 
+import {
+  FieldValuesWidget,
+  type IFieldValuesWidgetProps,
+} from "./FieldValuesWidget";
 import {
   EXPRESSION_FIELD_ID,
   LISTABLE_PK_FIELD_ID,

@@ -6,6 +6,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import ExplicitSize from "metabase/components/ExplicitSize";
 import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import SingleSelectListField from "metabase/components/SingleSelectListField";
@@ -34,8 +35,6 @@ import type {
   RowValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import ExplicitSize from "../ExplicitSize";
 
 import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import type { LoadingStateType, ValuesMode } from "./types";
