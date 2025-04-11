@@ -9,6 +9,11 @@
 - Prioritize understanding existing patterns before implementing
 - Don't commit changes, leave it for the user to review and make commits
 
+## Frontend unit testing
+- don't mock libraries or hooks, use fetch-mock to mock api responses
+- prefer using existing fetch-mock api mocks in `frontend/test/__support__/server-mocks/`
+- use data mocks in `frontend/src/metabase-types/api/mocks/`
+
 ## Quick Commands
 
 ### JavaScript/TypeScript
