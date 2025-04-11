@@ -205,17 +205,35 @@
   [driver field-name]
   (sql.u/quote-name driver :field (ddl.i/format-name driver field-name)))
 
+(defn index-name
+  "Generate index name"
+  [driver table-name field-names]
+  (format-and-quote-field-name driver (str "idx_" table-name "_" (str/join "_" field-names))))
+
 (defmethod create-index-sql :sql/test-extensions
   ([driver table-name field-names]
    (create-index-sql driver table-name field-names {}))
   ([driver table-name field-names {:keys [unique? method condition]}]
    (format "CREATE %sINDEX %s ON %s%s (%s)%s;"
            (if unique? "UNIQUE " "")
-           (format-and-quote-field-name driver (str "idx_" table-name "_" (str/join "_" field-names)))
+           (index-name driver table-name field-names)
            (qualify-and-quote driver table-name)
            (if method (str "USING " method) "")
            (str/join ", " (map #(format-and-quote-field-name driver %) field-names))
            (if condition (str " WHERE " condition) ""))))
+
+(defmulti drop-index-sql
+  "Return a `CREATE INDEX` statement.
+  `options` is a map. The supported keys are: unique?, method and condition"
+  {:arglists '([driver table-name field-names]
+               [driver table-name field-names])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-index-sql :sql/test-extensions
+  [driver table-name field-names]
+  (format "DROP INDEX %s"
+          (index-name driver table-name field-names)))
 
 (defn- field-definition-sql
   [driver {:keys [field-name base-type field-comment not-null? unique?], :as field-definition}]
