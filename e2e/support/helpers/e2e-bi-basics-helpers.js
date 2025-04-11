@@ -26,7 +26,7 @@ export function addCustomColumn() {
  * Initiate a certain action such as filtering or summarizing taking the question's mode into account.
  *
  * @param {("Summarize"|"Filter"|"Join"|"CustomColumn")} actionType
- * @param {(undefined|"notebook")} [mode]
+ * @param {"notebook"} [mode]
  */
 export function initiateAction(actionType, mode) {
   const icon = getIcon(actionType);
