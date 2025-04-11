@@ -1748,6 +1748,27 @@
                 (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                 [:total :data])))))))
 
+(deftest include-metadata
+  (testing "Include card result_metadata if include-metadata is set"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Card {reg-card-id :id} {:name            (named "regular card")
+                                                    :result_metadata [{:description "The state or province of the account’s billing address."}]}]
+        (testing "Can include `result_metadata` info"
+          (is (= [{:description "The state or province of the account’s billing address."}]
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_metadata "true")
+                      :data
+                      (filter #(= reg-card-id (:id %)))
+                      first
+                      :result_metadata))))
+        (testing "result_metadata not included by default"
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :result_metadata))))))))
+
 (deftest prometheus-response-metrics-test
   (testing "Prometheus counters get incremented for error responses"
     (let [calls (atom nil)]
