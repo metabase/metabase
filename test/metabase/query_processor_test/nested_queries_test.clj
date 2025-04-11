@@ -984,12 +984,12 @@
     (let [query (mt/mbql-query venues
                   {:fields      [[:expression "one"]
                                  [:expression "foo"]
-                                 [:expression "true"]
-                                 [:expression "false"]]
-                   :expressions {"one"   [:value 1     {:base_type :type/Integer}]
-                                 "foo"   [:value "foo" {:base_type :type/Text}]
-                                 "true"  [:value true  {:base_type :type/Boolean}]
-                                 "false" [:value false {:base_type :type/Boolean}]}
+                                 [:expression "MyTrue"]
+                                 [:expression "MyFalse"]]
+                   :expressions {"one"     [:value 1     {:base_type :type/Integer}]
+                                 "foo"     [:value "foo" {:base_type :type/Text}]
+                                 "MyTrue"  [:value true  {:base_type :type/Boolean}]
+                                 "MyFalse" [:value false {:base_type :type/Boolean}]}
                    :limit       1})]
       (letfn [(check-result [rows]
                 (is (= [[1 "foo" true false]]

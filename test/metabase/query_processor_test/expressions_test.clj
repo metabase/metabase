@@ -454,34 +454,31 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private standard-literal-expression-defs
-  {"empty"  [:value ""    {:base_type :type/Text}]
-   "foo"    [:value "foo" {:base_type :type/Text}]
-   "zero"   [:value 0     {:base_type :type/Integer}]
-   "12345"  [:value 12345 {:base_type :type/Integer}]
-   "float"  [:value 1.234 {:base_type :type/Float}]
-   "True"   [:value true  {:base_type :type/Boolean}]
-   "False"  [:value false {:base_type :type/Boolean}]})
+  {"foo"      [:value "foo" {:base_type :type/Text}]
+   "zero"     [:value 0     {:base_type :type/Integer}]
+   "12345"    [:value 12345 {:base_type :type/Integer}]
+   "float"    [:value 1.234 {:base_type :type/Float}]
+   "MyTrue"   [:value true  {:base_type :type/Boolean}]
+   "MyFalse"  [:value false {:base_type :type/Boolean}]})
 
 (def ^:private standard-literal-expression-refs
-  [[:expression "empty"]
-   [:expression "foo"]
+  [[:expression "foo"]
    [:expression "zero"]
    [:expression "12345"]
    [:expression "float"]
-   [:expression "True"]
-   [:expression "False"]])
+   [:expression "MyTrue"]
+   [:expression "MyFalse"]])
 
 (def ^:private standard-literal-expression-column-refs
-  [[:field "empty" {:base_type :type/Text}]
-   [:field "foo"   {:base_type :type/Text}]
-   [:field "zero"  {:base_type :type/Integer}]
-   [:field "12345" {:base_type :type/Integer}]
-   [:field "float" {:base_type :type/Float}]
-   [:field "True"  {:base_type :type/Boolean}]
-   [:field "False" {:base_type :type/Boolean}]])
+  [[:field "foo"     {:base_type :type/Text}]
+   [:field "zero"    {:base_type :type/Integer}]
+   [:field "12345"   {:base_type :type/Integer}]
+   [:field "float"   {:base_type :type/Float}]
+   [:field "MyTrue"  {:base_type :type/Boolean}]
+   [:field "MyFalse" {:base_type :type/Boolean}]])
 
 (def ^:private standard-literal-expression-row-formats
-  [str str int int 3.0 mt/boolish->bool mt/boolish->bool])
+  [str int int 3.0 mt/boolish->bool mt/boolish->bool])
 
 (def ^:private standard-literal-expression-row-formats-with-id
   (into [int] standard-literal-expression-row-formats))
@@ -492,15 +489,14 @@
 (deftest ^:parallel basic-literal-expression-test
   (testing "basic literal expressions"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
-      (is (= [[1 "" "foo" 0 12345 1.234 true false]
-              [2 "" "foo" 0 12345 1.234 true false]]
+      (is (= [(into [1] standard-literal-expression-values)]
              (mt/formatted-rows
               standard-literal-expression-row-formats-with-id
               (mt/run-mbql-query orders
                 {:expressions standard-literal-expression-defs
                  :fields      (into [$id] standard-literal-expression-refs)
                  :order-by    [[:asc  $id]]
-                 :limit       2})))))))
+                 :limit       1})))))))
 
 (deftest ^:parallel filter-literal-expression-with-=-!=-test
   (doseq [[and-or eq-ne expected] [[:and :=  [standard-literal-expression-values]]
@@ -574,8 +570,8 @@
 (deftest ^:parallel case-with-literal-expression-test
   (testing "CASE expression using literal expressions"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
-      (is (= [[1 12345 true  "foo"]
-              [2 12345 false "foo"]]
+      (is (= [[1 12345 true  "foobar"]
+              [2 12345 false "foobar"]]
              (mt/formatted-rows
               [int int mt/boolish->bool str]
               (mt/run-mbql-query venues
@@ -583,24 +579,24 @@
                                     {"case 1" [:case
                                                [[[:< [:expression "zero"] 0]
                                                  [:expression "zero"]]
-                                                [[:= false [:expression "True"]]
+                                                [[:= false [:expression "MyTrue"]]
                                                  [:expression "zero"]]
                                                 [[:= "foo" [:expression "foo"]]
                                                  [:expression "12345"]]]
                                                {:default [:expression "zero"]}]
                                      "case 2" [:case
                                                [[[:= $id 1]
-                                                 [:expression "True"]]
+                                                 [:expression "MyTrue"]]
                                                 [[:= $id 2]
-                                                 [:expression "False"]]]]
+                                                 [:expression "MyFalse"]]]]
                                      "case 3" [:case
                                                [[[:= [:concat [:expression "foo"] ""] "bar"]
-                                                 [:expression "empty"]]
+                                                 [:expression "foo"]]
                                                 [[:> [:expression "zero"] 0]
-                                                 [:expression "empty"]]
+                                                 [:expression "foo"]]
                                                 [[:is-null [:expression "foo"]]
-                                                 [:expression "empty"]]]
-                                               {:default [:expression "foo"]}]})
+                                                 [:expression "foo"]]]
+                                               {:default [:concat [:expression "foo"] "bar"]}]})
                  :fields      [$id
                                [:expression "case 1"]
                                [:expression "case 2"]
@@ -617,19 +613,19 @@
                (mt/formatted-rows
                 [mt/boolish->bool mt/boolish->bool]
                 (mt/run-mbql-query orders
-                  {:expressions {"true"  [:value true  {:base_type :type/Boolean}]
-                                 "false" [:value false {:base_type :type/Boolean}]}
-                   :fields      [[:expression "true"]
-                                 [:expression "false"]]
-                   :filter      (into [op] [[:expression "true"]
-                                            [:expression "false"]])
+                  {:expressions {"MyTrue"  [:value true  {:base_type :type/Boolean}]
+                                 "MyFalse" [:value false {:base_type :type/Boolean}]}
+                   :fields      [[:expression "MyTrue"]
+                                 [:expression "MyFalse"]]
+                   :filter      (into [op] [[:expression "MyTrue"]
+                                            [:expression "MyFalse"]])
                    :limit       1}))))))))
 
 (deftest ^:parallel filter-literal-boolean-expression-with-no-operator-test
-  (doseq [[expression expected] [[[:value true nil]     [standard-literal-expression-values]]
-                                 [[:value false nil]    []]
-                                 [[:expression "True"]  [standard-literal-expression-values]]
-                                 [[:expression "False"] []]]]
+  (doseq [[expression expected] [[[:value true nil]       [standard-literal-expression-values]]
+                                 [[:value false nil]      []]
+                                 [[:expression "MyTrue"]  [standard-literal-expression-values]]
+                                 [[:expression "MyFalse"] []]]]
     (testing (str "filter literal expressions with " expression)
       (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
         (is (= expected
@@ -640,6 +636,18 @@
                    :fields      standard-literal-expression-refs
                    :filter      expression
                    :limit       1}))))))))
+
+(deftest ^:parallel empty-string-literal-expression-test
+  (testing "empty string as literal expression"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals)
+      (is (= [[""]]
+             (mt/formatted-rows
+              [str]
+              #_format-nil-values? true
+              (mt/run-mbql-query orders
+                {:expressions {"empty" [:value "" {:base_type :type/Text}]}
+                 :fields      [[:expression "empty"]]
+                 :limit       1})))))))
 
 (deftest ^:parallel nested-and-filtered-literal-expression-test
   (testing "nested and filtered literal expression"
@@ -652,13 +660,13 @@
               (mt/run-mbql-query venues
                 {:fields       [$id
                                 $name
-                                [:expression "True"]
+                                [:expression "MyTrue"]
                                 [:expression "Name"]
                                 *One/Integer
                                 *Two/Integer
                                 *Bob/Text]
-                 :expressions  {"True"  [:value true {:base_type :type/Boolean}]
-                                "Name"  [:value "Red Medicine" {:base_type :type/Text}]}
+                 :expressions  {"MyTrue"  [:value true {:base_type :type/Boolean}]
+                                "Name"    [:value "Red Medicine" {:base_type :type/Text}]}
                  :source-query {:source-table $$venues
                                 :fields       [$id
                                                $name
@@ -671,8 +679,8 @@
                                 :filters      [[:= 2.0 [:* [:expression "Two"] [:expression "One"]]]]}
                  :filters      [[:!= *Bob/Text [:expression "Name"]]
                                 [:!= $name [:expression "Name"]]
-                                [:= true [:expression "True"]]
-                                [:= [:expression "True"] true]
+                                [:= true [:expression "MyTrue"]]
+                                [:= [:expression "MyTrue"] true]
                                 [:=
                                  [:expression "Name"]
                                  [:concat [:expression "Name"] ""]]]
