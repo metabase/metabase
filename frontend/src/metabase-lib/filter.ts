@@ -4,6 +4,7 @@ import * as ML from "cljs/metabase.lib.js";
 import type { CardId, DatasetColumn } from "metabase-types/api";
 
 import { expressionParts } from "./expression";
+import { isSegmentMetadata } from "./metadata";
 import { removeClause } from "./query";
 import type {
   BooleanFilterParts,
@@ -281,8 +282,13 @@ export function isSegmentFilter(
   stageIndex: number,
   filter: FilterClause,
 ) {
-  const { operator } = expressionParts(query, stageIndex, filter);
-  return operator === "segment";
+  const parts = expressionParts(query, stageIndex, filter);
+
+  return (
+    isSegmentMetadata(parts) ||
+    // @ts-expect-error: TODO should we remove this branch?
+    parts?.operator === "segment"
+  );
 }
 
 type UpdateLatLonFilterBounds = {

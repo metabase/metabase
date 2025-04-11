@@ -1,51 +1,25 @@
 import { c, t } from "ttag";
 
-import * as Lib from "metabase-lib";
-import type { Expression } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
 
 import { ResolverError } from "./errors";
 import { parseDimension, parseMetric, parseSegment } from "./identifier";
-import { resolve } from "./resolver";
-import type { StartRule } from "./types";
 import { getNode } from "./utils";
 
-export function resolverPass({
-  query,
-  stageIndex,
-  startRule,
-}: {
-  query: Lib.Query;
-  stageIndex: number;
-  startRule: StartRule;
-}) {
-  return (expression: Expression): Expression =>
-    resolve({
-      expression,
-      type: startRule,
-      fn: fieldResolver({
-        query,
-        stageIndex,
-        startRule,
-      }),
-    });
-}
+export type Kind = "field" | "metric" | "segment";
+
+export type Resolver = (
+  kind: Kind,
+  name: string,
+  expression?: Lib.ExpressionParts,
+) => Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata;
 
 export function fieldResolver(options: {
   query: Lib.Query;
   stageIndex: number;
   startRule: string;
-}) {
-  return function (
-    kind: "field" | "segment" | "metric" | "dimension",
-    name: string,
-    expression?: Expression,
-  ): Expression {
-    const { query, stageIndex } = options;
-    if (!query) {
-      // @uladzimirdev double check why is this needed
-      return [kind, name];
-    }
-
+}): Resolver {
+  return function (kind, name, expression) {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
@@ -67,7 +41,7 @@ export function fieldResolver(options: {
         );
       }
 
-      return Lib.legacyRef(query, stageIndex, metric) as Expression;
+      return metric;
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
@@ -77,7 +51,7 @@ export function fieldResolver(options: {
         );
       }
 
-      return Lib.legacyRef(query, stageIndex, segment) as Expression;
+      return segment;
     } else {
       // fallback
       const dimension = parseDimension(name, options);
@@ -85,7 +59,7 @@ export function fieldResolver(options: {
         throw new ResolverError(t`Unknown Field: ${name}`, getNode(expression));
       }
 
-      return Lib.legacyRef(query, stageIndex, dimension) as Expression;
+      return dimension;
     }
   };
 }

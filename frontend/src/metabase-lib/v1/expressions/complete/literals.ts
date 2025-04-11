@@ -19,12 +19,12 @@ export function suggestLiterals() {
         {
           label: "True",
           type: "literal",
-          icon: "boolean",
+          icon: "io",
         },
         {
           label: "False",
           type: "literal",
-          icon: "boolean",
+          icon: "io",
         },
       ],
     };

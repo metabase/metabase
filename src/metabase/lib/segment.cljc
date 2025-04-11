@@ -8,6 +8,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
@@ -26,6 +27,10 @@
   :type/Boolean)
 
 (defmethod lib.metadata.calculation/type-of-method :segment
+  [_query _stage-number _segment-clause]
+  :type/Boolean)
+
+(defmethod lib.schema.expression/type-of-method :metadata/segment
   [_query _stage-number _segment-clause]
   :type/Boolean)
 

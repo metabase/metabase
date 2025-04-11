@@ -18,6 +18,7 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -124,7 +125,7 @@
                     {::temporal-unit unit})
                   (cond
                     (integer? id-or-name) (or (lib.equality/resolve-field-id query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name (str id-or-name)})
+                                              {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
                     join-alias            {:lib/type :metadata/column, :name (str id-or-name)}
                     :else                 (or (resolve-column-name query stage-number id-or-name)
                                               {:lib/type :metadata/column, :name (str id-or-name)})))]
@@ -161,6 +162,10 @@
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/column
   [_query _stage-number column-metadata]
+  (column-metadata-effective-type column-metadata))
+
+(defmethod lib.schema.expression/type-of-method :metadata/column
+  [column-metadata]
   (column-metadata-effective-type column-metadata))
 
 (defmethod lib.metadata.calculation/type-of-method :field
