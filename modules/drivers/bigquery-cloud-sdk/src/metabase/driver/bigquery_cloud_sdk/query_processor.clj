@@ -32,6 +32,7 @@
     FieldValue
     FieldValueList)
    (java.time
+    Instant
     LocalDate
     LocalDateTime
     LocalTime
@@ -165,10 +166,16 @@
   (parse-value column-mode v bigdec))
 
 (defn- parse-timestamp-str [timezone-id s]
-  ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
+  ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in seconds, e.g. "1.3963104E9"
   (log/tracef "Parse timestamp string '%s' (default timezone ID = %s)" s timezone-id)
   (if-let [seconds (u/ignore-exceptions (Double/parseDouble s))]
-    (t/zoned-date-time (t/instant (* seconds 1000)) (t/zone-id timezone-id))
+    (let [full-seconds (long seconds)
+          ;; BigQuery timestamps have microsecond precision
+          ;; (see https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#timestamp_type)
+          micro-adjustment (long (Math/round (double (* (- seconds full-seconds) 1000000))))
+          nano-adjustment (* micro-adjustment 1000)
+          instant (Instant/ofEpochSecond full-seconds nano-adjustment)]
+      (t/zoned-date-time instant (t/zone-id timezone-id)))
     (u.date/parse s timezone-id)))
 
 (defmethod parse-result-of-type "DATE"
