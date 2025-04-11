@@ -488,4 +488,16 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
     expect(onChange).toHaveBeenLastCalledWith(["ab", "c"]);
   });
+
+  it("should close the dropdown on escape and open it back when typing", async () => {
+    const { input } = setup({ data: REMAPPED_DATA });
+    await userEvent.click(input);
+    expect(getOption("One")).toBeInTheDocument();
+
+    await userEvent.type(input, "{Escape}");
+    expect(queryOption("One")).not.toBeInTheDocument();
+
+    await userEvent.type(input, "on");
+    expect(getOption("One")).toBeInTheDocument();
+  });
 });

@@ -1039,6 +1039,21 @@ describe("scenarios > question > filter", () => {
       H.checkExpressionEditorHelperPopoverPosition();
     });
   });
+
+  it("should close the dropdown but not the popover on escape when the combobox is opened", () => {
+    const optionName = "Abbey Satterfield";
+    H.openPeopleTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText("Name").click();
+      cy.findByLabelText("Filter value").type("ab");
+      cy.findByRole("option", { name: optionName }).should("be.visible");
+
+      cy.findByLabelText("Filter value").type("{esc}");
+      cy.findByRole("option", { name: optionName }).should("not.exist");
+      cy.findByLabelText("Filter value").should("be.visible");
+    });
+  });
 });
 
 function openExpressionEditorFromFreshlyLoadedPage() {
