@@ -58,6 +58,7 @@ export const DashCardQuestionDownloadButton = ({
               [cx(CS.hoverChild, CS.hoverChildSmooth)]: true,
             })}
             loading={isDownloadingData}
+            data-testid="download-question-results-button"
           >
             <Icon name="download" />
           </ActionIcon>

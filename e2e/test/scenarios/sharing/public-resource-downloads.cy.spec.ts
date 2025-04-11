@@ -52,7 +52,7 @@ H.describeWithSnowplowEE(
         cy.findByTestId("export-as-pdf-button").should("not.exist");
 
         // we should not have any dashcard action in a public/embed scenario, so the menu should not be there
-        H.getDashboardCardMenu().should("not.exist");
+        cy.findByTestId("download-question-results-button").should("not.exist");
       });
 
       it("#downloads=pdf should enable only PDF downloads", () => {
@@ -60,7 +60,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        H.getDashboardCardMenu().should("not.exist");
+        cy.findByTestId("download-question-results-button").should("not.exist");
       });
 
       it("#downloads=results should enable only dashcard results downloads", () => {
@@ -70,7 +70,7 @@ H.describeWithSnowplowEE(
         cy.get("header")
           .findByTestId("export-as-pdf-button")
           .should("not.exist");
-        H.getDashboardCardMenu().should("exist");
+        cy.findByTestId("download-question-results-button").should("exist");
       });
 
       it("#downloads=pdf,results should enable both PDF and results downloads", () => {
@@ -78,7 +78,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        H.getDashboardCardMenu().should("exist");
+        cy.findByTestId("download-question-results-button").should("exist");
       });
 
       it("#downloads=results,pdf should enable both PDF and results downloads (order agnostic)", () => {
@@ -86,7 +86,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        H.getDashboardCardMenu().should("exist");
+        cy.findByTestId("download-question-results-button").should("exist");
       });
 
       it("#downloads=results, pdf should handle whitespace between parameters", () => {
@@ -94,7 +94,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        H.getDashboardCardMenu().should("exist");
+        cy.findByTestId("download-question-results-button").should("exist");
       });
 
       it("should be able to download a public dashboard as PDF", () => {
@@ -116,8 +116,6 @@ H.describeWithSnowplowEE(
         cy.visit(`${publicLink}`);
         waitLoading();
 
-        H.showDashboardCardActions();
-
         const uuid = publicLink.split("/").at(-1);
 
         H.downloadAndAssert(
@@ -126,6 +124,7 @@ H.describeWithSnowplowEE(
             fileType: "csv",
             questionId: ORDERS_BY_YEAR_QUESTION_ID,
             isDashboard: true,
+            isEmbed: true,
             dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
           },
           H.assertNotEmptyObject,
@@ -211,6 +210,7 @@ H.describeWithSnowplowEE(
             fileType: "csv",
             questionId: ORDERS_BY_YEAR_QUESTION_ID,
             isDashboard: false,
+            isEmbed: true,
           },
           H.assertNotEmptyObject,
         );

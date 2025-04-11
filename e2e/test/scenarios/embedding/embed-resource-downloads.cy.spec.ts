@@ -56,7 +56,7 @@ H.describeWithSnowplowEE(
         cy.findByTestId("export-as-pdf-button").should("not.exist");
 
         // we should not have any dashcard action in a static embedded/embed scenario, so the menu should not be there
-        H.getDashboardCardMenu().should("not.exist");
+        cy.findByTestId("download-question-results-button").should("not.exist");
       });
 
       it("should be able to download a static embedded dashboard as PDF", () => {

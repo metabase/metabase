@@ -50,6 +50,7 @@ export function downloadAndAssert(
     downloadUrl,
     downloadMethod = "POST",
     isDashboard,
+    isEmbed = false,
     enableFormatting = true,
     pivoting,
   }: DownloadAndAssertParams,
@@ -88,11 +89,20 @@ export function downloadAndAssert(
 
   cy.log(`Downloading ${fileType} file`);
 
-  if (isDashboard) {
-    getDashboardCardMenu().click();
-    cy.findByText("Download results").click();
+  if (isEmbed) {
+    if (isDashboard) {
+      cy.findByTestId("dashcard").realHover();
+      cy.findByTestId("download-question-results-button").click();
+    } else {
+      cy.findByTestId("download-button").click();
+    }
   } else {
-    cy.findByTestId("download-button").click();
+    if (isDashboard) {
+      getDashboardCardMenu().click();
+      cy.findByText("Download results").click();
+    } else {
+      cy.findByTestId("download-button").click();
+    }
   }
 
   popover().within(() => {
