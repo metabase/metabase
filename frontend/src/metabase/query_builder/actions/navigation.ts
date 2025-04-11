@@ -43,18 +43,22 @@ export const popState = createThunkAction(
     dispatch(cancelQuery());
 
     const zoomedObjectId = getZoomedObjectId(getState());
-    if (zoomedObjectId) {
-      const { state, query } = getLocation(getState());
-      const previouslyZoomedObjectId = state?.objectId || query?.objectId;
+    const { state, query } = getLocation(getState());
+    const previouslyZoomedObjectId = state?.objectId || query?.objectId;
 
-      if (
-        previouslyZoomedObjectId &&
-        zoomedObjectId !== previouslyZoomedObjectId
-      ) {
+    // If there's a previously zoomed object ID in the browser history state
+    // and we're navigating to that state, we should zoom in on that object
+    if (previouslyZoomedObjectId) {
+      // If we're already zoomed on a different object, update to the new object
+      if (zoomedObjectId !== previouslyZoomedObjectId) {
         dispatch(zoomInRow({ objectId: previouslyZoomedObjectId }));
-      } else {
-        dispatch(resetRowZoom());
       }
+      // If we're already zoomed on the same object, do nothing (keep modal open)
+      return;
+    } else if (zoomedObjectId) {
+      // If there's no object ID in the browser history state but we have a
+      // zoomed object ID in the current state, reset the zoom (close modal)
+      dispatch(resetRowZoom());
       return;
     }
 
