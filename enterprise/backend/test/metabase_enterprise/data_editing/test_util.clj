@@ -18,14 +18,15 @@
   "Syncs a new table by name, returns the table id."
   [db table-name]
   (let [table (sync/create-table! db {:name table-name
-                                      :schema nil
+                                      ;; todo figure out how to determine default schema from driver
+                                      :schema (case (:engine db) :postgres "public" nil)
                                       :display_name table-name})]
     (sync/sync-fields-for-table! db table)
     (:id table)))
 
-(defn- create-test-table! [driver db table-name column-map create-table-opts]
-  (let [_  (driver/create-table! driver
-                                 (mt/id)
+(defn- create-test-table! [db table-name column-map create-table-opts]
+  (let [_  (driver/create-table! (:engine db)
+                                 (:id db)
                                  table-name
                                  column-map
                                  create-table-opts)]
@@ -70,7 +71,7 @@
                          (driver/drop-table! driver (mt/id) table-name)
                          (t2/delete! :model/Table :name table-name))]
      (try
-       (let [table-id (create-test-table! driver db table-name column-map create-table-opts)]
+       (let [table-id (create-test-table! db table-name column-map create-table-opts)]
          (reify Closeable
            IDeref
            (deref [_] table-id)

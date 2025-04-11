@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.api-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.api :as data-editing.api]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
@@ -61,16 +62,18 @@
                    (table-rows table-id))))
 
           (testing "PUT should update the relevant rows and columns"
-            (is (= {:updated [{:id 1, :name "Pidgey", :song "Join us now and share the software"}
-                              {:id 2, :name "Speacolumn", :song "Hold music"}]}
-                   (mt/user-http-request :crowberto :put 200 url
-                                         {:rows [{:id 1 :song "Join us now and share the software"}
-                                                 {:id 2 :name "Speacolumn"}]})))
+            (is (= #{{:id 1, :name "Pidgey", :song "Join us now and share the software"}
+                     {:id 2, :name "Speacolumn", :song "Hold music"}}
+                   (set
+                    (:updated
+                     (mt/user-http-request :crowberto :put 200 url
+                                           {:rows [{:id 1 :song "Join us now and share the software"}
+                                                   {:id 2 :name "Speacolumn"}]})))))
 
-            (is (= [[1 "Pidgey" "Join us now and share the software"]
-                    [2 "Speacolumn" "Hold music"]
-                    [3 "Farfetch'd" "The land of lisp"]]
-                   (table-rows table-id))))
+            (is (= #{[1 "Pidgey" "Join us now and share the software"]
+                     [2 "Speacolumn" "Hold music"]
+                     [3 "Farfetch'd" "The land of lisp"]}
+                   (set (table-rows table-id)))))
 
           (testing "DELETE should remove the corresponding rows"
             (is (= {:success true}
@@ -143,8 +146,8 @@
               (let [{table-name-prefix :name} req-body
                     table-name      (str table-name-prefix "_" (System/currentTimeMillis))
                     req-body'       (u/update-if-exists req-body :name (constantly table-name))
-                    driver          :h2
                     db-id           (mt/id)
+                    driver          driver/*driver*
                     editing-enabled (:d flags)
                     superuser       (:s flags)
                     _               (data-editing.tu/toggle-data-editing-enabled! editing-enabled)
@@ -267,11 +270,18 @@
             update!
             #(req user :put (data-editing.tu/table-url %1) {:rows %2})
 
-            lossy?
+            always-lossy
             #{:Coercion/UNIXNanoSeconds->DateTime
               :Coercion/UNIXMicroSeconds->DateTime
               :Coercion/ISO8601->Date
               :Coercion/ISO8601->Time}
+
+            driver-lossy
+            (case driver/*driver*
+              :postgres #{:Coercion/UNIXMilliSeconds->DateTime}
+              #{})
+
+            lossy? (set/union always-lossy driver-lossy)
 
             do-test
             (fn [t coercion-strategy input expected]
@@ -280,11 +290,12 @@
                                    {:id 'auto-inc-type
                                     :o  [t :null]}
                                    {:primary-key [:id]})]
-                  (let [table-id @table
+                  (let [table-id      @table
                         table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] table-id)
-                        field-id (t2/select-one-fn :id [:model/Field :id] :table_id table-id :name "o")
-                        get-qp-state (fn [] (map #(zipmap [:id :o] %) (table-rows table-id)))
-                        get-db-state (fn [] (sql-jdbc/query :h2 (mt/id) {:select [:*] :from [table-name-kw]}))]
+                        field-id      (t2/select-one-fn :id [:model/Field :id] :table_id table-id :name "o")
+                        driver        driver/*driver*
+                        get-qp-state  (fn [] (map #(zipmap [:id :o] %) (table-rows table-id)))
+                        get-db-state  (fn [] (sql-jdbc/query driver (mt/id) {:select [:*] :from [table-name-kw]}))]
                     (t2/update! :model/Field field-id {:coercion_strategy coercion-strategy})
                     (testing "create"
                       (let [row {:o input}
