@@ -7,7 +7,6 @@ redirect_from:
   - /docs/latest/operations-guide
   - /docs/latest/faq
 ---
-
 # Metabase documentation
 
 ![Metabase dashboard](./images/metabase-product-screenshot.png)
@@ -291,3 +290,16 @@ Data jargon explained.
 ### [Metabase Experts](https://www.metabase.com/partners/)
 
 If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
+
+
+hello from the new site
+hi
+hi
+hi
+hi
+hi
+hi
+hi
+hi
+hi
+hi
