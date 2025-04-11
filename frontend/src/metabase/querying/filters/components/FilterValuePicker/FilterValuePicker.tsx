@@ -25,7 +25,7 @@ interface FilterValuePickerProps<T> {
   values: T[];
   autoFocus?: boolean;
   comboboxProps?: ComboboxProps;
-  onCreate?: (rawValue: string) => string | null;
+  parseValue?: (rawValue: string) => string | null;
   onChange: (newValues: T[]) => void;
 }
 
@@ -41,7 +41,7 @@ function FilterValuePicker({
   placeholder,
   autoFocus = false,
   comboboxProps,
-  onCreate,
+  parseValue,
   onChange,
 }: FilterValuePickerOwnProps) {
   const fieldInfo = useMemo(
@@ -86,7 +86,7 @@ function FilterValuePicker({
         columnDisplayName={columnInfo.displayName}
         autoFocus={autoFocus}
         comboboxProps={comboboxProps}
-        onCreate={onCreate}
+        parseValue={parseValue}
         onChange={onChange}
       />
     );
@@ -98,7 +98,7 @@ function FilterValuePicker({
       placeholder={placeholder}
       autoFocus={autoFocus}
       comboboxProps={comboboxProps}
-      onCreate={onCreate}
+      parseValue={parseValue}
       onChange={onChange}
     />
   );
@@ -125,7 +125,7 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<Lib.NumberFilterValue>) {
-  const handleCreate = (rawValue: string) => {
+  const parseValue = (rawValue: string) => {
     const number = parseNumber(rawValue);
     return number != null ? String(number) : null;
   };
@@ -140,7 +140,7 @@ export function NumberFilterValuePicker({
       column={column}
       values={values.map((value) => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
-      onCreate={handleCreate}
+      parseValue={parseValue}
       onChange={handleChange}
     />
   );

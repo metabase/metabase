@@ -7,7 +7,7 @@ interface StaticValuePickerProps {
   placeholder?: string;
   autoFocus?: boolean;
   comboboxProps?: ComboboxProps;
-  onCreate?: (rawValue: string) => string | null;
+  parseValue?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
 }
 
@@ -16,7 +16,7 @@ export function StaticValuePicker({
   placeholder,
   autoFocus,
   comboboxProps,
-  onCreate,
+  parseValue,
   onChange,
 }: StaticValuePickerProps) {
   return (
@@ -26,7 +26,7 @@ export function StaticValuePicker({
       autoFocus={autoFocus}
       comboboxProps={comboboxProps}
       aria-label={t`Filter value`}
-      onCreate={onCreate}
+      parseValue={parseValue}
       onChange={onChange}
     />
   );

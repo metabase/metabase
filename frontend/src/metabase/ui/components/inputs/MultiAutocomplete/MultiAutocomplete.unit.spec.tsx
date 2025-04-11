@@ -41,14 +41,14 @@ type SetupOpts = {
   rightSection?: ReactNode;
   nothingFoundMessage?: ReactNode;
   "aria-label"?: string;
-  onCreate?: (rawValue: string) => string | null;
+  parseValue?: (rawValue: string) => string | null;
 };
 
 function setup({
   initialValue = [],
   data = [],
   placeholder = "Enter some text",
-  onCreate,
+  parseValue,
 }: SetupOpts = {}) {
   const onChange = jest.fn<void, [string[]]>();
   const onSearchChange = jest.fn<void, [string]>();
@@ -58,7 +58,7 @@ function setup({
       initialValue={initialValue}
       data={data}
       placeholder={placeholder}
-      onCreate={onCreate}
+      parseValue={parseValue}
       onChange={onChange}
       onSearchChange={onSearchChange}
     />,
@@ -91,9 +91,9 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  it("should not accept values when blurring if they are not accepted by onCreate", async () => {
+  it("should not accept values when blurring if they are not accepted by parseValue", async () => {
     const { input, onChange } = setup({
-      onCreate: (value) => (value === "foo" ? value : null),
+      parseValue: (value) => (value === "foo" ? value : null),
     });
     await userEvent.type(input, "foo");
     await userEvent.click(document.body);
@@ -182,9 +182,9 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  it("should not accept values when entering a comma if they are not accepted by onCreate", async () => {
+  it("should not accept values when entering a comma if they are not accepted by parseValue", async () => {
     const { input, onChange } = setup({
-      onCreate: (value) => (value === "foo" ? value : null),
+      parseValue: (value) => (value === "foo" ? value : null),
     });
     await userEvent.type(input, "foo,");
     expect(onChange).toHaveBeenLastCalledWith(["foo"]);
@@ -220,9 +220,10 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  it("should accept comma-separated values, but omit values not accepted by onCreate", async () => {
+  it("should accept comma-separated values, but omit values not accepted by parseValue", async () => {
     const { input, onChange } = setup({
-      onCreate: (value) => (value === "foo" || value === "bar" ? value : null),
+      parseValue: (value) =>
+        value === "foo" || value === "bar" ? value : null,
     });
     await userEvent.click(input);
     await userEvent.paste("foo,bar,baz");
@@ -453,7 +454,7 @@ describe("MultiAutocomplete", () => {
 
   it("should ignore duplicates when there are different string representations of the underlying value", async () => {
     const { input, onChange } = setup({
-      onCreate: (value) => {
+      parseValue: (value) => {
         const number = parseFloat(value);
         return Number.isNaN(number) ? null : String(number);
       },
@@ -464,7 +465,7 @@ describe("MultiAutocomplete", () => {
 
   it("should ignore duplicates in the clipboard data", async () => {
     const { input, onChange } = setup({
-      onCreate: (value) => {
+      parseValue: (value) => {
         const number = parseFloat(value);
         return Number.isNaN(number) ? null : String(number);
       },

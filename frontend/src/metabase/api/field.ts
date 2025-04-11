@@ -5,6 +5,7 @@ import type {
   FieldValue,
   GetFieldRequest,
   GetFieldValuesResponse,
+  GetRemappedFieldValueRequest,
   SearchFieldValuesRequest,
   UpdateFieldRequest,
   UpdateFieldValuesRequest,
@@ -36,6 +37,17 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}/values`,
       }),
       providesTags: (_, error, fieldId) => provideFieldValuesTags(fieldId),
+    }),
+    getRemappedFieldValue: builder.query<
+      FieldValue,
+      GetRemappedFieldValueRequest
+    >({
+      query: ({ fieldId, remappedFieldId, ...params }) => ({
+        method: "GET",
+        url: `/api/field/${fieldId}/remapping/${remappedFieldId}`,
+        params,
+      }),
+      providesTags: (_, error, { fieldId }) => provideFieldValuesTags(fieldId),
     }),
     searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
       query: ({ fieldId, searchFieldId, ...params }) => ({
@@ -107,6 +119,7 @@ export const fieldApi = Api.injectEndpoints({
 export const {
   useGetFieldQuery,
   useGetFieldValuesQuery,
+  useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,
   useUpdateFieldMutation,
   useUpdateFieldValuesMutation,
