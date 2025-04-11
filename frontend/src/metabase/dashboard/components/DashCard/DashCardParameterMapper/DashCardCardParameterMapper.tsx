@@ -79,12 +79,10 @@ export function DashCardCardParameterMapper({
   const isDisabled = mappingOptions.length === 0 || isAction;
   const isNative = isQuestion && isNativeDashCard(dashcard);
 
-  const translatedMappingOptions = mappingOptions
-    .map((opt) => ({
-      ...opt,
-      name: tc(opt.name),
-    }))
-    .toSorted((a, b) => a.name.localeCompare(b.name));
+  const translatedMappingOptions = mappingOptions.map((opt) => ({
+    ...opt,
+    name: tc(opt.name),
+  }));
 
   const selectedMappingOption = getMappingOptionByTarget(
     translatedMappingOptions,

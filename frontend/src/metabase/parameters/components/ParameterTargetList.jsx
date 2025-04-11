@@ -3,7 +3,6 @@ import _ from "underscore";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { Icon } from "metabase/ui";
 
 export const ParameterTargetList = ({
@@ -12,14 +11,13 @@ export const ParameterTargetList = ({
   maxHeight,
   onChange,
 }) => {
-  const tc = useTranslateContent();
   const mappingOptionSections = _.groupBy(mappingOptions, "sectionName");
 
   const hasForeignOption = _.any(mappingOptions, (o) => !!o.isForeign);
 
   const sections = _.map(mappingOptionSections, (options) => ({
     name: options[0].sectionName,
-    items: options.map((opt) => ({ ...opt, name: tc(opt.name) })),
+    items: options,
   }));
 
   return (
