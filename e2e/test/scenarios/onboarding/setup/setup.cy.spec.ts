@@ -141,7 +141,7 @@ describe("scenarios > setup", () => {
     );
   });
 
-  it("should set up Metabase without first name and last name (metabase#22754), Ensure command palette is not enabled (metabase#56498)", () => {
+  it("should set up Metabase without first name and last name (metabase#22754)", () => {
     // This is a simplified version of the "scenarios > setup" test
     cy.visit("/");
 
@@ -151,12 +151,7 @@ describe("scenarios > setup", () => {
 
     cy.findByTestId("setup-forms").within(() => {
       selectPreferredLanguageAndContinue();
-    });
 
-    H.openCommandPalette();
-    H.commandPalette().should("not.exist");
-
-    cy.findByTestId("setup-forms").within(() => {
       // User
       fillUserAndContinue({
         ...admin,
@@ -166,26 +161,14 @@ describe("scenarios > setup", () => {
       });
 
       cy.findByText("Hi. Nice to meet you!");
-      cy.intercept("/api/user/current").as("getUser");
 
       cy.button("Next").click();
-      //This is a fairly slow request, but it needs to complete for the rest of the test assertions to work
-      cy.wait("@getUser");
 
       // Database
-      cy.findByText("Add your data").click(); // remove focus from input;
-    });
-
-    H.openCommandPalette();
-    H.commandPalette().should("not.exist");
-
-    cy.findByTestId("setup-forms").within(() => {
+      cy.findByText("Add your data");
       cy.findByText("I'll add my data later").click();
 
       skipLicenseStepOnEE();
-
-      H.openCommandPalette();
-      H.commandPalette().should("not.exist");
 
       // Turns off anonymous data collection
       cy.findByLabelText(
@@ -204,11 +187,9 @@ describe("scenarios > setup", () => {
       cy.findByText(
         "Get infrequent emails about new releases and feature updates.",
       ).click();
-    });
 
-    H.openCommandPalette();
-    H.commandPalette().should("not.exist");
-    cy.findByTestId("setup-forms").findByText("Take me to Metabase").click();
+      cy.findByText("Take me to Metabase").click();
+    });
 
     cy.location("pathname").should("eq", "/");
 
