@@ -2,6 +2,8 @@ import { EDITOR_QUOTES } from "./config";
 
 const DOUBLE_QUOTE = '"';
 const SINGLE_QUOTE = "'";
+const OPEN_BRACKET = "[";
+const CLOSE_BRACKET = "]";
 const BACKSLASH = "\\";
 
 const STRING_ESCAPE: Record<string, string> = {
@@ -11,9 +13,6 @@ const STRING_ESCAPE: Record<string, string> = {
   "\f": "\\f",
   "\r": "\\r",
   "\v": "\\v",
-  "'": "\\'",
-  '"': '\\"',
-  "\\\\": "\\\\",
 };
 
 const STRING_UNESCAPE: Record<string, string> = {
@@ -23,9 +22,8 @@ const STRING_UNESCAPE: Record<string, string> = {
   f: "\f",
   r: "\r",
   v: "\v",
-  '"': '"',
   "'": "'",
-  "\\": "\\\\",
+  '"': '"',
 };
 
 export function formatStringLiteral(
@@ -40,86 +38,66 @@ export function formatStringLiteral(
 }
 
 export function quoteString(string: string, quote: string) {
-  if (quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE) {
-    let str = "";
-    for (let i = 0; i < string.length; ++i) {
-      const ch = string[i];
-      if (ch === quote && string[i - 1] !== BACKSLASH) {
-        str += BACKSLASH + ch;
-      } else {
-        const sub = STRING_ESCAPE[ch];
-        str += sub ? sub : ch;
-      }
+  const [OPEN, CLOSE] = getQuotePair(quote);
+
+  let str = "";
+  for (let i = 0; i < string.length; i++) {
+    const ch = string[i];
+    if (ch === OPEN || ch === CLOSE) {
+      str += BACKSLASH + ch;
+    } else if (ch === BACKSLASH && string[i + 1] === BACKSLASH) {
+      str += BACKSLASH + BACKSLASH;
+      i += 1;
+    } else if (ch in STRING_ESCAPE) {
+      str += STRING_ESCAPE[ch];
+    } else {
+      str += ch;
     }
-    return quote + str + quote;
-  } else if (quote === "[") {
-    return "[" + escapeString(string) + "]";
-  } else if (quote === "") {
-    // unquoted
-    return string;
-  } else {
-    throw new Error("Unknown quoting: " + quote);
   }
+
+  return OPEN + str + CLOSE;
 }
 
 export function unquoteString(string: string) {
   const quote = string.charAt(0);
-  if (quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE) {
-    let str = "";
-    for (let i = 1; i <= string.length - 1; i++) {
-      const ch = string[i];
-      if (ch === BACKSLASH) {
-        const seq = string[i + 1];
-        const unescaped = STRING_UNESCAPE[seq];
-        if (unescaped) {
-          str += unescaped;
-          i++;
-          continue;
-        }
+  const [OPEN, CLOSE] = getQuotePair(quote);
+
+  let str = "";
+  let escaping = false;
+
+  for (let i = 1; i <= string.length - 1; i++) {
+    const ch = string[i];
+
+    if (ch === BACKSLASH && !escaping) {
+      escaping = true;
+      continue;
+    }
+
+    if (escaping) {
+      escaping = false;
+      if (ch in STRING_UNESCAPE) {
+        str += STRING_UNESCAPE[ch];
+      } else if (ch === OPEN || ch === CLOSE) {
+        str += ch;
+      } else {
+        str += BACKSLASH + ch;
       }
-      if (ch === quote) {
-        // skip last quote
-        if (i !== string.length - 1) {
-          throw Error("Malformed string");
-        }
-        continue;
-      }
+    } else if (ch === CLOSE) {
+      // skip last quote
+      return str;
+    } else {
       str += ch;
     }
-
-    return str;
-  } else if (quote === "[") {
-    const end = string.endsWith("]") ? string.length - 1 : string.length;
-    return unescapeString(string.slice(1, end));
-  } else {
-    throw new Error("Unknown quoting: " + string);
   }
-}
 
-// Return a copy with brackets (`[` and `]`) being escaped
-function escapeString(string: string) {
-  let str = "";
-  for (let i = 0; i < string.length; ++i) {
-    const ch = string[i];
-    if (ch === "[" || ch === "]") {
-      str += "\\";
-    }
-    str += ch;
-  }
   return str;
 }
 
-// The opposite of escapeString
-function unescapeString(string: string) {
-  let str = "";
-  for (let i = 0; i < string.length; ++i) {
-    const ch1 = string[i];
-    const ch2 = string[i + 1];
-    if (ch1 === "\\" && (ch2 === "[" || ch2 === "]")) {
-      // skip
-    } else {
-      str += ch1;
-    }
+function getQuotePair(quote: string) {
+  if (quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE) {
+    return [quote, quote];
+  } else if (quote === OPEN_BRACKET) {
+    return [OPEN_BRACKET, CLOSE_BRACKET];
   }
-  return str;
+  throw new Error("Unknown quoting: " + quote);
 }
