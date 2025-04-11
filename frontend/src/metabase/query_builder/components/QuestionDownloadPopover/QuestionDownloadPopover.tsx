@@ -44,7 +44,7 @@ const QuestionDownloadPopover = ({
         <Flex className={className}>
           <Tooltip label={t`Download results`} disabled={isPopoverOpen}>
             <ActionIcon
-              c="text-dark"
+              c="var(--mb-color-text-primary)"
               data-testid="question-results-download-button"
               onClick={() => setIsPopoverOpen(!isPopoverOpen)}
             >
