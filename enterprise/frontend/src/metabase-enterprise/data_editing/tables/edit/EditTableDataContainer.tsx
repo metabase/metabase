@@ -1,18 +1,23 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
 import {
-  useGetDatabaseMetadataQuery,
-  useGetTableDataQuery,
+  skipToken,
+  useGetAdhocQueryQuery,
+  useGetDatabaseQuery,
   useGetTableQuery,
 } from "metabase/api";
 import { GenericError } from "metabase/components/ErrorPages";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { loadMetadataForTable } from "metabase/questions/actions";
 import { closeNavbar } from "metabase/redux/app";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 
 import S from "./EditTableData.module.css";
@@ -32,19 +37,28 @@ type EditTableDataContainerProps = {
 export const EditTableDataContainer = ({
   params: { dbId: dbIdParam, tableId: tableIdParam },
 }: EditTableDataContainerProps) => {
-  const dbId = parseInt(dbIdParam, 10);
+  const databaseId = parseInt(dbIdParam, 10);
   const tableId = parseInt(tableIdParam, 10);
 
   const dispatch = useDispatch();
+  const metadata = useSelector(getMetadata);
 
-  const { data: database } = useGetDatabaseMetadataQuery({ id: dbId });
-  const { data: table, isLoading: tableIdLoading } = useGetTableQuery({
+  const { data: database } = useGetDatabaseQuery({ id: databaseId });
+
+  // todo get table data from metadata, as we have to load it separately
+  const { data: table, isLoading: tableIsLoading } = useGetTableQuery({
     id: tableId,
   });
 
-  const { data: rawDatasetResult, isLoading } = useGetTableDataQuery({
-    tableId,
-  });
+  const [fakeTableQuestion, setFakeTableQuestion] = useState<
+    Question | undefined
+  >();
+
+  const { data: rawDatasetResult, isLoading } = useGetAdhocQueryQuery(
+    fakeTableQuestion
+      ? Lib.toLegacyQuery(fakeTableQuestion.query())
+      : skipToken,
+  );
 
   const datasetData = useMemo(() => {
     return rawDatasetResult
@@ -52,7 +66,11 @@ export const EditTableDataContainer = ({
       : undefined;
   }, [rawDatasetResult]);
 
-  const stateUpdateStrategy = useTableEditingStateApiUpdateStrategy(tableId);
+  const stateUpdateStrategy = useTableEditingStateApiUpdateStrategy(
+    fakeTableQuestion
+      ? Lib.toLegacyQuery(fakeTableQuestion.query())
+      : undefined,
+  );
 
   const {
     isCreateRowModalOpen,
@@ -71,7 +89,26 @@ export const EditTableDataContainer = ({
     dispatch(closeNavbar());
   });
 
-  if (!database || isLoading || tableIdLoading) {
+  useEffect(() => {
+    dispatch(loadMetadataForTable(tableId));
+  }, [dispatch, tableId]);
+
+  // useEffect(() => {
+  //   if (fakeTableQuestion) {
+  //     dispatch(loadMetadataForCard(fakeTableQuestion.card()));
+  //   }
+  // }, [dispatch, fakeTableQuestion]);
+
+  useEffect(() => {
+    const tableMetadata = metadata.table(tableId);
+
+    if (tableMetadata) {
+      const question = Question.create({ databaseId, tableId, metadata });
+      setFakeTableQuestion(question);
+    }
+  }, [databaseId, metadata, tableId]);
+
+  if (!database || isLoading || tableIsLoading || !fakeTableQuestion) {
     // TODO: show loader
     return null;
   }
@@ -87,7 +124,9 @@ export const EditTableDataContainer = ({
         {table && (
           <EditTableDataHeader
             table={table}
+            question={fakeTableQuestion}
             onCreate={handleModalOpenAndExpandedRow}
+            onQuestionChange={setFakeTableQuestion}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (
