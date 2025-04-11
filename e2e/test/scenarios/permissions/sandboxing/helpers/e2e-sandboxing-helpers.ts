@@ -623,6 +623,8 @@ export const getCardResponses = (questions: SimpleCollectionItem[]) => {
       cy.request<DatasetResponse>("POST", `/api/card/${question.id}/query`),
     ),
   ).then((responses) => {
+    console.log("@m9cy9rpc", "responses", responses);
+
     return { responses, questions };
   }) as Cypress.Chainable<{
     responses: DatasetResponse[];

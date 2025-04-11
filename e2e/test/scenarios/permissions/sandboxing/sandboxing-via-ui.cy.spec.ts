@@ -102,7 +102,7 @@ describe(
         cy.signIn("admin", { skipCache: true });
       });
 
-      it("to a table filtered using a question as a custom view", () => {
+      it.only("to a table filtered using a question as a custom view", () => {
         configureSandboxPolicy({
           filterTableBy: "custom_view",
           customViewType: "Question" as const,
