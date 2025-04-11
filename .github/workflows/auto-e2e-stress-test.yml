@@ -36,7 +36,7 @@ jobs:
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
           HEAD_REF: ${{ github.head_ref || github.ref_name }}
 
-      - name: Add PR comment
+      - name: Add or Update PR comment
         uses: actions/github-script@v7
         with:
           script: |
@@ -53,14 +53,38 @@ jobs:
               commentBody += `Each affected test will run 20 times to ensure it's stable and not flaky.\n`;
               commentBody += `Check the [Actions tab](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions) for individual test workflow runs.`;
 
-              github.rest.issues.createComment({
+              // Look for an existing comment from this workflow
+              const comments = await github.rest.issues.listComments({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: commentBody
               });
 
-              console.log('Added PR comment about triggered stress tests');
+              const botComments = comments.data.filter(comment =>
+                comment.user.login === 'github-actions[bot]' &&
+                comment.body.includes('🔄 E2E Stress Tests Triggered')
+              );
+
+              if (botComments.length > 0) {
+                // Update the most recent comment
+                const commentId = botComments[botComments.length - 1].id;
+                await github.rest.issues.updateComment({
+                  comment_id: commentId,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: commentBody
+                });
+                console.log('Updated existing PR comment about triggered stress tests');
+              } else {
+                // Create a new comment if none exists
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: commentBody
+                });
+                console.log('Added new PR comment about triggered stress tests');
+              }
             } catch (error) {
-              console.error('Error adding PR comment:', error);
+              console.error('Error managing PR comment:', error);
             }
