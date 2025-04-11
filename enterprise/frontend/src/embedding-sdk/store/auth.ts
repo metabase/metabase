@@ -3,7 +3,6 @@ import * as Yup from "yup";
 import type {
   MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
-  MetabaseFetchRequestTokenFn,
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
@@ -152,108 +151,73 @@ const safeStringify = (value: unknown) => {
   }
 };
 
-/**
- * The default implementation of the function to get the refresh token.
- * Only supports sessions by default.
- */
-export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn = async (
-  url,
-) => {
-  const response = await fetch(url, {
-    method: "GET",
-    //    credentials: "include",
-  });
+export const defaultGetRefreshTokenFn = async (url) => {
+  // For SAML authentication, use a popup approach
+  return new Promise((resolve, reject) => {
+    // Define popup dimensions
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
 
-  try {
-    const data = await response.json();
+    // Just use the token=true parameter to get the HTML response
+    const tokenUrl = url.includes("?")
+      ? `${url}&token=true`
+      : `${url}?token=true`;
 
-    if (data.redirectUrl) {
-      // Handle SAML auth via popup with messaging
-      const authUrl = new URL(data.redirectUrl);
+    // Open popup
+    const popup = window.open(
+      tokenUrl,
+      "samlLoginPopup",
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`,
+    );
 
-      // Add token=true parameter to get JSON response
-      if (!authUrl.searchParams.has("token")) {
-        authUrl.searchParams.append("token", "true");
+    if (!popup) {
+      reject(new Error("Popup blocked. Please allow popups for this site."));
+      return;
+    }
+
+    // Listen for message from the popup
+    const messageHandler = (event) => {
+      // Security check - only accept messages from our popup
+      if (event.source !== popup) {
+        return;
       }
 
-      // Return a promise that will resolve with the session token
-      return new Promise((resolve, reject) => {
-        // Set up listener for messages from popup
-        const handleMessage = (event) => {
-          // Verify message contains session data
-          if (event.data && event.data.sessionId) {
-            // Clean up listener
-            window.removeEventListener("message", handleMessage);
-            clearInterval(checkClosed);
+      // Check for our specific message type
+      if (event.data && event.data.type === "saml_auth_complete") {
+        // Remove the event listener
+        window.removeEventListener("message", messageHandler);
 
-            // Create and return a valid session object
-            resolve({
-              id: event.data.sessionId,
-              exp: Math.floor(Date.now() / 1000) + 3600,
-              iat: Math.floor(Date.now() / 1000),
-              status: "ok",
-            });
-          }
-        };
+        // Close the popup
+        popup.close();
 
-        // Add message listener
-        window.addEventListener("message", handleMessage);
+        // Resolve with the auth data
+        resolve(event.data.payload);
+      }
+    };
 
-        // Open popup for authentication
-        const popup = window.open(
-          authUrl.toString(),
-          "samlAuth",
-          "width=600,height=600,left=200,top=200",
-        );
+    window.addEventListener("message", messageHandler);
 
-        if (!popup) {
-          reject(
-            new Error("Popup blocked - please allow popups for authentication"),
-          );
-          return;
-        }
+    // Handle popup closing
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        window.removeEventListener("message", messageHandler);
+        reject(new Error("Authentication was canceled"));
+      }
+    }, 1000);
 
-        // Check if popup was closed before authentication completed
-        const checkClosed = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(checkClosed);
-            window.removeEventListener("message", handleMessage);
-            reject(new Error("Authentication window was closed"));
-          }
-        }, 500);
-      });
-    }
-
-    // No redirectUrl, continue with normal flow
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch the session, HTTP status: ${response.status}`,
-      );
-    }
-
-    const asText = await response.text();
-
-    try {
-      return JSON.parse(asText);
-    } catch (ex) {
-      return asText;
-    }
-  } catch (error) {
-    // If parsing JSON fails, continue with original error handling
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch the session, HTTP status: ${response.status}`,
-      );
-    }
-
-    const asText = await response.text();
-
-    try {
-      return JSON.parse(asText);
-    } catch (ex) {
-      return asText;
-    }
-  }
+    // Set timeout to prevent hanging indefinitely
+    setTimeout(() => {
+      clearInterval(checkClosed);
+      window.removeEventListener("message", messageHandler);
+      if (!popup.closed) {
+        popup.close();
+      }
+      reject(new Error("Authentication timed out"));
+    }, 300000); // 5 minutes timeout
+  });
 };
 
 const sessionSchema = Yup.object({

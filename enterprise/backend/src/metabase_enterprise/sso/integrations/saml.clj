@@ -154,7 +154,7 @@
         (saml/idp-redirect-response {:request-id       (str "id-" (random-uuid))
                                      :sp-name          (sso-settings/saml-application-name)
                                      :issuer           (sso-settings/saml-application-name)
-                                     i want my app to redirect to 5173 after (not hardcoded but whereever that is in the code) . i                       :acs-url          (acs-url)
+                                     :acs-url          (acs-url)
                                      :idp-url          idp-url
                                      :credential       (sp-cert-keystore-details)
                                      :relay-state      relay-state
@@ -239,16 +239,46 @@
                             :device-info     (request/device-info request)})]
 
         ;; Check if token was requested
-        (if token-requested?
-          ;; If token was requested, return the session ID in JSON response
-          {:status 200
-           :body {:success true
-                  :session_id (:key session)  ;; Use the existing session ID
-                  :user {:email email
-                         :first_name first-name
-                         :last_name last-name}}}
+       ;; Add this to your sso.i/sso-post :saml method
+;; inside the try block, after you've created the session
 
-          ;; Otherwise, proceed with the normal redirect flow
+;; When token=true, return HTML instead of JSON
+        (if token-requested?
+  ;; Return HTML that will pass the session data to the parent window
+          (let [;; Current time in seconds since epoch
+                current-time (quot (System/currentTimeMillis) 1000)
+        ;; Expiration time - 24 hours from now (86400 seconds)
+                expiration-time (+ current-time 86400)]
+            {:status 200
+             :headers {"Content-Type" "text/html"}
+             :body (str "<!DOCTYPE html>
+<html>
+<head>
+  <title>Authentication Complete</title>
+</head>
+<body>
+  <script>
+    // The authentication data in the required shape
+    var authData = {
+      id: \"" (:key session) "\",
+      exp: " expiration-time ",
+      iat: " current-time ",
+      status: \"ok\"
+    };
+
+    // Send the data back to the parent window
+    window.opener.postMessage({
+      type: 'saml_auth_complete',
+      payload: authData
+    }, '*');
+
+    // Show a message while the window closes
+    document.body.innerHTML = '<h3>Authentication successful. This window will close automatically.</h3>';
+  </script>
+</body>
+</html>")})
+
+  ;; Otherwise, proceed with the normal redirect flow
           (let [response (response/redirect (or clean-continue-url (public-settings/site-url)))]
             (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
 
