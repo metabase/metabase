@@ -1009,12 +1009,16 @@
 
 (defn ^:export expression-clause
   "Returns a standalone expression clause for the given `operator`, `options`, and list of arguments."
-  [an-operator args options]
-  (-> (lib.core/expression-clause
-       (keyword an-operator)
-       (mapv expression-parts-js->cljs args)
-       (js->clj options :keywordize-keys true))
-      lib.core/normalize))
+  ([x]
+   (-> x
+       expression-parts-js->cljs
+       lib.core/expression-clause
+       lib.core/normalize))
+  ([an-operator args options]
+   (expression-clause {:lib/type :mbql/expression-parts
+                       :operator (keyword an-operator)
+                       :args args
+                       :options options})))
 
 (defn ^:export expression-parts
   "Returns an AST for `an-expression-clause`.
