@@ -159,11 +159,12 @@
        :display-name (i18n/tru "Unknown Metric")})))
 
 (defmethod expression-parts-method :expression
-  [_query _stage-number expression-ref]
-  {:lib/type :mbql/expression-parts
-   :operator :expression
-   :options  (lib.options/options expression-ref)
-   :args [(last expression-ref)]})
+  [query stage-number expression-ref]
+  ; Set the expression name as used in the ref as the expression might
+  ; have other aliases set on it which might be wrong.
+  (lib.options/with-options
+    (column-metadata-from-ref query stage-number expression-ref)
+    {:lib/expression-name (last expression-ref)}))
 
 (mu/defn expression-parts :- [:or ExpressionArg ExpressionParts]
   "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
