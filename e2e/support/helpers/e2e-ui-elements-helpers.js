@@ -499,11 +499,11 @@ export function multiAutocompleteInput(filter = ":eq(0)") {
   return cy.findAllByRole("combobox").filter(filter).get("input").first();
 }
 
-export function fieldValuesSearchInput() {
+export function fieldValuesCombobox() {
   return cy.findByRole("combobox");
 }
 
-export function fieldValuesListInput() {
+export function fieldValuesTextbox() {
   return cy.findByRole("textbox");
 }
 
