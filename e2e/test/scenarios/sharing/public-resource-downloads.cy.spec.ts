@@ -10,7 +10,7 @@ import {
  */
 
 H.describeWithSnowplowEE(
-  "Public dashboards/questions downloads (results and export as pdf)",
+  "Public dashboards/questions downloads (results and pdf)",
   () => {
     beforeEach(() => {
       H.resetSnowplow();
@@ -49,7 +49,9 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         // eslint-disable-next-line no-unscoped-text-selectors -- this should not appear anywhere in the page
-        cy.findByRole("button", { name: "Export as PDF" }).should("not.exist");
+        cy.findByRole("button", { name: "Download as PDF" }).should(
+          "not.exist",
+        );
 
         // we should not have any dashcard action in a public/embed scenario, so the menu should not be there
         cy.findByRole("button", { name: "Download results" }).should(
@@ -62,7 +64,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header")
-          .findByRole("button", { name: "Export as PDF" })
+          .findByRole("button", { name: "Download as PDF" })
           .should("exist");
         cy.findByRole("button", { name: "Download results" }).should(
           "not.exist",
@@ -74,7 +76,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header")
-          .findByRole("button", { name: "Export as PDF" })
+          .findByRole("button", { name: "Download as PDF" })
           .should("not.exist");
         cy.findByRole("button", { name: "Download results" }).should("exist");
       });
@@ -84,7 +86,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header")
-          .findByRole("button", { name: "Export as PDF" })
+          .findByRole("button", { name: "Download as PDF" })
           .should("exist");
         cy.findByRole("button", { name: "Download results" }).should("exist");
       });
@@ -94,7 +96,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header")
-          .findByRole("button", { name: "Export as PDF" })
+          .findByRole("button", { name: "Download as PDF" })
           .should("exist");
 
         cy.findByRole("button", { name: "Download results" }).should("exist");
@@ -105,7 +107,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header")
-          .findByRole("button", { name: "Export as PDF" })
+          .findByRole("button", { name: "Download as PDF" })
           .should("exist");
         cy.findByRole("button", { name: "Download results" }).should("exist");
       });
@@ -115,7 +117,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header")
-          .findByRole("button", { name: "Export as PDF" })
+          .findByRole("button", { name: "Download as PDF" })
           .click();
 
         cy.verifyDownload("Orders in a dashboard.pdf");

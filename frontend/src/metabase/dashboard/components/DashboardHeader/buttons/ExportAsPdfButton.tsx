@@ -60,7 +60,7 @@ export const ExportAsPdfButton = ({
           [CS.ParametersVisibleWithNoTabs]:
             hasVisibleParameters && !hasDashboardTabs,
         })}
-        aria-label={t`Export as PDF`}
+        aria-label={t`Download as PDF`}
       >
         <Icon name="download" />
       </ActionIcon>

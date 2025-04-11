@@ -83,7 +83,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     // should not do any request, as `en` doesn't need loading
 
     getSdkRoot()
-      .findByRole("button", { name: "Export as PDF" })
+      .findByRole("button", { name: "Download as PDF" })
       .should("exist");
   });
 });

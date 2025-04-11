@@ -17,19 +17,19 @@ const setupEnterprise = async (opts?: Partial<SetupOpts>) => {
 
 describe("PublicOrEmbeddedDashboardPage", () => {
   describe("downloads flag", () => {
-    it("should show the 'Export as PDF' button even when titled=false and there's one tab", async () => {
+    it("should show the 'Download as PDF' button even when titled=false and there's one tab", async () => {
       await setupEnterprise({ hash: { titled: "false" }, numberOfTabs: 1 });
 
       expect(
-        screen.getByRole("button", { name: "Export as PDF" }),
+        screen.getByRole("button", { name: "Download as PDF" }),
       ).toBeInTheDocument();
     });
 
-    it('should not hide the "Export as PDF" button when downloads are disabled without "whitelabel" feature', async () => {
+    it('should not hide the "Download as PDF" button when downloads are disabled without "whitelabel" feature', async () => {
       await setupEnterprise({ hash: { downloads: "false" }, numberOfTabs: 1 });
 
       expect(
-        screen.getByRole("button", { name: "Export as PDF" }),
+        screen.getByRole("button", { name: "Download as PDF" }),
       ).toBeInTheDocument();
     });
 
@@ -56,7 +56,7 @@ describe("PublicOrEmbeddedDashboardPage", () => {
       await setupEnterprise();
 
       expect(
-        screen.getByRole("button", { name: "Export as PDF" }),
+        screen.getByRole("button", { name: "Download as PDF" }),
       ).toBeInTheDocument();
     });
 

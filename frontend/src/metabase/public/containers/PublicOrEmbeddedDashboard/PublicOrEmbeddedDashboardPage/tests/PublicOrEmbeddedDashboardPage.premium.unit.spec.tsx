@@ -32,19 +32,19 @@ describe("PublicOrEmbeddedDashboardPage", () => {
   });
 
   describe("downloads flag", () => {
-    it("should show the 'Export as PDF' button even when titled=false and there's one tab", async () => {
+    it("should show the 'Download as PDF' button even when titled=false and there's one tab", async () => {
       await setupPremium({ hash: { titled: "false" }, numberOfTabs: 1 });
 
       expect(
-        screen.getByRole("button", { name: "Export as PDF" }),
+        screen.getByRole("button", { name: "Download as PDF" }),
       ).toBeInTheDocument();
     });
 
-    it('should not show the "Export as PDF" button when downloads are disabled', async () => {
+    it('should not show the "Download as PDF" button when downloads are disabled', async () => {
       await setupPremium({ hash: { downloads: "false" }, numberOfTabs: 1 });
 
       expect(
-        screen.queryByRole("button", { name: "Export as PDF" }),
+        screen.queryByRole("button", { name: "Download as PDF" }),
       ).not.toBeInTheDocument();
     });
 
@@ -79,7 +79,7 @@ describe("PublicOrEmbeddedDashboardPage", () => {
       await setupPremium();
 
       expect(
-        screen.getByRole("button", { name: "Export as PDF" }),
+        screen.getByRole("button", { name: "Download as PDF" }),
       ).toBeInTheDocument();
     });
 
