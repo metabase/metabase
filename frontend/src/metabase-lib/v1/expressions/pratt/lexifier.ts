@@ -2,7 +2,7 @@ import type { SyntaxNodeRef } from "@lezer/common";
 import { t } from "ttag";
 
 import { ParseError } from "../errors";
-import { unquoteString } from "../string";
+import { quoteString, unquoteString } from "../string";
 import { OPERATOR, tokenize } from "../tokenizer";
 
 import {
@@ -69,16 +69,15 @@ export function lexify(source: string) {
     }
 
     if (node.type.name === "Reference") {
-      const value = source.slice(node.from, node.to);
-      if (value.at(0) !== "[") {
-        error(node, t`Missing opening bracket`);
-      } else if (value.at(-1) !== "]") {
+      const text = source.slice(node.from, node.to);
+      const value = unquoteString(text);
+      if (quoteString(value, "[") !== text) {
         error(node, t`Missing a closing bracket`);
       }
 
       return token(node, {
         type: FIELD,
-        value: unquoteString(source.slice(node.from, node.to)),
+        value,
       });
     }
 
@@ -96,20 +95,17 @@ export function lexify(source: string) {
 
     if (node.type.name === "String") {
       const openQuote = source[node.from];
-      const closeQuote = source[node.to - 1];
-      const penultimate = source[node.to - 2];
-      const prepenultimate = source[node.to - 3];
       if (openQuote === "'" || openQuote === '"') {
-        if (
-          closeQuote !== openQuote ||
-          (penultimate === "\\" && prepenultimate !== "\\")
-        ) {
+        const text = source.slice(node.from, node.to);
+        const value = unquoteString(text);
+
+        if (quoteString(value, openQuote) !== text) {
           error(node, t`Missing closing quotes`);
         }
 
         return token(node, {
           type: STRING,
-          value: unquoteString(source.slice(node.from, node.to)),
+          value,
         });
       }
     }
