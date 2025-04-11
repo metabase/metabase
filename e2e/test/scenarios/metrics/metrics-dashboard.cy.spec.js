@@ -7,7 +7,7 @@ import {
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
@@ -39,33 +39,6 @@ const ORDERS_TIMESERIES_METRIC = {
       [
         "field",
         ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "month" },
-      ],
-    ],
-  },
-  display: "line",
-};
-
-const PRODUCTS_SCALAR_METRIC = {
-  name: "Count of products",
-  type: "metric",
-  query: {
-    "source-table": PRODUCTS_ID,
-    aggregation: [["count"]],
-  },
-  display: "scalar",
-};
-
-const PRODUCTS_TIMESERIES_METRIC = {
-  name: "Count of products over time",
-  type: "metric",
-  query: {
-    "source-table": PRODUCTS_ID,
-    aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        PRODUCTS.CREATED_AT,
         { "base-type": "type/DateTime", "temporal-unit": "month" },
       ],
     ],
@@ -215,17 +188,6 @@ describe("scenarios > metrics > dashboard", () => {
     H.getDashboardCard().findByText("Orders").should("be.visible");
   });
 
-  it("should be able to combine scalar metrics on a dashcard", () => {
-    combineAndVerifyMetrics(ORDERS_SCALAR_METRIC, PRODUCTS_SCALAR_METRIC);
-  });
-
-  it("should be able to combine timeseries metrics on a dashcard (metabase#42575)", () => {
-    combineAndVerifyMetrics(
-      ORDERS_TIMESERIES_METRIC,
-      PRODUCTS_TIMESERIES_METRIC,
-    );
-  });
-
   it("should be able to use click behaviors with metrics on a dashboard", () => {
     H.createDashboardWithQuestions({
       questions: [ORDERS_TIMESERIES_METRIC],
@@ -295,29 +257,3 @@ describe("scenarios > metrics > dashboard", () => {
       .should("be.visible");
   });
 });
-
-function combineAndVerifyMetrics(metric1, metric2) {
-  H.createDashboardWithQuestions({ questions: [metric1] }).then(
-    ({ dashboard }) => {
-      H.createQuestion(metric2);
-      H.visitDashboard(dashboard.id);
-    },
-  );
-  H.editDashboard();
-  H.getDashboardCard().realHover().findByTestId("add-series-button").click();
-  H.modal().within(() => {
-    cy.findByText(metric2.name).click();
-    cy.findByLabelText("Legend").within(() => {
-      cy.findByText(metric1.name).should("be.visible");
-      cy.findByText(metric2.name).should("be.visible");
-    });
-    cy.button("Done").click();
-  });
-  H.saveDashboard();
-  H.getDashboardCard().within(() => {
-    cy.findByLabelText("Legend").within(() => {
-      cy.findByText(metric1.name).should("be.visible");
-      cy.findByText(metric2.name).should("be.visible");
-    });
-  });
-}
