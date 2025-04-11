@@ -24,6 +24,10 @@
           nested-indexes-field-ids (remove nil? (map #(field/nested-field-names->field-id table-id %) nested-indexes))]
       (set (filter some? (concat normal-indexes-field-ids nested-indexes-field-ids))))))
 
+(def ^:dynamic *update-partition-size*
+  "Size of the partition of indexes to update using one `t2/update!` call. Dynamic for testing purposes."
+  5000)
+
 (defn maybe-sync-indexes-for-table!
   "Sync the indexes for `table` if the driver supports storing index info."
   [database table]
@@ -32,19 +36,26 @@
       (let [indexes                    (fetch-metadata/index-metadata database table)
             indexed-field-ids          (indexes->field-ids (:id table) indexes)
             existing-indexed-field-ids (t2/select-pks-set :model/Field :table_id (:id table) :database_indexed true)
-            [removing adding]          (data/diff existing-indexed-field-ids indexed-field-ids)]
-        (doseq [field-id removing]
-          (log/infof "Unmarking Field %d as indexed" field-id))
-        (doseq [field-id adding]
-          (log/infof "Marking Field %d as indexed" field-id))
+            [removing adding]          (data/diff existing-indexed-field-ids indexed-field-ids)
+            removing-count             (count removing)
+            adding-count               (count adding)]
+        (log/infof "Unmarking %d fields from indexed" removing-count)
+        (doseq [field-ids (partition-all 100 removing)]
+          (log/debugf "Unmarking Fields as indexed: %s" (pr-str field-ids)))
+        (doseq [field-ids (partition-all *update-partition-size* removing)]
+          (log/infof "Executing batch update of at most %d fields" *update-partition-size*)
+          (t2/update! :model/Field :id [:in field-ids] {:database_indexed false}))
+              ;; Set database_indexed of fields having index.
+        (log/infof "Marking %d fields as indexed" adding-count)
+        (doseq [field-ids (partition-all 100 adding)]
+          (log/debugf "Marking Fields as indexed: %s" (pr-str field-ids)))
+        (doseq [field-ids (partition-all *update-partition-size* adding)]
+          (log/infof "Executing batch update of at most %d fields" *update-partition-size*)
+          (t2/update! :model/Field :id [:in field-ids] {:database_indexed true}))
         (if (or (seq adding) (seq removing))
-          (do (t2/update! :model/Field {:table_id (:id table)}
-                          {:database_indexed (if (seq indexed-field-ids)
-                                               [:case [:in :id indexed-field-ids] true :else false]
-                                               false)})
-              {:total-indexes   (count indexed-field-ids)
-               :added-indexes   (count adding)
-               :removed-indexes (count removing)})
+          {:total-indexes   (count indexed-field-ids)
+           :added-indexes   (count adding)
+           :removed-indexes (count removing)}
           empty-stats)))
     empty-stats))
 
@@ -64,10 +75,6 @@
    ;; break the indexes up in groups of 5000 to avoid max
    ;; parameter limit of 65,535. See #52746 for details.
    (partition-all 5000 indexes)))
-
-(def ^:dynamic *update-partition-size*
-  "Size of the partition of indexes to update using one `t2/update!` call. Dynamic for testing purposes."
-  5000)
 
 (defn- sync-all-indexes!
   [database]
