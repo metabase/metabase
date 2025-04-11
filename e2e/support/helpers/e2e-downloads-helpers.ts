@@ -92,20 +92,16 @@ export function downloadAndAssert(
 
   cy.log(`Downloading ${fileType} file`);
 
-  if (isEmbed) {
-    if (isDashboard) {
+  if (isDashboard) {
+    if (isEmbed) {
       getDashboardCard().realHover();
       cy.findByTestId("download-dashcard-results-button").click();
     } else {
-      cy.findByTestId("question-results-download-button").click();
-    }
-  } else {
-    if (isDashboard) {
       getDashboardCardMenu().click();
       cy.findByText("Download results").click();
-    } else {
-      cy.findByTestId("question-results-download-button").click();
     }
+  } else {
+    cy.findByTestId("question-results-download-button").click();
   }
 
   popover().within(() => {
