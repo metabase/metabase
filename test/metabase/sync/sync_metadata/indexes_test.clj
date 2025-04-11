@@ -59,10 +59,9 @@
             field-ids (#'sync.indexes/all-indexes->field-ids (:id (mt/db)) many-indexes)]
         (is (seq field-ids))))))
 
-(deftest sync-all-indexes!-test
+(deftest sync-all-indexes!-and-maybe-sync-indexes-for-table!-test
   (mt/test-drivers
     (set/intersection (mt/normal-drivers-with-feature :index-info)
-                      (mt/normal-drivers-with-feature :describe-indexes)
                       (mt/sql-jdbc-drivers))
     (let [ds-to-index-def (mt/dataset-definition
                            "ds_to_index"
@@ -73,7 +72,12 @@
                               :base-type :type/Integer}
                              {:field-name "third"
                               :base-type :type/Integer}]
-                            [[1 2 3]]])]
+                            [[1 2 3]]])
+          sync-fn (if ((mt/normal-drivers-with-feature :describe-indexes) driver/*driver*)
+                    #'sync.indexes/sync-all-indexes!
+                    #(sync.indexes/maybe-sync-indexes-for-table!
+                      %
+                      (t2/select-one :model/Table (mt/id :first_table))))]
       (mt/dataset ds-to-index-def
         (try
           (testing "Base: Id is indexed"
@@ -94,16 +98,16 @@
                     :let [sql (sql.tx/create-index-sql driver/*driver* "first_table" [field])]]
               (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) sql))
             (binding [sync.indexes/*update-partition-size* 2]
-              (#'sync.indexes/sync-all-indexes! (mt/db)))
+              (sync-fn (mt/db)))
             (is (every? :database_indexed
                         (t2/select :model/Field
                                    {:where [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]}))))
           (testing "Index removal is picked up correctly"
             (doseq [field ["first" "second" "third"]
-                    :let [sql (format "DROP INDEX \"idx_first_table_%s\";" field)]]
+                    :let [sql (sql.tx/drop-index-sql driver/*driver* "first_table" [field])]]
               (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) sql))
             (binding [sync.indexes/*update-partition-size* 2]
-              (#'sync.indexes/sync-all-indexes! (mt/db)))
+              (sync-fn (mt/db)))
             (is (every? (complement :database_indexed)
                         (t2/select :model/Field
                                    {:where [:and
