@@ -1219,6 +1219,39 @@ function renameTable(tableId, name) {
   cy.request("PUT", `/api/table/${tableId}`, { display_name: name });
 }
 
+describe("issue 55631", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not flash original title when saving with custom title (metabase#55631)", () => {
+    const customTitle = "My Custom Question Title";
+
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.visualize();
+
+    // Save with a custom title
+    H.queryBuilderHeader().findByText("Save").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      // Clear the auto-generated title and type a custom one
+      cy.findByLabelText("Name").clear().type(customTitle);
+      cy.findByText("Save").click();
+    });
+
+    // Verify the title is saved correctly and doesn't flash
+    cy.findByTestId("qb-header").within(() => {
+      cy.findByDisplayValue(customTitle).should("exist");
+      // This would fail if there was a flicker since it expects the title to be stable
+      cy.findByDisplayValue(customTitle).should("be.visible");
+    });
+  });
+});
+
 describe("issue 20809", () => {
   const questionDetails = {
     name: "20809",

@@ -177,7 +177,7 @@ export const SaveQuestionProvider = ({
       initialValues={{ ...initialValues }}
       onSubmit={handleSubmit}
       validationSchema={SAVE_QUESTION_SCHEMA}
-      enableReinitialize
+      enableReinitialize={false} // Disable re-initialization to prevent title flashing (issue #55631)
     >
       {({ values, setValues }) => (
         <SaveQuestionContext.Provider
