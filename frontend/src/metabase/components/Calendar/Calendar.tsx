@@ -1,6 +1,6 @@
 import cx from "classnames";
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
@@ -16,23 +16,23 @@ import { CalendarDay, CalendarIconContainer } from "./Calendar.styled";
 export type SelectAll = "after" | "before";
 
 export type CalendarProps = {
-  initial?: Moment;
-  selected?: Moment;
-  selectedEnd?: Moment;
+  initial?: Dayjs;
+  selected?: Dayjs;
+  selectedEnd?: Dayjs;
   selectAll?: SelectAll | null;
   onChange?: (
     start: string,
     end: string | null,
-    startMoment: Moment,
-    endMoment?: Moment | null,
+    startDate: Dayjs,
+    endDate?: Dayjs | null,
   ) => void;
-  onChangeDate?: (date: string, dateMoment: Moment) => void;
+  onChangeDate?: (date: string, dateObj: Dayjs) => void;
   isRangePicker?: boolean;
   noContext?: boolean;
 };
 
 type State = {
-  current?: Moment;
+  current?: Dayjs;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
@@ -40,7 +40,7 @@ export default class Calendar extends Component<CalendarProps, State> {
   constructor(props: CalendarProps) {
     super(props);
     this.state = {
-      current: moment(props.initial || undefined),
+      current: dayjs(props.initial),
     };
   }
 
@@ -57,10 +57,10 @@ export default class Calendar extends Component<CalendarProps, State> {
       (nextProps.selectedEnd == null) !== (this.props.selectedEnd == null) ||
       // `selected` is not null and doesn't match previous `selected`
       (nextProps.selected != null &&
-        !moment(nextProps.selected).isSame(this.props.selected, "day")) ||
+        !dayjs(nextProps.selected).isSame(this.props.selected, "day")) ||
       // `selectedEnd` is not null and doesn't match previous `selectedEnd`
       (nextProps.selectedEnd != null &&
-        !moment(nextProps.selectedEnd).isSame(this.props.selectedEnd, "day"))
+        !dayjs(nextProps.selectedEnd).isSame(this.props.selectedEnd, "day"))
     ) {
       let resetCurrent = false;
       if (nextProps.selected != null && nextProps.selectedEnd != null) {
@@ -80,7 +80,7 @@ export default class Calendar extends Component<CalendarProps, State> {
     }
   }
 
-  onClickDay = (date: Moment) => {
+  onClickDay = (date: Dayjs) => {
     const { selected, selectedEnd, isRangePicker } = this.props;
 
     if (!isRangePicker || !selected || selectedEnd) {
@@ -107,15 +107,15 @@ export default class Calendar extends Component<CalendarProps, State> {
   };
 
   previous = () => {
-    this.setState({ current: moment(this.state.current).add(-1, "M") });
+    this.setState({ current: dayjs(this.state.current).subtract(1, "month") });
   };
 
   next = () => {
-    this.setState({ current: moment(this.state.current).add(1, "M") });
+    this.setState({ current: dayjs(this.state.current).add(1, "month") });
   };
 
-  renderMonthHeader(current?: Moment, side?: "left" | "right") {
-    current = current || moment();
+  renderMonthHeader(current?: Dayjs, side?: "left" | "right") {
+    current = current || dayjs();
     return (
       <div
         className={cx(
@@ -166,15 +166,15 @@ export default class Calendar extends Component<CalendarProps, State> {
     );
   }
 
-  renderWeeks(current?: Moment) {
-    current = current || moment();
+  renderWeeks(current?: Dayjs) {
+    current = current || dayjs();
     const weeks = [];
     const firstDayOfWeek = getFirstDayOfWeekIndex();
-    const date = moment(current).startOf("month").isoWeekday(firstDayOfWeek);
+    let date = dayjs(current).startOf("month").day(firstDayOfWeek);
 
     // if set week doesn't start with 1st day of month, then add the previous week
     if (date.date() > 1) {
-      date.add(-1, "w");
+      date = date.subtract(1, "week");
     }
 
     let done = false;
@@ -185,7 +185,7 @@ export default class Calendar extends Component<CalendarProps, State> {
       weeks.push(
         <Week
           key={date.toString()}
-          date={moment(date)}
+          date={dayjs(date)}
           month={current}
           onClickDay={this.onClickDay}
           isRangePicker={this.props.isRangePicker}
@@ -195,7 +195,7 @@ export default class Calendar extends Component<CalendarProps, State> {
           noContext={this.props.noContext}
         />,
       );
-      date.add(1, "w");
+      date = date.add(1, "week");
       done = count++ > 2 && monthIndex !== date.month();
       monthIndex = date.month();
     }
@@ -210,7 +210,7 @@ export default class Calendar extends Component<CalendarProps, State> {
     );
   }
 
-  renderCalendar(current?: Moment, side?: "left" | "right") {
+  renderCalendar(current?: Dayjs, side?: "left" | "right") {
     return (
       <div
         data-testid="calendar"
@@ -236,13 +236,13 @@ export default class Calendar extends Component<CalendarProps, State> {
 }
 
 type WeekProps = {
-  date: Moment;
-  month: Moment;
-  selected?: Moment;
-  selectedEnd?: Moment;
+  date: Dayjs;
+  month: Dayjs;
+  selected?: Dayjs;
+  selectedEnd?: Dayjs;
   selectAll?: SelectAll | null;
   isRangePicker?: boolean;
-  onClickDay: (date: Moment) => void;
+  onClickDay: (date: Dayjs) => void;
   noContext?: boolean;
 };
 
@@ -317,7 +317,7 @@ class Week extends Component<WeekProps> {
           {date.date()}
         </CalendarDay>,
       );
-      date = moment(date).add(1, "d");
+      date = dayjs(date).add(1, "day");
     }
 
     return (

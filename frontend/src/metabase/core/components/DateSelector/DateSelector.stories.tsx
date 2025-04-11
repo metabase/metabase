@@ -1,5 +1,5 @@
 import type { StoryFn } from "@storybook/react";
-import moment from "moment-timezone";
+import dayjs from "dayjs";
 import { useState } from "react";
 
 import DateSelector, { type DateSelectorProps } from "./DateSelector";
@@ -22,7 +22,7 @@ export const WithTime = {
   render: Template,
 
   args: {
-    value: moment("2015-01-01"),
+    value: dayjs("2015-01-01"),
     hasTime: true,
   },
 };

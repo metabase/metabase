@@ -1,5 +1,5 @@
 import type { StoryFn } from "@storybook/react";
-import type { Moment } from "moment-timezone";
+import type { Dayjs } from "dayjs";
 import { useState } from "react";
 
 import DateInput from "./DateInput";
@@ -10,7 +10,7 @@ export default {
 };
 
 const Template: StoryFn<typeof DateInput> = (args) => {
-  const [value, setValue] = useState<Moment>();
+  const [value, setValue] = useState<Dayjs>();
   return <DateInput {...args} value={value} onChange={setValue} />;
 };
 

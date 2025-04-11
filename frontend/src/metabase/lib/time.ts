@@ -1,88 +1,58 @@
-import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { ManipulateType } from "dayjs";
+import dayjs from "dayjs";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
-addAbbreviatedLocale();
+// Note: Abbreviated locale initialization is now handled in dayjs.ts
 
 const TIME_FORMAT_24_HOUR = "HH:mm";
 
 const TEXT_UNIT_FORMATS = {
   "day-of-week": (value: string) => {
-    const day = moment.parseZone(value, "ddd").startOf("day");
-    return day.isValid() ? day : moment.parseZone(value).startOf("day");
+    const day = dayjs.parseZone(value, "ddd").startOf("day");
+    return day.isValid() ? day : dayjs.parseZone(value).startOf("day");
   },
 };
 
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
-  "minute-of-hour": (value: number) => moment().minute(value).startOf("minute"),
-  "hour-of-day": (value: number) => moment().hour(value).startOf("hour"),
+  "minute-of-hour": (value: number) => dayjs().minute(value).startOf("minute"),
+  "hour-of-day": (value: number) => dayjs().hour(value).startOf("hour"),
   "day-of-week": (value: number) =>
-    moment()
+    dayjs()
       .weekday(value - 1)
       .startOf("day"),
   "day-of-month": (value: number) =>
-    moment("2016-01-01") // initial date must be in month with 31 days to format properly
+    dayjs("2016-01-01") // initial date must be in month with 31 days to format properly
       .date(value)
       .startOf("day"),
   "day-of-year": (value: number) =>
-    moment("2016-01-01") // initial date must be in leap year to format properly
+    dayjs("2016-01-01") // initial date must be in leap year to format properly
       .dayOfYear(value)
       .startOf("day"),
   "week-of-year": (value: number) =>
-    moment("2016-01-01") // initial date must be in a year with 53 iso weeks to format properly
+    dayjs("2016-01-01") // initial date must be in a year with 53 iso weeks to format properly
       .isoWeek(value) // set the iso week number to not depend on the first day of week
       .startOf("isoWeek"),
   "month-of-year": (value: number) =>
-    moment()
+    dayjs()
       .month(value - 1)
       .startOf("month"),
   "quarter-of-year": (value: number) =>
-    moment().quarter(value).startOf("quarter"),
-  year: (value: number) => moment().year(value).startOf("year"),
+    dayjs().quarter(value).startOf("quarter"),
+  year: (value: number) => dayjs().year(value).startOf("year"),
 };
 
-// when you define a custom locale, moment automatically makes it the active global locale,
-// so we need to return to the user's initial locale.
-// also, you can't define a custom locale on a local instance
-function addAbbreviatedLocale() {
-  const initialLocale = moment.locale();
-
-  moment.locale("en-abbreviated", {
-    relativeTime: {
-      future: "in %s",
-      past: "%s",
-      s: t`just now`,
-      ss: t`just now`,
-      m: "%d m",
-      mm: "%d m",
-      h: "%d h",
-      hh: "%d h",
-      d: "%d d",
-      dd: "%d d",
-      w: "%d wk",
-      ww: "%d wks",
-      M: "a mth",
-      MM: "%d mths",
-      y: "%d y",
-      yy: "%d y",
-    },
-  });
-
-  moment.locale(initialLocale);
-}
-
-export function isValidTimeInterval(interval: number, unit: DurationInputArg2) {
+export function isValidTimeInterval(interval: number, unit: ManipulateType) {
   if (!interval) {
     return false;
   }
 
-  const now = moment();
-  const newTime = moment().add(interval, unit);
-  const diff = now.diff(newTime, "years");
+  const now = dayjs();
+  const newTime = dayjs().add(interval, unit);
+  const diff = now.diff(newTime, "year");
 
   return !Number.isNaN(diff);
 }
@@ -106,14 +76,14 @@ export function getDateStyleFromSettings() {
 }
 
 export function getRelativeTime(timestamp: string) {
-  return moment(timestamp).fromNow();
+  return dayjs(timestamp).fromNow();
 }
 
 export function getRelativeTimeAbbreviated(timestamp: string) {
-  const locale = moment().locale();
+  const locale = dayjs().locale();
 
   if (locale === "en") {
-    const ts = moment(timestamp);
+    const ts = dayjs(timestamp);
     ts.locale("en-abbreviated");
     return ts.fromNow();
   }
@@ -148,11 +118,11 @@ export function msToSeconds(ms: number) {
   return ms / 1000;
 }
 
-export function parseTime(value: moment.Moment | string) {
-  if (moment.isMoment(value)) {
+export function parseTime(value: dayjs.Dayjs | string) {
+  if (dayjs.isDayjs(value)) {
     return value;
   } else if (typeof value === "string") {
-    return moment(value, [
+    return dayjs(value, [
       "HH:mm:ss.sss[Z]",
       "HH:mm:SS.sss",
       "HH:mm:SS",
@@ -160,7 +130,7 @@ export function parseTime(value: moment.Moment | string) {
     ]);
   }
 
-  return moment.utc(value);
+  return dayjs.utc(value);
 }
 
 type NUMERIC_UNIT_FORMATS_KEY_TYPE =
@@ -177,7 +147,7 @@ type NUMERIC_UNIT_FORMATS_KEY_TYPE =
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
 /**
- * @deprecated use dayjs version from ./time-dayjs.ts
+ * @deprecated use parseTimestamp from ./time-dayjs.ts directly
  */
 export function parseTimestamp(
   value: any,
@@ -185,18 +155,18 @@ export function parseTimestamp(
   isLocal = false,
 ) {
   let m: any;
-  if (moment.isMoment(value)) {
+  if (dayjs.isDayjs(value)) {
     m = value;
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
-    m = moment.parseZone(value);
+    m = dayjs.parseZone(value);
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
     m = TEXT_UNIT_FORMATS[unit as "day-of-week"](value);
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     m = NUMERIC_UNIT_FORMATS[unit as NUMERIC_UNIT_FORMATS_KEY_TYPE](value);
   } else if (typeof value === "number") {
-    m = moment.utc(value, moment.ISO_8601);
+    m = dayjs.utc(value.toString());
   } else {
-    m = moment.utc(value);
+    m = dayjs.utc(value);
   }
   return isLocal ? m.local() : m;
 }

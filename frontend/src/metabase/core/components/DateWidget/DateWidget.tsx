@@ -1,4 +1,4 @@
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Dayjs } from "dayjs";
 import type { InputHTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback, useState } from "react";
 
@@ -12,13 +12,13 @@ export type DateWidgetAttributes = Omit<
 >;
 
 export interface DateWidgetProps extends DateWidgetAttributes {
-  value?: Moment;
+  value?: Dayjs;
   hasTime?: boolean;
   dateFormat?: string;
   timeFormat?: string;
   error?: boolean;
   fullWidth?: boolean;
-  onChange?: (date?: Moment) => void;
+  onChange?: (date?: Dayjs) => void;
   onHasTimeChange?: (hasTime: boolean) => void;
 }
 

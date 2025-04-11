@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 
@@ -32,7 +32,7 @@ export function dimensionIsTimeseries({ cols, rows }, i = 0) {
       return false;
     }
 
-    if (!moment(value, moment.ISO_8601).isValid()) {
+    if (!dayjs(value, dayjs.ISO_8601).isValid()) {
       return false;
     }
   }

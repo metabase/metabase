@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
 import mockDate from "mockdate";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import { render, screen } from "__support__/ui";
 import { updateStartOfWeek } from "metabase/lib/i18n";
@@ -15,7 +15,7 @@ describe("Calendar", () => {
 
   it("should switch months correctly", async () => {
     mockDate.set("2018-01-12T12:00:00Z", 0);
-    setup({ selected: moment("2018-01-01") });
+    setup({ selected: dayjs("2018-01-01") });
 
     const PREVIOUS = screen.getByRole("img", { name: /chevronleft icon/i });
     const NEXT = screen.getByRole("img", { name: /chevronright icon/i });

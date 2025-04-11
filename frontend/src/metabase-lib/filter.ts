@@ -1,4 +1,5 @@
-import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 
 import * as ML from "cljs/metabase.lib.js";
 import type { CardId, DatasetColumn } from "metabase-types/api";
@@ -139,7 +140,7 @@ export function specificDateFilterClause({
   return ML.specific_date_filter_clause(
     operator,
     column,
-    values.map((value) => moment(value)),
+    values.map((value) => dayjs(value)),
     hasTime,
   );
 }
@@ -159,9 +160,7 @@ export function specificDateFilterParts(
   }
   return {
     ...filterParts,
-    values: filterParts.values.map((value: Moment) =>
-      value.local(true).toDate(),
-    ),
+    values: filterParts.values.map((value: Dayjs) => value.toDate()),
   };
 }
 
@@ -216,7 +215,7 @@ export function timeFilterClause({
   return ML.time_filter_clause(
     operator,
     column,
-    values.map((value) => moment(value)),
+    values.map((value) => dayjs(value)),
   );
 }
 
@@ -231,7 +230,7 @@ export function timeFilterParts(
   }
   return {
     ...filterParts,
-    values: filterParts.values.map((value: Moment) => value.toDate()),
+    values: filterParts.values.map((value: Dayjs) => value.toDate()),
   };
 }
 

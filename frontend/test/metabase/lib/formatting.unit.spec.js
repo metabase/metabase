@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { isElementOfType } from "react-dom/test-utils";
 
 import { mockSettings } from "__support__/settings";
@@ -662,7 +662,7 @@ describe("formatting", () => {
     it("should always format week ranges according to returned data", () => {
       try {
         // globally set locale to es
-        moment.locale("es");
+        dayjs.locale("es");
         expect(
           formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
             type: "cell",
@@ -670,7 +670,7 @@ describe("formatting", () => {
         ).toEqual("julio 7, 2019 – julio 13, 2019");
       } finally {
         // globally reset locale
-        moment.locale("en");
+        dayjs.locale("en");
       }
     });
 

@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -96,7 +96,7 @@ function getInhertiedSettingsForColumn(column) {
   };
 }
 
-const EXAMPLE_DATE = moment("2018-01-31 17:24");
+const EXAMPLE_DATE = dayjs("2018-01-31 17:24");
 
 function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
   // hour-of-day shouldn't have any date style. It's handled as a time instead.

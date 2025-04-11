@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 import {
   getRelativeTimeAbbreviated,
@@ -13,13 +13,13 @@ import {
 
 describe("time", () => {
   afterEach(() => {
-    moment.updateLocale(moment.locale(), { week: { dow: 0 } });
+    dayjs.updateLocale(dayjs.locale(), { week: { dow: 0 } });
   });
 
   describe("parseTimestamp", () => {
-    const NY15_TOKYO = moment(1420038000000); // 2014-12-31 15:00 UTC
-    const NY15_UTC = moment(1420070400000); // 2015-01-01 00:00 UTC
-    const NY15_LA = moment(1420099200000); // 2015-01-01 00:00 UTC
+    const NY15_TOKYO = dayjs(1420038000000); // 2014-12-31 15:00 UTC
+    const NY15_UTC = dayjs(1420070400000); // 2015-01-01 00:00 UTC
+    const NY15_LA = dayjs(1420099200000); // 2015-01-01 00:00 UTC
 
     const TEST_CASES = [
       ["2015-01-01T00:00:00.000Z", 0, NY15_UTC],
@@ -50,7 +50,7 @@ describe("time", () => {
         () => {
           const result = parseTimestamp(str);
 
-          expect(moment.isMoment(result)).toBe(true);
+          expect(dayjs.isDayjs(result)).toBe(true);
           expect(result.utcOffset()).toBe(expectedOffset);
           expect(result.unix()).toEqual(expectedMoment.unix());
         },
@@ -60,14 +60,14 @@ describe("time", () => {
     // See https://github.com/metabase/metabase/issues/11615
     it("parse sqlite date with unit=year correctly", () => {
       const result = parseTimestamp("2015-01-01", "year");
-      expect(moment.isMoment(result)).toBe(true);
+      expect(dayjs.isDayjs(result)).toBe(true);
       expect(result.unix()).toEqual(NY15_UTC.unix());
     });
 
     it("should parse week of year correctly", () => {
       const daysOfWeek = [0, 1, 2, 3, 4, 5, 6];
       daysOfWeek.forEach((dayOfWeek) => {
-        moment.updateLocale(moment.locale(), { week: { dow: dayOfWeek } });
+        dayjs.updateLocale(dayjs.locale(), { week: { dow: dayOfWeek } });
         expect(parseTimestamp(1, "week-of-year").isoWeek()).toBe(1);
         expect(parseTimestamp(2, "week-of-year").isoWeek()).toBe(2);
         expect(parseTimestamp(52, "week-of-year").isoWeek()).toBe(52);
@@ -93,7 +93,7 @@ describe("time", () => {
       `parseTime(%p) to be %p`,
       (value, resultStr) => {
         const result = parseTime(value);
-        expect(moment.isMoment(result)).toBe(true);
+        expect(dayjs.isDayjs(result)).toBe(true);
         expect(result.format("h:mm A")).toBe(resultStr);
       },
     );
@@ -102,17 +102,17 @@ describe("time", () => {
   describe("getRelativeTimeAbbreviated", () => {
     it("should show 'just now' for timestamps from the immediate past", () => {
       expect(
-        getRelativeTimeAbbreviated(moment().subtract(30, "s").toString()),
+        getRelativeTimeAbbreviated(dayjs().subtract(30, "s").toString()),
       ).toEqual("just now");
     });
 
     it("should show a shortened string for times 1 minute+", () => {
       expect(
-        getRelativeTimeAbbreviated(moment().subtract(61, "s").toString()),
+        getRelativeTimeAbbreviated(dayjs().subtract(61, "s").toString()),
       ).toEqual("1 m");
 
       expect(
-        getRelativeTimeAbbreviated(moment().subtract(5, "d").toString()),
+        getRelativeTimeAbbreviated(dayjs().subtract(5, "d").toString()),
       ).toEqual("5 d");
     });
   });

@@ -1,5 +1,5 @@
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import type { CSSProperties, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
@@ -17,10 +17,10 @@ import {
 export interface DateSelectorProps {
   className?: string;
   style?: CSSProperties;
-  value?: Moment;
+  value?: Dayjs;
   hasTime?: boolean;
   timeFormat?: string;
-  onChange?: (date?: Moment) => void;
+  onChange?: (date?: Dayjs) => void;
   onHasTimeChange?: (hasTime: boolean) => void;
   onSubmit?: () => void;
 }
@@ -38,13 +38,13 @@ const DateSelector = forwardRef(function DateSelector(
   }: DateSelectorProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
-  const today = useMemo(() => moment().startOf("date"), []);
+  const today = useMemo(() => dayjs().startOf("day"), []);
 
   const handleDateChange = useCallback(
-    (unused1: string, unused2: string | null, date: Moment) => {
+    (unused1: string, unused2: string | null, date: Dayjs) => {
       const newDate = date.clone();
-      newDate.hours(value?.hours() ?? 0);
-      newDate.minutes(value?.minutes() ?? 0);
+      newDate.hour(value?.hour() ?? 0);
+      newDate.minute(value?.minute() ?? 0);
       onChange?.(newDate);
     },
     [value, onChange],
@@ -57,7 +57,7 @@ const DateSelector = forwardRef(function DateSelector(
   }, [value, today, onChange, onHasTimeChange]);
 
   const handleTimeClear = useCallback(
-    (newValue: Moment) => {
+    (newValue: Dayjs) => {
       onChange?.(newValue);
       onHasTimeChange?.(false);
     },
