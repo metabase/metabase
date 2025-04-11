@@ -53,7 +53,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         // eslint-disable-next-line no-unscoped-text-selectors -- this should not appear anywhere in the page
-        cy.findByText("Export as PDF").should("not.exist");
+        cy.findByTestId("export-as-pdf-button").should("not.exist");
 
         // we should not have any dashcard action in a static embedded/embed scenario, so the menu should not be there
         H.getDashboardCardMenu().should("not.exist");
@@ -73,7 +73,7 @@ H.describeWithSnowplowEE(
         );
         waitLoading();
 
-        cy.get("header").findByText("Export as PDF").click();
+        cy.get("header").findByTestId("export-as-pdf-button").click();
 
         cy.verifyDownload("Orders in a dashboard.pdf");
 

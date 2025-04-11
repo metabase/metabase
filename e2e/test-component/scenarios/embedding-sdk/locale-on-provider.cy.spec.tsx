@@ -82,6 +82,6 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
 
     // should not do any request, as `en` doesn't need loading
 
-    getSdkRoot().findByText("Export as PDF").should("exist");
+    getSdkRoot().findByTestId("export-as-pdf-button").should("exist");
   });
 });

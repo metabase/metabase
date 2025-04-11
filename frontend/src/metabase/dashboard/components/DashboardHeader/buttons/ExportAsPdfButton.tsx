@@ -54,6 +54,7 @@ export const ExportAsPdfButton = ({
       <ActionIcon
         c="text-dark"
         onClick={() => dispatch(saveAsPDF)}
+        data-testid="export-as-pdf-button"
         className={cx({
           [CS.CompactExportAsPdfButton]:
             !hasTitle && (hasVisibleParameters || hasDashboardTabs),
