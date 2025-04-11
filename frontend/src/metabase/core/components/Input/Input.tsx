@@ -114,6 +114,7 @@ const BaseInput = forwardRef(function Input(
             data-testid="input-right-icon-button"
             size={size}
             onClick={onRightIconClick}
+            tabIndex={-1}
             disabled={!rightIconTooltip && !onRightIconClick}
           >
             <Icon name={rightIcon} />
