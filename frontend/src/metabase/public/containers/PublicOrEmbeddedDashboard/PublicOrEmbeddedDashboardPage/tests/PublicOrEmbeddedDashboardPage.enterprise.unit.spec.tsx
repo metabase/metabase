@@ -1,7 +1,6 @@
-import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { getIcon, screen } from "__support__/ui";
+import { screen } from "__support__/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 
 import { type SetupOpts, setup } from "./setup";
@@ -21,27 +20,25 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     it("should show the 'Export as PDF' button even when titled=false and there's one tab", async () => {
       await setupEnterprise({ hash: { titled: "false" }, numberOfTabs: 1 });
 
-      expect(screen.getByText("Export as PDF")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Export as PDF" }),
+      ).toBeInTheDocument();
     });
 
     it('should not hide the "Export as PDF" button when downloads are disabled without "whitelabel" feature', async () => {
       await setupEnterprise({ hash: { downloads: "false" }, numberOfTabs: 1 });
 
-      expect(screen.getByText("Export as PDF")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Export as PDF" }),
+      ).toBeInTheDocument();
     });
 
     it("should allow downloading the dashcards results when downloads are enabled", async () => {
       await setupEnterprise({ numberOfTabs: 1, hash: { downloads: "true" } });
 
-      await userEvent.click(getIcon("ellipsis"));
-
-      expect(screen.getByText("Download results")).toBeInTheDocument();
-    });
-
-    it('should not hide downloading menu in the dashcards when downloads are disabled without "whitelabel" feature', async () => {
-      await setupEnterprise({ numberOfTabs: 1, hash: { downloads: "false" } });
-
-      expect(getIcon("ellipsis")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Download results" }),
+      ).toBeInTheDocument();
     });
 
     it("should use the container used for pdf exports", async () => {
@@ -58,7 +55,9 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     it('should set the locale to "en" by default', async () => {
       await setupEnterprise();
 
-      expect(screen.getByText("Export as PDF")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Export as PDF" }),
+      ).toBeInTheDocument();
     });
 
     it('should not set the locale to "ko" without "whitelabel" feature', async () => {
