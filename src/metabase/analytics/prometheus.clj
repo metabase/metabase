@@ -368,11 +368,11 @@
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))
     (reset! jvm-hiccup-thread
             (hiccup-meter/start-hiccup-meter
-             #(prometheus/observe (:registry system) :metabase_application/jvm_hiccups (/ % 1e6))))
+             #(some-> (:registry system) (prometheus/observe :metabase_application/jvm_hiccups (/ % 1e6)))))
     (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
     (reset! jvm-alloc-rate-thread
             (alloc-rate-meter/start-alloc-rate-meter
-             #(prometheus/observe (:registry system) :metabase_application/jvm_allocation_rate %)))
+             #(some-> (:registry system) (prometheus/observe :metabase_application/jvm_allocation_rate %))))
     registry))
 
 (defn- start-web-server!
