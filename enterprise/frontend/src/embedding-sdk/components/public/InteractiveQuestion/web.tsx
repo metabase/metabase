@@ -47,9 +47,9 @@ function MbQuestionContainer(config = {}) {
       const selector = targetComponents.join(",");
       const targetElements = this.querySelectorAll(selector);
 
-      targetElements.forEach((element) => {
+      targetElements.forEach(element => {
         // Pass attributes
-        Array.from(this.attributes).forEach((attr) => {
+        Array.from(this.attributes).forEach(attr => {
           // Only pass included props if the include list is not empty
           if (includedProps.length === 0 || includedProps.includes(attr.name)) {
             element.setAttribute(attr.name, attr.value);
@@ -111,105 +111,45 @@ const QuestionContainer = MbQuestionContainer({
 // Register the element
 customElements.define("mb-provider", QuestionContainer);
 
-// Create a shared stylesheet that will be updated when styles change
-const sharedStyles = new CSSStyleSheet();
-
-// Function to collect all styles from document
-const collectStyles = async () => {
-  // Get inline styles
-  const inlineStyles = Array.from(document.querySelectorAll("style"))
-    .map((style) => style.textContent || "")
-    .join("\n");
-
-  // Get linked stylesheets
-  const linkedStyles = await Promise.all(
-    Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(
-      async (link) => {
-        if (!(link instanceof HTMLLinkElement)) {
-          return "";
-        }
-        try {
-          const response = await fetch(link.href);
-          return response.text();
-        } catch (e) {
-          console.warn("Failed to fetch stylesheet:", link.href);
-          return "";
-        }
-      },
-    ),
-  );
-
-  return inlineStyles + "\n" + linkedStyles.join("\n");
-};
-
-// Observer to watch for style changes
-const styleObserver = new MutationObserver(async (_mutations) => {
-  const styles = await collectStyles();
-  sharedStyles.replaceSync(styles);
-});
-
-// Start observing style changes
-styleObserver.observe(document.head, {
-  childList: true,
-  subtree: true,
-  characterData: true,
-});
-
-// Initial style collection
-collectStyles().then((styles) => {
-  sharedStyles.replaceSync(styles);
-});
-
-// Helper to create a web component with style adoption
-const createStyledWebComponent = (
-  Component: React.ComponentType<any>,
-  props: Partial<Record<string, "string" | "number" | "boolean" | "function">>,
-  shadow?: "open" | "closed",
-) => {
-  const WebComponent = r2wc(Component, {
-    shadow,
-    props,
-  });
-
-  return class extends WebComponent {
-    constructor() {
-      super();
-      if (this.shadowRoot) {
-        this.shadowRoot.adoptedStyleSheets = [sharedStyles];
-      }
-    }
-  };
-};
-
-const MbQuestion = (shadow: "open" | "closed" | undefined) =>
-  createStyledWebComponent(
+const MbQuestion = shadow =>
+  r2wc(
     ({
       metabaseInstanceUrl,
       authProviderUri,
       fetchRequestToken,
       questionId,
-    }) => (
-      <MetabaseProvider
-        authConfig={{
-          metabaseInstanceUrl,
-          authProviderUri,
-          fetchRequestToken,
-        }}
-      >
-        <InteractiveQuestion questionId={questionId} />
-      </MetabaseProvider>
-    ),
-    {
-      questionId: "number",
-      metabaseInstanceUrl: "string",
-      authProviderUri: "string",
-      fetchRequestToken: "function",
+    }) => {
+      console.log({
+        metabaseInstanceUrl,
+        authProviderUri,
+        fetchRequestToken,
+        questionId,
+      });
+      return (
+        <MetabaseProvider
+          authConfig={{
+            metabaseInstanceUrl,
+            authProviderUri,
+            fetchRequestToken,
+          }}
+        >
+          <InteractiveQuestion questionId={questionId} />
+        </MetabaseProvider>
+      );
     },
-    shadow,
+    {
+      shadow,
+      props: {
+        questionId: "number",
+        metabaseInstanceUrl: "string",
+        authProviderUri: "string",
+        fetchRequestToken: "function",
+      },
+    },
   );
 
-const MbDashboard = (shadow: "open" | "closed" | undefined) =>
-  createStyledWebComponent(
+const MbDashboard = shadow =>
+  r2wc(
     ({
       metabaseInstanceUrl,
       authProviderUri,
@@ -227,12 +167,14 @@ const MbDashboard = (shadow: "open" | "closed" | undefined) =>
       </MetabaseProvider>
     ),
     {
-      dashboardId: "number",
-      metabaseInstanceUrl: "string",
-      authProviderUri: "string",
-      fetchRequestToken: "function",
+      shadow,
+      props: {
+        dashboardId: "number",
+        metabaseInstanceUrl: "string",
+        authProviderUri: "string",
+        fetchRequestToken: "function",
+      },
     },
-    shadow,
   );
 
 customElements.define("mb-question-open", MbQuestion("open"));
