@@ -68,8 +68,8 @@
   [{:keys [status task] :as filter}]
   (when (not-empty filter)
     {:where (cond-> [:and]
-              task   [:= :task task]
-              status [:= :status (name status)])}))
+              task   (conj [:= :task task])
+              status (conj [:= :status (name status)]))}))
 
 (def Filter
   "Schema for filter for task history."
