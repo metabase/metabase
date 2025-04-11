@@ -181,21 +181,23 @@ H.describeWithSnowplowEE(
         cy.visit(`${publicLink}#downloads=results`);
         waitLoading();
 
-        cy.findByTestId("question-results-download-button").should("exist");
+        cy.findByRole("button", { name: "Download results" }).should("exist");
       });
 
       it("#downloads=false should disable result downloads", () => {
         cy.visit(`${publicLink}#downloads=false`);
         waitLoading();
 
-        cy.findByTestId("question-results-download-button").should("not.exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("should be able to download the question as PNG", () => {
         cy.visit(`${publicLink}`);
         waitLoading();
 
-        cy.findByTestId("question-results-download-button").click();
+        cy.findByRole("button", { name: "Download results" }).click();
         H.popover().within(() => {
           cy.findByText(".png").click();
           cy.findByTestId("download-results-button").click();
@@ -215,7 +217,7 @@ H.describeWithSnowplowEE(
         cy.visit(`${publicLink}`);
         waitLoading();
 
-        cy.findByTestId("question-results-download-button").should("exist");
+        cy.findByRole("button", { name: "Download results" }).should("exist");
 
         const uuid = publicLink.split("/").at(-1);
 

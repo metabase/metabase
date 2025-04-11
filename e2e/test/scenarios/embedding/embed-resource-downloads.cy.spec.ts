@@ -229,7 +229,9 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("question-results-download-button").should("not.exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("should be able to download the question as PNG", () => {
@@ -247,7 +249,7 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("question-results-download-button").click();
+        cy.findByRole("button", { name: "Download results" }).click();
         H.popover().within(() => {
           cy.findByText(".png").click();
           cy.findByTestId("download-results-button").click();
@@ -278,7 +280,7 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("question-results-download-button").click();
+        cy.findByRole("button", { name: "Download results" }).click();
 
         H.popover().within(() => {
           cy.findByText(".csv").click();
@@ -363,7 +365,7 @@ H.describeWithSnowplowEE(
 
           H.main().findByText(value).should("exist");
 
-          cy.findByTestId("question-results-download-button").click();
+          cy.findByRole("button", { name: "Download results" }).click();
 
           H.popover().within(() => {
             cy.findByText(".csv").click();

@@ -52,6 +52,7 @@ const QuestionDownloadPopover = ({
               c="var(--mb-color-text-primary)"
               data-testid="question-results-download-button"
               onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+              aria-label="Download results"
             >
               <Icon name="download" />
             </ActionIcon>

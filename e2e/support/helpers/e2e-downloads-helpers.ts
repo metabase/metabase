@@ -95,13 +95,13 @@ export function downloadAndAssert(
   if (isDashboard) {
     if (isEmbed) {
       getDashboardCard().realHover();
-      cy.findByRole("button", { name: "Download results" }).click();
+      cy.findByLabelText("Download results").click();
     } else {
       getDashboardCardMenu().click();
       cy.findByText("Download results").click();
     }
   } else {
-    cy.findByTestId("question-results-download-button").click();
+    cy.findByRole("button", { name: "Download results" }).click();
   }
 
   popover().within(() => {
