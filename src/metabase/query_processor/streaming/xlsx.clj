@@ -519,6 +519,42 @@
          (recur (inc index))))
      row)))
 
+(defn write-pivot-table!
+  "Writes pivoted data to the provided sheet as-is, without additional formatting applied."
+  [^SXSSFSheet sheet pivot-output]
+  (doseq [[row-idx row] (map-indexed vector pivot-output)]
+    (let [excel-row (.createRow sheet row-idx)]
+      (doseq [[col-idx value] (map-indexed vector row)]
+        (let [cell (.createCell excel-row col-idx)]
+          (cond
+            ;; Handle NumericWrapper - extract and use the original number value
+            (instance? metabase.formatter.NumericWrapper value)
+            (.setCellValue cell (double (:num-value value)))
+
+            ;; Handle TextWrapper - extract the original value if it's a number/boolean
+            (instance? metabase.formatter.TextWrapper value)
+            (let [original (:original-value value)]
+              (cond
+                (number? original) (.setCellValue cell (double original))
+                (boolean? original) (.setCellValue cell ^Boolean original)
+                :else (.setCellValue cell (str value))))
+
+            ;; Handle regular numbers
+            (number? value)
+            (.setCellValue cell (double value))
+
+            ;; Handle boolean values
+            (boolean? value)
+            (.setCellValue cell ^Boolean value)
+
+            ;; Handle nil values
+            (nil? value)
+            (.setBlank cell)
+
+            ;; For all other types, convert to string
+            :else
+            (.setCellValue cell (str value))))))))
+
 (def ^:dynamic *auto-sizing-threshold*
   "The maximum number of rows we should use for auto-sizing. If this number is too large, exports
   of large datasets will be prohibitively slow."
@@ -669,9 +705,11 @@
   (let [workbook-data      (volatile! nil)
         cell-styles        (volatile! nil)
         typed-cell-styles  (volatile! nil)
-        pivot-grouping-idx (volatile! nil)]
+        pivot-grouping-idx (volatile! nil)
+        pivot-data         (atom nil)
+        pivot-rows         (volatile! [])]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols format-rows? pivot? pivot-export-options]
+      (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
                           pivot?       false}} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
@@ -683,12 +721,20 @@
               pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
           (when pivot-grouping-key (vreset! pivot-grouping-idx pivot-grouping-key))
           (if opts
-            (let [wb (init-native-pivot opts
-                                        {:ordered-cols ordered-cols
-                                         :col-settings col-settings
-                                         :viz-settings viz-settings
-                                         :format-rows? format-rows?})]
-              (vreset! workbook-data wb))
+            (do
+              (reset! pivot-data
+                      {:settings viz-settings
+                       :data {:cols (vec ordered-cols)
+                              :rows []}
+                       :timezone results_timezone
+                       :format-rows? format-rows?
+                       :pivot-grouping-key pivot-grouping-key
+                       :pivot-export-options pivot-export-options})
+              (let [wb (init-workbook {:ordered-cols []
+                                       :col-settings []
+                                       :format-rows? true})]
+                (vreset! workbook-data wb)))
+
             (let [wb (init-workbook {:ordered-cols (cond->> ordered-cols
                                                      pivot-grouping-key (m/remove-nth pivot-grouping-key))
                                      :col-settings col-settings
@@ -718,14 +764,21 @@
                                      ;; corresponding col.
                                      (map #(m/remove-nth pivot-grouping-key %)))
               {:keys [sheet]}      @workbook-data]
-          (when (or (not group)
-                    (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
-            (add-row! sheet (inc row-num) row' ordered-cols' col-settings @cell-styles @typed-cell-styles)
-            (when (= (inc row-num) *auto-sizing-threshold*)
-              (autosize-columns! sheet)))))
+          (if @pivot-data
+            (vswap! pivot-rows conj ordered-row)
+            (when (or (not group)
+                      (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+              (add-row! sheet (inc row-num) row' ordered-cols' col-settings @cell-styles @typed-cell-styles)
+              (when (= (inc row-num) *auto-sizing-threshold*)
+                (autosize-columns! sheet))))))
 
       (finish! [_ {:keys [row_count]}]
         (let [{:keys [workbook sheet]} @workbook-data]
+          (when @pivot-data
+            ;; For pivoted exports, we pivot in-memory (same as CSVs) and then write the results to the
+            ;; document all at once
+            (let [output (qp.pivot.postprocess/build-pivot-output (assoc-in @pivot-data [:data :rows] @pivot-rows))]
+              (write-pivot-table! sheet output)))
           (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
             ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
             (autosize-columns! sheet))
