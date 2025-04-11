@@ -126,8 +126,12 @@ export function startNewNativeModel(config) {
 /**
  * Visit any valid query in an ad-hoc manner.
  *
- * @param {import("./api").QuestionDetails} question
- * @param {{callback?: function, mode: (undefined|"notebook")}} config
+ * @param {object} question
+ * @param {{
+ *  callback?: function,
+ *  mode?: "notebook",
+ *  waitOptions?: Partial<import("cypress/types/net-stubbing").WaitOptions>
+ * }} [config]
  */
 export function visitQuestionAdhoc(
   question,

@@ -29,10 +29,10 @@ describe("admin > permissions > sandboxing > misconfiguration", () => {
     cy.log("Create a simple editable products table");
     H.queryWritableDB("DROP TABLE IF EXISTS products");
     H.queryWritableDB(
-      "CREATE TABLE IF NOT EXISTS products (id INT PRIMARY KEY, category VARCHAR, name VARCHAR)",
+      "CREATE TABLE IF NOT EXISTS products (category VARCHAR, id INT PRIMARY KEY, name VARCHAR)",
     );
     H.queryWritableDB(
-      "INSERT INTO products (id, name, category) VALUES (1, 'A', 'Gizmo'), (2, 'B', 'Widget')",
+      "INSERT INTO products (id, name, category) VALUES ('Gizmo', 1, 'A'), ('Widget', 2, 'B')",
     );
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "products" });
 
