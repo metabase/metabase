@@ -25,6 +25,7 @@ import {
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
+import { LocalizationSettingsPage } from "../components/SettingsPages/LocalizationSettingsPage";
 import { SettingsUpdatesForm } from "../components/SettingsUpdatesForm/SettingsUpdatesForm";
 import { UploadSettings } from "../components/UploadSettings";
 import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
@@ -234,62 +235,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
   localization: {
     name: t`Localization`,
     order: 80,
-    settings: [
-      {
-        display_name: t`Instance language`,
-        key: "site-locale",
-        type: "select",
-        options: _.sortBy(
-          MetabaseSettings.get("available-locales") || [],
-          ([code, name]) => name,
-        ).map(([code, name]) => ({ name, value: code })),
-        defaultValue: "en",
-        onChanged: (oldLocale, newLocale) => {
-          if (oldLocale !== newLocale) {
-            window.location.reload();
-          }
-        },
-      },
-      {
-        key: "report-timezone",
-        display_name: t`Report Timezone`,
-        type: "select",
-        options: [
-          { name: t`Database Default`, value: "" },
-          ...(MetabaseSettings.get("available-timezones") || []),
-        ],
-        description: (
-          <>
-            <div>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</div>
-            <div>{t`Not all databases support timezones, in which case this setting won't take effect.`}</div>
-          </>
-        ),
-        allowValueCollection: true,
-        searchProp: "name",
-        defaultValue: "",
-      },
-      {
-        key: "start-of-week",
-        display_name: t`First day of the week`,
-        type: "select",
-        options: [
-          { value: "sunday", name: t`Sunday` },
-          { value: "monday", name: t`Monday` },
-          { value: "tuesday", name: t`Tuesday` },
-          { value: "wednesday", name: t`Wednesday` },
-          { value: "thursday", name: t`Thursday` },
-          { value: "friday", name: t`Friday` },
-          { value: "saturday", name: t`Saturday` },
-        ],
-        defaultValue: "sunday",
-      },
-      {
-        display_name: t`Localization options`,
-        description: "",
-        key: "custom-formatting",
-        widget: FormattingWidget,
-      },
-    ],
+    component: LocalizationSettingsPage,
+    settings: [],
   },
   uploads: {
     name: t`Uploads`,
