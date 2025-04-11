@@ -27,7 +27,6 @@ MockedVisualization.propTypes = {
 Object.assign(MockedVisualization, {
   identifier: "mocked-visualization",
   noHeader: true,
-  supportsSeries: true,
 });
 
 registerVisualization(MockedVisualization);

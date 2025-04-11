@@ -89,7 +89,6 @@ function setup({
       isEditing={false}
       isEditingParameter={false}
       {...props}
-      onAddSeries={jest.fn()}
       onReplaceCard={onReplaceCard}
       isTrashedOnRemove={false}
       onRemove={jest.fn()}
@@ -102,6 +101,7 @@ function setup({
       downloadsEnabled
       autoScroll={false}
       reportAutoScrolledToDashcard={jest.fn()}
+      editDashboard={jest.fn()}
     />,
     {
       storeInitialState: {

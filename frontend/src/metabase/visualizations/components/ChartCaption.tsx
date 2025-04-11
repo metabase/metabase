@@ -40,16 +40,14 @@ const ChartCaption = ({
   const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
 
   const handleSelectTitle = useCallback(() => {
-    onChangeCardAndRun?.({
-      nextCard: card,
-    });
+    onChangeCardAndRun?.({ nextCard: card });
   }, [card, onChangeCardAndRun]);
 
   return (
     <ChartCaptionRoot
       title={title}
       description={description}
-      getHref={getHref}
+      getHref={canSelectTitle ? getHref : undefined}
       icon={icon}
       actionButtons={actionButtons}
       hasInfoTooltip={hasInfoTooltip}

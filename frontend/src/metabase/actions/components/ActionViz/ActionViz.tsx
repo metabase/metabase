@@ -18,7 +18,6 @@ export default Object.assign(Action, {
   iconName: "play",
 
   noHeader: true,
-  supportsSeries: false,
   hidden: true,
   supportPreviewing: false,
   disableSettingsConfig: true,

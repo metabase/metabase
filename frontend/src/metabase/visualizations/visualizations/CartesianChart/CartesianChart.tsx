@@ -52,13 +52,12 @@ function _CartesianChart(props: VisualizationProps) {
     isDashboard,
     isEditing,
     isQueryBuilder,
+    isVisualizerViz,
     isFullscreen,
     hovered,
     onChangeCardAndRun,
     onHoverChange,
     canToggleSeriesVisibility,
-    canRemoveSeries,
-    onRemoveSeries,
   } = props;
 
   const settings = useMemo(
@@ -132,7 +131,10 @@ function _CartesianChart(props: VisualizationProps) {
     setChartSize({ width, height });
   }, []);
 
-  const canSelectTitle = !!onChangeCardAndRun;
+  // We can't navigate a user to a particular card from a visualizer viz,
+  // so title selection is disabled in this case
+  const canSelectTitle = !!onChangeCardAndRun && !isVisualizerViz;
+
   const seriesColorsCss = useCartesianChartSeriesColorsClasses(
     chartModel,
     settings,
@@ -168,8 +170,6 @@ function _CartesianChart(props: VisualizationProps) {
         onToggleSeriesVisibility={
           canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
         }
-        canRemoveSeries={canRemoveSeries}
-        onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}
         width={outerWidth}
         height={outerHeight}

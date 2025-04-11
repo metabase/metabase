@@ -11,7 +11,10 @@ import type {
 } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./types";
-import type { Visualization } from "./types/visualization";
+import type {
+  Visualization,
+  VisualizationSettingDefinition,
+} from "./types/visualization";
 
 const visualizations = new Map<VisualizationDisplay, Visualization>();
 const aliases = new Map<string, Visualization>();
@@ -72,6 +75,10 @@ export function registerVisualization(visualization: Visualization) {
 }
 
 type SeriesLike = Array<{ card: { display: VisualizationDisplay } }>;
+
+export function getVisualization(display: VisualizationDisplay | null) {
+  return display ? visualizations.get(display) : defaultVisualization;
+}
 
 export function getVisualizationRaw(series: SeriesLike) {
   return visualizations.get(series[0].card.display);
@@ -141,6 +148,32 @@ export function canSavePng(display: VisualizationDisplay) {
 export function getDefaultSize(display: VisualizationDisplay) {
   const visualization = visualizations.get(display);
   return visualization?.defaultSize;
+}
+
+export function isCartesianChart(display: VisualizationDisplay) {
+  const visualization = visualizations.get(display);
+  const settingNames = Object.keys(visualization?.settings ?? {});
+  return (
+    settingNames.includes("graph.dimensions") &&
+    settingNames.includes("graph.metrics")
+  );
+}
+
+const isDataSetting = ({
+  widget,
+}: VisualizationSettingDefinition<unknown, unknown>) => {
+  // TODO Come up with a better condition
+  return widget === "field" || widget === "fields";
+};
+
+export function getColumnVizSettings(display: VisualizationDisplay) {
+  const visualization = visualizations.get(display);
+  const settings = visualization?.settings ?? {};
+
+  // TODO Come up with a better condition
+  return Object.keys(settings).filter((key) => {
+    return isDataSetting(settings[key] ?? {});
+  });
 }
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column

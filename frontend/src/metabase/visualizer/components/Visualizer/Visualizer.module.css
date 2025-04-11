@@ -1,0 +1,73 @@
+.Container {
+  display: grid;
+
+  --data-sidebar-width: 320px;
+  --settings-sidebar-width: 320px;
+  --transition-duration: 200ms;
+  --left: 0;
+  --right: 0;
+
+  grid-template-columns: var(--left) 1fr var(--right);
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  grid-template-areas:
+    "dataSidebar Header settingsSidebar"
+    "dataSidebar Canvas settingsSidebar"
+    "dataSidebar Footer settingsSidebar";
+  transition: var(--transition-duration);
+}
+
+.Container.dataSidebarOpen {
+  --left: var(--data-sidebar-width);
+}
+
+.Container.dataSidebarOpen .dataSidebar {
+  left: 0;
+}
+
+.Container.vizSettingsOpen {
+  --right: var(--settings-sidebar-width);
+}
+
+.dataSidebar {
+  position: relative;
+  left: calc(-1 * var(--data-sidebar-width));
+  transition: var(--transition-duration);
+  grid-area: dataSidebar;
+  min-width: 0;
+  background-color: var(--mb-color-bg-light);
+}
+
+.dataSidebarContent {
+  min-width: var(--data-sidebar-width);
+}
+
+.Header {
+  grid-area: Header;
+  border-left: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.Canvas {
+  grid-area: Canvas;
+  overflow: hidden;
+  padding: var(--mantine-spacing-lg);
+  border-left: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.Footer {
+  grid-area: Footer;
+  border-left: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.settingsSidebar {
+  min-width: 0;
+  grid-area: settingsSidebar;
+  overflow: hidden;
+}
+
+.settingsSidebarContent {
+  min-width: var(--settings-sidebar-width);
+}
