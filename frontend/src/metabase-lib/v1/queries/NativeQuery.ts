@@ -23,13 +23,12 @@ import type {
   TemplateTags,
 } from "metabase-types/api";
 
-import type Dimension from "../Dimension";
 import { TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
 
-type DimensionFilter = (dimension: Dimension) => boolean;
+type DimensionFilter = (dimension: TemplateTagDimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   database: null,

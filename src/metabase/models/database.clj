@@ -1,6 +1,7 @@
 (ns metabase.models.database
   (:require
    [clojure.core.match :refer [match]]
+   [clojure.data :as data]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
@@ -77,17 +78,24 @@
   [database-id]
   (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
 
+(def ^{:arglists '([db-id])
+       :private  true} db-id->router-db-id
+  (mdb/memoize-for-application-db
+   (fn [db-id]
+     (t2/select-one-fn :router_database_id :model/Database :id db-id))))
+
 (defmethod mi/can-read? :model/Database
   ([instance]
    (mi/can-read? :model/Database (u/the-id instance)))
   ([_model pk]
-   (if (should-read-audit-db? pk)
-     false
-     (contains? #{:query-builder :query-builder-and-native}
-                (perms/most-permissive-database-permission-for-user
-                 api/*current-user-id*
-                 :perms/create-queries
-                 pk)))))
+   (cond
+     (should-read-audit-db? pk) false
+     (db-id->router-db-id pk) (mi/can-read? :model/Database (db-id->router-db-id pk))
+     :else (contains? #{:query-builder :query-builder-and-native}
+                      (perms/most-permissive-database-permission-for-user
+                       api/*current-user-id*
+                       :perms/create-queries
+                       pk)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -97,8 +105,9 @@
 
 (defn- can-write?
   [db-id]
-  (and (not= db-id audit/audit-db-id)
-       (current-user-can-write-db? db-id)))
+  (or (some-> db-id db-id->router-db-id can-write?)
+      (and (not= db-id audit/audit-db-id)
+           (current-user-can-write-db? db-id))))
 
 (defmethod mi/can-write? :model/Database
   ;; Lack of permission to change database details will also exclude the `details` field from the HTTP response,
@@ -134,12 +143,23 @@
     ;; so we just manually nullify it here
     (assoc database :cache_field_values_schedule nil)))
 
+(defn- is-destination?
+  "Is this database a destination database for some router database?"
+  [db]
+  (boolean (:router_database_id db)))
+
+(defn should-sync?
+  "Should this database be synced?"
+  [db]
+  (not (is-destination? db)))
+
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
     ;; this is done this way to avoid circular dependencies
-    ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database)
+    (when (should-sync? database)
+      ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database))
     (catch Throwable e
       (log/error e "Error scheduling tasks for DB"))))
 
@@ -153,8 +173,9 @@
       (loop [[test-details & tail] details-to-test]
         (if test-details
           (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
-            (do
-              (log/infof "Successfully connected, migrating to: %s" (pr-str test-details))
+            (let [keys-remaining (-> test-details keys set)
+                  [_ removed _] (data/diff keys-remaining (-> details keys set))]
+              (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
               (t2/update! :model/Database (:id database) {:details test-details})
               test-details)
             (recur tail))
@@ -206,19 +227,20 @@
 ;; TODO -- consider whether this should live HERE or inside the `permissions` module.
 (defn- set-new-database-permissions!
   [database]
-  (t2/with-transaction [_conn]
-    (let [all-users-group  (perms/all-users-group)
-          non-magic-groups (perms/non-magic-groups)
-          non-admin-groups (conj non-magic-groups all-users-group)]
-      (if (:is_audit database)
-        (doseq [group non-admin-groups]
-          (perms/set-database-permission! group database :perms/view-data :unrestricted)
-          (perms/set-database-permission! group database :perms/create-queries :no)
-          (perms/set-database-permission! group database :perms/download-results :one-million-rows)
-          (perms/set-database-permission! group database :perms/manage-table-metadata :no)
-          (perms/set-database-permission! group database :perms/manage-database :no))
-        (doseq [group non-admin-groups]
-          (perms/set-new-database-permissions! group database))))))
+  (when-not (is-destination? database)
+    (t2/with-transaction [_conn]
+      (let [all-users-group  (perms/all-users-group)
+            non-magic-groups (perms/non-magic-groups)
+            non-admin-groups (conj non-magic-groups all-users-group)]
+        (if (:is_audit database)
+          (doseq [group non-admin-groups]
+            (perms/set-database-permission! group database :perms/view-data :unrestricted)
+            (perms/set-database-permission! group database :perms/create-queries :no)
+            (perms/set-database-permission! group database :perms/download-results :one-million-rows)
+            (perms/set-database-permission! group database :perms/manage-table-metadata :no)
+            (perms/set-database-permission! group database :perms/manage-database :no))
+          (doseq [group non-admin-groups]
+            (perms/set-new-database-permissions! group database)))))))
 
 (t2/define-after-insert :model/Database
   [database]
@@ -250,7 +272,9 @@
       (and (driver.impl/registered? driver)
            (map? (:details database))
            (not *normalizing-details*))
-      normalize-details)))
+      normalize-details
+
+      true serdes/add-entity-id)))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
@@ -339,6 +363,11 @@
 (defmethod serdes/hash-fields :model/Database
   [_database]
   [:name :engine])
+
+(defmethod serdes/hash-required-fields :model/Database
+  [_database]
+  {:model :model/Database
+   :required-fields [:name :engine]})
 
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]
@@ -451,7 +480,15 @@
                                          ::serdes/skip))
                                      :import identity}
                :creator_id          (serdes/fk :model/User)
+               :router_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
+
+(defmethod serdes/extract-query "Database"
+  [model-name {:keys [where]}]
+  (t2/reducible-select (keyword "model" model-name) {:where
+                                                     [:and
+                                                      (or where true)
+                                                      [:= :router_database_id nil]]}))
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
@@ -492,4 +529,17 @@
                   :created-at    true
                   :updated-at    true}
    :search-terms [:name :description]
+   :where        [:= :router_database_id nil]
    :render-terms {:initial-sync-status true}})
+
+(defenterprise hydrate-router-user-attribute
+  "OSS implementation. Hydrates router user attribute on the databases."
+  metabase-enterprise.database-routing.model
+  [_k databases]
+  (for [database databases]
+    (assoc database :router_user_attribute nil)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :router_user_attribute]
+  "Batch hydrate `Tables` for the given `Database`."
+  [_model k databases]
+  (hydrate-router-user-attribute k databases))

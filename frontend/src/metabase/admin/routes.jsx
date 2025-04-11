@@ -5,7 +5,7 @@ import { t } from "ttag";
 import AdminApp from "metabase/admin/app/components/AdminApp";
 import { DatabaseConnectionModal } from "metabase/admin/databases/containers/DatabaseConnectionModal";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
-import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp";
+import { DatabaseListApp } from "metabase/admin/databases/containers/DatabaseListApp";
 import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
@@ -46,6 +46,7 @@ import {
   PLUGIN_ADMIN_TROUBLESHOOTING,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
+  PLUGIN_DB_ROUTING,
 } from "metabase/plugins";
 
 import { PerformanceTabId } from "./performance/types";
@@ -72,6 +73,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         </Route>
         <Route path=":databaseId" component={DatabaseEditApp}>
           <ModalRoute path="edit" modal={DatabaseConnectionModal} />
+          {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
         </Route>
       </Route>
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
@@ -120,7 +122,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <IndexRedirect to="help" />
           <Route path="help" component={Help} />
           <Route path="tasks" component={TasksApp}>
-            <ModalRoute path=":taskId" modal={TaskModal} />
+            <ModalRoute
+              path=":taskId"
+              modal={TaskModal}
+              modalProps={{
+                // EventSandbox interferes with mouse text selection in CodeMirror editor
+                disableEventSandbox: true,
+              }}
+            />
           </Route>
           <Route path="jobs" component={JobInfoApp}>
             <ModalRoute

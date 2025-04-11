@@ -59,7 +59,7 @@
 
   start-maildev
   {:doc      "Start Maildev"
-   :examples [["John" "will write one soon"]]
+   :examples [["./bin/mage start-maildev -h" "print help for start-maildev"]]
    :requires [[mage.start-maildev :as start-maildev]]
    :task     (do (cli/parse! (current-task)) (start-maildev/start-maildev!))}
 
@@ -92,7 +92,8 @@
 
   jar-download
   {:doc        "Given a version, downloads a metabase jar"
-   :examples   [["./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/path/to/my/metabase/jars"]
+   :examples   [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
+                ["./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/path/to/my/metabase/jars"]
                 ["./bin/mage jar-download 1.45.2 ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars"]
                 ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]]
    :requires   [[mage.jar-download :as jar-download]]
@@ -153,10 +154,10 @@
    ;; map of ports.
    :data       {:a [:b :c] :b [:d]}}
 
-  -test-help {:doc      "run all mage tests"
-              :requires [[mage.core-test :as core-test]]
-              :task     (System/exit
-                         (if (= :ok (core-test/run-tests)) 0 1))}
+  -test {:doc      "run all mage tests"
+         :requires [[mage.core-test]
+                    [clojure.test :refer [run-tests]]]
+         :task     (run-tests 'mage.core-test)}
 
   -test-examples
   {:doc      "Runs every example and checks that it exits with 0"

@@ -10530,6 +10530,27 @@ databaseChangeLog:
             );
       rollback: # not needed, these are created on startup using deserialization
 
+  - changeSet:
+      id: v53.2025-04-02T15:25:04
+      author: edpaget
+      comment: create new cluster lock table for instance coordination
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabase_cluster_lock
+      changes:
+        - createTable:
+            tableName: metabase_cluster_lock
+            remarks: A table to allow metabase instances to take locks across a cluster
+            columns:
+              - column:
+                  name: lock_name
+                  type: varchar(254)
+                  remarks: a single column that can be used to a lock across a cluster
+                  constraints:
+                    primaryKey: true
+                    nullable: false
 
   - changeSet:
       id: v54.2025-01-30T16:10:55
@@ -10999,6 +11020,103 @@ databaseChangeLog:
               - column:
                   name: card_schema
             indexName: idx_report_card_card_schema
+
+  - changeSet:
+      id: v55.2025-04-01T07:17:52
+      author: johnswanson
+      comment: Add `db_router` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: db_router
+      changes:
+        - createTable:
+            tableName: db_router
+            remarks: |
+              Configuration for Database Routers. Currently just holds which user attribute each
+              configured router database should use to choose a mirror database to route to.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: 'The ID of the database this is for.'
+                  constraints:
+                    unique: true
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_db_router_database_id
+              - column:
+                  name: user_attribute
+                  type: varchar(254)
+                  remarks: 'The user attribute used to redirect users to a different database.'
+                  constraints:
+                    nullable: false
+
+
+  - changeSet:
+      id: v55.2025-04-01T07:18:02
+      author: johnswanson
+      comment: Add self-referential foreign key `router_database_id` to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: router_database_id
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: router_database_id
+                  type: int
+                  remarks: The ID of the primary database for this mirror database.
+                  constraints:
+                    unique: false
+                    nullable: true
+
+  - changeSet:
+      id: v55.2025-04-01T07:18:47
+      author: johnswanson
+      comment: add an index for `metabase_database.router_database_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabase_database
+                indexName: idx_unique_metabase_database_router_database_id_name
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_database
+            constraintName: idx_unique_metabase_database_router_database_id_name
+            columnNames: router_database_id, name
+
+  - changeSet:
+      id: v55.2025-04-01T07:18:52
+      author: johnswanson
+      comment: Add foreign key for `router_database_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - foreignKeyConstraintExists:
+            - foreignKeyName: fk_metabase_database_metabase_database_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_database
+            baseColumnNames: router_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_metabase_database_metabase_database_id
+            onDelete: RESTRICT
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

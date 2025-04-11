@@ -70,6 +70,7 @@
 /storybook-static
 /target
 /test-report-*
+/temp
 **/cli-snippets-tmp/**
 \#*\#
 bin/node_modules/
@@ -132,3 +133,4 @@ modules/drivers/*/.lsp/*
 
 .aider*
 /config.yml
+CLAUDE.local.md
