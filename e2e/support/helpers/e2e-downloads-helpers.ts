@@ -95,7 +95,7 @@ export function downloadAndAssert(
   if (isDashboard) {
     if (isEmbed) {
       getDashboardCard().realHover();
-      cy.findByTestId("download-dashcard-results-button").click();
+      cy.findByRole("button", { name: "Download results" }).click();
     } else {
       getDashboardCardMenu().click();
       cy.findByText("Download results").click();

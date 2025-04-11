@@ -49,18 +49,24 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         // eslint-disable-next-line no-unscoped-text-selectors -- this should not appear anywhere in the page
-        cy.findByTestId("export-as-pdf-button").should("not.exist");
+        cy.findByRole("button", { name: "Export as PDF" }).should("not.exist");
 
         // we should not have any dashcard action in a public/embed scenario, so the menu should not be there
-        cy.findByTestId("download-dashcard-results-button").should("not.exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("#downloads=pdf should enable only PDF downloads", () => {
         cy.visit(`${publicLink}#downloads=pdf`);
         waitLoading();
 
-        cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        cy.findByTestId("download-dashcard-results-button").should("not.exist");
+        cy.get("header")
+          .findByRole("button", { name: "Export as PDF" })
+          .should("exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("#downloads=results should enable only dashcard results downloads", () => {
@@ -68,40 +74,49 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header")
-          .findByTestId("export-as-pdf-button")
+          .findByRole("button", { name: "Export as PDF" })
           .should("not.exist");
-        cy.findByTestId("download-dashcard-results-button").should("exist");
+        cy.findByRole("button", { name: "Download results" }).should("exist");
       });
 
       it("#downloads=pdf,results should enable both PDF and results downloads", () => {
         cy.visit(`${publicLink}#downloads=pdf,results`);
         waitLoading();
 
-        cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        cy.findByTestId("download-dashcard-results-button").should("exist");
+        cy.get("header")
+          .findByRole("button", { name: "Export as PDF" })
+          .should("exist");
+        cy.findByRole("button", { name: "Download results" }).should("exist");
       });
 
       it("#downloads=results,pdf should enable both PDF and results downloads (order agnostic)", () => {
         cy.visit(`${publicLink}#downloads=results,pdf`);
         waitLoading();
 
-        cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        cy.findByTestId("download-dashcard-results-button").should("exist");
+        cy.get("header")
+          .findByRole("button", { name: "Export as PDF" })
+          .should("exist");
+
+        cy.findByRole("button", { name: "Download results" }).should("exist");
       });
 
       it("#downloads=results, pdf should handle whitespace between parameters", () => {
         cy.visit(`${publicLink}#downloads=results, pdf`);
         waitLoading();
 
-        cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        cy.findByTestId("download-dashcard-results-button").should("exist");
+        cy.get("header")
+          .findByRole("button", { name: "Export as PDF" })
+          .should("exist");
+        cy.findByRole("button", { name: "Download results" }).should("exist");
       });
 
       it("should be able to download a public dashboard as PDF", () => {
         cy.visit(`${publicLink}#downloads=true`);
         waitLoading();
 
-        cy.get("header").findByTestId("export-as-pdf-button").click();
+        cy.get("header")
+          .findByRole("button", { name: "Export as PDF" })
+          .click();
 
         cy.verifyDownload("Orders in a dashboard.pdf");
 

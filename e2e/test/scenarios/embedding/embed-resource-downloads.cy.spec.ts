@@ -53,10 +53,12 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         // eslint-disable-next-line no-unscoped-text-selectors -- this should not appear anywhere in the page
-        cy.findByTestId("export-as-pdf-button").should("not.exist");
+        cy.findByRole("button", { name: "Export as PDF" }).should("not.exist");
 
         // we should not have any dashcard action in a static embedded/embed scenario, so the menu should not be there
-        cy.findByTestId("download-dashcard-results-button").should("not.exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("should be able to download a static embedded dashboard as PDF", () => {
@@ -73,7 +75,9 @@ H.describeWithSnowplowEE(
         );
         waitLoading();
 
-        cy.get("header").findByTestId("export-as-pdf-button").click();
+        cy.get("header")
+          .findByRole("button", { name: "Export as PDF" })
+          .click();
 
         cy.verifyDownload("Orders in a dashboard.pdf");
 
