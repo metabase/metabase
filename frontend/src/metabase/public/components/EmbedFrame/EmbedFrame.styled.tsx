@@ -66,22 +66,19 @@ export const Header = styled.header`
 export const TitleAndDescriptionContainer = styled(FullWidthContainer, {
   shouldForwardProp: (prop) => prop !== "hasTitle",
 })<{ hasTitle?: boolean }>`
+  margin-top: 0.5rem;
+
   ${({ hasTitle }) =>
-    hasTitle
-      ? css`
-          margin-top: 0.5rem;
+    hasTitle &&
+    css`
+      ${breakpointMinSmall} {
+        margin-top: 1rem;
+      }
 
-          ${breakpointMinSmall} {
-            margin-top: 1rem;
-          }
-
-          ${breakpointMinLarge} {
-            margin-top: 1.5rem;
-          }
-        `
-      : css`
-          margin-top: 0.5rem;
-        `}
+      ${breakpointMinLarge} {
+        margin-top: 1.5rem;
+      }
+    `}
 `;
 
 export const DashboardTabsContainer = styled(FullWidthContainer)`
