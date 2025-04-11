@@ -17,7 +17,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(declare ^:private fix-incoming-idents)
+(declare ^:private fix-incoming-idents valid-ident?)
 
 (mr/def ::future
   [:fn {:error/message "A future"} future?])
@@ -87,6 +87,11 @@ saved later when it is ready."
     (lib/normalize dataset-query)
     (mbql.normalize/normalize dataset-query)))
 
+(defn- maybe-validate-model-idents [metadata model? entity-id]
+  (or (not model?)
+      (every? #(valid-ident? % model? entity-id) metadata))
+  )
+
 (mu/defn maybe-async-result-metadata :- ::maybe-async-result-metadata
   "Return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up to
   [[metadata-sync-wait-ms]] for it to be recalcuated; if not recalculated by then, returns a map with
@@ -101,7 +106,9 @@ saved later when it is ready."
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
   [{:keys [original-query query metadata original-metadata model? entity-id], :as options}]
-  (let [valid-metadata? (and metadata (mr/validate analyze/ResultsMetadata metadata))]
+  (let [valid-metadata? (and metadata
+                             (mr/validate analyze/ResultsMetadata metadata)
+                             (maybe-validate-model-idents metadata model? entity-id))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata
@@ -147,12 +154,13 @@ saved later when it is ready."
   `:native` queries but returns MBQL-like metadata with IDs and the Field `entity_id`s as idents."
   ;; TODO: That limitation that prevents checking native queries have native-looking :idents is unfortunate.
   ;; At least this checks that we never store `native____`, ie. native queries without a card entity_id.
-  [column card]
-  (let [model?   (= (:type card) :model)
-        valid-fn (cond
-                   model?               lib/valid-model-ident?
-                   :else                lib/valid-basic-ident?)]
-    (valid-fn column (:entity_id card))))
+  ([column card]
+   (valid-ident? column (= (:type card) :model) (:entity_id card)))
+  ([column model? entity-id]
+   (let [valid-fn (cond
+                    model?               lib/valid-model-ident?
+                    :else                lib/valid-basic-ident?)]
+     (valid-fn column entity-id))))
 
 (mu/defn save-metadata-async!
   "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up

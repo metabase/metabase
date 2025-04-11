@@ -221,7 +221,6 @@
   normal-drivers
   normal-drivers-with-feature
   normal-drivers-without-feature
-  query->result-metadata
   rows
   rows+column-names
   with-database-timezone-id
