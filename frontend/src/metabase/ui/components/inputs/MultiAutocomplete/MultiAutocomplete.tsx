@@ -27,6 +27,7 @@ export type MultiAutocompleteProps = BoxProps &
     rightSection?: ReactNode;
     nothingFoundMessage?: ReactNode;
     "aria-label"?: string;
+    "data-testid"?: string;
     onCreate?: (rawValue: string) => string | null;
     onChange: (newValues: string[]) => void;
     onSearchChange?: (newValue: string) => void;
@@ -58,6 +59,7 @@ export function MultiAutocomplete({
   withScrollArea,
   comboboxProps,
   "aria-label": ariaLabel,
+  "data-testid": dataTestId,
   onCreate,
   onChange,
   onSearchChange,
@@ -128,6 +130,7 @@ export function MultiAutocomplete({
             errorProps={errorProps}
             inputContainer={inputContainer}
             inputWrapperOrder={inputWrapperOrder}
+            data-testid={dataTestId}
             onClick={handlePillsInputClick}
           >
             <Pill.Group role="list" onClick={handlePillGroupClick}>
@@ -137,6 +140,7 @@ export function MultiAutocomplete({
                     key={valueIndex}
                     className={S.pill}
                     withRemoveButton
+                    removeButtonProps={{ "aria-label": t`Remove` }}
                     onClick={(event) => handlePillClick(event, valueIndex)}
                     onRemove={() => handlePillRemoveClick(valueIndex)}
                   >

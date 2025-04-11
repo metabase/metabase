@@ -211,11 +211,11 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: (value) => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Add filter").click();
       },
       updateValue: (value) => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -225,11 +225,11 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: (value) => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Add filter").click();
       },
       updateValue: (value) => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Update filter").click();
       },
     });

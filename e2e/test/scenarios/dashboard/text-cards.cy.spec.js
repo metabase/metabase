@@ -262,7 +262,9 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     H.saveDashboard();
 
     H.filterWidget().click();
-    H.dashboardParametersPopover().within(() => H.fieldValuesInput().type("1"));
+    H.dashboardParametersPopover().within(() =>
+      H.fieldValuesCombobox().type("1"),
+    );
     cy.button("Add filter").click();
     H.getDashboardCard(0).findByText("Variable: 1").should("exist");
     H.getDashboardCard(1).findByText("Variable: 1").should("exist");
@@ -271,7 +273,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       .findByText("1")
       .click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("2");
+      H.fieldValuesCombobox().type("2");
       cy.button("Update filter").click();
     });
     H.getDashboardCard(0).findByText("Variable: 1 and 2").should("exist");

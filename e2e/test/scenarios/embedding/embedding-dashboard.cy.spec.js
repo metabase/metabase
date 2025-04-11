@@ -310,22 +310,22 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("Id");
       H.popover().within(() => {
-        H.fieldValuesInput().type("Aly");
-        cy.contains("Alycia McCullough - 2016");
+        H.fieldValuesCombobox().type("Aly");
+        cy.contains("Alycia McCullough");
       });
 
       // close the suggestions popover
       H.popover()
         .first()
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesCombobox().blur();
         });
 
       cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
 
       openFilterOptions("Name");
       H.popover().within(() => {
-        H.fieldValuesInput().type("{backspace}Aly");
+        H.fieldValuesCombobox().type("{backspace}Aly");
         cy.findByText("Alycia McCullough").should("be.visible");
       });
 
@@ -333,7 +333,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       H.popover()
         .first()
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesCombobox().blur();
         });
 
       cy.log("should show values for PEOPLE.SOURCE");
@@ -345,15 +345,15 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("User");
       H.popover().within(() => {
-        H.fieldValuesInput().type("Aly");
-        cy.contains("Alycia McCullough - 2016");
+        H.fieldValuesCombobox().type("Aly");
+        cy.contains("Alycia McCullough");
       });
 
       // close the suggestions popover
       H.popover()
         .first()
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesCombobox().blur();
         });
 
       cy.log("should accept url parameters");

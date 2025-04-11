@@ -6,6 +6,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import ExplicitSize from "metabase/components/ExplicitSize";
 import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import SingleSelectListField from "metabase/components/SingleSelectListField";
@@ -24,6 +25,7 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
+import { Loader, MultiAutocomplete } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -34,8 +36,6 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import ExplicitSize from "../ExplicitSize";
-
 import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import type { LoadingStateType, ValuesMode } from "./types";
 import {
@@ -43,6 +43,7 @@ import {
   canUseDashboardEndpoints,
   canUseParameterEndpoints,
   dedupeValues,
+  getLabel,
   getNonVirtualFields,
   getTokenFieldPlaceholder,
   getValue,
@@ -57,6 +58,8 @@ import {
 } from "./utils";
 
 const MAX_SEARCH_RESULTS = 100;
+const COMBOBOX_WIDTH = 364;
+const DROPDOWN_WIDTH = 314;
 
 function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
   return {
@@ -96,7 +99,6 @@ export interface IFieldValuesWidgetProps {
   multi?: boolean;
   autoFocus?: boolean;
   className?: string;
-  prefix?: string;
   placeholder?: string;
   checkedColor?: string;
 
@@ -133,7 +135,6 @@ export const FieldValuesWidgetInner = forwardRef<
     multi,
     autoFocus,
     className,
-    prefix,
     placeholder,
     checkedColor,
     valueRenderer,
@@ -346,13 +347,14 @@ export const FieldValuesWidgetInner = forwardRef<
   const search = useRef(
     _.debounce(async (value: string) => {
       if (!value) {
+        setOptions([]);
         setLoadingState("LOADED");
-        return;
+        setLastValue(value);
+      } else {
+        setLoadingState("LOADING");
+        await fetchValues(value);
+        setLastValue(value);
       }
-
-      await fetchValues(value);
-
-      setLastValue(value);
     }, 500),
   );
 
@@ -361,7 +363,6 @@ export const FieldValuesWidgetInner = forwardRef<
       _cancel.current();
     }
 
-    setLoadingState("LOADING");
     search.current(value);
   };
 
@@ -441,9 +442,10 @@ export const FieldValuesWidgetInner = forwardRef<
     disableSearch,
     options,
   });
+  const isNumericParameter = isNumeric(fields[0], parameter);
 
   const parseFreeformValue = (value: string | undefined) => {
-    if (isNumeric(fields[0], parameter)) {
+    if (isNumericParameter) {
       const number = typeof value === "string" ? parseNumber(value) : null;
       return typeof number === "bigint" ? String(number) : number;
     }
@@ -483,9 +485,56 @@ export const FieldValuesWidgetInner = forwardRef<
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
           />
+        ) : multi ? (
+          <MultiAutocomplete
+            value={value
+              .filter((value) => value != null)
+              .map((value) => String(value))}
+            data={options
+              .filter((option) => getValue(option) != null)
+              .map((option) => ({
+                value: String(getValue(option)),
+                label: String(getLabel(option) ?? getValue(option)),
+              }))}
+            placeholder={tokenFieldPlaceholder}
+            rightSection={isLoading ? <Loader size="xs" /> : undefined}
+            nothingFoundMessage={getNothingFoundMessage({
+              fields,
+              loadingState,
+              lastValue,
+            })}
+            autoFocus={autoFocus}
+            w={COMBOBOX_WIDTH}
+            comboboxProps={{
+              width: DROPDOWN_WIDTH,
+              position: "bottom-start",
+            }}
+            data-testid="token-field"
+            onCreate={(value) => {
+              if (isNumericParameter) {
+                const number = parseNumber(value);
+                return number != null ? String(number) : null;
+              } else {
+                const string = value.trim();
+                return string.length > 0 ? string : null;
+              }
+            }}
+            onChange={(values) => {
+              if (isNumericParameter) {
+                onChange(
+                  values.map((value) => {
+                    const number = parseNumber(value);
+                    return typeof number === "bigint" ? String(number) : number;
+                  }),
+                );
+              } else {
+                onChange(values);
+              }
+            }}
+            onSearchChange={onInputChange}
+          />
         ) : (
           <TokenField
-            prefix={prefix}
             value={value.filter((v) => v != null)}
             onChange={onChange}
             placeholder={tokenFieldPlaceholder}
@@ -541,6 +590,25 @@ const LoadingState = () => (
   </div>
 );
 
+function getNothingFoundMessage({
+  fields,
+  loadingState,
+  lastValue,
+}: {
+  fields: (Field | null)[];
+  loadingState: LoadingStateType;
+  lastValue: string;
+}) {
+  if (loadingState !== "LOADED" || lastValue.length === 0) {
+    return undefined;
+  }
+  if (fields.length === 1 && fields[0] != null) {
+    return t`No matching ${fields[0]?.display_name} found.`;
+  } else {
+    return t`No matching result`;
+  }
+}
+
 const NoMatchState = ({ fields }: { fields: (Field | null)[] }) => {
   if (fields.length === 1 && !!fields[0]) {
     const [{ display_name }] = fields;
@@ -577,6 +645,7 @@ interface RenderOptionsProps {
   isAllSelected: boolean;
   isFiltered: boolean;
 }
+
 function renderOptions({
   alwaysShowOptions,
   parameter,

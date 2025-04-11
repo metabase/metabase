@@ -519,7 +519,7 @@ describe("dashboard filters auto-wiring", () => {
       H.dashboardParametersContainer().findByText("ID").click();
 
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("1,");
+        H.fieldValuesCombobox().type("1,");
         cy.button("Add filter").click();
       });
 
@@ -569,7 +569,7 @@ describe("dashboard filters auto-wiring", () => {
       H.dashboardParametersContainer().findByText("ID").click();
 
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("1,");
+        H.fieldValuesCombobox().type("1,");
         cy.button("Add filter").click();
       });
 

@@ -237,14 +237,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       setValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().type(`${value}`).blur();
+          H.fieldValuesTextbox().type(`${value}`).blur();
           cy.button("Add filter").click();
         });
       },
       updateValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().type(`{selectAll}{backspace}${value}`).blur();
+          H.fieldValuesTextbox().type(`{selectAll}{backspace}${value}`).blur();
           cy.button("Update filter").click();
         });
       },
@@ -303,14 +303,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       setValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().type(value).blur();
+          H.fieldValuesCombobox().type(value).blur();
           cy.button("Add filter").click();
         });
       },
       updateValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().type(value).blur();
+          H.fieldValuesCombobox().type(value).blur();
           cy.button("Update filter").click();
         });
       },
@@ -378,14 +378,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       setValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().type(value).blur();
+          H.fieldValuesTextbox().type(value).blur();
           cy.button("Add filter").click();
         });
       },
       updateValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().type(value).blur();
+          H.fieldValuesTextbox().type(value).blur();
           cy.button("Update filter").click();
         });
       },
@@ -427,14 +427,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       setValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().type(value).blur();
+          H.fieldValuesCombobox().type(value).blur();
           cy.button("Add filter").click();
         });
       },
       updateValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().type(value).blur();
+          H.fieldValuesCombobox().type(value).blur();
           cy.button("Update filter").click();
         });
       },
@@ -750,8 +750,8 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
       cy.log("update filter value");
 
       filter(numberFilter.name).click();
-      cy.findByTestId("token-field").icon("close").click();
-      cy.findByTestId("token-field").findByRole("textbox").type("3");
+      cy.findByTestId("token-field").findByLabelText("Remove").click();
+      cy.findByTestId("token-field").findByRole("combobox").type("3");
       cy.realPress("Tab");
       H.popover().findByText("Update filter").click();
 
