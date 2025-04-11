@@ -6,7 +6,7 @@ import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 export function getOptionFromColumn(col) {
   return {
-    name: col.display_name,
+    name: col.display_name ?? col.name,
     value: col.name,
   };
 }
