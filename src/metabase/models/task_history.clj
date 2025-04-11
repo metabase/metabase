@@ -67,16 +67,14 @@
 (defn- filter->where
   [{:keys [status task] :as filter}]
   (when (not-empty filter)
-    (let [task-filter (when task [:= :task task])
-          status-filter (when status [:= :status (name status)])]
-      {:where (if (and task-filter status-filter)
-                (conj [:and] task-filter status-filter)
-                (or task-filter status-filter))})))
+    {:where (cond-> [:and]
+              task   [:= :task task]
+              status [:= :status (name status)])}))
 
 (def Filter
   "Schema for filter for task history."
   [:maybe [:map [:status {:optional true} (into [:enum] task-history-status)
-                 :task   {:optional true} :string]]])
+                 :task   {:optional true} [:string {:min 1}]]]])
 
 (mu/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"
