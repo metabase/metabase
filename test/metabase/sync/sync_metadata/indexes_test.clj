@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.indexes :as sync.indexes]
    [metabase.test :as mt]
@@ -21,7 +22,7 @@
                                          {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
                                         [[1 2]]])
       (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :indexed))))
-      (is ((complement true?) (t2/select-one-fn :database_indexed :model/Field (mt/id :table :not-indexed)))))))
+      (is (not= true (t2/select-one-fn :database_indexed :model/Field (mt/id :table :not-indexed)))))))
 
 (deftest sync-composite-indexed-columns-test
   (mt/test-drivers
@@ -39,7 +40,7 @@
                          (sql.tx/create-index-sql driver/*driver* "table" ["first" "second"]))
           (sync/sync-database! (mt/db))
           (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :first))))
-          (is ((complement true?) (t2/select-one-fn :database_indexed :model/Field (mt/id :table :second))))
+          (is (not= true (t2/select-one-fn :database_indexed :model/Field (mt/id :table :second))))
           (finally
           ;; clean the db so this test is repeatable
             (t2/delete! :model/Database (mt/id))
@@ -106,7 +107,8 @@
                                    {:where [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]}))))
           (testing "Index removal is picked up correctly"
             (doseq [field ["first" "second" "third"]
-                    :let [sql (format "DROP INDEX \"idx_first_table_%s\";" field)]]
+                    :let [sql (format "DROP INDEX %s;" (sql.u/quote-name
+                                                        driver/*driver* :index (str "idx_first_table_" field)))]]
               (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) sql))
             (binding [sync.indexes/*update-partition-size* 2]
               (#'sync.indexes/sync-all-indexes! (mt/db)))
