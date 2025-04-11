@@ -29,8 +29,9 @@
 - **Lint Changes:** `./bin/mage kondo-updated HEAD^`
 - **Format:** `./bin/mage cljfmt-files [path]`
 - **Test file:** `clojure -X:dev:test :only namespace/test-name`
-- **Check Indentation** `./bin/mage -balance-parens-check` with optional line-number
-- **Eval Clojure Code** `./bin/mage -eval '<code>'`
+- **Check Parenthesis Balance** `./bin/mage -balance-parens-check` with optional line-number
+  - Run this after every change to clojure code, only accept balanced code
+- **Evaluating Clojure Code** `./bin/mage -eval '<code>'`
   - See `Sending code to the REPL` for more details
 
 ### ClojureScript
