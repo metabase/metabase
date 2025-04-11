@@ -23,7 +23,7 @@ const handleClick = async (dashboard: Dashboard) => {
 export const ExportPdfMenuItem = ({ dashboard }: { dashboard: Dashboard }) => {
   return (
     <Menu.Item
-      data-testid="dashboard-export-as-pdf-button"
+      data-testid="dashboard-export-pdf-button"
       leftSection={<Icon name="document" />}
       onClick={() => handleClick(dashboard)}
     >
