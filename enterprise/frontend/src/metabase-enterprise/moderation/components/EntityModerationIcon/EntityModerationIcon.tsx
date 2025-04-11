@@ -7,11 +7,13 @@ import { getLatestModerationReview } from "../../service";
 export interface EntityModerationIconProps {
   question?: Question;
   dashboard?: Dashboard;
+  filled?: boolean;
 }
 
 export const EntityModerationIcon = ({
   question,
   dashboard,
+  filled,
 }: EntityModerationIconProps): JSX.Element | null => {
   const entityReviews = question
     ? question.getModerationReviews()
@@ -20,7 +22,7 @@ export const EntityModerationIcon = ({
   const review = getLatestModerationReview(entityReviews);
 
   if (review) {
-    return <ModerationReviewIcon review={review} />;
+    return <ModerationReviewIcon review={review} filled={filled} />;
   } else {
     return null;
   }

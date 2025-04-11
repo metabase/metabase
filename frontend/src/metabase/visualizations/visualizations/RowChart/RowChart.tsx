@@ -101,6 +101,7 @@ const RowChartVisualization = ({
   isFullscreen,
   isQueryBuilder,
   isDashboard,
+  labelRightSection,
   onRender,
   onHoverChange,
   showTitle,
@@ -281,6 +282,7 @@ const RowChartVisualization = ({
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
       {hasTitle && (
         <RowLegendCaption
+          labelRightSection={labelRightSection}
           title={title}
           description={description}
           icon={headerIcon}

@@ -173,6 +173,8 @@ export interface VisualizationProps {
   onUpdateWarnings?: any;
 
   dispatch: Dispatch;
+
+  labelRightSection?: React.ReactNode;
 }
 
 export type VisualizationPassThroughProps = {
