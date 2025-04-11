@@ -6,8 +6,6 @@ on:
     paths:
       - "**/*.cy.spec.js"
       - "**/*.cy.spec.ts"
-      - "**/*.spec.js"
-      - "**/*.spec.ts"
 jobs:
   detect-and-run-tests:
     name: Detect and Run Stress Tests
@@ -22,8 +20,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,10 +28,6 @@ jobs:
 
       - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend
-
-      # - name: Authenticate GitHub CLI
-      #   run: |
-      #     echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
 
       - name: Find and run affected tests
         run: |
