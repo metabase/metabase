@@ -44,9 +44,13 @@
   [_channel-type notification-info _template _recipients]
   [notification-info])
 
-(defmethod notification.payload/payload :notification/testing
-  [_notification]
-  {::payload? true})
+(defmethod notification.payload/notification-payload :notification/testing
+  [notification]
+  {:payload_type :notification/testing
+   :creator      (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
+   :condition    (:condition notification)
+   :context      (notification.payload/default-settings)
+   :payload      {::payload?    true}})
 
 (defmacro with-send-notification-sync
   "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
