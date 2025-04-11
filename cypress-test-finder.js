@@ -4,12 +4,10 @@
 /* eslint-disable import/no-commonjs */
 /* global process */
 
-// Node.js core modules
-const { execSync } = require("child_process");
+const { execSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-// External dependencies
 const { parse } = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
 
@@ -24,7 +22,6 @@ function parseDiff(diffOutput) {
   const changedFiles = [];
 
   let currentFile = null;
-  let _currentHunk = null; // Unused but kept for clarity
   let lineNumber = 0;
 
   for (let i = 0; i < lines.length; i++) {
