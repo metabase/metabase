@@ -3,7 +3,6 @@ import * as Yup from "yup";
 import type {
   MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
-  MetabaseFetchRequestTokenFn,
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
@@ -152,31 +151,73 @@ const safeStringify = (value: unknown) => {
   }
 };
 
-/**
- * The default implementation of the function to get the refresh token.
- * Only supports sessions by default.
- */
-export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn = async (
-  url,
-) => {
-  const response = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-  });
+export const defaultGetRefreshTokenFn = async (url) => {
+  // For SAML authentication, use a popup approach
+  return new Promise((resolve, reject) => {
+    // Define popup dimensions
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch the session, HTTP status: ${response.status}`,
+    // Just use the token=true parameter to get the HTML response
+    const tokenUrl = url.includes("?")
+      ? `${url}&token=true`
+      : `${url}?token=true`;
+
+    // Open popup
+    const popup = window.open(
+      tokenUrl,
+      "samlLoginPopup",
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`,
     );
-  }
 
-  const asText = await response.text();
+    if (!popup) {
+      reject(new Error("Popup blocked. Please allow popups for this site."));
+      return;
+    }
 
-  try {
-    return JSON.parse(asText);
-  } catch (ex) {
-    return asText;
-  }
+    // Listen for message from the popup
+    const messageHandler = (event) => {
+      // Security check - only accept messages from our popup
+      if (event.source !== popup) {
+        return;
+      }
+
+      // Check for our specific message type
+      if (event.data && event.data.type === "saml_auth_complete") {
+        // Remove the event listener
+        window.removeEventListener("message", messageHandler);
+
+        // Close the popup
+        popup.close();
+
+        // Resolve with the auth data
+        resolve(event.data.payload);
+      }
+    };
+
+    window.addEventListener("message", messageHandler);
+
+    // Handle popup closing
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        window.removeEventListener("message", messageHandler);
+        reject(new Error("Authentication was canceled"));
+      }
+    }, 1000);
+
+    // Set timeout to prevent hanging indefinitely
+    setTimeout(() => {
+      clearInterval(checkClosed);
+      window.removeEventListener("message", messageHandler);
+      if (!popup.closed) {
+        popup.close();
+      }
+      reject(new Error("Authentication timed out"));
+    }, 300000); // 5 minutes timeout
+  });
 };
 
 const sessionSchema = Yup.object({
