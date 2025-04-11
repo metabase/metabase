@@ -2,20 +2,26 @@ import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { useSearchFieldValuesQuery } from "metabase/api";
-import { type ComboboxProps, Loader, MultiAutocomplete } from "metabase/ui";
+import {
+  useGetRemappedFieldValueQuery,
+  useSearchFieldValuesQuery,
+} from "metabase/api";
+import {
+  Box,
+  type ComboboxItem,
+  type ComboboxProps,
+  Flex,
+  Loader,
+  MultiAutocomplete,
+} from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
-import { getFieldOptions } from "../utils";
+import { getFieldOption, getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
-import {
-  getFilteredOptions,
-  getNothingFoundMessage,
-  shouldSearch,
-} from "./utils";
+import { getNothingFoundMessage, shouldSearch } from "./utils";
 
-interface SearchValuePickerProps {
+type SearchValuePickerProps = {
   fieldId: FieldId;
   searchFieldId: FieldId;
   fieldValues: FieldValue[];
@@ -25,7 +31,7 @@ interface SearchValuePickerProps {
   comboboxProps?: ComboboxProps;
   parseValue?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
-}
+};
 
 export function SearchValuePicker({
   fieldId,
@@ -41,6 +47,7 @@ export function SearchValuePicker({
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
   const canSearch = searchQuery.length > 0;
+  const isRemapped = fieldId !== searchFieldId;
 
   const {
     data: searchFieldValues = [],
@@ -61,11 +68,6 @@ export function SearchValuePicker({
   const searchOptions = canSearch
     ? getFieldOptions(searchFieldValues)
     : getFieldOptions(initialFieldValues);
-  const visibleOptions = getFilteredOptions(
-    searchOptions,
-    searchValue,
-    selectedValues,
-  );
   const nothingFoundMessage = getNothingFoundMessage(
     columnDisplayName,
     searchError,
@@ -91,7 +93,7 @@ export function SearchValuePicker({
   return (
     <MultiAutocomplete
       value={selectedValues}
-      data={visibleOptions}
+      data={searchOptions}
       placeholder={t`Search by ${columnDisplayName}`}
       autoFocus={autoFocus}
       rightSection={isSearching ? <Loader size="xs" /> : undefined}
@@ -99,8 +101,74 @@ export function SearchValuePicker({
       comboboxProps={comboboxProps}
       aria-label={t`Filter value`}
       parseValue={parseValue}
+      renderValue={(value) => (
+        <RemappedValue
+          fieldId={fieldId}
+          searchFieldId={searchFieldId}
+          value={value}
+          isRemapped={isRemapped}
+        />
+      )}
+      renderOption={({ option }) => (
+        <RemappedOption option={option} isRemapped={isRemapped} />
+      )}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />
+  );
+}
+
+type RemappedValueProps = {
+  fieldId: FieldId;
+  searchFieldId: FieldId;
+  value: string;
+  isRemapped: boolean;
+};
+
+function RemappedValue({
+  fieldId,
+  searchFieldId,
+  value,
+  isRemapped,
+}: RemappedValueProps) {
+  const { data: remappedValue } = useGetRemappedFieldValueQuery(
+    {
+      fieldId,
+      remappedFieldId: searchFieldId,
+      value,
+    },
+    {
+      skip: !isRemapped,
+    },
+  );
+
+  if (remappedValue == null) {
+    return value;
+  }
+
+  const option = getFieldOption(remappedValue);
+  return (
+    <Flex component="span" gap="sm">
+      <span>{option.label}</span>
+      <Box opacity={0.5}>{option.value}</Box>
+    </Flex>
+  );
+}
+
+type RemappedOptionProps = {
+  option: ComboboxItem;
+  isRemapped: boolean;
+};
+
+function RemappedOption({ option, isRemapped }: RemappedOptionProps) {
+  if (!isRemapped) {
+    return option.value;
+  }
+
+  return (
+    <Flex flex={1} justify="space-between" gap="sm">
+      <span>{option.label}</span>
+      <Box opacity={0.5}>{option.value}</Box>
+    </Flex>
   );
 }
