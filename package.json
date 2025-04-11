@@ -142,6 +142,7 @@
     "yup": "^0.32.11"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-code": "^0.2.67",
     "@babel/cli": "^7.23.0",
     "@babel/core": "^7.23.3",
     "@babel/node": "^7.22.19",

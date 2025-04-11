@@ -7,7 +7,7 @@
 - Work autonomously in small, testable increments
 - Run targeted tests, and lint continuously during development
 - Prioritize understanding existing patterns before implementing
-- Don't commit changes, leave it for the user to review and make commits
+- Don't commit changes unless requested
 
 ## Quick Commands
 
