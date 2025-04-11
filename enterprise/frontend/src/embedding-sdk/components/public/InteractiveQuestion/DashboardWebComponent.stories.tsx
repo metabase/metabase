@@ -13,7 +13,7 @@ export default {
     layout: "fullscreen",
   },
   decorators: [
-    Story => (
+    (Story) => (
       <mb-provider
         metabase-instance-url={config.metabaseInstanceUrl}
         auth-provider-uri={config.authProviderUri}
@@ -25,11 +25,15 @@ export default {
   ],
 };
 
-export const Dashboard = args => <mb-dashboard dashboard-id={DASHBOARD_ID} />;
+export const Dashboard = (args) => (
+  <div style={{ background: `var(--mb-background-color)` }}>
+    <mb-dashboard dashboard-id={DASHBOARD_ID} />;
+  </div>
+);
 Dashboard.args = {};
 
-export const Open = args => <mb-dashboard-open dashboard-id={DASHBOARD_ID} />;
+export const Open = (args) => <mb-dashboard-open dashboard-id={DASHBOARD_ID} />;
 
-export const Closed = args => (
+export const Closed = (args) => (
   <mb-dashboard-closed dashboard-id={DASHBOARD_ID} />
 );
