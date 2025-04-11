@@ -20,6 +20,13 @@ import { Icon } from "../../icons";
 import S from "./MultiAutocomplete.module.css";
 import { useMultiAutocomplete } from "./use-multi-autocomplete";
 
+export type MultiAutocompleteRenderValueProps = {
+  value: string;
+};
+
+export type MultiAutocompleteRenderOptionProps =
+  ComboboxLikeRenderOptionInput<ComboboxItem>;
+
 export type MultiAutocompleteProps = BoxProps &
   __InputWrapperProps &
   ComboboxLikeProps & {
@@ -30,10 +37,8 @@ export type MultiAutocompleteProps = BoxProps &
     nothingFoundMessage?: ReactNode;
     "aria-label"?: string;
     parseValue?: (rawValue: string) => string | null;
-    renderValue?: (value: string) => ReactNode;
-    renderOption?: (
-      input: ComboboxLikeRenderOptionInput<ComboboxItem>,
-    ) => ReactNode;
+    renderValue?: (props: MultiAutocompleteRenderValueProps) => ReactNode;
+    renderOption?: (props: MultiAutocompleteRenderOptionProps) => ReactNode;
     onChange: (newValues: string[]) => void;
     onSearchChange?: (newValue: string) => void;
   };
@@ -148,7 +153,7 @@ export function MultiAutocomplete({
                     onClick={(event) => handlePillClick(event, valueIndex)}
                     onRemove={() => handlePillRemoveClick(valueIndex)}
                   >
-                    {renderValue(value)}
+                    {renderValue({ value })}
                   </Pill>
                 ) : (
                   <Combobox.EventsTarget key="field">
@@ -199,6 +204,6 @@ function defaultParseValue(value: string) {
   return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
-function defaultRenderValue(value: string) {
+function defaultRenderValue({ value }: MultiAutocompleteRenderValueProps) {
   return value;
 }

@@ -101,7 +101,7 @@ export function SearchValuePicker({
       comboboxProps={comboboxProps}
       aria-label={t`Filter value`}
       parseValue={parseValue}
-      renderValue={(value) => (
+      renderValue={({ value }) => (
         <RemappedValue
           fieldId={fieldId}
           searchFieldId={searchFieldId}

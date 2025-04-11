@@ -11,7 +11,12 @@ import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import { MultiAutocomplete } from "metabase/ui";
+import {
+  type ComboboxItem,
+  MultiAutocomplete,
+  MultiAutocompleteOption,
+  MultiAutocompleteValue,
+} from "metabase/ui";
 import type {
   Parameter,
   ParameterValue,
@@ -71,8 +76,12 @@ export function NumberInputWidget({
 
   const values = parameter?.values_source_config?.values ?? [];
   const options =
-    values.map(getOption).filter((item): item is SelectItem => item !== null) ??
-    [];
+    values
+      .map(getOption)
+      .filter((item): item is ComboboxItem => item !== null) ?? [];
+  const labelByValue = Object.fromEntries(
+    options.map((option) => [option.value, option.label]),
+  );
 
   const parseValue = (rawValue: string) => {
     const number = parseNumber(rawValue);
@@ -97,6 +106,22 @@ export function NumberInputWidget({
             autoFocus={autoFocus}
             comboboxProps={COMBOBOX_PROPS}
             parseValue={parseValue}
+            renderValue={({ value }) => (
+              <MultiAutocompleteValue
+                value={value}
+                label={
+                  labelByValue[value] !== value
+                    ? labelByValue[value]
+                    : undefined
+                }
+              />
+            )}
+            renderOption={({ option }) => (
+              <MultiAutocompleteOption
+                value={option.value}
+                label={option.label !== option.value ? option.label : undefined}
+              />
+            )}
             onChange={handleChange}
           />
         </TokenFieldWrapper>
@@ -137,12 +162,9 @@ export function NumberInputWidget({
   );
 }
 
-type SelectItem = {
-  value: string;
-  label: string;
-};
-
-function getOption(entry: string | number | ParameterValue): SelectItem | null {
+function getOption(
+  entry: string | number | ParameterValue,
+): ComboboxItem | null {
   const value = getValue(entry);
   const label = getLabel(entry);
 
