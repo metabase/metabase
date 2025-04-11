@@ -4,15 +4,16 @@ import { InteractiveDashboard } from "../InteractiveDashboard";
 import { MetabaseProvider } from "../MetabaseProvider";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
+
 /**
- * Factory function to create a configurable MbQuestionContainer
+ * Factory function to create a configurable MbProvider
  * @param {Object} config Configuration options
  * @param {Object} config.props Properties configuration
  * @param {Array} config.props.include List of property names to include
  * @param {Array} config.components List of component tags to target
  * @returns {Class} Web component class
  */
-function MbQuestionContainer(config = {}) {
+function createMetabaseProvider(config = {}) {
   const includedProps = config.props?.include || [];
   const targetComponents = config.components || ["mb-question"];
 
@@ -47,9 +48,9 @@ function MbQuestionContainer(config = {}) {
       const selector = targetComponents.join(",");
       const targetElements = this.querySelectorAll(selector);
 
-      targetElements.forEach(element => {
+      targetElements.forEach((element) => {
         // Pass attributes
-        Array.from(this.attributes).forEach(attr => {
+        Array.from(this.attributes).forEach((attr) => {
           // Only pass included props if the include list is not empty
           if (includedProps.length === 0 || includedProps.includes(attr.name)) {
             element.setAttribute(attr.name, attr.value);
@@ -90,10 +91,11 @@ function MbQuestionContainer(config = {}) {
 }
 
 // Create container with config
-const QuestionContainer = MbQuestionContainer({
+const MbProvider = createMetabaseProvider({
   props: {
     include: [
       "metabase-instance-url",
+      "api-key",
       "auth-provider-uri",
       "fetch-request-token",
     ],
@@ -109,12 +111,13 @@ const QuestionContainer = MbQuestionContainer({
 });
 
 // Register the element
-customElements.define("mb-provider", QuestionContainer);
+customElements.define("mb-provider", MbProvider);
 
-const MbQuestion = shadow =>
+const MbQuestion = (shadow) =>
   r2wc(
     ({
       metabaseInstanceUrl,
+      apiKey,
       authProviderUri,
       fetchRequestToken,
       questionId,
@@ -129,6 +132,7 @@ const MbQuestion = shadow =>
         <MetabaseProvider
           authConfig={{
             metabaseInstanceUrl,
+            apiKey,
             authProviderUri,
             fetchRequestToken,
           }}
@@ -148,10 +152,11 @@ const MbQuestion = shadow =>
     },
   );
 
-const MbDashboard = shadow =>
+const MbDashboard = (shadow) =>
   r2wc(
     ({
       metabaseInstanceUrl,
+      apiKey,
       authProviderUri,
       fetchRequestToken,
       dashboardId,
@@ -159,6 +164,7 @@ const MbDashboard = shadow =>
       <MetabaseProvider
         authConfig={{
           metabaseInstanceUrl,
+          apiKey,
           authProviderUri,
           fetchRequestToken,
         }}
@@ -171,6 +177,7 @@ const MbDashboard = shadow =>
       props: {
         dashboardId: "number",
         metabaseInstanceUrl: "string",
+        apiKey: "string",
         authProviderUri: "string",
         fetchRequestToken: "function",
       },
