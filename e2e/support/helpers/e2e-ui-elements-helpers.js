@@ -514,7 +514,11 @@ export function fieldValuesValue(index) {
 
 export function removeFieldValuesValue(index) {
   // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
+  return cy
+    .findAllByTestId("token-field")
+    .findAllByLabelText("Remove")
+    .eq(index)
+    .click();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
