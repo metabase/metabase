@@ -59,7 +59,8 @@ export function PublicOrEmbeddedQuestionView({
   downloadsEnabled,
 }: PublicOrEmbeddedQuestionViewProps) {
   const question = new Question(card, metadata);
-  const actionButtons =
+
+  const questionResultDownloadButton =
     result && downloadsEnabled ? (
       <QuestionDownloadPopover
         className={cx(CS.m1, CS.textMediumHover)}
@@ -74,7 +75,6 @@ export function PublicOrEmbeddedQuestionView({
     <EmbedFrame
       name={card && card.name}
       description={card && card.description}
-      actionButtons={actionButtons}
       question={question}
       parameters={getParameters()}
       parameterValues={parameterValues}
@@ -87,6 +87,7 @@ export function PublicOrEmbeddedQuestionView({
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}
+      headerButtons={questionResultDownloadButton}
       // We don't support PDF downloads on questions
       pdfDownloadsEnabled={false}
     >

@@ -95,16 +95,16 @@ export function downloadAndAssert(
   if (isEmbed) {
     if (isDashboard) {
       getDashboardCard().realHover();
-      cy.findByTestId("download-question-results-button").click();
+      cy.findByTestId("download-dashcard-results-button").click();
     } else {
-      cy.findByTestId("download-button").click();
+      cy.findByTestId("question-results-download-button").click();
     }
   } else {
     if (isDashboard) {
       getDashboardCardMenu().click();
       cy.findByText("Download results").click();
     } else {
-      cy.findByTestId("download-button").click();
+      cy.findByTestId("question-results-download-button").click();
     }
   }
 

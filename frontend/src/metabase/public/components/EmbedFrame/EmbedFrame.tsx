@@ -60,6 +60,7 @@ export type EmbedFrameBaseProps = Partial<{
   description: string | null;
   question: Question;
   dashboard: Dashboard | null;
+  headerButtons: ReactNode;
   actionButtons: ReactNode;
   footerVariant: FooterVariant;
   parameters: Parameter[];
@@ -87,6 +88,7 @@ export const EmbedFrame = ({
   question,
   dashboard,
   actionButtons,
+  headerButtons = null,
   dashboardTabs = null,
   footerVariant = "default",
   parameters,
@@ -200,6 +202,7 @@ export const EmbedFrame = ({
                       hasVisibleParameters={hasVisibleParameters}
                     />
                   )}
+                  {headerButtons}
                 </TitleAndButtonsContainer>
               </TitleAndDescriptionContainer>
             )}

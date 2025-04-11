@@ -959,7 +959,7 @@ describe("issue 16108", () => {
   it("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     cy.icon("download").realHover();
-    H.tooltip().findByText("Download full results");
+    H.tooltip().findByText("Download results");
     H.sharingMenuButton().realHover();
     H.tooltip().findByText("Sharing");
   });

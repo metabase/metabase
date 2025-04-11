@@ -56,7 +56,7 @@ H.describeWithSnowplowEE(
         cy.findByTestId("export-as-pdf-button").should("not.exist");
 
         // we should not have any dashcard action in a static embedded/embed scenario, so the menu should not be there
-        cy.findByTestId("download-question-results-button").should("not.exist");
+        cy.findByTestId("download-dashcard-results-button").should("not.exist");
       });
 
       it("should be able to download a static embedded dashboard as PDF", () => {
@@ -225,7 +225,7 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("download-button").should("not.exist");
+        cy.findByTestId("question-results-download-button").should("not.exist");
       });
 
       it("should be able to download the question as PNG", () => {
@@ -243,7 +243,7 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("download-button").click();
+        cy.findByTestId("question-results-download-button").click();
         H.popover().within(() => {
           cy.findByText(".png").click();
           cy.findByTestId("download-results-button").click();
@@ -274,7 +274,7 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("download-button").click();
+        cy.findByTestId("question-results-download-button").click();
 
         H.popover().within(() => {
           cy.findByText(".csv").click();
@@ -359,7 +359,7 @@ H.describeWithSnowplowEE(
 
           H.main().findByText(value).should("exist");
 
-          cy.findByTestId("download-button").click();
+          cy.findByTestId("question-results-download-button").click();
 
           H.popover().within(() => {
             cy.findByText(".csv").click();

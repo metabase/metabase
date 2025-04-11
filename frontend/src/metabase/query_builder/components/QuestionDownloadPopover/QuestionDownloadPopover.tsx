@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { ViewFooterButton } from "metabase/components/ViewFooterButton";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Flex, Popover } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Popover, Tooltip } from "metabase/ui";
 import type { Dataset } from "metabase-types/api";
 
 import { QuestionDownloadWidget } from "../QuestionDownloadWidget";
@@ -43,13 +42,15 @@ const QuestionDownloadPopover = ({
     <Popover opened={isPopoverOpen} onChange={setIsPopoverOpen}>
       <Popover.Target>
         <Flex className={className}>
-          <ViewFooterButton
-            icon="download"
-            data-testid="download-button"
-            tooltipLabel={t`Download full results`}
-            onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-            disableTooltip={isPopoverOpen}
-          />
+          <Tooltip label={t`Download results`} disabled={isPopoverOpen}>
+            <ActionIcon
+              c="text-dark"
+              data-testid="question-results-download-button"
+              onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+            >
+              <Icon name="download" />
+            </ActionIcon>
+          </Tooltip>
         </Flex>
       </Popover.Target>
       <Popover.Dropdown p="0.75rem">

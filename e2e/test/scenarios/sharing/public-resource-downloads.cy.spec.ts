@@ -52,7 +52,7 @@ H.describeWithSnowplowEE(
         cy.findByTestId("export-as-pdf-button").should("not.exist");
 
         // we should not have any dashcard action in a public/embed scenario, so the menu should not be there
-        cy.findByTestId("download-question-results-button").should("not.exist");
+        cy.findByTestId("download-dashcard-results-button").should("not.exist");
       });
 
       it("#downloads=pdf should enable only PDF downloads", () => {
@@ -60,7 +60,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        cy.findByTestId("download-question-results-button").should("not.exist");
+        cy.findByTestId("download-dashcard-results-button").should("not.exist");
       });
 
       it("#downloads=results should enable only dashcard results downloads", () => {
@@ -70,7 +70,7 @@ H.describeWithSnowplowEE(
         cy.get("header")
           .findByTestId("export-as-pdf-button")
           .should("not.exist");
-        cy.findByTestId("download-question-results-button").should("exist");
+        cy.findByTestId("download-dashcard-results-button").should("exist");
       });
 
       it("#downloads=pdf,results should enable both PDF and results downloads", () => {
@@ -78,7 +78,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        cy.findByTestId("download-question-results-button").should("exist");
+        cy.findByTestId("download-dashcard-results-button").should("exist");
       });
 
       it("#downloads=results,pdf should enable both PDF and results downloads (order agnostic)", () => {
@@ -86,7 +86,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        cy.findByTestId("download-question-results-button").should("exist");
+        cy.findByTestId("download-dashcard-results-button").should("exist");
       });
 
       it("#downloads=results, pdf should handle whitespace between parameters", () => {
@@ -94,7 +94,7 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.get("header").findByTestId("export-as-pdf-button").should("exist");
-        cy.findByTestId("download-question-results-button").should("exist");
+        cy.findByTestId("download-dashcard-results-button").should("exist");
       });
 
       it("should be able to download a public dashboard as PDF", () => {
@@ -166,21 +166,21 @@ H.describeWithSnowplowEE(
         cy.visit(`${publicLink}#downloads=results`);
         waitLoading();
 
-        cy.findByTestId("download-button").should("exist");
+        cy.findByTestId("question-results-download-button").should("exist");
       });
 
       it("#downloads=false should disable result downloads", () => {
         cy.visit(`${publicLink}#downloads=false`);
         waitLoading();
 
-        cy.findByTestId("download-button").should("not.exist");
+        cy.findByTestId("question-results-download-button").should("not.exist");
       });
 
       it("should be able to download the question as PNG", () => {
         cy.visit(`${publicLink}`);
         waitLoading();
 
-        cy.findByTestId("download-button").click();
+        cy.findByTestId("question-results-download-button").click();
         H.popover().within(() => {
           cy.findByText(".png").click();
           cy.findByTestId("download-results-button").click();
@@ -200,7 +200,7 @@ H.describeWithSnowplowEE(
         cy.visit(`${publicLink}`);
         waitLoading();
 
-        cy.findByTestId("download-button").should("exist");
+        cy.findByTestId("question-results-download-button").should("exist");
 
         const uuid = publicLink.split("/").at(-1);
 

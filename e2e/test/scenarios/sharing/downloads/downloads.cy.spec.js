@@ -407,7 +407,7 @@ describe("scenarios > question > download", () => {
     it("from query builder", () => {
       H.createQuestion(canSavePngQuestion, { visitQuestion: true });
 
-      cy.findByTestId("download-button").click();
+      cy.findByTestId("question-results-download-button").click();
 
       H.popover().within(() => {
         cy.findByText(".png").click();
@@ -418,7 +418,7 @@ describe("scenarios > question > download", () => {
 
       H.createQuestion(cannotSavePngQuestion, { visitQuestion: true });
 
-      cy.findByTestId("download-button").click();
+      cy.findByTestId("question-results-download-button").click();
 
       H.popover().within(() => {
         cy.findByText(".png").should("not.exist");

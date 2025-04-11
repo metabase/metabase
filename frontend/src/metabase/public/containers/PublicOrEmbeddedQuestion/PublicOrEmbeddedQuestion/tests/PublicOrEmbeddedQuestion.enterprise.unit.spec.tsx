@@ -45,9 +45,7 @@ describe("PublicOrEmbeddedQuestion", () => {
 
       await userEvent.hover(screen.getByRole("button", { name: /download/ }));
 
-      expect(
-        await screen.findByText("Download full results"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Download results")).toBeInTheDocument();
     });
 
     it('should not set the locale to "ko" without "whitelabel" feature', async () => {
