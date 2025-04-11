@@ -42,7 +42,7 @@
 (doseq [[feature supported?] {:connection-impersonation  true
                               :describe-fields           true
                               :describe-fks              true
-                              :expression-literals       false
+                              :expression-literals       true
                               :identifiers-with-spaces   false
                               :uuid-type                 false
                               :nested-field-columns      false
@@ -395,6 +395,11 @@
 (defmethod sql.qp/datetime-diff [:redshift :second]
   [_driver _unit x y]
   (h2x/- (extract :epoch y) (extract :epoch x)))
+
+(defmethod sql.qp/->honeysql [:redshift ::sql.qp/expression-literal-text-value]
+  [driver [_ value]]
+  (->> (sql.qp/->honeysql driver value)
+       (h2x/cast :text)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
