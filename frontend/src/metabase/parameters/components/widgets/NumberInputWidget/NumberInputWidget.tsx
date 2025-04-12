@@ -11,12 +11,7 @@ import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import {
-  type ComboboxItem,
-  MultiAutocomplete,
-  MultiAutocompleteOption,
-  MultiAutocompleteValue,
-} from "metabase/ui";
+import { type ComboboxItem, MultiAutocomplete } from "metabase/ui";
 import type {
   Parameter,
   ParameterValue,
@@ -106,22 +101,7 @@ export function NumberInputWidget({
             autoFocus={autoFocus}
             comboboxProps={COMBOBOX_PROPS}
             parseValue={parseValue}
-            renderValue={({ value }) => (
-              <MultiAutocompleteValue
-                value={value}
-                label={
-                  labelByValue[value] !== value
-                    ? labelByValue[value]
-                    : undefined
-                }
-              />
-            )}
-            renderOption={({ option }) => (
-              <MultiAutocompleteOption
-                value={option.value}
-                label={option.label !== option.value ? option.label : undefined}
-              />
-            )}
+            renderValue={({ value }) => labelByValue[value] ?? value}
             onChange={handleChange}
           />
         </TokenFieldWrapper>
