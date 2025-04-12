@@ -60,6 +60,7 @@ export type EmbedFrameBaseProps = Partial<{
   description: string | null;
   question: Question;
   dashboard: Dashboard | null;
+  headerButtons: ReactNode;
   actionButtons: ReactNode;
   footerVariant: FooterVariant;
   parameters: Parameter[];
@@ -87,6 +88,7 @@ export const EmbedFrame = ({
   question,
   dashboard,
   actionButtons,
+  headerButtons = null,
   dashboardTabs = null,
   footerVariant = "default",
   parameters,
@@ -169,6 +171,8 @@ export const EmbedFrame = ({
         className={cx(
           EmbedFrameS.ContentContainer,
           EmbedFrameS.WithThemeBackground,
+          CS.hoverParent,
+          CS.hoverVisibility,
         )}
       >
         {hasHeader && (
@@ -180,7 +184,7 @@ export const EmbedFrame = ({
             data-testid="embed-frame-header"
           >
             {(finalName || pdfDownloadsEnabled) && (
-              <TitleAndDescriptionContainer>
+              <TitleAndDescriptionContainer hasTitle={!!finalName}>
                 <TitleAndButtonsContainer
                   data-testid="fixed-width-dashboard-header"
                   isFixedWidth={dashboard?.width === "fixed"}
@@ -194,8 +198,13 @@ export const EmbedFrame = ({
                   )}
                   <Box style={{ flex: 1 }} />
                   {dashboard && pdfDownloadsEnabled && (
-                    <ExportAsPdfButton dashboard={dashboard} color="brand" />
+                    <ExportAsPdfButton
+                      dashboard={dashboard}
+                      hasTitle={titled}
+                      hasVisibleParameters={hasVisibleParameters}
+                    />
                   )}
+                  {headerButtons}
                 </TitleAndButtonsContainer>
               </TitleAndDescriptionContainer>
             )}
@@ -210,9 +219,12 @@ export const EmbedFrame = ({
               </DashboardTabsContainer>
             )}
 
-            <Separator className={EmbedFrameS.Separator} />
+            {finalName && <Separator className={EmbedFrameS.Separator} />}
           </Header>
         )}
+
+        {/* show floating header buttons if there is no title */}
+        {headerButtons && !titled ? headerButtons : null}
 
         <span ref={parameterPanelRef} />
         {hasVisibleParameters && (

@@ -45,10 +45,8 @@ describe("PublicOrEmbeddedQuestion", () => {
     it('should set the locale to "en" by default', async () => {
       await setupPremium();
 
-      await userEvent.hover(getIcon("download"));
-
       expect(
-        await screen.findByText("Download full results"),
+        await screen.findByRole("button", { name: "Download results" }),
       ).toBeInTheDocument();
     });
 

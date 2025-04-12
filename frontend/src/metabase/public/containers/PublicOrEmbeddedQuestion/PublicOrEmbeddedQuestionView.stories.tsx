@@ -350,7 +350,9 @@ const downloadQuestionAsPng = async (
 ) => {
   const canvas = within(canvasElement);
 
-  const downloadButton = await canvas.findByTestId("download-button");
+  const downloadButton = await canvas.findByTestId(
+    "question-results-download-button",
+  );
   await userEvent.click(downloadButton!);
 
   const documentElement = within(document.documentElement);

@@ -32,6 +32,7 @@ import type {
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
+import { DashCardQuestionDownloadButton } from "./DashCardQuestionDownloadButton";
 import S from "./DashCardVisualization.module.css";
 import type {
   CardSlownessStatus,
@@ -220,6 +221,28 @@ export function DashCardVisualization({
       return null;
     }
 
+    const token = isJWT(dashcard.dashboard_id)
+      ? String(dashcard.dashboard_id)
+      : undefined;
+
+    const uuid = isUuid(dashcard.dashboard_id)
+      ? dashcard.dashboard_id
+      : undefined;
+
+    // Only show the download button if the dashboard is public or embedded.
+    if (isPublicOrEmbedded && downloadsEnabled) {
+      return (
+        <DashCardQuestionDownloadButton
+          question={question}
+          result={mainSeries}
+          dashboardId={dashboard.id}
+          dashcardId={dashcard.id}
+          uuid={uuid}
+          token={token}
+        />
+      );
+    }
+
     return (
       <DashCardMenu
         downloadsEnabled={downloadsEnabled}
@@ -227,12 +250,8 @@ export function DashCardVisualization({
         result={mainSeries}
         dashcardId={dashcard.id}
         dashboardId={dashboard.id}
-        token={
-          isJWT(dashcard.dashboard_id)
-            ? String(dashcard.dashboard_id)
-            : undefined
-        }
-        uuid={isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined}
+        token={token}
+        uuid={uuid}
       />
     );
   }, [

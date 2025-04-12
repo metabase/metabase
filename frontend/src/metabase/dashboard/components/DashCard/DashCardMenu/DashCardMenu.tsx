@@ -138,7 +138,6 @@ export const DashCardMenu = ({
     <Menu offset={4} position="bottom-end" opened={isOpen} onClose={close}>
       <Menu.Target>
         <ActionIcon
-          size="xs"
           className={cx({
             [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
             [cx(CS.hoverChild, CS.hoverChildSmooth)]: !isOpen,
