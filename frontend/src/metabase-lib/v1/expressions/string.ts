@@ -6,6 +6,11 @@ const OPEN_BRACKET = "[";
 const CLOSE_BRACKET = "]";
 const BACKSLASH = "\\";
 
+export type Quote =
+  | typeof DOUBLE_QUOTE
+  | typeof SINGLE_QUOTE
+  | typeof OPEN_BRACKET;
+
 const STRING_ESCAPE: Record<string, string> = {
   "\b": "\\b",
   "\t": "\\t",
@@ -31,13 +36,13 @@ export function formatStringLiteral(
   {
     quotes = EDITOR_QUOTES,
   }: {
-    quotes?: { literalQuoteDefault: string };
+    quotes?: { literalQuoteDefault: Quote };
   } = {},
 ) {
   return quoteString(node, quotes.literalQuoteDefault);
 }
 
-export function quoteString(string: string, quote: string) {
+export function quoteString(string: string, quote: Quote) {
   const [OPEN, CLOSE] = getQuotePair(quote);
 
   let str = "";
