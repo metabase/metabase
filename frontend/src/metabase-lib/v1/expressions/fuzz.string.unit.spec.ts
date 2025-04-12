@@ -1,27 +1,36 @@
 import { quoteString, unquoteString } from "./string";
 import { fuzz } from "./test/fuzz";
+import { createRandom } from "./test/generator";
 
 const MAX_SEED = 10_000;
 
+const alphabet = [
+  ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\r\t\f\b\v'\"_-()[]",
+  "\\\\",
+];
+
+function randomString(seed: number): string {
+  const random = createRandom(seed);
+
+  const randomInt = (max: number): number => Math.floor(max * random());
+  const randomChar = () => alphabet[randomInt(alphabet.length)];
+
+  const len = randomInt(100);
+  const res = [];
+  for (let i = 0; i < len; i++) {
+    res.push(randomChar());
+  }
+  return res.join("");
+}
+
 fuzz("metabase-lib/v1/expressions/string", () => {
-  it("should round trip strings", () => {
-    const alphabet = [
-      ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\r\t\f\b\v'\"",
-      "\\\\",
-    ];
-
-    for (let i = 0; i < MAX_SEED; i++) {
-      const len = Math.floor(Math.random() * 50);
-      let res = "";
-      for (let i = 0; i < len; i++) {
-        const index = Math.floor(Math.random() * alphabet.length);
-        res += alphabet[index];
-      }
-
-      const quoted = quoteString(res, "'");
+  for (let seed = 0; seed <= MAX_SEED; seed++) {
+    it(`should round trip strings (seed = ${seed})`, () => {
+      const str = randomString(seed);
+      const quoted = quoteString(str, "'");
       const unquoted = unquoteString(quoted);
 
-      expect(unquoted).toEqual(res);
-    }
-  });
+      expect(unquoted).toEqual(str);
+    });
+  }
 });
