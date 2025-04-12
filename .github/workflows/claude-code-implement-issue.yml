@@ -1,0 +1,164 @@
+name: Claude Code Implement Issue Workflow
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  implement-solution:
+    if: github.event.label.name == 'claude-code:implement-issue'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ref: ${{ github.head_ref }}
+
+      - name: Find Claude-Generated Prompt
+        id: find-prompt
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          result-encoding: string
+          script: |
+            // Get all comments on the issue
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              per_page: 100
+            });
+
+            // Find the comment created by github-automation-metabase with the claude-generated prompt
+            const promptComment = comments.find(comment => {
+              return comment.user.login === 'github-automation-metabase' &&
+                     comment.body.includes('<!-- CLAUDE-GENERATED-PROMPT-START -->') &&
+                     comment.body.includes('<!-- CLAUDE-GENERATED-PROMPT-END -->');
+            });
+
+            if (!promptComment) {
+              core.setFailed('Could not find a prompt comment created by @github-automation-metabase');
+              return '';
+            }
+
+            // Extract the prompt content between the markers
+            const promptRegex = /<!-- CLAUDE-GENERATED-PROMPT-START -->([\s\S]*?)<!-- CLAUDE-GENERATED-PROMPT-END -->/;
+            const match = promptRegex.exec(promptComment.body);
+
+            if (!match) {
+              core.setFailed('Could not extract prompt content from the comment');
+              return '';
+            }
+
+            return match[1].trim();
+
+      - name: Notify missing prompt
+        if: steps.find-prompt.outputs.result == ''
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `## ⚠️ No Claude-generated prompt found
+
+              Before implementing a solution with \`claude-code:implement-issue\`, please first generate a prompt using the \`claude-code:describe-issue\` label. Review the prompt and make sure it is secure and clear. Add any additional context that would be helpful for the AI to solve the problem.
+
+              The workflow will look for a comment from @github-automation-metabase containing a prompt between the markers:
+              \`\`\`
+              <!-- CLAUDE-GENERATED-PROMPT-START -->
+              <!-- CLAUDE-GENERATED-PROMPT-END -->
+              \`\`\`
+
+              Please add the \`claude-code:describe-issue\` label to this issue to generate this prompt first.`
+            });
+
+            core.setFailed('No Claude-generated prompt found. Added comment with instructions.');
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22"
+
+      - name: Install Claude Code
+        if: steps.find-prompt.outputs.result != ''
+        shell: bash
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run Claude Code
+        id: run-claude
+        if: steps.find-prompt.outputs.result != ''
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_PROMPT: ${{ steps.find-prompt.outputs.result }}
+        run: |
+          # Run Claude Code with the prompt directly from environment variable
+          OUTPUT=$(claude -p "$CLAUDE_PROMPT
+
+          Please solve this problem and include the following in your output:
+          - 'PR Title:' followed by a short descriptive title for the pull request that MUST start with '[Claude Code]' and briefly describe the purpose
+          - 'PR Description:' followed by a clear description of your implementation
+          " --allowedTools "Bash(git diff:*)" "Bash(git log:*)" Edit)
+
+          # Extract PR title from the output - handle both "PR Title: text" and "PR Title:\ntext" formats
+          PR_TITLE=$(echo "$OUTPUT" | grep -E "PR Title:" | sed -E 's/.*PR Title:[[:space:]]*(.*)/\1/' | sed -e 's/^[[:space:]]*//')
+
+          # If the above extraction found nothing (empty string), try the old method (title on next line)
+          if [ -z "$PR_TITLE" ]; then
+            PR_TITLE=$(echo "$OUTPUT" | grep -A 1 "PR Title:" | tail -n 1 | sed -e 's/^[[:space:]]*//')
+          fi
+
+          # Add debug output to see what we're getting
+          echo "DEBUG - Claude Output sample:"
+          echo "$OUTPUT" | grep -A 3 "PR Title:" || echo "No PR Title pattern found"
+          echo "DEBUG - Extracted PR_TITLE: '$PR_TITLE'"
+
+          # Extract PR description
+          PR_DESCRIPTION=$(echo "$OUTPUT" | grep -A 10 "PR Description:" | tail -n +2)
+
+          # Save these values to be used in the PR creation step
+          echo "PR_TITLE=${PR_TITLE}" >> $GITHUB_ENV
+          echo "PR_DESCRIPTION<<EOF" >> $GITHUB_ENV
+          echo "${PR_DESCRIPTION}" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+          # If no PR title was extracted, use a fallback
+          if [ -z "$PR_TITLE" ]; then
+            echo "PR_TITLE=[Claude Code] Implementation for issue #${{ github.event.issue.number }}" >> $GITHUB_ENV
+          fi
+
+      - name: Commit changes and create PR
+        if: steps.find-prompt.outputs.result != ''
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          BRANCH_NAME="${{ github.event.issue.number }}-claude-code"
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
+
+          # Create a new branch
+          git checkout -b ${BRANCH_NAME}
+          git add .
+          git commit -m "Claude Code implementation for issue #${ISSUE_NUMBER}"
+          git push origin ${BRANCH_NAME}
+
+          # Create a pull request using gh CLI with full repo specification
+          PR_URL=$(gh pr create \
+            --repo ${GITHUB_REPOSITORY} \
+            --title "${PR_TITLE}" \
+            --body "${PR_DESCRIPTION}
+
+            Fixes #${ISSUE_NUMBER}
+
+            [Generated by Claude Code]" \
+            --base master \
+            --head ${BRANCH_NAME})
+
+          echo "Created PR: ${PR_URL}"
