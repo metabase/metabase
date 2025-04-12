@@ -1,6 +1,6 @@
 import {
+  InteractiveDashboard,
   MetabaseProvider,
-  StaticDashboard,
 } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
@@ -21,7 +21,7 @@ function setup({ locale }: { locale: string }) {
       }}
       locale={locale}
     >
-      <StaticDashboard dashboardId={ORDERS_DASHBOARD_ID} withDownloads />,
+      <InteractiveDashboard dashboardId={ORDERS_DASHBOARD_ID} />,
     </MetabaseProvider>,
   );
 
@@ -44,7 +44,11 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
   it("when locale=de it should display german text", () => {
     setup({ locale: "de" });
 
-    getSdkRoot().findByText("Als PDF exportieren").should("exist");
+    getSdkRoot().within(() => {
+      cy.findByRole("button", {
+        name: "Automatische Aktualisierung",
+      }).should("exist");
+    });
   });
 
   it("when locale=de-CH it should fallback to `de.json`", () => {
@@ -54,7 +58,11 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
       expect(response.status).to.eq(200);
     });
 
-    getSdkRoot().findByText("Als PDF exportieren").should("exist");
+    getSdkRoot().within(() => {
+      cy.findByRole("button", {
+        name: "Automatische Aktualisierung",
+      }).should("exist");
+    });
   });
 
   it("when locale=pt it should fallback to pt_BR.json", () => {
