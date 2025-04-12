@@ -23,10 +23,15 @@ export const LegendLabelIcon = styled(Icon)`
 `;
 
 export const LegendDescriptionIcon = styled(
-  forwardRef<HTMLDivElement, IconProps>(
+  forwardRef<HTMLDivElement, IconProps & { "data-testid"?: string }>(
     function LegendDescriptionIcon(props, ref) {
       return (
-        <Box component="span" ref={ref} className={props.className}>
+        <Box
+          component="span"
+          ref={ref}
+          className={props.className}
+          data-testid={props["data-testid"]}
+        >
           <Icon name={props.name ?? "info"} mt="2px" />
         </Box>
       );
