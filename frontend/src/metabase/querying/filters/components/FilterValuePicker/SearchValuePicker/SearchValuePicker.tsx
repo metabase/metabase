@@ -157,7 +157,7 @@ type RemappedOptionProps = {
 
 function RemappedOption({ option, isRemapped }: RemappedOptionProps) {
   if (!isRemapped) {
-    return option.value;
+    return option.label;
   }
 
   return <MultiAutocompleteOption value={option.value} label={option.label} />;
