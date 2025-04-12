@@ -139,6 +139,7 @@
     "ttag": "1.7.21",
     "typescript": "^5.4.5",
     "underscore": "~1.13.3",
+    "webpack-manifest-plugin": "^5.0.1",
     "yup": "^0.32.11"
   },
   "devDependencies": {
