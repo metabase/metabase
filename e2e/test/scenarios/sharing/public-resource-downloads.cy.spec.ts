@@ -78,6 +78,8 @@ H.describeWithSnowplowEE(
         cy.get("header")
           .findByRole("button", { name: "Download as PDF" })
           .should("not.exist");
+
+        H.main().realHover();
         cy.findByRole("button", { name: "Download results" }).should("exist");
       });
 
@@ -88,6 +90,8 @@ H.describeWithSnowplowEE(
         cy.get("header")
           .findByRole("button", { name: "Download as PDF" })
           .should("exist");
+
+        H.main().realHover();
         cy.findByRole("button", { name: "Download results" }).should("exist");
       });
 
