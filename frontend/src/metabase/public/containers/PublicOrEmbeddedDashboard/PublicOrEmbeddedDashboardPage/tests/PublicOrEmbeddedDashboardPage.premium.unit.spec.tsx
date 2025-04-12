@@ -68,7 +68,6 @@ describe("PublicOrEmbeddedDashboardPage", () => {
       const { container } = await setupPremium({ numberOfTabs: 1 });
 
       expect(
-        // eslint-disable-next-line testing-library/no-node-access -- this test is testing a specific implementation detail as testing the actual functionality is not easy on jest
         container.querySelector(`#${DASHBOARD_PDF_EXPORT_ROOT_ID}`),
       ).toBeInTheDocument();
     });

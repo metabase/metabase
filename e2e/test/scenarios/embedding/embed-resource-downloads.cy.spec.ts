@@ -52,7 +52,6 @@ H.describeWithSnowplowEE(
         );
         waitLoading();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- this should not appear anywhere in the page
         cy.findByRole("button", { name: "Download as PDF" }).should(
           "not.exist",
         );
