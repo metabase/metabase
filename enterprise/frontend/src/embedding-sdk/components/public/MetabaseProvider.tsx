@@ -111,6 +111,10 @@ export const MetabaseProviderInternal = ({
   allowConsoleLog,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
+
+  // Container for Emotion styles
+  const emotionStyleContainerRef = useRef<HTMLDivElement>(null);
+
   useInitData({ authConfig, allowConsoleLog });
 
   useEffect(() => {
@@ -143,10 +147,15 @@ export const MetabaseProviderInternal = ({
 
   return (
     <SdkContextProvider>
-      <EmotionCacheProvider>
+      <EmotionCacheProvider
+        container={emotionStyleContainerRef.current as Node}
+      >
         <Global styles={SCOPED_CSS_RESET} />
         <SdkThemeProvider theme={theme}>
+          <Box ref={emotionStyleContainerRef}></Box>
+
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
+
           <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
             <LocaleProvider locale={locale || instanceLocale}>
               {children}
