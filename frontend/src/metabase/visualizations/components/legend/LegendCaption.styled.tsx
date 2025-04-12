@@ -32,7 +32,7 @@ export const LegendDescriptionIcon = styled(
           className={props.className}
           data-testid={props["data-testid"]}
         >
-          <Icon name={props.name ?? "info"} mt="2px" />
+          <Icon name={props.name ?? "info"} pt="2px" />
         </Box>
       );
     },
