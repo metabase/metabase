@@ -2,7 +2,7 @@ import { quoteString, unquoteString } from "./string";
 import { fuzz } from "./test/fuzz";
 import { createRandom } from "./test/generator";
 
-const MAX_SEED = 10_000;
+const MAX_SEED = 1000;
 
 const simple = [
   ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_(){}",
@@ -62,13 +62,17 @@ describe("metabase-lib/v1/expressions/compiler", () => {
 });
 
 fuzz("metabase-lib/v1/expressions/string", () => {
-  for (let seed = 0; seed <= MAX_SEED; seed++) {
-    it(`should round trip strings (seed = ${seed})`, () => {
-      const str = randomString(seed);
-      const quoted = quoteString(str, "'");
-      const unquoted = unquoteString(quoted);
+  const QUOTES = ["'", '"', "["] as const;
 
-      expect(unquoted).toEqual(str);
-    });
-  }
+  QUOTES.forEach((QUOTE) => {
+    for (let seed = 0; seed <= MAX_SEED; seed++) {
+      it(`should round trip strings through ${QUOTE} (seed=${seed})`, () => {
+        const str = randomString(seed);
+        const quoted = quoteString(str, QUOTE);
+        const unquoted = unquoteString(quoted);
+
+        expect(unquoted).toEqual(str);
+      });
+    }
+  });
 });
