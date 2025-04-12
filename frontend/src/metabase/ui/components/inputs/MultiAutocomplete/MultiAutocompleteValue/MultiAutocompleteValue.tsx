@@ -1,6 +1,6 @@
 import { Box, Flex } from "metabase/ui";
 
-type MultiAutocompleteValueProps = {
+export type MultiAutocompleteValueProps = {
   value: string;
   label?: string;
 };
