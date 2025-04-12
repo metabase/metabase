@@ -80,7 +80,9 @@ H.describeWithSnowplowEE(
           .should("not.exist");
 
         H.main().realHover();
-        cy.findByRole("button", { name: "Download results" }).should("exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
       });
 
       it("#downloads=pdf,results should enable both PDF and results downloads", () => {
@@ -92,7 +94,9 @@ H.describeWithSnowplowEE(
           .should("exist");
 
         H.main().realHover();
-        cy.findByRole("button", { name: "Download results" }).should("exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
       });
 
       it("#downloads=results,pdf should enable both PDF and results downloads (order agnostic)", () => {
@@ -103,7 +107,10 @@ H.describeWithSnowplowEE(
           .findByRole("button", { name: "Download as PDF" })
           .should("exist");
 
-        cy.findByRole("button", { name: "Download results" }).should("exist");
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
       });
 
       it("#downloads=results, pdf should handle whitespace between parameters", () => {
@@ -113,7 +120,11 @@ H.describeWithSnowplowEE(
         cy.get("header")
           .findByRole("button", { name: "Download as PDF" })
           .should("exist");
-        cy.findByRole("button", { name: "Download results" }).should("exist");
+
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
       });
 
       it("should be able to download a public dashboard as PDF", () => {
@@ -187,13 +198,17 @@ H.describeWithSnowplowEE(
         cy.visit(`${publicLink}#downloads=results`);
         waitLoading();
 
-        cy.findByRole("button", { name: "Download results" }).should("exist");
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
       });
 
       it("#downloads=false should disable result downloads", () => {
         cy.visit(`${publicLink}#downloads=false`);
         waitLoading();
 
+        H.main().realHover();
         cy.findByRole("button", { name: "Download results" }).should(
           "not.exist",
         );
@@ -223,7 +238,10 @@ H.describeWithSnowplowEE(
         cy.visit(`${publicLink}`);
         waitLoading();
 
-        cy.findByRole("button", { name: "Download results" }).should("exist");
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
 
         const uuid = publicLink.split("/").at(-1);
 
