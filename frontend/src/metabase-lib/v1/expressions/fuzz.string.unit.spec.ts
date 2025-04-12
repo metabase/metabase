@@ -4,8 +4,17 @@ import { createRandom } from "./test/generator";
 
 const MAX_SEED = 10_000;
 
+const simple = [
+  ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_(){}",
+];
+
+const special = ["\\n", "\\r", "\\f", "\\b", "\\t", "\\v"];
+
 const alphabet = [
-  ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\r\t\f\b\v'\"_-()[]",
+  ...simple,
+  ...simple.map((char) => `\\${char}`).filter((str) => !special.includes(str)),
+  ..."\n\r\t\f\b\v",
+  ..."[]'\"`",
   "\\\\",
 ];
 
@@ -22,6 +31,35 @@ function randomString(seed: number): string {
   }
   return res.join("");
 }
+
+describe("metabase-lib/v1/expressions/compiler", () => {
+  it("should parse a convoluted string with single quotes", () => {
+    const str = alphabet.join("");
+
+    const quoted = quoteString(str, "'");
+    const unquoted = unquoteString(quoted);
+
+    expect(unquoted).toEqual(str);
+  });
+
+  it("should parse a convoluted string with double quotes", () => {
+    const str = alphabet.join("");
+
+    const quoted = quoteString(str, '"');
+    const unquoted = unquoteString(quoted);
+
+    expect(unquoted).toEqual(str);
+  });
+
+  it("should parse a convoluted string with brackets", () => {
+    const str = alphabet.join("");
+
+    const quoted = quoteString(str, "[");
+    const unquoted = unquoteString(quoted);
+
+    expect(unquoted).toEqual(str);
+  });
+});
 
 fuzz("metabase-lib/v1/expressions/string", () => {
   for (let seed = 0; seed <= MAX_SEED; seed++) {
