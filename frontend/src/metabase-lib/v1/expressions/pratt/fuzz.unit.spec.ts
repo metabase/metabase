@@ -1,10 +1,6 @@
-import process from "process";
-import _ from "underscore";
-
 import { lexify } from "../pratt/lexifier";
+import { fuzz } from "../test/fuzz";
 import { generateExpression } from "../test/generator";
-
-const fuzz = process.env.MB_FUZZ ? describe : _.noop;
 
 describe("metabase-lib/v1/expressions/tokenizer", () => {
   // quick sanity check before the real fuzzing

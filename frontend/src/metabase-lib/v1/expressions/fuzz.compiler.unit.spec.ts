@@ -1,8 +1,6 @@
-import process from "process";
-import _ from "underscore";
-
 import { query } from "./__support__/shared";
 import { compileExpression } from "./compiler";
+import { fuzz } from "./test/fuzz";
 import { generateExpression } from "./test/generator";
 import type { StartRule } from "./types";
 
@@ -16,7 +14,6 @@ jest.mock("metabase-lib", () => {
   };
 });
 
-const fuzz = process.env.MB_FUZZ ? describe : _.noop;
 const MAX_SEED = 10_000;
 
 function compile(expression: string, startRule: StartRule = "expression") {

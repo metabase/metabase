@@ -1,8 +1,6 @@
-import _ from "underscore";
-
 import { quoteString, unquoteString } from "./string";
+import { fuzz } from "./test/fuzz";
 
-const fuzz = process.env.MB_FUZZ ? describe : _.noop;
 const MAX_SEED = 10_000;
 
 fuzz("metabase-lib/v1/expressions/string", () => {
