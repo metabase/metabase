@@ -4,6 +4,7 @@ import { InteractiveDashboard } from "../InteractiveDashboard";
 import { MetabaseProvider } from "../MetabaseProvider";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
+import { STYLE_PATHS } from "./get-styles-manifest";
 
 /**
  * Factory function to create a configurable MbProvider

@@ -6,6 +6,8 @@ const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
+const { WebpackManifestPlugin } = require("webpack-manifest-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 const mainConfig = require("./webpack.config");
 const { resolve } = require("path");
@@ -86,9 +88,7 @@ module.exports = (env) => {
         {
           test: /\.css$/,
           use: [
-            {
-              loader: "style-loader",
-            },
+            { loader: MiniCssExtractPlugin.loader },
             { loader: "css-loader", options: CSS_CONFIG },
             { loader: "postcss-loader" },
           ],
@@ -144,6 +144,14 @@ module.exports = (env) => {
     },
 
     plugins: [
+      // Style extraction for web components
+      new MiniCssExtractPlugin({
+        filename: "styles.css",
+        chunkFilename: "[id].css",
+      }),
+      new WebpackManifestPlugin({
+        fileName: "manifest.json",
+      }),
       new webpack.BannerPlugin({
         banner:
           "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
