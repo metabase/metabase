@@ -1,0 +1,20 @@
+{
+  "name": "trace-analyzer",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node server.ts",
+    "dev": "ts-node server.ts"
+  },
+  "keywords": ["mcp", "trace", "analyzer", "clojure"],
+  "author": "",
+  "license": "ISC",
+  "description": "MCP server for analyzing Clojure trace files",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "@types/node": "^22.14.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
