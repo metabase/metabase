@@ -152,7 +152,10 @@ export const MetabaseProviderInternal = ({
       >
         <Global styles={SCOPED_CSS_RESET} />
         <SdkThemeProvider theme={theme}>
-          <Box ref={emotionStyleContainerRef}></Box>
+          <Box
+            ref={emotionStyleContainerRef}
+            data-style-container="emotion"
+          ></Box>
 
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
 
