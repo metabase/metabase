@@ -168,12 +168,14 @@ export const EmbedFrame = ({
     >
       <ContentContainer
         id={DASHBOARD_PDF_EXPORT_ROOT_ID}
-        className={cx(
-          EmbedFrameS.ContentContainer,
-          EmbedFrameS.WithThemeBackground,
-          CS.hoverParent,
-          CS.hoverVisibility,
-        )}
+        className={cx({
+          [EmbedFrameS.ContentContainer]: true,
+          [EmbedFrameS.WithThemeBackground]: true,
+
+          // If we are showing a standalone question, make the entire card a hover parent
+          [CS.hoverParent]: question,
+          [CS.hoverVisibility]: question,
+        })}
       >
         {hasHeader && (
           <Header
