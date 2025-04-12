@@ -18,6 +18,7 @@ import {
   listTag,
   provideFieldTags,
   provideFieldValuesTags,
+  provideRemappedFieldValuesTags,
   tag,
 } from "./tags";
 
@@ -47,7 +48,8 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${fieldId}/remapping/${remappedFieldId}`,
         params,
       }),
-      providesTags: (_, error, { fieldId }) => provideFieldValuesTags(fieldId),
+      providesTags: (_response, _error, { fieldId, remappedFieldId }) =>
+        provideRemappedFieldValuesTags(fieldId, remappedFieldId),
     }),
     searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
       query: ({ fieldId, searchFieldId, ...params }) => ({
@@ -55,7 +57,8 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${fieldId}/search/${searchFieldId}`,
         params,
       }),
-      providesTags: (_, error, { fieldId }) => provideFieldValuesTags(fieldId),
+      providesTags: (_response, _error, { fieldId, searchFieldId }) =>
+        provideRemappedFieldValuesTags(fieldId, searchFieldId),
     }),
     updateField: builder.mutation<Field, UpdateFieldRequest>({
       query: ({ id, ...body }) => ({
