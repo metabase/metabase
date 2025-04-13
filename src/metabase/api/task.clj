@@ -12,12 +12,14 @@
 
 (api.macros/defendpoint :get "/"
   "Fetch a list of recent tasks stored as Task History"
-  []
+  [_
+   {:keys [_status _task]
+    :as filter} :- task-history/Filter]
   (validation/check-has-application-permission :monitoring)
   {:total  (t2/count :model/TaskHistory)
    :limit  (request/limit)
    :offset (request/offset)
-   :data   (task-history/all (request/limit) (request/offset))})
+   :data   (task-history/all (request/limit) (request/offset) filter)})
 
 (api.macros/defendpoint :get "/:id"
   "Get `TaskHistory` entry with ID."
@@ -30,3 +32,11 @@
   []
   (validation/check-has-application-permission :monitoring)
   (task/scheduler-info))
+
+(api.macros/defendpoint :get "/unique-tasks"
+  "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique
+  tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should
+  reflect that."
+  [] :- [:vector string?]
+  (validation/check-has-application-permission :monitoring)
+  (task-history/unique-tasks))
