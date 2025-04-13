@@ -60,40 +60,31 @@ function compileRoot(
   assert(node.type === ROOT, t`Must be root node`);
   assert(node.children.length === 1, t`Root must have one child`);
 
-  const result = compileNode(node.children[0]);
-  if (isStringLiteral(result)) {
-    return {
-      operator: "value",
-      options: { "base-type": "type/Text" },
-      args: [result],
-    };
-  } else if (isBooleanLiteral(result)) {
-    return {
-      operator: "value",
-      options: { "base-type": "type/Boolean" },
-      args: [result],
-    };
-  } else if (isIntegerLiteral(result)) {
-    return {
-      operator: "value",
-      options: { "base-type": "type/Integer" },
-      args: [result],
-    };
-  } else if (isFloatLiteral(result)) {
-    return {
-      operator: "value",
-      options: { "base-type": "type/Float" },
-      args: [result],
-    };
-  } else if (isBigIntLiteral(result)) {
-    return {
-      operator: "value",
-      options: { "base-type": "type/BigInteger" },
-      args: [result],
-    };
+  const value = compileNode(node.children[0]);
+  if (isStringLiteral(value)) {
+    return compileValue(value, "type/Text");
+  } else if (isBooleanLiteral(value)) {
+    return compileValue(value, "type/Boolean");
+  } else if (isIntegerLiteral(value)) {
+    return compileValue(value, "type/Integer");
+  } else if (isFloatLiteral(value)) {
+    return compileValue(value, "type/Float");
+  } else if (isBigIntLiteral(value)) {
+    return compileValue(value, "type/BigInteger");
   }
 
-  return result;
+  return value;
+}
+
+function compileValue(
+  value: string | boolean | number | bigint,
+  type: string,
+): Lib.ExpressionParts {
+  return {
+    operator: "value",
+    options: { "base-type": type },
+    args: [value],
+  };
 }
 
 function compileField(node: Node): Lib.ExpressionParts {
@@ -224,13 +215,7 @@ function compileNumber(node: Node): NumberValue | Lib.ExpressionParts {
   }
 
   if (typeof number === "bigint") {
-    return withNode(node, {
-      operator: "value" as Lib.ExpressionOperator,
-      options: {
-        "base-type": "type/BigInteger",
-      },
-      args: [String(number)],
-    });
+    return withNode(node, compileValue(String(number), "type/BigInteger"));
   }
 
   return number;
