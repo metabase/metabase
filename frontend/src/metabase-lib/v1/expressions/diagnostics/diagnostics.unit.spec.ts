@@ -3,14 +3,9 @@ import { createQuery } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import { lexify } from "../pratt";
 import type { StartRule } from "../types";
 
-import {
-  countMatchingParentheses,
-  diagnose,
-  diagnoseAndCompile,
-} from "./diagnostics";
+import { diagnose, diagnoseAndCompile } from "./diagnostics";
 
 describe("diagnostics", () => {
   describe("diagnose", () => {
@@ -41,17 +36,6 @@ describe("diagnostics", () => {
     ) {
       return setup({ expression, startRule, metadata })?.message;
     }
-
-    it("should count matching parentheses", () => {
-      const count = (expr: string) =>
-        countMatchingParentheses(lexify(expr).tokens);
-      expect(count("()")).toBe(0);
-      expect(count("(")).toBe(1);
-      expect(count(")")).toBe(-1);
-      expect(count("(A+(")).toBe(2);
-      expect(count("SUMIF(")).toBe(1);
-      expect(count("COUNTIF(Deal))")).toBe(-1);
-    });
 
     it("should catch mismatched parentheses", () => {
       expect(err("FLOOR [Price]/2)")).toBe(
