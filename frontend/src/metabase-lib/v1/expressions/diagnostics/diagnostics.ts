@@ -80,6 +80,7 @@ export function diagnoseAndCompile({
     return {
       expression: null,
       expressionClause: null,
+      expressionParts: null,
       error: renderError(error),
     };
   }
