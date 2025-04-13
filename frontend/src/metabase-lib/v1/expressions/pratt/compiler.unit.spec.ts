@@ -11,11 +11,14 @@ function value(value: unknown, options: Lib.ExpressionOptions = {}) {
 }
 
 function integer(x: number) {
-  return value(x, { "base-type": "type/Integer" });
+  return value(x, {
+    "base-type": "type/Integer",
+    "effective-type": "type/Integer",
+  });
 }
 
 function text(x: string) {
-  return value(x, { "base-type": "type/Text" });
+  return value(x, { "base-type": "type/Text", "effective-type": "type/Text" });
 }
 
 describe("pratt/compiler", () => {
@@ -44,11 +47,13 @@ describe("pratt/compiler", () => {
       expect(expr("12309109320930192039")).toEqual(
         value("12309109320930192039", {
           "base-type": "type/BigInteger",
+          "effective-type": "type/BigInteger",
         }),
       );
       expect(expr("-12309109320930192039")).toEqual(
         value("-12309109320930192039", {
           "base-type": "type/BigInteger",
+          "effective-type": "type/BigInteger",
         }),
       );
 
@@ -59,6 +64,7 @@ describe("pratt/compiler", () => {
           1,
           value("12309109320930192039", {
             "base-type": "type/BigInteger",
+            "effective-type": "type/BigInteger",
           }),
         ],
       });
@@ -111,7 +117,10 @@ describe("pratt/compiler", () => {
       });
       expect(expr("-12")).toEqual({
         operator: "value",
-        options: { "base-type": "type/Integer" },
+        options: {
+          "base-type": "type/Integer",
+          "effective-type": "type/Integer",
+        },
         args: [-12],
       });
     });

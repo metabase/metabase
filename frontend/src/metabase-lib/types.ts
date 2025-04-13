@@ -280,6 +280,7 @@ export type ExpressionOptions = {
   "case-sensitive"?: boolean;
   "include-current"?: boolean;
   "base-type"?: string;
+  "effective-type"?: string;
 };
 
 declare const FilterOperatorSymbol: unique symbol;

@@ -82,7 +82,7 @@ function compileValue(
 ): Lib.ExpressionParts {
   return {
     operator: "value",
-    options: { "base-type": type },
+    options: { "base-type": type, "effective-type": type },
     args: [value],
   };
 }
