@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
@@ -8,13 +8,13 @@ import { type CompileResult, compileExpression } from "../compiler";
 import { DiagnosticError, type ExpressionError, renderError } from "../errors";
 import { lexify } from "../pratt";
 import type { StartRule } from "../types";
-import { getExpressionMode } from "../utils";
 
 import { checkArgCount } from "./check-arg-count";
 import { checkArgValidators } from "./check-arg-validators";
 import { checkCaseOrIfArgCount } from "./check-case-or-if-arg-count";
 import { checkComparisonOperatorArgs } from "./check-comparison-operator-args";
 import { checkKnownFunctions } from "./check-known-functions";
+import { checkLibDiagnostics } from "./check-lib-diagnostics";
 import { checkMatchingParentheses } from "./check-matching-parenthesis";
 import { checkMissingCommasInArgumentList } from "./check-missing-comma-in-argument-list";
 import { checkOpenParenthesisAfterFunction } from "./check-open-parenthesis-after-function";
@@ -104,14 +104,17 @@ export function diagnoseExpressionSyntax({ source }: { source: string }) {
   syntaxChecks.forEach((check) => check(tokens, source));
 }
 
-export function diagnoseExpression({
-  query,
-  stageIndex,
-  startRule,
-  expression,
-  expressionIndex,
-  metadata,
-}: {
+const expressionChecks = [
+  checkKnownFunctions,
+  checkSupportedFunctions,
+  checkArgValidators,
+  checkArgCount,
+  checkComparisonOperatorArgs,
+  checkCaseOrIfArgCount,
+  checkLibDiagnostics,
+];
+
+export function diagnoseExpression(options: {
   query: Lib.Query;
   stageIndex: number;
   startRule: StartRule;
@@ -119,29 +122,5 @@ export function diagnoseExpression({
   expressionIndex?: number;
   metadata?: Metadata;
 }) {
-  const checkers = [
-    checkKnownFunctions,
-    checkSupportedFunctions,
-    checkArgValidators,
-    checkArgCount,
-    checkComparisonOperatorArgs,
-    checkCaseOrIfArgCount,
-  ];
-  for (const checker of checkers) {
-    checker({ expression, query, metadata });
-  }
-
-  const error = Lib.diagnoseExpression(
-    query,
-    stageIndex,
-    getExpressionMode(startRule),
-    expression,
-    expressionIndex,
-  );
-
-  if (error) {
-    throw new DiagnosticError(error.message, {
-      friendly: Boolean(error.friendly),
-    });
-  }
+  expressionChecks.forEach((check) => check(options));
 }
