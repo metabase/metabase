@@ -211,5 +211,5 @@
   :database-routing)
 
 (define-premium-feature ^{:added "0.55.0"} development-mode?
-  "Is this a development instance that should have watermarks"
+  "Is this a development instance that should have watermarks?"
   :development-mode)

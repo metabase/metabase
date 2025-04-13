@@ -31,9 +31,7 @@ export const AppBanner = () => {
     tokenStatus &&
     paymentStatuses.includes(tokenStatus?.status ?? "");
 
-  // Most settings and banners are only visible to admins
-  // in which case we still need to explicitly prevent rendering the banner for non-admins.
-  // Dev mode is the exception which gets shown to all users
+  // Most banners are only visible to admins, but DevModeBanner gets shown to all users
   if (!isAdmin) {
     return isDevMode ? <DevModeBanner /> : null;
   }
