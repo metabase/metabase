@@ -51,24 +51,7 @@ export function diagnoseAndCompile({
   expressionIndex?: number;
 }): CompileResult {
   try {
-    if (!source || source.length === 0) {
-      throw new DiagnosticError(t`Expression is empty`);
-    }
-
-    const { tokens, errors } = lexify(source);
-    if (errors && errors.length > 0) {
-      throw errors[0];
-    }
-
-    const checks = [
-      checkOpenParenthesisAfterFunction,
-      checkMatchingParentheses,
-      checkMissingCommasInArgumentList,
-    ];
-
-    for (const check of checks) {
-      check(tokens, source);
-    }
+    diagnoseExpressionSyntax({ source });
 
     // make a simple check on expression syntax correctness
     const result = compileExpression({
@@ -100,6 +83,25 @@ export function diagnoseAndCompile({
       error: renderError(error),
     };
   }
+}
+
+const syntaxChecks = [
+  checkOpenParenthesisAfterFunction,
+  checkMatchingParentheses,
+  checkMissingCommasInArgumentList,
+];
+
+export function diagnoseExpressionSyntax({ source }: { source: string }) {
+  if (!source || source.length === 0) {
+    throw new DiagnosticError(t`Expression is empty`);
+  }
+
+  const { tokens, errors } = lexify(source);
+  if (errors && errors.length > 0) {
+    throw errors[0];
+  }
+
+  syntaxChecks.forEach((check) => check(tokens, source));
 }
 
 export function diagnoseExpression({
