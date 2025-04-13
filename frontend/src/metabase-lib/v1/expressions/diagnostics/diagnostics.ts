@@ -183,7 +183,7 @@ export function diagnoseExpression({
 }: {
   query: Lib.Query;
   stageIndex: number;
-  startRule: string;
+  startRule: StartRule;
   expression: Expression;
   expressionIndex?: number;
   metadata?: Metadata;
