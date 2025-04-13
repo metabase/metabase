@@ -78,9 +78,6 @@
       (is (no-html-elements tag-set) (str "Contained html elements: "
                                           (set/intersection #{"div" "span" "p"}))))))
 
-(defn- context ^Context []
-  (#'js.svg/context))
-
 (deftest ^:parallel progress-test
   (let [value    1234
         goal     1337
@@ -88,13 +85,15 @@
     (testing "It returns bytes"
       (let [svg-bytes (js.svg/progress value goal settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value
-                      (js.engine/execute-fn-name
-                       (context)
-                       "progress"
-                       (json/encode {:value value :goal goal})
-                       (json/encode settings)
-                       (json/encode {})))]
+    (let [svg-string (#'js.svg/do-with-static-viz-context
+                      (fn [context]
+                        (.asString ^Value
+                                   (js.engine/execute-fn-name
+                                    context
+                                    "progress"
+                                    (json/encode {:value value :goal goal})
+                                    (json/encode settings)
+                                    (json/encode {})))))]
       (validate-svg-string :progress svg-string))))
 
 (deftest ^:parallel parse-svg-sanitizes-characters-test

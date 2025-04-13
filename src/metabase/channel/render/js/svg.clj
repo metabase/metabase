@@ -12,6 +12,7 @@
    [metabase.util.delay :as delay]
    [metabase.util.json :as json])
   (:import
+   (io.aleph.dirigiste Pool IPool$Generator Pools)
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
    (java.util.concurrent TimeUnit)
@@ -43,22 +44,33 @@
     (js.engine/load-resource bundle-path)
     (js.engine/load-resource interface-path)))
 
-(def ^:private static-viz-context-delay
-  "Delay containing a graal js context. It has the chart bundle and the above `src-api` in its environment suitable for
-  creating charts. However, under some circumstances, the Truffle JS engine tends to leak memory, so we don't want to
-  keep the reference to the engine forever. Ideally, we would like to make the engine lifetime bound to a single
-  request or something like that, but that would introduce a lot of changes and noise to the system. Hence, with this
-  bandaid, we keep the JS engine for some reasonable time (10 minutes) before recreating it."
-  (delay/delay-with-ttl (.toMillis TimeUnit/MINUTES 10)
-                        #(load-viz-bundle (js.engine/context))))
+(def ^:private ^Pool static-viz-context-pool
+  "Pool of Truffle JS engine objects. They are not thread-safe, so the access to them has to be carefully managed
+  between threads. Each engine with loaded static viz code takes ~130 MB in memory, so we don't want too many of them.
+  However, one takes ~3 seconds to initialize, so we don't want to load them anew each time in prod. Under some
+  circumstances, the Truffle JS engine tends to leak memory, so we don't want to keep the reference to the engine
+  forever. Considering all that, this pool targets 100% utilization (so, if the utilization is lower, the pool will
+  start dropping objects) and the maximum of 3 objects (to prevent OOMs)."
+  (Pool. (reify IPool$Generator
+           (generate [_ _]
+             (load-viz-bundle (js.engine/context)))
+           (destroy [_ _ v]))
+         (Pools/utilizationController 1.0 3 3) ;; 100% target util, max 3 objects.
+         65000 25 10000 TimeUnit/MILLISECONDS))
 
-(defn- context
-  "Returns a static viz context. In dev mode, this will be a new context each time. In prod or test modes, it will
-  return the derefed contents of `static-viz-context-delay`."
-  ^Context []
+(defn- do-with-static-viz-context [f]
+  ;; ::_ is a dummy key. Basically any object can act as a key here.
   (if config/is-dev?
-    (load-viz-bundle (js.engine/context))
-    @static-viz-context-delay))
+    (f (load-viz-bundle (js.engine/context)))
+    (let [context (.acquire static-viz-context-pool ::_)]
+      (try (f context)
+           (finally (.release static-viz-context-pool ::_ context))))))
+
+(defmacro ^:private with-static-viz-context
+  "Execute `body` where `binding-name` is bound to a static viz context. In dev mode, this will be a new context each
+  time. In prod or test modes, it will return an instance from `static-viz-context-pool`."
+  [binding-name & body]
+  `(do-with-static-viz-context (fn [~binding-name] ~@body)))
 
 (defn- post-process
   "Mutate in place the elements of the svg document. Remove the fill=transparent attribute in favor of
@@ -153,20 +165,22 @@
   "Clojure entrypoint to render a funnel chart. Data should be vec of [[Step Measure]] where Step is {:name name :format format-options} and Measure is {:format format-options} and you go and look to frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options.
   Returns a byte array of a png file."
   [data settings]
-  (let [svg-string (.asString (js.engine/execute-fn-name (context) "funnel" (json/encode data)
-                                                         (json/encode settings)))]
+  (let [svg-string (with-static-viz-context context
+                     (.asString (js.engine/execute-fn-name context "funnel" (json/encode data)
+                                                           (json/encode settings))))]
     (svg-string->bytes svg-string)))
 
 (defn javascript-visualization
   "Clojure entrypoint to render javascript visualizations."
   [cards-with-data dashcard-viz-settings]
-  (let [response (.asString (js.engine/execute-fn-name (context) "javascript_visualization"
-                                                       (json/encode cards-with-data)
-                                                       (json/encode dashcard-viz-settings)
-                                                       (json/encode {:applicationColors (public-settings/application-colors)
-                                                                     :startOfWeek (public-settings/start-of-week)
-                                                                     :customFormatting (public-settings/custom-formatting)
-                                                                     :tokenFeatures (public-settings/token-features)})))]
+  (let [response (with-static-viz-context context
+                   (.asString (js.engine/execute-fn-name context "javascript_visualization"
+                                                         (json/encode cards-with-data)
+                                                         (json/encode dashcard-viz-settings)
+                                                         (json/encode {:applicationColors (public-settings/application-colors)
+                                                                       :startOfWeek (public-settings/start-of-week)
+                                                                       :customFormatting (public-settings/custom-formatting)
+                                                                       :tokenFeatures (public-settings/token-features)}))))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))
@@ -174,30 +188,33 @@
 (defn row-chart
   "Clojure entrypoint to render a row chart."
   [settings data]
-  (let [svg-string (.asString (js.engine/execute-fn-name (context) "row_chart"
-                                                         (json/encode settings)
-                                                         (json/encode data)
-                                                         (json/encode (public-settings/application-colors))))]
+  (let [svg-string (with-static-viz-context context
+                     (.asString (js.engine/execute-fn-name context "row_chart"
+                                                           (json/encode settings)
+                                                           (json/encode data)
+                                                           (json/encode (public-settings/application-colors)))))]
     (svg-string->bytes svg-string)))
 
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]
-  (let [js-res (js.engine/execute-fn-name (context) "gauge"
-                                          (json/encode card)
-                                          (json/encode data))
-        svg-string (.asString js-res)]
-    (svg-string->bytes svg-string)))
+  (with-static-viz-context context
+    (let [js-res (js.engine/execute-fn-name context "gauge"
+                                            (json/encode card)
+                                            (json/encode data))
+          svg-string (.asString js-res)]
+      (svg-string->bytes svg-string))))
 
 (defn progress
   "Clojure entrypoint to render a progress bar. Returns a byte array of a png file"
   [value goal settings]
-  (let [js-res (js.engine/execute-fn-name (context) "progress"
-                                          (json/encode {:value value :goal goal})
-                                          (json/encode settings)
-                                          (json/encode (public-settings/application-colors)))
-        svg-string (.asString js-res)]
-    (svg-string->bytes svg-string)))
+  (with-static-viz-context context
+    (let [js-res (js.engine/execute-fn-name context "progress"
+                                            (json/encode {:value value :goal goal})
+                                            (json/encode settings)
+                                            (json/encode (public-settings/application-colors)))
+          svg-string (.asString js-res)]
+      (svg-string->bytes svg-string))))
 
 (def ^:private icon-paths
   {:dashboard "M32 28a4 4 0 0 1-4 4H4a4.002 4.002 0 0 1-3.874-3H0V4a4 4 0 0 1 4-4h25a3 3 0 0 1 3 3v25zm-4 0V8H4v20h24zM7.273 18.91h10.182v4.363H7.273v-4.364zm0-6.82h17.454v4.365H7.273V12.09zm13.09 6.82h4.364v4.363h-4.363v-4.364z"
