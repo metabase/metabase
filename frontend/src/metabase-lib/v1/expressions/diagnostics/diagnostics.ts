@@ -4,20 +4,20 @@ import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
-import { type CompileResult, compileExpression } from "./compiler";
+import { type CompileResult, compileExpression } from "../compiler";
 import {
   COMPARISON_OPERATORS,
   FIELD_MARKERS,
   getClauseDefinition,
   getMBQLName,
-} from "./config";
-import { DiagnosticError, type ExpressionError, renderError } from "./errors";
+} from "../config";
+import { DiagnosticError, type ExpressionError, renderError } from "../errors";
 import {
   isCallExpression,
   isCaseOrIfOperator,
   isOperator,
   isOptionsObject,
-} from "./matchers";
+} from "../matchers";
 import {
   CALL,
   FIELD,
@@ -27,11 +27,11 @@ import {
   OPERATORS,
   type Token,
   lexify,
-} from "./pratt";
-import type { OPERATOR } from "./tokenizer";
-import type { StartRule } from "./types";
-import { getDatabase, getExpressionMode, getToken } from "./utils";
-import { visit } from "./visitor";
+} from "../pratt";
+import type { OPERATOR } from "../tokenizer";
+import type { StartRule } from "../types";
+import { getDatabase, getExpressionMode, getToken } from "../utils";
+import { visit } from "../visitor";
 
 export function diagnose(options: {
   source: string;

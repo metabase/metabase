@@ -3,13 +3,14 @@ import { createQuery } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
+import { lexify } from "../pratt";
+import type { StartRule } from "../types";
+
 import {
   countMatchingParentheses,
   diagnose,
   diagnoseAndCompile,
 } from "./diagnostics";
-import { lexify } from "./pratt";
-import type { StartRule } from "./types";
 
 describe("diagnostics", () => {
   describe("diagnose", () => {
