@@ -1,27 +1,24 @@
 import { t } from "ttag";
 
-import { DiagnosticError, type ExpressionError } from "../errors";
+import { DiagnosticError } from "../errors";
 import type { Token } from "../pratt";
 import { GROUP, GROUP_CLOSE } from "../pratt";
 
-export function checkMatchingParentheses(
-  tokens: Token[],
-): ExpressionError | null {
+export function checkMatchingParentheses(tokens: Token[]) {
   const mismatchedParentheses = countMatchingParentheses(tokens);
   if (mismatchedParentheses === 1) {
-    return new DiagnosticError(t`Expecting a closing parenthesis`);
+    throw new DiagnosticError(t`Expecting a closing parenthesis`);
   } else if (mismatchedParentheses > 1) {
-    return new DiagnosticError(
+    throw new DiagnosticError(
       t`Expecting ${mismatchedParentheses} closing parentheses`,
     );
   } else if (mismatchedParentheses === -1) {
-    return new DiagnosticError(t`Expecting an opening parenthesis`);
+    throw new DiagnosticError(t`Expecting an opening parenthesis`);
   } else if (mismatchedParentheses < -1) {
-    return new DiagnosticError(
+    throw new DiagnosticError(
       t`Expecting ${-mismatchedParentheses} opening parentheses`,
     );
   }
-  return null;
 }
 
 const isOpen = (t: Token) => t.type === GROUP;

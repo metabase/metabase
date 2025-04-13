@@ -67,10 +67,7 @@ export function diagnoseAndCompile({
     ];
 
     for (const check of checks) {
-      const error = check(tokens, source);
-      if (error) {
-        throw error;
-      }
+      check(tokens, source);
     }
 
     // make a simple check on expression syntax correctness

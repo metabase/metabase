@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import { getClauseDefinition, getMBQLName } from "../config";
-import { DiagnosticError, type ExpressionError } from "../errors";
+import { DiagnosticError } from "../errors";
 import { GROUP, IDENTIFIER, type Token } from "../pratt";
 
 export function checkOpenParenthesisAfterFunction(
   tokens: Token[],
   source: string,
-): ExpressionError | null {
+) {
   for (let i = 0; i < tokens.length - 1; ++i) {
     const token = tokens[i];
     if (token.type === IDENTIFIER && source[token.start] !== "[") {
@@ -17,7 +17,7 @@ export function checkOpenParenthesisAfterFunction(
       if (clause && clause.args.length > 0) {
         const next = tokens[i + 1];
         if (next.type !== GROUP) {
-          return new DiagnosticError(
+          throw new DiagnosticError(
             t`Expecting an opening parenthesis after function ${functionName}`,
             {
               pos: token.start,
@@ -28,6 +28,4 @@ export function checkOpenParenthesisAfterFunction(
       }
     }
   }
-
-  return null;
 }
