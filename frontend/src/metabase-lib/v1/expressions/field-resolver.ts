@@ -4,14 +4,14 @@ import type * as Lib from "metabase-lib";
 
 import { ResolverError } from "./errors";
 import { parseDimension, parseMetric, parseSegment } from "./identifier";
-import { getNode } from "./utils";
+import type { Node } from "./pratt";
 
 export type Kind = "field" | "metric" | "segment";
 
 export type Resolver = (
   kind: Kind,
   name: string,
-  expression?: Lib.ExpressionParts,
+  node?: Node,
 ) => Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata;
 
 export function fieldResolver(options: {
@@ -19,7 +19,7 @@ export function fieldResolver(options: {
   stageIndex: number;
   startRule: string;
 }): Resolver {
-  return function (kind, name, expression) {
+  return function (kind, name, node) {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
@@ -32,23 +32,17 @@ export function fieldResolver(options: {
           )
             .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
 
-          throw new ResolverError(error, getNode(expression));
+          throw new ResolverError(error, node);
         }
 
-        throw new ResolverError(
-          t`Unknown Metric: ${name}`,
-          getNode(expression),
-        );
+        throw new ResolverError(t`Unknown Metric: ${name}`, node);
       }
 
       return metric;
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
-        throw new ResolverError(
-          t`Unknown Segment: ${name}`,
-          getNode(expression),
-        );
+        throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
 
       return segment;
@@ -56,7 +50,7 @@ export function fieldResolver(options: {
       // fallback
       const dimension = parseDimension(name, options);
       if (!dimension) {
-        throw new ResolverError(t`Unknown Field: ${name}`, getNode(expression));
+        throw new ResolverError(t`Unknown Field: ${name}`, node);
       }
 
       return dimension;
