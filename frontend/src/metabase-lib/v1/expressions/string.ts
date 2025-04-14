@@ -6,6 +6,12 @@ const OPEN_BRACKET = "[";
 const CLOSE_BRACKET = "]";
 const BACKSLASH = "\\";
 
+export type Delimiter =
+  | typeof DOUBLE_QUOTE
+  | typeof SINGLE_QUOTE
+  | typeof OPEN_BRACKET
+  | typeof CLOSE_BRACKET;
+
 export type StartDelimiter =
   | typeof DOUBLE_QUOTE
   | typeof SINGLE_QUOTE
@@ -31,6 +37,12 @@ const STRING_UNESCAPE: Record<string, string> = {
   '"': '"',
 };
 
+const DELIMITER_PAIRS: Record<StartDelimiter, Delimiter> = {
+  "'": "'",
+  '"': '"',
+  "[": "]",
+};
+
 export function formatStringLiteral(
   node: string,
   {
@@ -43,7 +55,9 @@ export function formatStringLiteral(
 }
 
 export function quoteString(string: string, delimiter: StartDelimiter) {
-  const [OPEN, CLOSE] = getDelimiters(delimiter);
+  const OPEN = delimiter;
+  assertStartDelimiter(OPEN);
+  const CLOSE = DELIMITER_PAIRS[delimiter];
 
   let str = "";
   for (let i = 0; i < string.length; i++) {
@@ -64,7 +78,9 @@ export function quoteString(string: string, delimiter: StartDelimiter) {
 }
 
 export function unquoteString(string: string) {
-  const [OPEN, CLOSE] = getDelimiters(string.charAt(0));
+  const OPEN = string.charAt(0);
+  assertStartDelimiter(OPEN);
+  const CLOSE = DELIMITER_PAIRS[OPEN];
 
   let str = "";
   let escaping = false;
@@ -97,11 +113,10 @@ export function unquoteString(string: string) {
   return str;
 }
 
-function getDelimiters(delimiter: string) {
-  if (delimiter === DOUBLE_QUOTE || delimiter === SINGLE_QUOTE) {
-    return [delimiter, delimiter];
-  } else if (delimiter === OPEN_BRACKET) {
-    return [OPEN_BRACKET, CLOSE_BRACKET];
+function assertStartDelimiter(str: string): asserts str is StartDelimiter {
+  if (str in DELIMITER_PAIRS) {
+    return;
   }
-  throw new Error("Unknown quoting: " + delimiter);
+
+  throw new Error(`Unknown string delimiter: ${str}`);
 }
