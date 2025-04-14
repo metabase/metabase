@@ -21,7 +21,7 @@ Use the `case` expression whenever you need to:
 
 | Example                                                                                                          |
 | ---------------------------------------------------------------------------------------------------------------- |
-| `case(isempty("glass half full"), "empty glass", isnull("glass half full"), "missing glass", "glass half full")` |
+| `case(isempty("glass half full"), "empty glass", isNull("glass half full"), "missing glass", "glass half full")` |
 | "glass half full"                                                                                                |
 
 ## Bucketing data for frequency tables or histograms
