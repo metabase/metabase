@@ -66,6 +66,18 @@
   (and (clause? clause)
        (lib.hierarchy/isa? (first clause) ::lib.schema.ref/ref)))
 
+(defn segment-clause?
+  "Returns true if this is a segment clause"
+  [clause]
+  (and (clause? clause)
+       (lib.hierarchy/isa? (first clause) ::lib.schema.ref/segment)))
+
+(defn metric-clause?
+  "Returns true if this is a metric clause"
+  [clause]
+  (and (clause? clause)
+       (lib.hierarchy/isa? (first clause) ::lib.schema.ref/metric)))
+
 (defn original-isa?
   "Returns whether the type of `expression` isa? `typ`.
    If the expression has an original-effective-type due to bucketing, check that."
