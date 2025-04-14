@@ -510,7 +510,7 @@ export const FieldValuesWidgetInner = forwardRef<
               position: "bottom-start",
             }}
             data-testid="token-field"
-            onCreate={(value) => {
+            parseValue={(value) => {
               if (isNumericParameter) {
                 const number = parseNumber(value);
                 return number != null ? String(number) : null;
