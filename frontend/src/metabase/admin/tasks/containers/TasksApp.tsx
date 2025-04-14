@@ -69,20 +69,18 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
   } = useListDatabasesQuery();
 
   const tasks = tasksData?.data;
-  const databases = databasesData?.data;
+  const databases = databasesData?.data ?? [];
+  const isLoading = isLoadingTasks || isLoadingDatabases;
+  const error = tasksError || databasesError;
+  const showLoadingAndErrorWrapper = isLoading || error != null;
 
   const handlePageChange = (page: number) => {
     const newLocation = getLocationWithPage(location, page);
     dispatch(push(newLocation));
   };
 
-  if (isLoadingTasks || isLoadingDatabases || tasksError || databasesError) {
-    return (
-      <LoadingAndErrorWrapper
-        loading={isLoadingTasks || isLoadingDatabases}
-        error={tasksError || databasesError}
-      />
-    );
+  if (showLoadingAndErrorWrapper) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   if (!tasks || !databases) {
@@ -136,6 +134,7 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
             <th>{t`Details`}</th>
           </tr>
         </thead>
+
         <tbody>
           {tasks.map((task: Task) => {
             const db = task.db_id ? databaseByID[task.db_id] : null;
