@@ -14,6 +14,7 @@
 (driver/register! :druid)
 
 (doseq [[feature supported?] {:expression-aggregations        true
+                              :expression-literals            true
                               :schemas                        false
                               :set-timezone                   true
                               :temporal/requires-default-unit true}]

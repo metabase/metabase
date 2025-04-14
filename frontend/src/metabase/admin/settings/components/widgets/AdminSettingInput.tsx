@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
-import { useAdminSetting } from "metabase/api";
-import { useDocsUrl, useToast } from "metabase/common/hooks";
+import { useAdminSetting } from "metabase/api/utils";
+import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import type { GenericErrorResponse } from "metabase/lib/errors";
 import {
   Box,
   type BoxProps,
@@ -14,7 +13,7 @@ import {
   TextInput,
   Textarea,
 } from "metabase/ui";
-import type { SettingKey } from "metabase-types/api";
+import type { EnterpriseSettingValue, SettingKey } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
 
@@ -62,29 +61,19 @@ export function AdminSettingInput<SettingName extends SettingKey>({
   options,
   ...boxProps
 }: AdminSettingInputProps<SettingName>) {
-  const [sendToast] = useToast();
-
   const {
     value: initialValue,
     updateSetting,
     isLoading,
+    description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
 
-  const handleChange = (newValue: string | boolean | number) => {
+  const handleChange = (newValue: EnterpriseSettingValue) => {
     if (newValue === initialValue) {
       return;
     }
-    updateSetting({ key: name, value: newValue }).then((response) => {
-      if (response?.error) {
-        const message =
-          (response.error as GenericErrorResponse)?.message ||
-          t`Error saving ${title}`;
-        sendToast({ message, icon: "check", toastColor: "danger" });
-      } else {
-        sendToast({ message: t`${title} changes saved`, icon: "check" });
-      }
-    });
+    updateSetting({ key: name, value: newValue });
   };
 
   if (hidden || isLoading) {
@@ -92,8 +81,12 @@ export function AdminSettingInput<SettingName extends SettingKey>({
   }
 
   return (
-    <Box {...boxProps}>
-      <SettingHeader id={name} title={title} description={description} />
+    <Box data-testid={`${name}-setting`} {...boxProps}>
+      <SettingHeader
+        id={name}
+        title={title}
+        description={description ?? settingDescription}
+      />
       {settingDetails?.is_env_setting && settingDetails?.env_name ? (
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
@@ -153,6 +146,7 @@ export function BasicAdminSettingInput({
           checked={localValue}
           onChange={(e) => handleChange(e.target.checked)}
           label={localValue ? t`Enabled` : t`Disabled`}
+          w="auto"
         />
       );
     case "radio":

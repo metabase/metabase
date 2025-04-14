@@ -1,7 +1,6 @@
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 
-import type { MetabasePluginsConfig } from "embedding-sdk";
-import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
+import type { BaseInteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion";
 import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
@@ -9,25 +8,38 @@ import {
   InteractiveQuestionProvider,
   type QuestionMockLocationParameters,
 } from "./InteractiveQuestion/context";
-import { InteractiveQuestionDefaultView } from "./InteractiveQuestionDefaultView";
+import {
+  InteractiveQuestionDefaultView,
+  type InteractiveQuestionDefaultViewProps,
+} from "./InteractiveQuestionDefaultView";
 
 interface InteractiveAdHocQuestionProps {
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config
   onNavigateBack: () => void;
-  title: SdkQuestionTitleProps;
-  height?: number;
-  plugins?: MetabasePluginsConfig;
-  children?: ReactNode;
 }
 
 export const InteractiveAdHocQuestion = ({
   questionPath,
-  onNavigateBack,
-  title = true,
-  height,
+  withResetButton = true,
+  title,
   plugins,
-  children,
-}: InteractiveAdHocQuestionProps) => {
+  height,
+  width,
+  className,
+  style,
+  children = null,
+  onBeforeSave,
+  onSave,
+  entityTypeFilter,
+  isSaveEnabled,
+  targetCollection,
+  withChartTypeSelector = true,
+  withDownloads = false,
+  initialSqlParameters,
+  onNavigateBack,
+}: InteractiveAdHocQuestionProps &
+  Omit<BaseInteractiveQuestionProps, "questionId"> &
+  InteractiveQuestionDefaultViewProps) => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionPath),
     [questionPath],
@@ -36,8 +48,12 @@ export const InteractiveAdHocQuestion = ({
   // If we cannot extract an entity ID from the slug, assume we are creating a new question.
   const questionId = Urls.extractEntityId(params.slug) ?? null;
 
-  const { options, serializedCard } = parseHash(location.hash);
-  const deserializedCard = serializedCard && deserializeCard(serializedCard);
+  const { options, deserializedCard } = useMemo(() => {
+    const { options, serializedCard } = parseHash(location.hash);
+    const deserializedCard = serializedCard && deserializeCard(serializedCard);
+
+    return { options, deserializedCard };
+  }, [location.hash]);
 
   return (
     <InteractiveQuestionProvider
@@ -45,13 +61,24 @@ export const InteractiveAdHocQuestion = ({
       options={options}
       deserializedCard={deserializedCard}
       componentPlugins={plugins}
+      onBeforeSave={onBeforeSave}
+      onSave={onSave}
+      entityTypeFilter={entityTypeFilter}
+      isSaveEnabled={isSaveEnabled}
+      targetCollection={targetCollection}
+      initialSqlParameters={initialSqlParameters}
+      withDownloads={withDownloads}
       onNavigateBack={onNavigateBack}
     >
       {children ?? (
         <InteractiveQuestionDefaultView
           height={height}
+          width={width}
+          className={className}
+          style={style}
           title={title}
-          withChartTypeSelector
+          withResetButton={withResetButton}
+          withChartTypeSelector={withChartTypeSelector}
         />
       )}
     </InteractiveQuestionProvider>

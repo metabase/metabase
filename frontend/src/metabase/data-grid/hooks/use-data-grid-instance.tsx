@@ -7,7 +7,14 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useUpdateEffect } from "react-use";
 import _ from "underscore";
 
@@ -91,7 +98,8 @@ export const useDataGridInstance = <TData, TValue>({
     }
   }, [controlledColumnSizingMap]);
 
-  useUpdateEffect(() => {
+  // useEffect and useUpdateEffect is triggered after render, which causes flickering for controlled column order
+  useLayoutEffect(() => {
     setColumnOrder(getColumnOrder(controlledColumnOrder ?? [], hasRowIdColumn));
   }, [controlledColumnOrder, hasRowIdColumn]);
 
@@ -106,10 +114,6 @@ export const useDataGridInstance = <TData, TValue>({
 
   const handleExpandButtonClick = useCallback(
     (columnName: string, content: React.ReactNode) => {
-      if (typeof content !== "string") {
-        throw new Error("Columns with rich formatting cannot be expanded");
-      }
-
       const newColumnWidth = Math.max(
         measureBodyCellDimensions(content).width,
         measuredColumnSizingMap[columnName],
@@ -213,12 +217,9 @@ export const useDataGridInstance = <TData, TValue>({
           const value = column.accessorFn(data[rowIndex]);
           const formattedValue = column.formatter
             ? column.formatter(value, rowIndex, column.id)
-            : value;
-          if (
-            value == null ||
-            typeof formattedValue !== "string" ||
-            formattedValue === ""
-          ) {
+            : String(value);
+
+          if (value == null || formattedValue === "") {
             return defaultRowHeight;
           }
           const tableColumn = table.getColumn(column.id);

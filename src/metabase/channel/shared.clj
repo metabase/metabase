@@ -28,7 +28,7 @@
     @x
     x))
 
-(defn realize-data-rows
+(defn maybe-realize-data-rows
   "Realize the data rows in a [[metabase.notification.payload.execute/Part]]"
   [part]
   (when part

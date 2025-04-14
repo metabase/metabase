@@ -32,7 +32,7 @@
   color: var(--mb-color-syntax-parameters);
   font-family: var(--mb-default-monospace-font-family);
   font-size: 0.75rem;
-  line-height: 1.6;
+  line-height: 1.57em;
   border-radius: 2px;
 
   &.active {
@@ -64,6 +64,10 @@
   gap: 1rem;
   grid-template-columns: repeat(2, minmax(4rem, max-content));
   margin: 1rem 0;
+
+  .arg {
+    line-height: 1.92;
+  }
 }
 
 .documentationLink {

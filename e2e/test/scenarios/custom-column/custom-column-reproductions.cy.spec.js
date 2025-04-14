@@ -1531,3 +1531,84 @@ describe("issue #55940", () => {
       .should("contain", "Offset(Sum([Total]), -1)");
   });
 });
+
+describe("issue #55984", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should not overflow the suggestion tooltip when a suggestion name is too long (metabase#55984)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "[Total]",
+      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt",
+    });
+    cy.button("Done").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("[lo");
+    H.CustomExpressionEditor.completions().should(($el) => {
+      expect(H.isScrollableHorizontally($el[0])).to.be.false;
+    });
+  });
+
+  it("should not overflow the suggestion tooltip when a suggestion name is too long and has no spaces (metabase#55984)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "[Total]",
+      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt".replaceAll(
+        " ",
+        "_",
+      ),
+    });
+    cy.button("Done").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("[lo");
+    H.CustomExpressionEditor.completions().should(($el) => {
+      expect(H.isScrollableHorizontally($el[0])).to.be.false;
+    });
+  });
+});
+
+describe("issue 55622", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to mix regular functions with aggregation functions (metabase#55622)", () => {
+    H.openPeopleTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: 'datetimeDiff(Max([Created At]), max([Birth Date]), "minute")',
+      name: "Aggregation",
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 56152", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Should show the help text popover when typing a multi-line expression (metabase#56152)", () => {
+    H.openPeopleTable({ mode: "notebook" });
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type(dedent`
+      datetimeDiff(
+        [Created At],
+    `);
+
+    H.CustomExpressionEditor.helpText().should("be.visible");
+  });
+});

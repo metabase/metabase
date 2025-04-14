@@ -63,6 +63,7 @@
                               :expressions                     true
                               :native-parameters               true
                               :expression-aggregations         true
+                              :expression-literals             true
                               :binning                         true
                               :datetime-diff                   true
                               :convert-timezone                true

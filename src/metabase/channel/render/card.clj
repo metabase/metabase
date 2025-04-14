@@ -152,8 +152,8 @@
   - content (a hiccup form suitable for rendering on rich clients or rendering into an image)
   - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
     scalar results where text is preferable to an image of a div of a single result."
-  ([render-type timezone-id  card dashcard results]
-   (render-pulse-card render-type timezone-id  card dashcard results nil))
+  ([render-type timezone-id card dashcard results]
+   (render-pulse-card render-type timezone-id card dashcard results nil))
 
   ([render-type
     timezone-id :- [:maybe :string]

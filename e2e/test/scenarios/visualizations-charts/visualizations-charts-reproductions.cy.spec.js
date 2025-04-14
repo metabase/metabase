@@ -539,13 +539,15 @@ describe("issue 21452", () => {
       .findByDisplayValue("Cumulative sum of Quantity")
       .clear()
       .type("Foo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Display type").click();
-    // Dismiss the popup and close settings
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
 
-    H.cartesianChartCircle().first().realHover();
+    H.popover().findByText("Display type").click();
+
+    cy.log("Dismiss the popup and close settings");
+    H.leftSidebar().button("Done").click();
+
+    // trigger("mousemove") is more reliable than realHover
+    // maybe related to https://github.com/dmtrKovalenko/cypress-real-events/issues/691
+    H.cartesianChartCircle().first().trigger("mousemove");
 
     H.assertEChartsTooltip({
       header: "2022",
@@ -1205,9 +1207,9 @@ describe("issue 49160", () => {
       display: "pie",
     });
 
-    // Shows pie placeholder
-    H.echartsContainer().findByText("18,760").should("be.visible");
-    cy.findByTestId("qb-header-action-panel").findByText("Summarize").click();
+    cy.log("Shows an empty state that can open the summarize sidebar");
+    cy.findByAltText("pie chart example illustration").should("be.visible");
+    cy.findByLabelText("Open summarize sidebar").click();
 
     cy.findByLabelText("Rating").click();
     H.echartsContainer().findByText("200").should("be.visible");

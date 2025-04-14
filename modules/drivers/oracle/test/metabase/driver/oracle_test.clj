@@ -21,6 +21,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
@@ -36,7 +37,9 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time LocalDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -155,6 +158,7 @@
                       {:name "tunnel-private-key"}
                       {:name "tunnel-private-key-passphrase"}
                       {:name "advanced-options"}
+                      {:name "destination-database"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}
@@ -616,6 +620,30 @@
                 results (qp/process-query query)]
             (is (str/includes? (get-in results [:data :native_form]) y))
             (is (= [[1000]] (mt/formatted-rows [int] results)))))))))
+
+(deftest native-relative-dates-against-date-test
+  (testing "Relate date times against native queries use appropriate parameter types"
+    (mt/test-driver
+      :oracle
+      (mt/dataset
+        date-cols-with-datetime-values
+        (let [query (mt/native-query
+                      {:query "SELECT * FROM \"mb_test\".\"date_cols_with_datetime_values_dates_with_time\" WHERE {{date_filter}}"
+                       :template-tags
+                       {"date_filter"
+                        {:name         "date_filter"
+                         :display-name "Date Filter"
+                         :type         :dimension
+                         :widget-type :date/relative
+                         :dimension    [:field (mt/id
+                                                :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]}}})]
+          (doseq [value ["past30days" "past3hours"]
+                  :let [query-with-params (assoc query :parameters [{:type   :date/relative
+                                                                     :value  value
+                                                                     :target [:dimension [:template-tag "date_filter"]]}])
+                        parameters (:params (qp.compile/compile query-with-params))]]
+            (is (= 2 (count parameters)))
+            (is (= [LocalDateTime LocalDateTime] (map type parameters)))))))))
 
 (deftest nest-window-functions-test
   (mt/test-driver

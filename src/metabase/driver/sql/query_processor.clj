@@ -597,12 +597,24 @@
                        (h2x/with-type-info value {:database-type "varchar"}))))
       (->honeysql driver value))))
 
+(defn- literal-text-value?
+  [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
+  (and (mbql.u/is-clause? :value clause)
+       (string? value)
+       (isa? (or effective-type base-type)
+             :type/Text)))
+
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name {::add/keys [source-table source-alias]} :as _clause]]
   (let [expression-definition (mbql.u/expression-with-name *inner-query* expression-name)]
-    (->honeysql driver (if (= source-table ::add/source)
-                         (apply h2x/identifier :field source-query-alias source-alias)
-                         expression-definition))))
+    (->honeysql driver (cond (= source-table ::add/source)
+                             (apply h2x/identifier :field source-query-alias source-alias)
+
+                             (literal-text-value? expression-definition)
+                             [::expression-literal-text-value expression-definition]
+
+                             :else
+                             expression-definition))))
 
 (defmethod ->honeysql [:sql :now]
   [driver _clause]
@@ -645,6 +657,9 @@
 
                [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
                (cast-temporal-byte driver coercion-strategy honeysql-form)
+
+               [:type/Text (:isa? :Coercion/String->Float)]
+               (->float driver honeysql-form)
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
@@ -1408,6 +1423,18 @@
   ;; athena cannot cast uuid to bounded varchars
   (->honeysql driver [::cast expr "text"]))
 
+(defmethod ->honeysql [:sql ::expression-literal-text-value]
+  [driver [_ value]]
+  ;; When compiling with driver/*compile-with-inline-parameters* bound to false, a literal string expression will
+  ;; usually get replaced with a parameter placeholder like ?. For some databases, this causes a problem as the
+  ;; database engine cannot determine the type of the value in an expression like `SELECT ? AS "FOO"`. Drivers that
+  ;; need special handling for literal string expressions can provide an implementation for this method, e.g. to add
+  ;; an explicit CAST to the appropriate text type for the given driver. See the H2 driver for an example. We
+  ;; only need to do this for string literals, since numbers and booleans get inlined directly.
+  ;;
+  ;; Most databases don't require special handling, so just compile the unwrapped value.
+  (->honeysql driver value))
+
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]
   (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
@@ -1431,6 +1458,16 @@
              (map? (field 2)))
     (select-keys (field 2) [:base-type])))
 
+(defn- parent-honeysql-col-effective-type-map
+  [field]
+  (when-let [field-id (and (vector? field)
+                           (= 3 (count field))
+                           (= :field (first field))
+                           (integer? (second field))
+                           (second field))]
+    (select-keys (lib.metadata/field (qp.store/metadata-provider) field-id)
+                 [:effective-type])))
+
 (def ^:dynamic *parent-honeysql-col-type-info*
   "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. Its value should be
   `{:base-type keyword? :database-type string?}`. The value is used in `->honeysql <driver> :relative-datetime`,
@@ -1443,6 +1480,7 @@
   (let [field-honeysql (->honeysql driver field)]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
+                                                     (parent-honeysql-col-effective-type-map field)
                                                      (parent-honeysql-col-base-type-map field))]
       [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
@@ -1452,6 +1490,7 @@
     (let [field-honeysql (->honeysql driver field)]
       (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                          {:database-type database-type})
+                                                       (parent-honeysql-col-effective-type-map field)
                                                        (parent-honeysql-col-base-type-map field))]
         [operator field-honeysql (->honeysql driver value)]))))
 
@@ -1461,6 +1500,7 @@
   (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
+                                                     (parent-honeysql-col-effective-type-map field)
                                                      (parent-honeysql-col-base-type-map field))]
       [:= field-honeysql (->honeysql driver value)])))
 

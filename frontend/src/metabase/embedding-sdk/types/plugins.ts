@@ -5,6 +5,9 @@ import type { ClickAction, ClickObject } from "metabase/visualizations/types";
 
 import type { MetabaseQuestion } from "./question";
 
+/**
+ * @interface
+ */
 export type MetabaseDataPointObject = Pick<
   ClickObject,
   "value" | "column" | "data" | "event"

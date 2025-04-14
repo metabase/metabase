@@ -122,6 +122,10 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should preserve set widths after reordering (VIZ-439)", () => {
+    cy.intercept(
+      "GET",
+      "/api/search?models=dataset&models=table&table_db_id=*",
+    ).as("getSearchResults");
     H.startNewNativeQuestion({
       query: 'select 1 "first_column", 2 "second_column"',
       display: "table",
@@ -129,6 +133,7 @@ describe("scenarios > visualizations > table", () => {
     });
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.wait("@getSearchResults");
 
     H.tableHeaderColumn("first_column").invoke("outerWidth").as("firstWidth");
     H.tableHeaderColumn("second_column").invoke("outerWidth").as("secondWidth");
@@ -156,7 +161,7 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
     // Wait for column widths to be set
-    cy.wait(100);
+    cy.wait("@getSearchResults");
     assertUnchangedWidths();
   });
 
@@ -562,7 +567,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
         size_y: 12,
       },
     }).then(({ body: { dashboard_id } }) => {
-      const wrappedRowInitialHeight = 104.5;
+      const wrappedRowInitialHeight = 104;
       const updatedRowHeight = 87;
       H.visitDashboard(dashboard_id);
 

@@ -243,7 +243,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields as in the database", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
-      setTableOrder("Database");
+      verifyTableOrder("Database");
       H.openProductsTable();
       assertTableHeader([
         "ID",
@@ -259,6 +259,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields alphabetically", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
+      cy.findByLabelText("Edit column order").click();
       setTableOrder("Alphabetical");
       H.openProductsTable();
       assertTableHeader([
@@ -275,6 +276,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields smartly", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
+      cy.findByLabelText("Edit column order").click();
       setTableOrder("Smart");
       H.openProductsTable();
       assertTableHeader([
@@ -291,11 +293,17 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields in the custom order", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
-      //moveField(0, 200);
-      H.moveDnDKitElement(cy.findAllByTestId("grabber").first(), {
-        vertical: 200,
+      cy.findByLabelText("Edit column order").click();
+      H.modal().findByLabelText("Sort").should("have.text", "Database");
+      H.moveDnDKitElement(H.modal().findByLabelText("ID"), {
+        vertical: 50,
       });
       cy.wait("@updateFieldOrder");
+
+      cy.log("should not show loading state after an update (metabase#56482)");
+      cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
+
+      H.modal().findByLabelText("Sort").should("have.text", "Custom");
       H.openProductsTable();
       assertTableHeader([
         "Ean",
@@ -307,6 +315,56 @@ describe("scenarios > admin > datamodel > editor", () => {
         "Rating",
         "Created At",
       ]);
+    });
+
+    it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
+      visitTableMetadata({ tableId: PRODUCTS_ID });
+      cy.findByLabelText("Edit column order").click();
+      H.modal().findByLabelText("Sort").should("have.text", "Database");
+      H.moveDnDKitElement(H.modal().findByLabelText("ID"), {
+        vertical: 50,
+      });
+      cy.wait("@updateFieldOrder");
+
+      cy.log("should not show loading state after an update (metabase#56482)");
+      cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
+
+      H.modal()
+        .findAllByRole("listitem")
+        .should(($items) => {
+          expect($items[0].textContent).to.equal("Ean");
+          expect($items[1].textContent).to.equal("ID");
+        });
+
+      H.modal().findByLabelText("Sort").should("have.text", "Custom");
+
+      cy.log(
+        "should allow switching to predefined order afterwards (metabase#56482)",
+      );
+      setTableOrder("Database");
+
+      H.modal()
+        .findAllByRole("listitem")
+        .should(($items) => {
+          expect($items[0].textContent).to.equal("ID");
+          expect($items[1].textContent).to.equal("Ean");
+        });
+
+      cy.log("should allow drag & drop afterwards (metabase#56482)"); // extra sanity check
+      H.moveDnDKitElement(H.modal().findByLabelText("ID"), {
+        vertical: 50,
+      });
+      cy.wait("@updateFieldOrder");
+
+      cy.log("should not show loading state after an update (metabase#56482)");
+      cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
+
+      H.modal()
+        .findAllByRole("listitem")
+        .should(($items) => {
+          expect($items[0].textContent).to.equal("Ean");
+          expect($items[1].textContent).to.equal("ID");
+        });
     });
 
     it("should allow hiding and restoring all tables in a schema", () => {
@@ -688,8 +746,13 @@ const getFieldSection = (fieldName) => {
   return cy.findByLabelText(fieldName);
 };
 
+const verifyTableOrder = (order) => {
+  cy.findByLabelText("Edit column order").click();
+  H.modal().findByLabelText("Sort").should("have.text", order);
+};
+
 const setTableOrder = (order) => {
-  cy.findByLabelText("Sort").click();
+  H.modal().findByLabelText("Sort").click();
   H.popover().findByText(order).click();
   cy.wait("@updateTable");
 };

@@ -8,6 +8,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.database :as api.database]
    [metabase.api.table :as api.table]
+   [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -81,10 +82,11 @@
     (mt/object-defaults :model/Database)
     (select-keys db [:created_at :id :entity_id :details :updated_at :timezone :name :dbms_version
                      :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled])
-    {:engine               (u/qualified-name (:engine db))
-     :settings             {}
-     :features             (map u/qualified-name (driver.u/features driver db))
-     :initial_sync_status "complete"})))
+    {:engine                (u/qualified-name (:engine db))
+     :settings              {}
+     :features              (map u/qualified-name (driver.u/features driver db))
+     :initial_sync_status   "complete"
+     :router_user_attribute nil})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
@@ -627,13 +629,13 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details)
+    (is (= (merge (dissoc (db-details) :details :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                    (t2/select-one [:model/Table :created_at :updated_at :entity_id] :id (mt/id :categories))
+                                    (t2/select-one [:model/Table :id :created_at :updated_at :entity_id] :id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"
@@ -675,6 +677,14 @@
                                      :db_id        (mt/id)})]})
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
+
+(deftest ^:parallel database-metadata-has-entity-ids-test
+  (testing "GET /api/database/:id/metadata"
+    (is (=? {:entity_id some?
+             :tables (partial every? (fn [{:keys [entity_id fields]}]
+                                       (and entity_id
+                                            (api.test-util/all-have-entity-ids? fields))))}
+            (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id)))))))
 
 (deftest ^:parallel fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
@@ -865,7 +875,7 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> #{:features :native_permissions :can_upload}
+        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
                                 (disj :details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
@@ -890,6 +900,7 @@
                      :model/Database _ {:engine ::test-driver}
                      :model/Database _ {:engine ::test-driver}
                      :model/Database _ {:engine ::test-driver}]
+        (mt/user-http-request :rasta :get 200 "database")
         (t2/with-call-count [call-count]
           (mt/user-http-request :rasta :get 200 "database")
           (is (< (call-count) 10)))))))

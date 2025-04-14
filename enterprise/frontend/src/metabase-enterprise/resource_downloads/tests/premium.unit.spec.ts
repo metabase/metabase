@@ -20,7 +20,7 @@ describe("[EE - with token features] resource downloads plugin", () => {
             hide_download_button,
             downloads,
           }),
-        ).toBe(downloadsEnabled);
+        ).toStrictEqual(downloadsEnabled);
       },
     );
   });
