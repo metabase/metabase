@@ -26,19 +26,20 @@
    (:body (curl/get (url version) {:as :stream}))
    (dir->file version dir)))
 
-(defn latest-patch-version [major-version]
+(defn latest-patch-version
+  "Gets something like '53', returns major + minor version, like '53.10'"
+  [major-version]
   (let [base-url "https://api.github.com/repos/metabase/metabase/releases"
         per-page 100
-        re-pattern (re-pattern (str "^v1\\." major-version ".*"))]
+        re-pattern (re-pattern (str "^v\\d\\.(" major-version "\\.\\d+)"))]
     (loop [page 1]
       (println (str "Looking for latest version of " major-version " on release page " page))
-      (let [url (str base-url "?page=" page "&per_page=" per-page)
-            releases (json/parse-string
-                      (:body (curl/get url
-                                       {:headers {"Accept" "application/vnd.github.v3+json"}}))
+      (let [releases (json/parse-string
+                      (:body (curl/get base-url
+                                       {:headers {"Accept" "application/vnd.github.v3+json"}
+                                        :query-params {:page page :per_page per-page}}))
                       keyword)
-            match (some #(when (re-matches re-pattern (get % :tag_name)) (get % :tag_name))
-                        releases)]
+            match (some #(second (re-matches re-pattern (:tag_name %))) releases)]
         (cond
           match (do
                   (println (str (c/green "Found latest version of " major-version) ": " (c/cyan match)))
@@ -48,7 +49,7 @@
 
 (defn find-latest-version [version]
   (cond
-    (re-matches #"\d+" version) (latest-patch-version version)
+    (re-matches #"\d+" version) (str "1." (latest-patch-version version))
     (re-matches #"\d+\.\d+\.\d+" version) version
     :else (throw (ex-info (str "Invalid version format:" version)
                           {:version version}))))
