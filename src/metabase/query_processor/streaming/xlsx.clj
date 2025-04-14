@@ -18,14 +18,22 @@
    [metabase.util.json :as json])
   (:import
    (java.io OutputStream)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (org.apache.poi.openxml4j.util ZipSecureFile)
-   (org.apache.poi.ss SpreadsheetVersion)
-   (org.apache.poi.ss.usermodel Cell DataConsolidateFunction DataFormat DateUtil Workbook)
-   (org.apache.poi.ss.util AreaReference CellRangeAddress CellReference)
+   (java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)
+   (org.apache.poi.ss.usermodel
+    Cell
+    DataConsolidateFunction
+    DataFormat
+    DateUtil
+    Workbook)
+   (org.apache.poi.ss.util CellRangeAddress)
    (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)
-   (org.apache.poi.xssf.usermodel XSSFPivotTable XSSFRow XSSFSheet XSSFWorkbook)
-   (org.openxmlformats.schemas.spreadsheetml.x2006.main STFieldSortType)))
+   (org.apache.poi.xssf.usermodel XSSFRow XSSFSheet)))
 
 (set! *warn-on-reflection* true)
 
