@@ -15,11 +15,13 @@ export function MultiAutocompleteOption({
 
   return (
     <span>
-      <span>{value}</span>
+      <span>{label}</span>
       <Box component="span" mx="xs" opacity={0.5}>
         -
       </Box>
-      <span>{label}</span>
+      <Box component="span" opacity={0.5}>
+        {value}
+      </Box>
     </span>
   );
 }
