@@ -38,6 +38,7 @@ export const TAG_TYPES = [
   "public-card",
   "embed-card",
   "public-action",
+  "unique-tasks",
   "user-key-value",
 ] as const;
 

@@ -17,6 +17,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import type { Database, Task, TaskStatus } from "metabase-types/api";
 
+import { TaskPicker } from "../components/TaskPicker";
 import { TaskStatusPicker } from "../components/TaskStatusPicker";
 
 type TasksAppProps = {
@@ -115,7 +116,9 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
         />
       </Flex>
 
-      <Flex>
+      <Flex gap="md">
+        <TaskPicker value={task} onChange={setTask} />
+
         <TaskStatusPicker value={status} onChange={setStatus} />
       </Flex>
 
