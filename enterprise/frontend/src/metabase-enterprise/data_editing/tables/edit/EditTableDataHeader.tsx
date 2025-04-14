@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { TableNotificationsTrigger } from "metabase/notifications/modals";
+import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip"; // TODO: we should not use query builder components
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components"; // TODO: we should not use query builder components
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { Button, Flex, Group, Icon, Stack, Title } from "metabase/ui";
@@ -16,15 +17,19 @@ import { EditTableDataFilterButton } from "./EditTableDataFilterButton";
 interface EditTableDataHeaderProps {
   table: Table | ApiTable;
   question: Question;
+  isLoading: boolean;
   onCreate: () => void;
   onQuestionChange: (newQuestion: Question) => void;
+  refetchTableDataQuery: () => void;
 }
 
 export const EditTableDataHeader = ({
   table,
   question,
+  isLoading,
   onCreate,
   onQuestionChange,
+  refetchTableDataQuery,
 }: EditTableDataHeaderProps) => {
   const hasFilters = useMemo(
     () =>
@@ -62,6 +67,14 @@ export const EditTableDataHeader = ({
             variant="filled"
             onClick={onCreate}
           >{t`New record`}</Button>
+          <RunButtonWithTooltip
+            iconSize={16}
+            onlyIcon
+            medium
+            compact
+            isRunning={isLoading}
+            onRun={refetchTableDataQuery}
+          />
           <TableNotificationsTrigger tableId={table.id} />
         </Group>
       </Flex>

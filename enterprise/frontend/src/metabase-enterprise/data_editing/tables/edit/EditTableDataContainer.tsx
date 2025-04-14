@@ -46,9 +46,12 @@ export const EditTableDataContainer = ({
   const { fakeTableQuestion, fakeTableQuery, table, handleQuestionChange } =
     useStandaloneTableQuery({ tableId, databaseId, location });
 
-  const { data: rawDatasetResult, isLoading } = useGetAdhocQueryQuery(
-    fakeTableQuery || skipToken,
-  );
+  const {
+    data: rawDatasetResult,
+    isFetching,
+    isLoading,
+    refetch,
+  } = useGetAdhocQueryQuery(fakeTableQuery || skipToken);
 
   const datasetData = useMemo(() => {
     return rawDatasetResult
@@ -93,8 +96,10 @@ export const EditTableDataContainer = ({
           <EditTableDataHeader
             table={table}
             question={fakeTableQuestion}
+            isLoading={isFetching}
             onCreate={handleModalOpenAndExpandedRow}
             onQuestionChange={handleQuestionChange}
+            refetchTableDataQuery={refetch}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (
