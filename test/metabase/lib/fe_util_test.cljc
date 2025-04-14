@@ -209,6 +209,33 @@
                    :display-name "Unknown Metric"}
                   (lib/expression-parts query stage-number unknown-ref))))))))
 
+(deftest ^:parallel expression-parts-expression-reference-test
+  (let [expression-name "Foo"
+        other-expression-name "Bar"
+        query (-> (lib.tu/venues-query)
+                  (lib/expression expression-name
+                                  (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2))
+                  (lib/expression other-expression-name
+                                  [:expression {:base-type :type/Integer} expression-name]))
+        ;;
+
+        stage-number -1]
+    (testing "expression references"
+      (mu/disable-enforcement
+        (is (=? {:lib/type :metadata/column
+                 :name expression-name
+                 :lib/expression-name expression-name
+                 :lib/source :source/expressions}
+                (lib/expression-parts query stage-number [:expression {:base-type :type/Integer} expression-name])))))
+
+    (testing "nested expression references"
+      (mu/disable-enforcement
+        (is (=? {:lib/type :metadata/column
+                 :name other-expression-name
+                 :lib/expression-name other-expression-name
+                 :lib/source :source/expressions}
+                (lib/expression-parts query stage-number [:expression {} other-expression-name])))))))
+
 (deftest ^:parallel expression-clause-test
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
           (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
