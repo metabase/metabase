@@ -1326,7 +1326,7 @@ describe("admin > settings > updates", () => {
       cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
       cy.findByText("Some old feature").should("be.visible");
       cy.findByText("New latest feature").should("be.visible");
-      cy.findByText("Stable releases").click();
+      cy.findByDisplayValue("Stable releases").click();
     });
 
     H.popover().findByText("Beta releases").click();
@@ -1336,7 +1336,7 @@ describe("admin > settings > updates", () => {
         "be.visible",
       );
       cy.findByText("New beta feature").should("be.visible");
-      cy.findByText("Beta releases").click();
+      cy.findByDisplayValue("Beta releases").click();
     });
 
     H.popover().findByText("Nightly builds").click();
