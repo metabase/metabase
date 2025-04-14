@@ -73,10 +73,10 @@ class DraggedItems extends Component {
     );
   }
 
-  checkIsPinned = item => {
+  checkIsPinned = (item) => {
     const { pinnedItems } = this.props;
     const index = pinnedItems.findIndex(
-      i => i.model === item.model && i.id === item.id,
+      (i) => i.model === item.model && i.id === item.id,
     );
     return index >= 0;
   };
@@ -113,7 +113,7 @@ class DraggedItems extends Component {
   render() {
     const { items, draggedItem, visibleColumnsMap } = this.props;
     const index = _.findIndex(items, draggedItem);
-    const allPinned = items.every(item => this.checkIsPinned(item));
+    const allPinned = items.every((item) => this.checkIsPinned(item));
     return (
       <div
         style={{
@@ -123,7 +123,7 @@ class DraggedItems extends Component {
       >
         <BaseItemsTable
           items={items}
-          ItemComponent={props => this.renderItem(props)}
+          ItemComponent={(props) => this.renderItem(props)}
           headless
           isInDragLayer
           style={{ width: allPinned ? 400 : undefined }}

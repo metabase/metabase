@@ -11,7 +11,6 @@ import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
@@ -185,7 +184,7 @@ function setup({
     const strategy = Lib.displayInfo(query, 0, Lib.joinStrategy(join));
     const fields = Lib.joinFields(join);
 
-    const conditions = Lib.joinConditions(join).map(condition => {
+    const conditions = Lib.joinConditions(join).map((condition) => {
       const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(
         query,
         step.stageIndex,
@@ -212,7 +211,6 @@ function setup({
 
 describe("Notebook Editor > Join Step", () => {
   beforeAll(() => {
-    mockScrollBy();
     mockGetBoundingClientRect();
   });
 
@@ -691,13 +689,13 @@ describe("Notebook Editor > Join Step", () => {
       const { query, fields } = getRecentJoin();
       const columns = fields as Lib.ColumnMetadata[];
       const reviewer = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "REVIEWER",
+        (column) => Lib.displayInfo(query, 0, column).name === "REVIEWER",
       );
       const category = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "PRODUCT_ID",
+        (column) => Lib.displayInfo(query, 0, column).name === "PRODUCT_ID",
       );
       const price = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "CREATED_AT",
+        (column) => Lib.displayInfo(query, 0, column).name === "CREATED_AT",
       );
       expect(columns).not.toHaveLength(0);
       expect(reviewer).not.toBeUndefined();
@@ -714,7 +712,7 @@ describe("Notebook Editor > Join Step", () => {
       const joinColumnsPicker = await screen.findByTestId(
         "join-columns-picker",
       );
-      await userEvent.click(within(joinColumnsPicker).getByText("Select none"));
+      await userEvent.click(within(joinColumnsPicker).getByText("Select all"));
       expect(within(joinColumnsPicker).getByLabelText("ID")).not.toBeChecked();
       expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
       await userEvent.click(within(joinColumnsPicker).getByLabelText("ID"));
@@ -737,7 +735,7 @@ describe("Notebook Editor > Join Step", () => {
         "join-columns-picker",
       );
 
-      await userEvent.click(within(joinColumnsPicker).getByText("Select none"));
+      await userEvent.click(within(joinColumnsPicker).getByText("Select all"));
 
       await userEvent.click(screen.getByLabelText("Left column"));
       const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
@@ -774,13 +772,13 @@ describe("Notebook Editor > Join Step", () => {
       const { query, fields } = getRecentJoin();
       const columns = fields as Lib.ColumnMetadata[];
       const vendor = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "VENDOR",
+        (column) => Lib.displayInfo(query, 0, column).name === "VENDOR",
       );
       const category = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "CATEGORY",
+        (column) => Lib.displayInfo(query, 0, column).name === "CATEGORY",
       );
       const price = columns.find(
-        column => Lib.displayInfo(query, 0, column).name === "PRICE",
+        (column) => Lib.displayInfo(query, 0, column).name === "PRICE",
       );
       expect(columns).not.toHaveLength(0);
       expect(vendor).not.toBeUndefined();
@@ -795,7 +793,7 @@ describe("Notebook Editor > Join Step", () => {
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       const picker = await screen.findByTestId("join-columns-picker");
-      await userEvent.click(within(picker).getByText("Select none"));
+      await userEvent.click(within(picker).getByText("Select all"));
 
       const { fields } = getRecentJoin();
       expect(fields).toBe("none");

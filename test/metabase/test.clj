@@ -205,6 +205,7 @@
   with-metadata-provider]
 
  [qp.test-util
+  boolish->bool
   card-with-source-metadata-for-query
   col
   cols

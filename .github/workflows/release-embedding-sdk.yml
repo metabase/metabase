@@ -14,6 +14,8 @@ on:
           - release-x.51.x
           - release-x.52.x
           - release-x.53.x
+          - release-x.54.x
+          - metabot-v3-main
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -78,7 +80,7 @@ jobs:
             );
             const body = `${runLink} - run by ${mentionUserByGithubLogin("${{ github.event.sender.login }}")}`
             const sendSlackMessageResponse = await sendSlackMessage({
-              channelName: 'proj-embedding-sdk',
+              channelName: 'team-embedding-releases',
               message: `${title}\n${body}`,
             });
 
@@ -125,7 +127,7 @@ jobs:
               context.repo.repo,
             );
             sendSlackReply({
-              channelName: 'proj-embedding-sdk',
+              channelName: 'team-embedding-releases',
               message: runLink,
               messageId: ${{ env.slackMessageId}},
               broadcast: true
@@ -162,7 +164,7 @@ jobs:
               context.repo.repo,
             );
             sendSlackReply({
-              channelName: 'proj-embedding-sdk',
+              channelName: 'team-embedding-releases',
               message: runLink,
               messageId: ${{ env.slackMessageId}},
               broadcast: true
@@ -390,10 +392,10 @@ jobs:
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           # Please keep the value in sync with `inputs.branch`'s release branch
-          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable", "release-x.53.x": "53-stable"}')[inputs.branch]}}
+          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable", "release-x.53.x": "53-stable", "release-x.54.x": "54-stable", "metabot-v3-main": "55-metabot"}')[inputs.branch]}}
 
-      - name: Add `latest` tag to the latest release branch (`release-x.53.x`) deployment
-        if: ${{ inputs.branch == 'release-x.53.x' }}
+      - name: Add `latest` tag to the latest release branch (`release-x.54.x`) deployment
+        if: ${{ inputs.branch == 'release-x.54.x' }}
         working-directory: sdk
         run: |
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest

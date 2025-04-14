@@ -183,25 +183,22 @@ describe("scenarios > admin > permissions > application", () => {
       });
 
       it("allows editing settings as a non-admin user", () => {
-        cy.visit("/");
-        cy.icon("gear").click();
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Admin settings").click();
-
+        cy.visit("/admin/settings");
         cy.url().should("include", "/admin/settings/general");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("License and Billing").should("not.exist");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Setup").should("not.exist");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Updates").should("not.exist");
+        cy.findByTestId("admin-layout-content").within(() => {
+          cy.findByText("License and Billing").should("not.exist");
+          cy.findByLabelText("Updates").should("not.exist");
+          cy.findByLabelText("Site Name")
+            .should("be.visible")
+            .clear()
+            .type("NewName")
+            .blur();
+        });
 
-        // General smoke test
-        cy.get("#setting-site-name").clear().type("new name").blur();
-
-        H.undoToast().findByText("Changes saved").should("be.visible");
+        H.undoToast()
+          .findByText(/changes saved/i)
+          .should("be.visible");
       });
     });
   });

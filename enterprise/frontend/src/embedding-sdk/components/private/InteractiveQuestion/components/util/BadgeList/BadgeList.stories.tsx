@@ -15,7 +15,7 @@ export default {
 export const DefaultLayoutBadgeList = {
   render() {
     const [items, setItems] = useState(
-      Array.from(Array(5).keys()).map(i => ({
+      Array.from(Array(5).keys()).map((i) => ({
         name: `item ${i}`,
         item: i,
       })),
@@ -35,14 +35,14 @@ export const DefaultLayoutBadgeList = {
     };
 
     const onAddItem = () =>
-      setItems(nextItems => [
+      setItems((nextItems) => [
         ...nextItems,
         { name: `item ${nextItems.length}`, item: nextItems.length },
       ]);
 
     const onRemoveItem = (_item?: number, index?: number) => {
       if (typeof index === "number") {
-        setItems(nextItems => [
+        setItems((nextItems) => [
           ...nextItems.slice(0, index),
           ...nextItems.slice(index + 1),
         ]);

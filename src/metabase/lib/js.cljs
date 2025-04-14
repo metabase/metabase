@@ -368,7 +368,7 @@
   "Inner implementation of [[display-info]], which caches this function's results. See there for documentation."
   [a-query stage-number x]
   (-> a-query
-      (lib.stage/ensure-previous-stages-have-metadata stage-number)
+      (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
       (lib.core/display-info stage-number x)
       display-info->js))
 
@@ -678,7 +678,9 @@
                                         ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
                                         (assoc :fields (frequencies fields))
                                         ;; Remove the randomized idents, which are of course not going to match.
-                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))))
+                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
+      ;; Ignore :info since it contains the randomized :card-entity-id.
+      (dissoc :info)))
 
 (defn- prep-query-for-equals-pMBQL
   [a-query field-ids]
@@ -1016,7 +1018,8 @@
        (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
          (let [{:keys [operator options args]} node]
            #js {:operator (name operator)
-                :options (clj->js (select-keys options [:case-sensitive :include-current]))
+                :options (fix-namespaced-values
+                          (clj->js (select-keys options [:case-sensitive :include-current :base-type]) :keyword-fn u/qualified-name))
                 :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
          node))
      parts)))
@@ -1199,14 +1202,29 @@
       #js {:operator (name operator)
            :column   column})))
 
-;; TODO remove once all filter-parts are migrated to MBQL lib
-(defn ^:export is-column-metadata
+(defn ^:export column-metadata?
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
 
-  > **Code health:** Smelly. When is this called and why does the FE need to know? The values are supposed to be opaque,
-  and we should see if there's a better way to get the needed information."
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
   [arg]
   (and (map? arg) (= :metadata/column (:lib/type arg))))
+
+(defn ^:export metric-metadata?
+  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/metric`.
+
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
+  [arg]
+  (and (map? arg) (= :metadata/metric (:lib/type arg))))
+
+(defn ^:export segment-metadata?
+  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/segment`.
+
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
+  [arg]
+  (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
 ;; # Field selection
 ;; Queries can specify a subset of fields to return from their source table or previous stage. There are several
@@ -2341,7 +2359,7 @@
     (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
       (clj->js (cond-> legacy-expr
                  (and (vector? legacy-expr)
-                      (#{:aggregation-options :value} (first legacy-expr)))
+                      (#{:aggregation-options} (first legacy-expr)))
                  (get 1))
                :keyword-fn u/qualified-name))))
 
@@ -2549,3 +2567,10 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
+
+(defn ^:export random-ident
+  "Returns a randomly generated `ident` string, suitable for a Card's `entity_id` or a query.
+
+  > **Code health:** Healthy, Single use. Only called when creating a new card/query."
+  []
+  (lib.core/random-ident))

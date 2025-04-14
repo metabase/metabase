@@ -8,7 +8,7 @@ export default {
   component: ProgressBar,
 };
 
-const Template: StoryFn<ProgressBarProps> = args => {
+const Template: StoryFn<ProgressBarProps> = (args) => {
   return <ProgressBar {...args} />;
 };
 

@@ -225,6 +225,7 @@ serdes/meta:
   label: view_log
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: null
 metabase_version: vUNKNOWN (7c47e04)
 source_card_id: null

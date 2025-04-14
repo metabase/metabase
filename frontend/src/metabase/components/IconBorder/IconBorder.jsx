@@ -17,7 +17,7 @@ import CS from "metabase/css/core/index.css";
 
 export default class IconBorder extends Component {
   static propTypes = {
-    borderWidth: PropTypes.oneOf([PropTypes.string, PropTypes.number]),
+    borderWidth: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     borderStyle: PropTypes.string,
     borderColor: PropTypes.string,
     borderRadius: PropTypes.string,

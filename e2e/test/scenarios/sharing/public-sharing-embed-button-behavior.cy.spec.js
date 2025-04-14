@@ -1,6 +1,6 @@
 const { H } = cy;
 
-["dashboard", "question"].forEach(resource => {
+["dashboard", "question"].forEach((resource) => {
   describe(`embed modal behavior for ${resource}s`, () => {
     beforeEach(() => {
       H.restore();
@@ -18,7 +18,7 @@ const { H } = cy;
 
       describe("when user is admin", () => {
         it(`should always show the embed button for ${resource}`, () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -39,7 +39,7 @@ const { H } = cy;
         it(`should not show embed button for ${resource}`, () => {
           cy.signInAsNormalUser();
 
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -58,7 +58,7 @@ const { H } = cy;
 
         describe("when user is admin", () => {
           it(`should show the embed menu for ${resource}`, () => {
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
@@ -67,7 +67,7 @@ const { H } = cy;
           });
 
           it(`should let the user create a public link for ${resource}`, () => {
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               createPublicResourceLink(resource, id);
               visitResource(resource, id);
             });
@@ -82,7 +82,7 @@ const { H } = cy;
           it(`should show a disabled public link button if the ${resource} doesn't have a public link`, () => {
             cy.signInAsNormalUser();
 
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
@@ -93,7 +93,7 @@ const { H } = cy;
           });
 
           it(`should show the public link button if the ${resource} has a public link`, () => {
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               createPublicResourceLink(resource, id);
               visitResource(resource, id);
             });
@@ -104,7 +104,7 @@ const { H } = cy;
 
             cy.signInAsNormalUser();
 
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
@@ -126,7 +126,7 @@ const { H } = cy;
 
         describe("when user is admin", () => {
           it(`should show a disabled menu item for public links for ${resource} and allow the user to access the embed modal`, () => {
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
@@ -153,7 +153,7 @@ const { H } = cy;
           it(`should show a disabled button for ${resource}`, () => {
             cy.signInAsNormalUser();
 
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
@@ -261,7 +261,7 @@ describe("#39152 sharing an unsaved question", () => {
   });
 });
 
-["dashboard", "question"].forEach(resource => {
+["dashboard", "question"].forEach((resource) => {
   H.describeWithSnowplow(`public ${resource} sharing snowplow events`, () => {
     beforeEach(() => {
       H.restore();
@@ -282,7 +282,7 @@ describe("#39152 sharing an unsaved question", () => {
     describe(`when embedding ${resource}`, () => {
       describe("when interacting with public link popover", () => {
         it("should send `public_link_copied` event when copying public link", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -330,7 +330,7 @@ describe("#39152 sharing an unsaved question", () => {
         });
 
         it("should send `public_link_removed` when removing the public link", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -346,7 +346,7 @@ describe("#39152 sharing an unsaved question", () => {
 
       describe("when interacting with public embedding", () => {
         it("should send `public_embed_code_copied` event when copying the public embed iframe", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -355,7 +355,7 @@ describe("#39152 sharing an unsaved question", () => {
           H.modal().findByText("Get embedding code").click();
 
           // mock clipboardData so that copy-to-clipboard doesn't use window.prompt, pausing the tests
-          cy.window().then(win => {
+          cy.window().then((win) => {
             win.clipboardData = {
               setData: (...args) =>
                 // eslint-disable-next-line no-console
@@ -373,7 +373,7 @@ describe("#39152 sharing an unsaved question", () => {
         });
 
         it("should send `public_link_removed` event when removing the public embed", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -392,7 +392,7 @@ describe("#39152 sharing an unsaved question", () => {
 
       describe("when interacting with static embedding", () => {
         it("should send `static_embed_code_copied` when copying the static embed code", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
           H.openStaticEmbeddingModal();
@@ -533,7 +533,7 @@ describe("#39152 sharing an unsaved question", () => {
           });
 
           it("should send `static_embed_code_copied` when copying the static embed code", () => {
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
             H.openStaticEmbeddingModal({ acceptTerms: false });
@@ -554,7 +554,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                downloads: true,
+                enabled_download_types: { pdf: true, results: true },
               },
             });
 
@@ -573,7 +573,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                downloads: true,
+                enabled_download_types: { pdf: true, results: true },
               },
             });
 
@@ -599,7 +599,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                downloads: true,
+                enabled_download_types: { pdf: true, results: true },
               },
             });
 
@@ -628,11 +628,20 @@ describe("#39152 sharing an unsaved question", () => {
             H.popover().findByText("Oswald").click();
 
             cy.log(
-              "Assert that it sends `downloads: false` when downloads are disabled",
+              "Assert that it sends `enabled_download_types: { pdf: false, results: false }` when both are disabled",
             );
             H.modal()
-              .findByLabelText("Download buttons")
+              .findByLabelText(
+                resource === "dashboard"
+                  ? "Results (csv, xlsx, json, png)"
+                  : "Download (csv, xlsx, json, png)",
+              )
               .click({ force: true });
+
+            // We have to also disable PDF exports for both to be disabled
+            if (resource === "dashboard") {
+              cy.findByLabelText("Export to PDF").click({ force: true });
+            }
 
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
@@ -649,14 +658,89 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: false,
                 font: "custom",
                 theme: "night",
-                downloads: false,
+                enabled_download_types: { pdf: false, results: false },
               },
             });
           });
+
+          // Individual download options are only supported for dashboards
+          if (resource === "dashboard") {
+            it("should support disabling PDF and result downloads individually in `static_embed_code_copied`", () => {
+              cy.get("@resourceId").then((id) => {
+                visitResource(resource, id);
+              });
+              H.openStaticEmbeddingModal({ acceptTerms: false });
+
+              H.modal().within(() => {
+                cy.findByRole("tab", { name: "Look and Feel" }).click();
+              });
+
+              cy.log(
+                "Assert that it sends `enabled_download_types: { pdf: false, results: true }` when only results download is enabled",
+              );
+
+              // Disable PDF exports
+              cy.findByLabelText("Export to PDF").click({ force: true });
+
+              cy.findByTestId("embed-backend")
+                .findByTestId("copy-button")
+                .realClick();
+
+              H.expectGoodSnowplowEvent({
+                event: "static_embed_code_copied",
+                artifact: resource,
+                language: "node",
+                location: "code_appearance",
+                code: "backend",
+                appearance: {
+                  background: true,
+                  bordered: true,
+                  titled: true,
+                  font: "instance",
+                  theme: "light",
+                  enabled_download_types: { pdf: false, results: true },
+                },
+              });
+
+              cy.log(
+                "Assert that it sends `enabled_download_types: { pdf: true, results: false }` when only PDF is enabled",
+              );
+
+              // Enable PDF exports again
+              cy.findByLabelText("Export to PDF").click({ force: true });
+
+              // Disable results download
+              cy.findByLabelText(
+                resource === "dashboard"
+                  ? "Results (csv, xlsx, json, png)"
+                  : "Download (csv, xlsx, json, png)",
+              ).click({ force: true });
+
+              cy.findByTestId("embed-backend")
+                .findByTestId("copy-button")
+                .realClick();
+
+              H.expectGoodSnowplowEvent({
+                event: "static_embed_code_copied",
+                artifact: resource,
+                language: "node",
+                location: "code_appearance",
+                code: "backend",
+                appearance: {
+                  background: true,
+                  bordered: true,
+                  titled: true,
+                  font: "instance",
+                  theme: "light",
+                  enabled_download_types: { pdf: true, results: false },
+                },
+              });
+            });
+          }
         });
 
         it("should send `static_embed_discarded` when discarding changes in the static embed modal", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             enableEmbeddingForResource({ resource, id });
             visitResource(resource, id);
           });
@@ -680,7 +764,7 @@ describe("#39152 sharing an unsaved question", () => {
           cy.then(function () {
             this.timeAfterResourceCreation = Date.now();
           });
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
           H.openStaticEmbeddingModal();
@@ -744,7 +828,7 @@ describe("#39152 sharing an unsaved question", () => {
         });
 
         it("should send `static_embed_unpublished` when unpublishing changes in the static embed modal", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             enableEmbeddingForResource({ resource, id });
             visitResource(resource, id);
           });
@@ -875,7 +959,7 @@ function assertValidPublicLink({ resource, shouldHaveRemoveLink }) {
     cy.findByTestId("public-link-input")
       .should("be.visible")
       .invoke("val")
-      .should(value => {
+      .should((value) => {
         expect(value).to.match(regex);
       });
 
@@ -886,7 +970,7 @@ function assertValidPublicLink({ resource, shouldHaveRemoveLink }) {
 }
 
 function closeTo(value, offset) {
-  return comparedValue => {
+  return (comparedValue) => {
     return Math.abs(comparedValue - value) <= offset;
   };
 }

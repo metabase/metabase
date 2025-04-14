@@ -8,7 +8,7 @@ describe("scenarios > visualizations > rows", () => {
 
   // Until we enable multi-browser support, this repro will be skipped by Cypress in CI
   // Issue was specific to Firefox only - it is still possible to test it locally
-  ["0", "null"].forEach(testValue => {
+  ["0", "null"].forEach((testValue) => {
     it(
       `should not collapse rows when last value is ${testValue} (metabase#14285)`,
       { browser: "firefox" },
@@ -36,7 +36,7 @@ describe("scenarios > visualizations > rows", () => {
         );
 
         cy.findByTestId("query-visualization-root").within(() => {
-          ["a", "b", "c", "d", "e", "f"].forEach(letter => {
+          ["a", "b", "c", "d", "e", "f"].forEach((letter) => {
             cy.findByText(letter);
           });
         });
@@ -71,10 +71,10 @@ describe("scenarios > visualizations > rows", () => {
     );
 
     cy.findByTestId("query-visualization-root").within(() => {
-      ["a", "b", "c", "d", "e", "f"].forEach(letter => {
+      ["a", "b", "c", "d", "e", "f"].forEach((letter) => {
         cy.findByText(letter);
       });
-      [51, 41, 31, 21, 11, 4].forEach(value => {
+      [51, 41, 31, 21, 11, 4].forEach((value) => {
         cy.findByText(value);
       });
       cy.findByText("COLUMN_TWO");
@@ -84,11 +84,11 @@ describe("scenarios > visualizations > rows", () => {
     cy.findAllByRole("graphics-symbol").eq(0).as("firstBar");
     cy.get("@firstBar")
       .invoke("width")
-      .then(prevWidth => {
+      .then((prevWidth) => {
         cy.get("@firstBar")
           .realHover()
           .invoke("width")
-          .then(newWidth => {
+          .then((newWidth) => {
             // eslint-disable-next-line no-unsafe-element-filtering
             expect(prevWidth).eq(newWidth);
           });

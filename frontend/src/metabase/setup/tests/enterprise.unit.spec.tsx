@@ -1,5 +1,3 @@
-/* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectSectionToHaveLabel", "expectSectionsToHaveLabelsInOrder"] }] */
-
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 

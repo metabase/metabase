@@ -69,7 +69,7 @@ export const DashboardHeaderInner = ({
   const isAdditionalInfoVisible = useSelector(getIsAdditionalInfoVisible);
 
   const isHomepageDashboard = useSelector(
-    state =>
+    (state) =>
       getSetting(state, "custom-homepage") &&
       getSetting(state, "custom-homepage-dashboard") === dashboard?.id,
   );
@@ -105,7 +105,7 @@ export const DashboardHeaderInner = ({
         isEditing &&
         dashboardBeforeEditing?.embedding_params &&
         Object.keys(dashboardBeforeEditing.embedding_params).some(
-          slug => !currentSlugs.includes(slug),
+          (slug) => !currentSlugs.includes(slug),
         )
       ) {
         return t`You've updated embedded params and will need to update your embed code.`;

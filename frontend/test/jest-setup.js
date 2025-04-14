@@ -10,7 +10,7 @@ import "__support__/mocks";
 // window.location or similar jsdom properties after the tests have ended and
 // jsdom has been torn down
 // NOTE: probably not needed in jest >= 23
-process.on("uncaughtException", err =>
+process.on("uncaughtException", (err) =>
   console.error("WARNING: UNCAUGHT EXCEPTION", err),
 );
 

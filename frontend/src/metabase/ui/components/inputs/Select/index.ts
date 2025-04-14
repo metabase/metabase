@@ -1,4 +1,3 @@
-export { Select, type SelectProps, type SelectOption } from "./Select";
-
-export * from "./SelectItem";
+export { Select, type SelectOption, type SelectProps } from "./Select";
 export { selectOverrides } from "./Select.config";
+export * from "./SelectItem";

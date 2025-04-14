@@ -4,24 +4,25 @@ on:
   workflow_dispatch:
     inputs:
       spec:
-        description: 'Relative path of the target spec'
+        description: "Relative path of the target spec"
         type: string
         required: true
       burn_in:
-        description: 'Number of times to run the test (e.g. 20)'
+        description: "Number of times to run the test (e.g. 20)"
         type: string
         required: true
+        default: "20"
       grep:
-        description: 'Grep and filter tests to run in isolation'
+        description: "Grep and filter tests to run in isolation"
         type: string
         required: false
       mb_edition:
-        description: 'Set MB_EDITION env var to "ee" (enteprise) or "oss" (open-source)'
+        description: 'Set MB_EDITION env var to "ee" (enterprise) or "oss" (open-source)'
         type: string
         required: false
         default: "ee"
       qa_db:
-        description: 'Select the type of Database you want to run your tests with'
+        description: "Select the type of Database you want to run your tests with"
         type: choice
         required: true
         default: "none"
@@ -29,6 +30,11 @@ on:
           - none
           - sql
           - mongo
+      enable_network_throttling:
+        description: "Enable network throttling simulation (4g slow like in chrome dev tools)"
+        type: boolean
+        required: false
+        default: true
 
 jobs:
   workflow-summary:
@@ -45,6 +51,7 @@ jobs:
           echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
           echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
           echo '- `qa_db`: "${{ inputs.qa_db }}"' >> $GITHUB_STEP_SUMMARY
+          echo '- `enable_network_throttling`: "${{ inputs.enable_network_throttling }}"' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
           echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
 
@@ -61,6 +68,7 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       MB_EDITION: ${{ inputs.mb_edition }}
+      CYPRESS_ENABLE_NETWORK_THROTTLING: ${{ inputs.enable_network_throttling }}
       TERM: xterm
       TZ: US/Pacific # to make node match the instance tz
     steps:
@@ -83,7 +91,7 @@ jobs:
       - name: Download Metabase ${{ matrix.edition }} uberjar
         uses: ./.github/actions/e2e-download-uberjar
         with:
-          edition: 'ee'
+          edition: "ee"
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -105,10 +113,12 @@ jobs:
       # For all options and fine-grained control, take a look at the documentation
       # https://github.com/cypress-io/cypress/tree/develop/npm/grep
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
+        env:
+          GREP: ${{ github.event.inputs.grep }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
           --spec '${{ github.event.inputs.spec }}' \
-          --env burn=${{ github.event.inputs.burn_in }},grep='${{ github.event.inputs.grep }}' \
+          --env burn=${{ github.event.inputs.burn_in }} \
           --config-file e2e/support/cypress-stress-test.config.js \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 

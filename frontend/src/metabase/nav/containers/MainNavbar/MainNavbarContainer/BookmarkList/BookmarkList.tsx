@@ -137,14 +137,14 @@ const BookmarkList = ({
     async (input: DragEndEvent) => {
       document.body.classList.remove(GrabberS.grabbing);
       setIsSorting(false);
-      const newIndex = bookmarks.findIndex(b => b.id === input.over?.id);
-      const oldIndex = bookmarks.findIndex(b => b.id === input.active.id);
+      const newIndex = bookmarks.findIndex((b) => b.id === input.over?.id);
+      const oldIndex = bookmarks.findIndex((b) => b.id === input.active.id);
       await reorderBookmarks({ newIndex, oldIndex });
     },
     [reorderBookmarks, bookmarks],
   );
 
-  const bookmarkIds = bookmarks.map(b => b.id);
+  const bookmarkIds = bookmarks.map((b) => b.id);
 
   const headerId = "headingForBookmarksSectionOfSidebar";
 

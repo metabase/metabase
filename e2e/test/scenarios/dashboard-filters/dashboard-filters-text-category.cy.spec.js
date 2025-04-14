@@ -262,7 +262,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
 });
 
 function waitDashboardCardQuery() {
-  cy.get("@dashCardId").then(id => {
+  cy.get("@dashCardId").then((id) => {
     cy.wait(`@dashcardQuery${id}`);
   });
 }

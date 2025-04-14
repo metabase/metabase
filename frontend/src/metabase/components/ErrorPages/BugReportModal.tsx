@@ -60,7 +60,7 @@ export const BugReportModal = ({
         }}
         onSubmit={onSubmit}
       >
-        {formik => (
+        {(formik) => (
           <Form>
             <Text py="md">{t`Could you provide us with a little context?`}</Text>
             <FormTextArea

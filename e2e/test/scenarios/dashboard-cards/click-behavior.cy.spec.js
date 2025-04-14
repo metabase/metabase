@@ -227,7 +227,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.editDashboard();
 
       cy.log("doesn't throw when setting default behavior (metabase#35354)");
-      cy.on("uncaught:exception", err => {
+      cy.on("uncaught:exception", (err) => {
         expect(err.name.includes("TypeError")).to.be.false;
       });
 
@@ -256,7 +256,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.intercept("GET", "/api/collection", cy.spy().as("collections"));
 
       clickLineChartPoint();
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal("");
@@ -283,7 +283,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           wrapId: true,
           idAlias: "targetDashboardId",
         },
-      ).then(dashboardId => {
+      ).then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           dashcards: [
             createMockDashboardCard({
@@ -317,7 +317,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findAllByTestId("field-set")
         .should("have.length", 1)
         .should("contain.text", POINT_COUNT);
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(
@@ -337,7 +337,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           wrapId: true,
           idAlias: "targetDashboardId",
         },
-      ).then(dashboardId => {
+      ).then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           dashcards: [
             createMockDashboardCard({
@@ -374,7 +374,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT)
         .should("contain.text", POINT_CREATED_AT_FORMATTED);
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(
@@ -414,8 +414,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       const TAB_SLUG_MAP = {};
 
-      tabs.forEach(tab => {
-        cy.get(`@${tab.name}-id`).then(tabId => {
+      tabs.forEach((tab) => {
+        cy.get(`@${tab.name}-id`).then((tabId) => {
           TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
         });
       });
@@ -446,7 +446,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findAllByTestId("field-set")
         .should("have.length", 1)
         .should("contain.text", POINT_COUNT);
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           const tabParam = `tab=${TAB_SLUG_MAP[SECOND_TAB.name]}`;
@@ -470,13 +470,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
 
       const TAB_SLUG_MAP = {};
-      tabs.forEach(tab => {
-        cy.get(`@${tab.name}-id`).then(tabId => {
+      tabs.forEach((tab) => {
+        cy.get(`@${tab.name}-id`).then((tabId) => {
           TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
         });
       });
 
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         const inexistingTabId = 999;
         const cardDetails = {
           visualization_settings: {
@@ -519,7 +519,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard({ waitMs: 250 });
 
       clickLineChartPoint();
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(`?tab=${TAB_SLUG_MAP[SECOND_TAB.name]}`);
@@ -532,7 +532,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         wrapId: true,
         idAlias: "targetDashboardId",
       });
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         const inexistingTabId = 999;
         const cardDetails = {
           visualization_settings: {
@@ -562,7 +562,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard({ waitMs: 250 });
 
       clickLineChartPoint();
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal("");
@@ -585,13 +585,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
 
       const TAB_SLUG_MAP = {};
-      tabs.forEach(tab => {
-        cy.get(`@${tab.name}-id`).then(tabId => {
+      tabs.forEach((tab) => {
+        cy.get(`@${tab.name}-id`).then((tabId) => {
           TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
         });
       });
 
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         const cardDetails = {
           visualization_settings: {
             click_behavior: {
@@ -624,7 +624,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.button("Cancel").should("not.exist");
 
       clickLineChartPoint();
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(`?tab=${TAB_SLUG_MAP[FIRST_TAB.name]}`);
@@ -646,7 +646,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           idAlias: "targetDashboardId",
         },
       )
-        .then(dashboardId => {
+        .then((dashboardId) => {
           return cy
             .request("PUT", `/api/dashboard/${dashboardId}`, {
               dashcards: [
@@ -663,7 +663,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             })
             .then(() => dashboardId);
         })
-        .then(dashboardId => {
+        .then((dashboardId) => {
           H.visitDashboard(dashboardId);
         });
 
@@ -703,7 +703,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .should("contain.text", DASHBOARD_FILTER_TEXT_WITH_DEFAULT.default);
 
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(
@@ -727,7 +727,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           idAlias: "targetDashboardId",
         },
       )
-        .then(dashboardId => {
+        .then((dashboardId) => {
           return cy
             .request("PUT", `/api/dashboard/${dashboardId}`, {
               dashcards: [
@@ -744,7 +744,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             })
             .then(() => dashboardId);
         })
-        .then(dashboardId => {
+        .then((dashboardId) => {
           H.visitDashboard(dashboardId);
         });
 
@@ -789,7 +789,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .should("contain.text", POINT_COUNT);
 
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(
@@ -857,7 +857,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.intercept("GET", "/api/collection", cy.spy().as("collections"));
 
       clickLineChartPoint();
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         cy.location()
           .its("pathname")
           .should("contain", `/question/${questionId}`);
@@ -1018,7 +1018,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.saveDashboard({ waitMs: 250 });
 
-      onNextAnchorClick(anchor => {
+      onNextAnchorClick((anchor) => {
         expect(anchor).to.have.attr("href", URL);
         expect(anchor).to.have.attr("rel", "noopener");
         expect(anchor).to.have.attr("target", "_blank");
@@ -1075,7 +1075,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.button("Add filter").click();
       });
 
-      onNextAnchorClick(anchor => {
+      onNextAnchorClick((anchor) => {
         expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
         expect(anchor).to.have.attr("rel", "noopener");
         expect(anchor).to.have.attr("target", "_blank");
@@ -1135,7 +1135,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findAllByTestId("field-set")
         .should("have.length", 1)
         .should("contain.text", POINT_COUNT);
-      cy.get("@originalPathname").then(originalPathname => {
+      cy.get("@originalPathname").then((originalPathname) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(originalPathname);
           expect(search).to.equal(
@@ -1200,7 +1200,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findAllByTestId("field-set")
         .should("have.length", 1)
         .should("contain.text", POINT_CREATED_AT_FORMATTED);
-      cy.get("@originalPathname").then(originalPathname => {
+      cy.get("@originalPathname").then((originalPathname) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(originalPathname);
           expect(search).to.equal(
@@ -1256,7 +1256,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT)
         .should("contain.text", POINT_CREATED_AT_FORMATTED);
-      cy.get("@originalPathname").then(originalPathname => {
+      cy.get("@originalPathname").then((originalPathname) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(originalPathname);
           expect(search).to.equal(
@@ -1380,7 +1380,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           .should("have.length", 2)
           .should("contain.text", POINT_COUNT)
           .should("contain.text", POINT_CREATED_AT_FORMATTED);
-        cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.get("@targetDashboardId").then((targetDashboardId) => {
           cy.location().should(({ pathname, search }) => {
             expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
             expect(search).to.equal(
@@ -1457,8 +1457,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
 
       const TAB_SLUG_MAP = {};
-      tabs.forEach(tab => {
-        cy.get(`@${tab.name}-id`).then(tabId => {
+      tabs.forEach((tab) => {
+        cy.get(`@${tab.name}-id`).then((tabId) => {
           TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
         });
       });
@@ -1499,7 +1499,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT);
 
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           const tabParam = `tab=${TAB_SLUG_MAP[SECOND_TAB.name]}`;
@@ -1613,7 +1613,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.findAllByTestId("field-set")
           .should("have.length", 1)
           .should("contain.text", POINT_COUNT);
-        cy.get("@originalPathname").then(originalPathname => {
+        cy.get("@originalPathname").then((originalPathname) => {
           cy.location().should(({ pathname, search }) => {
             expect(pathname).to.equal(originalPathname);
             expect(search).to.equal(
@@ -1632,7 +1632,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findByPlaceholderText("Search the list").type("Dell Adams");
           cy.button("Update filter").click();
         });
-        onNextAnchorClick(anchor => {
+        onNextAnchorClick((anchor) => {
           expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
           expect(anchor).to.have.attr("rel", "noopener");
           expect(anchor).to.have.attr("target", "_blank");
@@ -1669,7 +1669,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           idAlias: "targetDashboardId",
         },
       );
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         H.createQuestionAndDashboard({
           questionDetails,
           dashboardDetails,
@@ -1699,7 +1699,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
       });
 
-      cy.url().then(originalUrl => {
+      cy.url().then((originalUrl) => {
         clickLineChartPoint();
         cy.url().should("eq", originalUrl);
       });
@@ -1723,7 +1723,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           idAlias: "targetQuestionId",
         },
       );
-      cy.get("@targetQuestionId").then(targetQuestionId => {
+      cy.get("@targetQuestionId").then((targetQuestionId) => {
         H.createQuestionAndDashboard({
           questionDetails,
           dashboardDetails,
@@ -1753,7 +1753,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
       });
 
-      cy.url().then(originalUrl => {
+      cy.url().then((originalUrl) => {
         clickLineChartPoint();
         cy.url().should("eq", originalUrl);
       });
@@ -1804,7 +1804,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.findByPlaceholderText("Search the list").type("Dell Adams");
         cy.button("Add filter").click();
       });
-      onNextAnchorClick(anchor => {
+      onNextAnchorClick((anchor) => {
         expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
         expect(anchor).to.have.attr("rel", "noopener");
         expect(anchor).to.have.attr("target", "_blank");
@@ -1928,7 +1928,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             },
           );
         })
-        .then(uuid => {
+        .then((uuid) => {
           H.createQuestionAndDashboard({
             dashboardDetails: {
               name: "Dashboard",
@@ -2271,17 +2271,17 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           ],
         }),
       ],
-    }).then(dashboard => {
+    }).then((dashboard) => {
       cy.wrap(dashboard.id).as("targetDashboardId");
-      dashboard.tabs.forEach(tab => {
+      dashboard.tabs.forEach((tab) => {
         cy.wrap(tab.id).as(`${tab.name}-id`);
       });
       H.visitDashboard(dashboard.id);
     });
 
     const TAB_SLUG_MAP = {};
-    tabs.forEach(tab => {
-      cy.get(`@${tab.name}-id`).then(tabId => {
+    tabs.forEach((tab) => {
+      cy.get(`@${tab.name}-id`).then((tabId) => {
         TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
       });
     });
@@ -2304,7 +2304,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     // test click behavior routing to same dashboard, different tab
     getTableCell(1).click();
-    cy.get("@targetDashboardId").then(targetDashboardId => {
+    cy.get("@targetDashboardId").then((targetDashboardId) => {
       cy.location().should(({ pathname, search }) => {
         expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
         expect(search).to.equal(
@@ -2364,7 +2364,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     H.modal().within(() => {
       const urlInput = cy.findAllByRole("textbox").eq(0);
 
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         urlInput.type(
           `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}&category={{category}}&count={{count}}`,
           {
@@ -2381,7 +2381,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     // test top header row
     H.getDashboardCard().findByText("Doohickey").click();
-    cy.get("@targetDashboardId").then(targetDashboardId => {
+    cy.get("@targetDashboardId").then((targetDashboardId) => {
       cy.location().should(({ pathname, search }) => {
         expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
         expect(search).to.equal("?category=Doohickey&count=&source=");
@@ -2390,7 +2390,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     // test left header row
     H.getDashboardCard().findByText("Affiliate").click();
-    cy.get("@targetDashboardId").then(targetDashboardId => {
+    cy.get("@targetDashboardId").then((targetDashboardId) => {
       cy.location().should(({ pathname, search }) => {
         expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
         expect(search).to.equal("?category=&count=&source=Affiliate");
@@ -2449,7 +2449,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     H.modal().within(() => {
       const urlInput = cy.findAllByRole("textbox").eq(0);
 
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         urlInput.type(
           `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}`,
           {
@@ -2466,7 +2466,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     // test pivoted column
     H.getDashboardCard().findByText("Organic").click();
-    cy.get("@targetDashboardId").then(targetDashboardId => {
+    cy.get("@targetDashboardId").then((targetDashboardId) => {
       cy.location().should(({ pathname, search }) => {
         expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
         expect(search).to.equal("?source=Organic");
@@ -2512,7 +2512,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     H.modal().within(() => {
       const urlInput = cy.findAllByRole("textbox").eq(0);
 
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         urlInput.type(
           `http://localhost:4000/dashboard/${targetDashboardId}?discount={{sum_2}}&total={{sum}}`,
           {
@@ -2531,7 +2531,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     H.getDashboardCard().within(() => {
       H.chartPathWithFillColor("#88BF4D").eq(2).click();
     });
-    cy.get("@targetDashboardId").then(targetDashboardId => {
+    cy.get("@targetDashboardId").then((targetDashboardId) => {
       cy.location().should(({ pathname, search }) => {
         expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
         expect(search).to.equal(
@@ -2544,7 +2544,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     H.getDashboardCard().within(() => {
       H.chartPathWithFillColor("#88BF4D").eq(1).click();
     });
-    cy.get("@targetDashboardId").then(targetDashboardId => {
+    cy.get("@targetDashboardId").then((targetDashboardId) => {
       cy.location().should(({ pathname, search }) => {
         expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
         expect(search).to.equal("?discount=&total=420.3189231596888");
@@ -2565,7 +2565,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           name: "second-tab",
         },
       ],
-    }).then(targetDashboard => {
+    }).then((targetDashboard) => {
       const baseClickBehavior = {
         type: "link",
         linkType: "dashboard",
@@ -2637,7 +2637,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         wrapId: true,
         idAlias: "targetDashboardId",
       },
-    ).then(dashboardId => {
+    ).then((dashboardId) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {
         dashcards: [
           createMockDashboardCard({
@@ -2663,7 +2663,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard();
     });
 
-    cy.get("@targetDashboardId").then(targetDashboardId => {
+    cy.get("@targetDashboardId").then((targetDashboardId) => {
       cy.log("remove filter from the target dashboard");
 
       cy.request("PUT", `/api/dashboard/${targetDashboardId}`, {
@@ -2709,8 +2709,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
  *
  * WARNING: For the assertions to work, ensure that a click event occurs on an anchor element afterwards.
  */
-const onNextAnchorClick = callback => {
-  cy.window().then(window => {
+const onNextAnchorClick = (callback) => {
+  cy.window().then((window) => {
     const originalClick = window.HTMLAnchorElement.prototype.click;
 
     window.HTMLAnchorElement.prototype.click = function () {
@@ -2900,10 +2900,10 @@ const testChangingBackToDefaultBehavior = () => {
   assertDrillThroughMenuOpen();
 };
 
-const getTableCell = index => {
+const getTableCell = (index) => {
   // eslint-disable-next-line no-unsafe-element-filtering
   return cy
-    .findAllByTestId("table-row")
+    .findAllByRole("row")
     .eq(POINT_INDEX)
     .findAllByTestId("cell-data")
     .eq(index);
@@ -2944,7 +2944,7 @@ const createDashboardWithTabsLocal = ({
       dashcards,
       tabs,
     }).then(({ body: dashboard }) => {
-      dashboard.tabs.forEach(tab => {
+      dashboard.tabs.forEach((tab) => {
         cy.wrap(tab.id).as(`${tab.name}-id`);
       });
     });

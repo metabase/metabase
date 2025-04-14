@@ -294,7 +294,7 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
 }
 
 function waitAndAssertOnRequest(requestAlias) {
-  cy.wait(requestAlias).then(xhr => {
+  cy.wait(requestAlias).then((xhr) => {
     expect(xhr.response.body.error).to.not.exist;
   });
 }
@@ -321,7 +321,7 @@ function assertQueryBuilderState({
 
   values &&
     H.echartsContainer().within(() => {
-      values.forEach(value => {
+      values.forEach((value) => {
         cy.findByText(value);
       });
     });

@@ -10,7 +10,7 @@ import {
 } from "metabase/lib/data_grid";
 import { TYPE } from "metabase-lib/v1/types/constants";
 
-const dimension = i => ({
+const dimension = (i) => ({
   name: "D" + i,
   display_name: "Dimension " + i,
   base_type: TYPE.Text,
@@ -36,7 +36,7 @@ function makePivotData(rows, cols) {
 
   const primaryGroup = 0;
   return {
-    rows: rows.map(row => [...row, primaryGroup]),
+    rows: rows.map((row) => [...row, primaryGroup]),
     cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
   };
 }
@@ -53,13 +53,13 @@ describe("data_grid", () => {
         ["b", "z", 6],
       ]);
       const pivotedData = pivot(data, 0, 1, 2);
-      expect(pivotedData.cols.map(col => col.display_name)).toEqual([
+      expect(pivotedData.cols.map((col) => col.display_name)).toEqual([
         "Dimension 1",
         "x",
         "y",
         "z",
       ]);
-      expect(pivotedData.rows.map(row => [...row])).toEqual([
+      expect(pivotedData.rows.map((row) => [...row])).toEqual([
         ["a", 1, 2, 3],
         ["b", 4, 5, 6],
       ]);
@@ -79,13 +79,13 @@ describe("data_grid", () => {
         ["b", "z", "y"],
       ]);
       const pivotedData = pivot(data, 0, 1, 2);
-      expect(pivotedData.cols.map(col => col.display_name)).toEqual([
+      expect(pivotedData.cols.map((col) => col.display_name)).toEqual([
         "Dimension 1",
         "x",
         "y",
         "z",
       ]);
-      expect(pivotedData.rows.map(row => [...row])).toEqual([
+      expect(pivotedData.rows.map((row) => [...row])).toEqual([
         ["a", "q", "w", "e"],
         ["b", "r", "t", "y"],
       ]);
@@ -105,12 +105,12 @@ describe("data_grid", () => {
         ["b", "z", 6],
       ]);
       const pivotedData = pivot(data, 1, 0, 2);
-      expect(pivotedData.cols.map(col => col.display_name)).toEqual([
+      expect(pivotedData.cols.map((col) => col.display_name)).toEqual([
         "Dimension 2",
         "a",
         "b",
       ]);
-      expect(pivotedData.rows.map(row => [...row])).toEqual([
+      expect(pivotedData.rows.map((row) => [...row])).toEqual([
         ["x", 1, 4],
         ["y", 2, 5],
         ["z", 3, 6],
@@ -142,13 +142,13 @@ describe("data_grid", () => {
         ["b", "z", 6],
       ]);
       const pivotedData = pivot(data, 0, 1, 2);
-      expect(pivotedData.cols.map(col => col.display_name)).toEqual([
+      expect(pivotedData.cols.map((col) => col.display_name)).toEqual([
         "Dimension 1",
         "x",
         "y",
         "z",
       ]);
-      expect(pivotedData.rows.map(row => [...row])).toEqual([
+      expect(pivotedData.rows.map((row) => [...row])).toEqual([
         ["a", 1, null, 3],
         ["b", 4, 5, 6],
       ]);
@@ -160,9 +160,9 @@ describe("data_grid", () => {
   });
 
   describe("multiLevelPivot", () => {
-    const getValues = items => _.pluck(items, "value");
-    const getPathsAndValues = items =>
-      items.map(item => _.pick(item, "path", "value"));
+    const getValues = (items) => _.pluck(items, "value");
+    const getPathsAndValues = (items) =>
+      items.map((item) => _.pick(item, "path", "value"));
 
     // This function adds fake field_refs so the settings can be associated with columns in the data
     const multiLevelPivotForIndexes = (
@@ -179,7 +179,7 @@ describe("data_grid", () => {
       } = {},
     ) => {
       const settings = {
-        column: column => {
+        column: (column) => {
           const columnIndex = column.field_ref[1];
           return {
             column,
@@ -189,7 +189,7 @@ describe("data_grid", () => {
         },
         [COLUMN_SPLIT_SETTING]: _.mapObject(
           { columns, rows, values },
-          indexes => indexes.map(index => data.cols[index].name),
+          (indexes) => indexes.map((index) => data.cols[index].name),
         ),
         [COLLAPSED_ROWS_SETTING]: { value: collapsedRows },
         "pivot.show_row_totals": showRowTotals,
@@ -489,15 +489,9 @@ describe("data_grid", () => {
         multiLevelPivotForIndexes(data, [], [0, 1], [2]);
       expect(rowCount).toEqual(7);
       expect(columnCount).toEqual(1);
-      expect(_.range(rowCount).map(i => getRowSection(0, i)[0].value)).toEqual([
-        "1",
-        "2",
-        "3",
-        "3",
-        "4",
-        "7",
-        "10",
-      ]);
+      expect(
+        _.range(rowCount).map((i) => getRowSection(0, i)[0].value),
+      ).toEqual(["1", "2", "3", "3", "4", "7", "10"]);
     });
 
     describe("sorting", () => {
@@ -769,11 +763,13 @@ describe("data_grid", () => {
         multiLevelPivotForIndexes(data, [3], [0, 1, 2], [4]);
       const firstColumn = ["1", "2", "3", "3", "4", "7", "10"];
       const lastColumn = ["1", "2", "3", "3", "4", "7", "10"];
-      expect(_.range(rowCount).map(i => getRowSection(0, i)[0].value)).toEqual(
-        firstColumn,
-      );
       expect(
-        _.range(rowCount).map(i => getRowSection(columnCount - 1, i)[0].value),
+        _.range(rowCount).map((i) => getRowSection(0, i)[0].value),
+      ).toEqual(firstColumn);
+      expect(
+        _.range(rowCount).map(
+          (i) => getRowSection(columnCount - 1, i)[0].value,
+        ),
       ).toEqual(lastColumn);
     });
   });

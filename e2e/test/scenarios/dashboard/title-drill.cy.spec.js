@@ -30,7 +30,7 @@ describe("scenarios > dashboard > title drill", () => {
 
     describe("as a user with access to underlying data", () => {
       it("should let you click through the title to the query builder (metabase#13042)", () => {
-        cy.get("@questionId").then(questionId => {
+        cy.get("@questionId").then((questionId) => {
           cy.findByTestId("loading-indicator").should("not.exist");
 
           H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
@@ -60,7 +60,7 @@ describe("scenarios > dashboard > title drill", () => {
       });
 
       it("should let you click through the title to the query builder (metabase#13042)", () => {
-        cy.get("@questionId").then(questionId => {
+        cy.get("@questionId").then((questionId) => {
           cy.findByTestId("loading-indicator").should("not.exist");
 
           H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
@@ -308,7 +308,7 @@ describe("scenarios > dashboard > title drill", () => {
 
         // make sure the results match
         H.queryBuilderMain().findByText("42").should("be.visible");
-        cy.get("@questionId").then(questionId => {
+        cy.get("@questionId").then((questionId) => {
           cy.location("href").should(
             "include",
             `/question/${questionId}-gui-question?category=Doohickey&id=#`,
@@ -379,7 +379,7 @@ describe("scenarios > dashboard > title drill", () => {
         idAlias: "questionId",
       });
 
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         const nestedQuestionDetails = {
           ...baseNestedQuestionDetails,
           query: {

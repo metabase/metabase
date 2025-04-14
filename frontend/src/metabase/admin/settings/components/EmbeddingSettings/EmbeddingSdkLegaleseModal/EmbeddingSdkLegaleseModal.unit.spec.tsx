@@ -11,7 +11,7 @@ const setup = () => {
   const updateSetting = jest
     .fn()
     .mockImplementation(
-      () => new Promise(resolve => setTimeout(resolve, MOCK_TIMEOUT)),
+      () => new Promise((resolve) => setTimeout(resolve, MOCK_TIMEOUT)),
     );
   renderWithProviders(
     <EmbeddingSdkLegaleseModal

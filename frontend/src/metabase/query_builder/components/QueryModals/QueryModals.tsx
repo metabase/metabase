@@ -13,7 +13,6 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
-import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
@@ -21,12 +20,10 @@ import { PreviewQueryModal } from "metabase/query_builder/components/view/Previe
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
-import { FilterModal } from "metabase/querying/filters/components/FilterModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
@@ -39,7 +36,6 @@ interface QueryModalsProps {
   modal: QueryModalType;
   modalContext: number;
   question: Question;
-  updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   originalQuestion: Question;
   card: Card;
@@ -59,7 +55,6 @@ interface QueryModalsProps {
 export function QueryModals({
   onSave,
   onCreate,
-  updateQuestion,
   modal,
   modalContext,
   card,
@@ -74,15 +69,6 @@ export function QueryModals({
 
   const initialCollectionId = useGetDefaultCollectionId();
   const questionWithParameters = useSelector(getQuestionWithParameters);
-
-  const onQueryChange = useCallback(
-    (query: Lib.Query) => {
-      const nextLegacyQuery = Lib.toLegacyQuery(query);
-      const nextQuestion = question.setDatasetQuery(nextLegacyQuery);
-      updateQuestion(nextQuestion, { run: true });
-    },
-    [question, updateQuestion],
-  );
 
   const handleSaveAndClose = useCallback(
     async (question: Question) => {
@@ -114,7 +100,7 @@ export function QueryModals({
       )
         .unwrap()
         .catch(() => undefined); // we can fallback to navigation w/o this info
-      const dashcard = dashboard?.dashcards.find(c => c.card_id === cardId);
+      const dashcard = dashboard?.dashcards.find((c) => c.card_id === cardId);
 
       if (!dashboard || !dashcard) {
         console.warn(
@@ -211,7 +197,7 @@ export function QueryModals({
           question={question}
           originalQuestion={originalQuestion}
           initialCollectionId={initialCollectionId}
-          onSave={async question => {
+          onSave={async (question) => {
             await onSave(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
@@ -253,14 +239,6 @@ export function QueryModals({
           initialCollectionId={initialCollectionId}
         />
       );
-    case MODAL_TYPES.FILTERS:
-      return (
-        <FilterModal
-          question={question}
-          onSubmit={onQueryChange}
-          onClose={onCloseModal}
-        />
-      );
     case MODAL_TYPES.MOVE:
       return <MoveQuestionModal question={question} onClose={onCloseModal} />;
     case MODAL_TYPES.ARCHIVE:
@@ -280,7 +258,7 @@ export function QueryModals({
                 ? question.collectionId()
                 : initialCollectionId,
             }}
-            copy={async formValues => {
+            copy={async (formValues) => {
               if (!questionWithParameters) {
                 return;
               }

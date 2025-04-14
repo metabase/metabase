@@ -29,7 +29,7 @@ export const MarkdownPreview = ({
 }: MarkdownPreviewProps) => {
   const { isTruncated, ref } = useIsTruncated();
 
-  const setReactMarkdownRef: LegacyRef<HTMLDivElement> = div => {
+  const setReactMarkdownRef: LegacyRef<HTMLDivElement> = (div) => {
     /**
      * react-markdown API does not allow passing ref to the container div.
      * We can acquire the reference through its parent.

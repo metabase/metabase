@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useTimeout } from "react-use";
 import { t } from "ttag";
 
-import LogoIcon from "metabase/components/LogoIcon";
+import { DefaultLogoIcon } from "metabase/components/LogoIcon";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import { goToNextStep, loadDefaults } from "../../actions";
@@ -38,7 +38,7 @@ export const WelcomePage = (): JSX.Element | null => {
   return (
     <PageRoot data-testid="welcome-page">
       <PageMain>
-        <LogoIcon height={118} />
+        <DefaultLogoIcon height={118} />
         <PageTitle>{t`Welcome to Metabase`}</PageTitle>
         <PageBody>
           {t`Looks like everything is working.`}{" "}

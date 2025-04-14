@@ -1,0 +1,24 @@
+.sortableField {
+  /* make border-radius of focus state match border-radius of .content */
+  border-radius: var(--default-border-radius);
+}
+
+.content {
+  border-radius: var(--default-border-radius);
+  border: 1px solid var(--mb-color-border);
+
+  &.draggable {
+    cursor: grab;
+
+    &:hover {
+      .grabber {
+        color: var(--mb-color-brand);
+      }
+    }
+  }
+}
+
+.label {
+  overflow: hidden;
+  overflow-wrap: break-word;
+}

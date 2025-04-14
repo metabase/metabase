@@ -16,19 +16,18 @@ describe("issue 26470", { tags: "@external" }, () => {
       "unpersist",
     );
 
-    cy.clock(Date.now());
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
 
     cy.findByTestId("database-model-features-section")
       .findByLabelText("Model persistence")
       .should("not.be.checked")
-      .click();
+      .click({ force: true });
     cy.wait("@persist").its("response.statusCode").should("eq", 204);
 
     cy.findByTestId("database-model-features-section")
       .findByLabelText("Model persistence")
       .should("be.checked")
-      .click();
+      .click({ force: true });
     cy.wait("@unpersist").its("response.statusCode").should("eq", 204);
 
     cy.findByTestId("database-model-features-section")
@@ -66,7 +65,7 @@ describe("issue 21532", () => {
     cy.findByTestId("admin-layout-content");
 
     cy.go("back");
-    cy.location().should(location => {
+    cy.location().should((location) => {
       expect(location.pathname).to.eq("/");
     });
   });

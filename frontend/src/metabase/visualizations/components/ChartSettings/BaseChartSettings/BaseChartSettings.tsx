@@ -71,14 +71,15 @@ export const BaseChartSettings = ({
         {
           series: series,
         },
-      ).some(widget => !widget.hidden);
+      ).some((widget) => !widget.hidden);
     },
     [chartSettings, series],
   );
 
   const styleWidget = useMemo(() => {
     const seriesSettingsWidget =
-      currentWidget && widgets.find(widget => widget.id === "series_settings");
+      currentWidget &&
+      widgets.find((widget) => widget.id === "series_settings");
 
     const display = transformedSeries?.[0]?.card?.display;
     // In the pie the chart, clicking on the "measure" settings menu will only
@@ -110,7 +111,7 @@ export const BaseChartSettings = ({
         return null;
       }
 
-      const singleSeriesForColumn = transformedSeries?.find(single => {
+      const singleSeriesForColumn = transformedSeries?.find((single) => {
         const metricColumn = single.data.cols[1];
         if (metricColumn) {
           return (
@@ -135,7 +136,7 @@ export const BaseChartSettings = ({
 
   const formattingWidget = useMemo(() => {
     const widget =
-      currentWidget && widgets.find(widget => widget.id === currentWidget.id);
+      currentWidget && widgets.find((widget) => widget.id === currentWidget.id);
 
     if (widget) {
       return { ...widget, props: { ...widget.props, ...currentWidget.props } };
@@ -203,9 +204,9 @@ export const BaseChartSettings = ({
               value={chartSettingCurrentSection ?? undefined}
               onChange={handleShowSection}
               options={sectionNames}
-              optionNameFn={v => v}
-              optionValueFn={v => v}
-              optionKeyFn={v => v}
+              optionNameFn={(v) => v}
+              optionValueFn={(v) => v}
+              optionKeyFn={(v) => v}
               variant="underlined"
             />
           </SectionContainer>

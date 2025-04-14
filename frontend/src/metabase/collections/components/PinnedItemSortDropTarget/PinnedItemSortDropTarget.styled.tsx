@@ -41,15 +41,15 @@ export const PinDropTargetIndicator = styled.div<PinDropTargetRenderArgs>`
   bottom: 0;
   left: 0;
   right: 0;
-  border-left: ${props =>
+  border-left: ${(props) =>
     props.isFrontTarget &&
     `4px solid ${
       props.hovered ? color("brand") : "var(--mb-color-bg-medium)"
     }`};
-  border-right: ${props =>
+  border-right: ${(props) =>
     props.isBackTarget &&
     `4px solid ${
       props.hovered ? color("brand") : "var(--mb-color-bg-medium)"
     }`};
-  display: ${props => !(props.hovered || props.highlighted) && "none"};
+  display: ${(props) => !(props.hovered || props.highlighted) && "none"};
 `;

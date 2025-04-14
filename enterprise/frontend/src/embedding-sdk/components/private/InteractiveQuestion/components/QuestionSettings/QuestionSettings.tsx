@@ -14,6 +14,11 @@ import {
   useInteractiveQuestionContext,
 } from "../../context";
 
+/**
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionQuestionSettingsProps = StackProps;
+
 const QuestionSettingsContent = ({
   question,
   queryResults,
@@ -48,7 +53,7 @@ const QuestionSettingsContent = ({
         transformedSeries,
         handleChangeSettings,
         false,
-      ).filter(w => !!w.widget);
+      ).filter((w) => !!w.widget);
     } catch (e) {
       return [];
     }
@@ -67,7 +72,17 @@ const QuestionSettingsContent = ({
   );
 };
 
-export const QuestionSettings = (stackProps: StackProps) => {
+/**
+ * Settings panel for configuring visualization options like axes, colors, and formatting.
+ * Uses question context for settings.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const QuestionSettings = ({
+  ...stackProps
+}: InteractiveQuestionQuestionSettingsProps) => {
   const { question, queryResults, updateQuestion } =
     useInteractiveQuestionContext();
 

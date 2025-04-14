@@ -16,6 +16,7 @@ interface ChartCaptionProps {
   settings: VisualizationSettings;
   icon?: IconProps | null;
   actionButtons?: ReactNode;
+  hasInfoTooltip?: boolean;
   width?: number;
   getHref?: () => string | undefined;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
@@ -26,6 +27,7 @@ const ChartCaption = ({
   settings,
   icon,
   actionButtons,
+  hasInfoTooltip,
   onChangeCardAndRun,
   getHref,
   width,
@@ -34,7 +36,7 @@ const ChartCaption = ({
   const description = settings["card.description"];
   const data = (series as TransformedSeries)._raw || series;
   const card = data[0].card;
-  const cardIds = new Set(data.map(s => s.card.id));
+  const cardIds = new Set(data.map((s) => s.card.id));
   const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
 
   const handleSelectTitle = useCallback(() => {
@@ -50,6 +52,7 @@ const ChartCaption = ({
       getHref={getHref}
       icon={icon}
       actionButtons={actionButtons}
+      hasInfoTooltip={hasInfoTooltip}
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
       width={width}
     />

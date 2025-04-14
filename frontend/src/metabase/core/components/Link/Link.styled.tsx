@@ -13,13 +13,13 @@ export const LinkRoot = styled(
   Link,
   doNotForwardProps("variant"),
 )<LinkVariantProp>`
-  opacity: ${props => (props.disabled ? "0.4" : "")};
-  pointer-events: ${props => (props.disabled ? "none" : "")};
+  opacity: ${(props) => (props.disabled ? "0.4" : "")};
+  pointer-events: ${(props) => (props.disabled ? "none" : "")};
   transition: opacity 0.3s linear;
 
   ${focusOutlineStyle("brand")};
 
-  ${props => variants[props.variant ?? "default"] ?? ""}
+  ${(props) => variants[props.variant ?? "default"] ?? ""}
 ` as unknown as React.FC<LinkProps & LinkVariantProp>;
 
 const variants = {

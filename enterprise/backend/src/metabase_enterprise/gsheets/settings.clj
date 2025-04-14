@@ -19,14 +19,16 @@
      [:folder_url ms/NonBlankString]
      ;; time in seconds from epoch:
      [:folder-upload-time pos-int?]
-     [:gdrive/conn-id ms/UUIDString]]]
+     [:gdrive/conn-id ms/UUIDString]
+     [:created-by-id pos-int?]]]
 
    ["complete"
     [:map
      [:folder_url ms/NonBlankString]
      ;; time in seconds from epoch:
      [:folder-upload-time pos-int?]
-     [:gdrive/conn-id ms/UUIDString]]]])
+     [:gdrive/conn-id ms/UUIDString]
+     [:created-by-id pos-int?]]]])
 
 (defsetting show-google-sheets-integration
   "Whether or not to show the user a button that sets up Google Sheets integration."

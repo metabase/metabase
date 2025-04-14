@@ -60,10 +60,10 @@ export function enterCustomColumnDetails({
 }
 
 export function checkExpressionEditorHelperPopoverPosition() {
-  expressionEditorTextfield().then($target => {
+  expressionEditorTextfield().then(($target) => {
     const textfieldPosition = $target[0].getBoundingClientRect();
 
-    cy.findByTestId("expression-helper-popover").then($target => {
+    cy.findByTestId("expression-helper-popover").then(($target) => {
       const popoverPosition = $target[0].getBoundingClientRect();
 
       expect(textfieldPosition.top - popoverPosition.top).to.be.lessThan(
@@ -95,9 +95,11 @@ export const CustomExpressionEditor = {
     {
       allowFastSet = false,
       focus = true,
+      delay = 0,
     }: {
       focus?: boolean;
       allowFastSet?: boolean;
+      delay?: number;
     } = {},
   ) {
     if (focus) {
@@ -115,7 +117,8 @@ export const CustomExpressionEditor = {
 
     const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
-    parts.forEach(part => {
+    parts.forEach((part) => {
+      cy.wait(delay);
       switch (part.toLowerCase()) {
         case "":
           return;
@@ -179,14 +182,14 @@ export const CustomExpressionEditor = {
       const unexpanded = part.replaceAll(/→/g, "->");
 
       const alphabet =
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789^[]()-,.;_!@#$%&*+=/<>\" ':;\\";
-      if (unexpanded.split("").some(char => !alphabet.includes(char))) {
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789^[]()-,.;_!@#$%&*+=/<>\" ':;\\\n";
+      if (unexpanded.split("").some((char) => !alphabet.includes(char))) {
         throw new Error(
           `unknown character in CustomExpressionEditor.type in ${part}`,
         );
       }
 
-      cy.realType(unexpanded);
+      cy.realType(unexpanded, { delay });
     });
     return CustomExpressionEditor;
   },
@@ -223,12 +226,17 @@ export const CustomExpressionEditor = {
     // Get the multiline text content of the editor
     return CustomExpressionEditor.textbox()
       .get(".cm-line")
-      .then(lines => {
+      .then((lines) => {
         const text: string[] = [];
         lines.each((_, line) => {
           text.push(line.textContent ?? "");
         });
-        return text.join("\n");
+        const value = text.join("\n");
+        const placeholder = "Type your expression, press '[' for columns…";
+        if (value === placeholder) {
+          return "";
+        }
+        return value;
       });
   },
   completions() {
@@ -261,7 +269,7 @@ export const CustomExpressionEditor = {
     return cy.findByTestId("expression-helper");
   },
   paste(content: string) {
-    CustomExpressionEditor.textbox().then(el => {
+    CustomExpressionEditor.textbox().then((el) => {
       const clipboardData = new DataTransfer();
       clipboardData.setData("text/plain", content);
 
@@ -276,5 +284,8 @@ export const CustomExpressionEditor = {
   },
   nameInput() {
     return cy.findByTestId("expression-name");
+  },
+  functionBrowser() {
+    return cy.findByTestId("expression-editor-function-browser");
   },
 };

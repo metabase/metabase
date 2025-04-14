@@ -67,11 +67,11 @@ const DashboardCopyModal = ({
       }}
       title={title}
       overwriteOnInitialValuesChange
-      copy={async object =>
+      copy={async (object) =>
         await copyDashboard({ id: initialDashboardId }, dissoc(object, "id"))
       }
       onClose={onClose}
-      onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard))}
+      onSaved={(dashboard) => onReplaceLocation(Urls.dashboard(dashboard))}
       {...props}
       onValuesChange={handleValuesChange}
     />

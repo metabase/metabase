@@ -37,7 +37,7 @@ describe("visualization.lib.timeseries", () => {
       ).toBe(true);
     });
 
-    ISO_8601_DATES.forEach(isoDate => {
+    ISO_8601_DATES.forEach((isoDate) => {
       it(
         "should detect values with ISO 8601 formatted string '" +
           isoDate +
@@ -52,7 +52,7 @@ describe("visualization.lib.timeseries", () => {
         },
       );
     });
-    NOT_DATES.forEach(notDate => {
+    NOT_DATES.forEach((notDate) => {
       it("should not detect value '" + notDate + "' as timeseries", () => {
         expect(
           dimensionIsTimeseries({

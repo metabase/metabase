@@ -32,7 +32,7 @@ export const ExplorePaidPlansContainer = styled.div<ExplorePaidPlansContainerPro
   margin: 16px 0;
   display: flex;
   align-items: flex-start;
-  justify-content: ${props => props.justifyContent ?? "space-between"};
+  justify-content: ${(props) => props.justifyContent ?? "space-between"};
   border-bottom: 1px solid var(--mb-color-border);
 `;
 

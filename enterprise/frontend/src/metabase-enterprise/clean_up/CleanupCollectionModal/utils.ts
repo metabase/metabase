@@ -69,7 +69,7 @@ export type DateFilterOption = {
 export type DateFilterOptions = DateFilterOption[];
 
 const dateFiltersMap = _.object(
-  dateFilterOptions.map<[DateFilter, DateFilterOption]>(option => [
+  dateFilterOptions.map<[DateFilter, DateFilterOption]>((option) => [
     option.value,
     option,
   ]),
@@ -92,7 +92,9 @@ export const getDateFilterValue = (dateFilter: DateFilter) => {
 };
 
 export const getDateFilterLabel = (dateFilter: DateFilter) => {
-  const option = dateFilterOptions.find(option => option.value === dateFilter);
+  const option = dateFilterOptions.find(
+    (option) => option.value === dateFilter,
+  );
   const label = option?.label;
 
   if (!label) {

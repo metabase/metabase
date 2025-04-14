@@ -11,7 +11,7 @@ So here's the scenario: you love Metabase. It's changed your life. But you have 
 Before you start building a driver from scratch, see if one already exists that you could contribute to:
 
 - [Officially supported drivers](../../databases/connecting.md#connecting-to-supported-databases)
-- [Partner and community drivers](../partner-and-community-drivers.md)
+- [Community drivers](../community-drivers.md)
 
 ## Setting up
 

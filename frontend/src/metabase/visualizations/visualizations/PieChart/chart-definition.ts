@@ -80,34 +80,14 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     const isDimensionMissing =
       !settings["pie.dimension"] ||
       (Array.isArray(settings["pie.dimension"]) &&
-        settings["pie.dimension"].every(col => col == null));
+        settings["pie.dimension"].every((col) => col == null));
     if (isDimensionMissing || !settings["pie.metric"]) {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
         section: `Data`,
       });
     }
   },
-  placeholderSeries: [
-    {
-      card: {
-        display: "pie",
-        visualization_settings: { "pie.show_legend": false },
-        dataset_query: { type: "query" },
-      },
-      data: {
-        rows: [
-          ["Doohickey", 3976],
-          ["Gadget", 4939],
-          ["Gizmo", 4784],
-          ["Widget", 5061],
-        ],
-        cols: [
-          { name: "Category", base_type: "type/Category" },
-          { name: "Count", base_type: "type/Integer" },
-        ],
-      },
-    },
-  ] as RawSeries,
+  hasEmptyState: true,
   settings: {
     ...metricSetting("pie.metric", {
       section: t`Data`,
@@ -185,7 +165,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
           pieRows,
           updateRowName: (newName: string, key: string | number) => {
             onChangeSettings({
-              "pie.rows": pieRows.map(row => {
+              "pie.rows": pieRows.map((row) => {
                 if (row.key !== key) {
                   return row;
                 }

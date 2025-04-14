@@ -527,7 +527,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return a list of UiParameter objects from the given dashboard", () => {
       const questions = Object.fromEntries(
-        dashboard.dashcards.map(dashcard => {
+        dashboard.dashcards.map((dashcard) => {
           return [dashcard.id, new Question(dashcard.card, metadata)];
         }),
       );

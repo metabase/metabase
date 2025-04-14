@@ -9,7 +9,6 @@ import {
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -139,7 +138,7 @@ const flattenCollectionTree = (
 };
 
 const setupCollectionTreeMocks = (node: NestedCollectionItem[]) => {
-  node.forEach(node => {
+  node.forEach((node) => {
     if (!node.descendants) {
       return;
     }
@@ -172,14 +171,13 @@ interface SetupOpts {
 const commonSetup = () => {
   setupRecentViewsAndSelectionsEndpoints([]);
   mockGetBoundingClientRect();
-  mockScrollBy();
   setupSearchEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(
     createMockCollectionItem,
   );
 
-  allItems.forEach(item => {
+  allItems.forEach((item) => {
     if (item.model !== "collection") {
       fetchMock.get(`path:/api/dashboard/${item.id}`, item);
     } else {

@@ -14,7 +14,7 @@ export const getLabelledSeries = <TDatum>(
   }
 
   return series
-    .filter(series => {
+    .filter((series) => {
       const showSeriesValuesSetting =
         settings?.series_settings?.[series.seriesKey]?.show_series_values;
 
@@ -24,7 +24,7 @@ export const getLabelledSeries = <TDatum>(
           settings["graph.show_values"] === true)
       );
     })
-    .map(series => series.seriesKey);
+    .map((series) => series.seriesKey);
 };
 
 export const getAxesVisibility = (settings: VisualizationSettings) => {

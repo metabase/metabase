@@ -13,7 +13,7 @@ const TEST_USERS = [
   { id: 6, common_name: "Nancy", email: "" },
   { id: 7, common_name: "Steve", email: "" },
   { id: 8, common_name: "Will", email: "zombieboy@upside.test" }, // w
-].map(user => createMockUser(user));
+].map((user) => createMockUser(user));
 
 describe("recipient picker", () => {
   describe("focus", () => {

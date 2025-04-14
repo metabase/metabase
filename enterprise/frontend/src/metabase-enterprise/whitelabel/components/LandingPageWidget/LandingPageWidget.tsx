@@ -1,59 +1,67 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Text } from "metabase/ui";
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { useAdminSetting } from "metabase/api/utils";
+import type { GenericErrorResponse } from "metabase/lib/errors";
+import { TextInput } from "metabase/ui";
 
-import { SettingInputBlurChange } from "./LandingPageWidget.styled";
 import { getRelativeLandingPageUrl } from "./utils";
 
-interface Props {
-  settingValues: EnterpriseSettings;
-  onChange: (value: EnterpriseSettings["landing-page"]) => Promise<void>;
-}
-
-export function LandingPageWidget({ onChange, settingValues }: Props) {
+export function LandingPageWidget() {
   const [error, setError] = useState<string | null>(null);
+  const { value, updateSetting, description } = useAdminSetting("landing-page");
+  const [inputValue, setInputValue] = useState(value ?? "");
 
-  const normalize = (value: string | number | null) => {
-    if (typeof value !== "string") {
-      return value;
+  useEffect(() => {
+    if (value) {
+      setInputValue(value);
     }
-    return value.trim() || null;
-  };
+  }, [value]);
 
   const handleChange = async (value: string) => {
-    const { isSameOrigin, relativeUrl } = getRelativeLandingPageUrl(value);
+    const { isSameOrigin, relativeUrl } = getRelativeLandingPageUrl(
+      value.trim(),
+    );
 
     if (!isSameOrigin) {
       setError(t`This field must be a relative URL.`);
-    } else {
-      setError(null);
-      try {
-        await onChange(relativeUrl);
-      } catch (e: any) {
-        setError(e?.data?.message || t`Something went wrong`);
-      }
+      return;
+    }
+
+    setError(null);
+    const result = await updateSetting({
+      key: "landing-page",
+      value: relativeUrl,
+    });
+
+    if (result.error) {
+      const message =
+        (result.error as { data: GenericErrorResponse })?.data?.message ||
+        t`Something went wrong`;
+      setError(message);
     }
   };
 
   return (
     <div>
-      {error && (
-        <Text size="md" color="error" data-testid="landing-page-error">
-          {error}
-        </Text>
-      )}
-      <SettingInputBlurChange
-        size="large"
-        error={Boolean(error)}
-        normalize={normalize}
-        value={settingValues["landing-page"]}
-        onChange={() => setError(null)}
-        aria-label={t`Landing page custom destination`}
+      <SettingHeader
+        id="landing-page"
+        title={t`Landing Page`}
+        description={description}
+      />
+      <TextInput
+        id="landing-page"
         data-testid="landing-page"
+        aria-label={t`Landing page custom destination`}
         placeholder="/"
-        onBlurChange={e => handleChange(e.target.value)}
+        error={error}
+        value={String(inputValue ?? "")}
+        onChange={(e) => {
+          setError(null);
+          setInputValue(e.target.value);
+        }}
+        onBlur={(e) => handleChange(e.target.value)}
       />
     </div>
   );

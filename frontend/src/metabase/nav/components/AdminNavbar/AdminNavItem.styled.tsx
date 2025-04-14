@@ -16,14 +16,14 @@ export const AdminNavLink = styled(
   doNotForwardProps("isSelected", "isInMobileNav"),
 )<AdminNavLinkProps>`
   white-space: nowrap;
-  ${props => (props.isInMobileNav ? "" : "overflow: hidden;")}
+  ${(props) => (props.isInMobileNav ? "" : "overflow: hidden;")}
   text-overflow: ellipsis;
   padding: 0.5rem 1rem;
   ${breakpointMaxLarge} {
     padding-inline: 0.85rem;
   }
 
-  color: ${props =>
+  color: ${(props) =>
     props.isSelected
       ? "var(--mb-color-text-white)"
       : "color-mix(in srgb, var(--mb-color-text-white), transparent 37%)"};
@@ -37,6 +37,6 @@ export const AdminNavListItem = styled(
   flex-shrink: 1;
   white-space: nowrap;
   justify-content: center;
-  min-width: ${props =>
+  min-width: ${(props) =>
     props.currentPath.startsWith(props.path) ? "fit-content" : "0px"};
 `;

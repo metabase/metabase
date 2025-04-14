@@ -23,7 +23,7 @@ const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
 // Strip any key that has the value of "undefined"
 const stripUndefinedKeys = <T>(x: T): unknown =>
   _.isObject(x)
-    ? _.pick(_.mapObject(x, stripUndefinedKeys), v => !_.isUndefined(v))
+    ? _.pick(_.mapObject(x, stripUndefinedKeys), (v) => !_.isUndefined(v))
     : x;
 
 /**

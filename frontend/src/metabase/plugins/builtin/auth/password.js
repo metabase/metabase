@@ -1,6 +1,6 @@
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 
-PLUGIN_AUTH_PROVIDERS.push(providers => {
+PLUGIN_AUTH_PROVIDERS.push((providers) => {
   const passwordProvider = {
     name: "password",
     // circular dependencies

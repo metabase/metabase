@@ -102,7 +102,7 @@ export function PeriodsAgoMenuOption({
           <NumberInputStyled
             type="number"
             value={value}
-            onChange={value => handleInputChange(value)}
+            onChange={(value) => handleInputChange(value)}
             onKeyPress={handleInputEnter}
             onClick={handleInputClick}
             size="xs"

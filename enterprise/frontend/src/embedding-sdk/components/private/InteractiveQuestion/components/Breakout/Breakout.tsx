@@ -33,7 +33,7 @@ export const BreakoutInner = ({
 
   return (
     <Group>
-      {breakoutItems.map(item => (
+      {breakoutItems.map((item) => (
         <Popover key={item.longDisplayName}>
           <Popover.Target>
             <BadgeListItem
@@ -51,6 +51,13 @@ export const BreakoutInner = ({
   );
 };
 
+/**
+ * A set of badges for managing data groupings (breakouts).
+ * Uses question context for breakout functionality.
+ *
+ * @function
+ * @category InteractiveQuestion
+ */
 export const Breakout = () => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 

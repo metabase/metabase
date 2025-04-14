@@ -39,7 +39,7 @@ const state = createMockState({
 
 const metadata = getMetadata(state); // metabase-lib Metadata instance
 
-const setup = options => {
+const setup = (options) => {
   const card = options.card ?? createMockCard();
 
   const { rerender } = renderWithProviders(

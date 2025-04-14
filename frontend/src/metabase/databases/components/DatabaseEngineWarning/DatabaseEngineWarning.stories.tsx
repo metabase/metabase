@@ -15,7 +15,7 @@ export default {
   argTypes: { onChange: { action: "onChange" } },
 };
 
-const Template: StoryFn<DatabaseEngineWarningProps> = args => {
+const Template: StoryFn<DatabaseEngineWarningProps> = (args) => {
   return <DatabaseEngineWarning {...args} />;
 };
 Template.args = {

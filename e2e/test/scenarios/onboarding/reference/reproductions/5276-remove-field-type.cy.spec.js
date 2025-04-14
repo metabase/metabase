@@ -23,13 +23,10 @@ describe("issue 5276", () => {
     // no idea why. TODO: Fix
     cy.button(/Edit/).trigger("click");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Score").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    H.popover().within(() => cy.findByText("No field type").click());
+    cy.findByDisplayValue("Score").click();
+    H.popover().findByText("No semantic type").click();
     cy.button("Save").click();
     cy.wait("@updateField");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Score").should("not.exist");
+    cy.findByDisplayValue("Score").should("not.exist");
   });
 });

@@ -51,7 +51,7 @@
   ^java.time.temporal.Temporal []
   (t2/select-one-fn :date_joined :model/User, {:order-by [[:date_joined :asc]]}))
 
-(jobs/defjob ^{:doc "Sends out a general 2 week email follow up email"} FollowUpEmail [_]
+(task/defjob ^{:doc "Sends out a general 2 week email follow up email"} FollowUpEmail [_]
   ;; if we've already sent the follow-up email then we are done
   (when-not (follow-up-email-sent)
     ;; figure out when we consider the instance created

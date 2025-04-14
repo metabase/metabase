@@ -22,6 +22,10 @@ import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
 
+/**
+ * @interface
+ * @category StaticDashboard
+ */
 export type StaticDashboardProps = SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
@@ -80,7 +84,7 @@ export const StaticDashboardInner = ({
         bordered={displayOptions.bordered}
         onLoad={onLoad}
         onLoadWithoutCards={onLoadWithoutCards}
-        downloadsEnabled={withDownloads}
+        downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
         isNightMode={false}
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
@@ -90,6 +94,12 @@ export const StaticDashboardInner = ({
   );
 };
 
+/**
+ * A lightweight dashboard component.
+ *
+ * @function
+ * @category StaticDashboard
+ */
 const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
   ({ dashboardId: initialDashboardId, ...rest }) => {
     const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({

@@ -8,7 +8,7 @@ interface TooltipRowRootProps {
 }
 
 export const TooltipRowRoot = styled.tr<TooltipRowRootProps>`
-  font-size: ${props => (props.isHeader ? "14px" : "12px")};
+  font-size: ${(props) => (props.isHeader ? "14px" : "12px")};
 `;
 
 interface ColorIndicatorProps {
@@ -19,9 +19,9 @@ interface ColorIndicatorProps {
 export const ColorIndicator = styled.span<ColorIndicatorProps>`
   display: block;
   margin: 0 auto;
-  width: ${props => props.size}px;
-  height: ${props => props.size}px;
-  background-color: ${props => props.color};
+  width: ${(props) => props.size}px;
+  height: ${(props) => props.size}px;
+  background-color: ${(props) => props.color};
   border-radius: 100%;
 `;
 

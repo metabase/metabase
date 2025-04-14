@@ -289,7 +289,7 @@
                                           unit           :unit}]
                                       (cond
                                         (isa? semantic-type :Relation/*)                    :others
-                                        (= unit :year)                                      :datetimes
+                                        (u.date/truncate-units unit)                        :datetimes
                                         (u.date/extract-units unit)                         :numbers
                                         (isa? (or effective-type base-type) :type/Temporal) :datetimes
                                         (isa? base-type :type/Number)                       :numbers

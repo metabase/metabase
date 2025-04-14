@@ -244,6 +244,9 @@
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
 
+      (isa? coercion :Coercion/String->Float)
+      {"$toDouble" field-name}
+
       :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
@@ -417,7 +420,7 @@
     (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
 
-    (isa? base-type :type/UUID)
+    (isa? base-type :type/MongoBinData)
     (try
       (-> (str value)
           java.util.UUID/fromString
@@ -741,16 +744,10 @@
 (defn- str-match-pattern [field options prefix value suffix]
   (if (mbql.u/is-clause? ::not value)
     {$not (str-match-pattern field options prefix (second value) suffix)}
-    (let [base-type (get-in field [2 :base-type])]
+    (do
       (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
               "Wrong prefix or suffix value.")
-      {$regexMatch {"input" (if (= :type/UUID base-type)
-                              ;; TODO: Update this to use $toString once all supported
-                              ;; Mongo versions have $toString available (>= 8.0)
-                              {"$function" {"body" "function(uuid) { return uuid.toString().substring(6, 42) }",
-                                            "args" [(->rvalue field)],
-                                            "lang" "js"}}
-                              (->rvalue field))
+      {$regexMatch {"input" (->rvalue field)
                     "regex" (if (= (first value) :value)
                               (str prefix (->rvalue value) suffix)
                               {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
@@ -845,7 +842,7 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod compile-cond :between [[_ field min-val max-val]]
-  (compile-cond [:and [:>= field min-val] [:< field max-val]]))
+  (compile-cond [:and [:>= field min-val] [:<= field max-val]]))
 
 (defn- index-of-code-point
   "See https://docs.mongodb.com/manual/reference/operator/aggregation/indexOfCP/"
@@ -943,7 +940,7 @@
                                              ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
                                              ;; aliases should also contain no . characters (#32182).
                                              ;; - Spaces are allowed in columns and need to be replaced in let (#52807)
-                                             (str/replace #"[~\. ]" "_")
+                                             (str/replace #"[~\. -]" "_")
                                              (str "__" (next-alias-index)))]
                                {:field f, :rvalue (->rvalue f), :alias alias}))
                      own-fields)]

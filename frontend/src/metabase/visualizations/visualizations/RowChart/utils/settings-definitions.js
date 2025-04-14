@@ -120,7 +120,7 @@ export const ROW_CHART_SETTINGS = {
     getHidden: (series, vizSettings) =>
       vizSettings["graph.x_axis.labels_enabled"] === false,
     getDefault: getDefaultDimensionLabel,
-    getProps: series => ({
+    getProps: (series) => ({
       placeholder: getDefaultDimensionLabel(series),
     }),
   },
@@ -148,7 +148,7 @@ export const ROW_CHART_SETTINGS = {
       const metricNames = Array.from(
         new Set(
           series.map(({ data: { cols } }) => {
-            const metricCol = cols.find(c => c.name === metric);
+            const metricCol = cols.find((c) => c.name === metric);
             return metricCol && metricCol.display_name;
           }),
         ),

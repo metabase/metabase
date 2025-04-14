@@ -178,7 +178,7 @@ describe("scenarios > question > snippets (EE)", () => {
     H.setTokenFeatures("all");
   });
 
-  ["admin", "normal"].forEach(user => {
+  ["admin", "normal"].forEach((user) => {
     it(`${user} user can create a snippet (metabase#21581)`, () => {
       cy.intercept("POST", "/api/native-query-snippet").as("snippetCreated");
 
@@ -292,7 +292,7 @@ describe("scenarios > question > snippets (EE)", () => {
     });
   });
 
-  ["admin", "nocollection"].map(user => {
+  ["admin", "nocollection"].map((user) => {
     it("should display nested snippets in their folder", () => {
       createNestedSnippet();
 

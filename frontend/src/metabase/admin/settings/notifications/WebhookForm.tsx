@@ -181,7 +181,7 @@ export const WebhookForm = ({
     }
   }, [error]);
 
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     getDocsUrl(state, { page: "questions/sharing/alerts" }),
   );
 
@@ -202,7 +202,7 @@ export const WebhookForm = ({
           setFieldError("url", undefined);
           setTestButtonLabel(t`Success`);
         },
-        e => {
+        (e) => {
           setTestButtonLabel(t`Test failed`);
           const message =
             typeof e === "string" ? e : getResponseErrorMessage(e);
@@ -299,7 +299,7 @@ export const WebhookForm = ({
             name="fe-form-type"
             label={t`Authentication method`}
             groupProps={{ mb: "1.5rem", mt: "0.5rem" }}
-            onChange={val => {
+            onChange={(val) => {
               if (val === "none") {
                 setFieldValue("auth-method", "none");
               } else {

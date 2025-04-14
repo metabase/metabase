@@ -7,10 +7,10 @@ describe("nestedSettings", () => {
       ...nestedSettings("nested_settings", {
         objectName: "nested",
         getObjects: () => [1, 2, 3],
-        getObjectKey: object => String(object),
+        getObjectKey: (object) => String(object),
         getObjectSettings: (objects, key) => objects[key],
         getSettingDefinitionsForObject: () => ({
-          foo: { getDefault: object => `foo${object}` },
+          foo: { getDefault: (object) => `foo${object}` },
         }),
       }),
     };

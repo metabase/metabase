@@ -26,7 +26,7 @@ export const ToggleSidebarFilter = ({
       label={<Text color="text-dark">{label()}</Text>}
       data-is-checked={value}
       checked={value}
-      onChange={event => onChange(event.currentTarget.checked)}
+      onChange={(event) => onChange(event.currentTarget.checked)}
     />
   );
 };

@@ -40,7 +40,7 @@ export function createParameter(
   let name = option.combinedName || option.name;
   let nameIndex = 0;
   // get a unique name
-  while (_.any(parameters, p => p.name === name)) {
+  while (_.any(parameters, (p) => p.name === name)) {
     name = (option.combinedName || option.name) + " " + ++nameIndex;
   }
 
@@ -89,19 +89,19 @@ export function setParameterType(
 }
 
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
-  return dashboard.dashcards.some(dashcard => {
-    return dashcard?.parameter_mappings?.some(parameter_mapping => {
+  return dashboard.dashcards.some((dashcard) => {
+    return dashcard?.parameter_mappings?.some((parameter_mapping) => {
       return parameter_mapping.parameter_id === parameter.id;
     });
   });
 }
 
 function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
-  return dashcards.flatMap(dashcard => {
+  return dashcards.flatMap((dashcard) => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
     const extendedParameterMappings = (parameter_mappings || [])
-      .map(parameter_mapping => {
+      .map((parameter_mapping) => {
         const card = _.findWhere(cards, { id: parameter_mapping.card_id });
         return card
           ? {
@@ -125,7 +125,7 @@ export function getDashboardUiParameters(
 ): UiParameter[] {
   const mappableDashcards = dashcards.filter(isQuestionDashCard);
   const mappings = getMappings(mappableDashcards);
-  const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
+  const uiParameters: UiParameter[] = (parameters || []).map((parameter) => {
     if (isFieldFilterParameter(parameter)) {
       return buildFieldFilterUiParameter(
         parameter,
@@ -172,12 +172,12 @@ function buildFieldFilterUiParameter(
   questions: Record<CardId, Question>,
 ): FieldFilterUiParameter {
   const mappingsForParameter = mappings.filter(
-    mapping => mapping.parameter_id === parameter.id,
+    (mapping) => mapping.parameter_id === parameter.id,
   );
   const uniqueTargets: ParameterTarget[] = [];
-  const uniqueMappingsForParameters = mappingsForParameter.filter(mapping => {
+  const uniqueMappingsForParameters = mappingsForParameter.filter((mapping) => {
     const isTargetUnique = uniqueTargets.every(
-      target => _.isEqual(target, mapping.target) === false,
+      (target) => _.isEqual(target, mapping.target) === false,
     );
 
     if (isTargetUnique) {
@@ -187,7 +187,7 @@ function buildFieldFilterUiParameter(
     return isTargetUnique;
   });
 
-  const mappedFields = uniqueMappingsForParameters.map(mapping => {
+  const mappedFields = uniqueMappingsForParameters.map((mapping) => {
     const { target, card } = mapping;
     if (!isQuestionCard(card)) {
       return {
@@ -211,7 +211,7 @@ function buildFieldFilterUiParameter(
     }
   });
 
-  const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
+  const hasVariableTemplateTagTarget = mappingsForParameter.some((mapping) => {
     return isParameterVariableTarget(mapping.target);
   });
 
@@ -229,7 +229,7 @@ function buildFieldFilterUiParameter(
 
   return {
     ...parameter,
-    fields: _.uniq(fields, field => field.id),
+    fields: _.uniq(fields, (field) => field.id),
     hasVariableTemplateTagTarget,
   };
 }
@@ -256,7 +256,7 @@ export function hasMatchingParameters({
   const mappableParameters = dashboard.dashcards.filter(isQuestionDashCard);
   const mappings = getMappings(mappableParameters);
   const mappingsForDashcard = mappings.filter(
-    mapping => mapping.dashcard_id === dashcardId,
+    (mapping) => mapping.dashcard_id === dashcardId,
   );
 
   const dashcardMappingsByParameterId = _.indexBy(
@@ -264,7 +264,7 @@ export function hasMatchingParameters({
     "parameter_id",
   );
 
-  return parameters.every(parameter => {
+  return parameters.every((parameter) => {
     return dashcardMappingsByParameterId[parameter.id] != null;
   });
 }
@@ -276,8 +276,8 @@ export function getFilteringParameterValuesMap(
   const { filteringParameters = [] } = parameter || {};
   const filteringParameterValues = Object.fromEntries(
     parameters
-      .filter(p => filteringParameters.includes(p.id) && p.value != null)
-      .map(p => [p.id, p.value]),
+      .filter((p) => filteringParameters.includes(p.id) && p.value != null)
+      .map((p) => [p.id, p.value]),
   );
 
   return filteringParameterValues;

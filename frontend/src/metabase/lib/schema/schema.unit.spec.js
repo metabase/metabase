@@ -14,7 +14,7 @@ describe("schemas", () => {
   ];
 
   describe("entityTypeForModel", () => {
-    MODEL_ENTITY_TYPE.forEach(testCase => {
+    MODEL_ENTITY_TYPE.forEach((testCase) => {
       const { model, entityType } = testCase;
 
       it(`returns "${entityType}" for "${model}" model`, () => {
@@ -24,7 +24,7 @@ describe("schemas", () => {
   });
 
   describe("entityTypeForObject", () => {
-    MODEL_ENTITY_TYPE.forEach(testCase => {
+    MODEL_ENTITY_TYPE.forEach((testCase) => {
       const { model, entityType } = testCase;
 
       it(`returns "${entityType}" for "${model}" model`, () => {

@@ -51,7 +51,7 @@ const mapStateToProps = (state, props) => {
   };
 };
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = (dispatch) => ({
   ...bindActionCreators(
     {
       initializeSettings,

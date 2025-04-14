@@ -15,7 +15,7 @@ export const TableBody = styled.tbody<{
   hasBottomSpacing?: boolean;
 }>`
   &:after {
-    ${props => (props.hasBottomSpacing ? tableRowSpacingStyle : null)}
+    ${(props) => (props.hasBottomSpacing ? tableRowSpacingStyle : null)}
   }
 `;
 

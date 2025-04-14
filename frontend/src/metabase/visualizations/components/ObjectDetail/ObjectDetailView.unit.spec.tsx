@@ -229,7 +229,7 @@ const actions = [
   queryAction,
 ];
 
-const actionsFromDatabaseWithDisabledActions = actions.map(action => ({
+const actionsFromDatabaseWithDisabledActions = actions.map((action) => ({
   ...action,
   database_id: databaseWithActionsDisabled.id,
 }));

@@ -468,7 +468,7 @@ const getSourceValues = (values: ParameterValue[] = []) => {
 };
 
 const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
-  return fields.find(field => _.isEqual(field.reference(), fieldReference));
+  return fields.find((field) => _.isEqual(field.reference(), fieldReference));
 };
 
 const getFieldFilter = (parameter: Parameter) => {

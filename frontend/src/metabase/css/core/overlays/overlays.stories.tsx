@@ -52,7 +52,7 @@ const ReduxDecorator = (Story: StoryFn) => {
   );
 };
 
-const Template: StoryFn<OverlaysDemoProps> = args => {
+const Template: StoryFn<OverlaysDemoProps> = (args) => {
   return <OverlaysDemo {...args} />;
 };
 
@@ -217,35 +217,35 @@ const launchAThenB = async (
 
 export const MantineModalCanLaunchLegacyModal: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Modal", "Legacy Modal", props),
+  play: (props) => launchAThenB("Mantine Modal", "Legacy Modal", props),
 };
 
 export const LegacyModalCanLaunchMantineModal: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Legacy Modal", "Mantine Modal", props),
+  play: (props) => launchAThenB("Legacy Modal", "Mantine Modal", props),
 };
 
 export const MantinePopoverCanLaunchLegacySelect: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Popover", "Legacy Select", props),
+  play: (props) => launchAThenB("Mantine Popover", "Legacy Select", props),
 };
 
 export const MantinePopoverCanLaunchLegacyModal: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Popover", "Legacy Modal", props),
+  play: (props) => launchAThenB("Mantine Popover", "Legacy Modal", props),
 };
 
 export const MantineModalCanLaunchLegacySelect: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Modal", "Legacy Select", props),
+  play: (props) => launchAThenB("Mantine Modal", "Legacy Select", props),
 };
 
 export const MantineModalCanLaunchMantineHovercard: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Modal", "Mantine HoverCard", props),
+  play: (props) => launchAThenB("Mantine Modal", "Mantine HoverCard", props),
 };
 
 export const MantineModalCanLaunchMantineSelect: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Modal", "Mantine Select", props),
+  play: (props) => launchAThenB("Mantine Modal", "Mantine Select", props),
 };

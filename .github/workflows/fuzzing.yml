@@ -13,7 +13,7 @@ on:
       - "frontend/src/metabase-lib/expressions/**"
 
 jobs:
-  fe-fuzz-tokenizer:
+  fe-fuzz-lexifier:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
@@ -24,12 +24,12 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
-      - run: yarn test-unit frontend/src/metabase-lib/v1/expressions/tokenizer/fuzz.unit.spec.ts
+      - run: yarn test-unit frontend/src/metabase-lib/v1/expressions/pratt/fuzz.lexifier.unit.spec.ts
         env:
           MB_FUZZ: 1
-        name: Run fuzz testing on the tokenizer
+        name: Run fuzz testing on the lexifier
 
-  fe-fuzz-recursive-parser:
+  fe-fuzz-compiler:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
@@ -40,7 +40,23 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
-      - run: yarn test-unit frontend/src/metabase-lib/v1/expressions/fuzz.recursive-parser.unit.spec.ts
+      - run: yarn test-unit frontend/src/metabase-lib/v1/expressions/fuzz.compiler.unit.spec.ts
         env:
           MB_FUZZ: 1
-        name: Run fuzz testing on the recursive parser
+        name: Run fuzz testing on the custom expression compiler
+
+  fe-fuzz-string-quoting:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - run: yarn test-unit frontend/src/metabase-lib/v1/expressions/fuzz.string.unit.spec.ts
+        env:
+          MB_FUZZ: 1
+        name: Run fuzz testing on the custom expression string quoter

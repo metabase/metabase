@@ -179,7 +179,7 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),
     },
 
-    [RUN_QUERY]: state => ({
+    [RUN_QUERY]: (state) => ({
       ...state,
       isRunning: true,
     }),
@@ -204,13 +204,19 @@ export const uiControls = handleActions(
         initialChartSetting: payload,
       }),
     },
+    [CANCEL_QUESTION_CHANGES]: {
+      next: (state) => ({
+        ...state,
+        isModifiedFromNotebook: false,
+      }),
+    },
     // AGGREGATION
-    [onEditSummary]: state => ({
+    [onEditSummary]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingSummarySidebar: true,
     }),
-    [onCloseSummary]: state => ({
+    [onCloseSummary]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
@@ -224,50 +230,50 @@ export const uiControls = handleActions(
       initialChartSetting: initialChartSettings,
       showSidebarTitle: showSidebarTitle,
     }),
-    [onCloseChartSettings]: state => ({
+    [onCloseChartSettings]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onOpenChartType]: state => ({
+    [onOpenChartType]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingChartTypeSidebar: true,
     }),
-    [onCloseChartType]: state => ({
+    [onCloseChartType]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onOpenQuestionInfo]: state =>
+    [onOpenQuestionInfo]: (state) =>
       setUIControls(state, {
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
         isShowingQuestionInfoSidebar: true,
         queryBuilderMode: "view",
       }),
-    [onCloseQuestionInfo]: state => ({
+    [onCloseQuestionInfo]: (state) => ({
       ...state,
       isShowingQuestionInfoSidebar: false,
     }),
-    [onOpenQuestionSettings]: state =>
+    [onOpenQuestionSettings]: (state) =>
       setUIControls(state, {
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
         isShowingQuestionSettingsSidebar: true,
         queryBuilderMode: "view",
       }),
-    [onCloseQuestionSettings]: state => ({
+    [onCloseQuestionSettings]: (state) => ({
       ...state,
       isShowingQuestionSettingsSidebar: false,
     }),
-    [onOpenTimelines]: state => ({
+    [onOpenTimelines]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       ...CLOSED_NATIVE_EDITOR_SIDEBARS,
       isShowingTimelineSidebar: true,
     }),
-    [onCloseTimelines]: state => ({
+    [onCloseTimelines]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onCloseSidebars]: state => ({
+    [onCloseSidebars]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
@@ -295,9 +301,9 @@ export const loadingControls = handleActions(
 
 export const queryStatus = handleActions(
   {
-    [RUN_QUERY]: state => "running",
-    [QUERY_COMPLETED]: state => "complete",
-    [CANCEL_QUERY]: state => "idle",
+    [RUN_QUERY]: (state) => "running",
+    [QUERY_COMPLETED]: (state) => "complete",
+    [CANCEL_QUERY]: (state) => "idle",
   },
   DEFAULT_QUERY_STATUS,
 );
@@ -464,12 +470,12 @@ export const visibleTimelineEventIds = handleActions(
     [INITIALIZE_QB]: { next: () => [] },
     [SHOW_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) =>
-        _.uniq([...state, ...events.map(event => event.id)]),
+        _.uniq([...state, ...events.map((event) => event.id)]),
     },
     [HIDE_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) => {
-        const eventIdsToHide = events.map(event => event.id);
-        return state.filter(eventId => !eventIdsToHide.includes(eventId));
+        const eventIdsToHide = events.map((event) => event.id);
+        return state.filter((eventId) => !eventIdsToHide.includes(eventId));
       },
     },
     [TimelineEvents.actionTypes.CREATE]: {
@@ -484,7 +490,7 @@ export const selectedTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
     [SELECT_TIMELINE_EVENTS]: {
-      next: (state, { payload: events = [] }) => events.map(e => e.id),
+      next: (state, { payload: events = [] }) => events.map((e) => e.id),
     },
     [DESELECT_TIMELINE_EVENTS]: {
       next: () => [],

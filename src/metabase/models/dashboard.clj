@@ -410,7 +410,8 @@
                :made_public_by_id      (serdes/fk :model/User)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
-               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}})
+               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}
+   :coerce {:parameters [:maybe [:sequential ms/Parameter]]}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
@@ -473,7 +474,7 @@
     (-> (select-keys dashboard [:description :name :parameters :dashcards])
         (update :dashcards (fn [dashcards]
                              (for [{:keys [id card_id]} dashcards]
-                               (-> (t2/select-one [:model/Card :name :description], :id card_id)
+                               (-> (t2/select-one [:model/Card :name :description :card_schema], :id card_id)
                                    (assoc :id id)
                                    (assoc :card_id card_id))))))
 

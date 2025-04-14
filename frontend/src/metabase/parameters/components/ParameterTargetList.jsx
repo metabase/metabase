@@ -14,9 +14,9 @@ export default class ParameterTargetList extends Component {
 
     const mappingOptionSections = _.groupBy(mappingOptions, "sectionName");
 
-    const hasForeignOption = _.any(mappingOptions, o => !!o.isForeign);
+    const hasForeignOption = _.any(mappingOptions, (o) => !!o.isForeign);
 
-    const sections = _.map(mappingOptionSections, options => ({
+    const sections = _.map(mappingOptionSections, (options) => ({
       name: options[0].sectionName,
       items: options,
     }));
@@ -26,9 +26,9 @@ export default class ParameterTargetList extends Component {
         className={CS.textBrand}
         maxHeight={this.props.maxHeight || 600}
         sections={sections}
-        onChange={item => this.props.onChange(item.target)}
-        itemIsSelected={item => item === selectedMappingOption}
-        renderItemIcon={item => (
+        onChange={(item) => this.props.onChange(item.target)}
+        itemIsSelected={(item) => item === selectedMappingOption}
+        renderItemIcon={(item) => (
           <Icon name={item.icon || "unknown"} size={18} />
         )}
         alwaysExpanded={true}

@@ -41,10 +41,10 @@ const githubApi = ({
 };
 
 function extractTestsFromCommentText(body: string) {
-  const tableLines = body.split("\n").filter(line => line.includes("|"));
+  const tableLines = body.split("\n").filter((line) => line.includes("|"));
   const testLines = tableLines.slice(2);
-  const testData = testLines.map(line => {
-    const [fileName, testName] = line.split("|").map(cell => cell.trim());
+  const testData = testLines.map((line) => {
+    const [fileName, testName] = line.split("|").map((cell) => cell.trim());
     return { fileName, testName };
   });
 

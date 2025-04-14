@@ -30,7 +30,7 @@ const StatusListing = () => {
       {isAdmin && <DatabaseStatus />}
       <FileUploadStatus />
       <DownloadsStatus />
-      <PLUGIN_UPLOAD_MANAGEMENT.GsheetsSyncStatus />
+      {isAdmin && <PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus />}
     </StatusListingRoot>
   );
 };

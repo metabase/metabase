@@ -13,7 +13,7 @@ const execAsync = promisify(exec);
 /**
  * Check if the Docker daemon is running.
  */
-export const checkIfDockerContainerExists: CliStepMethod = async state => {
+export const checkIfDockerContainerExists: CliStepMethod = async (state) => {
   const doesContainerExist = await doesDockerContainerExist(CONTAINER_NAME);
 
   if (doesContainerExist) {

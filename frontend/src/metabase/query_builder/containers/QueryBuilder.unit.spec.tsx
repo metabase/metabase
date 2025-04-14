@@ -90,7 +90,7 @@ describe("QueryBuilder", () => {
 
       it.each(cards)(
         `renders the row count in "$display" visualization`,
-        async card => {
+        async (card) => {
           await setup({
             card,
             dataset,

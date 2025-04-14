@@ -44,6 +44,7 @@
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :expression-aggregations         true
+                              :expression-literals             true
                               :expressions                     true
                               :native-parameters               true
                               :now                             true

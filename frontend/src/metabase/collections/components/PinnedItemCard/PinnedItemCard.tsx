@@ -147,7 +147,9 @@ function PinnedItemCard({
                 maw={TOOLTIP_MAX_WIDTH}
               >
                 <Title
-                  onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}
+                  onMouseEnter={(e) =>
+                    maybeEnableTooltip(e, setShowTitleTooltip)
+                  }
                 >
                   <Flex align="center" gap="0.5rem">
                     {item.name}

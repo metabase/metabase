@@ -24,6 +24,7 @@
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
+   [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [throttle.core :as throttle]
@@ -38,15 +39,6 @@
 (defn- shared-obj []
   {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
-
-(defn- native-query-with-template-tag []
-  {:database (mt/id)
-   :type     :native
-   :native   {:query         "SELECT count(*) AS Count FROM venues [[WHERE id = {{venue_id}}]]"
-              :template-tags {"venue_id" {:name         "venue_id"
-                                          :display-name "Venue ID"
-                                          :type         :number
-                                          :required     false}}}})
 
 (defn do-with-temp-public-card [m f]
   (let [m (merge (when-not (:dataset_query m)
@@ -154,7 +146,7 @@
                    (client/client :get 404 (str "public/card/" uuid))))))))))
 
 (deftest public-queries-are-counted-test
-  (testing "GET /api/public/card/:uuid/query coutns as a public query"
+  (testing "GET /api/public/card/:uuid/query counts as a public query"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-card [{uuid :public_uuid}]
         (testing "should increment the public link query count when fetching a public Card"
@@ -366,19 +358,55 @@
 (deftest execute-public-card-with-parameters-test
   (testing "JSON-encoded MBQL parameters passed as a query parameter should work (#17019)"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (with-temp-public-card [{uuid :public_uuid} {:dataset_query (native-query-with-template-tag)}]
-        (is (=? {:status     "completed"
-                 :json_query {:parameters [{:id    "_VENUE_ID_"
-                                            :name  "venue_id"
-                                            :slug  "venue_id"
-                                            :type  "number"
-                                            :value 2}]}}
-                (client/client :get 202 (str "public/card/" uuid "/query")
-                               :parameters (json/encode [{:id    "_VENUE_ID_"
-                                                          :name  "venue_id"
-                                                          :slug  "venue_id"
-                                                          :type  "number"
-                                                          :value 2}])))))
+      (with-temp-public-card [{uuid :public_uuid} {:dataset_query
+                                                   {:database (mt/id)
+                                                    :type     :native
+                                                    :native   {:query         "SELECT count(*) AS Count FROM venues [[WHERE id = {{venue_id}}]]"
+                                                               :template-tags {"venue_id" {:name         "venue_id"
+                                                                                           :display-name "Venue ID"
+                                                                                           :type         :number
+                                                                                           :required     false}}}}
+                                                   :parameters
+                                                   [{:id "_VENUE_ID_",
+                                                     :type :number/=,
+                                                     :target [:variable [:template-tag "venue_id"]],
+                                                     :name "Venue ID",
+                                                     :slug "venue_id"}]}]
+        (testing "typical invocation"
+          (is (=? {:status     "completed"
+                   :json_query {:parameters [{:id    "_VENUE_ID_"
+                                              :type  "number/="
+                                              :target ["variable" ["template-tag" "venue_id"]]
+                                              :value 2}]}}
+                  (client/client :get 202 (str "public/card/" uuid "/query")
+                                 :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                            :type  "number/="
+                                                            :target ["variable" ["template-tag" "venue_id"]]
+                                                            :value 2}])))))
+        (testing "invocation with extra parameter properties"
+          (is (=? {:status     "completed"
+                   :json_query {:parameters [{:id    "_VENUE_ID_"
+                                              :name  "venue_id"
+                                              :slug  "venue_id"
+                                              :type  "number"
+                                              :target ["variable" ["template-tag" "venue_id"]]
+                                              :value 2}]}}
+                  (client/client :get 202 (str "public/card/" uuid "/query")
+                                 :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                            :name  "venue_id"
+                                                            :slug  "venue_id"
+                                                            :type  "number"
+                                                            :target ["variable" ["template-tag" "venue_id"]]
+                                                            :value 2}])))))
+        (testing "invocation with minimum parameter properties"
+          (is (=? {:status     "completed"
+                   :json_query {:parameters [{:id    "_VENUE_ID_"
+                                              :type  "number/="
+                                              :target ["variable" ["template-tag" "venue_id"]]
+                                              :value 2}]}}
+                  (client/client :get 202 (str "public/card/" uuid "/query")
+                                 :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                            :value 2}]))))))
 
       ;; see longer explanation in [[metabase.legacy-mbql.schema/parameter-types]]
       (testing "If the FE client is incorrectly passing in the parameter as a `:category` type, allow it for now"
@@ -1457,7 +1485,12 @@
               (is (= {:values          [[2] [3] [4] [5] [6]]
                       :has_more_values false}
                      (->> (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys)))
-                          (chain-filter-test/take-n-values 5))))))
+                          (chain-filter-test/take-n-values 5))))
+              (testing "with constraints"
+                (is (= {:values          [[44]]
+                        :has_more_values false}
+                       (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys))
+                                      (keyword (:id param-keys)) "7"))))))
 
           (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
             (testing "parameter with source is a static list"
@@ -2034,10 +2067,10 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Card _card {:dataset_query (venues-query)
                                           :public_uuid uuid}]
-          (is (png? (client/client :get 200 (format "public/tiles/card/%s/1/1/1/%d/%d"
+          (is (png? (client/client :get 200 (format "public/tiles/card/%s/1/1/1/%s/%s"
                                                     uuid
-                                                    (mt/id :people :latitude)
-                                                    (mt/id :people :longitude))))))))))
+                                                    (tiles.api-test/encoded-lat-field-ref)
+                                                    (tiles.api-test/encoded-lon-field-ref))))))))))
 
 (deftest dashcard-tile-query-test
   (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
@@ -2047,12 +2080,12 @@
                        :model/Card          {card-id :id}      {:dataset_query (venues-query)}
                        :model/DashboardCard {dashcard-id :id}  {:card_id card-id
                                                                 :dashboard_id dashboard-id}]
-          (is (png? (client/client :get 200 (format "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%d/%d"
+          (is (png? (client/client :get 200 (format "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%s/%s"
                                                     uuid
                                                     dashcard-id
                                                     card-id
-                                                    (mt/id :people :latitude)
-                                                    (mt/id :people :longitude))))))))))
+                                                    (tiles.api-test/encoded-lat-field-ref)
+                                                    (tiles.api-test/encoded-lon-field-ref))))))))))
 
 ;;; --------------------------------- POST /oembed ----------------------------------
 

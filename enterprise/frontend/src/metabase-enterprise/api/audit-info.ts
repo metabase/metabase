@@ -3,7 +3,7 @@ import type { AuditInfo } from "metabase-enterprise/audit_app/types/state";
 import { EnterpriseApi } from "./api";
 
 export const auditInfoApi = EnterpriseApi.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getAuditInfo: builder.query<AuditInfo, void>({
       query: () => ({
         method: "GET",

@@ -26,6 +26,7 @@ frontend_sources: &frontend_sources
   - "babel.config.json"
   - ".eslintrc.js"
   - "postcss.config.js"
+  - "rspack.config.js"
   - "webpack.config.js"
   - "webpack.embedding-sdk.config.js"
   - "webpack.static-viz.config.js"

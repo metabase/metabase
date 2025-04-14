@@ -11,7 +11,7 @@ import {
 } from "../utils/propagate-error-response";
 import { sampleTenantIdsFromTables } from "../utils/sample-tenancy-column-values";
 
-export const setupPermissions: CliStepMethod = async state => {
+export const setupPermissions: CliStepMethod = async (state) => {
   const {
     cookie = "",
     instanceUrl = "",

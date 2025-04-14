@@ -141,6 +141,7 @@ serdes/meta:
   label: questions_consuming_most_resources
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: Glqmoytsnu0n6rfLUjock
 metabase_version: vUNKNOWN (901f705)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb

@@ -62,7 +62,7 @@ export default function ActionCreatorView({
     useState<SideView>(DEFAULT_SIDE_VIEW);
 
   const toggleDataRef = useCallback(() => {
-    setActiveSideView(activeSideView => {
+    setActiveSideView((activeSideView) => {
       if (activeSideView !== "dataReference") {
         return "dataReference";
       }
@@ -72,7 +72,7 @@ export default function ActionCreatorView({
   }, []);
 
   const toggleActionSettings = useCallback(() => {
-    setActiveSideView(activeSideView => {
+    setActiveSideView((activeSideView) => {
       if (activeSideView !== "actionSettings") {
         return "actionSettings";
       }
@@ -94,7 +94,7 @@ export default function ActionCreatorView({
             name={action.name ?? t`New Action`}
             canRename={canRename}
             isEditable={isEditable}
-            onChangeName={name => onChangeAction({ name })}
+            onChangeName={(name) => onChangeAction({ name })}
             actionButtons={[
               <DataReferenceTriggerButton
                 key="dataReference"

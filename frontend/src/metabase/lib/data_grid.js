@@ -32,24 +32,24 @@ export function multiLevelPivot(data, settings) {
     columns: columnIndexes,
     rows: rowIndexes,
     values: valueIndexes,
-  } = _.mapObject(columnSplit, columnNames =>
+  } = _.mapObject(columnSplit, (columnNames) =>
     columnNames
-      .map(columnName => columns.findIndex(col => col.name === columnName))
-      .filter(index => index !== -1),
+      .map((columnName) => columns.findIndex((col) => col.name === columnName))
+      .filter((index) => index !== -1),
   );
 
-  const columnSettings = columns.map(column => settings.column(column));
+  const columnSettings = columns.map((column) => settings.column(column));
 
   // pivot tables have a lot of repeated values, so we use memoized formatters for each column
   const [valueFormatters, topIndexFormatters, leftIndexFormatters] = [
     valueIndexes,
     columnIndexes,
     rowIndexes,
-  ].map(indexes =>
-    indexes.map(index =>
+  ].map((indexes) =>
+    indexes.map((index) =>
       _.memoize(
-        value => formatValue(value, columnSettings[index]),
-        value => [value, index].join(),
+        (value) => formatValue(value, columnSettings[index]),
+        (value) => [value, index].join(),
       ),
     ),
   );
@@ -58,7 +58,7 @@ export function multiLevelPivot(data, settings) {
   // computed in CLJS by metabase.pivot.core/get-rows-from-pivot-data, and we
   // want to avoid an extra round trip to CLJS (this can probably be improved,
   // maybe by computing background color right before rendering)
-  const makeColorGetter = rows => {
+  const makeColorGetter = (rows) => {
     return makeCellBackgroundGetter(
       rows,
       columns,

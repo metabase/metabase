@@ -7,7 +7,7 @@ export default {
   component: Select,
 };
 
-const Template: StoryFn<typeof Select> = args => {
+const Template: StoryFn<typeof Select> = (args) => {
   return <Select {...args} />;
 };
 

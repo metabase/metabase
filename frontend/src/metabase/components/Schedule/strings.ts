@@ -4,10 +4,19 @@ import _ from "underscore";
 import { has24HourModeSetting } from "metabase/lib/time";
 import type { ScheduleDayType, ScheduleFrameType } from "metabase-types/api";
 
-export const minutes = _.times(60, n => ({
-  label: n.toString(),
-  value: n.toString(),
-}));
+function intToOption(n: number) {
+  return {
+    label: n.toString(),
+    value: n.toString(),
+  };
+}
+
+export const minutes = _.times(60, intToOption);
+
+// Specific recurring intervals (see WRK-213).
+export const byTheMinuteIntervals = [1, 2, 3, 4, 5, 6, 10, 15, 20, 30].map(
+  intToOption,
+);
 
 export const getHours = () => {
   const localizedHours = [
@@ -40,7 +49,7 @@ export const getHours = () => {
   const hourCount = isClock24Hour ? 24 : 12;
   const firstHourIndex = isClock24Hour ? 0 : 12;
   const firstHourValue = isClock24Hour ? 0 : 12;
-  return _.times(hourCount, n => ({
+  return _.times(hourCount, (n) => ({
     label: localizedHours[n === 0 ? firstHourIndex : n],
     value: `${n === 0 ? firstHourValue : n}`,
   }));
@@ -57,10 +66,12 @@ export const getScheduleStrings = () => {
     // The context is needed because 'hourly' can be an adjective ('hourly
     // rate') or adverb ('update hourly'). Same with 'daily', 'weekly', and
     // 'monthly'.
+    every_n_minutes: t`by the minute`,
     hourly: c("adverb").t`hourly`,
     daily: c("adverb").t`daily`,
     weekly: c("adverb").t`weekly`,
     monthly: c("adverb").t`monthly`,
+    cron: t`custom`,
   };
 
   const weekdays: Weekday[] = [
@@ -151,6 +162,7 @@ export enum Cron {
   AllValues = "*",
   NoSpecificValue = "?",
   NoSpecificValue_Escaped = "\\?",
+  EveryPrefix = "0/",
 }
 
 export type ScheduleComponentType =

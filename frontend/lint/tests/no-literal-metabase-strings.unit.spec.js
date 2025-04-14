@@ -142,7 +142,7 @@ const INVALID_CASES = [
 
 ruleTester.run("no-literal-metabase-strings", noLiteralMetabaseString, {
   valid: VALID_CASES,
-  invalid: INVALID_CASES.map(invalidCase => {
+  invalid: INVALID_CASES.map((invalidCase) => {
     return {
       code: invalidCase.code,
       errors: [

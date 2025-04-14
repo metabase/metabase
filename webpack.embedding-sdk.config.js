@@ -117,13 +117,17 @@ module.exports = env => {
       ],
     },
 
-    externals: {
-      ...mainConfig.externals,
-      react: "react",
-      "react-dom": "react-dom",
-      "react-dom/client": "react-dom/client",
-      "react/jsx-runtime": "react/jsx-runtime",
-    },
+    // Prevent these dependencies from being included in the JavaScript bundle.
+    externals: [
+      mainConfig.externals,
+
+      // We intend to support multiple React versions in the SDK,
+      // so the SDK itself should not pre-bundle react and react-dom
+      "react",
+      /^react\//i,
+      "react-dom",
+      /^react-dom\//i,
+    ],
 
     optimization: {
       // The default `moduleIds: 'named'` setting breaks Cypress tests when `development` mode is enabled,

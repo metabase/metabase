@@ -56,7 +56,7 @@ export function UploadManagementTable() {
   );
 
   const selectedItemIds = useMemo(
-    () => new Set(selectedItems.map(item => item.id)),
+    () => new Set(selectedItems.map((item) => item.id)),
     [selectedItems],
   );
 
@@ -65,15 +65,15 @@ export function UploadManagementTable() {
       <UploadTableRow
         item={row}
         isSelected={selectedItemIds.has(row.id)}
-        onSelect={newItem =>
-          setSelectedItems(prevItems => [...prevItems, newItem])
+        onSelect={(newItem) =>
+          setSelectedItems((prevItems) => [...prevItems, newItem])
         }
-        onDeselect={newItem =>
-          setSelectedItems(prevItems =>
-            prevItems.filter(i => i.id !== newItem.id),
+        onDeselect={(newItem) =>
+          setSelectedItems((prevItems) =>
+            prevItems.filter((i) => i.id !== newItem.id),
           )
         }
-        onTrash={item => {
+        onTrash={(item) => {
           setSelectedItems([item]);
           setShowDeleteConfirmModal(true);
         }}
@@ -95,14 +95,14 @@ export function UploadManagementTable() {
       <DeleteConfirmModal
         opened={showDeleteConfirmModal}
         tables={selectedItems}
-        onConfirm={async sendToTrash => {
+        onConfirm={async (sendToTrash) => {
           const result = await Promise.all(
-            selectedItems.map(table => deleteTable(table, sendToTrash)),
+            selectedItems.map((table) => deleteTable(table, sendToTrash)),
           );
 
           setShowDeleteConfirmModal(false);
 
-          if (result.some(result => "error" in result)) {
+          if (result.some((result) => "error" in result)) {
             const message = ngettext(
               msgid`Error deleting table`,
               `Error deleting tables`,
@@ -145,7 +145,7 @@ export function UploadManagementTable() {
         data-testid="upload-tables-table"
         columns={columns}
         rows={uploadTables}
-        rowRenderer={row => renderRow(row)}
+        rowRenderer={(row) => renderRow(row)}
       />
     </Box>
   );
@@ -172,7 +172,9 @@ const UploadTableRow = ({
         <Checkbox
           size="xs"
           checked={isSelected}
-          onChange={e => (e.target.checked ? onSelect(item) : onDeselect(item))}
+          onChange={(e) =>
+            e.target.checked ? onSelect(item) : onDeselect(item)
+          }
         />
       </td>
       <td>

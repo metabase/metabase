@@ -20,7 +20,7 @@ export const getValidationSchema = (
   isAdvanced: boolean,
 ) => {
   const fields = getDefinedFields(engine, isAdvanced).filter(isDetailField);
-  const entries = fields.map(field => [field.name, getFieldSchema(field)]);
+  const entries = fields.map((field) => [field.name, getFieldSchema(field)]);
 
   return Yup.object({
     id: Yup.number(),
@@ -46,7 +46,7 @@ export const getVisibleFields = (
   isAdvanced: boolean,
 ) => {
   const fields = getDefinedFields(engine, isAdvanced);
-  return fields.filter(field => isFieldVisible(field, values.details));
+  return fields.filter((field) => isFieldVisible(field, values.details));
 };
 
 export const getDefinedFields = (
@@ -57,7 +57,7 @@ export const getDefinedFields = (
 
   return isAdvanced
     ? fields
-    : fields.filter(field => !ADVANCED_FIELDS.includes(field.name));
+    : fields.filter((field) => !ADVANCED_FIELDS.includes(field.name));
 };
 
 export const getSubmitValues = (
@@ -67,9 +67,9 @@ export const getSubmitValues = (
 ) => {
   const fields = getVisibleFields(engine, values, isAdvanced);
   const entries = fields
-    .filter(field => isDetailField(field))
-    .filter(field => isFieldVisible(field, values.details))
-    .map(field => [field.name, values.details?.[field.name]]);
+    .filter((field) => isDetailField(field))
+    .filter((field) => isFieldVisible(field, values.details))
+    .map((field) => [field.name, values.details?.[field.name]]);
 
   return {
     ...values,
@@ -84,6 +84,7 @@ const getFieldSchema = (field: EngineField) => {
         .nullable()
         .default(null)
         .test((value, context) => isFieldValid(field, value, context));
+    case "hidden":
     case "boolean":
     case "section":
       return Yup.boolean()

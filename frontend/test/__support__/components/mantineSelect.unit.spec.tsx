@@ -1,9 +1,7 @@
-import { mockScrollIntoView, render, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui";
 import { Select } from "metabase/ui";
 
 import { viewMantineSelectOptions } from "./mantineSelect";
-
-mockScrollIntoView();
 
 describe("viewMantineSelectOptions", () => {
   it("fetches options from the <Select> component", async () => {

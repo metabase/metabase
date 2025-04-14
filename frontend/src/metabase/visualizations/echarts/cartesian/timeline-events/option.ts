@@ -50,7 +50,7 @@ export const getTimelineEventsSeries = (
 
   const timelineEventsData: MarkLine1DDataItemOption[] =
     timelineEventsModel.map(({ date, events }) => {
-      const isSelected = events.some(event =>
+      const isSelected = events.some((event) =>
         selectedEventsIds.includes(event.id),
       );
 

@@ -1,18 +1,25 @@
 (ns metabase.lib.metadata.ident
   "Helpers for working with `:ident` fields on columns.")
 
-(defn implicitly-joined-ident
-  "Returns the ident for an implicitly joined column, given the idents of the foreign key column and the target column.
-
-  Remember that `:ident` strings should never be parsed - they are opaque, but should be legible during debugging."
-  [target-ident fk-ident]
-  (str "implicit_via__" fk-ident "__->__" target-ident))
-
 (defn explicitly-joined-ident
   "Returns the ident for an explicitly joined column, given the idents of the join clause and the target column.
   Remember that `:ident` strings should never be parsed - they are opaque, but should be legible during debugging."
   [target-ident join-ident]
   (str "join__" join-ident "__" target-ident))
+
+(defn implicit-join-clause-ident
+  "Returns the ident for an implicit join **clause**.
+
+  The join clause's ident is derived from the FK column's ident: `implicit_via__IdentOfFK`."
+  [fk-ident]
+  (str "implicit_via__" fk-ident))
+
+(defn implicitly-joined-ident
+  "Returns the ident for an implicitly joined column, given the idents of the foreign key column and the target column.
+
+  Remember that `:ident` strings should never be parsed - they are opaque, but should be legible during debugging."
+  [target-ident fk-ident]
+  (explicitly-joined-ident target-ident (implicit-join-clause-ident fk-ident)))
 
 (defn model-ident
   "Returns the `:ident` for this column on a model.
@@ -27,6 +34,11 @@
   Requires the `entity_id` of the card and the name of the column."
   [column-name card-entity-id]
   (str "native__" card-entity-id "__" column-name))
+
+(defn remap-ident
+  "Returns the `:ident` for a \"remapped\" field."
+  [target-ident source-ident]
+  (str "remapped__" source-ident "__to__" target-ident))
 
 (def ^:dynamic *enforce-idents-present*
   "The [[assert-idents-present!]] check is sometimes too zealous; this dynamic var can be overridden whe we know the

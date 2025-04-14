@@ -41,7 +41,7 @@ async function setup({
   prefix?: string;
 } & Omit<Partial<IFieldValuesWidgetProps>, "fields">) {
   const fetchFieldValues = jest.fn(({ id }) => ({
-    payload: fields.filter(checkNotNull).find(f => f?.id === id),
+    payload: fields.filter(checkNotNull).find((f) => f?.id === id),
     type: "__MOCK__",
   }));
 
@@ -50,7 +50,7 @@ async function setup({
     .mockImplementation(fetchFieldValues);
 
   if (searchValue) {
-    fields.forEach(field => {
+    fields.forEach((field) => {
       const fieldId = field?.id as number;
       setupFieldSearchValuesEndpoint(fieldId, fieldId, searchValue);
     });

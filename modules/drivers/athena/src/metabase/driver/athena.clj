@@ -37,6 +37,7 @@
                               :nested-fields                 false
                               :uuid-type                     true
                               :connection/multiple-databases true
+                              :expression-literals           true
                               :identifiers-with-spaces       false
                               :metadata/key-constraints      false
                               :test/jvm-timezone-setting     false}]
@@ -489,7 +490,7 @@
   ;; TODO: Catch errors here so a single exception doesn't fail the entire schema
   ;;
   ;; Also we're creating a set here, so even if we set "ProxyAPI", we'll miss dupe database names
-  (with-open [rs (.getSchemas metadata)]
+  (with-open [rs (if catalog (.getSchemas metadata catalog "%") (.getSchemas metadata))]
     ;; it seems like `table_catalog` is ALWAYS `AwsDataCatalog`. `table_schem` seems to correspond to the Database name,
     ;; at least for stuff we create with the test data extensions?? :thinking_face:
     (let [all-schemas (set (cond->> (jdbc/metadata-result rs)

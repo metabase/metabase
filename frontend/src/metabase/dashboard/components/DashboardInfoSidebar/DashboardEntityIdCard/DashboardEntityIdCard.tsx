@@ -27,7 +27,9 @@ export const DashboardEntityIdCard = ({
     return null;
   }
 
-  const tabEntityId = tabs?.find(tab => tab.id.toString() === tabId)?.entity_id;
+  const tabEntityId = tabs?.find(
+    (tab) => tab.id.toString() === tabId,
+  )?.entity_id;
 
   return (
     <SidesheetCard>
@@ -40,8 +42,8 @@ export const DashboardEntityIdCard = ({
             <Flex gap="md" align="center">
               <Select
                 value={tabId}
-                onChange={value => setTabId(value)}
-                data={tabs?.map(tab => ({
+                onChange={(value) => setTabId(value)}
+                data={tabs?.map((tab) => ({
                   value: tab.id.toString(),
                   label: tab.name,
                 }))}

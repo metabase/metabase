@@ -14,7 +14,7 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: StoryFn<ComponentProps<typeof CollectionBrowser>> = args => {
+const Template: StoryFn<ComponentProps<typeof CollectionBrowser>> = (args) => {
   return <CollectionBrowser {...args} />;
 };
 

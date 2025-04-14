@@ -18,6 +18,8 @@ The template lists example `database`, `user`, and `settings` sections for the [
 # You'll need to update (or remove) the `users` and `databases` sections.
 # The settings in `settings` include default values. We recommend removing
 # or commenting out settings that you don't set.
+# To use an env var, you can use a template string: "{{ env YOUR_ENV_VAR }}"
+# Note the quote marks wrapping the env var template.
 # For more on the configuration file, see:
 # https://www.metabase.com/docs/latest/configuring-metabase/config-file
 # For more on what each setting does, check out:
@@ -55,6 +57,15 @@ config:
       user: metabase
       password: metasample123
       dbname: sample
+  api-keys:
+  - name: Admin API key
+    group: admin
+    creator: first@example.com
+    key: mb_firsttestapikey123
+  - name: All Users API key
+    group: all-users
+    creator: first@example.com
+    key: mb_secondtestapikey456
   settings:
     admin-email: null
     aggregated-query-row-limit: null
@@ -89,7 +100,9 @@ config:
     application-font-files: null
     application-logo-url: app/assets/img/logo.svg
     application-name: Metabase
+    attachment-row-limit: null
     attachment-table-row-limit: 20
+    backfill-entity-ids-repeat-ms: 2000
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
@@ -97,10 +110,12 @@ config:
     config-from-file-sync-databases: true
     custom-formatting: {}
     custom-geojson: null
+    custom-geojson-enabled: true
     custom-homepage: false
     custom-homepage-dashboard: null
     db-connection-timeout-ms: 10000
     db-query-timeout-minutes: 20
+    default-maps-enabled: true
     download-row-limit: null
     ee-ai-features-enabled: false
     ee-openai-api-key: null
@@ -121,21 +136,21 @@ config:
     enable-embedding-interactive: false
     enable-embedding-sdk: false
     enable-embedding-static: false
+    enable-field-usage-analysis: false
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
     enable-query-caching: true
     enable-xrays: true
-    enum-cardinality-threshold: 60
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
     google-auth-client-id: null
     google-auth-enabled: null
+    gsheets: null
     health-check-logging-enabled: true
     help-link: metabase
     help-link-custom-destination: https://www.metabase.com/help/premium
     humanization-strategy: simple
-    is-metabot-enabled: false
     jdbc-data-warehouse-max-connection-pool-size: 15
     jwt-attribute-email: email
     jwt-attribute-firstname: first_name
@@ -172,26 +187,19 @@ config:
     login-page-illustration: default
     login-page-illustration-custom: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
-    metabot-default-embedding-model: text-embedding-ada-002
-    metabot-feedback-url: https://amtix3l3qvitb2qxstaqtcoqby0monuf.lambda-url.us-east-1.on.aws/
-    metabot-get-prompt-templates-url: https://stkxezsr2kcnkhusi3fgcc5nqm0ttgfx.lambda-url.us-east-1.on.aws/
-    metabot-prompt-generator-token-limit: 6000
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
     no-data-illustration: default
     no-data-illustration-custom: null
     no-object-illustration: default
     no-object-illustration-custom: null
+    not-behind-proxy: false
     notification-link-base-url: null
-    notification-thread-pool-size: 10
-    num-metabot-choices: 1
-    openai-api-key: null
-    openai-model: gpt-4-turbo-preview
-    openai-organization: null
+    notification-thread-pool-size: 3
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
-    query-analysis-enabled: true
+    query-analysis-enabled: false
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
     redirect-all-requests-to-https: false
@@ -212,6 +220,7 @@ config:
     saml-group-sync: false
     saml-identity-provider-certificate: null
     saml-identity-provider-issuer: null
+    saml-identity-provider-slo-uri: null
     saml-identity-provider-uri: null
     saml-keystore-alias: metabase
     saml-keystore-password: changeit
