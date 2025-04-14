@@ -120,63 +120,56 @@
 (mr/def ::action-events
   (-> [:map #_{:closed true}
        [:action :keyword]
-       [:invocation_id {:description "The unique identifier for the action invocation"} ::nano-id]]
+       [:invocation_id  ::nano-id]]
       (into (events.schema/hydrated-schemas [:actor_id {:optional true} [:maybe pos-int?]]
                                             :actor events.schema/user-hydrate
-                                            [:actor {:optional     true
-                                                     :description  "The user who performed the action"}
-                                             [:map {:gen/return {:first_name "Meta"
-                                                                 :last_name  "Bot"
-                                                                 :email      "bot@metabase.com"}}
+                                            [:actor {:optional     true}
+                                             [:map
                                               [:first_name [:maybe :string]]
                                               [:last_name  [:maybe :string]]
                                               [:email      [:maybe :string]]]]))))
 
 (mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
 
-(mr/def :event/action.success.row-create [:merge ::action-events
-                                          [:map
-                                           [:action [:= :row/create]]
-                                           [:result
-                                            (-> [:map [:created_row {:gen/return {:id 1
-                                                                                  :name "this is an example"}
-                                                                     :description "The created row, actual keys will vary based on the table"}
-                                                       :map]]
-                                                (into table-id-hydrate-schemas))]]])
-
-(mr/def :event/action.success.row-update [:merge ::action-events
-                                          [:map
-                                           [:action [:= :row/update]]
-                                           [:result
-                                            (-> [:map
-                                                 [:raw_update {:gen/return {:id 1
-                                                                            :name "New Name"}
-                                                               :description "The raw update, actual keys will vary based on the table"} [:maybe :map]]
-                                                 [:after  {:gen/return {:id 2
-                                                                        :name "New Name"}
-                                                           :description "The after state, actual keys will vary based on the table"} [:maybe :map]]
-                                                 [:before {:gen/return {:id 2
-                                                                        :name "Old Name"}
-                                                           :description "The before state, actual keys will vary based on the table"} [:maybe :map]]]
-                                                (into table-id-hydrate-schemas))]]])
-
-(mr/def :event/action.success.row-delete [:merge ::action-events
-                                          [:map
-                                           [:action [:= :row/delete]]
-                                           [:result
-                                            (-> [:map
-                                                 [:deleted_row {:gen/return {:id 1
-                                                                             :name "this is an example"}
-                                                                :description "The deleted row, actual keys will vary based on the table"}
-                                                  :map]]
-                                                (into table-id-hydrate-schemas))]]])
+(mr/def :event/action.success
+  [:merge ::action-events
+   [:multi {:dispatch :action}
+    [:row/create [:map
+                  [:action [:= :row/create]]
+                  [:result
+                   (-> [:map [:created_row :map]]
+                       (into table-id-hydrate-schemas))]]]
+    [:row/update [:map
+                  [:action [:= :row/update]]
+                  [:result
+                   (-> [:map
+                        [:raw_update [:maybe :map]]
+                        [:after      [:maybe :map]]
+                        [:before     [:maybe :map]]]
+                       (into table-id-hydrate-schemas))]]]
+    [:row/delete [:map
+                  [:action [:= :row/delete]]
+                  [:result
+                   (-> [:map
+                        [:deleted_row :map]]
+                       (into table-id-hydrate-schemas))]]]
+    [:bulk/create [:map
+                   #_[:action [:= :bulk/create]]
+                   #_[:result
+                      (-> [:map
+                           [:created-rows [:sequential :map]]]
+                          (into table-id-hydrate-schemas))]]]
+    [:bulk/update [:map
+                   #_[:action [:= :bulk/update]]
+                   #_[:result
+                      (-> [:map
+                           [:updated-rows [:sequential :map]]]
+                          (into table-id-hydrate-schemas))]]]
+    [:bulk/delete [:map
+                   #_[:action [:= :bulk/delete]]
+                   #_[:result
+                      (-> [:map
+                           [:deleted_rows [:sequential :map]]]
+                          (into table-id-hydrate-schemas))]]]]])
 
 (mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])
-
-(defmethod events/event-schema :event/action.success
-  [_topic {:keys [action]}]
-  (mr/resolve-schema (case action
-                       :row/create :event/action.success.row-create
-                       :row/update :event/action.success.row-update
-                       :row/delete :event/action.success.row-delete
-                       ::action-events)))
