@@ -1,4 +1,4 @@
-import type { SelectOption } from "metabase/ui";
+import type { ComboboxItem } from "metabase/ui";
 import type { FieldValuesSearchInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { FieldValue, GetFieldValuesResponse } from "metabase-types/api";
@@ -29,13 +29,15 @@ export function canSearchFieldValues(
   );
 }
 
-export function getFieldOptions(fieldValues: FieldValue[]): SelectOption[] {
-  return fieldValues
-    .filter(([value]) => value != null)
-    .map(([value, label = value]) => ({
-      value: String(value),
-      label: String(label),
-    }));
+export function getFieldOption([value, label]: FieldValue): ComboboxItem {
+  return {
+    value: String(value),
+    label: String(label ?? value),
+  };
+}
+
+export function getFieldOptions(fieldValues: FieldValue[]): ComboboxItem[] {
+  return fieldValues.filter(([value]) => value != null).map(getFieldOption);
 }
 
 function getSelectedOptions(selectedValues: string[]) {
@@ -48,7 +50,7 @@ export function getEffectiveOptions(
   fieldValues: FieldValue[],
   selectedValues: string[],
   elevatedValues: string[] = [],
-): SelectOption[] {
+): ComboboxItem[] {
   const options: { label?: string; value: string }[] = [
     ...getSelectedOptions(elevatedValues),
     ...getFieldOptions(fieldValues),

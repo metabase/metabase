@@ -4,7 +4,7 @@ import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
-  setupFieldValuesEndpoints,
+  setupFieldValuesEndpoint,
   setupSearchEndpoints,
   setupUnauthorizedFieldEndpoint,
   setupUnauthorizedFieldValuesEndpoints,
@@ -134,7 +134,7 @@ const setup = async ({
     setupUnauthorizedFieldEndpoint(unauthorizedField);
   }
   if (hasFieldValuesAccess) {
-    setupFieldValuesEndpoints(fieldValues);
+    setupFieldValuesEndpoint(fieldValues);
   } else {
     setupUnauthorizedFieldValuesEndpoints(fieldValues);
   }
