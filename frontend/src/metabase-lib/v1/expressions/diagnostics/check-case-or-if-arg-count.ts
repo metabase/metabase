@@ -1,31 +1,29 @@
 import { t } from "ttag";
 
-import type { Expression } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
 import { DiagnosticError } from "../errors";
-import { isCallExpression, isCaseOrIfOperator } from "../matchers";
+import { isCaseOrIfOperator } from "../matchers";
 import { getToken } from "../utils";
-import { visit } from "../visitor";
+import { visit } from "../visit";
 
 export function checkCaseOrIfArgCount({
-  expression,
+  expressionParts,
 }: {
-  expression: Expression;
+  expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
 }) {
-  visit(expression, (node) => {
-    if (!isCallExpression(node)) {
+  visit(expressionParts, (node) => {
+    if (!Lib.isExpressionParts(node)) {
       return;
     }
-    const [op] = node;
-    if (!isCaseOrIfOperator(op)) {
+    const { operator, args } = node;
+    if (!isCaseOrIfOperator(operator)) {
       return;
     }
 
-    const pairs = node[1] as [Expression, Expression][];
-
-    if (pairs.length < 1) {
+    if (args.length < 2) {
       throw new DiagnosticError(
-        t`${op.toUpperCase()} expects 2 arguments or more`,
+        t`${operator.toUpperCase()} expects 2 arguments or more`,
         getToken(node),
       );
     }
