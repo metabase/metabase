@@ -69,7 +69,6 @@ export function diagnoseAndCompile({
       query,
       stageIndex,
       startRule,
-      expression: result.expression,
       expressionClause: result.expressionClause,
       expressionParts: result.expressionParts,
       expressionIndex,
