@@ -37,13 +37,13 @@
    (let [model (-> (:serdes/meta m) last :model)]
      (serialization-deep-sort m [(keyword model)])))
   ([m path]
-   (into (serialization-sorted-map path)
-         (for [[k v] m]
-           [k (cond
-                (map? v)               (serialization-deep-sort v (conj path k))
-                (and (sequential? v)
-                     (map? (first v))) (mapv #(serialization-deep-sort % (conj path k)) v)
-                :else                  v)]))))
+   (cond
+     (map? m)  (into (serialization-sorted-map path)
+                     (for [[k v] m]
+                       [k (serialization-deep-sort v (conj path k))]))
+     (and (sequential? m)
+          (map? (first m))) (mapv #(serialization-deep-sort % path) m)
+     :else                  m)))
 
 (defn spit-yaml!
   "Writes obj to filename and creates parent directories if necessary.
@@ -100,24 +100,15 @@
   "Combine all dimensions into a vector and dump it into YAML at in the directory for the
    corresponding schema starting at `path`."
   [path]
-  (reset! dims (t2/select :model/Dimension))
   (doseq [[table-id dimensions] (group-by (comp :table_id #(t2/select-one :model/Field :id %) :field_id)
                                           (t2/select :model/Dimension))
           :let [table (t2/select-one :model/Table :id table-id)]]
-    (println "Dumping dimensions for table\n" table-id table "\n\n" dimensions)
-    (try
-      (spit-yaml! (if (:schema table)
-                    (format "%s%s/schemas/%s/dimensions.yaml"
-                            path
-                            (->> table :db_id (fully-qualified-name :model/Database))
-                            (:schema table))
-                    (format "%s%s/dimensions.yaml"
-                            path
-                            (->> table :db_id (fully-qualified-name :model/Database))))
-                  (map serialize/serialize dimensions))
-      (catch Exception e
-        (throw (ex-info (format "Error serializing dimensions for table %d" table-id)
-                        {:table      table
-                         :dimensions dimensions
-                         :serialized (map serialize/serialize dimensions)}
-                        e))))))
+    (spit-yaml! (if (:schema table)
+                  (format "%s%s/schemas/%s/dimensions.yaml"
+                          path
+                          (->> table :db_id (fully-qualified-name :model/Database))
+                          (:schema table))
+                  (format "%s%s/dimensions.yaml"
+                          path
+                          (->> table :db_id (fully-qualified-name :model/Database))))
+                (mapv serialize/serialize dimensions))))
