@@ -506,9 +506,7 @@ export const FieldValuesWidgetInner = forwardRef<
           />
         ) : multi ? (
           <MultiAutocomplete
-            value={value
-              .filter((value) => value != null)
-              .map((value) => String(value))}
+            value={value.filter(isNotNull).map((value) => String(value))}
             data={options
               .filter((option) => getValue(option) != null)
               .map((option) => getOption(option))
