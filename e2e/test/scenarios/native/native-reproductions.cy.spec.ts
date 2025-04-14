@@ -527,3 +527,22 @@ describe("issue 54799", () => {
       .should("be.visible");
   });
 });
+
+describe("issue 56570", () => {
+  const questionDetails = {
+    native: {
+      query: `select '${"ab".repeat(200)}'`,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  it("should not push the toolbar off-screen (metabase#56570)", () => {
+    cy.findByTestId("visibility-toggler").click();
+    cy.findByTestId("native-query-editor-sidebar").should("be.visible");
+  });
+});
