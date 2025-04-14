@@ -11,4 +11,12 @@ beforeEach(() => {
     // consider all not mocked requests are broken
     return 500;
   });
+
+  // used for detecting top level ttag calls
+  global.isTopLevel = false;
+});
+
+afterEach(() => {
+  // used for detecting top level ttag calls
+  global.isTopLevel = true;
 });

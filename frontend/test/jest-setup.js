@@ -40,3 +40,38 @@ Range.prototype.getBoundingClientRect = () => ({
   top: 0,
   width: 0,
 });
+
+// used for detecting top level t calls
+global.isTopLevel = true;
+
+const wrap =
+  (fn) =>
+  (...args) => {
+    if (global.isTopLevel) {
+      const callStack = new Error().stack.split("\n").slice(1);
+      const withoutJestSetup = callStack.filter(
+        (line) => !line.includes("jest-setup"),
+      );
+
+      const probableFile = withoutJestSetup.at(0).trim();
+      const error = new Error(`Detected top level ttag call ${probableFile}`);
+      Error.captureStackTrace(error, wrap);
+      Error.captureStackTrace(error, fn);
+      console.error(error.stack);
+      throw error;
+    }
+    return fn(...args);
+  };
+
+// mock ttag
+jest.mock("ttag", () => {
+  const mockTtag = jest.requireActual("ttag");
+  return {
+    t: wrap(mockTtag.t),
+    jt: wrap(mockTtag.jt),
+    ngettext: wrap(mockTtag.ngettext),
+    msgid: wrap(mockTtag.msgid),
+    addLocale: wrap(mockTtag.addLocale),
+    useLocale: wrap(mockTtag.useLocale),
+  };
+});
