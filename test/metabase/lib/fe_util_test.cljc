@@ -154,6 +154,33 @@
                    :display-name "Unknown Field"}
                   (lib/expression-parts query stage-number unknown-ref))))))))
 
+(deftest ^:parallel expression-parts-segment-reference-test
+  (let [segment-id 100
+        segment-name "FooBar"
+        segment-description "This is a segment"
+        segments-db  {:segments [{:id          segment-id
+                                  :name        segment-name
+                                  :table-id    (meta/id :venues)
+                                  :definition  {}
+                                  :description segment-description}]}
+        metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider segments-db)
+        query (lib/query metadata-provider (meta/table-metadata :venues))
+        stage-number -1]
+    (testing "segment references"
+      (doseq [segment (lib/available-segments query)]
+        (is (=? {:lib/type :metadata/segment
+                 :id segment-id
+                 :name segment-name
+                 :description segment-description}
+                (lib/expression-parts query stage-number (lib.ref/ref segment))))))
+
+    (testing "unknown segment reference"
+      (let [unknown-ref [:segment {:lib/uuid (str (random-uuid))} 101]]
+        (mu/disable-enforcement
+          (is (=? {:lib/type :metadata/segment
+                   :display-name "Unknown Segment"}
+                  (lib/expression-parts query stage-number unknown-ref))))))))
+
 (deftest ^:parallel expression-clause-test
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
           (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
