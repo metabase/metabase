@@ -68,8 +68,8 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
     error: databasesError,
   } = useListDatabasesQuery();
 
-  const tasks = tasksData?.data;
-  const databases = databasesData?.data;
+  const tasks = tasksData?.data ?? [];
+  const databases = databasesData?.data ?? [];
   const isLoading = isLoadingTasks || isLoadingDatabases;
   const error = tasksError || databasesError;
   const showLoadingAndErrorWrapper = isLoading || error != null;
@@ -78,10 +78,6 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
     const newLocation = getLocationWithPage(location, page);
     dispatch(push(newLocation));
   };
-
-  if (!tasks || !databases) {
-    return null;
-  }
 
   // index databases by id for lookup
   const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
@@ -113,7 +109,7 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
           page={page}
           pageSize={50}
           itemsLength={tasks.length}
-          total={tasksData.total}
+          total={tasksData?.total ?? 0}
         />
       </Flex>
 
