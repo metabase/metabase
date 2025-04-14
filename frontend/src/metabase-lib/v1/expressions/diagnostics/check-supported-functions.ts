@@ -1,21 +1,19 @@
 import { t } from "ttag";
 
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Expression } from "metabase-types/api";
 
 import { getClauseDefinition } from "../config";
 import { DiagnosticError } from "../errors";
-import { isCallExpression } from "../matchers";
 import { getDatabase, getToken } from "../utils";
-import { visit } from "../visitor";
+import { visit } from "../visit";
 
 export function checkSupportedFunctions({
+  expressionParts,
   query,
-  expression,
   metadata,
 }: {
-  expression: Expression;
+  expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
   query: Lib.Query;
   metadata?: Metadata;
 }) {
@@ -28,18 +26,18 @@ export function checkSupportedFunctions({
     return;
   }
 
-  visit(expression, (node) => {
-    if (!isCallExpression(node)) {
+  visit(expressionParts, (node) => {
+    if (!Lib.isExpressionParts(node)) {
       return;
     }
-    const [name] = node;
-    const clause = getClauseDefinition(name);
+    const { operator } = node;
+    const clause = getClauseDefinition(operator);
     if (!clause) {
       return;
     }
     if (!database?.hasFeature(clause.requiresFeature)) {
       throw new DiagnosticError(
-        t`Unsupported function ${name}`,
+        t`Unsupported function ${operator}`,
         getToken(node),
       );
     }
