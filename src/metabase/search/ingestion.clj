@@ -229,7 +229,7 @@
   "Starts the ingestion listener on the queue"
   []
   (when (seq (search.engine/active-engines))
-    (queue/listen! listener-name queue bulk-ingest!
+    (queue/listen! listener-name (queue/->BatchedBlockingQueue queue Long/MAX_VALUE 50 100) bulk-ingest!
                    {:success-handler     (fn [_result _duration _]
                                            (track-queue-size!))
                     :err-handler        (fn [err _]
