@@ -36,7 +36,7 @@ describe("metabase-lib/v1/expressions/compiler", () => {
   });
 });
 
-fuzz("FUZZING metabase-lib/v1/expressions/recursive-parser", () => {
+fuzz("FUZZING metabase-lib/v1/expressions/compiler", () => {
   for (let seed = 1; seed < MAX_SEED; ++seed) {
     it("should parse generated number expression from seed " + seed, () => {
       const { expression } = generateExpression(seed, "number");
