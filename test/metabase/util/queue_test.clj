@@ -162,15 +162,15 @@
       (try
         (queue/put-with-delay! queue 0 "a")
         (await-test (zero? @items-handled)
-                    (is (= 1 @items-handled))
-                    (is (= ["a"] @last-batch)))
+          (is (= 1 @items-handled))
+          (is (= ["a"] @last-batch)))
 
         (queue/put-with-delay! queue 0 "b")
         (queue/put-with-delay! queue 0 "c")
         (queue/put-with-delay! queue 0 "d")
         (await-test (< @items-handled 4)
-                    (is (= 4 @items-handled))
-                    (is (some #{"d"} @last-batch)))
+          (is (= 4 @items-handled))
+          (is (some #{"d"} @last-batch)))
 
         (finally
           (queue/stop-listening! listener-name)))
@@ -202,14 +202,14 @@
       (try
         (queue/put-with-delay! queue 0 "a")
         (await-test (zero? @result-count)
-                    (is (= 0 @error-count))
-                    (is (= 1 @result-count)))
+          (is (= 0 @error-count))
+          (is (= 1 @result-count)))
 
         (queue/put-with-delay! queue 0 "err")
         (await-test (zero? @error-count)
-                    (is (= 1 @error-count))
-                    (is (= 1 @result-count))
-                    (is (= "Test Error" (.getMessage ^Exception @last-error))))
+          (is (= 1 @error-count))
+          (is (= 1 @result-count))
+          (is (= "Test Error" (.getMessage ^Exception @last-error))))
 
         (finally
           (queue/stop-listening! listener-name))))))
@@ -240,8 +240,8 @@
           (queue/put-with-delay! queue 0 i))
 
         (await-test (< @batches-handled 100)
-                    (is (= 100 @batches-handled))
-                    (is (contains? @handlers-used listener-name)))
+          (is (= 100 @batches-handled))
+          (is (contains? @handlers-used listener-name)))
 
         (finally
           (queue/stop-listening! listener-name)))
