@@ -13,7 +13,7 @@ import {
 import EventSandbox from "metabase/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Box, Flex, Group, Text } from "metabase/ui";
+import { Box, Flex, Group, Icon, type IconName, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -85,7 +85,17 @@ const PinnedQuestionCard = ({
               filled
             />
           </Group>
-          {actionMenu}
+          <Group>
+            {item.description && isPreview && (
+              <Icon
+                className={cx(CS.hoverChild, CS.hoverChildSmooth)}
+                name="info"
+                color="text-light"
+                tooltip={item.description}
+              />
+            )}
+            {actionMenu}
+          </Group>
         </Group>
         <Box flex="1 0 0">
           {isPreview ? (
@@ -96,11 +106,9 @@ const PinnedQuestionCard = ({
                     name={question?.displayName()}
                     display={question?.display()}
                     description={question?.description()}
-                    //actionMenu={actionMenu}
                   />
                 ) : (
                   <Visualization
-                    //actionButtons={actionMenu}
                     rawSeries={rawSeries}
                     error={error}
                     errorIcon={errorIcon}
