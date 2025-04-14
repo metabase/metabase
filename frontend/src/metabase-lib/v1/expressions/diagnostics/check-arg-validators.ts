@@ -1,24 +1,26 @@
-import type { Expression } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
 import { getClauseDefinition } from "../config";
 import { DiagnosticError } from "../errors";
-import { isCallExpression, isOptionsObject } from "../matchers";
 import { getToken } from "../utils";
-import { visit } from "../visitor";
+import { visit } from "../visit";
 
-export function checkArgValidators({ expression }: { expression: Expression }) {
-  visit(expression, (node) => {
-    if (!isCallExpression(node)) {
+export function checkArgValidators({
+  expressionParts,
+}: {
+  expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
+}) {
+  visit(expressionParts, (node) => {
+    if (!Lib.isExpressionParts(node)) {
       return;
     }
-    const [name, ...operands] = node;
-    const clause = getClauseDefinition(name);
+    const { operator, args } = node;
+    const clause = getClauseDefinition(operator);
     if (!clause) {
       return;
     }
 
     if (clause.validator) {
-      const args = operands.filter((arg) => !isOptionsObject(arg));
       const validationError = clause.validator(...args);
       if (validationError) {
         throw new DiagnosticError(validationError, getToken(node));
