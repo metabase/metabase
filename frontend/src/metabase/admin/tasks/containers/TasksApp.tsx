@@ -3,6 +3,7 @@ import type { Location } from "history";
 import { type ReactNode, useState } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -149,7 +150,14 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
                 <td>{task.started_at}</td>
                 <td>{task.ended_at}</td>
                 <td>{task.duration}</td>
-                <td>{task.status}</td>
+                <td>
+                  {match(task.status)
+                    .with("failed", () => t`Failed`)
+                    .with("started", () => t`Started`)
+                    .with("success", () => t`Success`)
+                    .with("unknown", () => t`Unknown`)
+                    .exhaustive()}
+                </td>
                 <td>
                   <Link
                     className={cx(CS.link, CS.textBold)}
