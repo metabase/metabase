@@ -3,12 +3,13 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import ViewTitleHeaderS from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.module.css"; // TODO: copy styles
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import { Button, Icon, Popover, Tooltip } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+
+import ViewTitleHeaderS from "./EditTableDataFilterButton.module.css";
 
 interface EditTableDataFilterButtonProps {
   className?: string;
