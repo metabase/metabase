@@ -1,28 +1,27 @@
 import { t } from "ttag";
 
-import type { Expression } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
 import { COMPARISON_OPERATORS } from "../config";
 import { DiagnosticError } from "../errors";
-import { isOperator } from "../matchers";
 import type { OPERATOR } from "../tokenizer";
 import { getToken } from "../utils";
-import { visit } from "../visitor";
+import { visit } from "../visit";
 
 export function checkComparisonOperatorArgs({
-  expression,
+  expressionParts,
 }: {
-  expression: Expression;
+  expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
 }) {
-  visit(expression, (node) => {
-    if (!isOperator(node)) {
+  visit(expressionParts, (node) => {
+    if (!Lib.isExpressionParts(node)) {
       return;
     }
-    const [name, ...operands] = node;
-    if (!COMPARISON_OPERATORS.has(name as OPERATOR)) {
+    const { operator, args } = node;
+    if (!COMPARISON_OPERATORS.has(operator as OPERATOR)) {
       return;
     }
-    const [firstOperand] = operands;
+    const [firstOperand] = args;
     if (typeof firstOperand === "number") {
       throw new DiagnosticError(
         t`Expecting field but found ${firstOperand}`,

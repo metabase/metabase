@@ -99,7 +99,7 @@ describe("diagnostics", () => {
 
       it("should accept multiple arguments for logical operators", () => {
         expect(
-          err(`(1 > 2) and (2 > 3) and (3 > 4) and (4 > 5)`),
+          err(`([Tax] > 2) and ([Tax] > 3) and ([Tax] > 4) and ([Tax] > 5)`),
         ).toBeUndefined();
       });
 
