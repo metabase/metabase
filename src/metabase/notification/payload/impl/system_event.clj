@@ -20,22 +20,12 @@
       ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
       (str (user/form-password-reset-url reset-token) "#new"))))
 
-(defn- custom-payload
-  "Returns a map of custom payload for a given topic and event-info.
-  Custom are set of contexts that are specific to certain emails.
-  Currently we need it to support usecases that our template engines doesn't support such as i18n,
-  but ideally this should be part of the template."
-  [topic event-info]
-  (case topic
-    :event/user-invited
-    {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (public-settings/site-name) (messages/app-name-trs))
-     :user_invited_join_url      (-> event-info :object :id join-url)}
-    {}))
-
 (defn- dispatch-on-event-info
   [{notification-system-event :payload :as _notification-info}]
-  (let [{:keys [event_info action]} notification-system-event]
-    (if action [event_info action] event_info)))
+  (let [{:keys [action event_name]} notification-system-event]
+    (if action
+      [event_name action]
+      event_name)))
 
 (defmulti transform-event-info
   "Transform the event info to a format that is easier to work with in the templates.
@@ -75,11 +65,17 @@
     {:payload_type :notification/system-event
      :creator      (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification-info))
      :context      (notification.payload/default-settings)
-     :payload      (assoc event-info
-                          :event_name (-> notification-info :payload :event_name)
-                          :custom (custom-payload (-> notification-info :payload :event_name) event-info))}))
+     ;; TODO, we need event_name anywhere?
+     :payload      (assoc event-info :event_name (-> notification-info :payload :event_name))}))
+
+(defmethod transform-event-info :event/user-invited
+  [notification-info]
+  (let [default-payload ((get-method transform-event-info :default) notification-info)]
+    (assoc-in default-payload
+              [:payload :custom]
+              {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (public-settings/site-name) (messages/app-name-trs))
+               :user_invited_join_url      (-> notification-info :event_info :object :id join-url)})))
 
 (mu/defmethod notification.payload/notification-payload :notification/system-event
   [notification-info :- ::notification.payload/Notification]
   (transform-event-info notification-info))
-
