@@ -8,7 +8,6 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.query-processor.middleware.limit :as limit]
@@ -98,7 +97,6 @@
                                      (assoc-in [:info :card-entity-id] eid)
                                      #_{:clj-kondo/ignore [:deprecated-var]}
                                      (qp.metadata/legacy-result-metadata nil))]
-                    (tap> ['populated-metadata metadata])
                     (t2/update! :model/Card id {:result_metadata metadata})))]
     ;; 4 seconds is long but redshift can be a little slow
     (when (= ::timed-out (mt/wait-for-result updater 4000 ::timed-out))
@@ -111,8 +109,8 @@
       (mt/dataset test-data
         (doseq [[query-type query] [[:query (mt/mbql-query products)]
                                     #_[:native (mt/native-query
-                                               (qp.compile/compile
-                                                (mt/mbql-query products)))]]]
+                                                 (qp.compile/compile
+                                                  (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled! [persist-models!]
             (mt/with-temp [:model/Card model {:type          :model
                                               :database_id   (mt/id)

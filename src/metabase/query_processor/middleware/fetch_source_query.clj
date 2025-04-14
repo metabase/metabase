@@ -46,9 +46,6 @@
    {card-id :id, :as card} :- ::lib.schema.metadata/card]
   (let [persisted-info (:lib/persisted-info card)
         persisted?     (qp.persisted/can-substitute? card persisted-info)]
-    (tap> [`normalize-card-query
-           'persisted-info persisted-info
-           'persisted?     persisted?])
     (when persisted?
       (log/infof "Found substitute cached query for card %s from %s.%s"
                  card-id

@@ -4,7 +4,6 @@
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
@@ -418,7 +417,6 @@
             (is (=? (expected-model-metadata the-model)
                     (:result_metadata the-model)))))
 
-
         (with-mock-cache! [save-chan]
           (let [inner1 (-> (:dataset_query model1)
                            (assoc :cache-strategy (ttl-strategy))
@@ -435,7 +433,7 @@
                   "Query should be cacheable")
 
               (mt/with-clock #t "2020-02-19T04:44:26.056Z[UTC]"
-                (let [original-result1 (qp/process-query inner1)
+                (let [_                (qp/process-query inner1)
                       ;; clear any existing values in the `save-chan`
                       _                (while (a/poll! save-chan))
                       _                (mt/wait-for-result save-chan)
@@ -530,7 +528,7 @@
                   "Query should be cacheable")
 
               (mt/with-clock #t "2020-02-19T04:44:26.056Z[UTC]"
-                (let [original-result1 (qp/process-query query1)
+                (let [_                (qp/process-query query1)
                       ;; clear any existing values in the `save-chan`
                       _                (while (a/poll! save-chan))
                       _                (mt/wait-for-result save-chan)

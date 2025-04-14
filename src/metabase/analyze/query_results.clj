@@ -33,13 +33,7 @@
   [:fn
    {:error/message "Field or aggregation reference as it comes in to the API"}
    (fn [x]
-     (u/prog1 (mr/validate mbql.s/Reference (mbql.normalize/normalize-tokens x))
-              (when-not <>
-                (tap> [`MaybeUnnormalizedReference mbql.s/Reference 'raw x 'normalized (mbql.normalize/normalize-tokens x)]))))])
-
-(comment
-  (mr/explain mbql.s/Reference [:field "ID" {:base-type nil}])
-  )
+     (mr/validate mbql.s/Reference (mbql.normalize/normalize-tokens x)))])
 
 (mr/def ::ResultColumnMetadata
   [:map

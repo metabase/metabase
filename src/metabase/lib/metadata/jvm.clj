@@ -256,7 +256,6 @@
 (t2/define-after-select :metadata/card
   [card]
   (let [card (instance->metadata card :metadata/card)]
-    (tap> [`card-as-selected card (:persisted/definition card)])
     (merge
      (dissoc card :persisted/active :persisted/state :persisted/definition :persisted/query-hash :persisted/table-name)
      (when (:persisted/definition card)

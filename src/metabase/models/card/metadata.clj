@@ -46,7 +46,7 @@ saved later when it is ready."
 
 (mu/defn- maybe-async-model-result-metadata :- ::maybe-async-result-metadata
   [{:keys [query metadata original-metadata valid-metadata? entity-id]} :- [:map
-                                                                  [:valid-metadata? :any]]]
+                                                                            [:valid-metadata? :any]]]
   (log/debug "Querying for metadata and blending model metadata")
   (let [futur     (legacy-result-metadata-future query)
         metadata' (if valid-metadata?
@@ -89,8 +89,7 @@ saved later when it is ready."
 
 (defn- maybe-validate-model-idents [metadata model? entity-id]
   (or (not model?)
-      (every? #(valid-ident? % model? entity-id) metadata))
-  )
+      (every? #(valid-ident? % model? entity-id) metadata)))
 
 (mu/defn maybe-async-result-metadata :- ::maybe-async-result-metadata
   "Return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up to
@@ -300,6 +299,5 @@ saved later when it is ready."
   (when-let [invalid (seq (remove #(or (nil? (:ident %))
                                        (valid-ident? % card))
                                   cols))]
-    (tap> [`assert-valid-idents! card invalid])
     (throw (ex-info "Some columns in :result_metadata have bad :idents!"
                     {:invalid invalid}))))

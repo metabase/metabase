@@ -29,7 +29,6 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -922,8 +921,8 @@
                                             (merge (mt/with-temp-defaults :model/Card)
                                                    {:dataset_query query})))))
             (let [card     (mt/card-with-metadata
-                             (merge (mt/with-temp-defaults :model/Card)
-                                    {:dataset_query query}))
+                            (merge (mt/with-temp-defaults :model/Card)
+                                   {:dataset_query query}))
                   metadata (:result_metadata card)]
               (testing (format "with result metadata\n%s" (u/pprint-to-str metadata))
                 (is (some? metadata))
@@ -2847,13 +2846,9 @@
     (let [query          (mt/mbql-query venues {:fields [$id $name]})
           modified-query (mt/mbql-query venues {:fields [$id $name $price]})
           norm           (comp u/upper-case-en :name)
-          to-native      (fn [q]
-                           {:database (:database q)
-                            :type     :native
-                            :native   (qp.compile/compile q)})
-          update-card!  (fn [card]
-                          (mt/user-http-request :crowberto :put 200
-                                                (str "card/" (u/the-id card)) card))]
+          update-card!   (fn [card]
+                           (mt/user-http-request :crowberto :put 200
+                                                 (str "card/" (u/the-id card)) card))]
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
                                                  #_["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)

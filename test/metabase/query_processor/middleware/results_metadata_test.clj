@@ -136,10 +136,10 @@
                :base_type    :type/Text}]
              (card-metadata card)))
       (let [result (qp/process-query
-                     (qp/userland-query
-                       {:database lib.schema.id/saved-questions-virtual-database-id
-                        :type     :query
-                        :query    {:source-table (str "card__" (u/the-id card))}}))]
+                    (qp/userland-query
+                     {:database lib.schema.id/saved-questions-virtual-database-id
+                      :type     :query
+                      :query    {:source-table (str "card__" (u/the-id card))}}))]
         (is (partial= {:status :completed}
                       result)))
       (is (= [{:name         "NAME"
@@ -187,9 +187,9 @@
                :base_type    :type/Text}]
              (card-metadata card))))))
 
-(deftest save-result-metadata-test-4
+(deftest save-result-metadata-test-5
   (testing "test that card result metadata does not generate an UPDATE statement when unchanged"
-    (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT NAME FROM VENUES"})}]
+    (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT NAME FROM VENUES"})}]
       (is (nil? (card-metadata card)))
       (mt/with-metadata-provider (mt/id)
         (middleware.results-metadata/store-previous-result-metadata!

@@ -607,10 +607,8 @@
                                                :metadata          result_metadata
                                                :original-metadata (:result_metadata card-before-update)
                                                :model?            is-model-after-update?
-                                               :entity-id         (u/prog1 (or (:entity_id card-updates)
-                                                                      (:entity_id card-before-update))
-                                                                           (tap> ['put/entity-id 'before (:entity_id card-before-update)
-                                                                                  'after (:entity_id card-updates) '=> <>]))})
+                                               :entity-id         (or (:entity_id card-updates)
+                                                                      (:entity_id card-before-update))})
           card-updates                       (merge card-updates
                                                     (when (and (some? type)
                                                                is-model-after-update?)
