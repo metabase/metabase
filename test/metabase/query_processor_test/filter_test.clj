@@ -509,6 +509,27 @@
                  :order-by [[:asc $id]]
                  :limit 3})))))))
 
+;;; --------------------------- starts-with, ends-with, contains, does-not-contain combined ---------------------------
+
+(deftest ^:parallel string-predicates-higher-arity-test
+  (mt/test-drivers
+   (mt/normal-drivers)
+   (doseq [f [:starts-with :ends-with :contains :does-not-contain]]
+     (testing (format "3+ incl. arity of `%s` should be fine with `nil` valued options" f)
+       (let [result (mt/run-mbql-query venues
+                                       {:filter   [f nil $name "Red Medicine" "Stout Burgers & Beers"]
+                                        :order-by [[:asc $id]]
+                                        :limit 2})]
+         (is (= :completed
+                (:status result)))
+         (if (= :does-not-contain f)
+           (is (= [[3 "The Apple Pan" 11 34.0406 -118.428 2]
+                   [4 "Wurstküche" 29 33.9997 -118.465 2]]
+                  (mt/formatted-rows :venues result)))
+           (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                   [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+                  (mt/formatted-rows :venues result)))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             NESTED AND/OR CLAUSES                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
