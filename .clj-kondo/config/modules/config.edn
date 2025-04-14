@@ -502,6 +502,10 @@
            types
            util}}
 
+  queue
+  {:api  #{metabase.queue.core}
+   :uses #{models util}}
+
   request
   {:api  #{metabase.request.core}
    :uses #{api config models permissions public-settings util}}

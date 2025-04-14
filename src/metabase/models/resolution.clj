@@ -71,6 +71,7 @@
     :model/QueryExecution                    metabase.models.query-execution
     :model/QueryField                        metabase.models.query-field
     :model/QueryTable                        metabase.models.query-table
+    :model/QueuePayload                      metabase.queue.models.queue-payload
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
