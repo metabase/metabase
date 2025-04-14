@@ -6,6 +6,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { skipToken, useGetRemappedFieldValueQuery } from "metabase/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -25,7 +26,13 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
-import { Loader, MultiAutocomplete } from "metabase/ui";
+import {
+  type ComboboxItem,
+  Loader,
+  MultiAutocomplete,
+  MultiAutocompleteOption,
+  MultiAutocompleteValue,
+} from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -519,6 +526,12 @@ export const FieldValuesWidgetInner = forwardRef<
                 return string.length > 0 ? string : null;
               }
             }}
+            renderValue={({ value }) => (
+              <RemappedValue fields={fields} value={value} />
+            )}
+            renderOption={({ option }) => (
+              <RemappedOption fields={fields} option={option} />
+            )}
             onChange={(values) => {
               if (isNumericParameter) {
                 onChange(
@@ -727,4 +740,68 @@ function renderValue({
       compact={compact}
     />
   );
+}
+
+type RemappedValueProps = {
+  fields: (Field | null)[];
+  value: string;
+};
+
+function RemappedValue({ fields, value }: RemappedValueProps) {
+  const remappingInfo = getFieldsRemappingInfo(fields);
+  const { data: remappedData } = useGetRemappedFieldValueQuery(
+    remappingInfo
+      ? {
+          fieldId: remappingInfo.fieldId,
+          remappedFieldId: remappingInfo.searchFieldId,
+          value,
+        }
+      : skipToken,
+  );
+
+  if (remappedData == null) {
+    return value;
+  }
+
+  const [remappedValue, remappedLabel] = remappedData;
+  return (
+    <MultiAutocompleteValue
+      value={String(remappedValue)}
+      label={String(remappedLabel ?? remappedValue)}
+    />
+  );
+}
+
+type RemappedOptionProps = {
+  fields: (Field | null)[];
+  option: ComboboxItem;
+};
+
+function RemappedOption({ fields, option }: RemappedOptionProps) {
+  const remappingInfo = getFieldsRemappingInfo(fields);
+  if (remappingInfo == null) {
+    return option.label;
+  }
+
+  return <MultiAutocompleteOption value={option.value} label={option.label} />;
+}
+
+function getFieldsRemappingInfo(fields: (Field | null)[]) {
+  const [field] = fields;
+  const searchField = field?.searchField();
+
+  if (
+    fields.length === 1 &&
+    field != null &&
+    searchField != null &&
+    typeof field.id === "number" &&
+    typeof searchField.id === "number"
+  ) {
+    return {
+      fieldId: field.id,
+      searchFieldId: searchField.id,
+    };
+  } else {
+    return null;
+  }
 }
