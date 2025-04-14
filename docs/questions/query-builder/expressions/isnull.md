@@ -124,7 +124,7 @@ case(isNull([Feedback]), "Unknown feedback.", [Feedback])
 Assuming our sample [feedback column](#replacing-null-values-with-another-value) is in a dataframe column called `df["Feedback"]`:
 
 ```
-df["Custom Column"] = np.where(df["Feedback"].isNull(), "Unknown feedback.", df["Feedback"])
+df["Custom Column"] = np.where(df["Feedback"].isnull(), "Unknown feedback.", df["Feedback"])
 ```
 
 is equivalent to the Metabase `isNull` expression:
