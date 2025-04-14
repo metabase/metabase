@@ -9,6 +9,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
@@ -196,6 +197,30 @@
                                          :fields       [[:field 1 {:join-alias "Cat"}]]}]
                          :limit        1
                          :source-table 4}})))))
+
+(deftest ^:parallel parameters-in-source-query-test
+  (is (=? {:lib/type :mbql/query
+           :stages
+           [{:lib/type :mbql.stage/mbql
+             :parameters
+             [{:target
+               [:dimension
+                {:stage-number 0}
+                [:expression {} "customColumn"]]}]
+             :expressions
+             [[:field
+               {:base-type :type/BigInteger
+                :lib/expression-name "customColumn"}
+               2]]}]
+           :lib.convert/converted? true}
+          (lib.convert/->pMBQL
+           (lib.tu.macros/mbql-query
+             :orders
+             {:parameters [{:target [:dimension
+                                     [:expression "customColumn"
+                                      {:base-type :type/BigInteger}]
+                                     {:stage-number 0}]}]
+              :expressions {"customColumn" [:field 2 {:base-type :type/BigInteger}]}})))))
 
 (deftest ^:parallel aggregation-options-test
   (is (=? {:lib/type :mbql/query
