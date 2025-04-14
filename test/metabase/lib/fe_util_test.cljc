@@ -181,6 +181,34 @@
                    :display-name "Unknown Segment"}
                   (lib/expression-parts query stage-number unknown-ref))))))))
 
+(deftest ^:parallel expression-parts-metric-reference-test
+  (let [metric-id 100
+        metric-name "FooBar"
+        metric-description "This is a metric"
+        metrics-db  {:segments [{:id          metric-id
+                                 :name        metric-name
+                                 :table-id    (meta/id :venues)
+                                 :definition  {}
+                                 :description metric-description}]}
+        metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider metrics-db)
+        query (lib/query metadata-provider (meta/table-metadata :venues))
+        stage-number -1]
+    (testing "metric references"
+      (doseq [metric (lib/available-metrics query)]
+        (is (=? {:lib/type :metadata/segment
+                 :id metric-id
+                 :name metric-name
+                 :description metric-description}
+                (lib/expression-parts query stage-number (lib.ref/ref metric))))))
+
+    (testing "unknown metric reference"
+      (let [unknown-ref [:metric {:lib/uuid (str (random-uuid))} 101]]
+        (mu/disable-enforcement
+          (is (=? {:lib/type :metadata/metric
+                   :id 101
+                   :display-name "Unknown Metric"}
+                  (lib/expression-parts query stage-number unknown-ref))))))))
+
 (deftest ^:parallel expression-clause-test
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
           (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
