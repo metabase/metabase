@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Expression } from "metabase-types/api";
 
 import { type CompileResult, compileExpression } from "../compiler";
 import { DiagnosticError, type ExpressionError, renderError } from "../errors";
@@ -71,6 +70,7 @@ export function diagnoseAndCompile({
       stageIndex,
       startRule,
       expression: result.expression,
+      expressionClause: result.expressionClause,
       expressionParts: result.expressionParts,
       expressionIndex,
       metadata,
@@ -120,7 +120,7 @@ export function diagnoseExpression(options: {
   query: Lib.Query;
   stageIndex: number;
   startRule: StartRule;
-  expression: Expression;
+  expressionClause: Lib.ExpressionClause;
   expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
   expressionIndex?: number;
   metadata?: Metadata;
