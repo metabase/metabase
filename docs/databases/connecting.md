@@ -39,7 +39,7 @@ The databases listed below have official drivers maintained by the Metabase team
 - [SparkSQL](./connections/sparksql.md)
 - [SQL Server](./connections/sql-server.md)
 - [SQLite](./connections/sqlite.md)
-- [Starburst](./connections/starburst.md)]
+- [Starburst](./connections/starburst.md)
 - [Vertica](./connections/vertica.md)
 
 If you don't see your database listed here, see [Community drivers](../developers-guide/community-drivers.md).
