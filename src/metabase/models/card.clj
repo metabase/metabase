@@ -810,7 +810,7 @@
 (defn- backfill-result-metadata-idents*
   [result-metadata {query :dataset_query, eid :entity_id, :as card}]
   (case (:type query)
-    ;; For native queries, we only need to
+    ;; For native queries, the `:ident`s are always based directly on the column names.
     :native (if eid
               ;; NOTE: Deliberately prefer the field_ref name over :name here! :name is sometimes not unique, if the
               ;; SQL contains duplicate names. Instead, using the string name from the `:field_ref`, which is
@@ -824,17 +824,17 @@
                                    "Include :entity_id in your query.")
                               {:card card})))
 
-    ;; For MBQL queries, re-run the inference.
+    ;; For MBQL queries, re-run the inference, which will include correct idents.
     :query  (let [inferred (card.metadata/infer-metadata-with-model-overrides query card) ; These already have [[lib/model-ident]] applied.
                   by-ref   (group-by :field_ref inferred)
                   by-name  (group-by :name inferred)]
               (mapv (fn [original]
                       (let [matches (or (get by-ref (:field_ref original))
                                         (get by-name (:name original)))]
-                        (when (> (count matches) 0)
+                        (when (empty? matches)
                           (log/warn "No match of saved result_metadata with inferred metadata."
                                     {:column original}))
-                        (when (> (count matches) 1)
+                        (when (next matches)
                           (log/warn "Ambiguous match of saved result_metadata with inferred metadata."
                                     {:column original
                                      :candidates matches}))
@@ -859,7 +859,7 @@
   (atom (cache/lirs-cache-factory {})))
 
 (defn- backfill-result-metadata-idents
-  "Cache wrapper for [[backfill-result-metadata-idents**]]; LRU caching on the card ID."
+  "Cache wrapper for [[backfill-result-metadata-idents**]]; bounded caching on the card ID."
   [result-metadata card]
   (cache.wrapped/lookup-or-miss backfill-result-metadata-idents-cache (:id card)
                                 (fn [_]
@@ -964,9 +964,9 @@
         ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
         ;; verified-result-metadata? flag (see #37009).
         (cond-> #_changes
-          (or (empty? (:result_metadata card))
-              (not verified-result-metadata?)
-              (contains? changes :type))
+         (or (empty? (:result_metadata card))
+             (not verified-result-metadata?)
+             (contains? changes :type))
           card.metadata/populate-result-metadata)
         pre-update
         populate-query-fields

@@ -286,11 +286,6 @@
       (string? id-or-name)
       (merge (or (some-> (some #(when (= (:name %) id-or-name) %) source-metadata)
                          (dissoc :field_ref))
-                 ;; HACK: If the column can be found in the join's :source-metadata, use its :ident but still fall
-                 ;; back to the naive case.
-                 #_(u/prog1 (some-> (some #(when (= (:name %) id-or-name) %) (:source-metadata join))
-                                    (dissoc :field_ref))
-                     (tap> (list `col-info-for-field-clause* "string ref found in join" clause '=> <>)))
                  (merge
                   {:name         id-or-name
                    :display_name (humanization/name->human-readable-name id-or-name)}
@@ -330,7 +325,7 @@
       (update :ident lib/explicitly-joined-ident (:ident join))
 
       ;; Sometimes we see an implicitly joined ref with `:source-field`, but no corresponding join clause.
-      ;; In that case, look up the FK's ident and use adjust this column's ident.
+      ;; In that case, look up the FK's ident and use it to adjust this column's ident.
       (and (:source-field opts)
            (not join))
       (update :ident lib/implicitly-joined-ident
@@ -498,7 +493,7 @@
      (select-keys source-metadata-col [:unit]))
 
    ;; Idents are sometimes preserved from the source, and sometimes replaced.
-   ;; TODO: Expressions the simply reference fields directly keep their IDs and might also need special handling here?
+   ;; TODO: Expressions that simply wrap a field ref keep their IDs and might also need special handling here?
    (when-let [ident (or ;; If the new col is an aggregation or breakout, use its ident for sure.
                      (when (#{:aggregation :breakout} (:source col))
                        (:ident col))
@@ -736,7 +731,7 @@
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [{query-type :type, :as query
-    {:keys [card-entity-id :metadata/model-metadata :alias/escaped->original]} :info} rff]
+    {:keys [card-entity-id metadata/model-metadata alias/escaped->original]} :info} rff]
   (fn add-column-info-rff* [metadata]
     (qp.debug/debug> (list `add-column-info query metadata))
     (if (and (= query-type :query)

@@ -62,13 +62,13 @@
   [metadata-providerable                :- ::lib.schema.metadata/metadata-providerable
    {card-query :dataset-query :as card} :- :map]
   (when (some? card-query)
-    (let [cols     (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))
-          model-id (when (= (:type card) :model)
-                     (or (:entity-id card)
-                         (throw (ex-info "Cannot infer columns for a model with no :entity-id!"
-                                         {:card card}))))]
+    (let [cols      (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))
+          model-eid (when (= (:type card) :model)
+                      (or (:entity-id card)
+                          (throw (ex-info "Cannot infer columns for a model with no :entity-id!"
+                                          {:card card}))))]
       (cond->> cols
-        model-id (map #(update % :ident lib.metadata.ident/model-ident model-id))))))
+        model-eid (map #(update % :ident lib.metadata.ident/model-ident model-eid))))))
 
 (def ^:private Card
   [:map

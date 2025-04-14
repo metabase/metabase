@@ -88,12 +88,6 @@
   (when ident
     (str/replace ident placeholder-regex card-entity-id)))
 
-(comment
-  (let [placeholder-ident (native-ident "SOME_COLUMN" (placeholder-card-entity-id-for-adhoc-query))
-        card-entity-id    (u/generate-nano-id)
-        replaced-ident    (replace-placeholder-idents placeholder-ident card-entity-id)]
-    [placeholder-ident card-entity-id '=> replaced-ident]))
-
 ;; Validation of idents for various things.
 (defn- ->ident [column-or-ident]
   (cond-> column-or-ident
@@ -112,39 +106,37 @@
    (let [ident (->ident column-or-ident)]
      (boolean (and (string? ident)
                    (seq ident)
-                   (nil? (some #(str/index-of ident %) illegal-substrings)))))))
+                   (not-any? #(str/includes? ident %) illegal-substrings))))))
+
+(defn- valid-prefixed-ident?
+  "Validates an ident, which must be a [[valid-basic-ident?]] and begin with the specified prefix."
+  [column-or-ident prefix]
+  (let [ident (->ident column-or-ident)]
+    (and (valid-basic-ident? ident)
+         (str/starts-with? ident prefix))))
 
 (defn valid-model-ident?
   "Returns whether a given ident (or `:ident` from the column) is correct for the given model."
   [column-or-ident card-entity-id]
   (let [ident  (->ident column-or-ident)
         prefix (model-ident "" card-entity-id)]
-    (and (string? ident)
-         (valid-basic-ident? ident)
-         (str/starts-with? ident prefix)
+    (and (valid-prefixed-ident? ident prefix)
          ;; The inner ident can't be empty, or it's also invalid.
          (> (count ident) (count prefix)))))
 
 (defn valid-native-ident?
   "Returns whether a given ident (or `:ident` from a column map) is correct, for the given native card `:entity_id`."
   [column-or-ident card-entity-id]
-  (let [ident  (->ident column-or-ident)
-        prefix (native-ident "" card-entity-id)]
-    (and (string? ident)
-         (valid-basic-ident? ident)
-         (str/starts-with? ident prefix))))
+  (valid-prefixed-ident? column-or-ident (native-ident "" card-entity-id)))
 
 (defn valid-native-model-ident?
   "A special case that checks if a native model's ident is correctly formed:
   `model__CardEntityId__native__CardEntityId__columnName`."
   [column-or-ident card-entity-id]
-  (let [ident  (->ident column-or-ident)
-        prefix (-> ""
+  (let [prefix (-> ""
                    (native-ident card-entity-id)
                    (model-ident card-entity-id))]
-    (and (string? ident)
-         (valid-basic-ident? ident)
-         (str/starts-with? ident prefix))))
+    (valid-prefixed-ident? column-or-ident prefix)))
 
 (def ^:dynamic *enforce-idents-present*
   "The [[assert-idents-present!]] check is sometimes too zealous; this dynamic var can be overridden whe we know the
