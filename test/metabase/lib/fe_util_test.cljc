@@ -10,9 +10,11 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
@@ -133,6 +135,24 @@
                                        (lib/+ (meta/field-metadata :products :id)
                                               (meta/field-metadata :products :id)
                                               1))))))
+
+(deftest ^:parallel expression-parts-column-reference-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
+        stage-number -1]
+    (testing "column references"
+      (doseq [col (lib/filterable-columns query)]
+        (is (=? {:lib/type :metadata/column
+                 :id (:id col)
+                 :name (:name col)
+                 :display-name (:display-name col)}
+                (lib/expression-parts query stage-number (lib.ref/ref col))))))
+
+    (testing "unknown column reference"
+      (let [unknown-ref [:field {:lib/uuid (str (random-uuid))} 100]]
+        (mu/disable-enforcement
+          (is (=? {:lib/type :metadata/column
+                   :display-name "Unknown Field"}
+                  (lib/expression-parts query stage-number unknown-ref))))))))
 
 (deftest ^:parallel expression-clause-test
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
