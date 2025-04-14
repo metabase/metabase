@@ -1,3 +1,5 @@
+import * as Lib from "metabase-lib";
+
 import {
   bool,
   created,
@@ -19,18 +21,23 @@ function expr(
     startRule?: StartRule;
   } = {},
 ) {
-  const { expression, error } = compileExpression({
+  const stageIndex = -1;
+  const { expressionClause, error } = compileExpression({
     source,
     startRule,
     query,
-    stageIndex: -1,
+    stageIndex,
   });
 
   if (error) {
     throw error;
   }
 
-  return expression;
+  return Lib.legacyExpressionForExpressionClause(
+    query,
+    stageIndex,
+    expressionClause,
+  );
 }
 
 function filter(source: string) {
