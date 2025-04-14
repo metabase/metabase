@@ -20,6 +20,7 @@ interface EditTableDataFilterButtonProps {
   onQuestionChange: (newQuestion: Question) => void;
 }
 
+// copied from metabase/query_builder/components/view/ViewHeader/components/FilterHeaderButton.tsx
 export function EditTableDataFilterButton({
   className,
   question,

@@ -1,3 +1,5 @@
+/* copied from metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.module.css */
+
 .FilterButton {
   &[data-variant="default"] {
     transition: background 300ms linear;

@@ -43,7 +43,7 @@ export const useStandaloneTableQuery = ({
     if (table) {
       let question = Question.create({ databaseId, tableId, metadata });
 
-      if (filterQueryParam && Array.isArray(filterQueryParam)) {
+      if (filterQueryParam) {
         const legacyQuery = Lib.toLegacyQuery(
           question.query(),
         ) as StructuredDatasetQuery;
