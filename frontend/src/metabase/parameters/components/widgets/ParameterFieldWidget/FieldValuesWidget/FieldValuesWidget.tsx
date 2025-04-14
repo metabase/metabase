@@ -527,10 +527,10 @@ export const FieldValuesWidgetInner = forwardRef<
               }
             }}
             renderValue={({ value }) => (
-              <RemappedValue fields={fields} value={value} />
+              <RemappedValue value={value} fields={fields} />
             )}
             renderOption={({ option }) => (
-              <RemappedOption fields={fields} option={option} />
+              <RemappedOption option={option} fields={fields} />
             )}
             onChange={(values) => {
               if (isNumericParameter) {
@@ -743,14 +743,14 @@ function renderValue({
 }
 
 type RemappedValueProps = {
-  fields: (Field | null)[];
   value: string;
+  fields: (Field | null)[];
 };
 
 function RemappedValue({ fields, value }: RemappedValueProps) {
   const remappingInfo = getFieldsRemappingInfo(fields);
   const { data: remappedData } = useGetRemappedFieldValueQuery(
-    remappingInfo
+    remappingInfo != null
       ? {
           fieldId: remappingInfo.fieldId,
           remappedFieldId: remappingInfo.searchFieldId,
@@ -760,10 +760,11 @@ function RemappedValue({ fields, value }: RemappedValueProps) {
   );
 
   if (remappedData == null) {
-    return value;
+    return <MultiAutocompleteValue value={value} />;
   }
 
-  const [remappedValue, remappedLabel] = remappedData;
+  const remappedValue = getValue(remappedData);
+  const remappedLabel = getLabel(remappedData);
   return (
     <MultiAutocompleteValue
       value={String(remappedValue)}
@@ -773,11 +774,11 @@ function RemappedValue({ fields, value }: RemappedValueProps) {
 }
 
 type RemappedOptionProps = {
-  fields: (Field | null)[];
   option: ComboboxItem;
+  fields: (Field | null)[];
 };
 
-function RemappedOption({ fields, option }: RemappedOptionProps) {
+function RemappedOption({ option, fields }: RemappedOptionProps) {
   const remappingInfo = getFieldsRemappingInfo(fields);
   if (remappingInfo == null) {
     return option.label;
@@ -795,7 +796,8 @@ function getFieldsRemappingInfo(fields: (Field | null)[]) {
     field != null &&
     searchField != null &&
     typeof field.id === "number" &&
-    typeof searchField.id === "number"
+    typeof searchField.id === "number" &&
+    field.id !== searchField.id
   ) {
     return {
       fieldId: field.id,
