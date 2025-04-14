@@ -1,33 +1,32 @@
 import { msgid, ngettext } from "ttag";
 
-import type { Expression } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
 import { getClauseDefinition } from "../config";
 import { DiagnosticError } from "../errors";
-import { isCallExpression, isOptionsObject } from "../matchers";
 import { getToken } from "../utils";
-import { visit } from "../visitor";
+import { visit } from "../visit";
 
-export function checkArgCount({ expression }: { expression: Expression }) {
-  visit(expression, (node) => {
-    if (!isCallExpression(node)) {
+export function checkArgCount({
+  expressionParts,
+}: {
+  expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
+}) {
+  visit(expressionParts, (node) => {
+    if (!Lib.isExpressionParts(node)) {
       return;
     }
 
-    const [name, ...operands] = node;
-    const clause = getClauseDefinition(name);
-    if (!clause || name === "case" || name === "if") {
+    const { operator, args: operands } = node;
+    const clause = getClauseDefinition(operator);
+    if (!clause || operator === "case" || operator === "if") {
       return;
     }
 
     const { displayName, args, multiple, hasOptions } = clause;
 
-    const filtered = operands.filter(
-      (arg) => !isOptionsObject(arg) && arg !== null,
-    );
-
     if (multiple) {
-      const argCount = filtered.length;
+      const argCount = operands.length;
       const minArgCount = args.length;
 
       if (argCount < minArgCount) {
@@ -46,8 +45,8 @@ export function checkArgCount({ expression }: { expression: Expression }) {
         ? expectedArgsLength + 1
         : expectedArgsLength;
       if (
-        filtered.length < expectedArgsLength ||
-        filtered.length > maxArgCount
+        operands.length < expectedArgsLength ||
+        operands.length > maxArgCount
       ) {
         throw new DiagnosticError(
           ngettext(
