@@ -53,14 +53,12 @@ For an introduction to expressions, check out the [overview of custom expression
 
     - [concat](./expressions/concat.md)
     - [contains](#contains)
-    - [date](#date)
     - [doesNotContain](#doesnotcontain)
     - [domain](#domain)
     - [endsWith](#endswith)
     - [host](#host)
     - [in](#in)
     - [isEmpty](./expressions/isempty.md)
-    - [integer](#integer)
     - [lTrim](#ltrim)
     - [length](#length)
     - [lower](#lower)
@@ -73,7 +71,6 @@ For an introduction to expressions, check out the [overview of custom expression
     - [startsWith](#startswith)
     - [subdomain](#subdomain)
     - [substring](./expressions/substring.md)
-    - [text](#text)
     - [trim](#trim)
     - [upper](#upper)
 
@@ -98,6 +95,11 @@ For an introduction to expressions, check out the [overview of custom expression
     - [week](#week)
     - [weekday](#weekday)
     - [year](#year)
+   
+  - [Type casting functions](#casting-functions)
+    - [date](#date)
+    - [integer](#integer)
+    - [text](#text)
 
   - [Window functions](#window-functions)
 
@@ -415,33 +417,6 @@ If `Status` were "Classified", the expression would return `true`. If the `Statu
 
 Related: [doesNotContain](#doesnotcontain), [regexextract](#regexextract).
 
-### date
-
-> Only available for PostgreSQL.
-
-Converts an ISO 8601 date string to a date. The string _must_ be in a valid ISO 8601 format.
-
-Syntax: `date(value)`
-
-Example: `date("2025-03-20")` would return a date value so that you can use all the date features in the query builder: group by month, filter by previous 30 days, etc.
-
-ISO 8601 standard format:
-
-- Year (YYYY): 2025
-- Month (MM): 03
-- Day (DD): 25
-- Time separator (T)
-- Hours (HH): 14
-- Minutes (MM): 30
-- Seconds (SS): 45
-- UTC timezone indicator (Z)
-
-Valid ISO 8601 examples include:
-
-- Date only: `2025-03-25`
-- Date with time: `2025-03-25T14:30:45`
-- Date with time and timezone offset: `2025-03-25T14:30:45+01:00`
-
 ### doesNotContain
 
 Checks to see if `string1` contains `string2` within it.
@@ -515,16 +490,6 @@ Syntax: `isEmpty(column)`
 Example: `isEmpty([Feedback])` would return true if `Feedback` was an empty string (`''`) or did not contain a value.
 
 Related: [notEmpty](#notempty), [isNull](#isnull)
-
-### integer
-
-> Only available for PostgreSQL.
-
-Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
-
-Syntax: `integer(value)`
-
-Example: `integer("123")` would return `123` as an integer. The string must evaluate to an integer (so `integer("123.45")` would return an error.)
 
 ### lTrim
 
@@ -660,16 +625,6 @@ Syntax: `substring(text, position, length)`
 Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (the string index starts at position 1).
 
 Related: [regexextract](#regexextract), [replace](#replace).
-
-### text
-
-> Only available for PostgreSQL.
-
-Converts a number or date to text (a string). Useful for applying text filters or joining with other columns based on text comparisons.
-
-Syntax: `text(value)`
-
-Example: `text(Created At])` would take a datetime (`Created At`) and return that datetime converted to a string (like `"2024-03-17 16:55:15.373733-07"`).
 
 ### trim
 
@@ -905,6 +860,57 @@ Takes a datetime and returns the year as an integer.
 Syntax: `year([datetime column])`
 
 Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
+
+## Type casting functions
+
+Casting functions can be used to convert data to a different type.
+
+### date
+
+> Only available for PostgreSQL.
+
+Converts an ISO 8601 date string to a date. The string _must_ be in a valid ISO 8601 format.
+
+Syntax: `date(value)`
+
+Example: `date("2025-03-20")` would return a date value so that you can use all the date features in the query builder: group by month, filter by previous 30 days, etc.
+
+ISO 8601 standard format:
+
+- Year (YYYY): 2025
+- Month (MM): 03
+- Day (DD): 25
+- Time separator (T)
+- Hours (HH): 14
+- Minutes (MM): 30
+- Seconds (SS): 45
+- UTC timezone indicator (Z)
+
+Valid ISO 8601 examples include:
+
+- Date only: `2025-03-25`
+- Date with time: `2025-03-25T14:30:45`
+- Date with time and timezone offset: `2025-03-25T14:30:45+01:00`
+
+### integer
+
+> Only available for PostgreSQL.
+
+Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
+
+Syntax: `integer(value)`
+
+Example: `integer("123")` would return `123` as an integer. The string must evaluate to an integer (so `integer("123.45")` would return an error.)
+
+### text
+
+> Only available for PostgreSQL.
+
+Converts a number or date to text (a string). Useful for applying text filters or joining with other columns based on text comparisons.
+
+Syntax: `text(value)`
+
+Example: `text(Created At])` would take a datetime (`Created At`) and return that datetime converted to a string (like `"2024-03-17 16:55:15.373733-07"`).
 
 ## Window functions
 
