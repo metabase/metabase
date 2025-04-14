@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { callMockEvent } from "__support__/events";
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { getDefaultFormSettings } from "metabase/actions/utils";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import {
@@ -40,9 +40,7 @@ describe("ActionCreator > Common", () => {
       it("should be able to set success message", async () => {
         await setup();
 
-        await userEvent.click(
-          screen.getByRole("button", { name: "Action settings" }),
-        );
+        await openSidebar();
 
         await userEvent.type(
           screen.getByRole("textbox", { name: "Success message" }),
@@ -62,9 +60,7 @@ describe("ActionCreator > Common", () => {
           canWrite: true,
         });
 
-        await userEvent.click(
-          screen.getByRole("button", { name: "Action settings" }),
-        );
+        await openSidebar();
 
         await userEvent.type(
           screen.getByRole("textbox", { name: "Success message" }),
@@ -104,6 +100,8 @@ describe("ActionCreator > Common", () => {
           }),
         });
 
+        await ensureSidebarIsOpen();
+
         const checkbox = screen.getByLabelText("Show field");
         const input = screen.getByRole("textbox", { name: /foobar/i });
 
@@ -127,9 +125,7 @@ describe("ActionCreator > Common", () => {
       it("should not allow editing success message", async () => {
         await setup({ canWrite: false });
 
-        await userEvent.click(
-          screen.getByRole("button", { name: "Action settings" }),
-        );
+        await openSidebar();
 
         expect(
           screen.getByRole("textbox", {
@@ -140,3 +136,23 @@ describe("ActionCreator > Common", () => {
     });
   });
 });
+
+async function ensureSidebarIsOpen() {
+  await waitFor(() => {
+    expect(screen.getByTestId("sidebar-header-title")).toBeInTheDocument();
+  });
+}
+
+/**
+ * because of multiple ActionCreator re-renderings, first click on settings icon
+ * can have no effect, so we need to retry until sidebar is open
+ */
+async function openSidebar() {
+  await waitFor(async () => {
+    await userEvent.click(
+      screen.getByRole("button", { name: "Action settings" }),
+    );
+
+    expect(screen.getByTestId("sidebar-header-title")).toBeInTheDocument();
+  });
+}
