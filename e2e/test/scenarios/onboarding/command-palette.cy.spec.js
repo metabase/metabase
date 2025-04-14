@@ -2,6 +2,7 @@ const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -456,5 +457,57 @@ describe("shortcuts", () => {
     cy.realPress("Escape");
     cy.realPress("e");
     cy.findByTestId("edit-bar").should("not.exist");
+  });
+
+  it("should support query builder shortcuts", () => {
+    H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+
+    // This is a bit strange, but we need to focus something or pressing f
+    // will open expand the spec list in cypress
+    // Filter
+    cy.findByTestId("question-filter-header").should("exist").focus();
+    cy.findByRole("dialog", { name: /filter/i }).should("not.exist");
+    cy.realPress("f");
+    cy.findByRole("dialog", { name: /filter/i }).should("exist");
+    cy.realPress("Escape");
+
+    // Summarize sidebar
+    cy.realPress("s");
+    cy.findByTestId("sidebar-content").should("contain.text", "Summarize by");
+    cy.realPress("s");
+    cy.findByTestId("sidebar-content").should("not.exist");
+
+    // Sidesheet
+    cy.realPress("]");
+    cy.findByRole("dialog", { name: "Info" }).should("exist");
+    cy.realPress("]");
+    cy.findByRole("dialog", { name: "Info" }).should("not.exist");
+
+    // Viz Settings
+    cy.realPress("z").realPress("s");
+    cy.findByTestId("chartsettings-sidebar").should("exist");
+    cy.realPress("z").realPress("s");
+    cy.findByTestId("chartsettings-sidebar").should("not.exist");
+
+    // Viz toggle
+    cy.findByTestId("visualization-root").should(
+      "have.attr",
+      "data-viz-ui-name",
+      "Line",
+    );
+    cy.realPress("v");
+    cy.findByTestId("visualization-root").should(
+      "have.attr",
+      "data-viz-ui-name",
+      "Table",
+    );
+
+    // toggle notebook mode
+    cy.findByTestId("step-data-0-0").should("not.exist");
+    cy.realPress("e");
+    cy.findByTestId("step-data-0-0").should("exist");
+    cy.realPress("e");
+    cy.findByTestId("step-data-0-0").should("not.exist");
+    cy.findByTestId("visualization-root").should("exist");
   });
 });
