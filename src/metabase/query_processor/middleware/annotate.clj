@@ -565,12 +565,9 @@
     (when-not (string? card-entity-id)
       (throw (ex-info "idents-for-model with blank card-entity-id" {:cols cols}))))
 
-  #_cols
-  ;; XXX: Leaving this as a breadcrumb during development.
   (for [col cols]
     (cond-> col
-      ;; This check avoids double-bagging, if they were already set. It doesn't feel like it should be necessary,
-      ;; but...
+      ;; Check that the ident isn't already set for this model, to avoid "double-bagging".
       (not (lib/valid-model-ident? col card-entity-id))
       (update :ident lib/model-ident card-entity-id))))
 
@@ -589,14 +586,14 @@
         true       (u/prog1 #_sq-cols (qp.debug/debug> [`cols-for-source-query <>]))
         (seq cols) ((fn [sq-cols]
                       (u/prog1 (flow-field-metadata sq-cols cols model?)
-                               (qp.debug/debug> [`flow-field-metadata 'sq-cols sq-cols 'cols cols 'model? model? '=>
-                                                 ^{:portal.viewer/default :portal.viewer/diff}
-                                                 [(vec sq-cols) (vec <>)]]))))
+                        (qp.debug/debug> [`flow-field-metadata 'sq-cols sq-cols 'cols cols 'model? model? '=>
+                                          ^{:portal.viewer/default :portal.viewer/diff}
+                                          [(vec sq-cols) (vec <>)]]))))
         model?     ((fn [sq-cols]
-                     (u/prog1 (idents-for-model sq-cols entity-id)
-                              (qp.debug/debug> [`idents-for-model entity-id sq-cols '=>
-                                                ^{:portal.viewer/default :portal.viewer/diff}
-                                                [(vec sq-cols) (vec <>)]])))))
+                      (u/prog1 (idents-for-model sq-cols entity-id)
+                        (qp.debug/debug> [`idents-for-model entity-id sq-cols '=>
+                                          ^{:portal.viewer/default :portal.viewer/diff}
+                                          [(vec sq-cols) (vec <>)]])))))
 
       (every? #(lib.util.match/match-one % [:field (field-name :guard string?) _] field-name) fields)
       (maybe-merge-source-metadata source-metadata cols)
@@ -710,11 +707,7 @@
 ;; TODO: Use `:ident`s for matching up model metadata!
 (defn- merge-model-metadata
   [query-metadata model-metadata card-entity-id]
-  (cond->> (qp.util/combine-metadata query-metadata model-metadata)
-    ;; XXX: This might lead to double-bagging? It seems to be fine as I test things, but perhaps it needs the
-    ;; same guarding as the logic in [[metabase.models.card.metadata/xform-maybe-fix-idents-for-model]].
-    ;; FIXME: Leaving this as a breadcrumb, but it doesn't run anymore.
-    (and false card-entity-id) (mapv #(update % :ident lib/model-ident card-entity-id))))
+  (qp.util/combine-metadata query-metadata model-metadata))
 
 (defn- add-column-info-xform
   [query metadata rf]
@@ -755,15 +748,6 @@
                        (seq escaped->original) ;; if we replaced aliases, restore them
                        (escape-join-aliases/restore-aliases escaped->original))
             metadata (cond-> (assoc metadata :cols (merged-column-info query metadata))
-                       ;; XXX: Decision point: At least for my test query, this is missing. The :source-metadata has
-                       ;; :idents with the model but they're getting overridden by the outer query.
-                       ;; I'm not sure if the bug is that `:metadata/model-metadata` is not set in this case, or that
-                       ;; `idents-for-model` is a no-op right now. I think it was leading to double-bagging before,
-                       ;; but I forget the exact circumstances.
-
-                       ;; It's set at the API level, but perhaps that's too high...
-                       ;; I think any query targeting a source-query that came from a model should see model overrides
-                       ;; and idents applied throughout.
                        (seq model-metadata)
                        (update :cols merge-model-metadata model-metadata card-entity-id))]
         (qp.debug/debug> (list `add-column-info:mbql query model-metadata '=> metadata))
