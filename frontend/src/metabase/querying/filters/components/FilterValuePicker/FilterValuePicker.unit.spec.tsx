@@ -43,6 +43,44 @@ import {
   StringFilterValuePicker,
 } from "./FilterValuePicker";
 
+type EndpointOpts = {
+  fieldId?: FieldId;
+  searchFieldId?: FieldId;
+  fieldValues?: GetFieldValuesResponse;
+  searchValues?: Record<string, GetFieldValuesResponse>;
+  remappedValues?: Record<string, FieldValue>;
+};
+
+function setupEndpoints({
+  fieldId,
+  searchFieldId = fieldId,
+  fieldValues,
+  searchValues = {},
+  remappedValues = {},
+}: EndpointOpts) {
+  if (fieldValues) {
+    setupFieldValuesEndpoint(fieldValues);
+  }
+  if (fieldId != null && searchFieldId != null) {
+    Object.entries(searchValues).forEach(([value, response]) => {
+      setupFieldSearchValuesEndpoint(
+        fieldId,
+        searchFieldId,
+        value,
+        response.values,
+      );
+    });
+    Object.entries(remappedValues).forEach(([value, fieldValue]) => {
+      setupRemappedFieldValueEndpoint(
+        fieldId,
+        searchFieldId,
+        value,
+        fieldValue,
+      );
+    });
+  }
+}
+
 interface SetupOpts<T> {
   query: Lib.Query;
   stageIndex: number;
@@ -68,27 +106,13 @@ async function setupStringPicker({
 }: SetupOpts<string>) {
   const onChange = jest.fn();
 
-  if (fieldValues) {
-    setupFieldValuesEndpoint(fieldValues);
-  }
-  if (fieldId != null && searchFieldId != null) {
-    Object.entries(searchValues).forEach(([value, response]) => {
-      setupFieldSearchValuesEndpoint(
-        fieldId,
-        searchFieldId,
-        value,
-        response.values,
-      );
-    });
-    Object.entries(remappedValues).forEach(([value, fieldValue]) => {
-      setupRemappedFieldValueEndpoint(
-        fieldId,
-        searchFieldId,
-        value,
-        fieldValue,
-      );
-    });
-  }
+  setupEndpoints({
+    fieldId,
+    searchFieldId,
+    fieldValues,
+    searchValues,
+    remappedValues,
+  });
 
   const { rerender } = renderWithProviders(
     <StringFilterValuePicker
@@ -110,13 +134,21 @@ async function setupNumberPicker({
   stageIndex,
   column,
   values,
+  fieldId,
+  searchFieldId = fieldId,
   fieldValues,
+  searchValues = {},
+  remappedValues = {},
 }: SetupOpts<number>) {
   const onChange = jest.fn();
 
-  if (fieldValues) {
-    setupFieldValuesEndpoint(fieldValues);
-  }
+  setupEndpoints({
+    fieldId,
+    searchFieldId,
+    fieldValues,
+    searchValues,
+    remappedValues,
+  });
 
   const { rerender } = renderWithProviders(
     <NumberFilterValuePicker
@@ -1033,6 +1065,53 @@ describe("NumberFilterValuePicker", () => {
       expect(checkboxes[2]).not.toBeChecked();
       expect(checkboxes[3]).toHaveAccessibleName("Completed");
       expect(checkboxes[3]).not.toBeChecked();
+    });
+  });
+
+  describe("search values", () => {
+    it("should handle type/FK -> column field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createOrdersProductIdField({
+            has_field_values: "search",
+            dimensions: [
+              createMockFieldDimension({
+                type: "external",
+                human_readable_field_id: PRODUCTS.TITLE,
+              }),
+            ],
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column: findColumn("ORDERS", "PRODUCT_ID"),
+        values: [2],
+        fieldId: ORDERS.PRODUCT_ID,
+        searchFieldId: PRODUCTS.TITLE,
+        searchValues: {
+          a: createMockFieldValues({
+            field_id: ORDERS.PRODUCT_ID,
+            values: [[1, "a@metabase.test"]],
+          }),
+        },
+        remappedValues: {
+          2: [2, "b@metabase.test"],
+        },
+      });
+
+      await userEvent.type(
+        screen.getByPlaceholderText("Search by Title or enter an ID"),
+        "a",
+      );
+      await userEvent.click(await screen.findByText("a@metabase.test"));
+      await waitFor(() => {
+        expect(onChange).toHaveBeenLastCalledWith([2, 1]);
+      });
     });
   });
 
