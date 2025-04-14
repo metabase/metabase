@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import type React from "react";
 import type {
   ComponentType,
@@ -631,6 +632,7 @@ export const PLUGIN_DATA_EDITING = {
       dbId: string;
       tableId: string;
     };
+    location: Location<{ filter?: string }>;
   }>,
   CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
     dashcardId: number;

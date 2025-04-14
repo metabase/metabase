@@ -1,11 +1,12 @@
+import type { Location } from "history";
 import { useMemo } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
 import {
-  useGetDatabaseMetadataQuery,
-  useGetTableDataQuery,
-  useGetTableQuery,
+  skipToken,
+  useGetAdhocQueryQuery,
+  useGetDatabaseQuery,
 } from "metabase/api";
 import { GenericError } from "metabase/components/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
@@ -19,6 +20,7 @@ import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
 import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
 
@@ -27,24 +29,29 @@ type EditTableDataContainerProps = {
     dbId: string;
     tableId: string;
   };
+  location: Location<{ filter?: string }>;
 };
 
 export const EditTableDataContainer = ({
   params: { dbId: dbIdParam, tableId: tableIdParam },
+  location,
 }: EditTableDataContainerProps) => {
-  const dbId = parseInt(dbIdParam, 10);
+  const databaseId = parseInt(dbIdParam, 10);
   const tableId = parseInt(tableIdParam, 10);
 
   const dispatch = useDispatch();
 
-  const { data: database } = useGetDatabaseMetadataQuery({ id: dbId });
-  const { data: table, isLoading: tableIdLoading } = useGetTableQuery({
-    id: tableId,
-  });
+  const { data: database } = useGetDatabaseQuery({ id: databaseId });
 
-  const { data: rawDatasetResult, isLoading } = useGetTableDataQuery({
-    tableId,
-  });
+  const { fakeTableQuestion, fakeTableQuery, table, handleQuestionChange } =
+    useStandaloneTableQuery({ tableId, databaseId, location });
+
+  const {
+    data: rawDatasetResult,
+    isFetching,
+    isLoading,
+    refetch,
+  } = useGetAdhocQueryQuery(fakeTableQuery || skipToken);
 
   const datasetData = useMemo(() => {
     return rawDatasetResult
@@ -52,7 +59,8 @@ export const EditTableDataContainer = ({
       : undefined;
   }, [rawDatasetResult]);
 
-  const stateUpdateStrategy = useTableEditingStateApiUpdateStrategy(tableId);
+  const stateUpdateStrategy =
+    useTableEditingStateApiUpdateStrategy(fakeTableQuery);
 
   const {
     isCreateRowModalOpen,
@@ -71,7 +79,7 @@ export const EditTableDataContainer = ({
     dispatch(closeNavbar());
   });
 
-  if (!database || isLoading || tableIdLoading) {
+  if (!database || isLoading || !fakeTableQuestion) {
     // TODO: show loader
     return null;
   }
@@ -87,7 +95,11 @@ export const EditTableDataContainer = ({
         {table && (
           <EditTableDataHeader
             table={table}
+            question={fakeTableQuestion}
+            isLoading={isFetching}
             onCreate={handleModalOpenAndExpandedRow}
+            onQuestionChange={handleQuestionChange}
+            refetchTableDataQuery={refetch}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (

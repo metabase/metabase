@@ -6,7 +6,6 @@ import { useGetTableDataQuery, useGetTableQuery } from "metabase/api";
 import Link from "metabase/core/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { TableNotificationsTrigger } from "metabase/notifications/modals/TableNotificationsModals/TableNotificationsTrigger";
-import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { closeNavbar } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -47,11 +46,7 @@ export const BrowseTableData = ({
 
   const { data: table } = useGetTableQuery({ id: tableId });
 
-  const {
-    data: datasetData,
-    isLoading,
-    refetch: refetchTableDataQuery,
-  } = useGetTableDataQuery({
+  const { data: datasetData } = useGetTableDataQuery({
     tableId,
   });
 
@@ -112,14 +107,6 @@ export const BrowseTableData = ({
           )}
 
           <Flex gap="xs">
-            <RunButtonWithTooltip
-              iconSize={16}
-              onlyIcon
-              medium
-              compact
-              isRunning={isLoading}
-              onRun={refetchTableDataQuery}
-            />
             <TableNotificationsTrigger tableId={tableId} />
           </Flex>
         </Group>
