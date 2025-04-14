@@ -141,18 +141,33 @@ describe("getFilteredClauses", () => {
       description:
         "Alias for `if()`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.",
       docsPage: "case",
-      example: [
-        "case",
-        [
-          [[">", ["dimension", "Weight"], 200], "Large"],
-          [[">", ["dimension", "Weight"], 150], "Medium"],
-        ],
-        {
-          default: "Small",
-        },
-      ],
       name: "case",
       structure: "case",
+      example: {
+        operator: "case",
+        options: {},
+        args: [
+          {
+            operator: ">",
+            options: {},
+            args: [
+              { operator: "dimension", options: {}, args: ["Weight"] },
+              200,
+            ],
+          },
+          "Large",
+          {
+            operator: ">",
+            options: {},
+            args: [
+              { operator: "dimension", options: {}, args: ["Weight"] },
+              150,
+            ],
+          },
+          "Medium",
+          "Small",
+        ],
+      },
     });
   });
 });

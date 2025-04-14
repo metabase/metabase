@@ -960,6 +960,42 @@ describe("scenarios > question > custom column", () => {
     H.visualize();
     cy.findByTestId("scalar-value").should("have.text", "198");
   });
+
+  it("should handle expression references", () => {
+    H.openProductsTable({ mode: "notebook" });
+
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: "[Price]",
+      name: "Foo",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({
+      formula: "[Foo]",
+      name: "Bar",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({
+      formula: "[Bar]",
+      name: "Quu",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").findByText("Foo").click();
+    H.CustomExpressionEditor.value().should("eq", "[Price]");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.getNotebookStep("expression").findByText("Bar").click();
+    H.CustomExpressionEditor.value().should("eq", "[Foo]");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.getNotebookStep("expression").findByText("Quu").click();
+    H.CustomExpressionEditor.value().should("eq", "[Bar]");
+  });
 });
 
 describe(

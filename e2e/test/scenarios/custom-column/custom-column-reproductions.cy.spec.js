@@ -1394,7 +1394,7 @@ describe("issue 48562", () => {
       expressions: {
         CustomColumn: ["contains", ["field", 10000, null], "abc"],
       },
-      filter: ["segment", 10001],
+      filter: ["+", 1, ["segment", 10001]],
       aggregation: [["metric", 10002]],
     },
   };
@@ -1412,8 +1412,7 @@ describe("issue 48562", () => {
     H.CustomExpressionEditor.value().should("contain", "[Unknown Field]");
     H.expressionEditorWidget().button("Cancel").click();
 
-    H.getNotebookStep("filter").findByText("[Unknown Segment]").click();
-    H.popover().findByText("Custom Expression").click();
+    H.getNotebookStep("filter").findByText("1 + [Unknown Segment]").click();
     H.CustomExpressionEditor.value().should("contain", "[Unknown Segment]");
     H.expressionEditorWidget().button("Cancel").click();
 
