@@ -16,6 +16,10 @@ Fill out the fields for that database, and click **Save changes** at the bottom.
 
 Metabase supports the oldest supported version of PostgreSQL through the latest stable version. See [PostgreSQL versions](https://www.postgresql.org/support/versioning/).
 
+## Connect to Supabase
+
+You can select PostgreSQL to connect to your Supabase database. Refer to [Supabase documentation](https://supabase.com/docs/guides/database/metabase) for more details.
+
 ## Connection and sync
 
 After connecting to a database, you'll see the "Connection and sync" section that displays the current connection status and options to manage your database connection.
