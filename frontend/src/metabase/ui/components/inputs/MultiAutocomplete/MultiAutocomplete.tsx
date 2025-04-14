@@ -152,6 +152,7 @@ export function MultiAutocomplete({
                   <Pill
                     key={valueIndex}
                     className={S.pill}
+                    removeButtonProps={{ "aria-label": t`Remove` }}
                     withRemoveButton
                     onClick={(event) => handlePillClick(event, valueIndex)}
                     onRemove={() => handlePillRemoveClick(valueIndex)}

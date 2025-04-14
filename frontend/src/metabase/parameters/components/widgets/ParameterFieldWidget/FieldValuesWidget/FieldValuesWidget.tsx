@@ -1,6 +1,12 @@
 import cx from "classnames";
-import type { StyleHTMLAttributes } from "react";
-import { forwardRef, useEffect, useRef, useState } from "react";
+import {
+  type StyleHTMLAttributes,
+  forwardRef,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -50,8 +56,10 @@ import {
   canUseDashboardEndpoints,
   canUseParameterEndpoints,
   dedupeValues,
+  getFieldsRemappingInfo,
   getLabel,
   getNonVirtualFields,
+  getOption,
   getTokenFieldPlaceholder,
   getValue,
   getValuesMode,
@@ -449,6 +457,10 @@ export const FieldValuesWidgetInner = forwardRef<
     disableSearch,
     options,
   });
+  const customOptions = useMemo(() => {
+    const customValues = parameter?.values_source_config?.values ?? [];
+    return customValues.map(getOption).filter(isNotNull);
+  }, [parameter]);
   const isNumericParameter = isNumeric(fields[0], parameter);
 
   const parseFreeformValue = (value: string | undefined) => {
@@ -499,10 +511,8 @@ export const FieldValuesWidgetInner = forwardRef<
               .map((value) => String(value))}
             data={options
               .filter((option) => getValue(option) != null)
-              .map((option) => ({
-                value: String(getValue(option)),
-                label: String(getLabel(option) ?? getValue(option)),
-              }))}
+              .map((option) => getOption(option))
+              .filter(isNotNull)}
             placeholder={tokenFieldPlaceholder}
             rightSection={isLoading ? <Loader size="xs" /> : undefined}
             nothingFoundMessage={getNothingFoundMessage({
@@ -527,7 +537,11 @@ export const FieldValuesWidgetInner = forwardRef<
               }
             }}
             renderValue={({ value }) => (
-              <RemappedValue value={value} fields={fields} />
+              <RemappedValue
+                value={value}
+                fields={fields}
+                customOptions={customOptions}
+              />
             )}
             renderOption={({ option }) => (
               <RemappedOption option={option} fields={fields} />
@@ -745,12 +759,14 @@ function renderValue({
 type RemappedValueProps = {
   value: string;
   fields: (Field | null)[];
+  customOptions: ComboboxItem[];
 };
 
-function RemappedValue({ fields, value }: RemappedValueProps) {
+function RemappedValue({ fields, value, customOptions }: RemappedValueProps) {
+  const matchedOption = customOptions.find((option) => option.value === value);
   const remappingInfo = getFieldsRemappingInfo(fields);
   const { data: remappedData } = useGetRemappedFieldValueQuery(
-    remappingInfo != null
+    matchedOption == null && remappingInfo != null
       ? {
           fieldId: remappingInfo.fieldId,
           remappedFieldId: remappingInfo.searchFieldId,
@@ -759,8 +775,12 @@ function RemappedValue({ fields, value }: RemappedValueProps) {
       : skipToken,
   );
 
+  if (matchedOption != null) {
+    return matchedOption.label;
+  }
+
   if (remappedData == null) {
-    return <MultiAutocompleteValue value={value} />;
+    return value;
   }
 
   const remappedValue = getValue(remappedData);
@@ -785,25 +805,4 @@ function RemappedOption({ option, fields }: RemappedOptionProps) {
   }
 
   return <MultiAutocompleteOption value={option.value} label={option.label} />;
-}
-
-function getFieldsRemappingInfo(fields: (Field | null)[]) {
-  const [field] = fields;
-  const searchField = field?.searchField();
-
-  if (
-    fields.length === 1 &&
-    field != null &&
-    searchField != null &&
-    typeof field.id === "number" &&
-    typeof searchField.id === "number" &&
-    field.id !== searchField.id
-  ) {
-    return {
-      fieldId: field.id,
-      searchFieldId: searchField.id,
-    };
-  } else {
-    return null;
-  }
 }
