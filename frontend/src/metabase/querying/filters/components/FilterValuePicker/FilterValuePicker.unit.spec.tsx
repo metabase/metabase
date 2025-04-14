@@ -1098,6 +1098,10 @@ describe("NumberFilterValuePicker", () => {
             field_id: ORDERS.PRODUCT_ID,
             values: [[1, "a@metabase.test"]],
           }),
+          c: createMockFieldValues({
+            field_id: ORDERS.PRODUCT_ID,
+            values: [],
+          }),
         },
         remappedValues: {
           2: [2, "b@metabase.test"],
@@ -1112,6 +1116,14 @@ describe("NumberFilterValuePicker", () => {
       await waitFor(() => {
         expect(onChange).toHaveBeenLastCalledWith([2, 1]);
       });
+
+      await userEvent.type(
+        screen.getByPlaceholderText("Search by Title or enter an ID"),
+        "c",
+      );
+      expect(
+        await screen.findByText("No matching Title found."),
+      ).toBeInTheDocument();
     });
   });
 
