@@ -89,13 +89,13 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
         <Flex align="center" gap="sm">
           <AdminHeader title={t`Troubleshooting logs`} />
 
-          <Box c="text-medium" flex="0 0 auto">
+          <Flex align="center" c="text-medium" flex="0 0 auto">
             <Tooltip
               label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
             >
               <Icon name="info" />
             </Tooltip>
-          </Box>
+          </Flex>
         </Flex>
 
         <PaginationControls
