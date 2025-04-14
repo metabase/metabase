@@ -296,11 +296,8 @@ export const MetabaseApi = {
     fetch: true,
   }),
   field_get: GET("/api/field/:fieldId"),
-  // field_summary:               GET("/api/field/:fieldId/summary"),
-  field_values: GET("/api/field/:fieldId/values"),
   field_values_update: POST("/api/field/:fieldId/values"),
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
-  field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
   dataset_pivot: POST("/api/dataset/pivot"),
 
@@ -490,12 +487,8 @@ function setCardEndpoints(prefix) {
     `${prefix}/params/:paramId/search/:query`,
     ["cardId"],
   );
-  MetabaseApi.field_values = GET_with(`${prefix}/field/:fieldId/values`);
   MetabaseApi.field_search = GET_with(
     `${prefix}/field/:fieldId/search/:searchFieldId`,
-  );
-  MetabaseApi.field_remapping = GET_with(
-    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
   );
 }
 
@@ -511,12 +504,8 @@ function setDashboardEndpoints(prefix) {
     `${prefix}/params/:paramId/search/:query`,
     ["dashId"],
   );
-  MetabaseApi.field_values = GET_with(`${prefix}/field/:fieldId/values`);
   MetabaseApi.field_search = GET_with(
     `${prefix}/dashboard/:dashId/field/:fieldId/search/:searchFieldId`,
-  );
-  MetabaseApi.field_remapping = GET_with(
-    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
   );
 }
 
