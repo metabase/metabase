@@ -30,6 +30,10 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import {
+  getCurrentVisualizerState,
+  getVisualizerComputedSettings,
+} from "./selectors";
+import {
   copyColumn,
   createDataSource,
   createVisualizerColumnReference,
@@ -165,23 +169,52 @@ const initializeFromCard = async (
   return getInitialStateForCardDataSource(card, dataset);
 };
 
-export const addDataSource = createAsyncThunk<
-  { card: Card; dataset: Dataset },
-  VisualizerDataSourceId
->("visualizer/dataImporter/addDataSource", async (id, { dispatch }) => {
-  const { type, sourceId } = parseDataSourceId(id);
-  if (type === "card") {
-    const cardAction = await dispatch(fetchCard(sourceId));
-    const cardQueryAction = await dispatch(fetchCardQuery(sourceId));
+export const addDataSource = createAsyncThunk(
+  "visualizer/dataImporter/addDataSource",
+  async (id: VisualizerDataSourceId, { dispatch, getState }) => {
+    const { type, sourceId } = parseDataSourceId(id);
 
-    // TODO handle rejected requests
-    return {
-      card: cardAction.payload as Card,
-      dataset: cardQueryAction.payload as Dataset,
-    };
-  }
-  throw new Error(`Unsupported data source type: ${type}`);
-});
+    const state = getCurrentVisualizerState(getState());
+
+    let dataSource: VisualizerDataSource | null = null;
+    let dataset: Dataset | null = null;
+
+    if (type === "card") {
+      // TODO handle rejected requests
+      const cardAction = await dispatch(fetchCard(sourceId));
+      const cardQueryAction = await dispatch(fetchCardQuery(sourceId));
+
+      const card = cardAction.payload as Card;
+      dataset = cardQueryAction.payload as Dataset;
+
+      if (
+        !state.display ||
+        (card.display === state.display && state.columns.length === 0)
+      ) {
+        return getInitialStateForCardDataSource(card, dataset);
+      }
+
+      dataSource = createDataSource("card", card.id, card.name);
+    } else {
+      throw new Error(`Unsupported data source type: ${type}`);
+    }
+
+    if (!dataSource || !dataset) {
+      throw new Error(`Could not get data source or dataset for: ${sourceId}`);
+    }
+
+    const computedSettings = getVisualizerComputedSettings(getState());
+
+    return maybeCombineDataset(
+      {
+        ...copy(state),
+        settings: computedSettings,
+      },
+      dataSource,
+      dataset,
+    );
+  },
+);
 
 export const addColumn = createAction<{
   dataSource: VisualizerDataSource;
@@ -383,15 +416,7 @@ const visualizerHistoryItemSlice = createSlice({
         }
       })
       .addCase(addDataSource.fulfilled, (state, action) => {
-        const { card, dataset } = action.payload;
-        if (
-          !state.display ||
-          (card.display === state.display && state.columns.length === 0)
-        ) {
-          return getInitialStateForCardDataSource(card, dataset);
-        }
-        const dataSource = createDataSource("card", card.id, card.name);
-        Object.assign(state, maybeCombineDataset(state, dataSource, dataset));
+        Object.assign(state, copy(action.payload));
       })
       .addCase(removeDataSource, (state, action) => {
         const source = action.payload;
@@ -628,11 +653,10 @@ function maybeUpdateHistory(state: VisualizerState, action: Action) {
 }
 
 function maybeCombineDataset(
-  currentState: VisualizerHistoryItem,
+  state: VisualizerHistoryItem,
   dataSource: VisualizerDataSource,
   dataset: Dataset,
 ) {
-  const state = { ...currentState };
   if (!state.display) {
     return;
   }
