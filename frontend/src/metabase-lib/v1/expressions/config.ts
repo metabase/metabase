@@ -11,8 +11,8 @@ export const EDITOR_QUOTES = {
     '"': "literal",
   },
   // specifies the default quoting style:
-  literalQuoteDefault: '"',
-  identifierQuoteDefault: "[",
+  literalQuoteDefault: '"' as const,
+  identifierQuoteDefault: "[" as const,
   // always quote identifiers even if they have non-word characters or conflict with reserved words
   identifierAlwaysQuoted: true,
 };

@@ -50,7 +50,7 @@ type FormatOptions = {
   stageIndex?: number;
   expressionIndex?: number | undefined;
   printWidth?: number;
-  quotes?: typeof EDITOR_QUOTES;
+  delimiters?: typeof EDITOR_QUOTES;
 };
 
 export async function formatExpressionParts(

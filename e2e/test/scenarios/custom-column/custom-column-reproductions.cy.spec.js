@@ -1611,3 +1611,46 @@ describe("issue 56152", () => {
     H.CustomExpressionEditor.helpText().should("be.visible");
   });
 });
+
+describe("issue 56596", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [["field", PRODUCTS.ID, null]],
+        limit: 1,
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    H.openNotebook();
+  });
+
+  it("should not remove backslashes from escaped characters (metabase#56596)", () => {
+    H.addCustomColumn();
+    const expr = dedent`
+      regexextract([Vendor], "\\s.*")
+    `;
+    H.enterCustomColumnDetails({
+      formula: expr,
+      name: "Last name",
+    });
+    H.CustomExpressionEditor.format();
+    H.CustomExpressionEditor.value().should("equal", expr);
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").findByText("Last name").click();
+    H.CustomExpressionEditor.value().should("equal", expr);
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.visualize();
+    H.assertTableData({
+      columns: ["ID", "Last name"],
+      firstRows: [["1", " Casper and Hilll"]],
+    });
+  });
+});
