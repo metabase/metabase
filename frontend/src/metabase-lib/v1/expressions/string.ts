@@ -103,7 +103,7 @@ export function unquoteString(string: string) {
         str += BACKSLASH + ch;
       }
     } else if (ch === CLOSE) {
-      // skip last quote
+      // skip last delimiter
       return str;
     } else {
       str += ch;
