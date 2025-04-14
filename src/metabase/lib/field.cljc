@@ -771,6 +771,7 @@
 (mr/def ::field-values-search-info
   [:map
    [:field-id         [:maybe [:ref ::lib.schema.id/field]]]
+   [:search-field     [:maybe [:ref ::lib.schema.metadata/column]]]
    [:search-field-id  [:maybe [:ref ::lib.schema.id/field]]]
    [:has-field-values [:ref ::field-values-search-info.has-field-values]]])
 

@@ -81,5 +81,5 @@ export function getNothingFoundMessage(
   column: Lib.ColumnMetadata,
 ) {
   const columnInfo = Lib.displayInfo(query, stageIndex, column);
-  return t`No matching ${columnInfo.displayName} found`;
+  return t`No matching ${columnInfo.displayName} found.`;
 }

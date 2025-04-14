@@ -625,7 +625,7 @@ describe("StringFilterValuePicker", () => {
       });
 
       await userEvent.type(
-        screen.getByRole("combobox", { name: "Filter value" }),
+        screen.getByPlaceholderText("Search by Name or enter an ID"),
         "a",
       );
       await userEvent.click(await screen.findByText("a@metabase.test"));
@@ -672,7 +672,7 @@ describe("StringFilterValuePicker", () => {
       });
 
       await userEvent.type(
-        screen.getByRole("combobox", { name: "Filter value" }),
+        screen.getByPlaceholderText("Search by Title or enter an ID"),
         "a",
       );
       await userEvent.click(await screen.findByText("a@metabase.test"));
@@ -1037,7 +1037,7 @@ describe("NumberFilterValuePicker", () => {
   });
 
   describe("no values", () => {
-    const column = findColumn("PEOPLE", "PASSWORD");
+    const column = findColumn("ORDERS", "TAX");
 
     it("should allow to add a value", async () => {
       const { onChange } = await setupNumberPicker({
