@@ -1,4 +1,4 @@
-import { Box, Flex } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 export type MultiAutocompleteValueProps = {
   value: string;
@@ -14,9 +14,12 @@ export function MultiAutocompleteValue({
   }
 
   return (
-    <Flex component="span" gap="sm">
+    <span>
+      <span>{value}</span>
+      <Box component="span" mx="xs" opacity={0.5}>
+        -
+      </Box>
       <span>{label}</span>
-      <Box opacity={0.5}>{value}</Box>
-    </Flex>
+    </span>
   );
 }
