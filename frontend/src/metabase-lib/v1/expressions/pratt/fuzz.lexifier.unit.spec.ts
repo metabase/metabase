@@ -9,7 +9,7 @@ describe("metabase-lib/v1/expressions/tokenizer", () => {
   });
 });
 
-fuzz("FUZZING metabase-lib/v1/expressions/tokenizer", () => {
+fuzz("FUZZING metabase-lib/v1/expressions/lexifier", () => {
   const MAX_SEED = 2e4;
 
   for (let seed = 0; seed < MAX_SEED; ++seed) {
