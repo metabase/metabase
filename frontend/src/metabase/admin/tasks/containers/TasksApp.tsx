@@ -1,6 +1,8 @@
 import cx from "classnames";
+import type { Location } from "history";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { withRouter } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,6 +13,7 @@ import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/lib/redux";
 import { Tooltip } from "metabase/ui";
 import type { Database, Task } from "metabase-types/api";
 
@@ -24,10 +27,29 @@ import {
 
 type TasksAppProps = {
   children: ReactNode;
+  location: Location;
 };
 
-export const TasksApp = ({ children }: TasksAppProps) => {
-  const [page, setPage] = useState(0);
+function getPageFromLocation(location: Location) {
+  const pageParam = Array.isArray(location.query.page)
+    ? location.query.page[0]
+    : location.query.page;
+  const page = parseInt(pageParam || "0", 10);
+  return Number.isFinite(page) ? page : 0;
+}
+
+function getLocationWithPage(location: Location, page: number) {
+  return {
+    ...location,
+    query: {
+      page: page === 0 ? undefined : page,
+    },
+  };
+}
+
+const TasksAppBase = ({ children, location }: TasksAppProps) => {
+  const dispatch = useDispatch();
+  const page = getPageFromLocation(location);
   const pageSize = 50;
 
   const {
@@ -47,6 +69,11 @@ export const TasksApp = ({ children }: TasksAppProps) => {
 
   const tasks = tasksData?.data;
   const databases = databasesData?.data;
+
+  const handlePageChange = (page: number) => {
+    const newLocation = getLocationWithPage(location, page);
+    dispatch(push(newLocation));
+  };
 
   if (isLoadingTasks || isLoadingDatabases || tasksError || databasesError) {
     return (
@@ -77,8 +104,8 @@ export const TasksApp = ({ children }: TasksAppProps) => {
         </SectionTitle>
         <SectionControls>
           <PaginationControls
-            onPreviousPage={() => setPage(page - 1)}
-            onNextPage={() => setPage(page + 1)}
+            onPreviousPage={() => handlePageChange(page - 1)}
+            onNextPage={() => handlePageChange(page + 1)}
             page={page}
             pageSize={50}
             itemsLength={tasks.length}
@@ -133,3 +160,5 @@ export const TasksApp = ({ children }: TasksAppProps) => {
     </SectionRoot>
   );
 };
+
+export const TasksApp = withRouter(TasksAppBase);
