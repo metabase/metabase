@@ -1,31 +1,33 @@
 import { t } from "ttag";
 
-import type { Expression } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
 import { FIELD_MARKERS, getClauseDefinition } from "../config";
 import { DiagnosticError } from "../errors";
-import { isCallExpression } from "../matchers";
 import { getToken } from "../utils";
-import { visit } from "../visitor";
+import { visit } from "../visit";
 
 export function checkKnownFunctions({
-  expression,
+  expressionParts,
 }: {
-  expression: Expression;
+  expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
 }) {
-  visit(expression, (node) => {
-    if (!isCallExpression(node)) {
+  visit(expressionParts, (node) => {
+    if (!Lib.isExpressionParts(node)) {
       return;
     }
 
-    const name = node[0];
-    if (FIELD_MARKERS.has(name) || name === "value" || name === "expression") {
+    const { operator } = node;
+    if (FIELD_MARKERS.has(operator) || operator === "value") {
       return;
     }
 
-    const clause = getClauseDefinition(name);
+    const clause = getClauseDefinition(operator);
     if (!clause) {
-      throw new DiagnosticError(t`Unknown function ${name}`, getToken(node));
+      throw new DiagnosticError(
+        t`Unknown function ${operator}`,
+        getToken(node),
+      );
     }
   });
 }

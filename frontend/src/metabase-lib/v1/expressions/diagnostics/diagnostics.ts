@@ -71,6 +71,7 @@ export function diagnoseAndCompile({
       stageIndex,
       startRule,
       expression: result.expression,
+      expressionParts: result.expressionParts,
       expressionIndex,
       metadata,
     });
@@ -120,6 +121,7 @@ export function diagnoseExpression(options: {
   stageIndex: number;
   startRule: StartRule;
   expression: Expression;
+  expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
   expressionIndex?: number;
   metadata?: Metadata;
 }) {
