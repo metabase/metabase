@@ -109,21 +109,6 @@
   [notification-info :- ::notification.payload/Notification]
   (transform-event-info notification-info))
 
-(defn notification-info->payload-schema
-  "Given a system event, return the payload schema."
-  [notification-info]
-  (when-let [[op _arg-schema return-schema] (some->> notification-info
-                                                     dispatch-on-event-info
-                                                     (get-method transform-event-info)
-                                                     meta
-                                                     :schema)]
-    (assert (= op :=>))
-    (mr/resolve-schema return-schema)))
-
-(comment
-  (notification-info->payload-schema {:payload {:event_name :event/action.success
-                                                :action :row/update}}))
-
 (defmethod notification.payload/notification-payload-schema :notification/system-event
   [notification-info]
   (when-let [[op _arg-schema return-schema] (some->> notification-info
