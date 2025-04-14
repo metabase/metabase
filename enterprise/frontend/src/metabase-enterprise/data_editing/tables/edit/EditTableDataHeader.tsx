@@ -1,17 +1,20 @@
 import { useDisclosure } from "@mantine/hooks";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { TableNotificationsTrigger } from "metabase/notifications/modals";
-import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";
+import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components"; // TODO: we should not use query builder components
+import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { Button, Flex, Group, Icon, Stack, Title } from "metabase/ui";
-import { EditTableDataFilterButton } from "metabase-enterprise/data_editing/tables/edit/EditTableDataFilterButton";
 import type Question from "metabase-lib/v1/Question";
-import type { Table } from "metabase-types/api";
+import type Table from "metabase-lib/v1/metadata/Table";
+import type { Table as ApiTable } from "metabase-types/api";
 
 import { EditTableDataBackButton } from "./EditTableDataBackButton";
+import { EditTableDataFilterButton } from "./EditTableDataFilterButton";
 
 interface EditTableDataHeaderProps {
-  table: Table;
+  table: Table | ApiTable;
   question: Question;
   onCreate: () => void;
   onQuestionChange: (newQuestion: Question) => void;
@@ -23,10 +26,15 @@ export const EditTableDataHeader = ({
   onCreate,
   onQuestionChange,
 }: EditTableDataHeaderProps) => {
+  const hasFilters = useMemo(
+    () =>
+      question.query() ? getFilterItems(question.query()).length > 0 : false,
+    [question],
+  );
   const [
     areFiltersExpanded,
     { open: onExpandFilters, close: onCollapseFilters },
-  ] = useDisclosure(false);
+  ] = useDisclosure(hasFilters);
 
   return (
     <Stack gap={0}>

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import type { Location } from "history";
+import { useMemo } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -6,24 +7,20 @@ import {
   skipToken,
   useGetAdhocQueryQuery,
   useGetDatabaseQuery,
-  useGetTableQuery,
 } from "metabase/api";
 import { GenericError } from "metabase/components/ErrorPages";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { loadMetadataForTable } from "metabase/questions/actions";
+import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
 import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
 
@@ -32,32 +29,25 @@ type EditTableDataContainerProps = {
     dbId: string;
     tableId: string;
   };
+  location: Location<{ filter?: string }>;
 };
 
 export const EditTableDataContainer = ({
   params: { dbId: dbIdParam, tableId: tableIdParam },
+  location,
 }: EditTableDataContainerProps) => {
   const databaseId = parseInt(dbIdParam, 10);
   const tableId = parseInt(tableIdParam, 10);
 
   const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
 
   const { data: database } = useGetDatabaseQuery({ id: databaseId });
 
-  // todo get table data from metadata, as we have to load it separately
-  const { data: table, isLoading: tableIsLoading } = useGetTableQuery({
-    id: tableId,
-  });
-
-  const [fakeTableQuestion, setFakeTableQuestion] = useState<
-    Question | undefined
-  >();
+  const { fakeTableQuestion, fakeTableQuery, table, handleQuestionChange } =
+    useStandaloneTableQuery({ tableId, databaseId, location });
 
   const { data: rawDatasetResult, isLoading } = useGetAdhocQueryQuery(
-    fakeTableQuestion
-      ? Lib.toLegacyQuery(fakeTableQuestion.query())
-      : skipToken,
+    fakeTableQuery || skipToken,
   );
 
   const datasetData = useMemo(() => {
@@ -66,11 +56,8 @@ export const EditTableDataContainer = ({
       : undefined;
   }, [rawDatasetResult]);
 
-  const stateUpdateStrategy = useTableEditingStateApiUpdateStrategy(
-    fakeTableQuestion
-      ? Lib.toLegacyQuery(fakeTableQuestion.query())
-      : undefined,
-  );
+  const stateUpdateStrategy =
+    useTableEditingStateApiUpdateStrategy(fakeTableQuery);
 
   const {
     isCreateRowModalOpen,
@@ -89,26 +76,7 @@ export const EditTableDataContainer = ({
     dispatch(closeNavbar());
   });
 
-  useEffect(() => {
-    dispatch(loadMetadataForTable(tableId));
-  }, [dispatch, tableId]);
-
-  // useEffect(() => {
-  //   if (fakeTableQuestion) {
-  //     dispatch(loadMetadataForCard(fakeTableQuestion.card()));
-  //   }
-  // }, [dispatch, fakeTableQuestion]);
-
-  useEffect(() => {
-    const tableMetadata = metadata.table(tableId);
-
-    if (tableMetadata) {
-      const question = Question.create({ databaseId, tableId, metadata });
-      setFakeTableQuestion(question);
-    }
-  }, [databaseId, metadata, tableId]);
-
-  if (!database || isLoading || tableIsLoading || !fakeTableQuestion) {
+  if (!database || isLoading || !fakeTableQuestion) {
     // TODO: show loader
     return null;
   }
@@ -126,7 +94,7 @@ export const EditTableDataContainer = ({
             table={table}
             question={fakeTableQuestion}
             onCreate={handleModalOpenAndExpandedRow}
-            onQuestionChange={setFakeTableQuestion}
+            onQuestionChange={handleQuestionChange}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (
