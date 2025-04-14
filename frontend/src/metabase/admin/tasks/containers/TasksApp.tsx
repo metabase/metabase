@@ -69,7 +69,7 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
   } = useListDatabasesQuery();
 
   const tasks = tasksData?.data;
-  const databases = databasesData?.data ?? [];
+  const databases = databasesData?.data;
   const isLoading = isLoadingTasks || isLoadingDatabases;
   const error = tasksError || databasesError;
   const showLoadingAndErrorWrapper = isLoading || error != null;
@@ -78,10 +78,6 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
     const newLocation = getLocationWithPage(location, page);
     dispatch(push(newLocation));
   };
-
-  if (showLoadingAndErrorWrapper) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
 
   if (!tasks || !databases) {
     return null;
@@ -136,38 +132,51 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
         </thead>
 
         <tbody>
-          {tasks.map((task: Task) => {
-            const db = task.db_id ? databaseByID[task.db_id] : null;
-            const name = db ? db.name : null;
-            const engine = db ? db.engine : null;
-            // only want unknown if there is a db on the task and we don't have info
-            return (
-              <tr key={task.id}>
-                <td className={CS.textBold}>{task.task}</td>
-                <td>{task.db_id ? name || t`Unknown name` : null}</td>
-                <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
-                <td>{task.started_at}</td>
-                <td>{task.ended_at}</td>
-                <td>{task.duration}</td>
-                <td>
-                  {match(task.status)
-                    .with("failed", () => t`Failed`)
-                    .with("started", () => t`Started`)
-                    .with("success", () => t`Success`)
-                    .with("unknown", () => t`Unknown`)
-                    .exhaustive()}
-                </td>
-                <td>
-                  <Link
-                    className={cx(CS.link, CS.textBold)}
-                    to={`/admin/troubleshooting/tasks/${task.id}`}
-                  >{t`View`}</Link>
-                </td>
-              </tr>
-            );
-          })}
+          {showLoadingAndErrorWrapper && (
+            <tr>
+              <td colSpan={8}>
+                <LoadingAndErrorWrapper loading={isLoading} error={error} />
+              </td>
+            </tr>
+          )}
+
+          {!showLoadingAndErrorWrapper && (
+            <>
+              {tasks.map((task: Task) => {
+                const db = task.db_id ? databaseByID[task.db_id] : null;
+                const name = db ? db.name : null;
+                const engine = db ? db.engine : null;
+                // only want unknown if there is a db on the task and we don't have info
+                return (
+                  <tr key={task.id}>
+                    <td className={CS.textBold}>{task.task}</td>
+                    <td>{task.db_id ? name || t`Unknown name` : null}</td>
+                    <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
+                    <td>{task.started_at}</td>
+                    <td>{task.ended_at}</td>
+                    <td>{task.duration}</td>
+                    <td>
+                      {match(task.status)
+                        .with("failed", () => t`Failed`)
+                        .with("started", () => t`Started`)
+                        .with("success", () => t`Success`)
+                        .with("unknown", () => t`Unknown`)
+                        .exhaustive()}
+                    </td>
+                    <td>
+                      <Link
+                        className={cx(CS.link, CS.textBold)}
+                        to={`/admin/troubleshooting/tasks/${task.id}`}
+                      >{t`View`}</Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </>
+          )}
         </tbody>
       </table>
+
       {
         // render 'children' so that the invididual task modals show up
         children
