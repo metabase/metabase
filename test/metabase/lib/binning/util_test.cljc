@@ -4,6 +4,15 @@
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.test-metadata :as meta]))
 
+(deftest ^:parallel calculate-bin-width-single-value-test
+  (are [minv maxv bins] (= 1 (#'lib.binning.util/calculate-bin-width minv maxv bins))
+    0     0     1
+    -3    -3    14
+    7N    7N    25
+    7N    7     25
+    0.25  0.25  5
+    42M   42M   42))
+
 (deftest ^:parallel floor-to-test
   (are [x expected] (= expected
                        (#'lib.binning.util/floor-to 1.0 x))

@@ -18,10 +18,25 @@ export interface SdkQuestionState {
 }
 
 export interface LoadSdkQuestionParams {
-  options?: QueryParams;
-  deserializedCard?: Card;
-  questionId?: CardId | null;
+  /**
+   * For SQL questions only. A mapping of SQL parameter names to parameter values, such as `{ product_id: "42"}`
+   */
   initialSqlParameters?: ParameterValues;
+
+  /**
+   * @internal
+   */
+  options?: QueryParams;
+
+  /**
+   * @internal
+   */
+  deserializedCard?: Card;
+
+  /**
+   * @internal
+   */
+  questionId?: CardId | null;
 }
 
 export interface NavigateToNewCardParams {

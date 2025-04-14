@@ -110,6 +110,22 @@
       (jdbc/execute! spec [(format "CREATE DATABASE \"%s\";" db-name)]
                      {:transaction? false}))))
 
+(defn with-temp-database-fn
+  "Creates a new database (dropping first if necessary), runs `f`, then drops the db"
+  [db-name f]
+  (try
+    (drop-if-exists-and-create-db! db-name)
+    (f)
+    (finally
+      (drop-if-exists-and-create-db! db-name :pg/just-drop))))
+
+(defmacro with-temp-database!
+  "Creates a new database, dropping it first if necessary, that will be dropped after execution"
+  [db-name & body]
+  `(with-temp-database-fn
+     ~db-name
+     (fn [] ~@body)))
+
 (defn- exec!
   "Execute a sequence of statements against the database whose spec is passed as the first param."
   [spec statements]

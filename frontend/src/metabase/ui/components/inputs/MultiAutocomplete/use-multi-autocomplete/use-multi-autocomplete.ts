@@ -1,10 +1,19 @@
-import { type ComboboxItem, useCombobox } from "@mantine/core";
+import {
+  type ComboboxData,
+  type ComboboxItem,
+  type ComboboxParsedItem,
+  getOptionsLockup,
+  getParsedComboboxData,
+  isOptionsGroup,
+  useCombobox,
+} from "@mantine/core";
+import { useWindowEvent } from "@mantine/hooks";
 import { parse } from "csv-parse/browser/esm/sync";
 import {
   type ChangeEvent,
   type ClipboardEvent,
-  type KeyboardEvent,
   type MouseEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   useMemo,
   useState,
 } from "react";
@@ -18,10 +27,16 @@ const FIELD_PLACEHOLDER = null;
 
 type UseMultiAutocompleteProps = {
   values: string[];
-  options: ComboboxItem[];
+  data: ComboboxData;
+  dropdownOpened?: boolean;
+  defaultDropdownOpened?: boolean;
+  selectFirstOptionOnChange?: boolean;
   onCreate?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
   onSearchChange?: (newValue: string) => void;
+  onDropdownOpen?: () => void;
+  onDropdownClose?: () => void;
+  onOptionSubmit?: (value: string) => void;
 };
 
 type FieldState = {
@@ -37,20 +52,32 @@ type FieldSelection = {
 
 export function useMultiAutocomplete({
   values,
-  options,
+  data,
+  dropdownOpened,
+  defaultDropdownOpened,
   onCreate = defaultCreate,
   onChange,
   onSearchChange,
+  onDropdownOpen,
+  onDropdownClose,
+  onOptionSubmit,
 }: UseMultiAutocompleteProps) {
   const combobox = useCombobox({
-    onDropdownClose: () => combobox.resetSelectedOption(),
+    opened: dropdownOpened,
+    defaultOpened: defaultDropdownOpened,
+    onDropdownOpen,
+    onDropdownClose: () => {
+      onDropdownClose?.();
+      combobox.resetSelectedOption();
+    },
   });
   const [fieldValue, setFieldValue] = useState("");
   const [_fieldSelection, setFieldSelection] = useState<FieldSelection>();
   const [fieldMinWidth, setFieldMinWidth] = useState<number>();
   const fieldSelection = _fieldSelection ?? { index: values.length, length: 0 };
   const searchValue = useMemo(() => getSearchValue(fieldValue), [fieldValue]);
-  const optionByValue = useMemo(() => getOptionByValue(options), [options]);
+  const options = useMemo(() => getParsedComboboxData(data), [data]);
+  const optionByValue = useMemo(() => getOptionsLockup(options), [options]);
 
   const setFieldState = ({
     fieldValue,
@@ -119,7 +146,7 @@ export function useMultiAutocomplete({
     }
   };
 
-  const handleFieldKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  const handleFieldKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (
       event.key === "Enter" &&
       combobox.selectedOptionIndex < 0 &&
@@ -211,9 +238,19 @@ export function useMultiAutocomplete({
         length: 0,
       },
     });
+    onOptionSubmit?.(value);
     combobox.closeDropdown();
     combobox.resetSelectedOption();
   };
+
+  const handleWindowKeydownCapture = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && combobox.dropdownOpened) {
+      event.stopImmediatePropagation();
+      combobox.closeDropdown();
+    }
+  };
+
+  useWindowEvent("keydown", handleWindowKeydownCapture, { capture: true });
 
   return {
     combobox,
@@ -237,10 +274,6 @@ export function useMultiAutocomplete({
     handlePillsInputClick,
     handleOptionSubmit,
   };
-}
-
-function getOptionByValue(options: ComboboxItem[]) {
-  return Object.fromEntries(options.map((option) => [option.value, option]));
 }
 
 function getSearchValue(fieldValue: string) {
@@ -274,17 +307,31 @@ function getValuesNotInSelection(
 
 function getOptionsWithoutDuplicates(
   values: string[],
-  options: ComboboxItem[],
+  options: ComboboxParsedItem[],
   fieldSelection: FieldSelection,
 ) {
   const usedValues = new Set(getValuesNotInSelection(values, fieldSelection));
-  return options.reduce((options: ComboboxItem[], option) => {
-    if (!usedValues.has(option.value)) {
-      options.push(option);
+  const newOptions: ComboboxParsedItem[] = [];
+
+  for (const option of options) {
+    if (isOptionsGroup(option)) {
+      const newGroupOptions: ComboboxItem[] = [];
+      for (const groupOption of option.items) {
+        if (!usedValues.has(groupOption.value)) {
+          newGroupOptions.push(groupOption);
+          usedValues.add(groupOption.value);
+        }
+      }
+      if (newGroupOptions.length > 0) {
+        newOptions.push({ ...option, items: newGroupOptions });
+      }
+    } else if (!usedValues.has(option.value)) {
+      newOptions.push(option);
       usedValues.add(option.value);
     }
-    return options;
-  }, []);
+  }
+
+  return newOptions;
 }
 
 function getFieldValuesWithoutDuplicates(
