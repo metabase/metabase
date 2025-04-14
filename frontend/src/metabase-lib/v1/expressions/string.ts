@@ -6,7 +6,7 @@ const OPEN_BRACKET = "[";
 const CLOSE_BRACKET = "]";
 const BACKSLASH = "\\";
 
-export type Quote =
+export type StartDelimiter =
   | typeof DOUBLE_QUOTE
   | typeof SINGLE_QUOTE
   | typeof OPEN_BRACKET;
@@ -34,16 +34,16 @@ const STRING_UNESCAPE: Record<string, string> = {
 export function formatStringLiteral(
   node: string,
   {
-    quotes = EDITOR_QUOTES,
+    delimiters = EDITOR_QUOTES,
   }: {
-    quotes?: { literalQuoteDefault: Quote };
+    delimiters?: { literalQuoteDefault: StartDelimiter };
   } = {},
 ) {
-  return quoteString(node, quotes.literalQuoteDefault);
+  return quoteString(node, delimiters.literalQuoteDefault);
 }
 
-export function quoteString(string: string, quote: Quote) {
-  const [OPEN, CLOSE] = getQuotePair(quote);
+export function quoteString(string: string, delimiter: StartDelimiter) {
+  const [OPEN, CLOSE] = getDelimiters(delimiter);
 
   let str = "";
   for (let i = 0; i < string.length; i++) {
@@ -64,8 +64,7 @@ export function quoteString(string: string, quote: Quote) {
 }
 
 export function unquoteString(string: string) {
-  const quote = string.charAt(0);
-  const [OPEN, CLOSE] = getQuotePair(quote);
+  const [OPEN, CLOSE] = getDelimiters(string.charAt(0));
 
   let str = "";
   let escaping = false;
@@ -98,11 +97,11 @@ export function unquoteString(string: string) {
   return str;
 }
 
-function getQuotePair(quote: string) {
-  if (quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE) {
-    return [quote, quote];
-  } else if (quote === OPEN_BRACKET) {
+function getDelimiters(delimiter: string) {
+  if (delimiter === DOUBLE_QUOTE || delimiter === SINGLE_QUOTE) {
+    return [delimiter, delimiter];
+  } else if (delimiter === OPEN_BRACKET) {
     return [OPEN_BRACKET, CLOSE_BRACKET];
   }
-  throw new Error("Unknown quoting: " + quote);
+  throw new Error("Unknown quoting: " + delimiter);
 }
