@@ -5,11 +5,12 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/containers/UndoListing";
-import type { UpdateChannel } from "metabase-types/api";
+import type { SettingKey, UpdateChannel } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { VersionUpdateNotice } from "./VersionUpdateNotice";
 
@@ -18,67 +19,57 @@ const setup = (props: {
   isHosted: boolean;
   versionTag: string;
 }) => {
-  const versionSettingValue = {
-    date: "2025-03-19",
-    src_hash: "4df5cf3e5e86b0cc7421d80e2a8835e2ce3afa7d",
-    tag: props.versionTag,
-    hash: "4742ea1",
+  const versionNoticeSettings = {
+    version: {
+      date: "2025-03-19",
+      src_hash: "4df5cf3e5e86b0cc7421d80e2a8835e2ce3afa7d",
+      tag: props.versionTag,
+      hash: "4742ea1",
+    },
+    "update-channel": props.updateChannel,
+    "version-info": {
+      beta: {
+        version: "v1.54.0-beta",
+        released: "2025-03-24",
+        rollout: 100,
+        highlights: [],
+      },
+      latest: {
+        version: "v1.53.8",
+        released: "2025-03-25",
+        patch: true,
+        highlights: [],
+        rollout: 100,
+      },
+      nightly: {
+        version: "v1.52.3",
+        released: "2024-12-16",
+        rollout: 100,
+        highlights: [],
+      },
+    },
+    "is-hosted?": props.isHosted,
   };
 
-  const versionInfoValue = {
-    beta: {
-      version: "v1.54.0-beta",
-      released: "2025-03-24",
-      rollout: 100,
-      highlights: [],
-    },
-    latest: {
-      version: "v1.53.8",
-      released: "2025-03-25",
-      patch: true,
-      highlights: [],
-      rollout: 100,
-    },
-    nightly: {
-      version: "v1.52.3",
-      released: "2024-12-16",
-      rollout: 100,
-      highlights: [],
-    },
-  };
-  setupPropertiesEndpoints(
-    createMockSettings({
-      version: versionSettingValue,
-      "update-channel": props.updateChannel,
-      "version-info": versionInfoValue,
-      "is-hosted?": props.isHosted,
-    }),
-  );
+  const settings = createMockSettings(versionNoticeSettings);
+  setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
-  setupSettingsEndpoints([
-    createMockSettingDefinition({
-      key: "version",
-      value: versionSettingValue,
-    }),
-    createMockSettingDefinition({
-      key: "update-channel",
-      value: props.updateChannel,
-    }),
-    createMockSettingDefinition({
-      key: "version-info",
-      value: versionInfoValue,
-    }),
-    createMockSettingDefinition({
-      key: "is-hosted?",
-      value: props.isHosted,
-    }),
-  ]);
+  setupSettingsEndpoints(
+    Object.entries(settings).map(([key, value]) =>
+      createMockSettingDefinition({ key: key as SettingKey, value }),
+    ),
+  );
 
   return renderWithProviders(
     <div>
       <VersionUpdateNotice />
       <UndoListing />
     </div>,
+    {
+      storeInitialState: {
+        settings: createMockSettingsState(settings),
+      },
+    },
   );
 };
 
