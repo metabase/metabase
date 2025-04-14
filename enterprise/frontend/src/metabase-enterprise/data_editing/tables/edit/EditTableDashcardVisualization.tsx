@@ -110,6 +110,7 @@ export const EditTableDashcardVisualization = ({
         }
         fieldMetadataMap={tableFieldMetadataMap}
         isLoading={isInserting}
+        columnsConfig={columnsConfig}
       />
     </Stack>
   );
