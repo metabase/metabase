@@ -5,8 +5,8 @@ import { Select, type SelectProps } from "metabase/ui";
 import type { TaskStatus } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
-  value: TaskStatus;
-  onChange: (value: TaskStatus) => void;
+  value: TaskStatus | null;
+  onChange: (value: TaskStatus | null) => void;
 }
 
 export const TaskStatusPicker = ({ value, onChange, ...props }: Props) => {
@@ -24,8 +24,9 @@ export const TaskStatusPicker = ({ value, onChange, ...props }: Props) => {
         position: "bottom-start",
         width: 300,
       }}
+      clearable
       data={data}
-      placeholder={t`Select status`}
+      placeholder={t`Filter by status`}
       value={value}
       onChange={onChange}
       {...props}

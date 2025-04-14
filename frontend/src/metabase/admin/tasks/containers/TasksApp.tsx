@@ -46,8 +46,8 @@ const PAGE_SIZE = 50;
 const TasksAppBase = ({ children, location }: TasksAppProps) => {
   const dispatch = useDispatch();
   const page = getPageFromLocation(location);
-  const [task, setTask] = useState<Task["task"]>();
-  const [status, setStatus] = useState<TaskStatus>("success");
+  const [task, setTask] = useState<Task["task"] | null>(null);
+  const [status, setStatus] = useState<TaskStatus | null>(null);
 
   const {
     data: tasksData,
@@ -56,8 +56,8 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
   } = useListTasksQuery({
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
-    task,
-    status,
+    task: task ?? undefined,
+    status: status ?? undefined,
   });
 
   const {
