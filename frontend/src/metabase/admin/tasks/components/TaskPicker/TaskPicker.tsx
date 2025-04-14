@@ -29,6 +29,7 @@ export const TaskPicker = ({ value, onChange, ...props }: Props) => {
       clearable
       data={data}
       placeholder={t`Filter by task`}
+      searchable
       value={value}
       onChange={onChange}
       {...props}
