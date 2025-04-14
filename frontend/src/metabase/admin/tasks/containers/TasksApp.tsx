@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { Location } from "history";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -15,7 +15,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
-import type { Database, Task } from "metabase-types/api";
+import type { Database, Task, TaskStatus } from "metabase-types/api";
 
 type TasksAppProps = {
   children: ReactNode;
@@ -44,6 +44,9 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
   const page = getPageFromLocation(location);
   const pageSize = 50;
 
+  const [task, setTask] = useState<Task["task"]>();
+  const [status, setStatus] = useState<TaskStatus>("started");
+
   const {
     data: tasksData,
     isFetching: isLoadingTasks,
@@ -51,6 +54,8 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
   } = useListTasksQuery({
     limit: pageSize,
     offset: page * pageSize,
+    task,
+    status,
   });
 
   const {
