@@ -269,3 +269,25 @@ describe("if printWidth = Infinity, it should return the same results as the sin
     );
   });
 });
+
+it("should format escaped regex characters (metabase#56596)", async () => {
+  const { assertFormatted } = setup(Infinity);
+  await assertFormatted([
+    // "foo \s bar"
+    expression`
+      "foo \\s bar"
+    `,
+    // "^[Default]\s(.*?)\s-\s"
+    expression`
+     "^\\[Default\\]\\s(.*?)\\s-\\s"
+    `,
+    // "\\"
+    expression`
+      "\\\\"
+    `,
+    // "\n\r\t\v\f\b"
+    expression`
+      "\\n\\r\\t\\v\\f\\b"
+    `,
+  ]);
+});
