@@ -340,11 +340,11 @@ export function getLabel(option: FieldValue): string | undefined {
 
 export function getOption(
   option: string | number | FieldValue,
-): ComboboxItem | undefined {
+): ComboboxItem | null {
   const value = Array.isArray(option) ? getValue(option) : option;
   const label = Array.isArray(option) ? getLabel(option) : undefined;
   if (value == null) {
-    return undefined;
+    return null;
   }
 
   return { value: String(value), label: String(label ?? value) };
