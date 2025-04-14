@@ -1,6 +1,9 @@
 :global {
   :local(.editor) {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
     height: 100%;
     color: var(--mb-color-text-dark);
 
