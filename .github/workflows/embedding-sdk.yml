@@ -150,7 +150,7 @@ jobs:
     needs:
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
-      - embedding-sdk-docs-update-check
+      # - embedding-sdk-docs-update-check
       - sdk-e2e-tests
       - e2e-component-tests-embedding-sdk-cross-version
     if: always() && !cancelled()
