@@ -3,11 +3,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/containers/UndoListing";
 import type { UpdateChannel } from "metabase-types/api";
 import {
@@ -87,10 +83,6 @@ const setup = (props: {
 };
 
 describe("VersionUpdateNotice", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   it("should tell cloud users they are up to date", async () => {
     setup({ isHosted: true, versionTag: "v1.53.8", updateChannel: "latest" });
     expect(

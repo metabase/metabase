@@ -5,7 +5,6 @@ import {
   getCurrentVersion,
   getLatestVersion,
 } from "metabase/admin/settings/selectors";
-import { useAdminSetting } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
@@ -20,8 +19,6 @@ export function VersionUpdateNotice() {
   const currentVersion = useSelector(getCurrentVersion);
   const latestVersion = useSelector(getLatestVersion);
   const isHosted = useSetting("is-hosted?");
-  // This should not be here
-  useAdminSetting("site-url");
   const displayVersion = formatVersion(currentVersion);
 
   if (isHosted) {

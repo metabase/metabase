@@ -14,6 +14,7 @@ import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { UpdatesSettingsPage } from "./UpdatesSettingsPage";
 
@@ -59,10 +60,15 @@ const setup = async (props: {
   );
 
   renderWithProviders(
-    <>
+    <div>
       <UpdatesSettingsPage />
       <UndoListing />
-    </>,
+    </div>,
+    {
+      storeInitialState: {
+        settings: createMockSettingsState(settings),
+      },
+    },
   );
 };
 
