@@ -93,17 +93,23 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
 
   return (
     <Box pl="md">
-      <Flex align="center" justify="space-between">
-        <Flex align="center" gap="sm">
-          <AdminHeader title={t`Troubleshooting logs`} />
+      <Flex align="center" gap="sm">
+        <AdminHeader title={t`Troubleshooting logs`} />
 
-          <Flex align="center" c="text-medium" flex="0 0 auto">
-            <Tooltip
-              label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
-            >
-              <Icon name="info" />
-            </Tooltip>
-          </Flex>
+        <Flex align="center" c="text-medium" flex="0 0 auto">
+          <Tooltip
+            label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
+          >
+            <Icon name="info" />
+          </Tooltip>
+        </Flex>
+      </Flex>
+
+      <Flex gap="md" justify="space-between" mt="md">
+        <Flex gap="md">
+          <TaskPicker value={task} onChange={setTask} />
+
+          <TaskStatusPicker value={status} onChange={setStatus} />
         </Flex>
 
         <PaginationControls
@@ -114,12 +120,6 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
           itemsLength={tasks.length}
           total={tasksData.total}
         />
-      </Flex>
-
-      <Flex gap="md">
-        <TaskPicker value={task} onChange={setTask} />
-
-        <TaskStatusPicker value={status} onChange={setStatus} />
       </Flex>
 
       <table className={cx(AdminS.ContentTable, CS.mt2)}>
