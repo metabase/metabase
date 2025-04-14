@@ -140,6 +140,15 @@
                        (for [arity (:arities arities-value)]
                          (arity-schema arity return-schema options)))))))
 
+(defn- with-schema-fn
+  "Helper function for generating a function form with schema metadata.
+   Takes the function body (arities or single arity) and adds schema metadata."
+  [fn-body parsed]
+  `(vary-meta
+    (core/fn ~@fn-body)
+    merge
+    {:schema ~(fn-schema parsed {:target :target/metadata})}))
+
 (defn- deparameterized-arity [{:keys [body args prepost], :as _arity}]
   (concat
    [(:arglist (md/parse args))]
@@ -164,7 +173,11 @@
     ;; =>
     (fn [x] (inc x))"
   [parsed & [fn-name]]
-  `(core/fn ~@(when fn-name [fn-name]) ~@(deparameterized-fn-tail parsed)))
+  (with-schema-fn
+    (if fn-name
+      (list* fn-name (deparameterized-fn-tail parsed))
+      (deparameterized-fn-tail parsed))
+    parsed))
 
 (def ^:dynamic *enforce*
   "Whether [[validate-input]] and [[validate-output]] should validate things or not. In Cljc code, you can
@@ -320,8 +333,11 @@
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
   [error-context parsed & [fn-name]]
-  `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
-     (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
+  (let [schema (fn-schema parsed)]
+    `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
+       ~(with-schema-fn
+          (instrumented-fn-tail error-context schema)
+          parsed))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
@@ -387,10 +403,10 @@
   fix this later."
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)
-        instrument? (instrument-ns? *ns*)]
+        instrument? (instrument-ns? *ns*)
+        fn-name (when (symbol? (first fn-tail)) (first fn-tail))]
     (if-not instrument?
-      (deparameterized-fn-form parsed)
-      (let [error-context (if (symbol? (first fn-tail))
-                            ;; We want the quoted symbol of first fn-tail:
-                            {:fn-name (list 'quote (first fn-tail))} {})]
-        (instrumented-fn-form error-context parsed)))))
+      (deparameterized-fn-form parsed fn-name)
+      (let [error-context (if fn-name
+                            {:fn-name (list 'quote fn-name)} {})]
+        (instrumented-fn-form error-context parsed fn-name)))))

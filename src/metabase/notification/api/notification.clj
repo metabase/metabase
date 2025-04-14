@@ -13,6 +13,7 @@
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -168,14 +169,9 @@
   "Return the payload of a notification"
   [_route _query body :- ::models.notification/NotificationWithPayload]
   (api/create-check :model/Notification body)
-  {:payload (notification/notification-payload (cond-> body
-                                                 (= :notification/system-event (:payload_type body))
-                                                 (assoc :event_info (events/event-info-example (-> body :payload :event_name) (:payload body)))))
-   :schema (case (:payload_type body)
-             :notification/system-event
-             (api.macros/schema->json-schema (events/event-schema (-> body :payload :event_name) (:payload body)))
-             ;; TODO for :notification/card
-             {})})
+  (let [payload-schema (notification/notification-payload-schema body)]
+    {:payload (mu/generate-example payload-schema)
+     :schema (api.macros/schema->json-schema payload-schema)}))
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"

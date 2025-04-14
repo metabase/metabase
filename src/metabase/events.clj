@@ -116,24 +116,3 @@
                       {:topic topic, :event event}
                       e))))
   event)
-
-(defn- require-all-keys
-  "Ensure maps has no optional keys, maybe is required."
-  [schema]
-  (mc/walk
-   schema
-   (fn [schema _path children _options]
-     (case (mc/type schema)
-       :map
-       (mc/-set-children schema
-                         (mapv (fn [[k p s]]
-                                 [k (dissoc p :optional) s]) children))
-       :maybe
-       (first children)
-
-       schema))))
-
-(defn event-info-example
-  "Given a topic, return an example event info."
-  [topic event]
-  (-> (event-schema topic event) mr/resolve-schema require-all-keys (mg/generate {:seed (when config/is-prod? 42)})))

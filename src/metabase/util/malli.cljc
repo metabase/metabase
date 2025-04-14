@@ -2,7 +2,8 @@
   (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
-       ([metabase.util.malli.defn :as mu.defn]
+       ([metabase.config :as config]
+        [metabase.util.malli.defn :as mu.defn]
         [metabase.util.malli.fn :as mu.fn]
         [net.cgrand.macrovich :as macros]
         [potemkin :as p]))
@@ -10,6 +11,7 @@
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
+   [malli.generator :as mg]
    [malli.util :as mut]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr])
@@ -139,3 +141,30 @@
         (recur ret (nnext kvs)))
       (throw (ex-info "map-schema-assoc expects even number of arguments after schema-map, found odd number" {})))
     map-schema))
+
+#?(:clj
+   (defn- require-all-keys
+     "Ensure maps has no optional keys, maybe is required."
+     [schema]
+     (mc/walk
+      schema
+      (fn [schema _path children _options]
+        (case (mc/type schema)
+          :map
+          (mc/-set-children schema
+                            (mapv (fn [[k p s]]
+                                    [k (dissoc p :optional) s]) children))
+          :maybe
+          (first children)
+
+          schema))))
+
+   (defn generate-example
+     "Generate an example value for a schema. By default will include all optional keys."
+     [schema & {:keys [seed include-optional-keys?]
+                :or {include-optional-keys? true}
+                :as opts}]
+     (let [seed   (or seed (when config/is-prod? 42))
+           schema (cond-> schema
+                    (:include-optional-keys? opts) require-all-keys)]
+       (mg/generate schema {:seed seed}))))

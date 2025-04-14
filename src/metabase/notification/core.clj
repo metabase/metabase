@@ -13,7 +13,8 @@
 
 (p/import-vars
  [notification.payload
-  notification-payload]
+  notification-payload
+  notification-payload-schema]
  [notification.task.send
   update-send-notification-triggers-timezone!]
  [notification.seed

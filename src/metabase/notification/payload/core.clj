@@ -139,6 +139,11 @@
   {:arglists '([notification-info])}
   :payload_type)
 
+(defmulti notification-payload-schema
+  "Given a notification info, return the notification payload schema."
+  {:arglists '([notification-info])}
+  :payload_type)
+
 (defmulti skip-reason
   "Return the reason to skip the notification, or nil if it should be sent."
   {:arglists '([notification-payload])}
