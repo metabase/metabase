@@ -24,6 +24,9 @@ describe("quoteString", () => {
 
     it("should escape quotes inside the string literal", () => {
       expect(sq(`E'F`)).toEqual(`'E\\'F'`);
+      expect(sq(`'foo bar`)).toEqual(`'\\'foo bar'`);
+      expect(sq(`foo bar'`)).toEqual(`'foo bar\\''`);
+      expect(sq(`'foo bar'`)).toEqual(`'\\'foo bar\\''`);
     });
   });
 
@@ -31,6 +34,8 @@ describe("quoteString", () => {
     it("should enclose a string literal with double quotes", () => {
       expect(dq(`A`)).toEqual(`"A"`);
       expect(dq(`XYZ`)).toEqual(`"XYZ"`);
+      expect(dq(`\\s`)).toEqual(`"\\s"`);
+      expect(dq(`\\\\`)).toEqual(`"\\\\"`);
     });
 
     it("should escape some special characters in a double-quoted string", () => {
@@ -44,6 +49,9 @@ describe("quoteString", () => {
 
     it("should escape quotes inside the string literal", () => {
       expect(dq(`C"D`)).toEqual(`"C\\"D"`);
+      expect(dq(`"foo bar`)).toEqual(`"\\"foo bar"`);
+      expect(dq(`foo bar"`)).toEqual(`"foo bar\\""`);
+      expect(dq(`"foo bar"`)).toEqual(`"\\"foo bar\\""`);
     });
   });
 
@@ -51,6 +59,8 @@ describe("quoteString", () => {
     it("should enclose a string literal with double quotes", () => {
       expect(bq(`A`)).toEqual(`[A]`);
       expect(bq(`XYZ`)).toEqual(`[XYZ]`);
+      expect(bq(`\\s`)).toEqual(`[\\s]`);
+      expect(bq(`\\\\`)).toEqual(`[\\\\]`);
     });
 
     it("should escape some special characters in a double-quoted string", () => {
@@ -65,6 +75,9 @@ describe("quoteString", () => {
     it("should escape quotes inside the string literal", () => {
       expect(bq(`C[D`)).toEqual(`[C\\[D]`);
       expect(bq(`C]D`)).toEqual(`[C\\]D]`);
+      expect(bq(`[foo bar`)).toEqual(`[\\[foo bar]`);
+      expect(bq(`foo bar]`)).toEqual(`[foo bar\\]]`);
+      expect(bq(`[foo bar]`)).toEqual(`[\\[foo bar\\]]`);
     });
   });
 });
