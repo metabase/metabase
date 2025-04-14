@@ -17,6 +17,8 @@ import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import type { Database, Task, TaskStatus } from "metabase-types/api";
 
+import { TaskStatusPicker } from "../components/TaskStatusPicker";
+
 type TasksAppProps = {
   children: ReactNode;
   location: Location;
@@ -39,21 +41,21 @@ function getLocationWithPage(location: Location, page: number) {
   };
 }
 
+const PAGE_SIZE = 50;
+
 const TasksAppBase = ({ children, location }: TasksAppProps) => {
   const dispatch = useDispatch();
   const page = getPageFromLocation(location);
-  const pageSize = 50;
-
   const [task, setTask] = useState<Task["task"]>();
-  const [status, setStatus] = useState<TaskStatus>("started");
+  const [status, setStatus] = useState<TaskStatus>("success");
 
   const {
     data: tasksData,
     isFetching: isLoadingTasks,
     error: tasksError,
   } = useListTasksQuery({
-    limit: pageSize,
-    offset: page * pageSize,
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
     task,
     status,
   });
@@ -111,6 +113,10 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
           itemsLength={tasks.length}
           total={tasksData.total}
         />
+      </Flex>
+
+      <Flex>
+        <TaskStatusPicker value={status} onChange={setStatus} />
       </Flex>
 
       <table className={cx(AdminS.ContentTable, CS.mt2)}>
