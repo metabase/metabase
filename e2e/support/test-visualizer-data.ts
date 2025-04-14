@@ -4,8 +4,11 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers/api";
-import { createDataSourceNameRef } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
+import type {
+  VisualizerDataSourceId,
+  VisualizerDataSourceNameReference,
+} from "metabase-types/store/visualizer";
 
 type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
@@ -16,6 +19,14 @@ type NativeQuestionDetailsWithName = NativeQuestionDetails & {
 };
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+
+// Not using the one from "metabase/visualizer/utils"
+// because it creates a circular dependency
+function createDataSourceNameRef(
+  id: VisualizerDataSourceId,
+): VisualizerDataSourceNameReference {
+  return `$_${id}_name`;
+}
 
 export const ORDERS_COUNT_BY_CREATED_AT: StructuredQuestionDetailsWithName = {
   display: "line",
