@@ -14,16 +14,8 @@ import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
-import { Tooltip } from "metabase/ui";
+import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import type { Database, Task } from "metabase-types/api";
-
-import {
-  InfoIcon,
-  SectionControls,
-  SectionHeader,
-  SectionRoot,
-  SectionTitle,
-} from "./TasksApp.styled";
 
 type TasksAppProps = {
   children: ReactNode;
@@ -92,27 +84,29 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
   const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
 
   return (
-    <SectionRoot>
-      <SectionHeader>
-        <SectionTitle>
+    <Box pl="md">
+      <Flex align="center" justify="space-between">
+        <Flex align="center" gap="sm">
           <AdminHeader title={t`Troubleshooting logs`} />
-          <Tooltip
-            label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
-          >
-            <InfoIcon name="info" />
-          </Tooltip>
-        </SectionTitle>
-        <SectionControls>
-          <PaginationControls
-            onPreviousPage={() => handlePageChange(page - 1)}
-            onNextPage={() => handlePageChange(page + 1)}
-            page={page}
-            pageSize={50}
-            itemsLength={tasks.length}
-            total={tasksData.total}
-          />
-        </SectionControls>
-      </SectionHeader>
+
+          <Box c="text-medium" flex="0 0 auto">
+            <Tooltip
+              label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
+            >
+              <Icon name="info" />
+            </Tooltip>
+          </Box>
+        </Flex>
+
+        <PaginationControls
+          onPreviousPage={() => handlePageChange(page - 1)}
+          onNextPage={() => handlePageChange(page + 1)}
+          page={page}
+          pageSize={50}
+          itemsLength={tasks.length}
+          total={tasksData.total}
+        />
+      </Flex>
 
       <table className={cx(AdminS.ContentTable, CS.mt2)}>
         <thead>
@@ -157,7 +151,7 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
         // render 'children' so that the invididual task modals show up
         children
       }
-    </SectionRoot>
+    </Box>
   );
 };
 
