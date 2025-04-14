@@ -613,18 +613,18 @@
                     (m/indexed (lib/expressions query)))]
     (testing "correct expression are accepted silently"
       (are [mode expr] (nil? (lib.js/diagnose-expression query 0 mode expr js/undefined))
-        "expression"  #js ["/"   #js ["field" 1 nil] 100]
-        "aggregation" #js ["sum" #js ["field" 1 #js {:base-type "type/Integer"}]]
-        "filter"      #js ["="   #js ["field" 1 #js {:base-type "type/Integer"}] 3]))
+        "expression"  (lib/* (meta/field-metadata :venues :price) 100)
+        "aggregation" (lib/sum (meta/field-metadata :venues :price))
+        "filter"      (lib/=  (meta/field-metadata :venues :price) 3)))
     (testing "type errors are reported"
       (are [mode expr] (-> (lib.js/diagnose-expression query 0 mode expr js/undefined)
                            .-message
                            string?)
-        "expression"  #js ["/"   #js ["field" 1 #js {:base-type "type/Address"}] 100]))
+        "expression"  (lib/* (meta/field-metadata :people :address) 100)))
     (testing "circular definition"
       (is (= "Cycle detected: c → x → b → c"
              (-> (lib.js/diagnose-expression
-                  query 0 "expression" #js ["+" #js ["expression" "x"] 1] c-pos)
+                  query 0 "expression"  (lib/+ (lib/expression-ref query "x") 1) c-pos)
                  .-message))))))
 
 ;; TODO: This wants `=?` to work on JS values. See https://github.com/metabase/hawk/issues/24

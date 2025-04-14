@@ -1,5 +1,4 @@
 import * as Lib from "metabase-lib";
-import type { Expression } from "metabase-types/api";
 
 import { DiagnosticError } from "../errors";
 import type { StartRule } from "../types";
@@ -9,20 +8,20 @@ export function checkLibDiagnostics({
   query,
   stageIndex,
   startRule,
-  expression,
+  expressionClause,
   expressionIndex,
 }: {
   query: Lib.Query;
   stageIndex: number;
   startRule: StartRule;
-  expression: Expression;
+  expressionClause: Lib.ExpressionClause;
   expressionIndex?: number;
 }) {
   const error = Lib.diagnoseExpression(
     query,
     stageIndex,
     getExpressionMode(startRule),
-    expression,
+    expressionClause,
     expressionIndex,
   );
   if (error) {
