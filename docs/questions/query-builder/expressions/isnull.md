@@ -68,7 +68,7 @@ case(isnull([Feedback]), "Unknown feedback.", [Feedback])
 
 - In Metabase, you must combine `isnull` with another expression that accepts boolean arguments (i.e., `true` or `false`).
 - `isnull` only accepts one value at a time. If you need to deal with blank cells across multiple columns, see the [coalesce expression](./coalesce.md).
-- If `isnull` doesn't seem to do anything to your blank cells, you might have empty strings. Try the [`isempty` expression](./isempty.md) instead.
+- If `isnull` doesn't seem to do anything to your blank cells, you might have empty strings. Try the [`isEmpty` expression](./isempty.md) instead.
 
 ## Related functions
 
