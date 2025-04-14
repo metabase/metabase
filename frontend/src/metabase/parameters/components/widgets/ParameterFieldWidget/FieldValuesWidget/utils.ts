@@ -343,8 +343,7 @@ export function getOption(
 ): ComboboxItem | undefined {
   const value = Array.isArray(option) ? getValue(option) : option;
   const label = Array.isArray(option) ? getLabel(option) : undefined;
-
-  if (!value) {
+  if (value == null) {
     return undefined;
   }
 
