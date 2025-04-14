@@ -523,35 +523,25 @@
   "Writes pivoted data to the provided sheet as-is, without additional formatting applied."
   [^SXSSFSheet sheet pivot-output]
   (doseq [[row-idx row] (map-indexed vector pivot-output)]
-    (let [excel-row (.createRow sheet row-idx)]
+    (let [^SXSSFRow excel-row (.createRow ^SXSSFSheet sheet ^Integer row-idx)]
       (doseq [[col-idx value] (map-indexed vector row)]
-        (let [cell (.createCell excel-row col-idx)]
+        (let [^Cell cell (.createCell excel-row ^Integer col-idx)]
           (cond
-            ;; Handle NumericWrapper - extract and use the original number value
             (instance? metabase.formatter.NumericWrapper value)
             (.setCellValue cell (double (:num-value value)))
 
-            ;; Handle TextWrapper - extract the original value if it's a number/boolean
             (instance? metabase.formatter.TextWrapper value)
-            (let [original (:original-value value)]
-              (cond
-                (number? original) (.setCellValue cell (double original))
-                (boolean? original) (.setCellValue cell ^Boolean original)
-                :else (.setCellValue cell (str value))))
+            (.setCellValue cell ^String (:text-str value))
 
-            ;; Handle regular numbers
             (number? value)
             (.setCellValue cell (double value))
 
-            ;; Handle boolean values
             (boolean? value)
             (.setCellValue cell ^Boolean value)
 
-            ;; Handle nil values
             (nil? value)
             (.setBlank cell)
 
-            ;; For all other types, convert to string
             :else
             (.setCellValue cell (str value))))))))
 
@@ -610,84 +600,6 @@
         qp.pivot.postprocess/add-pivot-measures
         (assoc :aggregation-functions agg-fns)
         (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key titles)))))
-
-;; Below, we need to provide an AreaReference to create a pivot table.
-;; Creating an AreaReference will 'realize' every CellReference inside it, and so the larger the AreaReference,
-;; the more memory we use, and the larger the filesize.
-;; Unfortunately, we can't avoid this, so we try to only create a reference that matches the row count, which we can
-;; only estimate using fingerprint distinct counts (which cannot be guaranteed correct).
-;; So, by default we use some large number as a basis.
-;; We have to set the min Inflate Ratio lower than the default's 0.01 because otherwise we get a 'zip bomb detected' error.
-;; Since we're the ones creating the file, we can lower the ratio to get what we want.
-(ZipSecureFile/setMinInflateRatio 0.001)
-(defn- init-native-pivot
-  [{:keys [pivot-grouping-key column-sort-order] :as pivot-spec}
-   {:keys [ordered-cols col-settings viz-settings format-rows?]}]
-  (let [idx-shift                   (fn [indices]
-                                      (map (fn [idx]
-                                             (if (> idx pivot-grouping-key)
-                                               (dec idx)
-                                               idx)) indices))
-        ordered-cols                (vec (m/remove-nth pivot-grouping-key ordered-cols))
-        pivot-rows                  (idx-shift (:pivot-rows pivot-spec))
-        pivot-cols                  (idx-shift (:pivot-cols pivot-spec))
-        pivot-measures              (idx-shift (:pivot-measures pivot-spec))
-        ;; for now, these are unused, since the rows from qp.pivot will already contain their aggregated values
-        _aggregation-functions      (vec (m/remove-nth pivot-grouping-key (:aggregation-functions pivot-spec)))
-        wb                          (spreadsheet/create-workbook
-                                     "pivot" [[]]
-                                     "data" [])
-        data-format                 (. ^XSSFWorkbook wb createDataFormat)
-        cell-styles                 (compute-column-cell-styles wb data-format viz-settings ordered-cols format-rows?)
-        typed-cell-styles           (compute-typed-cell-styles wb data-format)
-        data-sheet                  (spreadsheet/select-sheet "data" wb)
-        pivot-sheet                 (spreadsheet/select-sheet "pivot" wb)
-        col-names                   (streaming.common/column-titles ordered-cols col-settings format-rows?)
-        _                           (add-row! data-sheet col-names ordered-cols col-settings cell-styles typed-cell-styles)
-        ;; keep the initial area-ref small (only 2 rows) so that adding row and column labels keeps the pivot table
-        ;; object small.
-        area-ref                    (AreaReference.
-                                     (format "A1:%s2" (CellReference/convertNumToColString (dec (count ordered-cols))))
-                                     SpreadsheetVersion/EXCEL2007)
-        ^XSSFPivotTable pivot-table (.createPivotTable ^XSSFSheet pivot-sheet
-                                                       ^AreaReference area-ref
-                                                       (CellReference. 0 0)
-                                                       ^XSSFSheet data-sheet)]
-    (doseq [idx pivot-rows]
-      (.addRowLabel pivot-table idx))
-    (doseq [idx pivot-cols]
-      (.addColLabel pivot-table idx))
-    (doseq [idx pivot-measures]
-      ;; Really this should be doing (get _aggregation-functions idx) in place of the hard coded SUM function
-      ;; But since QP sends us pre-aggregated data we can't use excel's innate aggregation functions
-      (let [col-name (or (not-empty (nth col-names idx))
-                         (get-in ordered-cols [idx :display_name]))]
-        (.addColumnLabel pivot-table DataConsolidateFunction/SUM idx col-name)))
-    (doseq [[idx sort-setting] column-sort-order]
-      (let [setting (case sort-setting
-                      :ascending  STFieldSortType/ASCENDING
-                      :descending STFieldSortType/DESCENDING)]
-        (when setting
-          (-> pivot-table
-              .getCTPivotTableDefinition
-              .getPivotFields
-              (.getPivotFieldArray idx)
-              (.setSortType setting)))))
-    ;; now that the Pivot Table Rows and Cols are set, we can update the area-ref
-    (-> pivot-table
-        .getPivotCacheDefinition
-        .getCTPivotCacheDefinition
-        .getCacheSource
-        .getWorksheetSource
-        (.setRef (format "A:%s" (CellReference/convertNumToColString (dec (count ordered-cols))))))
-    (let [swb   (-> (SXSSFWorkbook. ^XSSFWorkbook wb)
-                    (doto (.setCompressTempFiles true)))
-          sheet (spreadsheet/select-sheet "data" swb)]
-      (doseq [i (range (count ordered-cols))]
-        (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
-      (setup-header-row! sheet (count ordered-cols))
-      {:workbook swb
-       :sheet    sheet})))
 
 (defn- init-workbook
   [{:keys [ordered-cols col-settings format-rows?]}]
