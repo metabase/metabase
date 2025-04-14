@@ -5,6 +5,7 @@ import type {
   FieldValue,
   GetFieldRequest,
   GetFieldValuesResponse,
+  GetRemappedFieldValueRequest,
   SearchFieldValuesRequest,
   UpdateFieldRequest,
   UpdateFieldValuesRequest,
@@ -17,6 +18,7 @@ import {
   listTag,
   provideFieldTags,
   provideFieldValuesTags,
+  provideRemappedFieldValuesTags,
   tag,
 } from "./tags";
 
@@ -37,13 +39,26 @@ export const fieldApi = Api.injectEndpoints({
       }),
       providesTags: (_, error, fieldId) => provideFieldValuesTags(fieldId),
     }),
+    getRemappedFieldValue: builder.query<
+      FieldValue,
+      GetRemappedFieldValueRequest
+    >({
+      query: ({ fieldId, remappedFieldId, ...params }) => ({
+        method: "GET",
+        url: `/api/field/${fieldId}/remapping/${remappedFieldId}`,
+        params,
+      }),
+      providesTags: (_response, _error, { fieldId, remappedFieldId }) =>
+        provideRemappedFieldValuesTags(fieldId, remappedFieldId),
+    }),
     searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
       query: ({ fieldId, searchFieldId, ...params }) => ({
         method: "GET",
         url: `/api/field/${fieldId}/search/${searchFieldId}`,
         params,
       }),
-      providesTags: (_, error, { fieldId }) => provideFieldValuesTags(fieldId),
+      providesTags: (_response, _error, { fieldId, searchFieldId }) =>
+        provideRemappedFieldValuesTags(fieldId, searchFieldId),
     }),
     updateField: builder.mutation<Field, UpdateFieldRequest>({
       query: ({ id, ...body }) => ({
@@ -107,6 +122,7 @@ export const fieldApi = Api.injectEndpoints({
 export const {
   useGetFieldQuery,
   useGetFieldValuesQuery,
+  useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,
   useUpdateFieldMutation,
   useUpdateFieldValuesMutation,

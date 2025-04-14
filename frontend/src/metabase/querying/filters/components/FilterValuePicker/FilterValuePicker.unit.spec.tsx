@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupFieldSearchValuesEndpoint,
-  setupFieldValuesEndpoints,
+  setupFieldValuesEndpoint,
+  setupRemappedFieldValueEndpoint,
 } from "__support__/server-mocks";
 import {
   createMockClipboardData,
@@ -18,7 +19,11 @@ import {
   columnFinder,
   createQuery,
 } from "metabase-lib/test-helpers";
-import type { FieldId, GetFieldValuesResponse } from "metabase-types/api";
+import type {
+  FieldId,
+  FieldValue,
+  GetFieldValuesResponse,
+} from "metabase-types/api";
 import {
   createMockFieldDimension,
   createMockFieldValues,
@@ -47,6 +52,7 @@ interface SetupOpts<T> {
   searchFieldId?: FieldId;
   fieldValues?: GetFieldValuesResponse;
   searchValues?: Record<string, GetFieldValuesResponse>;
+  remappedValues?: Record<string, FieldValue>;
 }
 
 async function setupStringPicker({
@@ -58,11 +64,12 @@ async function setupStringPicker({
   searchFieldId = fieldId,
   fieldValues,
   searchValues = {},
+  remappedValues = {},
 }: SetupOpts<string>) {
   const onChange = jest.fn();
 
   if (fieldValues) {
-    setupFieldValuesEndpoints(fieldValues);
+    setupFieldValuesEndpoint(fieldValues);
   }
   if (fieldId != null && searchFieldId != null) {
     Object.entries(searchValues).forEach(([value, response]) => {
@@ -71,6 +78,14 @@ async function setupStringPicker({
         searchFieldId,
         value,
         response.values,
+      );
+    });
+    Object.entries(remappedValues).forEach(([value, fieldValue]) => {
+      setupRemappedFieldValueEndpoint(
+        fieldId,
+        searchFieldId,
+        value,
+        fieldValue,
       );
     });
   }
@@ -100,7 +115,7 @@ async function setupNumberPicker({
   const onChange = jest.fn();
 
   if (fieldValues) {
-    setupFieldValuesEndpoints(fieldValues);
+    setupFieldValuesEndpoint(fieldValues);
   }
 
   const { rerender } = renderWithProviders(
@@ -604,6 +619,9 @@ describe("StringFilterValuePicker", () => {
             values: [["a", "a@metabase.test"]],
           }),
         },
+        remappedValues: {
+          b: ["b", "b@metabase.test"],
+        },
       });
 
       await userEvent.type(
@@ -648,6 +666,9 @@ describe("StringFilterValuePicker", () => {
             values: [["a", "a@metabase.test"]],
           }),
         },
+        remappedValues: {
+          b: ["b", "b@metabase.test"],
+        },
       });
 
       await userEvent.type(
@@ -677,9 +698,7 @@ describe("StringFilterValuePicker", () => {
 
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
       await userEvent.click(await screen.findByText("a@metabase.test"));
-      // await waitFor(() =>
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
-      // );
     });
 
     it("should allow free-form input without waiting for search results", async () => {

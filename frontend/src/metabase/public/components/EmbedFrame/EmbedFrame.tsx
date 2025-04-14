@@ -24,6 +24,7 @@ import type { DisplayTheme } from "metabase/public/lib/types";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box } from "metabase/ui";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
@@ -46,7 +47,6 @@ import {
   DashboardTabsContainer,
   Footer,
   Header,
-  ParametersWidgetContainer,
   Root,
   Separator,
   TitleAndButtonsContainer,
@@ -216,15 +216,16 @@ export const EmbedFrame = ({
 
         <span ref={parameterPanelRef} />
         {hasVisibleParameters && (
-          <ParametersWidgetContainer
-            className={cx({
+          <FullWidthContainer
+            className={cx(EmbedFrameS.ParameterPanel, {
               [TransitionS.transitionThemeChange]:
                 shouldApplyParameterPanelThemeChangeTransition,
+              [EmbedFrameS.IsSticky]: isParameterPanelSticky,
+              [cx(CS.z3, CS.wFull, EmbedFrameS.AllowSticky)]:
+                allowParameterPanelSticky,
             })}
-            embedFrameTheme={theme}
-            allowSticky={allowParameterPanelSticky}
-            isSticky={isParameterPanelSticky}
             data-testid="dashboard-parameters-widget-container"
+            py="0.5rem"
           >
             <FixedWidthContainer
               className={DashboardS.ParametersFixedWidthContainer}
@@ -250,7 +251,7 @@ export const EmbedFrame = ({
               />
               {dashboard && <FilterApplyButton />}
             </FixedWidthContainer>
-          </ParametersWidgetContainer>
+          </FullWidthContainer>
         )}
         <Body>{children}</Body>
       </ContentContainer>

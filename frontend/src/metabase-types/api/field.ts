@@ -159,6 +159,12 @@ export interface SearchFieldValuesRequest {
   limit: number;
 }
 
+export interface GetRemappedFieldValueRequest {
+  fieldId: FieldId;
+  remappedFieldId: FieldId;
+  value: string;
+}
+
 export interface CreateFieldDimensionRequest {
   id: FieldId;
   type: FieldDimensionType;

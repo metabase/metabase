@@ -284,6 +284,9 @@ export function provideDatabaseTags(
 ): TagDescription<TagType>[] {
   return [
     idTag("database", database.id),
+    ...(database.router_database_id
+      ? [idTag("database", database.router_database_id)]
+      : []),
     ...(database.tables ? provideTableListTags(database.tables) : []),
   ];
 }
@@ -376,6 +379,16 @@ export function provideFieldDimensionTags(
 
 export function provideFieldValuesTags(id: FieldId): TagDescription<TagType>[] {
   return [idTag("field-values", id)];
+}
+
+export function provideRemappedFieldValuesTags(
+  id: FieldId,
+  searchFieldId: FieldId,
+): TagDescription<TagType>[] {
+  return [
+    ...provideFieldValuesTags(id),
+    ...provideFieldValuesTags(searchFieldId),
+  ];
 }
 
 export function provideNotificationListTags(
