@@ -363,7 +363,9 @@ export function getFieldsRemappingInfo(fields: (Field | null)[]) {
     field.id !== searchField.id
   ) {
     return {
+      field,
       fieldId: field.id,
+      searchField,
       searchFieldId: searchField.id,
     };
   } else {

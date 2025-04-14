@@ -628,7 +628,9 @@ function getNothingFoundMessage({
     return undefined;
   }
   if (fields.length === 1 && fields[0] != null) {
-    return t`No matching ${fields[0]?.display_name} found.`;
+    const remappingInfo = getFieldsRemappingInfo(fields);
+    const searchField = remappingInfo?.searchField ?? fields[0];
+    return t`No matching ${searchField?.display_name} found.`;
   } else {
     return t`No matching result`;
   }
