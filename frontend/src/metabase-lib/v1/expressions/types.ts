@@ -73,4 +73,3 @@ export type MBQLClauseFunctionConfig = {
 
   validator?: (...args: any) => string | undefined;
 };
-export type MBQLClauseMap = Record<string, MBQLClauseFunctionConfig>;
