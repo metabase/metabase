@@ -56,7 +56,7 @@ H.describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
         cy.wait("@datasetQuery");
 
-        cy.findByTestId("question-row-count").findByText("Showing 6 rows");
+        cy.findByTestId("question-row-count").findByText("Showing 7 rows");
 
         cy.findByTestId("qb-header").findByText("Save").click();
 
