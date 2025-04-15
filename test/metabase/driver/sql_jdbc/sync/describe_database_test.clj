@@ -4,9 +4,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
@@ -261,19 +259,7 @@
                        "query has been aborted"
                        "Query cancelled on user's request"
                        "Query cancelled on user's request"]]
-    (is (sql-jdbc.describe-database/timeout-exception? (Exception. msg)) (str "not recognized: " msg)))
-  (mt/test-driver :postgres
-    (mt/dataset test-data
-      (let [spec (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))
-            sql "select pg_sleep(5)"]
-        (with-open [conn (jdbc/get-connection spec)
-                    stmt (sql-jdbc.sync.common/prepare-statement :postgres conn sql [])]
-          (try (doto stmt
-                 (.setQueryTimeout 1)
-                 (.execute))
-               (is false "Query successfully executed")
-               (catch Exception e
-                 (is (sql-jdbc.describe-database/timeout-exception? e)))))))))
+    (is (sql-jdbc.describe-database/timeout-exception? (Exception. msg)) (str "not recognized: " msg))))
 
 ;;; TODO: fix and change this to test on (mt/sql-jdbc-drivers)
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
