@@ -73,7 +73,7 @@ export interface MetabaseProviderProps
 
   /**
    * Defines the display language. Accepts an ISO language code such as `en` or `de`.
-   * Defaults to the instance locale. Does not support country code suffixes (i.e. `en-US`)
+   * Defaults to the instance locale.
    **/
   locale?: string;
 
