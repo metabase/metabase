@@ -1,4 +1,4 @@
-import type { Location, Query } from "history";
+import type { Action, Location, Query } from "history";
 import { useCallback, useMemo } from "react";
 import { push, replace } from "react-router-redux";
 import { useEffectOnce } from "react-use";
@@ -16,7 +16,10 @@ export type UrlStateConfig<State extends BaseState> = {
 };
 
 type UrlStateActions<State extends BaseState> = {
-  patchUrlState: (patch: Partial<State>, mode?: "push" | "replace") => void;
+  patchUrlState: (
+    patch: Partial<State>,
+    action?: Extract<Action, "PUSH" | "REPLACE">,
+  ) => void;
 };
 
 /**
@@ -31,17 +34,17 @@ export function useUrlState<State extends BaseState>(
   const state = useMemo(() => parse(location.query), [parse, location.query]);
 
   const patchUrlState: UrlStateActions<State>["patchUrlState"] = useCallback(
-    (patch, mode = "push") => {
+    (patch, action = "PUSH") => {
       const state = parse(location.query);
       const newState = { ...state, ...patch };
       const query = serialize(newState);
       const newLocation = { ...location, query };
 
-      match(mode)
-        .with("push", () => {
+      match(action)
+        .with("PUSH", () => {
           dispatch(push(newLocation));
         })
-        .with("replace", () => {
+        .with("REPLACE", () => {
           dispatch(replace(newLocation));
         })
         .exhaustive();
@@ -50,7 +53,7 @@ export function useUrlState<State extends BaseState>(
   );
 
   useEffectOnce(function cleanInvalidQueryParams() {
-    patchUrlState(state, "replace");
+    patchUrlState(state, "REPLACE");
   });
 
   return [state, { patchUrlState }];
