@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useMount, usePrevious, useUnmount } from "react-use";
+import { useMount, usePrevious } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -186,12 +186,6 @@ export const FieldValuesWidgetInner = forwardRef<
     }
   }, [width, previousWidth]);
 
-  const _cancel = useRef<null | (() => void)>(null);
-
-  useUnmount(() => {
-    _cancel?.current?.();
-  });
-
   const fetchValues = async (query?: string) => {
     setLoadingState("LOADING");
     setOptions([]);
@@ -317,10 +311,6 @@ export const FieldValuesWidgetInner = forwardRef<
   );
 
   const _search = (value: string) => {
-    if (_cancel.current) {
-      _cancel.current();
-    }
-
     search.current(value);
   };
 
