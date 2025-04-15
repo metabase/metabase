@@ -1,0 +1,65 @@
+/* Styling CodeMirror to look like Mantine inputs */
+.templateEditor {
+  :global(.cm-editor) {
+    border: 1px solid var(--mb-color-border);
+    border-radius: var(--mantine-radius-sm);
+    background-color: var(--mb-color-bg-white);
+    padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+    transition:
+      border-color 100ms ease,
+      box-shadow 100ms ease;
+    font-family: var(--mantine-font-family);
+    color: var(--mb-color-text-dark);
+    font-size: var(--mantine-font-size-md);
+  }
+
+  :global(.cm-editor.cm-focused) {
+    border-color: var(--mb-color-brand);
+    outline: none;
+  }
+
+  :global(.cm-content) {
+    padding: 0;
+    caret-color: var(--mb-color-text-dark);
+    cursor: text;
+  }
+
+  :global(.cm-line) {
+    padding: 0;
+  }
+
+  :global(.cm-placeholder) {
+    color: var(--mb-color-text-light);
+  }
+
+  &.textInputVariant {
+    :global(.cm-editor) {
+      padding: 0 var(--mantine-spacing-sm);
+      min-height: 2.5rem;
+      height: auto;
+      line-height: calc(2.5rem - 2px);
+    }
+    :global(.cm-content) {
+      line-height: calc(2.5rem - 2px);
+    }
+    :global(.cm-scroller) {
+      overflow-x: hidden;
+      overflow-y: hidden;
+      display: flex;
+      align-items: center;
+    }
+    :global(.cm-gutters) {
+      display: none;
+    }
+  }
+
+  &.hasError {
+    :global(.cm-editor) {
+      border-color: var(--mb-color-error);
+    }
+
+    :global(.cm-editor.cm-focused) {
+      border-color: var(--mb-color-error);
+    }
+  }
+}

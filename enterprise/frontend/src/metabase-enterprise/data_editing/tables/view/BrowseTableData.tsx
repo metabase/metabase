@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useGetTableDataQuery, useGetTableQuery } from "metabase/api";
 import Link from "metabase/core/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { TableNotificationsTrigger } from "metabase/notifications/modals/TableNotificationsModals/TableNotificationsTrigger";
+import { TableNotificationsTrigger } from "metabase/notifications/modals";
 import { closeNavbar } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
