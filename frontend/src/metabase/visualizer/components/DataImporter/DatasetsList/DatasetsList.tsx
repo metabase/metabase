@@ -24,10 +24,30 @@ function shouldIncludeDashboardQuestion(
 }
 
 interface DatasetsListProps {
+  /**
+   * The search term to filter datasets.
+   */
   search: string;
+
+  /**
+   * Callback function to handle mouse over event on a dataset.
+   * @param datasetId the dataset id
+   * @param willAdd whether the dataset will be added or swapped
+   */
+  onDatasetMouseOver?: (datasetId: `card:${number}`, willAdd?: boolean) => void;
+
+  /**
+   * Callback function to handle mouse out event on a dataset.
+   * @param datasetId the dataset id
+   */
+  onDatasetMouseOut?: (datasetId: `card:${number}`) => void;
 }
 
-export function DatasetsList({ search }: DatasetsListProps) {
+export function DatasetsList({
+  search,
+  onDatasetMouseOut,
+  onDatasetMouseOver,
+}: DatasetsListProps) {
   const dashboardId = useSelector(getDashboard)?.id;
   const dispatch = useDispatch();
   const dataSources = useSelector(getDataSources);
@@ -124,6 +144,10 @@ export function DatasetsList({ search }: DatasetsListProps) {
           onAdd={onAdd}
           onRemove={onRemove}
           selected={dataSourceIds.has(item.id)}
+          onMouseOver={() => onDatasetMouseOver?.(item.id)}
+          onMouseOut={() => onDatasetMouseOut?.(item.id)}
+          onAddMouseOver={() => onDatasetMouseOver?.(item.id, true)}
+          onAddMouseOut={() => onDatasetMouseOut?.(item.id)}
         />
       ))}
     </Flex>
