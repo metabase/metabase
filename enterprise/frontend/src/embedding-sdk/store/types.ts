@@ -13,6 +13,7 @@ import type {
   MetabaseFetchRequestTokenFn,
 } from "embedding-sdk/types/refresh-token";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
+import type { LoginStatus } from "embedding-sdk/types/user";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
@@ -20,26 +21,6 @@ export type EmbeddingSessionTokenState = {
   loading: boolean;
   error: SerializedError | null;
 };
-
-type LoginStatusUninitialized = {
-  status: "uninitialized";
-};
-type LoginStatusSuccess = {
-  status: "success";
-};
-type LoginStatusLoading = {
-  status: "loading";
-};
-export type LoginStatusError = {
-  status: "error";
-  error: Error;
-};
-
-export type LoginStatus =
-  | LoginStatusUninitialized
-  | LoginStatusSuccess
-  | LoginStatusLoading
-  | LoginStatusError;
 
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 

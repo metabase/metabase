@@ -19,26 +19,32 @@ export * from "./hooks/public";
 export * from "./components/public";
 
 export type {
-  CollectionItem,
   CustomDashboardCardMenuItem,
   DashCardMenuItem,
   DashboardCardCustomMenuItem,
   DashboardCardMenuCustomElement,
   EntityTypeFilterKeys,
   IconName,
+  LoginStatus,
   MetabaseAuthConfig,
   MetabaseClickActionPluginsConfig,
   MetabaseClickAction,
+  MetabaseCollection,
+  MetabaseCollectionItem,
   MetabaseDataPointObject,
+  MetabaseDashboard,
   MetabaseDashboardPluginsConfig,
   MetabasePluginsConfig,
   MetabaseQuestion,
+  MetabaseUser,
   SdkCollectionId,
   SdkDashboardId,
   SdkDashboardLoadEvent,
+  SdkEntityId,
   SdkEventHandlersConfig,
   SdkQuestionId,
   SdkQuestionTitleProps,
+  SdkUserId,
   SqlParameterValues,
 } from "./types";
 
@@ -52,5 +58,3 @@ export type {
   MetabaseColors,
   MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";
-
-export type { Dashboard as MetabaseDashboard } from "metabase-types/api";
