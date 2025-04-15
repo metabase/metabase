@@ -1,10 +1,17 @@
 import { match } from "ts-pattern";
 
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_AI_ANALYSIS } from "metabase/plugins";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar";
 import TimelineSidebar from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
 import * as Lib from "metabase-lib";
+
+const getIsExplainSidebarVisible = (state) =>
+  state.plugins?.aiAnalysisPlugin?.isExplainSidebarVisible || false;
+
+const MetabotExplainSidebar = PLUGIN_AI_ANALYSIS.ExplainSidebar;
 
 export const StructuredQueryRightSidebar = ({
   deselectTimelineEvents,
@@ -26,14 +33,25 @@ export const StructuredQueryRightSidebar = ({
   updateQuestion,
   visibleTimelineEventIds,
   xDomain,
-}) =>
-  match({
+}) => {
+  const isShowingMetabotExplainSidebar = useSelector(
+    getIsExplainSidebarVisible,
+  );
+
+  return match({
     isSaved: question.isSaved(),
     isShowingSummarySidebar,
     isShowingTimelineSidebar,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
+    isShowingMetabotExplainSidebar,
   })
+    .with(
+      {
+        isShowingMetabotExplainSidebar: true,
+      },
+      () => <MetabotExplainSidebar />,
+    )
     .with(
       {
         isShowingSummarySidebar: true,
@@ -89,3 +107,4 @@ export const StructuredQueryRightSidebar = ({
       () => <QuestionSettingsSidebar question={question} />,
     )
     .otherwise(() => null);
+};
