@@ -26,7 +26,7 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
 function parsePage(param: QueryParam): UrlState["page"] {
   const value = Array.isArray(param) ? param[0] : param;
   const parsed = parseInt(value || "0", 10);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 function parseTask(param: QueryParam): UrlState["task"] {
