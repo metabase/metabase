@@ -1,11 +1,13 @@
 import { KBarContext, useRegisterActions } from "kbar";
 import { type DependencyList, useContext } from "react";
 
-import { shortcuts } from "../shortcuts";
+import { trackSimpleEvent } from "metabase/lib/analytics";
+
+import { type KeyboardShortcutId, shortcuts } from "../shortcuts";
 import type { ShortcutAction } from "../types";
 
 export type RegisterShortcutProps = {
-  id: keyof typeof shortcuts;
+  id: KeyboardShortcutId;
   perform: () => void;
 } & Partial<ShortcutAction>;
 
@@ -22,16 +24,25 @@ export const useRegisterShortcut = (
   const ctx = useContext(KBarContext);
 
   const actions = ctx.query
-    ? shortcutsToRegister.map(({ id, ...rest }) => {
+    ? shortcutsToRegister.map(({ id, perform, ...rest }) => {
         const shortcutDef = shortcuts[id];
 
         if (shortcutDef === undefined) {
           throw Error(`Unrecgonized shortcut id ${id}`);
         }
 
+        const wrappedPerform = () => {
+          perform();
+          trackSimpleEvent({
+            event: "keyboard_shortcut_performed",
+            event_detail: id,
+          });
+        };
+
         return {
           ...shortcutDef,
           id,
+          perform: wrappedPerform,
           ...rest,
         };
       })
