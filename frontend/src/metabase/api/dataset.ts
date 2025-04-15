@@ -2,11 +2,17 @@ import type {
   CardQueryMetadata,
   Dataset,
   DatasetQuery,
+  GetParameterValuesRequest,
+  GetParameterValuesResponse,
   NativeDatasetResponse,
+  SearchParameterValuesRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { provideAdhocQueryMetadataTags } from "./tags";
+import {
+  provideAdhocQueryMetadataTags,
+  provideParameterValuesTags,
+} from "./tags";
 
 export const datasetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -33,6 +39,30 @@ export const datasetApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getParameterValues: builder.query<
+      GetParameterValuesResponse,
+      GetParameterValuesRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/dataset/parameter/values",
+        body,
+      }),
+      providesTags: (_data, _error, { parameter }) =>
+        provideParameterValuesTags(parameter.id),
+    }),
+    searchParameterValues: builder.query<
+      GetParameterValuesResponse,
+      SearchParameterValuesRequest
+    >({
+      query: ({ query, ...body }) => ({
+        method: "POST",
+        url: `/api/dataset/parameter/search/${encodeURIComponent(query)}`,
+        body,
+      }),
+      providesTags: (_data, _error, { parameter }) =>
+        provideParameterValuesTags(parameter.id),
+    }),
   }),
 });
 
@@ -40,4 +70,8 @@ export const {
   useGetAdhocQueryQuery,
   useGetAdhocQueryMetadataQuery,
   useGetNativeDatasetQuery,
+  useGetParameterValuesQuery,
+  useLazyGetParameterValuesQuery,
+  useSearchParameterValuesQuery,
+  useLazySearchParameterValuesQuery,
 } = datasetApi;
