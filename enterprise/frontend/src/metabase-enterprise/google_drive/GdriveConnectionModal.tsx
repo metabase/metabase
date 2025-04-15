@@ -30,6 +30,7 @@ import {
 import Styles from "./Gdrive.module.css";
 import { getStrings } from "./GdriveConnectionModal.strings";
 import { trackSheetImportClick } from "./analytics";
+import { getStatus } from "./utils";
 
 export function GdriveConnectionModal({
   isModalOpen,
@@ -43,13 +44,9 @@ export function GdriveConnectionModal({
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery();
 
-  const { data: gSheetData } = useGetGsheetsFolderQuery();
+  const { data: gSheetData, error } = useGetGsheetsFolderQuery();
 
-  if (!gSheetData) {
-    return null;
-  }
-
-  const { status, url } = gSheetData;
+  const status = getStatus({ status: gSheetData?.status, error });
 
   return (
     isModalOpen &&
@@ -57,7 +54,7 @@ export function GdriveConnectionModal({
       <GoogleSheetsConnectModal
         onClose={onClose}
         serviceAccountEmail={serviceAccountEmail ?? "email not found"}
-        folderUrl={url ?? ""}
+        folderUrl={gSheetData?.url ?? ""}
       />
     ) : (
       <GoogleSheetsDisconnectModal onClose={onClose} reconnect={reconnect} />
@@ -292,6 +289,21 @@ function GoogleSheetsDisconnectModal({
   );
 }
 
+const MaybeLink = ({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) =>
+  href ? (
+    <ExternalLink href={href} target="_blank" className={Styles.plainLink}>
+      {children}
+    </ExternalLink>
+  ) : (
+    <Box>{children}</Box>
+  );
+
 const DriveConnectionDisplay = ({
   folderUrl,
   userName,
@@ -301,7 +313,7 @@ const DriveConnectionDisplay = ({
   userName: string;
   relativeConnectionTime: string;
 }) => (
-  <ExternalLink href={folderUrl} target="_blank" className={Styles.plainLink}>
+  <MaybeLink href={folderUrl}>
     <Flex
       bg="bg-light"
       w="100%"
@@ -312,10 +324,12 @@ const DriveConnectionDisplay = ({
       <Icon name="google_drive" mt="xs" />
       <Box>
         <Text fw="bold">{t`Google Drive connected`}</Text>
-        <Text c="text-medium" fz="sm" lh="140%">
-          {t`Connected by ${userName} ${relativeConnectionTime}`}
-        </Text>
+        {!!userName && (
+          <Text c="text-medium" fz="sm" lh="140%">
+            {t`Connected by ${userName} ${relativeConnectionTime}`}
+          </Text>
+        )}
       </Box>
     </Flex>
-  </ExternalLink>
+  </MaybeLink>
 );

@@ -6,11 +6,11 @@ import { Button, Flex, Icon, Menu, Text } from "metabase/ui";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 
 import { trackSheetConnectionClick } from "./analytics";
-import { useShowGdrive } from "./utils";
+import { getStatus, useShowGdrive } from "./utils";
 
 export function GdriveSidebarMenuItem({ onClick }: { onClick: () => void }) {
   const showGdrive = useShowGdrive();
-  const { data: folder } = useGetGsheetsFolderQuery(
+  const { data: folder, error } = useGetGsheetsFolderQuery(
     !showGdrive ? skipToken : undefined,
     { refetchOnMountOrArgChange: 5 },
   );
@@ -19,7 +19,7 @@ export function GdriveSidebarMenuItem({ onClick }: { onClick: () => void }) {
     return null;
   }
 
-  const status = folder?.status || "not-connected";
+  const status = getStatus({ status: folder?.status, error });
 
   const handleClick = () => {
     trackSheetConnectionClick({ from: "left-nav" });
@@ -33,6 +33,7 @@ export function GdriveSidebarMenuItem({ onClick }: { onClick: () => void }) {
     .otherwise(() => t`Google Sheets`);
 
   const helperText = match(status)
+    .with("error", () => t`Connection error`)
     .with("not-connected", () => null)
     .with("syncing", () => t`Syncing files...`)
     .with("active", () => t`Connected`)
@@ -51,7 +52,7 @@ export function GdriveSidebarMenuItem({ onClick }: { onClick: () => void }) {
               {buttonText}
             </Text>
             {helperText && (
-              <Text size="sm" c="text-medium">
+              <Text size="sm" c={status === "error" ? "error" : "text-medium"}>
                 {helperText}
               </Text>
             )}

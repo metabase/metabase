@@ -12,7 +12,7 @@ import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type { DatabaseId, GdrivePayload } from "metabase-types/api";
 
 import { SYNC_POLL_INTERVAL } from "./constants";
-import { useShowGdrive } from "./utils";
+import { getStatus, useShowGdrive } from "./utils";
 
 type GsheetsStatus = GdrivePayload["status"];
 type ErrorPayload = { data?: { message: string } };
@@ -30,15 +30,7 @@ export const GdriveSyncStatus = () => {
   const currentUser = useSelector(getCurrentUser);
   const isCurrentUser = currentUser?.id === gdriveFolder?.created_by_id;
 
-  const status = match({
-    apiStatus: gdriveFolder?.status,
-    folderSyncError: !!apiError,
-  })
-    .returnType<GsheetsStatus>()
-    .with({ folderSyncError: true }, () => "error")
-    .with({ apiStatus: "active" }, () => "active")
-    .with({ apiStatus: "syncing" }, () => "syncing")
-    .otherwise(() => "not-connected");
+  const status = getStatus({ status: gdriveFolder?.status, error: apiError });
 
   const previousStatus = usePrevious(status);
 

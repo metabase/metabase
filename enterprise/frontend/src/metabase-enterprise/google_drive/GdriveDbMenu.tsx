@@ -12,7 +12,7 @@ import {
 
 import { GdriveConnectionModal } from "./GdriveConnectionModal";
 import { trackSheetConnectionClick } from "./analytics";
-import { useShowGdrive } from "./utils";
+import { getStatus, useShowGdrive } from "./utils";
 
 export function GdriveDbMenu() {
   const [showModal, setShowModal] = useState(false);
@@ -29,7 +29,7 @@ export function GdriveDbMenu() {
 
   const showMenu = showGdrive && isDwh;
 
-  const { data: folderInfo } = useGetGsheetsFolderQuery(
+  const { data: folderInfo, error: folderError } = useGetGsheetsFolderQuery(
     showMenu ? undefined : skipToken,
   );
 
@@ -37,7 +37,7 @@ export function GdriveDbMenu() {
     return null;
   }
 
-  const status = folderInfo?.status || "not-connected";
+  const status = getStatus({ status: folderInfo?.status, error: folderError });
 
   if (status === "not-connected") {
     return (
@@ -119,13 +119,20 @@ function SyncNowButton({ disabled }: { disabled: boolean }) {
 }
 
 function MenuSyncStatus() {
-  const { data: folderInfo } = useGetGsheetsFolderQuery(undefined, {
-    refetchOnMountOrArgChange: 5,
+  const { data: folderInfo, error: folderError } = useGetGsheetsFolderQuery(
+    undefined,
+    {
+      refetchOnMountOrArgChange: 5,
+    },
+  );
+
+  const folderStatus = getStatus({
+    status: folderInfo?.status,
+    error: folderError,
   });
 
   const lastSync = folderInfo?.last_sync_at;
   const nextSync = folderInfo?.next_sync_at;
-  const folderStatus = folderInfo?.status;
 
   const lastSyncRelative = lastSync ? dayjs.unix(lastSync).fromNow() : null;
 
@@ -135,6 +142,17 @@ function MenuSyncStatus() {
   const nextSyncRelative = !nextSyncOverDue
     ? dayjs.unix(nextSync).fromNow()
     : t`soon` + "™";
+
+  if (folderStatus === "error") {
+    return (
+      <Flex align="center" gap="md">
+        <Icon name="warning" c="error" />
+        <Text fz="sm" c="error">
+          {t`Error syncing`}
+        </Text>
+      </Flex>
+    );
+  }
 
   return (
     <>
