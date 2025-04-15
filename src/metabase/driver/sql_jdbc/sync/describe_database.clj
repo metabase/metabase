@@ -86,8 +86,8 @@
     ;; during expansion of`.
     (or (instance? java.sql.SQLTimeoutException e)
         (boolean (some (fn [re] (re-find re msg))
-                       [ ;; Common timeout-related messages across different DBs
-                        #"(?i)timed?\s*(?:out|exceeded)"
+                       ;; Common timeout-related messages across different DBs
+                       [#"(?i)timed?\s*(?:out|exceeded)"
                         #"(?i)cancel(l)*(ed|ing|ation)"
                         #"(?i)execution abort(ed)?"
                         #"(?i)statement timeout"
