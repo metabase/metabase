@@ -1,5 +1,6 @@
 import { KBarContext, useRegisterActions } from "kbar";
 import { type DependencyList, useContext } from "react";
+import _ from "underscore";
 
 import { trackSimpleEvent } from "metabase/lib/analytics";
 
@@ -31,18 +32,17 @@ export const useRegisterShortcut = (
           throw Error(`Unrecgonized shortcut id ${id}`);
         }
 
-        const wrappedPerform = () => {
-          perform();
-          trackSimpleEvent({
-            event: "keyboard_shortcut_performed",
-            event_detail: id,
-          });
-        };
-
         return {
           ...shortcutDef,
           id,
-          perform: wrappedPerform,
+          perform: _.compose(
+            () =>
+              trackSimpleEvent({
+                event: "keyboard_shortcut_performed",
+                event_detail: id,
+              }),
+            perform,
+          ),
           ...rest,
         };
       })
