@@ -15,7 +15,7 @@ import { NumberFilterInput } from "../../NumberFilterInput";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { WIDTH } from "../constants";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function NumberFilterPicker({
@@ -125,6 +125,7 @@ function NumberValueInput({
           column={column}
           values={values.filter(isNotNull)}
           autoFocus
+          comboboxProps={COMBOBOX_PROPS}
           onChange={onChange}
         />
       </Box>

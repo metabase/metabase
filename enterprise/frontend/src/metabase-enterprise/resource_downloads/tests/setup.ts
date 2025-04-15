@@ -22,12 +22,12 @@ export const setup = ({
 
 const ALL_DOWNLOADS_ENABLED: EmbedResourceDownloadOptions = {
   pdf: true,
-  dashcard: true,
+  results: true,
 };
 
 const ALL_DOWNLOADS_DISABLED: EmbedResourceDownloadOptions = {
   pdf: false,
-  dashcard: false,
+  results: false,
 };
 
 export const downloadsEnabledTestData: {
@@ -83,12 +83,12 @@ export const downloadsEnabledTestData: {
   {
     hide_download_button: undefined,
     downloads: "pdf",
-    downloadsEnabled: { pdf: true, dashcard: false },
+    downloadsEnabled: { pdf: true, results: false },
   },
   {
     hide_download_button: undefined,
     downloads: "results",
-    downloadsEnabled: { pdf: false, dashcard: true },
+    downloadsEnabled: { pdf: false, results: true },
   },
   {
     hide_download_button: undefined,

@@ -815,6 +815,9 @@
    {:name      :database-auth-providers
     :available (premium-features/enable-database-auth-providers?)
     :enabled   (premium-features/enable-database-auth-providers?)}
+   {:name      :database-routing
+    :available (premium-features/enable-database-routing?)
+    :enabled   (premium-features/enable-database-routing?)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}

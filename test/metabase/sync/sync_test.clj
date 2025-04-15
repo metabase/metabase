@@ -133,7 +133,7 @@
     :db_id       true
     :entity_type :entity/GenericTable
     :id          true
-    :entity_id   false
+    :entity_id   true
     :updated_at  true}))
 
 (defn- field-defaults []
@@ -147,7 +147,7 @@
     :database_is_generated false
     :database_is_nullable true
     :id                  true
-    :entity_id           false
+    :entity_id           true
     :last_analyzed       false
     :parent_id           false
     :position            0

@@ -7,7 +7,7 @@ import * as Lib from "metabase-lib";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MIN_WIDTH } from "../constants";
+import { WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function DefaultFilterPicker({
@@ -54,7 +54,7 @@ export function DefaultFilterPicker({
   return (
     <Box
       component="form"
-      miw={MIN_WIDTH}
+      miw={WIDTH}
       data-testid="default-filter-picker"
       onSubmit={handleSubmit}
     >

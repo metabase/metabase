@@ -18,26 +18,56 @@ export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
 export type ParameterValues = Record<ParameterId, string | number>;
 
 type InteractiveQuestionConfig = {
+  /**
+   * An array that specifies which entity types are available in the data picker
+   */
+  entityTypeFilter?: EntityTypeFilterKeys[];
+
+  /**
+   * Whether to show the save button.
+   **/
+  isSaveEnabled?: boolean;
+
+  /**
+   * Initial values for the SQL parameters.
+   **/
+  initialSqlParameters?: ParameterValues;
+
+  /**
+   * Enables the ability to download results in the interactive question.
+   */
+  withDownloads?: boolean;
+
+  /**
+   * The collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.
+   */
+  targetCollection?: SdkCollectionId;
+
+  /**
+   * Additional mapper function to override or add drill-down menu
+   */
   componentPlugins?: MetabasePluginsConfig;
-  onNavigateBack?: () => void;
+
+  /**
+   * A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`
+   */
   onBeforeSave?: (
     question: MetabaseQuestion | undefined,
     context: { isNewQuestion: boolean },
   ) => Promise<void>;
+
+  /**
+   * A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`
+   */
   onSave?: (
     question: MetabaseQuestion | undefined,
     context: { isNewQuestion: boolean },
   ) => void;
-  entityTypeFilter?: EntityTypeFilterKeys[];
 
-  /** Is the save question button visible? */
-  isSaveEnabled?: boolean;
-
-  /** Initial values for the SQL parameters */
-  initialSqlParameters?: ParameterValues;
-  withDownloads?: boolean;
-
-  targetCollection?: SdkCollectionId;
+  /**
+   * A callback function that triggers when a user clicks the back button.
+   */
+  onNavigateBack?: () => void;
 };
 
 export type QuestionMockLocationParameters = {

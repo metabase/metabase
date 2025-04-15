@@ -119,6 +119,10 @@ class Database {
     return Boolean(this.settings?.["database-enable-actions"]);
   }
 
+  hasDatabaseRoutingEnabled() {
+    return !!this.router_user_attribute;
+  }
+
   nativeQuestion(native: Partial<NativeQuery> = {}) {
     return Question.create({
       metadata: this.metadata,

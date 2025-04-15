@@ -8,12 +8,8 @@ import { Box, Flex } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
+import { Description, Error, Label } from "./DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "./DatabaseInfoSection";
-import {
-  Description,
-  Error,
-  Label,
-} from "./DatabaseModelFeaturesSection/ModelFeatureToggles.styled";
 
 export function DatabaseTableEditingSection({
   database,
