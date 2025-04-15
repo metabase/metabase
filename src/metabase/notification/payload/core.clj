@@ -1,5 +1,4 @@
 (ns metabase.notification.payload.core
-
   (:require
    [metabase.notification.condition :as notification.condition]
    [metabase.notification.models :as models.notification]

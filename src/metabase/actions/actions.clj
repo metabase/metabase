@@ -271,17 +271,17 @@
         pk->db-row-before (query-db-rows table-id pk-field rows)
         invocation-id     (nano-id/nano-id)
         user-id           api/*current-user-id*]
+    ;; TODO: we'll need to get these fields more generically
+    (assert (and table-id pk-field (seq rows)))
     (publish-action-invocation! invocation-id user-id action-kw args-map)
     (try
       (let [result           (perform-action! action-kw args-map opts)
             pk->db-row-after (case action-kw
-                               :bulk/update
+                               (:bulk/update :bulk/delete)
                                (query-db-rows table-id pk-field rows)
                                :bulk/create
                                (into {} (for [row (:created-rows result)]
-                                          [(get-row-pk pk-field row) (update-keys row keyword)]))
-                               :bulk/delete
-                               (query-db-rows table-id pk-field rows))
+                                          [(get-row-pk pk-field row) (update-keys row keyword)])))
             all-pks          (set/union (set (keys pk->db-row-before))
                                         (set (keys pk->db-row-after)))
             row-changes      (for [pk all-pks
