@@ -170,13 +170,11 @@ function compileFunctionCall(node: Node): Lib.ExpressionParts {
 
   const text = node.token?.text.trim().toLowerCase();
   const operator = getMBQLName(text) ?? text;
-  const args = compileArgList(node.children[0]);
-  const options: Lib.ExpressionOptions = {};
-
   if (!isDefinedClause(operator)) {
     throw new CompileError(t`Unknown function ${operator}`, node);
   }
-
+  const args = compileArgList(node.children[0]);
+  const options: Lib.ExpressionOptions = {};
   const clause = getClauseDefinition(operator);
   const hasOptions = clause?.hasOptions ?? false;
 
