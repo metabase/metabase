@@ -1,4 +1,5 @@
 import { Select } from "@mantine/core";
+import { t } from "ttag";
 
 import S from "./Select.module.css";
 import { DefaultSelectItem } from "./SelectItem";
@@ -15,6 +16,7 @@ export const selectOverrides = {
         <DefaultSelectItem {...item.option} selected={item.checked} />
       ),
       clearButtonProps: {
+        "aria-label": t`Clear`,
         color: "text-dark",
         className: S.SelectClearButton,
       },
