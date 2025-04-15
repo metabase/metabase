@@ -27,7 +27,7 @@ export const settingsApi = Api.injectEndpoints({
       void,
       {
         key: EnterpriseSettingKey;
-        value: EnterpriseSettingValue;
+        value: EnterpriseSettingValue<EnterpriseSettingKey>;
       }
     >({
       query: ({ key, value }) => ({

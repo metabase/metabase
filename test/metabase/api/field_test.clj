@@ -39,13 +39,13 @@
                 (t2/select-one [:model/Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
                                 :database_position :database_required :database_default
                                 :database_is_auto_increment :database_is_nullable :database_is_generated
-                                :entity_id]
+                                :entity_id :name :table_id :parent_id]
                                :id (mt/id :users :name))
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                    (t2/select-one [:model/Table :created_at :updated_at :entity_id
-                                                    :initial_sync_status :view_count]
+                                    (t2/select-one [:model/Table :id :created_at :updated_at :entity_id
+                                                    :initial_sync_status :view_count :schema :name :db_id]
                                                    :id (mt/id :users))
                                     {:description             nil
                                      :entity_type             "entity/UserTable"

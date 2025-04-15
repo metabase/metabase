@@ -1,38 +1,33 @@
-import type { FocusEvent } from "react";
 import { t } from "ttag";
 
-import { MultiAutocomplete } from "metabase/ui";
+import { type ComboboxProps, MultiAutocomplete } from "metabase/ui";
 
 interface StaticValuePickerProps {
   selectedValues: string[];
   placeholder?: string;
-  shouldCreate?: (query: string, values: string[]) => boolean;
   autoFocus?: boolean;
+  comboboxProps?: ComboboxProps;
+  parseValue?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
-  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
-  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 export function StaticValuePicker({
   selectedValues,
   placeholder,
-  shouldCreate,
   autoFocus,
+  comboboxProps,
+  parseValue,
   onChange,
-  onFocus,
-  onBlur,
 }: StaticValuePickerProps) {
   return (
     <MultiAutocomplete
-      data={[]}
       value={selectedValues}
       placeholder={placeholder}
       autoFocus={autoFocus}
+      comboboxProps={comboboxProps}
       aria-label={t`Filter value`}
-      shouldCreate={shouldCreate}
+      parseValue={parseValue}
       onChange={onChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
     />
   );
 }

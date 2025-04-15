@@ -33,14 +33,14 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
 
       restoreAndAuthenticate();
 
-      addMySQLDatabase();
+      addMySQLDatabase({});
       snapshot("mysql-8");
       deleteDatabase("mysqlID");
 
       restoreAndAuthenticate();
 
       setupWritableDB("mysql");
-      addMySQLDatabase("Writable MySQL8", true);
+      addMySQLDatabase({ displayName: "Writable MySQL8", writable: true });
       snapshot("mysql-writable");
       deleteDatabase("mysqlID");
 

@@ -7,7 +7,7 @@ export const questionShortcuts = {
     shortcutGroup: "question",
   },
   "visualization-open-filter": {
-    name: t`Open filter modal`,
+    name: t`Open filter dropdown`,
     shortcut: ["f"],
     shortcutGroup: "question",
   },
@@ -18,7 +18,7 @@ export const questionShortcuts = {
   },
   "bookmark-question": {
     name: t`Bookmark Question`,
-    shortcut: ["b"],
+    shortcut: ["o"],
     shortcutGroup: "question",
   },
   "question-info-sidebar": {
@@ -45,21 +45,6 @@ export const questionShortcuts = {
     name: t`Toggle viz types`,
     shortcutGroup: "question",
     shortcut: ["z t"],
-  },
-  "download-question": {
-    name: t`Download`,
-    shortcut: ["d"],
-    shortcutGroup: "question",
-  },
-  "duplicate-question": {
-    name: t`Duplicate question`,
-    shortcut: ["$mod+d"],
-    shortcutGroup: "question",
-  },
-  "move-question": {
-    name: t`Move question`,
-    shortcut: ["$mod+m"],
-    shortcutGroup: "question",
   },
   "trash-question": {
     name: t`Send question to trash`,

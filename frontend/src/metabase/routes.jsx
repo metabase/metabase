@@ -91,6 +91,7 @@ export const getRoutes = (store) => {
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
         }}
+        disableCommandPalette
       />
 
       {/* APP */}
