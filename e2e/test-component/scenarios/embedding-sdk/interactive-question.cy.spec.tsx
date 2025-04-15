@@ -28,6 +28,7 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import { Box, Button, Modal } from "metabase/ui";
+const { H } = cy;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -379,5 +380,34 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         });
       });
     });
+  });
+
+  it("should select sensible display for new questions (EMB-308)", () => {
+    mountSdkContent(<InteractiveQuestion questionId="new" />);
+    cy.log("Select data");
+    H.popover().findByRole("link", { name: "Orders" }).click();
+
+    cy.log("Select summarization");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByRole("option", { name: "Count of rows" }).click();
+
+    cy.log("Select grouping");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByRole("heading", { name: "Created At" }).click();
+
+    cy.log("Set limit");
+    const LIMIT = 2;
+    cy.button("Row limit").click();
+    cy.findByPlaceholderText("Enter a limit")
+      .type(LIMIT.toString())
+      .realPress("Tab");
+
+    cy.log("Visualize");
+    H.visualize();
+    H.cartesianChartCircle().should("have.length", LIMIT);
   });
 });
