@@ -2,22 +2,21 @@
 title: "Data and field types"
 redirect_from:
   - /docs/latest/users-guide/field-types
-
-summary: Metabase syncs data types from your database to know the type of each column. In addition to base data types, you can set a semantic type to tell Metabase what that data actually means. Choosing the right field types helps Metabase choose the right format and visualization for your data.
+summary: "Metabase uses both data and semantic types to understand how to format and visualize your data."
 ---
 
 # Data and field types
 
 Metabase distinguishes between two types of column metadata: data types and field types.
 
-- [**Data types**](#data-types) are the underlying column type as defined in your database. Metabase reads the data types during the [database sync process](../databases/sync-scan.md).
-- [**Semantic types**](#semantic-types), also called **field types**, are labels that describe how the data should be interpreted. For example, a column can have a data type of `Text`, that you can additionally specify the semantic type `Email`.
+- [**Data types**](#data-types) are the underlying column type as defined in your database, like `Date` or `Text`. Metabase reads the data types during the [database sync process](../databases/sync-scan.md).
+- [**Semantic types**](#semantic-types), also called **field types**, are labels that describe how the data should be interpreted. For example, if you have a column with a data type of `Text` that you use to store emails, you can add a semantic type of `Email` to let people (and Metabase) know what kind of text the column stores.
 
 Data and semantic types determine how Metabase formats the data, which charts are available, how the filters work, and other functionality.
 
 ## Data types
 
-Data types are the underlying column types as defined in your database. Metabase reads the data types during the [database sync process](../databases/sync-scan.md). Because Metabase connects to many different databases, it uses its own type hierarchy under the hood, so that it could offer the same functionality for, for example, date fields in MongoDB or PostgreSQL
+Data types are the underlying column types as defined in your database. Metabase reads the data types during the [database sync process](../databases/sync-scan.md). Because Metabase connects to many different databases, it uses its own type hierarchy under the hood, so that it can, for example, handle date fields in databases as different as PostgreSQL and MongoDB.
 
 The main data types in Metabase:
 
@@ -30,13 +29,13 @@ The main data types in Metabase:
 | Boolean    | Boolean                                     |
 | Collection | `JSON`, BigQuery `RECORD`, MongoDB `Object` |
 
-Metabase currently does not support array types with any database. You'll only be able to use **Is empty** or **Is not empty** filters on columns containing arrays.
+Metabase currently doesn't support array types. On columns containing arrays, you'll only be able to filter by **Is empty** or **Is not empty**.
 
-For some fields, you tell Metabase to [cast them to a different data type](#editing-data-and-semantic-types) (for example, text to date).
+For some fields, you can tell Metabase to [cast the field to a different data type](#editing-data-and-semantic-types) (for example, changing a text type to a date type).
 
 ## Semantic types
 
-Semantic types are extra flavor that you can add to a field to communicate meaning and enable [additional functionality](#additional-functionality-for-data-and-semantic-types). Available semantic types depend on the underlying data types.
+You can think of semantic types as adding extra flavor to a field to communicate meaning and enable [additional functionality](#what-data-and-semantic-types-enable). Available semantic types depend on the underlying data types.
 
 ### Semantic types for any field
 
@@ -46,7 +45,7 @@ Semantic types are extra flavor that you can add to a field to communicate meani
 
 - Foreign key
 
-  Used to refer to an Entity key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the Entity key. If you want to use [linked filters on dashboards](../dashboards/linked-filters.md), you must set up foreign key relationships.
+  Used to refer to an entity key of another table in order to connect data from related tables. For example, in an Orders table, you might have a foreign key called `customer_id` that points to a Customers table's entity key, `id`. If you want to use [linked filters on dashboards](../dashboards/linked-filters.md), you must set up foreign key relationships.
 
 - Category
 
@@ -101,11 +100,11 @@ Semantic types are extra flavor that you can add to a field to communicate meani
 
 ## Editing data and semantic types
 
-Admins and people with [Manage table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) can cast data types and edit semantic types in Admin Table Metadata settings.
+Admins, and people with [permission to manage table metadata](../permissions/data.md#manage-table-metadata-permissions), can cast data types and edit semantic types in the Admin setting's Table Metadata tab.
 
 ### Cast data types
 
-Data types can't be edited in Metabase directly, but certain data types can be [cast to different types types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
+Data types can't be edited in Metabase directly, but you can cast certain [data types to different types](./metadata-editing.md#casting-to-a-specific-data-type) so that, for example, Metabase will interpret a text data type as a date type.
 
 Changes made in Table Metadata apply across your entire Metabase. Metabase currently only supports casting to a datetime type in Metadata settings. However, if you you build a query in the query builder, in you can use type casting custom expressions like [`date()`](../questions/query-builder/expressions-list.md#date) or [`integer()`](../questions/query-builder/expressions-list.md#integer) to cast a string to a different type in your query.
 
@@ -113,7 +112,7 @@ Changes made in Table Metadata apply across your entire Metabase. Metabase curre
 
 You can pick a semantic type compatible with the underlying data type in [table metadata settings](./metadata-editing.md#field-types)
 
-Semantic types add meaning shouldn't be used for type casting. For example, picking a semantic type of "Quantity" for a text field will not force Metabase to treat the field as numeric. Use Semantic types to add additional functionality for your fields, like formatting or visualizations.
+Semantic types only add meaning; they should NOT be used for type casting. For example, if you set a text field's semantic type to "Quantity", Metabase will still treat the field as a text field. Instead, apply semantic types to tell Metabase how to format or visualize the field (like telling Metabase that a numeric values represents a percentage).
 
 ## What data and semantic types enable
 
@@ -126,8 +125,8 @@ Formatting setting from Table Metadata settings will be applied across your Meta
 | Semantic type          | Format                                                                                                                                                                                                                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Percentage             | Displayed as percentage, for example 0.75 will be displayed as 75\%                                                                                                                                                                                                |
-| Currency               | On charts and in detail view, the values are prepended by the currency symbol, e.g. `$134.65`. In table view, the currency symbol is only displayed in the header by default, but you can change the metadata formatting settings to show the symbol on every row. |
-| Latitude/Longitude     | Displayed as coordinates, e.g. `0.00000000° N`                                                                                                                                                                                                                     |
+| Currency               | On charts and in detail view, the values are prepended by the currency symbol, e.g., `$134.65`. By default in the table view, the currency symbol is only displayed in the header, but you can change the metadata formatting settings to show the symbol for every row. |
+| Latitude/Longitude     | Displayed as coordinates, e.g., `0.00000000° N`                                                                                                                                                                                                                     |
 | Email                  | Display as a `mailto` link                                                                                                                                                                                                                                         |
 | URL                    | Can format as a clickable link                                                                                                                                                                                                                                     |
 | Image URL              | Can display as an image. See table format settings LINK                                                                                                                                                                                                            |
@@ -137,7 +136,7 @@ Formatting setting from Table Metadata settings will be applied across your Meta
 
 ### Visualizations
 
-When you build a query in the query builder, Metabase will automatically choose the most suitable chart for you based on the data types and the semantic types of the field in the "Group by" (you can change the chart type later).
+When you create a question in the query builder, Metabase will automatically choose the most suitable chart for you based on the data types and the semantic types of the field in the "Group by" step (you can change the chart type later).
 
 | Group by data type   | Automatic chart |
 | -------------------- | --------------- |
