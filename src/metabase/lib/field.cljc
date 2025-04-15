@@ -816,11 +816,11 @@
    column                :- ::lib.schema.metadata/column]
   (when column
     (let [column-field-id (:id column)
-          search-field    (search-field metadata-providerable column)
-          search-field-id (:id search-field)]
+          search-column   (search-field metadata-providerable column)
+          search-field-id (:id search-column)]
       {:field-id (when (int? column-field-id) column-field-id)
        :search-field-id (when (int? search-field-id) search-field-id)
-       :search-field search-field
+       :search-field search-column
        :has-field-values (if column
                            (infer-has-field-values column)
                            :none)})))
