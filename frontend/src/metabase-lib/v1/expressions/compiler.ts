@@ -40,11 +40,11 @@ export function compileExpression({
   try {
     const { tokens } = lexify(source);
     const { root } = parse(tokens, { throwOnError: true });
-    const compiled = compile(root, {
+    const expressionParts = compile(root, {
       startRule,
       resolver,
     });
-    const expressionClause = Lib.expressionClause(compiled);
+    const expressionClause = Lib.expressionClause(expressionParts);
     const expression = Lib.legacyExpressionForExpressionClause(
       query,
       stageIndex,
@@ -53,7 +53,7 @@ export function compileExpression({
 
     return {
       expression,
-      expressionParts: resolved,
+      expressionParts,
       expressionClause,
       error: null,
     };
