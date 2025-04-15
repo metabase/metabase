@@ -13,7 +13,7 @@ export type UrlStateConfig<State extends BaseState> = {
   serialize: (state: State) => Query;
 };
 
-type UrlActions<State extends BaseState> = {
+type UrlStateActions<State extends BaseState> = {
   patchUrlState: (patch: Partial<State>) => void;
 };
 
@@ -24,7 +24,7 @@ type UrlActions<State extends BaseState> = {
 export function useUrlState<State extends BaseState>(
   location: Location,
   { parse, serialize }: UrlStateConfig<State>,
-): [State, UrlActions<State>] {
+): [State, UrlStateActions<State>] {
   const dispatch = useDispatch();
   const state = useMemo(() => parse(location.query), [parse, location.query]);
 
