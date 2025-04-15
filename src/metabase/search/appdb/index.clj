@@ -40,7 +40,9 @@
 
 (defonce ^:dynamic ^:private *indexes* (atom {:active nil, :pending nil}))
 
-(def ^:private ^:dynamic *mocking-tables* false)
+(def ^:dynamic *temp-index-tables*
+  "Set to true when we are using a temporary index table for testing."
+  false)
 
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]
   (reset! *indexes* nil))
@@ -59,7 +61,7 @@
 (defn- now [] (System/nanoTime))
 
 (defn- sync-tracking-atoms-if-stale! []
-  (when-not *mocking-tables*
+  (when-not *temp-index-tables*
     (when (or (not @next-sync-at) (> (now) @next-sync-at))
       (reset! next-sync-at (+ (now) sync-tracking-period))
       (sync-tracking-atoms!))))
@@ -178,7 +180,7 @@
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
   []
-  (if *mocking-tables*
+  (if *temp-index-tables*
     ;; The atoms are the only source of truth, create a new table if necessary.
     (or (pending-table)
         (let [table-name (gen-table-name)]
@@ -196,7 +198,7 @@
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
   []
-  (if *mocking-tables*
+  (if *temp-index-tables*
     ;; The atoms are the only source of truth, we must not update the metadata.
     (boolean
      (when-let [pending (:pending @*indexes*)]
@@ -292,7 +294,7 @@
   []
   ;; stop tracking any pending table
   (when-let [table-name (pending-table)]
-    (when-not *mocking-tables*
+    (when-not *temp-index-tables*
       (search-index-metadata/delete-index! :appdb *index-version-id* table-name))
     (swap! *indexes* assoc :pending nil))
   (maybe-create-pending!)
@@ -303,7 +305,7 @@
   [& {:keys [force-reset?]}]
   ;; Be extra careful against races on initializing the setting
   (locking *indexes*
-    (when-not *mocking-tables*
+    (when-not *temp-index-tables*
       (when (nil? (active-table))
         (sync-tracking-atoms!)))
 
@@ -314,10 +316,10 @@
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."
   [& body]
-  `(if @#'*mocking-tables*
+  `(if @#'*temp-index-tables*
      ~@body
      (let [table-name# (gen-table-name)]
-       (binding [*mocking-tables* true
+       (binding [*temp-index-tables* true
                  *indexes*        (atom {:active table-name#})]
          (try
            (create-table! table-name#)

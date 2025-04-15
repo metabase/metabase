@@ -150,9 +150,9 @@
       (search.ingestion/populate-index! :search.engine/appdb))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
-  [_ {:keys [in-place?]}]
+  [_ _]
   (search.index/ensure-ready!)
-  (if in-place?
+  (if search.index/*temp-index-tables*
     (when-let [table (search.index/active-table)]
       ;; keep the current table, just delete its contents
       (t2/delete! table))

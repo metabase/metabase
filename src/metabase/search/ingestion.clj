@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -104,7 +105,7 @@
 (defn populate-index!
   "Go over all searchable items and populate the index with them."
   [engine]
-  (search.engine/consume! engine (query->documents (search-items-reducible)) true))
+  (search.engine/consume! engine (query->documents (search-items-reducible)) (not search.index/*temp-index-tables*)))
 
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
