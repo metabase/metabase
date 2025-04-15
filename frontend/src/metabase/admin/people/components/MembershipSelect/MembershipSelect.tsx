@@ -54,6 +54,7 @@ interface MembershipSelectProps {
   onAdd: (groupId: number, membershipData: Partial<Member>) => void;
   onRemove: (groupId: number) => void;
   onChange: (groupId: number, membershipData: Partial<Member>) => void;
+  isConfirmModalOpen?: boolean;
 }
 
 export const MembershipSelect = ({
@@ -65,6 +66,7 @@ export const MembershipSelect = ({
   isCurrentUser = false,
   isUserAdmin = false,
   emptyListMessage = t`No groups`,
+  isConfirmModalOpen,
 }: MembershipSelectProps) => {
   const [popoverOpened, { open: openPopover, toggle: togglePopover }] =
     useDisclosure();
@@ -89,7 +91,8 @@ export const MembershipSelect = ({
   return (
     <Popover
       opened={popoverOpened}
-      closeOnClickOutside
+      // prevent clicks on the confirm modal from closing this popover
+      closeOnClickOutside={!isConfirmModalOpen}
       onChange={togglePopover}
     >
       <Popover.Target>
