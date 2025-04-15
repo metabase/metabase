@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import { Button, Flex, Icon, Menu, Text } from "metabase/ui";
+import { Button, Flex, Icon, Menu, Text, Tooltip } from "metabase/ui";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 
 import { trackSheetConnectionClick } from "./analytics";
@@ -39,6 +39,17 @@ export function GdriveSidebarMenuItem({ onClick }: { onClick: () => void }) {
     .with("active", () => t`Connected`)
     .otherwise(() => null);
 
+  const errorMessage = folder?.message ?? error?.data?.message;
+
+  const MaybeTooltip = ({ children }: { children: React.ReactNode }) =>
+    status === "error" ? (
+      <Tooltip label={errorMessage} position="bottom" maw="20rem">
+        {children}
+      </Tooltip>
+    ) : (
+      <>{children}</>
+    );
+
   return (
     <Menu.Item onClick={handleClick} disabled={status === "syncing"}>
       <Flex gap="sm" align="flex-start" justify="space-between" w="100%">
@@ -52,9 +63,14 @@ export function GdriveSidebarMenuItem({ onClick }: { onClick: () => void }) {
               {buttonText}
             </Text>
             {helperText && (
-              <Text size="sm" c={status === "error" ? "error" : "text-medium"}>
-                {helperText}
-              </Text>
+              <MaybeTooltip>
+                <Text
+                  size="sm"
+                  c={status === "error" ? "error" : "text-medium"}
+                >
+                  {helperText}
+                </Text>
+              </MaybeTooltip>
             )}
           </div>
         </Flex>

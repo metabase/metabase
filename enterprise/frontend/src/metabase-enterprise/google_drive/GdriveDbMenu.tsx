@@ -4,7 +4,7 @@ import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
-import { Button, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
+import { Button, Flex, Icon, Loader, Menu, Text, Tooltip } from "metabase/ui";
 import {
   useGetGsheetsFolderQuery,
   useSyncGsheetsFolderMutation,
@@ -110,7 +110,6 @@ function SyncNowButton({ disabled }: { disabled: boolean }) {
         e.preventDefault();
         e.stopPropagation();
         await doSync();
-        // error handling?
       }}
     >
       {t`Sync now`}
@@ -144,13 +143,20 @@ function MenuSyncStatus() {
     : t`soon` + "™";
 
   if (folderStatus === "error") {
+    const errorMessage =
+      folderError?.data?.message ??
+      // eslint-disable-next-line no-literal-metabase-strings -- admin UI
+      t`Please check that the folder is shared with the Metabase Service Account.`;
+
     return (
-      <Flex align="center" gap="md">
-        <Icon name="warning" c="error" />
-        <Text fz="sm" c="error">
-          {t`Error syncing`}
-        </Text>
-      </Flex>
+      <Tooltip label={errorMessage} position="bottom" maw="20rem">
+        <Flex align="center" gap="md">
+          <Icon name="warning" c="error" />
+          <Text fz="sm" c="error">
+            {t`Error syncing`}
+          </Text>
+        </Flex>
+      </Tooltip>
     );
   }
 
