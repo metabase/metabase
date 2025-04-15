@@ -931,9 +931,10 @@
                                                                      :handlers     [{:channel_type "channel/email"
                                                                                      :recipients   [{:type    :notification-recipient/user
                                                                                                      :user_id (mt/user->id :lucky)}]}]}]
-          (let [[email] (notification.tu/with-mock-inbox-email!
-                          (with-send-messages-sync!
-                            (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
+          (let [[email :as emails]
+                (notification.tu/with-mock-inbox-email!
+                  (with-send-messages-sync!
+                    (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
                 a-href (format "<a href=\"https://testmb.com/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
             (testing (format "\nNotification: \n%s\n" notification)

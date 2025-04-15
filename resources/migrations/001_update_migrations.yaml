@@ -11331,136 +11331,6 @@ databaseChangeLog:
                     foreignKeyName: fk_table_webhook_token_creator_id
                     deleteCascade: true
   - changeSet:
-      id: v55.2025-04-02T10:52:01
-      author: wotbrew
-      comment: Add an index for `table_webhook_token.table_id`
-      rollback: # will be removed with the column
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: table_webhook_token
-                indexName: idx_table_webhook_token_table_id
-      changes:
-        - createIndex:
-            indexName: idx_table_webhook_token_table_id
-            tableName: table_webhook_token
-            columns:
-              - column:
-                  name: table_id
-  - changeSet:
-      id: v55.2025-04-02T10:52:02
-      author: wotbrew
-      comment: Add an index for `table_webhook_token.creator_id`
-      rollback: # will be removed with the column
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: table_webhook_token
-                indexName: idx_table_webhook_token_creator_id
-      changes:
-        - createIndex:
-            indexName: idx_table_webhook_token_creator_id
-            tableName: table_webhook_token
-            columns:
-              - column:
-                  name: creator_id
-
-  - changeSet:
-      id: v55.2025-04-03T10:52:01
-      author: crisptrutski
-      comment: Added undo/redo change tracking table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: data_edit_undo_chain
-      changes:
-        - createTable:
-            tableName: data_edit_undo_chain
-            remarks: Store the state necessary to power undo / redo.
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  remarks: Batch number for grouped changes (global increment)
-                  name: batch_num
-                  type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: Reference to the table being modified
-                  name: table_id
-                  type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: PK of the row being modified, potentially composite. Stored as a sorted JSON map.
-                  name: row_pk
-                  type: ${text.type}
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: ID of the user who made the change
-                  name: user_id
-                  type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: Value of the field before the change
-                  name: raw_before
-                  type: ${text.type}
-                  constraints:
-                    nullable: true
-              - column:
-                  remarks: Value of the field after the change
-                  name: raw_after
-                  type: ${text.type}
-                  constraints:
-                    nullable: true
-              - column:
-                  remarks: Whether this change has been undone
-                  name: undone
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: The timestamp of when the change was created
-                  name: created_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: The timestamp of when the change was updated
-                  name: updated_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-# TODO create fk constraints
-# TODO use case indexes
-#        - createIndex:
-#            indexName: idx_data_edit_undo_chain_undo_lookup
-#            tableName: data_edit_undo_chain
-#            columns:
-#              - column:
-#                  name: batch_num
-#              - column:
-#                  name: table_id
-#              - column:
-#                  name: user_id
-#              - column:
-#                  name: undone
-
-  - changeSet:
       id: v55.2025-04-01T07:17:52
       author: johnswanson
       comment: Add `db_router` table
@@ -11556,6 +11426,138 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_metabase_database_metabase_database_id
             onDelete: RESTRICT
+
+  - changeSet:
+      id: v55.2025-04-02T10:52:01
+      author: wotbrew
+      comment: Add an index for `table_webhook_token.table_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: table_webhook_token
+                indexName: idx_table_webhook_token_table_id
+      changes:
+        - createIndex:
+            indexName: idx_table_webhook_token_table_id
+            tableName: table_webhook_token
+            columns:
+              - column:
+                  name: table_id
+  - changeSet:
+      id: v55.2025-04-02T10:52:02
+      author: wotbrew
+      comment: Add an index for `table_webhook_token.creator_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: table_webhook_token
+                indexName: idx_table_webhook_token_creator_id
+      changes:
+        - createIndex:
+            indexName: idx_table_webhook_token_creator_id
+            tableName: table_webhook_token
+            columns:
+              - column:
+                  name: creator_id
+
+
+  - changeSet:
+      id: v55.2025-04-03T10:52:01
+      author: crisptrutski
+      comment: Added undo/redo change tracking table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: data_edit_undo_chain
+      changes:
+        - createTable:
+            tableName: data_edit_undo_chain
+            remarks: Store the state necessary to power undo / redo.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: Batch number for grouped changes (global increment)
+                  name: batch_num
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Reference to the table being modified
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: PK of the row being modified, potentially composite. Stored as a sorted JSON map.
+                  name: row_pk
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who made the change
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Value of the field before the change
+                  name: raw_before
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Value of the field after the change
+                  name: raw_after
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Whether this change has been undone
+                  name: undone
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the change was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the change was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+# TODO create fk constraints
+# TODO use case indexes
+#        - createIndex:
+#            indexName: idx_data_edit_undo_chain_undo_lookup
+#            tableName: data_edit_undo_chain
+#            columns:
+#              - column:
+#                  name: batch_num
+#              - column:
+#                  name: table_id
+#              - column:
+#                  name: user_id
+#              - column:
+#                  name: undone
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
