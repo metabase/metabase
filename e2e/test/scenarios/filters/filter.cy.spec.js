@@ -498,7 +498,7 @@ describe("scenarios > question > filter", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
       cy.findByText(/^Include/).click();
       cy.button("Add filter").click();

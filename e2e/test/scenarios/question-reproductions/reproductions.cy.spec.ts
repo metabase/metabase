@@ -39,7 +39,7 @@ describe("issue 39487", () => {
       cy.button(/Filter/).click();
       H.popover().within(() => {
         cy.findByText("Created At").click();
-        cy.findByText("Specific dates…").click();
+        cy.findByText("Fixed date range…").click();
       });
       checkSingleDateFilter();
       cy.realPress("Escape");
@@ -52,7 +52,7 @@ describe("issue 39487", () => {
       cy.log("verify that previous popover is closed before opening new one");
       H.popover().findByText("Filter by this column").should("not.exist");
 
-      H.popover().findByText("Specific dates…").click();
+      H.popover().findByText("Fixed date range…").click();
       H.popover().findByText("After").click();
       H.popover().findByRole("textbox").clear().type("2015/01/01");
       checkSingleDateFilter();
@@ -99,7 +99,7 @@ describe("issue 39487", () => {
       cy.findByLabelText("Switch to data").click();
       H.tableHeaderClick("Created At: Year");
       H.popover().findByText("Filter by this column").click();
-      H.popover().findByText("Specific dates…").click();
+      H.popover().findByText("Fixed date range…").click();
       H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
       // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
