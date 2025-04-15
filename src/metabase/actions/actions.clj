@@ -206,15 +206,18 @@
         :invocation_id invocation-id
         :actor_id      user-id
         :args          args-map}
+       u/deep-snake-keys
        (events/publish-event! :event/action.invoked)))
 
 (defn publish-action-success!
   "Publish an action success event. This is a success event for the action that was invoked."
-  [invocation-id user-id action-kw result]
+  [invocation-id user-id action-kw args-map result]
   (->> {:action        action-kw
         :invocation_id invocation-id
         :actor_id      user-id
-        :result        result}
+        :result        result
+        :args          args-map}
+       u/deep-snake-keys
        (events/publish-event! :event/action.success)))
 
 (defn- publish-action-failure! [invocation-id user-id action-kw msg info]
@@ -224,6 +227,7 @@
         :error         (:error info)
         :message       msg
         :info          info}
+       u/deep-snake-keys
        (events/publish-event! :event/action.failure)))
 
 (defn perform-with-system-events!
@@ -234,7 +238,7 @@
     (publish-action-invocation! invocation-id user-id action-kw args-map)
     (try
       (let [result (perform-action! action-kw args-map opts)]
-        (publish-action-success! invocation-id user-id action-kw result)
+        (publish-action-success! invocation-id user-id action-kw args-map result)
         result)
       (catch Exception e
         (let [msg  (ex-message e)

@@ -123,8 +123,9 @@
              (nano-id/nano-id)
              api/*current-user-id*
              :row/update
-             {:table_id   table-id
-              :after      after-row
+             {:table_id table-id
+              :row row}
+             {:after      after-row
               :before     row-before
               :raw_update row}))))
 
@@ -145,8 +146,9 @@
        (nano-id/nano-id)
        api/*current-user-id*
        :row/delete
-       {:table_id   table-id
-        :deleted_row (get id->db-rows (get-row-pk pk-field row))}))
+       {:table_id table-id
+        :row      row}
+       {:deleted_row (get id->db-rows (get-row-pk pk-field row))}))
     res))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust

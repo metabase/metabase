@@ -39,7 +39,7 @@
 
 (deftest create-row-notification-test
   (test-row-notification!
-   :bllk/create
+   :bulk/create
    (fn []
      (mt/user-http-request
       :crowberto
@@ -84,7 +84,7 @@
 
 (deftest update-row-notification-test
   (test-row-notification!
-   :row/update
+   :bulk/update
    (fn []
      (mt/user-http-request
       :crowberto

@@ -55,6 +55,15 @@
          (nano-id/nano-id)
          user-id
          :row/create
-         {:table_id   table-id
-          :created_row row})))
+         {:table_id table-id
+          :row      row}
+         {:created_row row})))
     res))
+
+(comment
+  (metabase.test/user-http-request
+   :crowberto
+   :post
+   (format "ee/data-editing/table/%d"
+           (metabase.test/id :categories))
+   {:rows [{:NAME "New Category"}]}))

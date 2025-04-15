@@ -56,7 +56,7 @@
 (defn maybe-hydrate-event-info
   "Hydrate event-info if the topic has a schema."
   [topic event-info]
-  (if-let [schema (events/event-schema topic event-info)]
+  (if-let [schema (events/event-schema topic)]
     (if (map? event-info)
       (hydrate! schema event-info)
       event-info)
@@ -131,45 +131,53 @@
 
 (mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
 
+(def ^:private single-row-arg [:args (-> [:map
+                                          [:row :map]]
+                                         (into table-id-hydrate-schemas))])
+(def ^:private bulk-rows-arg [:args (-> [:map
+                                         [:arg [:sequential :map]]
+                                         [:database pos-int?]]
+                                        (into table-id-hydrate-schemas))])
+
 (mr/def :event/action.success
   [:merge ::action-events
    [:multi {:dispatch :action}
     [:row/create [:map
                   [:action [:= :row/create]]
+                  single-row-arg
                   [:result
-                   (-> [:map [:created_row :map]]
-                       (into table-id-hydrate-schemas))]]]
+                   [:map [:created_row :map]]]]]
     [:row/update [:map
                   [:action [:= :row/update]]
+                  single-row-arg
                   [:result
-                   (-> [:map
-                        [:raw_update [:maybe :map]]
-                        [:after      [:maybe :map]]
-                        [:before     [:maybe :map]]]
-                       (into table-id-hydrate-schemas))]]]
+                   [:map
+                    [:raw_update [:maybe :map]]
+                    [:after      [:maybe :map]]
+                    [:before     [:maybe :map]]]]]]
     [:row/delete [:map
                   [:action [:= :row/delete]]
+                  single-row-arg
                   [:result
-                   (-> [:map
-                        [:deleted_row :map]]
-                       (into table-id-hydrate-schemas))]]]
+                   [:map
+                    [:deleted_row :map]]]]]
     [:bulk/create [:map
-                   #_[:action [:= :bulk/create]]
-                   #_[:result
-                      (-> [:map
-                           [:created-rows [:sequential :map]]]
-                          (into table-id-hydrate-schemas))]]]
+                   [:action [:= :bulk/create]]
+                   bulk-rows-arg
+                   [:result
+                    [:map
+                     [:created_rows [:sequential :map]]]]]]
     [:bulk/update [:map
-                   #_[:action [:= :bulk/update]]
+                   [:action [:= :bulk/update]]
+                   bulk-rows-arg
                    #_[:result
-                      (-> [:map
-                           [:updated-rows [:sequential :map]]]
-                          (into table-id-hydrate-schemas))]]]
+                      [:map
+                       [:rows_updated pos-int?]]]]]
     [:bulk/delete [:map
-                   #_[:action [:= :bulk/delete]]
+                   [:action [:= :bulk/delete]]
+                   bulk-rows-arg
                    #_[:result
-                      (-> [:map
-                           [:deleted_rows [:sequential :map]]]
-                          (into table-id-hydrate-schemas))]]]]])
+                      [:map
+                       [:deleted_rows [:sequential :map]]]]]]]])
 
 (mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])
