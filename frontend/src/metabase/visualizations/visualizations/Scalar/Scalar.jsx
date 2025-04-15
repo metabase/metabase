@@ -150,7 +150,7 @@ export class Scalar extends Component {
       totalNumGridCols,
       fontFamily,
       rawSeries,
-      showTitle,
+      showTitle = true,
     } = this.props;
 
     if (rawSeries.length > 1) {

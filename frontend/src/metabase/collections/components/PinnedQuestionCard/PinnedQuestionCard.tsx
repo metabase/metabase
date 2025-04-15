@@ -129,6 +129,12 @@ const PinnedQuestionCard = ({
           ) : (
             <CardStaticSkeleton
               name={item.name}
+              nameRightSection={
+                <PLUGIN_MODERATION.ModerationStatusIcon
+                  status={item.moderated_status}
+                  filled
+                />
+              }
               description={
                 item.description || DEFAULT_DESCRIPTION[item.model] || ""
               }
