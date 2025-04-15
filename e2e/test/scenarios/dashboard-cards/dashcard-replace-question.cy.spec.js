@@ -165,7 +165,7 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     });
   });
 
-  it("should undo the question replace action", { tags: "@flaky" }, () => {
+  it("should undo the question replace action", () => {
     visitDashboardAndEdit();
 
     overwriteDashCardTitle(findTargetDashcard(), "Custom name");
@@ -177,6 +177,8 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Orders",
     });
+
+    // There're two toasts: "Undo replace" and "Auto-connect"
     H.undoToastList()
       .should("have.length", 2)
       .eq(0)
