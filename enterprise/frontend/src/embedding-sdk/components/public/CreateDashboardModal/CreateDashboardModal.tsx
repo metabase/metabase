@@ -6,6 +6,7 @@ import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashb
 import type { Dashboard } from "metabase-types/api";
 
 /**
+ * @expand
  * @category CreateDashboardModal
  */
 export interface CreateDashboardModalProps {

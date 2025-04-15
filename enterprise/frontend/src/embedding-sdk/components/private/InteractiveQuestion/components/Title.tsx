@@ -4,6 +4,7 @@ import type { CommonStylingProps } from "embedding-sdk/types/props";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionTitleProps = CommonStylingProps;

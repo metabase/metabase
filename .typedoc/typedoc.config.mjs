@@ -8,6 +8,7 @@ const config = {
   plugin: [
     "typedoc-plugin-missing-exports",
     "typedoc-plugin-mdn-links",
+    "typedoc-plugin-dt-links",
     "./typedoc-plugin-frontmatter.js",
     "./typedoc-plugin-remove-data-refl-attribute.js",
     "./typedoc-plugin-head.js",

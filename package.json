@@ -334,6 +334,7 @@
     "ts-morph": "^25.0.0",
     "tsx": "^4.19.3",
     "typedoc": "0.28.2",
+    "typedoc-plugin-dt-links": "^2.0.0",
     "typedoc-plugin-mdn-links": "^5.0.1",
     "typedoc-plugin-merge-modules": "^7.0.0",
     "typedoc-plugin-missing-exports": "^4.0.0",

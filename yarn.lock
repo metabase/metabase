@@ -20726,6 +20726,11 @@ typedarray@^0.0.6:
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
 
+typedoc-plugin-dt-links@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/typedoc-plugin-dt-links/-/typedoc-plugin-dt-links-2.0.0.tgz#142c706a1ebbd5f034ab91c7fe2c398efc2eb63d"
+  integrity sha512-D5dTe8SG1nzsU5Pctj4z089jYgcElNqGRcY7Qi0AozlBTu+bqmgmvdWsZK5VrYwZNYI4mnuLgQ/XRBV/GJYdXg==
+
 typedoc-plugin-mdn-links@^5.0.1:
   version "5.0.1"
   resolved "https://registry.yarnpkg.com/typedoc-plugin-mdn-links/-/typedoc-plugin-mdn-links-5.0.1.tgz#2ff23f997e71a2c77cd43590455754e29e4875f0"
