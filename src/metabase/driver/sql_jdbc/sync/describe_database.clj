@@ -86,7 +86,7 @@
     ;; during expansion of`.
     (or (instance? java.sql.SQLTimeoutException e)
         (boolean (some (fn [re] (re-find re msg))
-                       [;; Common timeout-related messages across different DBs
+                       [ ;; Common timeout-related messages across different DBs
                         #"(?i)timed?\s*(?:out|exceeded)"
                         #"(?i)cancel(l)*(ed|ing|ation)"
                         #"(?i)execution abort(ed)?"
@@ -103,8 +103,9 @@
                         #"(?i)query execution was interrupted"
                         ;; Redshift
                         #"(?i)Query cancelled on user(?:\'s)? request"]))
-        (when-let [cause (ex-cause e)]
-          (recur cause)))))
+        (if-let [cause (ex-cause e)]
+          (recur cause)
+          false))))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc
   [driver ^Connection conn table-schema table-name]
