@@ -1,10 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
 import type {
   DatePickerUnit,
@@ -28,8 +24,6 @@ interface SetupOpts {
   value: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
 }
-
-mockScrollIntoView();
 
 function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {
   const onChange = jest.fn();

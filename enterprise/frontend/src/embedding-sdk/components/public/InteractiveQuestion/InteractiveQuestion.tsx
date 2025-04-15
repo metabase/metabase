@@ -1,6 +1,5 @@
-import type { PropsWithChildren } from "react";
+import type { ReactNode } from "react";
 
-import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import {
   BackButton,
   Breakout,
@@ -32,23 +31,37 @@ import {
   type InteractiveQuestionDefaultViewProps,
 } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { SdkQuestionId } from "embedding-sdk/types/question";
+import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/components/public/InteractiveQuestion/types";
 
-export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId: SdkQuestionId;
-  plugins?: InteractiveQuestionProviderProps["componentPlugins"];
-}> &
-  Pick<
-    InteractiveQuestionProviderProps,
-    | "questionId"
-    | "onBeforeSave"
-    | "onSave"
-    | "entityTypeFilter"
-    | "isSaveEnabled"
-    | "initialSqlParameters"
-    | "withDownloads"
-    | "targetCollection"
-  >;
+/**
+ * @interface
+ * @expand
+ */
+export type BaseInteractiveQuestionProps =
+  InteractiveQuestionQuestionIdProps & {
+    /**
+     * The children of the MetabaseProvider component.s
+     */
+    children?: ReactNode;
+    plugins?: InteractiveQuestionProviderProps["componentPlugins"];
+  } & Pick<
+      InteractiveQuestionProviderProps,
+      | "onBeforeSave"
+      | "onSave"
+      | "entityTypeFilter"
+      | "isSaveEnabled"
+      | "initialSqlParameters"
+      | "withDownloads"
+      | "targetCollection"
+    >;
+
+/**
+ * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionProps = BaseInteractiveQuestionProps &
+  InteractiveQuestionDefaultViewProps;
 
 export const _InteractiveQuestion = ({
   questionId,
@@ -68,9 +81,7 @@ export const _InteractiveQuestion = ({
   withChartTypeSelector = true,
   withDownloads = false,
   initialSqlParameters,
-}: InteractiveQuestionProps &
-  InteractiveQuestionDefaultViewProps &
-  FlexibleSizeProps): JSX.Element | null => (
+}: InteractiveQuestionProps): JSX.Element | null => (
   <InteractiveQuestionProvider
     questionId={questionId}
     componentPlugins={plugins}
@@ -96,6 +107,13 @@ export const _InteractiveQuestion = ({
   </InteractiveQuestionProvider>
 );
 
+/**
+ * A component that renders an interactive question.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
 const InteractiveQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
 ) as typeof _InteractiveQuestion & {
@@ -132,10 +150,8 @@ InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
 InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
-/** @deprecated Use `InteractiveQuestion.Editor` instead */
 InteractiveQuestion.Notebook = Editor;
 InteractiveQuestion.Editor = Editor;
-/** @deprecated Use `InteractiveQuestion.EditorButton` instead */
 InteractiveQuestion.NotebookButton = EditorButton;
 InteractiveQuestion.EditorButton = EditorButton;
 InteractiveQuestion.QuestionVisualization = QuestionVisualization;
@@ -149,4 +165,5 @@ InteractiveQuestion.Breakout = Breakout;
 InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
 InteractiveQuestion.DownloadWidget = DownloadWidget;
 InteractiveQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
+
 export { InteractiveQuestion };

@@ -26,9 +26,7 @@
             :display-name (lib.temporal-bucket/describe-temporal-unit unit)}))))
 
 (defn- regex-available? [metadata-providerable]
-  (-> (lib.metadata/database metadata-providerable)
-      :features
-      (contains? :regex)))
+  (lib.metadata/database-supports? metadata-providerable :regex))
 
 (defn- domain-extraction [column]
   {:lib/type     ::extraction

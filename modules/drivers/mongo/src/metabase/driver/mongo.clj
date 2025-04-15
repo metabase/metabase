@@ -319,7 +319,7 @@
         "string"     :type/Text
         "object"     :type/Dictionary
         "array"      :type/Array
-        "binData"    :type/*
+        "binData"    :type/MongoBinData
         ;; "uuid" is not a database type like the rest here
         ;; it's determined by the subtype of binData fields in describe-table
         "uuid"       :type/UUID

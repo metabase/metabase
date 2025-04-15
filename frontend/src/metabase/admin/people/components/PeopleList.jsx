@@ -219,6 +219,7 @@ const PeopleList = ({
                 onChange={(groupId, membershipData) =>
                   handleChange(groupId, membershipData, user.id)
                 }
+                isConfirmModalOpen={Boolean(modalContent)}
               />
             ))}
         </tbody>

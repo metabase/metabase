@@ -21,6 +21,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.cache-config :as cache-config]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
@@ -829,6 +830,7 @@
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
+      serdes/add-entity-id
       ensure-clause-idents
       ;; At this point, the card should be at schema version 20.
       upgrade-card-schema-to-latest))
@@ -893,7 +895,12 @@
 ;; NOTE: The columns required for this hashing must be kept in sync with [[ensure-clause-idents]].
 (defmethod serdes/hash-fields :model/Card
   [_card]
-  [:name (serdes/hydrated-hash :collection) :created_at])
+  [:name (serdes/hydrated-hash :collection :collection_id) :created_at])
+
+(defmethod serdes/hash-required-fields :model/Card
+  [_card]
+  {:model :model/Card
+   :required-fields [:name :collection_id :created_at]})
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
@@ -1201,6 +1208,9 @@
                                          :moderator_id        (:id actor)
                                          :status              nil
                                          :text                (tru "Unverified due to edit")}))
+    ;; Invalidate the cache for card
+    (cache-config/invalidate! {:questions [(:id card-before-update)]
+                               :with-overrides? true})
     ;; ok, now save the Card
     (t2/update! :model/Card (:id card-before-update)
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).

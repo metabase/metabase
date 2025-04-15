@@ -87,48 +87,55 @@ export const MiniBarCell = <TValue,>({
       backgroundColor={backgroundColor}
       align={align}
     >
-      {/* TEXT VALUE */}
-      <div
-        className={cx(CS.textEllipsis, CS.textBold, CS.textRight, CS.flexFull)}
-        style={{ minWidth: LABEL_MIN_WIDTH }}
-      >
-        {formatter(value, rowIndex, columnId)}
-      </div>
-      {/* OUTER CONTAINER BAR */}
-      <div
-        data-testid="mini-bar-container"
-        className={CS.ml1}
-        style={{
-          position: "relative",
-          width: BAR_WIDTH,
-          height: BAR_HEIGHT,
-          backgroundColor: alpha(barColor, 0.2),
-          borderRadius: BORDER_RADIUS,
-        }}
-      >
-        {/* INNER PROGRESS BAR */}
+      <div className={S.minibarWrapper}>
+        {/* TEXT VALUE */}
         <div
-          data-testid="mini-bar"
+          className={cx(
+            CS.textEllipsis,
+            CS.textBold,
+            CS.textRight,
+            CS.flexFull,
+          )}
+          style={{ minWidth: LABEL_MIN_WIDTH }}
+        >
+          {formatter(value, rowIndex, columnId)}
+        </div>
+        {/* OUTER CONTAINER BAR */}
+        <div
+          data-testid="mini-bar-container"
+          className={CS.ml1}
           style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            backgroundColor: barColor,
-            ...barStyle,
+            position: "relative",
+            width: BAR_WIDTH,
+            height: BAR_HEIGHT,
+            backgroundColor: alpha(barColor, 0.2),
+            borderRadius: BORDER_RADIUS,
           }}
-        />
-        {/* CENTER LINE */}
-        {hasNegative && (
+        >
+          {/* INNER PROGRESS BAR */}
           <div
+            data-testid="mini-bar"
             style={{
               position: "absolute",
-              left: "50%",
               top: 0,
               bottom: 0,
-              borderLeft: `1px solid ${color("white")}`,
+              backgroundColor: barColor,
+              ...barStyle,
             }}
           />
-        )}
+          {/* CENTER LINE */}
+          {hasNegative && (
+            <div
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: 0,
+                bottom: 0,
+                borderLeft: `1px solid ${color("white")}`,
+              }}
+            />
+          )}
+        </div>
       </div>
     </BaseCell>
   );

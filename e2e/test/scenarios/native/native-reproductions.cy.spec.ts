@@ -2,6 +2,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { IconName } from "metabase/ui";
+import type { Database, ListDatabasesResponse } from "metabase-types/api";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
 const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
@@ -412,10 +413,136 @@ describe("issue 52806", () => {
     "should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)",
     { tags: "@flaky" },
     () => {
+      cy.intercept("/api/automagic-dashboards/database/*/candidates").as(
+        "candidates",
+      );
       H.visitQuestionAdhoc(questionDetails);
       cy.findByTestId("main-logo-link").click();
       H.modal().button("Discard changes").click();
+      cy.wait("@candidates");
       cy.location().should((location) => expect(location.search).to.eq(""));
     },
   );
+});
+
+describe("issue 55951", () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    cy.intercept<unknown, ListDatabasesResponse>(
+      "GET",
+      "/api/database",
+      (request) => {
+        request.continue((response) => {
+          response.body.data = mockResponseData(response.body.data);
+        });
+      },
+    ).as("getDatabases");
+  });
+
+  it("should not show loading state in database picker when databases are being reloaded (metabase#55951)", () => {
+    cy.visit("/");
+    cy.wait("@getDatabases");
+
+    cy.intercept<unknown, ListDatabasesResponse>(
+      "GET",
+      "/api/database*",
+      (request) => {
+        request.continue((response) => {
+          response.body.data = mockResponseData(response.body.data);
+
+          // Setting this to be arbitrarly long so that H.repeatAssertion is guaranteed to detect the issue
+          return new Promise((resolve) => setTimeout(resolve, 2000));
+        });
+      },
+    );
+
+    H.newButton("SQL query").click();
+    H.popover()
+      .should("be.visible")
+      .within(() => {
+        cy.findByText("QA Postgres12").should("be.visible");
+        cy.findByText("Sample Database").should("be.visible");
+
+        H.repeatAssertion(() => {
+          cy.findByTestId("loading-indicator", { timeout: 250 }).should(
+            "not.exist",
+          );
+        });
+      });
+  });
+
+  function mockResponseData(databases: Database[]) {
+    return databases.map((database) => ({
+      ...database,
+      initial_sync_status: "incomplete" as const,
+    }));
+  }
+});
+
+describe("issue 54799", () => {
+  const questionDetails = {
+    native: {
+      query: "select 'foo', 'bar'",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  function select(el: Cypress.Chainable, pos: Cypress.PositionType = "center") {
+    const macOSX = Cypress.platform === "darwin";
+    el.dblclick(pos, {
+      metaKey: macOSX,
+      ctrlKey: !macOSX,
+    });
+  }
+
+  it("it should be possible to select multiple ranges and run those (metabase#54799)", () => {
+    cy.findByTestId("visibility-toggler").click();
+
+    cy.get("[data-testid=cell-data]").contains("foo").should("be.visible");
+    cy.get("[data-testid=cell-data]").contains("bar").should("be.visible");
+
+    select(H.NativeEditor.get().findByText("select"));
+    select(H.NativeEditor.get().findByText("'foo'"));
+    select(H.NativeEditor.get().findByText("'foo'"), "left");
+    select(H.NativeEditor.get().findByText("'bar'"));
+    select(H.NativeEditor.get().findByText("'bar'"), "right");
+
+    getRunQueryButton().click();
+
+    cy.get("[data-testid=cell-data]").contains(/^foo$/).should("not.exist");
+    cy.get("[data-testid=cell-data]").contains(/^bar$/).should("not.exist");
+
+    cy.get("[data-testid=cell-data]")
+      .contains(/^'foobar'$/)
+      .should("be.visible");
+    cy.get("[data-testid=cell-data]")
+      .contains(/foobar/)
+      .should("be.visible");
+  });
+});
+
+describe("issue 56570", () => {
+  const questionDetails = {
+    native: {
+      query: `select '${"ab".repeat(200)}'`,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  it("should not push the toolbar off-screen (metabase#56570)", () => {
+    cy.findByTestId("visibility-toggler").click();
+    cy.findByTestId("native-query-editor-sidebar").should("be.visible");
+  });
 });

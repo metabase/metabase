@@ -51,6 +51,9 @@ export const FkTargetPicker = ({
       comboboxProps={{
         middlewares: {
           flip: true,
+          size: {
+            padding: 6,
+          },
         },
         position: "bottom-start",
         width: 300,

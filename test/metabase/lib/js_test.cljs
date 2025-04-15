@@ -183,9 +183,9 @@
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
 
-(deftest ^:parallel is-column-metadata-test
-  (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))
-  (is (false? (lib.js/is-column-metadata 1))))
+(deftest ^:parallel column-metadata?-test
+  (is (true? (lib.js/column-metadata? (meta/field-metadata :venues :id))))
+  (is (false? (lib.js/column-metadata? 1))))
 
 (deftest ^:parallel cljs-key->js-key-test
   (is (= "isManyPks"
@@ -233,13 +233,15 @@
       (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
   (testing "simple values can be converted properly (#36459)"
     (let [query (lib.tu/venues-query)
-          legacy-expr #js ["value" 0 nil]
+          legacy-expr #js ["value" 0 {"base_type" "type/Integer"}]
           expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
           legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
           query-with-expr (lib/expression query 0 "expr" expr)
           expr-from-query (first (lib/expressions query-with-expr 0))
           legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)
           named-expr (lib/with-expression-name expr "named")]
+      (is (=? [:value {:base-type :type/Integer :effective-type :type/Integer, :lib/uuid string?} 0]
+              expr))
       (is (= (js->clj legacy-expr) (js->clj legacy-expr') (js->clj legacy-expr-from-query)))
       (is (= "named" (lib/display-name query named-expr)))))
   (testing "simple expressions can be converted properly (#37173)"

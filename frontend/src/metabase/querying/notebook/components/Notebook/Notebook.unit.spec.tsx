@@ -10,7 +10,6 @@ import {
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -146,8 +145,6 @@ function setup({
   modelsFilterList = undefined,
   hasRecents = true,
 }: SetupOpts) {
-  mockScrollBy();
-
   setupDatabasesEndpoints([MOCK_DATABASE]);
   setupRecentViewsAndSelectionsEndpoints(
     hasRecents

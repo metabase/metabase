@@ -68,6 +68,7 @@
           metabase.api.common
           metabase.api.common.validation
           metabase.api.dashboard
+          metabase.api.database
           metabase.api.dataset
           metabase.api.field
           metabase.api.macros
@@ -146,6 +147,10 @@
   {:api  #{metabase.core.initialization-status}
    :uses :any}
 
+  database-routing
+  {:api #{metabase.database-routing.core}
+   :uses #{premium-features}}
+
   db
   {:api  #{metabase.db metabase.db.metadata-queries metabase.db.query metabase.db.setup}
    :uses #{auth-provider config connection-pool driver legacy-mbql lib plugins query-processor task util}}
@@ -178,6 +183,7 @@
            auth-provider
            config
            connection-pool
+           database-routing
            db
            legacy-mbql
            lib
@@ -192,7 +198,8 @@
            sync
            task
            upload
-           util}}
+           util
+           enterprise/database-routing}}
 
   eid-translation
   {:api  #{metabase.eid-translation.core}
@@ -612,7 +619,7 @@
 
   util
   {:api :any
-   :uses #{config driver legacy-mbql lib models plugins premium-features public-settings}}
+   :uses #{config db driver legacy-mbql lib models plugins premium-features public-settings}}
 
   xrays
   {:api  #{metabase.xrays.api metabase.xrays.core}
@@ -679,6 +686,10 @@
   enterprise/dashboard-subscription-filters
   {:api  #{}
    :uses #{premium-features}}
+
+  enterprise/database-routing
+  {:api #{metabase-enterprise.database-routing.core metabase-enterprise.database-routing.api}
+   :uses #{api config database-routing events lib models premium-features query-processor util}}
 
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init}

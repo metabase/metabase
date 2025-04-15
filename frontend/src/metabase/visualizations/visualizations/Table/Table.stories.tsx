@@ -54,9 +54,26 @@ const DefaultTemplate: StoryFn<{
 };
 
 export const DefaultTable = {
+  parameters: {
+    loki: { skip: true },
+  },
   render: DefaultTemplate,
   args: {
     series: data.variousColumnSettings,
+  },
+};
+
+export const TableWithImages = {
+  render: DefaultTemplate,
+  args: {
+    series: data.images,
+  },
+};
+
+export const TableWithWrappedLinks = {
+  render: DefaultTemplate,
+  args: {
+    series: data.wrappedLinks,
   },
 };
 

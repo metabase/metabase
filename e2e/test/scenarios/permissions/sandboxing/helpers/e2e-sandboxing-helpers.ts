@@ -16,26 +16,37 @@ import type {
 
 import type { DashcardQueryResponse, DatasetResponse } from "./types";
 
+type SimpleCollectionItem = Pick<CollectionItem, "id" | "name">;
+
 const { H } = cy;
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 const { PRODUCTS_ID, ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
-type CustomColumnType = "boolean" | "string" | "number";
+const customColumnTypeToFormulaUntyped = {
+  booleanExpr: '[Category]="Gizmo"',
+  stringExpr: 'concat("Category is ",[Category])',
+  numberExpr: 'if([Category] = "Gizmo", 1, 0)',
+  booleanLiteral: "true",
+  stringLiteral: '"fixed literal string"',
+  numberLiteral: "1",
+} as const;
+
+type CustomColumnType = keyof typeof customColumnTypeToFormulaUntyped;
 type CustomViewType = "Question" | "Model";
 
 type SandboxPolicy = {
   filterTableBy: "column" | "custom_view";
   customViewType?: CustomViewType;
   customViewName?: string;
-  customColumnType?: "number" | "string" | "boolean";
+  customColumnType?: CustomColumnType;
   filterColumn?: string;
 };
 
-const customColumnTypeToFormula: Record<CustomColumnType, string> = {
-  boolean: '[Category]="Gizmo"',
-  string: 'concat("Category is ",[Category])',
-  number: 'if([Category] = "Gizmo", 1, 0)',
-};
+const customColumnTypeToFormula: Record<CustomColumnType, string> =
+  customColumnTypeToFormulaUntyped;
+const customColumnTypes = Object.keys(
+  customColumnTypeToFormula,
+) as CustomColumnType[];
 
 const addCustomColumnToQuestion = (customColumnType: CustomColumnType) => {
   cy.log("Add a custom column");
@@ -163,9 +174,7 @@ export const adhocQuestionData = {
 function addCustomColumnsToQuestion() {
   H.openNotebook();
   H.getNotebookStep("data").button("Custom column").click();
-  addCustomColumnToQuestion("boolean");
-  addCustomColumnToQuestion("number");
-  addCustomColumnToQuestion("string");
+  customColumnTypes.forEach((type) => addCustomColumnToQuestion(type));
   H.visualize();
 
   // for some reason we can't use the saveQuestion helper here
@@ -326,24 +335,29 @@ export const assignAttributeToUser = ({
     });
 };
 
-export const configureSandboxPolicy = (policy: SandboxPolicy) => {
+export const configureSandboxPolicy = (
+  policy: SandboxPolicy,
+  { databaseId = 1, tableName = "Products" } = {},
+) => {
   const { filterTableBy, customViewName, customViewType, filterColumn } =
     policy;
 
   cy.log(`Configure sandboxing policy: ${JSON.stringify(policy)}`);
-  cy.log("Show the permissions configuration for the Sample Database");
-  cy.visit("/admin/permissions/data/database/1");
   cy.log(
-    "Show the permissions configuration for the Sample Database's Products table",
+    `Show the permissions configuration for the database with id ${databaseId}`,
   );
-  cy.findByRole("menuitem", { name: /Products/ }).click();
+  cy.visit(`/admin/permissions/data/database/${databaseId}`);
+  cy.log(`Show the permissions configuration for the table named ${tableName}`);
+  cy.findByRole("menuitem", { name: tableName }).click();
   cy.log("Modify the sandboxing policy for the 'data' group");
   H.modifyPermission("data", 0, "Sandboxed");
 
-  H.modal().within(() => {
-    cy.findByText(/Change access to this database to .*Sandboxed.*?/);
-    cy.button("Change").click();
-  });
+  if (databaseId === 1) {
+    H.modal().within(() => {
+      cy.findByText(/Change access to this database to .*Sandboxed.*?/);
+      cy.button("Change").click();
+    });
+  }
 
   H.modal().findByText(/Restrict access to this table/);
 
@@ -452,15 +466,20 @@ export function rowsShouldContainOnlyOneCategory({
   productCategory,
 }: {
   responses: DatasetResponse[];
-  questions: CollectionItem[];
+  questions: SimpleCollectionItem[];
   productCategory: (typeof productCategories)[number];
 }) {
-  expect(responses.length).to.equal(questions.length);
+  expect(responses.length, "Correct number of responses").to.equal(
+    questions.length,
+  );
 
   responses.forEach((response) => {
     const { questionDesc } = getQuestionDescription(response, questions);
     cy.log(`Results contain only ${productCategory}s in: ${questionDesc}`);
-    expect(response?.body.data.is_sandboxed).to.be.true;
+    expect(
+      response?.body.data.is_sandboxed,
+      `Response is sandboxed for: ${questionDesc}`,
+    ).to.be.true;
 
     const rows = response.body.data.rows;
 
@@ -502,7 +521,7 @@ export const valuesShouldContainOnlyOneCategory = (
 
 export const getDashcardResponses = (
   dashboard: Dashboard | null,
-  questions: CollectionItem[],
+  questions: SimpleCollectionItem[],
 ) => {
   H.visitDashboard(checkNotNull(dashboard).id);
 
@@ -517,17 +536,17 @@ export const getDashcardResponses = (
     });
 };
 
-export const getCardResponses = (questions: CollectionItem[]) => {
+export const getCardResponses = (questions: SimpleCollectionItem[]) => {
   expect(questions.length).to.be.greaterThan(0);
   return H.cypressWaitAll(
     questions.map((question) =>
       cy.request<DatasetResponse>("POST", `/api/card/${question.id}/query`),
     ),
   ).then((responses) => {
-    return { responses: responses, questions: questions };
+    return { responses, questions };
   }) as Cypress.Chainable<{
     responses: DatasetResponse[];
-    questions: CollectionItem[];
+    questions: SimpleCollectionItem[];
   }>;
 };
 
@@ -553,7 +572,7 @@ export const getParameterValuesForProductCategories = () =>
 
 export const assertNoResultsOrValuesAreSandboxed = (
   dashboard: Dashboard | null,
-  questions: CollectionItem[],
+  questions: SimpleCollectionItem[],
 ) => {
   checkNotNull(dashboard);
   getDashcardResponses(dashboard, questions).then(
@@ -564,7 +583,7 @@ export const assertNoResultsOrValuesAreSandboxed = (
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
     rowsShouldContainGizmosAndWidgets({
       responses: [response],
-      questions: [adhocQuestionData as unknown as CollectionItem],
+      questions: [adhocQuestionData as unknown as SimpleCollectionItem],
     }),
   );
 
@@ -579,7 +598,7 @@ export const assertNoResultsOrValuesAreSandboxed = (
 
 export const assertAllResultsAndValuesAreSandboxed = (
   dashboard: Dashboard | null,
-  questions: CollectionItem[],
+  questions: SimpleCollectionItem[],
   productCategory: (typeof productCategories)[number],
 ) => {
   checkNotNull(dashboard);
@@ -593,7 +612,7 @@ export const assertAllResultsAndValuesAreSandboxed = (
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
     rowsShouldContainOnlyOneCategory({
       responses: [response],
-      questions: [adhocQuestionData as unknown as CollectionItem],
+      questions: [adhocQuestionData as unknown as SimpleCollectionItem],
       productCategory,
     }),
   );
@@ -604,4 +623,9 @@ export const assertAllResultsAndValuesAreSandboxed = (
   getParameterValuesForProductCategories().then((response) =>
     valuesShouldContainOnlyOneCategory(response.body.values, productCategory),
   );
+};
+
+export const assertResponseFailsClosed = (response) => {
+  expect(response?.body.data.rows).to.have.length(0);
+  expect(response?.body.error_type).to.contain("invalid-query");
 };

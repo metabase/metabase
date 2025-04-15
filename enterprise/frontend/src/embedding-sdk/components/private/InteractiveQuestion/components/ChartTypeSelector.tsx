@@ -5,7 +5,22 @@ import type { StackProps } from "metabase/ui";
 
 import { useSensibleVisualizations } from "../hooks/use-sensible-visualizations";
 
-export const ChartTypeSelector = (stackProps: StackProps) => {
+/**
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionChartTypeSelectorProps = StackProps;
+
+/**
+ * Detailed chart type selection interface with recommended visualization options.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const ChartTypeSelector = ({
+  ...stackProps
+}: InteractiveQuestionChartTypeSelectorProps) => {
   const { sensibleVisualizations, nonSensibleVisualizations } =
     useSensibleVisualizations();
 

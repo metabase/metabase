@@ -152,12 +152,10 @@ config:
   api-keys:
     - name: "Admin API key"
       group: admin
-      description: "API key with admin permissions."
       creator: cam@example.com
       key: mb_firsttestapikey
     - name: "All Users API key"
       group: all-users
-      description: "API key with permissions of the All Users group."
       creator: cam@example.com
       key: mb_secondtestapikey
 {% endraw %}
@@ -175,7 +173,7 @@ api-keys:
 {% endraw %}
 ```
 
-See below for more on [env vars in the config file](#referring-to-environment-variables-in-the-configyml).
+See below for more on [environment variables in the config file](#referring-to-environment-variables-in-the-configyml).
 
 API keys that you create (the value of the `key`) must have the format `mb_` followed by a [Base64](https://en.wikipedia.org/wiki/Base64) string (if you're wearing formal attire, you'd say a _tetrasexagesimal_ string). So, `mb_` followed by letters and numbers, minimum: 12 characters, maximum: 254 characters. Concretely, the API key you create must satisfy the following regular expression: `mb_[A-Za-z0-9+/=]+`.
 
@@ -203,7 +201,15 @@ Some other things to note about API keys in the config file:
 
 ## Referring to environment variables in the `config.yml`
 
-As shown in the Databases examples above, environment variables can be specified with `{% raw %}{{ template-tags }}{% endraw %}` like `{% raw %}{{ env POSTGRES_TEST_DATA_PASSWORD }}{% endraw %}` or `{% raw %}[[options {{template-tags}}]]{% endraw %}`.
+As shown in the examples above, environment variables can be specified with template tags like so:
+
+```
+{% raw %}
+setting: "{{ env POSTGRES_TEST_DATA_PASSWORD }}"
+{% endraw %}
+```
+
+Note the quote marks wrapping the template `{% raw %}"{{ env API_KEY_FROM_ENV }}"{% endraw %}`; if you don't include the quotes, the YAML parser won't know it's a string template for Metabase to expand, and Metabase won't know to swap in the env var's value.
 
 Metabase doesn't support recursive expansion, so if one of your environment variables references _another_ environment variable, you're going to have a bad time.
 
@@ -213,9 +219,11 @@ If a value contains double braces (`{%raw %}}}{% endraw %}` or `{%raw %}{{{% end
 
 ```
 {% raw %}
-password: {{{ MetaPa$$123{{> }}}
+password: "{{{ MetaPa$$123{{> }}}"
 {% endraw %}
 ```
+
+Note the quote marks in `{% raw %}"{{{ MetaPa$$123{{> }}}"{% endraw %}`.
 
 ## Disable initial database sync
 

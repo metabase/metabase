@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.util :as u]
+   [metabase.util.string :as u.str]
    [toucan2.core :as t2]))
 
 (def ^:private tsv-language "english")
@@ -116,7 +117,8 @@
                " @@ query")])})
 
 (defn- weighted-tsvector [weight text]
-  [:setweight [:to_tsvector [:inline tsv-language] [:cast text :text]] [:inline weight]])
+  ;; tsvector has a max value size of 1048575 bytes
+  [:setweight [:to_tsvector [:inline tsv-language] [:cast (u.str/limit-bytes text 1048575) :text]] [:inline weight]])
 
 (defmethod specialization/extra-entry-fields :postgres [entity]
   {:search_vector

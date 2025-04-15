@@ -168,7 +168,4 @@ writeToFile("nextjs.js", nextjs_js);
 writeToFile("nextjs-no-ssr.cjs", nextjs_no_ssr_cjs);
 writeToFile("nextjs-no-ssr.js", nextjs_no_ssr_js);
 
-writeToFile(
-  "nextjs.d.ts",
-  `export * from "./enterprise/frontend/src/embedding-sdk/index.d.ts";`,
-);
+writeToFile("nextjs.d.ts", `export * from "./index.d.ts";`);

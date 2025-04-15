@@ -298,7 +298,7 @@
      :schedule-refreshed   schedule-refresh-count
      :duration-refreshed   duration-refresh-count}))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc                                   "Refresh 'schedule' caches"}
   Cache [_ctx]
   (refresh-cache-configs!))

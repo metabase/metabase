@@ -199,6 +199,8 @@ describe("scenarios > collection pinned items overview", () => {
       });
 
       openRootCollection();
+      cy.log("wait for data to be loaded and displayed");
+      H.getPinnedSection().should("contain", "18,760");
       H.openPinnedItemMenu(QUESTION_NAME);
       H.popover().findByText("Don’t show visualization").click();
       cy.wait("@getPinnedItems");

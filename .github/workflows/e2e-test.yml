@@ -49,6 +49,7 @@ jobs:
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
       MB_EXPERIMENTAL_SEARCH_BLOCK_ON_QUEUE: true
+      MB_SEARCH_ENGINE: appdb
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       TZ: US/Pacific # to make node match the instance tz

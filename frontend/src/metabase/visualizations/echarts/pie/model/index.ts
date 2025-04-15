@@ -343,18 +343,21 @@ export function getPieChartModel(
 
   // Create sliceTree, fill out the innermost slice ring
   const sliceTree: SliceTree = new Map();
+  let i = 0;
   const [sliceTreeNodes, others] = _.chain(pieRowsWithValues)
-    .map(({ value, color, key, name, isOther }, index) => {
+    .map(({ value, color, key, name, isOther }) => {
       const visible = isOther
         ? !hiddenSlices.includes(OTHER_SLICE_KEY)
         : !hiddenSlices.includes(key);
 
-      return {
+      const normalizedPercentage = visible ? value / total : 0; // slice percentage values are normalized to 0-1 scale
+
+      const o = {
         key,
         name,
         value: Math.abs(value),
         rawValue: value,
-        normalizedPercentage: visible ? value / total : 0, // slice percentage values are normalized to 0-1 scale
+        normalizedPercentage,
         color: getColorForRing(
           color,
           "inner",
@@ -364,12 +367,24 @@ export function getPieChartModel(
         children: new Map(),
         column: colDescs.dimensionDesc.column,
         rowIndex: checkNotNull(rowIndiciesByKey.get(key)),
-        legendHoverIndex: index,
+        legendHoverIndex: i,
         isOther,
         includeInLegend: true,
         startAngle: 0, // placeholders
         endAngle: 0,
       };
+
+      // Not using the index directly because it might be stale if:
+      // - pie.slice_threshold was set to something low
+      // - the data was sorted
+      // - pie.slice_threshold was set to something high
+      // - some small slice between others was hidden
+      // see metabase#55684
+      if (!o.isOther) {
+        i++;
+      }
+
+      return o;
     })
     .filter(
       (slice) => slice.rawValue !== 0 && (areAllNegative || slice.rawValue > 0),

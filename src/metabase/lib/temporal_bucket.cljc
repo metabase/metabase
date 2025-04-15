@@ -107,6 +107,17 @@
       ;; else
       (lib.temporal-bucket.util/relative-datetime-tru n "unknown unit"))))
 
+(mu/defn describe-temporal-interval-with-offset :- ::lib.schema.common/non-blank-string
+  "Get a translated description of a temporal bucketing interval with offset."
+  [n           :- TemporalIntervalAmount
+   unit        :- [:maybe :keyword]
+   offset      :- TemporalIntervalAmount
+   offset-unit :- [:maybe :keyword]]
+  (str
+   (describe-temporal-interval n unit)
+   ", "
+   (describe-relative-datetime offset offset-unit)))
+
 (defmulti with-temporal-bucket-method
   "Implementation for [[temporal-bucket]]. Implement this to tell [[temporal-bucket]] how to add a bucket to a
   particular MBQL clause."

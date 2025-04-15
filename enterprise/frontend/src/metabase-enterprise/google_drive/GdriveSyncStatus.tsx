@@ -102,7 +102,6 @@ export const GdriveSyncStatus = () => {
     <GsheetsSyncStatusView
       status={displayStatus}
       db_id={dbId}
-      error={syncError.message ?? ""}
       onClose={() => setForceHide(true)}
     />
   );
@@ -111,12 +110,10 @@ export const GdriveSyncStatus = () => {
 function GsheetsSyncStatusView({
   status,
   db_id,
-  error,
   onClose,
 }: {
   status: GsheetsStatus;
   db_id?: DatabaseId;
-  error?: string;
   onClose: () => void;
 }) {
   const title = match(status)
@@ -127,10 +124,6 @@ function GsheetsSyncStatusView({
   const itemTitle = match(status)
     .with("complete", () => t`Start exploring`)
     .otherwise(() => t`Google Sheets`);
-
-  if (error) {
-    console.error(error);
-  }
 
   const description = match(status)
     .with("complete", () => t`Files sync every 15 minutes`)

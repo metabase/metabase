@@ -513,7 +513,7 @@
    "report_card"       #{"action" "model_index_value" "report_card"}
    "report_dashboard"  #{"action" "model_index_value" "report_card"}})
 
-(deftest search-model-cascade-text
+(deftest search-model-cascade-test
   (is (= model->deleted-descendants
          (mt/with-empty-h2-app-db
            (let [table->children    (u.conn/app-db-cascading-deletes (mdb/app-db) (map t2/table-name (descendants :metabase/model)))

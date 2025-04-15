@@ -6,7 +6,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.native :as lib.native]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
@@ -234,8 +233,7 @@
              (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
 
 (defn ^:private metadata-provider-requiring-collection []
-  (meta.graph-provider/->SimpleGraphMetadataProvider (-> meta/metadata
-                                                         (update :features conj :native-requires-specified-collection))))
+  (meta/updated-metadata-provider update :features conj :native-requires-specified-collection))
 
 (deftest ^:parallel native-query+collection-test
   (testing "building when collection is not required"
@@ -255,8 +253,7 @@
       (is (=? {:database 9999}
               (-> query
                   (lib/with-different-database
-                    (meta.graph-provider/->SimpleGraphMetadataProvider
-                     (assoc meta/metadata :id 9999)))))))
+                    (meta/updated-metadata-provider assoc :id 9999))))))
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs :default)
          #"Must be a native query"
@@ -413,8 +410,7 @@
     (testing "remove dimensions from template tags"
       (is (empty? (-> query
                       (lib/with-different-database
-                        (meta.graph-provider/->SimpleGraphMetadataProvider
-                         (assoc meta/metadata :id 9999)))
+                        (meta/updated-metadata-provider assoc :id 9999))
                       lib/template-tags
                       vals
                       (->> (filter :dimension))))))))

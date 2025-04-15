@@ -70,3 +70,20 @@
   - Call hierarchy and depth
   - Return values for specific functions
   - Most frequently called namespaces and functions
+
+## Quick Commands
+
+### JavaScript/TypeScript
+- **Lint:** `yarn lint-eslint`
+- **Test:** `yarn test-unit path/to/file.unit.spec.js` or `yarn test-unit -t "pattern"`
+- **Watch:** `yarn test-unit-watch path/to/file.unit.spec.js`
+- **Format:** `yarn prettier`
+- **Type Check:** `yarn type-check`
+
+### Clojure
+- **Lint:** `./bin/mage kondo [path]`
+- **Format:** `./bin/mage cljfmt-files [path]`
+- **Test file:** `clojure -X:dev:test :only namespace/test-name`
+
+### ClojureScript
+- **Test:** `yarn test-cljs`

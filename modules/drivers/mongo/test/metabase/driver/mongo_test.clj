@@ -318,14 +318,14 @@
                        :database-position 0}}}
            (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))
     (mt/dataset uuid-dogs
-      (testing "binData uuid fields are identified as type/*"
+      (testing "binData uuid fields are identified as type/MongoBinData"
         (is (= {:schema nil,
                 :name "dogs",
                 :fields
                 #{{:name "_id", :database-type "long", :base-type :type/Integer, :pk? true, :database-position 0}
                   {:name "name", :database-type "string", :base-type :type/Text, :database-position 2}
-                  {:name "person_id", :database-type "binData", :base-type :type/*, :database-position 3}
-                  {:name "id", :database-type "binData", :base-type :type/*, :database-position 1}}}
+                  {:name "person_id", :database-type "binData", :base-type :type/MongoBinData, :database-position 3}
+                  {:name "id", :database-type "binData", :base-type :type/MongoBinData, :database-position 1}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :dogs)))))))
     (mt/dataset nested-bindata-coll
       (testing "nested fields with mixed binData subtypes are identified as type/*"
@@ -335,12 +335,12 @@
                           {:name "float", :database-type "double", :base-type :type/Float, :database-position 3}
                           {:name "text", :database-type "string", :base-type :type/Text, :database-position 10}
                           {:name "date", :database-type "date", :base-type :type/Instant, :database-position 1}
-                          {:name "mixed_uuid", :database-type "binData", :base-type :type/*, :database-position 7}
-                          {:name "mixed_not_uuid", :database-type "binData", :base-type :type/*, :database-position 6}
+                          {:name "mixed_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 7}
+                          {:name "mixed_not_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 6}
                           {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 8,
-                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/*, :database-position 9}}}
+                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}}
                           {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 4,
-                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/*, :database-position 5}}}}}
+                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
 (deftest sync-indexes-info-test
@@ -924,12 +924,34 @@
                    results))))))))
 
 (deftest ^:parallel mongo-uuid-test
-  (testing "mongo uuids can be filtered and are readable"
+  (testing "mongo binData fields can be filtered and are readable"
     (mt/test-driver :mongo
       (mt/dataset uuid-dogs
+        (is (= []
+               (->> {:filter [:is-empty
+                              [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]]
+                     :source-table (mt/id :dogs)}
+                    (mt/run-mbql-query dogs)
+                    mt/rows)))
+        (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+                [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+                [3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+               (->> {:filter [:not-empty
+                              [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]]
+                     :source-table (mt/id :dogs)}
+                    (mt/run-mbql-query dogs)
+                    mt/rows)))
+        (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+                [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]]
+               (->> {:filter [:!=
+                              [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]
+                              "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]
+                     :source-table (mt/id :dogs)}
+                    (mt/run-mbql-query dogs)
+                    mt/rows)))
         (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
                (->> {:filter [:=
-                              [:field (mt/id :dogs :person_id) {:base-type "type/*"}]
+                              [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]
                               "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]
                      :source-table (mt/id :dogs)}
                     (mt/run-mbql-query dogs)
@@ -1011,7 +1033,7 @@
                                [:field (mt/id :nested-bindata :_id) {:base-type :type/MongoBSONID}]
                                "abcdefabcdefabcdefabcdef"]
                               [:=
-                               [:field (mt/id :nested-bindata :mixed_uuid) {:base-type :type/*}]
+                               [:field (mt/id :nested-bindata :mixed_uuid) {:base-type :type/MongoBinData}]
                                "11111111-1111-1111-1111-111111111111"]
                               [:=
                                [:field (mt/id :nested-bindata :date) {:base-type :type/Instant}]

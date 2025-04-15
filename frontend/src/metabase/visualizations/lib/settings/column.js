@@ -369,6 +369,10 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "number",
     props: {
       placeholder: "1",
+      options: {
+        isNonNegative: true,
+        isInteger: true,
+      },
     },
   },
   scale: {

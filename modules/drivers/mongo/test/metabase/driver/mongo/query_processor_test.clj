@@ -6,6 +6,8 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
@@ -627,6 +629,35 @@
            #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
            (qp/process-query
             (mt/mbql-query times {:fields [$t]})))))))
+
+(deftest ^:parallel mongo-multiple-joins-test
+  (testing "should be able to join multiple mongo collections"
+    (mt/test-driver :mongo
+      (mt/dataset (mt/dataset-definition "multi-join-db"
+                                         ["table_a"
+                                          [{:field-name "a_id" :base-type :type/Text}
+                                           {:field-name "b_id" :base-type :type/Text}]
+                                          [["a_id" "b_id"]]]
+                                         ["table_b"
+                                          [{:field-name "b_id" :base-type :type/Text}
+                                           {:field-name "c_id" :base-type :type/Text}]
+                                          [["b_id" "c_id"]]]
+                                         ["table_c"
+                                          [{:field-name "c_id" :base-type :type/Text}]
+                                          [["c_id"]]])
+        (let [mp (mt/metadata-provider)
+              table-a (lib.metadata/table mp (mt/id :table_a))
+              table-b (lib.metadata/table mp (mt/id :table_b))
+              table-c (lib.metadata/table mp (mt/id :table_c))
+              table-a-b-id (lib.metadata/field mp (mt/id :table_a :b_id))
+              table-b-b-id (lib.metadata/field mp (mt/id :table_b :b_id))
+              table-b-c-id (lib.metadata/field mp (mt/id :table_b :c_id))
+              table-c-c-id (lib.metadata/field mp (mt/id :table_c :c_id))
+              query (-> (lib/query mp table-a)
+                        (lib/join (lib/join-clause table-b [(lib/= table-a-b-id  table-b-b-id)]))
+                        (lib/join (lib/join-clause table-c [(lib/= table-b-c-id table-c-c-id)])))]
+          (is (= [[1 "a_id" "b_id" 1 "b_id" "c_id" 1 "c_id"]]
+                 (mt/rows (qp/process-query query)))))))))
 
 ;; TODO: Re-enable this test if it becomes possible to determine type/UUID without using JavaScript
 #_(deftest ^:parallel filter-uuids-with-string-patterns-test

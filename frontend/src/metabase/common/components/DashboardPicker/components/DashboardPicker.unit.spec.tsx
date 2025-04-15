@@ -9,7 +9,6 @@ import {
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -172,7 +171,6 @@ interface SetupOpts {
 const commonSetup = () => {
   setupRecentViewsAndSelectionsEndpoints([]);
   mockGetBoundingClientRect();
-  mockScrollBy();
   setupSearchEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(

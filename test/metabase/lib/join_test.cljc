@@ -427,6 +427,13 @@
           {:lib/type :option/join.strategy, :strategy :inner-join}]
          (lib/available-join-strategies (lib.tu/query-with-join)))))
 
+(deftest ^:parallel available-join-strategies-missing-features-test
+  (is (= [{:lib/type :option/join.strategy, :strategy :inner-join}]
+         (lib/available-join-strategies
+          (-> (lib.tu/query-with-join)
+              (assoc :lib/metadata
+                     (meta/updated-metadata-provider update :features disj :left-join :right-join)))))))
+
 (deftest ^:parallel join-strategy-display-name-test
   (let [query (lib.tu/query-with-join)]
     (is (= ["Left outer join" "Right outer join" "Inner join"]
@@ -1363,36 +1370,35 @@
       (is (=? [:field {:temporal-unit :month, :join-alias "P"} integer?]
               rhs))
       (doseq [lhs          [lhs nil]
-              rhs          [rhs nil]
-              ;; if we specify lhs/rhs, then we should be able to mark things selected correctly when passing in a
-              ;; Table (joinable) instead of an actual join
               [query join] (concat
                             [[query join]]
                             (when (and lhs rhs)
                               [[orders-query (meta/table-metadata :products)]]))]
-        (testing (pr-str (list `lib/join-condition-lhs-columns 'query (:lib/type join) (when lhs 'lhs) (when rhs 'rhs)))
-          (is (= [{:name "ID", :selected? false}
-                  {:name "USER_ID", :selected? false}
-                  {:name "PRODUCT_ID", :selected? false}
-                  {:name "SUBTOTAL", :selected? false}
-                  {:name "TAX", :selected? false}
-                  {:name "TOTAL", :selected? false}
-                  {:name "DISCOUNT", :selected? false}
-                  {:name "CREATED_AT", :selected? true}
-                  {:name "QUANTITY", :selected? false}]
-                 (mapv #(select-keys % [:name :selected?])
-                       (lib/join-condition-lhs-columns query join lhs rhs)))))
-        (testing (pr-str (list `lib/join-condition-rhs-columns 'query (:lib/type join) (when lhs 'lhs) (when rhs 'rhs)))
-          (is (= [{:name "ID", :selected? false}
-                  {:name "EAN", :selected? false}
-                  {:name "TITLE", :selected? false}
-                  {:name "CATEGORY", :selected? false}
-                  {:name "VENDOR", :selected? false}
-                  {:name "PRICE", :selected? false}
-                  {:name "RATING", :selected? false}
-                  {:name "CREATED_AT", :selected? true}]
-                 (mapv #(select-keys % [:name :selected?])
-                       (lib/join-condition-rhs-columns query join lhs rhs))))))
+        (testing (pr-str (list `lib/join-condition-rhs-columns 'query (:lib/type join) (when lhs 'lhs) 'rhs))
+          (is (= ["CREATED_AT"]
+                 (->> (lib/join-condition-rhs-columns query join lhs rhs)
+                      (filter :selected?)
+                      (mapv :name)))))
+        (testing (pr-str (list `lib/join-condition-rhs-columns 'query (:lib/type join) (when lhs 'lhs) nil))
+          (is (= []
+                 (->> (lib/join-condition-rhs-columns query join lhs nil)
+                      (filter :selected?)
+                      (mapv :name))))))
+      (doseq [rhs          [rhs nil]
+              [query join] (concat
+                            [[query join]]
+                            (when (and lhs rhs)
+                              [[orders-query (meta/table-metadata :products)]]))]
+        (testing (pr-str (list `lib/join-condition-lhs-columns 'query (:lib/type join) 'lhs (when rhs 'rhs)))
+          (is (= ["CREATED_AT"]
+                 (->> (lib/join-condition-lhs-columns query join lhs rhs)
+                      (filter :selected?)
+                      (mapv :name)))))
+        (testing (pr-str (list `lib/join-condition-lhs-columns 'query (:lib/type join) nil (when rhs 'rhs)))
+          (is (= []
+                 (->> (lib/join-condition-lhs-columns query join nil rhs)
+                      (filter :selected?)
+                      (mapv :name))))))
       (testing "temporal bucket returns with column metadata"
         (let [[lhs-column] (filter :selected? (lib/join-condition-lhs-columns query 0 join lhs rhs))]
           (is (= {:lib/type :option/temporal-bucketing, :unit :month} (lib/temporal-bucket lhs-column))))

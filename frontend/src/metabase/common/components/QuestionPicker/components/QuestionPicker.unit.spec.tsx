@@ -12,7 +12,6 @@ import {
 import { mockSettings } from "__support__/settings";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -248,7 +247,6 @@ interface SetupOpts {
 
 const commonSetup = () => {
   mockGetBoundingClientRect();
-  mockScrollBy();
   setupRecentViewsAndSelectionsEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(

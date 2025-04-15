@@ -101,8 +101,20 @@
 (mu/defn- cruft-dependent-cols [{table-name :name :as table}
                                 database
                                 sync-stage :- [:enum ::reactivate ::create ::update]]
-  (let [is-crufty? (crufty/name? table-name (into crufty-table-patterns
-                                                  (some-> database :settings :auto-cruft-tables)))]
+  (let [is-crufty? (if (= sync-stage ::update)
+                     ;; TODO: we should add an updated_by column to metabase_table in
+                     ;; [[metabase.api.table/update-table!*]] to track occasions where the table was updated by an
+                     ;; admin, and respect their choices during an update.
+                     ;;
+                     ;; This will fix the issue where a table is marked as visible, but cruftiness settings keep re-hiding it
+                     ;; during update steps. This is also how we handled this before the addition of auto-cruft-tables.
+                     ;;
+                     ;; Setting it false will be a no-op because we never unhide tables that are already visible via cruft settings.
+                     ;;
+                     ;; More context: https://metaboat.slack.com/archives/C013N8XL286/p1743707103874849
+                     false
+                     (crufty/name? table-name (into crufty-table-patterns
+                                                    (some-> database :settings :auto-cruft-tables))))]
     {:initial_sync_status (cond
                             ;; if we're updating a table, we don't overwrite the initial sync status, so that it remain
                             ;; "complete" during the sync. See:

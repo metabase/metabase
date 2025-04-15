@@ -6,12 +6,47 @@ type VariableKind = "dimension" | "segment" | "aggregation" | "expression";
 type Type = VariableKind | "string" | "number" | "boolean";
 type VariableId = number;
 
-export interface Token {
+export class Token {
   type: NodeType;
   text: string;
-  value?: string | string;
-  length: number;
+  value?: string;
+
   pos: number;
+  length: number;
+
+  constructor({
+    type,
+    pos,
+    length,
+    text,
+    value,
+  }: {
+    type: NodeType;
+    text: string;
+    value?: string;
+    length: number;
+    pos: number;
+  }) {
+    this.type = type;
+    this.pos = pos;
+    this.length = length;
+
+    this.text = text;
+    this.value = value;
+  }
+
+  get start(): number {
+    return this.pos;
+  }
+  get end(): number {
+    return this.pos + this.length;
+  }
+  get from(): number {
+    return this.start;
+  }
+  get to(): number {
+    return this.end;
+  }
 }
 
 export interface Node {

@@ -174,7 +174,7 @@
   "Returns a transducer for computing metadata about the fields in `db`."
   [driver db]
   (map (fn [col]
-         (let [base-type (database-type->base-type-or-warn driver (:database-type col))
+         (let [base-type (or (:base-type col) (database-type->base-type-or-warn driver (:database-type col)))
                semantic-type (calculated-semantic-type driver (:name col) (:database-type col))
                json? (isa? base-type :type/JSON)
                database-position (some-> (:database-position col) int)]
@@ -303,6 +303,19 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti describe-fields-pre-process-xf
+  "Returns a (possibly stateful) transducer for computing metadata about the fields in `db`.
+   Occurs on the results of [[describe-fields-sql]].
+   Same args as [[describe-fields]]."
+  {:added    "0.53.10"
+   :arglists '([driver db & args])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod describe-fields-pre-process-xf :sql-jdbc
+  [_driver _db & _args]
+  identity)
+
 (defn describe-fields
   "Default implementation of [[metabase.driver/describe-fields]] for JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db & {:keys [schema-names table-names] :as args}]
@@ -318,7 +331,9 @@
         (catch Throwable _
           (log/error "Failed to prepare sql for log.")))
       (eduction
-       (describe-fields-xf driver db)
+       (comp
+        (m/mapply describe-fields-pre-process-xf driver db args)
+        (describe-fields-xf driver db))
        (sql-jdbc.execute/reducible-query db sql)))))
 
 (defmulti describe-indexes-sql

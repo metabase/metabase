@@ -88,6 +88,7 @@ serdes/meta:
   label: total_number_of_queries
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: Glqmoytsnu0n6rfLUjock
 metabase_version: vUNKNOWN (9aa572c)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb

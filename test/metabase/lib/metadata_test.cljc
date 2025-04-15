@@ -5,10 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
-   [metabase.lib.test-util :as lib.tu])
-  #?@(:clj ((:import
-             metabase.lib.test_metadata.graph_provider.SimpleGraphMetadataProvider))))
+   [metabase.lib.test-util :as lib.tu]))
 
 (comment lib/keep-me)
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -56,14 +53,21 @@
       ["PEOPLE" "ORDERS" "VENUES"])))
 
 (deftest ^:parallel editable?-test
-  (let [query          (lib.tu/query-with-join)
-        metadata       ^SimpleGraphMetadataProvider (:lib/metadata query)
-        metadata-graph (.-metadata-graph metadata)
-        restricted-metadata-graph (update metadata-graph :tables #(into [] (remove (comp #{"CATEGORIES"} :name)) %))
-        restricted-provider (meta.graph-provider/->SimpleGraphMetadataProvider restricted-metadata-graph)
-        restritcted-query (assoc query :lib/metadata restricted-provider)]
+  (let [query               (lib.tu/query-with-join)
+        restricted-provider (meta/updated-metadata-provider
+                             update :tables #(into [] (remove (comp #{"CATEGORIES"} :name)) %))
+        restritcted-query   (assoc query :lib/metadata restricted-provider)]
     (is (lib.metadata/editable? query))
     (is (not (lib.metadata/editable? restritcted-query)))))
+
+(deftest ^:parallel database-supports?-test
+  (let [query          (lib.tu/query-with-join)
+        provider-with-feature (meta/updated-metadata-provider update :features conj ::special-feature)
+        provider-without-feature (meta/updated-metadata-provider update :features disj ::special-feature)
+        query-with-feature (assoc query :lib/metadata provider-with-feature)
+        query-without-feature (assoc query :lib/metadata provider-without-feature)]
+    (is (lib.metadata/database-supports? query-with-feature ::special-feature))
+    (is (not (lib.metadata/database-supports? query-without-feature ::special-feature)))))
 
 (deftest ^:parallel idents-test
   (doseq [table-key (meta/tables)

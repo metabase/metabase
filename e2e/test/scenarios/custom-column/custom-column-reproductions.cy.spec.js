@@ -291,7 +291,7 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("14");
+      H.fieldValuesCombobox().type("14");
       cy.button("Add filter").click();
     });
   }
@@ -1394,7 +1394,7 @@ describe("issue 48562", () => {
       expressions: {
         CustomColumn: ["contains", ["field", 10000, null], "abc"],
       },
-      filter: ["segment", 10001],
+      filter: ["+", 1, ["segment", 10001]],
       aggregation: [["metric", 10002]],
     },
   };
@@ -1412,8 +1412,7 @@ describe("issue 48562", () => {
     H.CustomExpressionEditor.value().should("contain", "[Unknown Field]");
     H.expressionEditorWidget().button("Cancel").click();
 
-    H.getNotebookStep("filter").findByText("[Unknown Segment]").click();
-    H.popover().findByText("Custom Expression").click();
+    H.getNotebookStep("filter").findByText("1 + [Unknown Segment]").click();
     H.CustomExpressionEditor.value().should("contain", "[Unknown Segment]");
     H.expressionEditorWidget().button("Cancel").click();
 
@@ -1529,5 +1528,129 @@ describe("issue #55940", () => {
     H.CustomExpressionEditor.helpText()
       .should("be.visible")
       .should("contain", "Offset(Sum([Total]), -1)");
+  });
+});
+
+describe("issue #55984", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should not overflow the suggestion tooltip when a suggestion name is too long (metabase#55984)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "[Total]",
+      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt",
+    });
+    cy.button("Done").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("[lo");
+    H.CustomExpressionEditor.completions().should(($el) => {
+      expect(H.isScrollableHorizontally($el[0])).to.be.false;
+    });
+  });
+
+  it("should not overflow the suggestion tooltip when a suggestion name is too long and has no spaces (metabase#55984)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "[Total]",
+      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt".replaceAll(
+        " ",
+        "_",
+      ),
+    });
+    cy.button("Done").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("[lo");
+    H.CustomExpressionEditor.completions().should(($el) => {
+      expect(H.isScrollableHorizontally($el[0])).to.be.false;
+    });
+  });
+});
+
+describe("issue 55622", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to mix regular functions with aggregation functions (metabase#55622)", () => {
+    H.openPeopleTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: 'datetimeDiff(Max([Created At]), max([Birth Date]), "minute")',
+      name: "Aggregation",
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 56152", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Should show the help text popover when typing a multi-line expression (metabase#56152)", () => {
+    H.openPeopleTable({ mode: "notebook" });
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type(dedent`
+      datetimeDiff(
+        [Created At],
+    `);
+
+    H.CustomExpressionEditor.helpText().should("be.visible");
+  });
+});
+
+describe("issue 56596", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [["field", PRODUCTS.ID, null]],
+        limit: 1,
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    H.openNotebook();
+  });
+
+  it("should not remove backslashes from escaped characters (metabase#56596)", () => {
+    H.addCustomColumn();
+    const expr = dedent`
+      regexextract([Vendor], "\\s.*")
+    `;
+    H.enterCustomColumnDetails({
+      formula: expr,
+      name: "Last name",
+    });
+    H.CustomExpressionEditor.format();
+    H.CustomExpressionEditor.value().should("equal", expr);
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").findByText("Last name").click();
+    H.CustomExpressionEditor.value().should("equal", expr);
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.visualize();
+    H.assertTableData({
+      columns: ["ID", "Last name"],
+      firstRows: [["1", " Casper and Hilll"]],
+    });
   });
 });

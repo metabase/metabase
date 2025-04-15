@@ -240,12 +240,12 @@
   [_job-context]
   (prune-all-deletable! dispatching-refresher))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Refresh persisted tables job"}
   PersistenceRefresh [job-context]
   (refresh-job-fn! job-context))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Remove deletable persisted tables"}
   PersistencePrune [job-context]
   (prune-job-fn! job-context))

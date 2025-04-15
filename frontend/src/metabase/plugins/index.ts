@@ -56,6 +56,7 @@ import type {
   Dashboard,
   Database as DatabaseType,
   Dataset,
+  FieldId,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -76,8 +77,10 @@ import type {
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS = [];
 
-// function to determine the landing page
-export const PLUGIN_LANDING_PAGE = [];
+export const PLUGIN_LANDING_PAGE = {
+  getLandingPage: () => "/",
+  LandingPageWidget: PluginPlaceholder,
+};
 
 export const PLUGIN_REDUX_MIDDLEWARES = [];
 
@@ -200,7 +203,6 @@ export const PLUGIN_LDAP_FORM_FIELDS = {
     settings: {
       [setting: string]: {
         display_name?: string | undefined;
-        warningMessage?: string | undefined;
         description?: string | ReactNode | undefined;
         note?: string | undefined;
       };
@@ -607,6 +609,29 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
    */
   areDownloadsEnabled: (_args: {
     hide_download_button?: boolean | null;
-    downloads?: boolean | null;
-  }) => true,
+    downloads?: string | boolean | null;
+  }) => ({ pdf: true, results: true }),
+};
+
+export const PLUGIN_DB_ROUTING = {
+  DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+  getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
+  getDestinationDatabaseRoutes: (_IsAdmin: any) =>
+    null as React.ReactElement | null,
+  useRedirectDestinationDatabase: (
+    _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
+  ): void => {},
+  getPrimaryDBEngineFieldState: (
+    _database: Pick<Database, "router_user_attribute">,
+  ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_API = {
+  getFieldValuesUrl: (fieldId: FieldId) => `/api/field/${fieldId}/values`,
+  getRemappedFieldValueUrl: (fieldId: FieldId, remappedFieldId: FieldId) =>
+    `/api/field/${fieldId}/remapping/${remappedFieldId}`,
+  getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
+    `/api/field/${fieldId}/search/${searchFieldId}`,
 };

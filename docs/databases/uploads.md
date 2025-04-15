@@ -19,7 +19,7 @@ To manage upload settings, admins can hit cmd/ctrl + K and search for "Settings 
 - [PostgreSQL](../databases/connections/postgresql.md)
 - [MySQL](../databases/connections/mysql.md)
 - [Redshift](../databases/connections/redshift.md)
-- [ClickHouse](../developers-guide/partner-and-community-drivers.md#partner-drivers)
+- [ClickHouse](../databases/connections/clickhouse.md)
 
 ## Setting up uploads
 

@@ -731,7 +731,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .blur();
       H.undoToast().findByText("Changes saved").should("be.visible");
 
-      cy.findByTestId("landing-page-error").should("not.exist");
       cy.findByRole("navigation").findByText("Exit admin").click();
       cy.url().should("include", "/test-1");
     });
@@ -750,9 +749,9 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .clear()
         .type("https://google.com")
         .blur();
-      cy.findByTestId("landing-page-error")
+      cy.findByTestId("admin-layout-content")
         .findByText("This field must be a relative URL.")
-        .should("exist");
+        .should("be.visible");
 
       cy.findByRole("navigation").findByText("Exit admin").click();
       cy.url().should("include", "/test-2");

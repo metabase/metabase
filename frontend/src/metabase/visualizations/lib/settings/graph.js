@@ -351,7 +351,11 @@ export const GRAPH_TREND_SETTINGS = {
     default: false,
     getHidden: (series, vizSettings) => {
       const { insights } = series[0].data;
-      return !insights || insights.length === 0;
+      return (
+        !insights ||
+        insights.length === 0 ||
+        vizSettings["graph.dimensions"].length > 1
+      );
     },
     useRawSeries: true,
     inline: true,
@@ -552,6 +556,7 @@ export const GRAPH_AXIS_SETTINGS = {
     title: t`Scale`,
     index: 4,
     widget: "select",
+    persistDefault: true,
     readDependencies: [
       "graph.x_axis._is_timeseries",
       "graph.x_axis._is_numeric",

@@ -13,7 +13,7 @@ import _ from "underscore";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import {
   type ExpressionError,
   MBQL_CLAUSES,
@@ -22,7 +22,7 @@ import {
   format,
 } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
-import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
+import { COMMA, GROUP } from "metabase-lib/v1/expressions/pratt";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { FunctionBrowser } from "../FunctionBrowser";
@@ -245,33 +245,27 @@ function useExpression({
 
   const formatExpression = useCallback(
     ({ initial = false }: { initial?: boolean }) => {
-      const expression =
-        clause &&
-        Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
-
-      if (!expression) {
+      function done(source: string) {
         setIsFormatting(false);
-        setSource("");
+        setSource(source);
         if (initial) {
-          setInitialSource("");
+          setInitialSource(source);
         }
+      }
+
+      if (clause == null) {
+        done("");
         return;
       }
 
-      format(expression, {
+      format(clause, {
         query,
         stageIndex,
         expressionIndex,
         printWidth: 55, // 60 is the width of the editor
       })
         .catch(() => "")
-        .then((source) => {
-          setIsFormatting(false);
-          setSource(source);
-          if (initial) {
-            setInitialSource(source);
-          }
-        });
+        .then(done);
     },
     [clause, query, stageIndex, expressionIndex],
   );
@@ -365,12 +359,7 @@ function getTooltipPosition(state: EditorState) {
   const pos = state.selection.main.head;
   const source = state.doc.toString();
   let token = tokenAtPos(source, pos);
-  if (
-    pos > 0 &&
-    token &&
-    token.type === TOKEN.Operator &&
-    (token.op === "," || token.op === "(")
-  ) {
+  if (pos > 0 && token && (token.type === COMMA || token.type === GROUP)) {
     // when we're `,` or `(`, return the previous token instead
     token = tokenAtPos(source, pos - 1);
   }

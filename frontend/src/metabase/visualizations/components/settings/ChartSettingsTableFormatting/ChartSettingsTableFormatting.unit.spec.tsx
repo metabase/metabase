@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { mockScrollIntoView, render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import type { ColumnFormattingSetting } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -97,8 +97,6 @@ const Wrapper = (props: Partial<ChartSettingsTableFormattingProps> = {}) => {
 const setup = (props = {}) => {
   render(<Wrapper {...props} />);
 };
-
-mockScrollIntoView();
 
 describe("ChartSettingsTableFormatting", () => {
   it("should allow you to add a rule", async () => {

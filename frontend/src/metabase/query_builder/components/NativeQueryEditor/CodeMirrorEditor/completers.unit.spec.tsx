@@ -597,8 +597,8 @@ describe("useReferencedCardCompletion", () => {
       from: 7,
       validFor: expect.any(Function),
       options: [
-        { label: "Foobar", detail: "Referenced Question :type/Text" },
-        { label: "Bar", detail: "Referenced Question :type/Text" },
+        { label: "Foobar", detail: "Referenced Question varchar" },
+        { label: "Bar", detail: "Referenced Question varchar" },
       ],
     });
 
@@ -613,8 +613,8 @@ describe("useReferencedCardCompletion", () => {
       to: 10,
       validFor: expect.any(Function),
       options: [
-        { label: "Foobar", detail: "Referenced Question :type/Text" },
-        { label: "Bar", detail: "Referenced Question :type/Text" },
+        { label: "Foobar", detail: "Referenced Question varchar" },
+        { label: "Bar", detail: "Referenced Question varchar" },
       ],
     });
     expect(fetchMock.calls(url)).toHaveLength(1);

@@ -31,8 +31,6 @@ export function PieChart(props: VisualizationProps) {
     onRender,
     isDashboard,
     isFullscreen,
-    isPlaceholder,
-    series: transformedSeries,
   } = props;
   const hoveredIndex = props.hovered?.index;
   const hoveredSliceKeyPath = props.hovered?.pieSliceKeyPath;
@@ -55,14 +53,9 @@ export function PieChart(props: VisualizationProps) {
     isDashboard,
     isFullscreen,
   });
-  const rawSeriesWithRemappings = useMemo(
+  const seriesToRender = useMemo(
     () => extractRemappings(rawSeries),
     [rawSeries],
-  );
-
-  const seriesToRender = useMemo(
-    () => (isPlaceholder ? transformedSeries : rawSeriesWithRemappings),
-    [isPlaceholder, transformedSeries, rawSeriesWithRemappings],
   );
 
   const chartModel = useMemo(
