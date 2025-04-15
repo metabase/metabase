@@ -39,15 +39,9 @@ You can think of semantic types as adding extra flavor to a field to communicate
 
 ### Semantic types for any field
 
-- Entity key
+- **Entity key.** Used to indicate that the field uniquely identifies each row. Could be a Product ID, serial number, etc.
 
-  Used to indicate that the field uniquely identifies each row. Could be a Product ID, serial number, etc.
-
-- Foreign key
-
-  Used to refer to an entity key of another table in order to connect data from related tables. For example, in an Orders table, you might have a foreign key called `customer_id` that points to a Customers table's entity key, `id`. If you want to use [linked filters on dashboards](../dashboards/linked-filters.md), you must set up foreign key relationships.
-
-- Category
+- **Foreign key.** Used to refer to an Entity key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the Entity key. If you want to use [linked filters on dashboards](../dashboards/linked-filters.md), you must set up foreign key relationships.
 
 ### Semantic types for numeric fields
 
@@ -61,6 +55,7 @@ You can think of semantic types as adding extra flavor to a field to communicate
 - Location
   - Latitude
   - Longitude
+- Category
 
 ### Semantic types for temporal fields
 
@@ -76,11 +71,9 @@ You can think of semantic types as adding extra flavor to a field to communicate
 
 - Entity name
 - Email
-
   - URL
   - Image URL
   - Avatar URL
-
 - Category
 - Name
 - Title
@@ -122,17 +115,17 @@ Some semantic types change the way the data in the field is displayed.
 
 Formatting setting from Table Metadata settings will be applied across your Metabase, but people can change them for individual charts.
 
-| Semantic type          | Format                                                                                                                                                                                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Percentage             | Displayed as percentage, for example 0.75 will be displayed as 75\%                                                                                                                                                                                                |
+| Semantic type          | Format                                                                                                                                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Percentage             | Displayed as percentage, for example 0.75 will be displayed as 75\%                                                                                                                                                                                                      |
 | Currency               | On charts and in detail view, the values are prepended by the currency symbol, e.g., `$134.65`. By default in the table view, the currency symbol is only displayed in the header, but you can change the metadata formatting settings to show the symbol for every row. |
-| Latitude/Longitude     | Displayed as coordinates, e.g., `0.00000000° N`                                                                                                                                                                                                                     |
-| Email                  | Display as a `mailto` link                                                                                                                                                                                                                                         |
-| URL                    | Can format as a clickable link                                                                                                                                                                                                                                     |
-| Image URL              | Can display as an image. See table format settings LINK                                                                                                                                                                                                            |
-| Avatar URL             | Can display as avatar circle image. See table format settings LINK                                                                                                                                                                                                 |
-| Field containing JSON  | In detail view, display as prettified JSON                                                                                                                                                                                                                         |
-| Entity and Foreign key | Highlighted in table view                                                                                                                                                                                                                                          |
+| Latitude/Longitude     | Displayed as coordinates, e.g., `0.00000000° N`                                                                                                                                                                                                                          |
+| Email                  | Display as a `mailto` link                                                                                                                                                                                                                                               |
+| URL                    | Can format as a clickable link                                                                                                                                                                                                                                           |
+| Image URL              | Can display as an image. See [table format settings](../questions/visualizations/table.md#display-as)                                                                                                                                                                    |
+| Avatar URL             | Can display as avatar circle image. See [table format settings](../questions/visualizations/table.md#display-as)                                                                                                                                                         |
+| Field containing JSON  | In detail view, display as prettified JSON                                                                                                                                                                                                                               |
+| Entity and Foreign key | Highlighted in table view                                                                                                                                                                                                                                                |
 
 ### Visualizations
 
@@ -158,7 +151,7 @@ Additionally, if you use location semantic types:
 
 ### Extract values from columns
 
-For some fields, you can quickly extract values from columns using shortcuts in table view or in the custom expression editor in the query builder:
+For some fields, you can quickly extract values from columns using [shortcuts in table view](../questions/visualizations/table.md#extract-domain-subdomain-host-or-path) or in the [custom expression editor](../questions/query-builder/expressions.md) in the query builder:
 
 | Group by data type  | Extract                                 |
 | ------------------- | --------------------------------------- |
