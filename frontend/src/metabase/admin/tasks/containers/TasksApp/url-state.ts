@@ -10,6 +10,19 @@ type UrlState = {
   status: TaskStatus | null;
 };
 
+export const urlStateConfig: UrlStateConfig<UrlState> = {
+  parse: (query) => ({
+    page: parsePage(query.page),
+    task: parseTask(query.task),
+    status: parseStatus(query.status),
+  }),
+  serialize: ({ page, task, status }) => ({
+    page: page === 0 ? undefined : String(page),
+    task: task === null ? undefined : task,
+    status: status === null ? undefined : status,
+  }),
+};
+
 function parsePage(param: QueryParam): UrlState["page"] {
   const value = Array.isArray(param) ? param[0] : param;
   const parsed = parseInt(value || "0", 10);
@@ -29,16 +42,3 @@ function parseStatus(param: QueryParam): UrlState["status"] {
 function isTaskStatus(value: string): value is TaskStatus {
   return ["success", "started", "failed", "unknown"].includes(value);
 }
-
-export const urlStateConfig: UrlStateConfig<UrlState> = {
-  parse: (query) => ({
-    page: parsePage(query.page),
-    task: parseTask(query.task),
-    status: parseStatus(query.status),
-  }),
-  serialize: ({ page, task, status }) => ({
-    page: page === 0 ? undefined : String(page),
-    task: task === null ? undefined : task,
-    status: status === null ? undefined : status,
-  }),
-};
