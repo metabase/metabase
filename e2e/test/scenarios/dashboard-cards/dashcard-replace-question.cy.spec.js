@@ -178,6 +178,7 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
       nextQuestionName: "Orders",
     });
     H.undoToastList()
+      .should("have.length", 2)
       .eq(0)
       .should(($el) => {
         // we wait for element to take its position after animation
