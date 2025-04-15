@@ -61,7 +61,7 @@ export const GdriveSyncStatus = () => {
     }
 
     if (status === "error" && previousStatus === "syncing") {
-      console.error((apiError as ErrorPayload)?.data?.message);
+      console.error((apiError as ErrorPayload)?.data?.message ?? t`Sync error`);
     }
   }, [status, previousStatus, gdriveFolder, dbId, apiError]);
 
