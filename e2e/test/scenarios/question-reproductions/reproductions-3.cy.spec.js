@@ -1337,7 +1337,7 @@ describe("issue 43057", () => {
     H.tableHeaderClick("Created At");
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByText("On").click();
       cy.findByLabelText("Date").clear().type("November 18, 2024");
       cy.button("Add filter").click();

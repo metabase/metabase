@@ -276,7 +276,7 @@ describe("issue 20683", { tags: "@external" }, () => {
 
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
       cy.findByText("Current").click();
       cy.findByText("Quarter").click();
@@ -574,7 +574,7 @@ describe("issue 25378", () => {
 
     H.clauseStepPopover().within(() => {
       cy.findByText("Created At: Month").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByDisplayValue("days").click();
     });
     cy.findByRole("listbox").findByText("months").click();
@@ -721,7 +721,7 @@ describe("issue 25994", () => {
 
     H.popover().within(() => {
       cy.findByText("Min of Created At: Day").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
 
       // It doesn't really matter which dates we select so let's go with whatever is offered
       cy.button("Add filter").click();
@@ -1390,7 +1390,7 @@ describe("issue 47887", () => {
 
     H.popover().within(() => {
       cy.findByLabelText("asdfdsa").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
     });
   });
 });
