@@ -578,6 +578,21 @@
         :filter str-expr
         :filter int-expr))))
 
+(deftest ^:parallel diagnose-expression-nested-aggregation-test
+  (let [query     (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        diagnose-expr (fn [expr]
+                        (lib.expression/diagnose-expression query 0 :aggregation (lib.convert/->pMBQL expr) nil))]
+    (testing "valid aggregation expressions are accepted"
+      (are [expr] (nil? (diagnose-expr expr))
+        [:avg [:field 1]]
+        [:offset {:lib/uuid (str (random-uuid))} [:sum [:field 42]] 1]))
+    (testing "invalid aggregation expressions are rejected"
+      (are [expr culprit] (= (str "Embedding " culprit " in aggregation functions is not supported")
+                             (:message (diagnose-expr expr)))
+        [:sum [:avg [:field 1]]]                                                  "Average"
+        [:min [:offset {:lib/uuid (str (random-uuid))} [:field 42] 1]]            "Offset"
+        [:offset {:lib/uuid (str (random-uuid))} [:sum [:cum-sum [:field 42]]] 1] "CumulativeSum"))))
+
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
     #{:type/Date :type/Text} "2024-07-02"))
