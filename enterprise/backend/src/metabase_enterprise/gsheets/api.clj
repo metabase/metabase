@@ -257,7 +257,7 @@
                   json/decode+kw))))
 
 (defn- handle-get-folder []
-  (let [cannot-check-message (tru "Unable to check google drive connection")
+  (let [cannot-check-message (tru "Unable to check Google Drive connection. Reconnect if the issue persists.")
         saved-setting (gsheets-safe)
         conn-id (:gdrive/conn-id saved-setting)
         hm-response (if (empty? saved-setting)
