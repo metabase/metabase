@@ -147,7 +147,7 @@ function compileLogicalOr(node: Node): Lib.ExpressionParts {
 function compileComparisonOp(node: Node): Lib.ExpressionParts {
   assert(node.type === COMPARISON, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text), t`Invalid operator`);
+  assert(isOperator(node.token.text), t`Invalid operator: ${node.token.text}`);
 
   return compileInfixOp(node.token.text, node);
 }
@@ -155,7 +155,7 @@ function compileComparisonOp(node: Node): Lib.ExpressionParts {
 function compileEqualityOp(node: Node): Lib.ExpressionParts {
   assert(node.type === EQUALITY, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text), t`Invalid operator`);
+  assert(isOperator(node.token.text), t`Invalid operator: ${node.token.text}`);
 
   return compileInfixOp(node.token.text, node);
 }
@@ -269,7 +269,7 @@ function compileAdditionOp(node: Node): Lib.ExpressionParts {
 function compileMulDivOp(node: Node): Lib.ExpressionParts {
   assert(node.type === MULDIV_OP, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text), t`Invalid operator`);
+  assert(isOperator(node.token.text), t`Invalid operator: ${node.token.text}`);
 
   return compileInfixOp(node.token.text, node);
 }
