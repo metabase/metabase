@@ -117,7 +117,7 @@
             (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
           (log/info "Submitted to the notification queue")
           (catch Exception e
-            (log/errorf e "Failed to submit to the notification queue: %s")
+            (log/error e "Failed to submit to the notification queue")
             (throw e)))
 
         (nil? notification)
