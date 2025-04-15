@@ -115,8 +115,11 @@ export function PublicOrEmbeddedQuestionView({
             }}
             gridUnit={12}
             showTitle={false}
-            isDashboard
             mode={PublicMode}
+            // Why do we need `isDashboard` when this is a standalone question?
+            // `isDashboard` is used by Visualization to change some visual behaviors
+            // including the "No results" message
+            isDashboard
             metadata={metadata}
             onChangeCardAndRun={() => {}}
             token={token}
