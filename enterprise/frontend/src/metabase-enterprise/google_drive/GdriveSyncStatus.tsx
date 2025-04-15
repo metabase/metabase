@@ -12,10 +12,9 @@ import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type { DatabaseId, GdrivePayload } from "metabase-types/api";
 
 import { SYNC_POLL_INTERVAL } from "./constants";
-import { getStatus, useShowGdrive } from "./utils";
+import { getErrorMessage, getStatus, useShowGdrive } from "./utils";
 
 type GsheetsStatus = GdrivePayload["status"];
-type ErrorPayload = { data?: { message: string } };
 
 export const GdriveSyncStatus = () => {
   const dispatch = useDispatch();
@@ -61,7 +60,7 @@ export const GdriveSyncStatus = () => {
     }
 
     if (status === "error" && previousStatus === "syncing") {
-      console.error((apiError as ErrorPayload)?.data?.message ?? t`Sync error`);
+      console.error(getErrorMessage(apiError));
     }
   }, [status, previousStatus, gdriveFolder, dbId, apiError]);
 

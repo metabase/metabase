@@ -1,4 +1,5 @@
 import { P, match } from "ts-pattern";
+import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
@@ -37,3 +38,41 @@ export const getStatus = ({
     .with({ error: true }, () => "error")
     .with({ status: P.string.minLength(1) }, ({ status }) => status)
     .otherwise(() => "not-connected");
+
+export const getErrorMessage = (
+  payload:
+    | unknown
+    | string
+    | { data: { message: string } | string }
+    | { message: string },
+  fallback: string = t`Something went wrong`,
+): string => {
+  if (!payload || typeof payload !== "object") {
+    return fallback;
+  }
+
+  if (typeof payload === "string") {
+    return payload;
+  }
+
+  if ("message" in payload && typeof payload.message === "string") {
+    return payload.message;
+  }
+
+  if ("data" in payload) {
+    const data = payload.data;
+    if (typeof data === "string") {
+      return data;
+    }
+    if (
+      typeof data === "object" &&
+      data &&
+      "message" in data &&
+      typeof data.message === "string"
+    ) {
+      return data.message;
+    }
+  }
+
+  return fallback;
+};

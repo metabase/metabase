@@ -30,7 +30,7 @@ import {
 import Styles from "./Gdrive.module.css";
 import { getStrings } from "./GdriveConnectionModal.strings";
 import { trackSheetImportClick } from "./analytics";
-import { getStatus } from "./utils";
+import { getErrorMessage, getStatus } from "./utils";
 
 export function GdriveConnectionModal({
   isModalOpen,
@@ -238,8 +238,8 @@ function GoogleSheetsDisconnectModal({
           onClose();
         }
       })
-      .catch((response: { data: { message: string } }) => {
-        setErrorMessage(response?.data?.message ?? "Something went wrong");
+      .catch((response: unknown) => {
+        setErrorMessage(getErrorMessage(response));
       });
   };
 

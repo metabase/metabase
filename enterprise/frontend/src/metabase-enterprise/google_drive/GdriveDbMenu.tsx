@@ -12,7 +12,7 @@ import {
 
 import { GdriveConnectionModal } from "./GdriveConnectionModal";
 import { trackSheetConnectionClick } from "./analytics";
-import { getStatus, useShowGdrive } from "./utils";
+import { getErrorMessage, getStatus, useShowGdrive } from "./utils";
 
 export function GdriveDbMenu() {
   const [showModal, setShowModal] = useState(false);
@@ -143,10 +143,11 @@ function MenuSyncStatus() {
     : t`soon` + "™";
 
   if (folderStatus === "error") {
-    const errorMessage =
-      folderError?.data?.message ??
+    const errorMessage = getErrorMessage(
+      folderError,
       // eslint-disable-next-line no-literal-metabase-strings -- admin UI
-      t`Please check that the folder is shared with the Metabase Service Account.`;
+      t`Please check that the folder is shared with the Metabase Service Account.`,
+    );
 
     return (
       <Tooltip label={errorMessage} position="bottom" maw="20rem">
