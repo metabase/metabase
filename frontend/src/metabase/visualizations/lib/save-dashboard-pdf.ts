@@ -3,7 +3,11 @@ import { t } from "ttag";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import type { Dashboard } from "metabase-types/api";
 
-import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
+import {
+  PARAMETERS_MARGIN_BOTTOM,
+  SAVING_DOM_IMAGE_CLASS,
+  getDomToCanvas,
+} from "./save-chart-image";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
 
@@ -142,7 +146,6 @@ const createHeaderElement = (dashboardName: string, marginBottom: number) => {
 };
 
 const HEADER_MARGIN_BOTTOM = 12;
-const PARAMETERS_MARGIN_BOTTOM = 12;
 const PAGE_PADDING = 16;
 
 export const saveDashboardPdf = async (
@@ -187,11 +190,9 @@ export const saveDashboardPdf = async (
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
 
-  const { default: html2canvas } = await import("html2canvas-pro");
-  const image = await html2canvas(gridNode, {
+  const image = await getDomToCanvas(gridNode, {
     height: contentHeight,
     width: contentWidth,
-    useCORS: true,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;

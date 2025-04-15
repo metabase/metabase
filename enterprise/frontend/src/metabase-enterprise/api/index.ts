@@ -1,4 +1,4 @@
-export * from "./ai-analysis";
+export * from "./ai-entity-analysis";
 export * from "./ai-sql-fixer";
 export * from "./ai-sql-generation";
 export * from "./audit-info";

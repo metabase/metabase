@@ -4,8 +4,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -18,14 +18,21 @@
     extra-context :extra_context
     :as _query-params}
    _body
-   {{:strs [image]} :multipart-params, :as request} :- [:map
-                                                       [:multipart-params [:map
-                                                                          ["image" [:map
-                                                                                    [:filename :string]
-                                                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+   {{:strs [image name description]} :multipart-params, :as request} :- [:map
+                                                                         [:multipart-params [:map
+                                                                                             ["image" [:map
+                                                                                                       [:filename :string]
+                                                                                                       [:tempfile (ms/InstanceOfClass java.io.File)]]]
+                                                                                             ["name" :string]
+                                                                                             ["description" {:optional true} :string]
+                                                                          ;; TODO: add timeline_events
+                                                                                             ]]]]
 
   (when-not (and image (:tempfile image))
     (throw (ex-info (tru "No image file provided") {:status-code 400})))
+
+  (when-not name
+    (throw (ex-info (tru "Name is required") {:status-code 400})))
 
   (premium-features/assert-has-feature :metabot-v3 "chart analysis")
 
@@ -40,14 +47,20 @@
     extra-context :extra_context
     :as _query-params}
    _body
-   {{:strs [image]} :multipart-params, :as request} :- [:map
-                                                       [:multipart-params [:map
-                                                                          ["image" [:map
-                                                                                    [:filename :string]
-                                                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+   {{:strs [image name description tab_name]} :multipart-params, :as request} :- [:map
+                                                                                  [:multipart-params [:map
+                                                                                                      ["image" [:map
+                                                                                                                [:filename :string]
+                                                                                                                [:tempfile (ms/InstanceOfClass java.io.File)]]]
+                                                                                                      ["name" :string]
+                                                                                                      ["description" {:optional true} :string]
+                                                                                                      ["tab_name" {:optional true} :string]]]]]
 
   (when-not (and image (:tempfile image))
     (throw (ex-info (tru "No image file provided") {:status-code 400})))
+
+  (when-not name
+    (throw (ex-info (tru "Name is required") {:status-code 400})))
 
   (premium-features/assert-has-feature :metabot-v3 "dashboard analysis")
 

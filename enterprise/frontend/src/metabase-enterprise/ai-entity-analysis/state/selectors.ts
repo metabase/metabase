@@ -15,13 +15,3 @@ export const getIsExplainSidebarVisible = createSelector(
   [getAiAnalysis],
   (aiAnalysis) => aiAnalysis.isExplainSidebarVisible,
 );
-
-export const getExplanation = createSelector(
-  [getAiAnalysis],
-  (aiAnalysis) => aiAnalysis.explanation,
-);
-
-export const getAnalysisType = createSelector(
-  [getAiAnalysis],
-  (aiAnalysis) => aiAnalysis.analysisType,
-);

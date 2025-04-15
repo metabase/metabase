@@ -1,1 +1,0 @@
-export { MetabotExplainSidebar } from "./MetabotExplainSidebar";

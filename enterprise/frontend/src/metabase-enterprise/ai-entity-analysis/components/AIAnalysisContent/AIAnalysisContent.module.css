@@ -1,0 +1,30 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 368px;
+  box-sizing: border-box;
+}
+
+.contentWrapper {
+  padding: 0;
+}
+
+.errorContainer {
+  color: var(--error-color);
+  max-width: 100%;
+}
+
+.loaderContainer {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+  max-width: 100%;
+}
+
+.markdownWrapper {
+  width: 100%;
+  max-width: 368px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}

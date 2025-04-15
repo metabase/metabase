@@ -1,0 +1,57 @@
+.sidebarContent {
+  width: 400px;
+  max-width: 400px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 16px 40px 16px 16px;
+  margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 2;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.title {
+  font-weight: bold;
+  font-size: 18px;
+  margin: 0;
+  color: var(--color-text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 40px);
+}
+
+.closeButton {
+  cursor: pointer;
+  color: var(--color-text-medium);
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+.closeButton:hover {
+  color: var(--color-brand);
+}
+
+.contentWrapper {
+  padding: 0 16px 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
