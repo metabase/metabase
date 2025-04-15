@@ -1,4 +1,3 @@
-import { DashboardApi } from "metabase/services";
 import { createMockRoutingState } from "metabase-types/store/mocks/index";
 
 import { SIDEBAR_NAME } from "../constants";
@@ -17,9 +16,6 @@ import {
   showClickBehaviorSidebar,
   updateDashboardAndCards,
 } from "./index";
-
-DashboardApi.parameterSearch = jest.fn();
-DashboardApi.parameterValues = jest.fn();
 
 describe("dashboard actions", () => {
   let dispatch;

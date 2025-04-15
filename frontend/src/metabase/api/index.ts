@@ -18,7 +18,6 @@ export * from "./login-history";
 export * from "./model-index";
 export * from "./moderation";
 export * from "./notification";
-export * from "./parameters";
 export * from "./permission";
 export * from "./persist";
 export * from "./revision";

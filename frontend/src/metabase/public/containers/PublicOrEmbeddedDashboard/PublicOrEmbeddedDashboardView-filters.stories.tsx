@@ -1,4 +1,4 @@
-import type { StoryContext, StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import type { ComponentProps } from "react";
 
@@ -69,8 +69,7 @@ export default {
   },
 };
 
-function ReduxDecorator(Story: StoryFn, context: StoryContext) {
-  const parameterType = context.args.parameterType as ParameterType;
+function ReduxDecorator(Story: StoryFn) {
   const initialState = createMockState({
     settings: createMockSettingsState({
       "hide-embed-branding?": false,
@@ -97,19 +96,6 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
         },
       },
     }),
-    parameters: {
-      parameterValuesCache: {
-        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID}}`]: {
-          values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
-          has_more_values: parameterType === "search" ? true : false,
-        },
-        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID},"query":"g"}`]:
-          {
-            values: [["Gadget"], ["Gizmo"], ["Widget"]],
-            has_more_values: parameterType === "search" ? true : false,
-          },
-      },
-    },
   });
 
   const store = getStore(publicReducers, initialState);

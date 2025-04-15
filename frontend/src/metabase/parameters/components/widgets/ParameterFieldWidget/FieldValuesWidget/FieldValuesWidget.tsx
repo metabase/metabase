@@ -12,7 +12,16 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { skipToken, useGetRemappedFieldValueQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetRemappedFieldValueQuery,
+  useLazyGetCardParameterValuesQuery,
+  useLazyGetDashboardParameterValuesQuery,
+  useLazyGetParameterValuesQuery,
+  useLazySearchCardParameterValuesQuery,
+  useLazySearchDashboardParameterValuesQuery,
+  useLazySearchParameterValuesQuery,
+} from "metabase/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -24,12 +33,8 @@ import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { parseNumber } from "metabase/lib/number";
 import { connect, useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
-import {
-  fetchCardParameterValues,
-  fetchDashboardParameterValues,
-  fetchParameterValues,
-} from "metabase/parameters/actions";
+import { checkNotNull, isNotNull } from "metabase/lib/types";
+import { getFilteringParameterValuesMap } from "metabase/parameters/utils/dashboards";
 import { addRemappings } from "metabase/redux/metadata";
 import {
   type ComboboxItem,
@@ -40,6 +45,8 @@ import {
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
+import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Dashboard,
   FieldValue,
@@ -137,7 +144,7 @@ export const FieldValuesWidgetInner = forwardRef<
     disablePKRemappingForSearch,
     showOptionsInPopover = false,
     parameter,
-    parameters,
+    parameters = [],
     fields,
     dashboard,
     question,
@@ -186,6 +193,15 @@ export const FieldValuesWidgetInner = forwardRef<
     }
   }, [width, previousWidth]);
 
+  const [fetchParameterValues] = useLazyGetParameterValuesQuery();
+  const [searchParameterValues] = useLazySearchParameterValuesQuery();
+  const [fetchCardParameterValues] = useLazyGetCardParameterValuesQuery();
+  const [searchCardParameterValues] = useLazySearchCardParameterValuesQuery();
+  const [fetchDashboardParameterValues] =
+    useLazyGetDashboardParameterValuesQuery();
+  const [searchDashboardParameterValues] =
+    useLazySearchDashboardParameterValuesQuery();
+
   const fetchValues = async (query?: string) => {
     setLoadingState("LOADING");
     setOptions([]);
@@ -193,19 +209,40 @@ export const FieldValuesWidgetInner = forwardRef<
     let newOptions: FieldValue[] = [];
     let newValuesMode = valuesMode;
     try {
-      if (canUseDashboardEndpoints(dashboard)) {
-        const { values, has_more_values } =
-          await dispatchFetchDashboardParameterValues(query);
+      if (canUseDashboardEndpoints(dashboard, parameter)) {
+        const request = {
+          dashboard_id: checkNotNull(dashboard?.id),
+          parameter_id: checkNotNull(parameter?.id),
+          ...getFilteringParameterValuesMap(
+            checkNotNull(parameter),
+            parameters,
+          ),
+        };
+        const { values, has_more_values } = query
+          ? await searchDashboardParameterValues({ ...request, query }).unwrap()
+          : await fetchDashboardParameterValues(request).unwrap();
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
-      } else if (canUseCardEndpoints(question)) {
-        const { values, has_more_values } =
-          await dispatchFetchCardParameterValues(query);
+      } else if (canUseCardEndpoints(question, parameter)) {
+        const request = {
+          card_id: checkNotNull(question?.id()),
+          parameter_id: checkNotNull(parameter?.id),
+        };
+        const { values, has_more_values } = query
+          ? await searchCardParameterValues({ ...request, query }).unwrap()
+          : await fetchCardParameterValues(request).unwrap();
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseParameterEndpoints(parameter)) {
-        const { values, has_more_values } =
-          await dispatchFetchParameterValues(query);
+        const request = {
+          parameter: normalizeParameter(parameter),
+          field_ids: getNonVirtualFields(checkNotNull(parameter)).map((field) =>
+            Number(field.id),
+          ),
+        };
+        const { values, has_more_values } = query
+          ? await searchParameterValues({ ...request, query }).unwrap()
+          : await fetchParameterValues(request).unwrap();
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       }
@@ -216,52 +253,6 @@ export const FieldValuesWidgetInner = forwardRef<
       setLoadingState("LOADED");
       setValuesMode(newValuesMode);
     }
-  };
-
-  const dispatchFetchParameterValues = async (query?: string) => {
-    if (!parameter) {
-      return { has_more_values: false, values: [] };
-    }
-
-    return dispatch(
-      fetchParameterValues({
-        parameter,
-        query,
-      }),
-    );
-  };
-
-  const dispatchFetchCardParameterValues = async (query?: string) => {
-    const cardId = question?.id();
-
-    if (!isNotNull(cardId) || !parameter) {
-      return { has_more_values: false, values: [] };
-    }
-
-    return dispatch(
-      fetchCardParameterValues({
-        cardId,
-        parameter,
-        query,
-      }),
-    );
-  };
-
-  const dispatchFetchDashboardParameterValues = async (query?: string) => {
-    const dashboardId = dashboard?.id;
-
-    if (!isNotNull(dashboardId) || !parameter || !parameters) {
-      return { has_more_values: false, values: [] };
-    }
-
-    return dispatch(
-      fetchDashboardParameterValues({
-        dashboardId,
-        parameter,
-        parameters,
-        query,
-      }),
-    );
   };
 
   // ? this may rely on field mutations

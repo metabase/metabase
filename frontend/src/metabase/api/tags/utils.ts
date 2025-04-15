@@ -27,6 +27,7 @@ import type {
   ModelIndex,
   NativeQuerySnippet,
   NotificationChannel,
+  ParameterId,
   PopularItem,
   RecentItem,
   Revision,
@@ -407,6 +408,12 @@ export function provideNotificationTags(
     idTag("notification", notification.id),
     ...(notification.creator ? provideUserTags(notification.creator) : []),
   ];
+}
+
+export function provideParameterValuesTags(
+  parameterId: ParameterId,
+): TagDescription<TagType>[] {
+  return [idTag("parameter-values", parameterId)];
 }
 
 export function providePermissionsGroupListTags(

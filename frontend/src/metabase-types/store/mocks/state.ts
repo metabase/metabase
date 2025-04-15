@@ -9,7 +9,6 @@ import { createMockAuthState } from "./auth";
 import { createMockDashboardState } from "./dashboard";
 import { createMockEmbedState } from "./embed";
 import { createMockNormalizedEntitiesState } from "./entities";
-import { createMockParametersState } from "./parameters";
 import { createMockQueryBuilderState } from "./qb";
 import { createMockRequestsState } from "./requests";
 import { createMockRoutingState } from "./routing";
@@ -32,7 +31,6 @@ export function createMockState(opts: any) {
     dashboard: createMockDashboardState(),
     embed: createMockEmbedState(),
     entities: createMockNormalizedEntitiesState(),
-    parameters: createMockParametersState(),
     qb: createMockQueryBuilderState(),
     requests: createMockRequestsState(),
     routing: createMockRoutingState(),

@@ -48,12 +48,14 @@ import type {
   Bookmark,
   CacheableDashboard,
   CacheableModel,
+  CardId,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
+  DashboardId,
   Database as DatabaseType,
   Dataset,
   FieldId,
@@ -61,6 +63,7 @@ import type {
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  ParameterId,
   Pulse,
   Revision,
   TableId,
@@ -634,4 +637,23 @@ export const PLUGIN_API = {
     `/api/field/${fieldId}/remapping/${remappedFieldId}`,
   getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
     `/api/field/${fieldId}/search/${searchFieldId}`,
+  getCardParameterValuesUrl: (cardId: CardId, parameterId: ParameterId) =>
+    `/api/card/${cardId}/params/${encodeURIComponent(parameterId)}/values`,
+  getSearchCardParameterValuesUrl: (
+    cardId: CardId,
+    parameterId: ParameterId,
+    query: string,
+  ) =>
+    `/api/card/${cardId}/params/${encodeURIComponent(parameterId)}/search/${encodeURIComponent(query)}`,
+  getDashboardParameterValuesUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/values`,
+  getSearchDashboardParameterValuesUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+    query: string,
+  ) =>
+    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/search/${encodeURIComponent(query)}`,
 };

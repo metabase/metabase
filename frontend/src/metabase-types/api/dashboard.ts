@@ -8,9 +8,11 @@ import type {
   CollectionId,
   Database,
   Field,
+  FieldValue,
   Parameter,
   ParameterId,
   ParameterTarget,
+  ParameterValueOrArray,
   Table,
   UserId,
   VirtualCardDisplay,
@@ -305,3 +307,21 @@ export type UpdateDashboardPropertyRequest<
 export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
+
+export type GetDashboardParameterValuesRequest = {
+  dashboard_id: DashboardId;
+  parameter_id: ParameterId;
+};
+
+type LinkedFiltersParameterValues = Record<ParameterId, ParameterValueOrArray>;
+
+export type GetDashboardParameterValuesResponse = {
+  values: FieldValue[];
+  has_more_values: boolean;
+} & LinkedFiltersParameterValues;
+
+export type SearchDashboardParameterValuesRequest = {
+  dashboard_id: DashboardId;
+  parameter_id: ParameterId;
+  query: string;
+} & LinkedFiltersParameterValues;

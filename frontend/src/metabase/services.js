@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { PLUGIN_API } from "metabase/plugins";
@@ -134,14 +132,10 @@ export const CardApi = {
   query_pivot: POST("/api/card/pivot/:cardId/query"),
   // related
   compatibleCards: GET("/api/card/:cardId/series"),
-  parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
-  parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
 };
 
 export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
-  parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
-  parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
   cardQuery: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
@@ -241,11 +235,6 @@ export const MetabaseApi = {
     // this prevents the `endpoint` parameter from being URL encoded
     raw: { endpoint: true },
   }),
-};
-
-export const ParameterApi = {
-  parameterValues: POST("/api/dataset/parameter/values"),
-  parameterSearch: POST("/api/dataset/parameter/search/:query"),
 };
 
 export const ModerationReviewApi = {
@@ -366,12 +355,8 @@ export function setEmbedDashboardEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
     setDashboardEndpoints(`/api/embed/dashboard/${encodeURIComponent(token)}`);
   } else {
-    setDashboardParameterValuesEndpoint(embedBase);
+    setEmbedPreviewDashboardEndpoints(embedBase);
   }
-}
-
-function GET_with(url, omitKeys) {
-  return (data, options) => GET(url)({ ..._.omit(data, omitKeys) }, options);
 }
 
 function setFieldEndpoints(prefix) {
@@ -384,37 +369,28 @@ function setFieldEndpoints(prefix) {
 }
 
 function setCardEndpoints(prefix) {
-  // RTK query
   setFieldEndpoints(prefix);
-
-  // legacy API
-  CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
-    "cardId",
-  ]);
-  CardApi.parameterSearch = GET_with(
-    `${prefix}/params/:paramId/search/:query`,
-    ["cardId"],
-  );
+  PLUGIN_API.getCardParameterValuesUrl = (_cardId, parameterId) =>
+    `${prefix}/params/${encodeURIComponent(parameterId)}/values`;
+  PLUGIN_API.getSearchCardParameterValuesUrl = (_cardId, parameterId, query) =>
+    `${prefix}/params/${encodeURIComponent(parameterId)}/search/${encodeURIComponent(query)}`;
 }
 
 function setDashboardEndpoints(prefix) {
-  // RTK query
   setFieldEndpoints(prefix);
-
-  // legacy API
-  DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
-    "dashId",
-  ]);
-  DashboardApi.parameterSearch = GET_with(
-    `${prefix}/params/:paramId/search/:query`,
-    ["dashId"],
-  );
+  PLUGIN_API.getDashboardParameterValuesUrl = (_dashboardId, parameterId) =>
+    `${prefix}/params/${encodeURIComponent(parameterId)}/values`;
+  PLUGIN_API.getSearchDashboardParameterValuesUrl = (
+    _dashboardId,
+    parameterId,
+    query,
+  ) =>
+    `${prefix}}/params/${encodeURIComponent(parameterId)}/search/${encodeURIComponent(query)}`;
 }
 
-function setDashboardParameterValuesEndpoint(prefix) {
-  DashboardApi.parameterValues = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/values`,
-  );
+function setEmbedPreviewDashboardEndpoints(prefix) {
+  PLUGIN_API.getDashboardParameterValuesUrl = (_dashboardId, parameterId) =>
+    `${prefix}/params/${encodeURIComponent(parameterId)}/values`;
 }
 
 export const ActionsApi = {

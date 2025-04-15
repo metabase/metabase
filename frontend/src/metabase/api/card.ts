@@ -1,3 +1,4 @@
+import { PLUGIN_API } from "metabase/plugins";
 import type {
   Card,
   CardId,
@@ -8,10 +9,13 @@ import type {
   CreateCardRequest,
   DashboardId,
   Dataset,
+  GetCardParameterValuesRequest,
+  GetCardParameterValuesResponse,
   GetCardRequest,
   GetEmbeddableCard,
   GetPublicCard,
   ListCardsRequest,
+  SearchCardParameterValuesRequest,
   UpdateCardKeyRequest,
   UpdateCardRequest,
 } from "metabase-types/api";
@@ -25,6 +29,8 @@ import {
   provideCardQueryMetadataTags,
   provideCardQueryTags,
   provideCardTags,
+  provideParameterValuesTags,
+  tag,
 } from "./tags";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
@@ -83,6 +89,32 @@ export const cardApi = Api.injectEndpoints({
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),
       }),
+      getCardParameterValues: builder.query<
+        GetCardParameterValuesResponse,
+        GetCardParameterValuesRequest
+      >({
+        query: ({ card_id, parameter_id }) => ({
+          method: "GET",
+          url: PLUGIN_API.getCardParameterValuesUrl(card_id, parameter_id),
+        }),
+        providesTags: (_data, _error, { parameter_id }) =>
+          provideParameterValuesTags(parameter_id),
+      }),
+      searchCardParameterValues: builder.query<
+        GetCardParameterValuesResponse,
+        SearchCardParameterValuesRequest
+      >({
+        query: ({ card_id, parameter_id, query }) => ({
+          method: "GET",
+          url: PLUGIN_API.getSearchCardParameterValuesUrl(
+            card_id,
+            parameter_id,
+            query,
+          ),
+        }),
+        providesTags: (_data, _error, { parameter_id }) =>
+          provideParameterValuesTags(parameter_id),
+      }),
       createCard: builder.mutation<Card, CreateCardRequest>({
         query: (body) => ({
           method: "POST",
@@ -127,6 +159,7 @@ export const cardApi = Api.injectEndpoints({
             listTag("card"),
             idTag("card", payload.id),
             idTag("table", `card__${payload.id}`),
+            tag("parameter-values"),
           ];
 
           if (payload.dashboard_id != null) {
@@ -308,6 +341,10 @@ export const {
   useUpdateCardEnableEmbeddingMutation,
   useGetCardDashboardsQuery,
   useGetMultipleCardsDashboardsQuery,
+  useGetCardParameterValuesQuery,
+  useLazyGetCardParameterValuesQuery,
+  useSearchCardParameterValuesQuery,
+  useLazySearchCardParameterValuesQuery,
   endpoints: {
     createCardPublicLink,
     deleteCardPublicLink,

@@ -1,10 +1,14 @@
-import type { CacheStrategy, LocalFieldReference } from "metabase-types/api";
+import type {
+  CacheStrategy,
+  FieldValue,
+  LocalFieldReference,
+} from "metabase-types/api";
 
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
 import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
 import type { Insight } from "./insight";
-import type { ParameterOptions } from "./parameters";
+import type { NormalizedParameter, ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
@@ -200,3 +204,19 @@ export type TemporalUnit =
   | "week-of-year"
   | "month-of-year"
   | "quarter-of-year";
+
+export type GetParameterValuesRequest = {
+  parameter: NormalizedParameter;
+  field_ids: FieldId[];
+};
+
+export type GetParameterValuesResponse = {
+  values: FieldValue[];
+  has_more_values: boolean;
+};
+
+export type SearchParameterValuesRequest = {
+  parameter: NormalizedParameter;
+  field_ids: FieldId[];
+  query: string;
+};
