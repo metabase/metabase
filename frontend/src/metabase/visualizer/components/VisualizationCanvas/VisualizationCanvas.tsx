@@ -77,7 +77,10 @@ export function VisualizationCanvas({ className }: { className?: string }) {
 
   return (
     <>
-      <Box className={`${Styles.Container} ${className}`}>
+      <Box
+        className={`${Styles.Container} ${className}`}
+        data-testid="visualization-canvas"
+      >
         <Box style={{ gridArea: "left" }} data-testid="vertical-well">
           <VerticalWell display={display} />
         </Box>

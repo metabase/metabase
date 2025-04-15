@@ -28,7 +28,7 @@ import type {
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
 
-import { removeColumnfromStateUnlessUsedElseWhere } from "./utils";
+import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
 export const cartesianDropHandler = (
   state: VisualizerHistoryItem,
@@ -251,7 +251,7 @@ export function removeBubbleSizeFromCartesianChart(
     delete state.settings["scatter.bubble"];
   }
 
-  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+  removeColumnFromStateUnlessUsedElseWhere(state, columnName, [
     "graph.metrics",
     "graph.dimensions",
     "scatter.bubble",
@@ -295,11 +295,7 @@ export function removeColumnFromCartesianChart(
     );
   }
 
-  if (state.settings["scatter.bubble"] === columnName) {
-    removeBubbleSizeFromCartesianChart(state, columnName);
-  }
-
-  removeColumnfromStateUnlessUsedElseWhere(state, columnName, [
+  removeColumnFromStateUnlessUsedElseWhere(state, columnName, [
     "graph.metrics",
     "graph.dimensions",
     "scatter.bubble",

@@ -37,7 +37,6 @@ export const DataImporter = ({ className }: { className?: string }) => {
   return (
     <Box
       className={`${className} ${S.DataImporter}`}
-      bg="var(--mb-color-bg)"
       style={{ height: "100%" }}
       data-testid="visualizer-data-importer"
     >
@@ -71,6 +70,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
               onChange={handleSearchChange}
               placeholder={t`Search for something`}
               leftSection={<Icon name="search" />}
+              autoFocus
             />
           </Box>
           <Flex

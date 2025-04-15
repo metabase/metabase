@@ -326,7 +326,7 @@ const visualizerHistoryItemSlice = createSlice({
     },
     removeColumn: (
       state,
-      action: PayloadAction<{ name: string; well?: "bubble" }>,
+      action: PayloadAction<{ name: string; well?: "bubble" | "all" }>,
     ) => {
       const { name, well } = action.payload;
       if (!state.display) {
@@ -334,7 +334,10 @@ const visualizerHistoryItemSlice = createSlice({
       }
 
       if (isCartesianChart(state.display)) {
-        if (well === "bubble") {
+        if (well === "all") {
+          removeColumnFromCartesianChart(state, name);
+          removeBubbleSizeFromCartesianChart(state, name);
+        } else if (well === "bubble") {
           removeBubbleSizeFromCartesianChart(state, name);
         } else {
           removeColumnFromCartesianChart(state, name);
