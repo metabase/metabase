@@ -1033,8 +1033,13 @@ describe("metabase#32985", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByPlaceholderText("Search by Email").type("foo");
+      cy.findByPlaceholderText("Search by Email or enter an ID").type("foo");
     });
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .findByText("No matching Email found.")
+      .should("be.visible");
   });
 });
 

@@ -772,6 +772,7 @@
   [:map
    [:field-id         [:maybe [:ref ::lib.schema.id/field]]]
    [:search-field-id  [:maybe [:ref ::lib.schema.id/field]]]
+   [:search-field     [:maybe [:ref ::lib.schema.metadata/column]]]
    [:has-field-values [:ref ::field-values-search-info.has-field-values]]])
 
 (mu/defn infer-has-field-values :- ::field-values-search-info.has-field-values
@@ -815,9 +816,11 @@
    column                :- ::lib.schema.metadata/column]
   (when column
     (let [column-field-id (:id column)
-          search-field-id (:id (search-field metadata-providerable column))]
+          search-column   (search-field metadata-providerable column)
+          search-field-id (:id search-column)]
       {:field-id (when (int? column-field-id) column-field-id)
        :search-field-id (when (int? search-field-id) search-field-id)
+       :search-field search-column
        :has-field-values (if column
                            (infer-has-field-values column)
                            :none)})))

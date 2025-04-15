@@ -16,8 +16,8 @@ export function shouldSearch(
   return !isExtensionOfLastSearch || hasMoreValues;
 }
 
-export function getNothingFoundMessage(
-  columnDisplayName: string,
+export function getEmptyResultsMessage(
+  nothingFoundMessage: string | undefined,
   searchError: unknown,
   canSearch: boolean,
   isSearching: boolean,
@@ -27,6 +27,6 @@ export function getNothingFoundMessage(
   } else if (searchError) {
     return t`An error occurred.`;
   } else {
-    return t`No matching ${columnDisplayName} found.`;
+    return nothingFoundMessage;
   }
 }
