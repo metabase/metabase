@@ -6,7 +6,6 @@ import type { Expression } from "metabase-types/api";
 
 import { getMBQLName as defaultGetMBQLName } from "../config";
 import { CompileError } from "../errors";
-import { unescapeString } from "../string";
 
 import {
   ADD,
@@ -57,9 +56,9 @@ export function compile(
 function compileField(node: Node): Expression {
   assert(node.type === FIELD, "Invalid Node Type");
   assert(node.token?.text, "Empty field name");
-  // Slice off the leading and trailing brackets
-  const name = node.token.text.slice(1, node.token.text.length - 1);
-  return withNode(["dimension", unescapeString(name)], node);
+  assert(node.token?.value, "Empty field value");
+  const name = node.token.value;
+  return withNode(["dimension", name], node);
 }
 
 function compileIdentifier(node: Node): Expression {
