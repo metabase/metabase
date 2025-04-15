@@ -30,7 +30,7 @@ export function getUpdatedSettingsForDisplay(
       settings: VisualizationSettings;
     }
   | undefined {
-  if (!sourceDisplay || !targetDisplay) {
+  if (!sourceDisplay || !targetDisplay || sourceDisplay === targetDisplay) {
     return undefined;
   }
 

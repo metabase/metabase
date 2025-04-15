@@ -1,7 +1,15 @@
-import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
+import {
+  createMockDataset,
+  createMockDatetimeColumn,
+  createMockNumericColumn,
+} from "metabase-types/api/mocks";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
-import { createDataSource, createVisualizerColumnReference } from "../utils";
+import {
+  copyColumn,
+  createDataSource,
+  createVisualizerColumnReference,
+} from "../utils";
 
 import {
   addColumnToCartesianChart,
@@ -16,30 +24,25 @@ describe("cartesian", () => {
   describe("addColumnToCartesianChart", () => {
     const dataSource = createDataSource("card", 1, "Card 1");
 
-    const column1 = createMockColumn({
-      name: "CREATED_AT",
-      effective_type: "type/DateTime",
-    });
+    const column1 = createMockDatetimeColumn({ id: 1, name: "CREATED_AT" });
     const column1Ref = createVisualizerColumnReference(dataSource, column1, []);
 
-    const column2 = createMockColumn({
-      effective_type: "type/BigInteger",
-      name: "count",
-    });
+    const column2 = createMockNumericColumn({ id: 2, name: "count" });
     const column2Ref = createVisualizerColumnReference(dataSource, column2, [
       column1Ref,
     ]);
 
-    const column3 = createMockColumn({
-      effective_type: "type/BigInteger",
-      name: "avg",
-    });
+    const column3 = createMockNumericColumn({ id: 3, name: "avg" });
     const column3Ref = createVisualizerColumnReference(dataSource, column3, [
       column1Ref,
       column2Ref,
     ]);
 
-    const dataset = createMockDataset({});
+    const dataset = createMockDataset({
+      data: {
+        cols: [column1, column2, column3],
+      },
+    });
 
     describe("for scatter", () => {
       it("should add columns in the right order", () => {
@@ -53,7 +56,7 @@ describe("cartesian", () => {
         // First column is automatically added as a dimension
         addColumnToCartesianChart(
           state,
-          column1,
+          copyColumn(column1Ref.name, column1, dataSource.name, []),
           column1Ref,
           dataset,
           dataSource,
@@ -65,7 +68,7 @@ describe("cartesian", () => {
         // Second column is automatically added as a metric
         addColumnToCartesianChart(
           state,
-          column2,
+          copyColumn(column2Ref.name, column2, dataSource.name, []),
           column2Ref,
           dataset,
           dataSource,
@@ -86,7 +89,7 @@ describe("cartesian", () => {
         // Third column is automatically added as a the bubble size
         addColumnToCartesianChart(
           state,
-          column3,
+          copyColumn(column3Ref.name, column3, dataSource.name, []),
           column3Ref,
           dataset,
           dataSource,
@@ -113,10 +116,10 @@ describe("cartesian", () => {
   describe("scatter bubble size", () => {
     const dataSource = createDataSource("card", 1, "Card 1");
 
-    const column1 = createMockColumn({ name: "count" });
+    const column1 = createMockNumericColumn({ id: 1, name: "count" });
     const column1Ref = createVisualizerColumnReference(dataSource, column1, []);
 
-    const column2 = createMockColumn({ name: "sum" });
+    const column2 = createMockNumericColumn({ id: 2, name: "sum" });
     const column2Ref = createVisualizerColumnReference(dataSource, column2, [
       column1Ref,
     ]);
@@ -156,6 +159,7 @@ describe("cartesian", () => {
         columnValuesMapping: {},
         display: "scatter",
       };
+
       // Add the first column
       replaceMetricColumnAsScatterBubbleSize(
         state,
@@ -193,8 +197,14 @@ describe("cartesian", () => {
         columnValuesMapping: {},
         display: "scatter",
       };
+
       // Add the first column as the Y axis
-      addMetricColumnToCartesianChart(state, column1, column1Ref, dataSource);
+      addMetricColumnToCartesianChart(
+        state,
+        copyColumn(column1Ref.name, column1, dataSource.name, []),
+        column1Ref,
+        dataSource,
+      );
 
       // Add it as the bubble size too
       replaceMetricColumnAsScatterBubbleSize(
@@ -246,8 +256,14 @@ describe("cartesian", () => {
         columnValuesMapping: {},
         display: "scatter",
       };
+
       // Add the first column as the Y axis
-      addMetricColumnToCartesianChart(state, column1, column1Ref, dataSource);
+      addMetricColumnToCartesianChart(
+        state,
+        copyColumn(column1Ref.name, column1, dataSource.name, []),
+        column1Ref,
+        dataSource,
+      );
 
       // Add it as the bubble size too
       replaceMetricColumnAsScatterBubbleSize(
@@ -283,13 +299,26 @@ describe("cartesian", () => {
         columnValuesMapping: {},
         display: "scatter",
       };
+
+      const copiedColumn1 = copyColumn(
+        column1Ref.name,
+        column1,
+        dataSource.name,
+        [],
+      );
+
       // Add the first column as the Y axis
-      addMetricColumnToCartesianChart(state, column1, column1Ref, dataSource);
+      addMetricColumnToCartesianChart(
+        state,
+        copiedColumn1,
+        column1Ref,
+        dataSource,
+      );
 
       // Add it as the bubble size too
       replaceMetricColumnAsScatterBubbleSize(
         state,
-        column1,
+        copiedColumn1,
         column1Ref,
         dataSource,
       );
@@ -321,10 +350,11 @@ describe("cartesian", () => {
         columnValuesMapping: {},
         display: "scatter",
       };
+
       // Add the first column as the X axis
       addDimensionColumnToCartesianChart(
         state,
-        column1,
+        copyColumn(column1Ref.name, column1, dataSource.name, []),
         column1Ref,
         dataSource,
       );
