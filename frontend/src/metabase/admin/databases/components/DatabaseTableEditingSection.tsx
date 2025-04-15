@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { hasFeature } from "metabase/admin/databases/utils";
 import Toggle from "metabase/core/components/Toggle";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { PLUGIN_DATA_EDITING } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseData, DatabaseId } from "metabase-types/api";
+import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
 
 import { Description, Error, Label } from "./DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "./DatabaseInfoSection";
@@ -23,7 +23,7 @@ export function DatabaseTableEditingSection({
   const isEditingDatabase = !!database.id;
   const showTableEditingSection =
     isEditingDatabase &&
-    database.supportsActions() &&
+    hasFeature(database, "actions") &&
     PLUGIN_DATA_EDITING.isEnabled();
 
   const [error, setError] = useState<string | null>(null);
