@@ -2,45 +2,54 @@ import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { useSearchFieldValuesQuery } from "metabase/api";
-import { type ComboboxProps, Loader, MultiAutocomplete } from "metabase/ui";
+import {
+  useGetRemappedFieldValueQuery,
+  useSearchFieldValuesQuery,
+} from "metabase/api";
+import {
+  type ComboboxItem,
+  type ComboboxProps,
+  Loader,
+  MultiAutocomplete,
+  MultiAutocompleteOption,
+  MultiAutocompleteValue,
+} from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
-import { getFieldOptions } from "../utils";
+import { getFieldOption, getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
-import {
-  getFilteredOptions,
-  getNothingFoundMessage,
-  shouldSearch,
-} from "./utils";
+import { getEmptyResultsMessage, shouldSearch } from "./utils";
 
-interface SearchValuePickerProps {
+type SearchValuePickerProps = {
   fieldId: FieldId;
   searchFieldId: FieldId;
   fieldValues: FieldValue[];
   selectedValues: string[];
-  columnDisplayName: string;
+  placeholder?: string;
+  nothingFoundMessage?: string;
   autoFocus?: boolean;
   comboboxProps?: ComboboxProps;
-  onCreate?: (rawValue: string) => string | null;
+  parseValue?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
-}
+};
 
 export function SearchValuePicker({
   fieldId,
   searchFieldId,
   fieldValues: initialFieldValues,
   selectedValues,
-  columnDisplayName,
+  placeholder,
+  nothingFoundMessage,
   autoFocus,
   comboboxProps,
-  onCreate,
+  parseValue,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
   const canSearch = searchQuery.length > 0;
+  const isRemapped = fieldId !== searchFieldId;
 
   const {
     data: searchFieldValues = [],
@@ -61,13 +70,8 @@ export function SearchValuePicker({
   const searchOptions = canSearch
     ? getFieldOptions(searchFieldValues)
     : getFieldOptions(initialFieldValues);
-  const visibleOptions = getFilteredOptions(
-    searchOptions,
-    searchValue,
-    selectedValues,
-  );
-  const nothingFoundMessage = getNothingFoundMessage(
-    columnDisplayName,
+  const emptyResultsMessage = getEmptyResultsMessage(
+    nothingFoundMessage,
     searchError,
     canSearch,
     isSearching,
@@ -91,16 +95,72 @@ export function SearchValuePicker({
   return (
     <MultiAutocomplete
       value={selectedValues}
-      data={visibleOptions}
-      placeholder={t`Search by ${columnDisplayName}`}
+      data={searchOptions}
+      placeholder={placeholder}
       autoFocus={autoFocus}
       rightSection={isSearching ? <Loader size="xs" /> : undefined}
-      nothingFoundMessage={nothingFoundMessage}
+      nothingFoundMessage={emptyResultsMessage}
       comboboxProps={comboboxProps}
       aria-label={t`Filter value`}
-      onCreate={onCreate}
+      parseValue={parseValue}
+      renderValue={({ value }) => (
+        <RemappedValue
+          fieldId={fieldId}
+          searchFieldId={searchFieldId}
+          value={value}
+          isRemapped={isRemapped}
+        />
+      )}
+      renderOption={({ option }) => (
+        <RemappedOption option={option} isRemapped={isRemapped} />
+      )}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />
   );
+}
+
+type RemappedValueProps = {
+  fieldId: FieldId;
+  searchFieldId: FieldId;
+  value: string;
+  isRemapped: boolean;
+};
+
+function RemappedValue({
+  fieldId,
+  searchFieldId,
+  value,
+  isRemapped,
+}: RemappedValueProps) {
+  const { data: remappedValue } = useGetRemappedFieldValueQuery(
+    {
+      fieldId,
+      remappedFieldId: searchFieldId,
+      value,
+    },
+    {
+      skip: !isRemapped,
+    },
+  );
+
+  if (remappedValue == null) {
+    return value;
+  }
+
+  const option = getFieldOption(remappedValue);
+  return <MultiAutocompleteValue value={option.value} label={option.label} />;
+}
+
+type RemappedOptionProps = {
+  option: ComboboxItem;
+  isRemapped: boolean;
+};
+
+function RemappedOption({ option, isRemapped }: RemappedOptionProps) {
+  if (!isRemapped) {
+    return option.label;
+  }
+
+  return <MultiAutocompleteOption value={option.value} label={option.label} />;
 }
