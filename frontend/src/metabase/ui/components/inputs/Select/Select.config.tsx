@@ -16,6 +16,7 @@ export const selectOverrides = {
       ),
       clearButtonProps: {
         color: "text-dark",
+        className: S.SelectClearButton,
       },
       comboboxProps: {
         withinPortal: true,
