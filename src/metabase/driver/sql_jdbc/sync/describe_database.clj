@@ -73,6 +73,41 @@
       (.setQueryTimeout 15)
       (.execute))))
 
+(defn timeout-exception?
+  "Is the error a timeout exception? Check if the error (or a parent) is a `java.sql.SQLTimeoutException`, and then try
+  to pattern match on the exception message. It seems most databases do not throw a nice `SQLTimeoutException` so the
+  string matching is the most important."
+  [e]
+  (let [msg (or (ex-message e) "")]
+    ;; hopefully dbs throw a nice java.sql.SQLTimeoutexception. But snowflake at least doesn't. Elsewhere it logs
+    ;; `WARN net.snowflake.client.core.StmtUtil Cancelling query` but the error _we_ get is
+    ;; `net.snowflake.client.jdbc.SnowflakeSQLException: SQL execution canceled`. Compared with lack of select
+    ;; privileges in snowflake: `net.snowflake.client.jdbc.SnowflakeSQLException: SQL compilation error:,Failure
+    ;; during expansion of`.
+    (or ((fn by-exception-type [e]
+           (or (instance? java.sql.SQLTimeoutException e)
+               (when-let [cause (ex-cause e)]
+                 (recur cause))))
+         e)
+        ;; Common timeout-related messages across different DBs
+        (boolean (re-find #"(?i)time(d|\\s+)*(out|exceeded)" msg))
+        (boolean (re-find #"(?i)cancel(l)*(ed|ing|ation)" msg))
+        (boolean (re-find #"(?i)execution abort(ed)?" msg))
+        (boolean (re-find #"(?i)statement timeout" msg))
+        (boolean (re-find #"(?i)query (has been )?abort(ed)?" msg))
+        (boolean (re-find #"(?i)maximum statement time exceeded" msg))
+
+        ;; DB-specific timeout patterns
+        ;; Snowflake
+        (boolean (re-find #"(?i)SQL execution canceled" msg))
+        ;; PostgreSQL
+        (boolean (re-find #"(?i)canceling statement due to user request" msg))
+        (boolean (re-find #"(?i)canceling statement due to statement timeout" msg))
+        ;; MySQL
+        (boolean (re-find #"(?i)query execution was interrupted" msg))
+        ;; Redshift
+        (boolean (re-find #"(?i)Query cancelled on user(\'s)? request" msg)))))
+
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc
   [driver ^Connection conn table-schema table-name]
   ;; Query completes = we have SELECT privileges
@@ -91,26 +126,20 @@
                         (str (pr-str table-schema) \.))
                       (pr-str table-name)))
       true
-      (catch java.sql.SQLTimeoutException _
-        (log/infof "%s: Assuming SELECT privileges: caught timeout exception"
-                   (str (when table-schema
-                          (str (pr-str table-schema) \.))
-                        (pr-str table-name)))
-        (try (when-not (.getAutoCommit conn)
-               (.rollback conn))
-             (catch Throwable _))
-        true)
       (catch Throwable e
-        (log/infof e "%s: Assuming no SELECT privileges: caught exception"
-                   (str (when table-schema
-                          (str (pr-str table-schema) \.))
-                        (pr-str table-name)))
-        ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
-        ;; affecting anything higher
-        (try (when-not (.getAutoCommit conn)
-               (.rollback conn))
-             (catch Throwable _))
-        false))))
+        (let [allow? (timeout-exception? e)]
+          (log/info (if allow?
+                      "%s: Assuming SELECT privileges: caught timeout exception"
+                      "%s: Assuming no SELECT privileges: caught exception")
+                    (str (when table-schema
+                           (str (pr-str table-schema) \.))
+                         (pr-str table-name)))
+          ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
+          ;; affecting anything higher
+          (try (when-not (.getAutoCommit conn)
+                 (.rollback conn))
+               (catch Throwable _))
+          allow?)))))
 
 (defn- jdbc-get-tables
   [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]
