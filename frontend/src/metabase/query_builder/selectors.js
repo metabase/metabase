@@ -406,10 +406,10 @@ export const getQuestion = createSelector(
     // with a clean, ad-hoc, query.
     // This has to be skipped for users without data permissions.
     // See https://github.com/metabase/metabase/issues/20042
-    const { isEditable } = Lib.queryDisplayInfo(question.query());
-    return (isModel || isMetric) && isEditable
-      ? question.composeQuestion()
-      : question;
+    const composedQuestion =
+      isModel || isMetric ? question.composeQuestion() : question;
+    const { isEditable } = Lib.queryDisplayInfo(composedQuestion.query());
+    return isEditable ? composedQuestion : question;
   },
 );
 
