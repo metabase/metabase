@@ -11,12 +11,30 @@ import { extractReferencedColumns } from "./column";
 import { getDataSourceIdFromNameRef, isDataSourceNameRef } from "./data-source";
 
 type MergeVisualizerSeries = {
+  /**
+   * The columns to merge
+   */
   columns: DatasetColumn[];
+  /**
+   * The mapping of column values to their sources
+   */
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
+  /**
+   * The datasets to merge
+   */
   datasets: Record<VisualizerDataSourceId, Dataset | null | undefined>;
+  /**
+   * The data sources to merge
+   */
   dataSources: VisualizerDataSource[];
 };
 
+/**
+ * Merges data from multiple datasets into a single dataset.
+ *
+ * @param param0 - The data to merge
+ * @returns the merged data or undefined if the data is loading
+ */
 export function mergeVisualizerData({
   columns,
   columnValuesMapping,
@@ -50,16 +68,18 @@ export function mergeVisualizerData({
         }
         const values = referencedColumnValuesMap[valueSource.name];
         if (!values) {
-          return [];
+          return undefined;
         }
         return values;
       })
       .flat(),
   );
 
-  return {
-    cols: columns,
-    rows: _.zip(...unzippedRows),
-    results_metadata: { columns },
-  };
+  return unzippedRows.some((v) => !v || v.some((_v) => _v === undefined))
+    ? undefined
+    : {
+        cols: columns,
+        rows: _.zip(...unzippedRows),
+        results_metadata: { columns },
+      };
 }
