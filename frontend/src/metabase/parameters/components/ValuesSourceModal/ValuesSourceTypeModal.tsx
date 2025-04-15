@@ -1,8 +1,9 @@
 import type { ChangeEvent } from "react";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { useGetParameterValuesQuery } from "metabase/api";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -13,8 +14,7 @@ import Select, { Option } from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
-import { connect, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
@@ -22,23 +22,23 @@ import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import {
+  getNonVirtualFields,
+  hasFields,
+} from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   getParameterType,
   isNumberParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
+import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
   ParameterValue,
-  ParameterValues,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import type { FetchParameterValuesOpts } from "../../actions";
-import { fetchParameterValues } from "../../actions";
 
 import S from "./ValuesSourceTypeModal.module.css";
 import {
@@ -70,20 +70,13 @@ interface ModalQuestionProps {
   question: Question | undefined;
 }
 
-interface ModalDispatchProps {
-  onFetchParameterValues: (
-    opts: FetchParameterValuesOpts,
-  ) => Promise<ParameterValues>;
-}
-
-type ModalProps = ModalOwnProps & ModalQuestionProps & ModalDispatchProps;
+type ModalProps = ModalOwnProps & ModalQuestionProps;
 
 const ValuesSourceTypeModal = ({
   parameter,
   question,
   sourceType,
   sourceConfig,
-  onFetchParameterValues,
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeCard,
@@ -109,7 +102,6 @@ const ValuesSourceTypeModal = ({
           parameter={parameter}
           sourceType={sourceType}
           sourceConfig={sourceConfig}
-          onFetchParameterValues={onFetchParameterValues}
           onChangeSourceType={onChangeSourceType}
           onChangeSourceConfig={onChangeSourceConfig}
         />
@@ -119,7 +111,6 @@ const ValuesSourceTypeModal = ({
           question={question}
           sourceType={sourceType}
           sourceConfig={sourceConfig}
-          onFetchParameterValues={onFetchParameterValues}
           onChangeCard={onChangeCard}
           onChangeSourceType={onChangeSourceType}
           onChangeSourceConfig={onChangeSourceConfig}
@@ -184,9 +175,6 @@ interface FieldSourceModalProps {
   parameter: UiParameter;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
-  onFetchParameterValues: (
-    opts: FetchParameterValuesOpts,
-  ) => Promise<ParameterValues>;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
 }
@@ -195,7 +183,6 @@ const FieldSourceModal = ({
   parameter,
   sourceType,
   sourceConfig,
-  onFetchParameterValues,
   onChangeSourceType,
   onChangeSourceConfig,
 }: FieldSourceModalProps) => {
@@ -203,7 +190,6 @@ const FieldSourceModal = ({
     parameter,
     sourceType,
     sourceConfig,
-    onFetchParameterValues,
   });
 
   const valuesText = useMemo(
@@ -246,9 +232,6 @@ interface CardSourceModalProps {
   question: Question | undefined;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
-  onFetchParameterValues: (
-    opts: FetchParameterValuesOpts,
-  ) => Promise<ParameterValues>;
   onChangeCard: () => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
@@ -259,7 +242,6 @@ const CardSourceModal = ({
   question,
   sourceType,
   sourceConfig,
-  onFetchParameterValues,
   onChangeCard,
   onChangeSourceType,
   onChangeSourceConfig,
@@ -276,7 +258,6 @@ const CardSourceModal = ({
     parameter,
     sourceType,
     sourceConfig,
-    onFetchParameterValues,
   });
 
   const valuesText = useMemo(
@@ -506,31 +487,17 @@ const getSourceTypeOptions = (
   ];
 };
 
-interface ParameterValuesState {
-  values: ParameterValue[];
-  isLoading?: boolean;
-  isError?: boolean;
-}
-
 interface UseParameterValuesOpts {
   parameter: Parameter;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
-  onFetchParameterValues: (
-    opts: FetchParameterValuesOpts,
-  ) => Promise<ParameterValues>;
 }
 
 const useParameterValues = ({
   parameter: initialParameter,
   sourceType,
   sourceConfig,
-  onFetchParameterValues,
 }: UseParameterValuesOpts) => {
-  const [state, setState] = useState<ParameterValuesState>({ values: [] });
-  const handleFetchValues = useSafeAsyncFunction(onFetchParameterValues);
-  const isValidSource = isValidSourceConfig(sourceType, sourceConfig);
-
   const parameter = useMemo(
     () => ({
       ...initialParameter,
@@ -540,21 +507,19 @@ const useParameterValues = ({
     [initialParameter, sourceType, sourceConfig],
   );
 
-  useLayoutEffect(() => {
-    if (isValidSource) {
-      setState(({ values }) => ({ values, isLoading: true }));
+  const { data, isLoading, isError } = useGetParameterValuesQuery(
+    {
+      parameter: normalizeParameter(parameter),
+      field_ids: getNonVirtualFields(parameter).map((field) =>
+        Number(field.id),
+      ),
+    },
+    {
+      skip: !isValidSourceConfig(sourceType, sourceConfig),
+    },
+  );
 
-      handleFetchValues({ parameter })
-        .then(({ values }) => setState({ values }))
-        .catch(() => setState({ values: [], isError: true }));
-    }
-  }, [parameter, isValidSource, handleFetchValues]);
-
-  return state;
-};
-
-const mapDispatchToProps = {
-  onFetchParameterValues: fetchParameterValues,
+  return { values: data?.values ?? [], isLoading, isError };
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
@@ -570,5 +535,4 @@ export default _.compose(
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
-  connect(null, mapDispatchToProps),
 )(ValuesSourceTypeModal);
