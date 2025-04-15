@@ -342,6 +342,7 @@
                             (.awaitTermination ^ExecutorService executor 30 java.util.concurrent.TimeUnit/SECONDS)
                             (catch InterruptedException _
                               (log/warn "Interrupted while waiting for notification executor to terminate"))))))
+    (log/infof "Starting notification thread pool with %d threads" pool-size)
     (dotimes [_ pool-size]
       (.submit ^ExecutorService executor
                ^Callable (fn []
@@ -385,7 +386,7 @@
                      :payload_type    (:payload_type notification)}
     (let [options      (merge *default-options* options)
           notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
-      (log/debugf "Sending %s" (if (:notification/sync? options) "synchronously" "asynchronously"))
+      (log/debugf "Will be send %s" (if (:notification/sync? options) "synchronously" "asynchronously"))
       (if (:notification/sync? options)
         (send-notification-sync! notification)
         (send-notification-async! notification)))))
