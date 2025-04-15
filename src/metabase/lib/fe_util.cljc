@@ -224,8 +224,8 @@
     (lib.ref/ref metadata)))
 
 (defmethod expression-clause-method :mbql/expression-parts
-  [{:keys [operator options args] :or {options {}}}]
-  (-> (into [(keyword operator) options] (map lib.common/->op-arg) args)
+  [{:keys [operator options args]}]
+  (-> (into [(keyword operator) (or options {})] (map lib.common/->op-arg) args)
       fix-expression-clause
       lib.options/ensure-uuid
       lib.normalize/normalize))
