@@ -1,5 +1,6 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { WritebackActionId } from "metabase-types/api/actions";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
@@ -222,9 +223,8 @@ export interface ColumnSettings {
   [key: string]: any;
 }
 
-export type EditableTableRowAction = {
-  id: string; // maybe number ?
-  label?: string; // used for custom actions
+export type EditableTableRowActionDisplaySetting = {
+  id: WritebackActionId;
   enabled: boolean;
 };
 
@@ -245,7 +245,7 @@ export type VisualizationSettings = {
   // Table
   "table.columns"?: TableColumnOrderSetting[];
   "table.editableColumns"?: string[]; // list of column names
-  "editableTable.editabledActions"?: EditableTableRowAction[];
+  "editableTable.enabledActions"?: EditableTableRowActionDisplaySetting[];
 
   // Keys here can be modern (returned by `getColumnKey`) or legacy (`getLegacyColumnKey`).
   // Use `getColumnSettings` which checks for both keys.

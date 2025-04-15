@@ -33,7 +33,7 @@ export function ConfigureEditableTableSidebar({
         <Tabs.List px="md" pt="sm">
           <Tabs.Tab value="columns">{t`Columns`}</Tabs.Tab>
           <Tabs.Tab value="filters">{t`Filters`}</Tabs.Tab>
-          {/*<Tabs.Tab value="actions">{t`Actions`}</Tabs.Tab>*/}
+          <Tabs.Tab value="actions">{t`Actions`}</Tabs.Tab>
 
           <Flex flex="1" justify="flex-end" align="center">
             <ActionIcon onClick={onClose}>
