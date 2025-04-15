@@ -11,8 +11,7 @@ const config = {
     "typedoc-plugin-dt-links",
     "typedoc-plugin-redirect",
     "./typedoc-plugin-frontmatter.js",
-    "./typedoc-plugin-remove-data-refl-attribute.js",
-    "./typedoc-plugin-head.js",
+    "./typedoc-plugin-replace-text.js",
   ],
   entryPoints: ["../resources/embedding-sdk/dist/index.d.ts"],
   router: "structure",
@@ -123,6 +122,14 @@ const config = {
   },
   navigationLinks: {
     "Back to documentation": `javascript:navigateBack({ fallbackUrl: '${EMBEDDING_SDK_DOCS_MAIN_PAGE_URL}' })`,
+  },
+  replaceText: {
+    // To properly inject custom header tags
+    '<meta\\s+name="description"[^>]*>':
+      "{% include docs/embedded-analytics-sdk-metadata.html %}",
+    // For some reason typedoc updates data-refl value having the same visual output
+    // This data attribute is used for full hierarchy page, but we don't use it, it is disabled, so we can safely remove the attribute
+    ' data-refl="[^"]*"': "",
   },
 };
 
