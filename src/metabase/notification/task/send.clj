@@ -117,13 +117,14 @@
             (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
           (log/info "Submitted to the notification queue")
           (catch Exception e
-            (log/errorf "Failed to submit to the notification queue: %s" e)
+            (log/errorf e "Failed to submit to the notification queue: %s")
             (throw e)))
 
         (nil? notification)
         (do
           (log/warnf "Skipping and deleting trigger for subscription %d because it does not exist." subscription-id)
           (delete-trigger-for-subscription! subscription-id))
+
         (not (:active notification))
         (do
           (log/warnf "Skipping and deleting trigger for subscription %d because the notification is deactivated" subscription-id)
