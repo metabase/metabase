@@ -1,9 +1,9 @@
 .root {
-  &[data-label-position="left"] .labelWrapper {
+  &[data-label-position="left"] .labelWrapper:not(:empty) {
     padding-right: var(--switch-padding);
   }
 
-  &[data-label-position="right"] .labelWrapper {
+  &[data-label-position="right"] .labelWrapper:not(:empty) {
     padding-left: var(--switch-padding);
   }
 

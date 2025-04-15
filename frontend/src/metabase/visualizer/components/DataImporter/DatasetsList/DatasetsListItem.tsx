@@ -1,10 +1,10 @@
-import cx from "classnames";
 import { useMemo } from "react";
 
 import { useGetCardQuery } from "metabase/api";
+import ButtonGroup from "metabase/core/components/ButtonGroup";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useSelector } from "metabase/lib/redux";
-import { Button, Flex, Icon } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import {
   getVisualizationType,
   getVisualizerPrimaryColumn,
@@ -56,71 +56,56 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   }, [metadata, primaryColumn, currentDisplay]);
 
   return (
-    <Flex
-      className={cx(S.DatasetsListItem, {
-        [S.DatasetsListItemSelected]: selected,
-      })}
-      align="center"
-      component="li"
-      px="sm"
-      py="sm"
-      mb="xs"
-      onClick={() => {
-        onSwap?.(item);
-      }}
-    >
-      <Icon
-        className={S.TableIcon}
-        name="table2"
-        mr="xs"
-        style={{
-          flexShrink: 0,
+    <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>
+      <Button
+        fullWidth
+        variant="visualizer"
+        aria-pressed={selected}
+        size="xs"
+        onClick={() => {
+          onSwap?.(item);
         }}
-      />
-      <Icon
-        className={S.InfoIcon}
-        name="info_filled"
-        mr="xs"
-        style={{
-          flexShrink: 0,
-        }}
-      />
-      <Ellipsified style={{ flexGrow: 1, paddingBottom: 1 }}>
-        {item.name}
-      </Ellipsified>
+        leftSection={
+          <Icon color="inherit" className={S.TableIcon} name="table2" mr="xs" />
+        }
+      >
+        <Ellipsified>{item.name}</Ellipsified>
+      </Button>
       {selected ? (
         <Button
           data-testid="remove-dataset-button"
-          className={S.RemoveButton}
-          variant="filled"
+          variant="visualizer"
+          aria-pressed={selected}
           size="xs"
-          rightSection={<Icon name="trash" />}
+          rightSection={<Icon name="close" />}
           onClick={(e) => {
             e.stopPropagation();
             onRemove?.(item);
-          }}
-          style={{
-            flexShrink: 0,
           }}
         />
       ) : (
         isCompatible && (
           <Button
             data-testid="add-dataset-button"
-            className={S.AddButton}
-            variant="inverse"
             size="xs"
+            variant="visualizer"
             rightSection={<Icon name="add" />}
             onClick={(e) => {
               e.stopPropagation();
               onAdd?.(item);
             }}
-            style={{
-              flexShrink: 0,
-            }}
           />
         )
       )}
-    </Flex>
+      {!selected && !isCompatible && (
+        <Button
+          data-testid="placeholder-button"
+          size="xs"
+          variant="visualizer"
+          rightSection={<Icon name="add" />}
+          style={{ opacity: 0, pointerEvents: "none" }}
+        />
+      )}
+    </ButtonGroup>
   );
 };

@@ -3,7 +3,7 @@ import { c } from "ttag";
 import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { Flex, Stack, Text, Title } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { Database } from "metabase-types/api";
 
 export const ExistingDatabaseHeader = ({
   database,
