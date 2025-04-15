@@ -1,12 +1,13 @@
 import { t } from "ttag";
 
-import { MultiAutocomplete } from "metabase/ui";
+import { type ComboboxProps, MultiAutocomplete } from "metabase/ui";
 
 interface StaticValuePickerProps {
   selectedValues: string[];
   placeholder?: string;
   autoFocus?: boolean;
-  onCreate?: (rawValue: string) => string | null;
+  comboboxProps?: ComboboxProps;
+  parseValue?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
 }
 
@@ -14,17 +15,18 @@ export function StaticValuePicker({
   selectedValues,
   placeholder,
   autoFocus,
-  onCreate,
+  comboboxProps,
+  parseValue,
   onChange,
 }: StaticValuePickerProps) {
   return (
     <MultiAutocomplete
-      values={selectedValues}
-      options={[]}
+      value={selectedValues}
       placeholder={placeholder}
       autoFocus={autoFocus}
+      comboboxProps={comboboxProps}
       aria-label={t`Filter value`}
-      onCreate={onCreate}
+      parseValue={parseValue}
       onChange={onChange}
     />
   );

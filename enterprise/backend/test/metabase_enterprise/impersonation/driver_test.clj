@@ -98,31 +98,141 @@
       (let [db-name "conn_impersonation_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (postgres-test/drop-if-exists-and-create-db! db-name)
-        (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.table_with_access;"
-                           "DROP TABLE IF EXISTS PUBLIC.table_without_access;"
-                           "CREATE TABLE PUBLIC.table_with_access (x INTEGER NOT NULL);"
-                           "CREATE TABLE PUBLIC.table_without_access (y INTEGER NOT NULL);"
-                           "DROP ROLE IF EXISTS \"impersonation.role\";"
-                           "CREATE ROLE \"impersonation.role\";"
-                           "REVOKE ALL PRIVILEGES ON DATABASE \"conn_impersonation_test\" FROM \"impersonation.role\";"
-                           "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO \"impersonation.role\";"]]
-          (jdbc/execute! spec [statement]))
-        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
-          (mt/with-db database (sync/sync-database! database)
-            (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                           :attributes     {"impersonation_attr" "impersonation.role"}}
-              (is (= []
-                     (-> {:query "SELECT * FROM \"table_with_access\";"}
-                         mt/native-query
-                         mt/process-query
-                         mt/rows)))
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                    #"permission denied"
-                                    (-> {:query "SELECT * FROM \"table_without_access\";"}
-                                        mt/native-query
-                                        mt/process-query
-                                        mt/rows))))))))))
+        (postgres-test/with-temp-database! db-name
+          (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.table_with_access;"
+                             "DROP TABLE IF EXISTS PUBLIC.table_without_access;"
+                             "CREATE TABLE PUBLIC.table_with_access (x INTEGER NOT NULL);"
+                             "CREATE TABLE PUBLIC.table_without_access (y INTEGER NOT NULL);"
+                             "DROP ROLE IF EXISTS \"impersonation.role\";"
+                             "CREATE ROLE \"impersonation.role\";"
+                             "REVOKE ALL PRIVILEGES ON DATABASE \"conn_impersonation_test\" FROM \"impersonation.role\";"
+                             "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO \"impersonation.role\";"]]
+            (jdbc/execute! spec [statement]))
+          (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+            (mt/with-db database (sync/sync-database! database)
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" "impersonation.role"}}
+                (is (= []
+                       (-> {:query "SELECT * FROM \"table_with_access\";"}
+                           mt/native-query
+                           mt/process-query
+                           mt/rows)))
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                      #"permission denied"
+                                      (-> {:query "SELECT * FROM \"table_without_access\";"}
+                                          mt/native-query
+                                          mt/process-query
+                                          mt/rows)))))))))))
+
+(deftest conn-impersonation-with-db-routing
+  (mt/test-driver :postgres
+    (mt/with-premium-features #{:advanced-permissions :database-routing}
+      (let [router-db-name "db_routing_router"
+            router-details (mt/dbdef->connection-details :postgres :db {:database-name router-db-name})
+            router-spec    (sql-jdbc.conn/connection-details->spec :postgres router-details)
+            destination-db-name "db_routing_destination"
+            destination-details (mt/dbdef->connection-details :postgres :db {:database-name destination-db-name})
+            destination-spec (sql-jdbc.conn/connection-details->spec :postgres destination-details)]
+        (postgres-test/with-temp-database! router-db-name
+          (postgres-test/with-temp-database! destination-db-name
+            (doseq [statement ["DROP ROLE IF EXISTS \"impersonation.role\";"
+                               "CREATE ROLE \"impersonation.role\";"]]
+              (jdbc/execute! router-spec [statement]))
+            (doseq [[spec n] [[router-spec "router"] [destination-spec "destination"]]
+                    statement ["CREATE TABLE messages (user_id INTEGER NOT NULL, content TEXT NOT NULL);"
+                               "GRANT SELECT ON messages to \"impersonation.role\";"
+                               "CREATE POLICY \"impersonation.role\" ON messages FOR SELECT TO \"impersonation.role\" USING (user_id=1);"
+                               (str
+                                "INSERT INTO messages (user_id, content) VALUES "
+                                (format "(1, 'hello to user 1 in the %s DB'), " n)
+                                (format "(2, 'hello to user 2 in the %s DB'), " n)
+                                (format "(1, 'hello to user 1 in the %s DB');" n))
+                               "ALTER TABLE messages ENABLE ROW LEVEL SECURITY;"]]
+              (jdbc/execute! spec [statement]))
+            (mt/with-temp [:model/Database router-database {:engine :postgres, :details router-details}
+                           :model/Database _ {:router_database_id (u/the-id router-database)
+                                              :engine :postgres
+                                              :details destination-details
+                                              :name destination-db-name}]
+              (mt/with-db router-database (sync/sync-database! router-database)
+                (testing "Database Routing OFF"
+                  (testing "impersonation OFF"
+                    (testing "both crowberto and rasta see all rows in the ROUTER database"
+                      (is (= [[1 "hello to user 1 in the router DB"]
+                              [2 "hello to user 2 in the router DB"]
+                              [1 "hello to user 1 in the router DB"]]
+                             (mt/with-test-user :crowberto
+                               (-> {:query "SELECT * FROM \"messages\";"}
+                                   mt/native-query
+                                   mt/process-query
+                                   mt/rows))
+                             (mt/with-test-user :rasta
+                               (-> {:query "SELECT * FROM \"messages\";"}
+                                   mt/native-query
+                                   mt/process-query
+                                   mt/rows))))))
+                  (testing "impersonation ON"
+                    (testing "both see router DB, but crowberto sees all rows"
+                      (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (u/the-id router-database) :attribute "impersonation_attr"}]
+                                                                     :attributes     {"impersonation_attr" "impersonation.role"}}
+
+                        (is (= [[1 "hello to user 1 in the router DB"]
+                                [2 "hello to user 2 in the router DB"]
+                                [1 "hello to user 1 in the router DB"]]
+                               (mt/with-test-user :crowberto
+                                 (-> {:query "SELECT * FROM \"messages\";"}
+                                     mt/native-query
+                                     mt/process-query
+                                     mt/rows))))
+                        (is (= [[1 "hello to user 1 in the router DB"]
+                                [1 "hello to user 1 in the router DB"]]
+                               (mt/with-test-user :rasta
+                                 (-> {:query "SELECT * FROM \"messages\";"}
+                                     mt/native-query
+                                     mt/process-query
+                                     mt/rows))))))))
+                (testing "Database Routing ON"
+                  (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-database)
+                                                          :user_attribute "db"}]
+                    (met/with-user-attributes! :rasta {"db" destination-db-name}
+                      (testing "impersonation OFF"
+                        (mt/with-test-user :crowberto
+                          (is (= [[1 "hello to user 1 in the router DB"]
+                                  [2 "hello to user 2 in the router DB"]
+                                  [1 "hello to user 1 in the router DB"]]
+                                 (-> {:query "SELECT * FROM \"messages\";"}
+                                     mt/native-query
+                                     mt/process-query
+                                     mt/rows)))))
+                      (mt/with-test-user :rasta
+                        (is (= [[1 "hello to user 1 in the destination DB"]
+                                [2 "hello to user 2 in the destination DB"]
+                                [1 "hello to user 1 in the destination DB"]]
+                               (-> {:query "SELECT * FROM \"messages\";"}
+                                   mt/native-query
+                                   mt/process-query
+                                   mt/rows)))))
+                    (testing "impersonation ON"
+                      (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (u/the-id router-database) :attribute "impersonation_attr"}]
+                                                                     :attributes     {"impersonation_attr" "impersonation.role"
+                                                                                      "db" destination-db-name}}
+                        (testing "crowberto sees all rows in the router"
+                          (mt/with-test-user :crowberto
+                            (is (= [[1 "hello to user 1 in the router DB"]
+                                    [2 "hello to user 2 in the router DB"]
+                                    [1 "hello to user 1 in the router DB"]]
+                                   (-> {:query "SELECT * FROM \"messages\";"}
+                                       mt/native-query
+                                       mt/process-query
+                                       mt/rows)))))
+                        (testing "... but Rasta sees only user_id=1 rows in the destination"
+                          (mt/with-test-user :rasta
+                            (is (= [[1 "hello to user 1 in the destination DB"]
+                                    [1 "hello to user 1 in the destination DB"]]
+                                   (-> {:query "SELECT * FROM \"messages\";"}
+                                       mt/native-query
+                                       mt/process-query
+                                       mt/rows)))))))))))))))))
 
 (deftest conn-impersonation-test-redshift
   (mt/test-driver :redshift

@@ -49,6 +49,12 @@ export const createMockEngines = (
       type: "community",
     }),
   }),
+  partnerEngine: createMockEngine({
+    "driver-name": "PartnerEngine",
+    source: createMockEngineSource({
+      type: "partner",
+    }),
+  }),
   ...opts,
 });
 
@@ -124,6 +130,7 @@ export const createMockTokenFeatures = (
   query_reference_validation: false,
   serialization: false,
   cache_preemptive: false,
+  database_routing: false,
   ...opts,
 });
 

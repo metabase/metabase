@@ -520,12 +520,17 @@
     "starburst"
     "vertica"})
 
+(def partner-drivers
+  "The set of other drivers in the partnership program"
+  #{"firebolt" "materialize"})
+
 (defn driver-source
-  "Return the source type of the driver: official or community"
+  "Return the source type of the driver: official, partner, or community"
   [driver-name]
-  (if (contains? official-drivers driver-name)
-    "official"
-    "community"))
+  (cond
+    (contains? official-drivers driver-name) "official"
+    (contains? partner-drivers driver-name) "partner"
+    :else "community"))
 
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported

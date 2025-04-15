@@ -2,11 +2,14 @@ import {
   type BoxProps,
   Combobox,
   type ComboboxItem,
+  type ComboboxLikeProps,
+  type ComboboxLikeRenderOptionInput,
   OptionsDropdown,
   Pill,
   PillsInput,
   Text,
   Tooltip,
+  type __InputWrapperProps,
   extractStyleProps,
 } from "@mantine/core";
 import type { ReactNode } from "react";
@@ -17,30 +20,65 @@ import { Icon } from "../../icons";
 import S from "./MultiAutocomplete.module.css";
 import { useMultiAutocomplete } from "./use-multi-autocomplete";
 
-export type MultiAutocompleteProps = BoxProps & {
-  values: string[];
-  options: ComboboxItem[];
-  placeholder?: string;
-  autoFocus?: boolean;
-  rightSection?: ReactNode;
-  nothingFoundMessage?: ReactNode;
-  "aria-label"?: string;
-  onCreate?: (rawValue: string) => string | null;
-  onChange: (newValues: string[]) => void;
-  onSearchChange?: (newValue: string) => void;
+export type MultiAutocompleteRenderValueProps = {
+  value: string;
 };
 
+export type MultiAutocompleteRenderOptionProps =
+  ComboboxLikeRenderOptionInput<ComboboxItem>;
+
+export type MultiAutocompleteProps = BoxProps &
+  __InputWrapperProps &
+  ComboboxLikeProps & {
+    value: string[];
+    placeholder?: string;
+    autoFocus?: boolean;
+    rightSection?: ReactNode;
+    nothingFoundMessage?: ReactNode;
+    "aria-label"?: string;
+    "data-testid"?: string;
+    parseValue?: (rawValue: string) => string | null;
+    renderValue?: (props: MultiAutocompleteRenderValueProps) => ReactNode;
+    renderOption?: (props: MultiAutocompleteRenderOptionProps) => ReactNode;
+    onChange: (newValues: string[]) => void;
+    onSearchChange?: (newValue: string) => void;
+  };
+
 export function MultiAutocomplete({
-  values,
-  options,
+  value,
+  data = [],
+  filter,
+  limit,
+  label,
+  description,
+  error,
+  required,
+  withAsterisk,
+  labelProps,
+  descriptionProps,
+  errorProps,
+  inputContainer,
+  inputWrapperOrder,
   placeholder,
   autoFocus,
   rightSection,
   nothingFoundMessage,
+  maxDropdownHeight,
+  dropdownOpened,
+  defaultDropdownOpened,
+  selectFirstOptionOnChange,
+  withScrollArea,
+  comboboxProps,
   "aria-label": ariaLabel,
-  onCreate,
+  "data-testid": dataTestId,
+  parseValue = defaultParseValue,
+  renderValue = defaultRenderValue,
+  renderOption,
   onChange,
   onSearchChange,
+  onDropdownOpen,
+  onDropdownClose,
+  onOptionSubmit,
   ...otherProps
 }: MultiAutocompleteProps) {
   const {
@@ -61,9 +99,9 @@ export function MultiAutocomplete({
     handlePillsInputClick,
     handleOptionSubmit,
   } = useMultiAutocomplete({
-    values,
-    options,
-    onCreate,
+    values: value,
+    data,
+    parseValue,
     onChange,
     onSearchChange,
   });
@@ -89,11 +127,23 @@ export function MultiAutocomplete({
         withinPortal={false}
         floatingStrategy="fixed"
         onOptionSubmit={handleOptionSubmit}
+        {...comboboxProps}
       >
         <Combobox.DropdownTarget>
           <PillsInput
             {...styleProps}
+            label={label}
+            description={description}
+            error={error}
+            required={required}
             rightSection={rightSection ?? infoIcon}
+            withAsterisk={withAsterisk}
+            labelProps={labelProps}
+            descriptionProps={descriptionProps}
+            errorProps={errorProps}
+            inputContainer={inputContainer}
+            inputWrapperOrder={inputWrapperOrder}
+            data-testid={dataTestId}
             onClick={handlePillsInputClick}
           >
             <Pill.Group role="list" onClick={handlePillGroupClick}>
@@ -102,11 +152,12 @@ export function MultiAutocomplete({
                   <Pill
                     key={valueIndex}
                     className={S.pill}
+                    removeButtonProps={{ "aria-label": t`Remove` }}
                     withRemoveButton
                     onClick={(event) => handlePillClick(event, valueIndex)}
                     onRemove={() => handlePillRemoveClick(valueIndex)}
                   >
-                    {value}
+                    {renderValue({ value })}
                   </Pill>
                 ) : (
                   <Combobox.EventsTarget key="field">
@@ -131,21 +182,32 @@ export function MultiAutocomplete({
           </PillsInput>
         </Combobox.DropdownTarget>
         <OptionsDropdown
+          value={value}
           data={filteredOptions}
           search={searchValue}
+          filter={filter}
+          limit={limit}
+          maxDropdownHeight={maxDropdownHeight}
           nothingFoundMessage={nothingFoundMessage}
           hiddenWhenEmpty={!nothingFoundMessage}
-          filter={undefined}
-          limit={undefined}
-          maxDropdownHeight={undefined}
           unstyled={false}
           labelId={undefined}
-          withScrollArea={undefined}
+          withScrollArea={withScrollArea}
           scrollAreaProps={undefined}
+          renderOption={renderOption}
           aria-label={undefined}
         />
       </Combobox>
-      <Combobox.HiddenInput value={values} />
+      <Combobox.HiddenInput value={value} />
     </>
   );
+}
+
+function defaultParseValue(value: string) {
+  const trimmedValue = value.trim();
+  return trimmedValue.length > 0 ? trimmedValue : null;
+}
+
+function defaultRenderValue({ value }: MultiAutocompleteRenderValueProps) {
+  return value;
 }

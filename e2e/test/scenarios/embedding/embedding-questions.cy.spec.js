@@ -326,7 +326,7 @@ describe("scenarios > embedding > questions > downloads", () => {
         );
         cy.findByLabelText("Customizing look and feel").should(
           "not.contain",
-          "Download buttons",
+          "Download (csv, xlsx, json, png)",
         );
 
         cy.log('Use API to "publish" this question and to enable its filter');
@@ -385,11 +385,11 @@ describe("scenarios > embedding > questions > downloads", () => {
         });
 
         cy.log("Disable downloads");
-        cy.findByLabelText("Download buttons")
+        cy.findByLabelText("Download (csv, xlsx, json, png)")
           .as("allow-download-toggle")
           .should("be.checked");
 
-        cy.findByText("Download buttons").click();
+        cy.findByText("Download (csv, xlsx, json, png)").click();
         cy.get("@allow-download-toggle").should("not.be.checked");
 
         cy.log('Use API to "publish" this question and to enable its filter');

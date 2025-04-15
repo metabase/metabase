@@ -758,10 +758,7 @@
          join-aliases-to-ignore (into #{}
                                       (comp (map lib.join.util/current-join-alias)
                                             (drop-while #(not= % existing-join-alias)))
-                                      (joins query stage-number))
-         lhs-column-or-nil      (or lhs-column-or-nil
-                                    (when (join? join-or-joinable)
-                                      (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
+                                      (joins query stage-number))]
      (->> (lib.metadata.calculation/visible-columns query stage-number
                                                     (lib.util/query-stage query stage-number)
                                                     {:include-implicitly-joinable? false})
@@ -800,9 +797,6 @@
                              join-or-joinable)
          join-alias        (when (join? join-or-joinable)
                              (lib.join.util/current-join-alias join-or-joinable))
-         rhs-column-or-nil (or rhs-column-or-nil
-                               (when (join? join-or-joinable)
-                                 (standard-join-condition-rhs (first (join-conditions join-or-joinable)))))
          rhs-column-or-nil (when rhs-column-or-nil
                              (cond-> rhs-column-or-nil
                                ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.

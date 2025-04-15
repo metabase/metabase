@@ -7,10 +7,24 @@ import * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../context";
 
+/**
+ * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionResetButtonProps = ButtonProps;
+
+/**
+ * Button to reset question modifications. Only appears when there are unsaved changes to the question.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
 export const QuestionResetButton = ({
   onClick,
   ...buttonProps
-}: ButtonProps = {}) => {
+}: InteractiveQuestionResetButtonProps = {}) => {
   const { question, originalQuestion, onReset } =
     useInteractiveQuestionContext();
 

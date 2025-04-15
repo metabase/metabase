@@ -2,13 +2,14 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { getExample } from "metabase/querying/drills/utils/column-extract-drill";
 import { Box, Button, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
 
 import styles from "./ExtractColumn.module.css";
-import { getExample, getName } from "./util";
+import { getName } from "./util";
 
 type Props = {
   query: Lib.Query;
