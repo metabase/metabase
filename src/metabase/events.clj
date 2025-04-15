@@ -126,8 +126,11 @@
      (case (mc/type schema)
        :map
        (mc/-set-children schema
-                         (mapv (fn [[k p s]]
-                                 [k (dissoc p :optional) s]) children))
+                         (->> children
+                              (mapv (fn [[k p s]]
+                                      [k (dissoc p :optional) s]))
+                              (remove (fn [[_ p _]]
+                                        (some? (:hydrate p))))))
        :maybe
        (first children)
 

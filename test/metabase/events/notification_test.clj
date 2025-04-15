@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.events :as events]
    [metabase.events.notification :as events.notification]
+   [metabase.events.schema :as events.schema]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
@@ -62,49 +63,44 @@
 
 (def user-hydra-model [:model/User :id :first_name])
 
-#_(deftest hydrate-event-notifcation-test
-    (doseq [[context schema value expected]
-            [["single map"
-              [:map
-               (-> [:user_id :int] (#'events.schema/hydrated-schemas :user user-hydra-model))]
-              {:user_id (mt/user->id :rasta)}
-              {:user_id (mt/user->id :rasta)
-               :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
-             ["seq of maps"
-              [:sequential
-               [:map
-                (-> [:user_id :int] (#'events.schema/hydrated-schemas :user user-hydra-model))]]
-              [{:user_id (mt/user->id :rasta)}
-               {:user_id (mt/user->id :crowberto)}]
-              [{:user_id (mt/user->id :rasta)
-                :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}
-               {:user_id (mt/user->id :crowberto)
-                :user    (t2/select-one user-hydra-model (mt/user->id :crowberto))}]]
-             ["ignore keys that don't need hydration"
-              [:map
-               (-> [:user_id :int] (#'events.schema/hydrated-schemas :user user-hydra-model))
-               [:topic   [:= :user-joined]]]
-              {:user_id (mt/user->id :rasta)
-               :topic   :user-joined}
-              {:user_id (mt/user->id :rasta)
-               :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
-             ["multiple hydration in the same map"
-              [:map
-               (-> [:user_id :int] (#'events.schema/hydrated-schemas :user user-hydra-model))
-               (-> [:creator :int] (#'events.schema/hydrated-schemas :creator user-hydra-model))]
-              {:user_id    (mt/user->id :rasta)
-               :creator_id (mt/user->id :crowberto)}
-              {:user_id    (mt/user->id :rasta)
-               :user       (t2/select-one user-hydra-model (mt/user->id :rasta))
-               :creator_id (mt/user->id :crowberto)
-               :creator    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
-             ["respect the options"
-              [:map
-               (-> [:user_id {:optional true} :int] (#'events.schema/hydrated-schemas :user user-hydra-model))]
-              {}
-              {}]]]
-      (testing context
-        (= expected (#'events.notification/hydrate! schema value)))))
+(def user-schema [:user [:map
+                         [:id pos-int?]
+                         [:first_name :string]]])
+
+(deftest hydrate-event-notifcation-test
+  (doseq [[context schema value expected]
+          [["single map"
+            (into [:map]
+                  (events.schema/hydrated-schemas [:user_id :int] :user user-hydra-model user-schema))
+            {:user_id (mt/user->id :rasta)}
+            {:user (t2/select-one user-hydra-model (mt/user->id :rasta))}]
+           ["seq of maps"
+            [:sequential
+             (into [:map] (#'events.schema/hydrated-schemas [:user_id :int] :user user-hydra-model user-schema))]
+            [{:user_id (mt/user->id :rasta)}
+             {:user_id (mt/user->id :crowberto)}]
+            [{:user    (t2/select-one user-hydra-model (mt/user->id :rasta))}
+             {:user    (t2/select-one user-hydra-model (mt/user->id :crowberto))}]]
+           ["ignore keys that don't need hydration"
+            (into [:map
+                   [:topic [:= :user-joined]]]
+                  (#'events.schema/hydrated-schemas [:user_id :int] :user user-hydra-model user-schema))
+            {:topic :user-joined}
+            {:topic :user-joined}]
+           ["multiple hydration in the same map"
+            (-> [:map]
+                (into (#'events.schema/hydrated-schemas [:user_id :int] :user user-hydra-model user-schema))
+                (into (#'events.schema/hydrated-schemas [:creator_id :int] :creator user-hydra-model [:creator :map])))
+            {:user_id    (mt/user->id :rasta)
+             :creator_id (mt/user->id :crowberto)}
+            {:user       (t2/select-one user-hydra-model (mt/user->id :rasta))
+             :creator    (t2/select-one user-hydra-model (mt/user->id :crowberto))}]
+           ["respect the options"
+            (into [:map] (#'events.schema/hydrated-schemas [:user_id {:optional true} :int] :user user-hydra-model user-schema))
+            {}
+            {}]]]
+    (testing context
+      (is (= expected (#'events.notification/hydrate! schema value))))))
 
 (deftest record-task-history-test
   (notification.tu/with-notification-testing-setup!
