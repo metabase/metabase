@@ -12,7 +12,6 @@ import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
 export const ActivityApi = {
-  recent_views: GET("/api/activity/recent_views"),
   most_recently_viewed_dashboard: GET(
     "/api/activity/most_recently_viewed_dashboard",
   ),
@@ -27,7 +26,6 @@ export const GTAPApi = {
 
 export const StoreApi = {
   tokenStatus: GET("/api/premium-features/token/status"),
-  billingInfo: GET("/api/ee/billing"),
 };
 
 // Pivot tables need extra data beyond what's described in the MBQL query itself.
@@ -130,63 +128,21 @@ export async function runQuestionQuery(
 }
 
 export const CardApi = {
-  list: GET("/api/card", (cards, { data }) =>
-    // HACK: support for the "q" query param until backend implements it
-    cards.filter(
-      (card) =>
-        !data.q || card.name.toLowerCase().indexOf(data.q.toLowerCase()) >= 0,
-    ),
-  ),
-  create: POST("/api/card"),
   get: GET("/api/card/:cardId"),
   update: PUT("/api/card/:id"),
-  delete: DELETE("/api/card/:id"),
-  persist: POST("/api/persist/card/:id/persist"),
-  unpersist: POST("/api/persist/card/:id/unpersist"),
-  refreshModelCache: POST("/api/persist/card/:id/refresh"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
-  bookmark: {
-    create: POST("/api/card/:id/bookmark"),
-    delete: DELETE("/api/card/:id/bookmark"),
-  },
-  listPublic: GET("/api/card/public"),
-  listEmbeddable: GET("/api/card/embeddable"),
-  createPublicLink: POST("/api/card/:id/public_link"),
-  deletePublicLink: DELETE("/api/card/:id/public_link"),
   // related
-  related: GET("/api/card/:cardId/related"),
-  adHocRelated: POST("/api/card/related"),
   compatibleCards: GET("/api/card/:cardId/series"),
   parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
   parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
 };
 
-export const ModelIndexApi = {
-  list: GET("/api/model-index"),
-  get: GET("/api/model-index/:id"),
-  create: POST("/api/model-index"),
-  update: PUT("/api/model-index/:id"),
-  delete: DELETE("/api/model-index/:id"),
-};
-
 export const DashboardApi = {
-  // creates a new empty dashboard
-  create: POST("/api/dashboard"),
-  // saves a complete transient dashboard
-  save: POST("/api/dashboard/save"),
   get: GET("/api/dashboard/:dashId"),
-  update: PUT("/api/dashboard/:id"),
-  delete: DELETE("/api/dashboard/:dashId"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
   parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
-
-  listPublic: GET("/api/dashboard/public"),
-  listEmbeddable: GET("/api/dashboard/embeddable"),
-  createPublicLink: POST("/api/dashboard/:id/public_link"),
-  deletePublicLink: DELETE("/api/dashboard/:id/public_link"),
-
   cardQuery: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
   ),
@@ -196,12 +152,7 @@ export const DashboardApi = {
 };
 
 export const CollectionsApi = {
-  list: GET("/api/collection"),
-  create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
-  // Temporary route for getting things not in a collection
-  getRoot: GET("/api/collection/root"),
-  update: PUT("/api/collection/:id"),
   graph: GET("/api/collection/graph"),
   updateGraph: PUT("/api/collection/graph?skip-graph=true"),
 };
@@ -273,20 +224,7 @@ export const GoogleApi = {
 };
 
 export const MetabaseApi = {
-  db_autocomplete_suggestions: GET(
-    "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
-  ),
-  db_card_autocomplete_suggestions: GET(
-    "/api/database/:dbId/card_autocomplete_suggestions",
-  ),
-  db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_usage_info: GET("/api/database/:dbId/usage_info"),
-  table_list: GET("/api/table"),
-  table_get: GET("/api/table/:tableId"),
-  table_update: PUT("/api/table/:id"),
-  // table_fields:                GET("/api/table/:tableId/fields"),
-  table_fks: GET("/api/table/:tableId/fks"),
-  // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {
     formData: true,
     fetch: true,
@@ -295,8 +233,6 @@ export const MetabaseApi = {
     formData: true,
     fetch: true,
   }),
-  field_get: GET("/api/field/:fieldId"),
-  field_values_update: POST("/api/field/:fieldId/values"),
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   dataset: POST("/api/dataset"),
   dataset_pivot: POST("/api/dataset/pivot"),
@@ -341,27 +277,6 @@ export const NotificationUnsubscribeApi = {
   undo_unsubscribe: POST("/api/notification/unsubscribe/undo"),
 };
 
-export const SegmentApi = {
-  list: GET("/api/segment"),
-  create: POST("/api/segment"),
-  get: GET("/api/segment/:segmentId"),
-  update: PUT("/api/segment/:id"),
-  delete: DELETE("/api/segment/:segmentId"),
-};
-
-export const MetricApi = {
-  list: GET("/api/legacy-metric"),
-  create: POST("/api/legacy-metric"),
-  get: GET("/api/legacy-metric/:metricId"),
-  update: PUT("/api/legacy-metric/:id"),
-  delete: DELETE("/api/legacy-metric/:metricId"),
-};
-
-export const RevisionApi = {
-  list: GET("/api/revision"),
-  revert: POST("/api/revision/revert"),
-};
-
 export const RevisionsApi = {
   get: GET("/api/revision/:entity/:id"),
 };
@@ -398,8 +313,6 @@ export const PermissionsApi = {
 };
 
 export const PersistedModelsApi = {
-  get: GET("/api/persist/:id"),
-  getForModel: GET("/api/persist/card/:id"),
   enablePersistence: POST("/api/persist/enable"),
   disablePersistence: POST("/api/persist/disable"),
   setRefreshSchedule: POST("/api/persist/set-refresh-schedule"),
@@ -434,10 +347,6 @@ export const UtilApi = {
 export const GeoJSONApi = {
   load: GET("/api/geojson"),
   get: GET("/api/geojson/:id"),
-};
-
-export const I18NApi = {
-  locale: GET("/app/locales/:locale.json"),
 };
 
 export function setPublicQuestionEndpoints(uuid) {
