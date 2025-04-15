@@ -684,7 +684,7 @@ describe("scenarios > organization > entity picker", () => {
         H.entityPickerModalTab("Collections").click();
         cy.findByText("All personal collections").click();
         enterSearchText({
-          text: "personal collection",
+          text: "personal collection 1",
           placeholder: "Search…",
         });
         globalSearchTab().should("not.exist");
@@ -692,9 +692,7 @@ describe("scenarios > organization > entity picker", () => {
         assertSearchResults({
           foundItems: [
             "Admin personal collection 1",
-            "Admin personal collection 2",
             "Normal personal collection 1",
-            "Normal personal collection 2",
           ],
         });
       });

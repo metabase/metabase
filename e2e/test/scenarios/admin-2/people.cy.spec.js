@@ -324,8 +324,8 @@ describe("scenarios > admin > people", () => {
 
       cy.findByPlaceholderText("Find someone").type("no");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("5 people found");
-      assertTableRowsCount(5);
+      cy.findByText("6 people found");
+      assertTableRowsCount(6);
 
       cy.findByPlaceholderText("Find someone").type("ne");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

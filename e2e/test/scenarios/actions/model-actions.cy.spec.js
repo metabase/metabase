@@ -770,7 +770,7 @@ describe(
       H.setTokenFeatures("all");
       H.queryWritableDB(sql);
 
-      const impersonatedUserId = 9;
+      const impersonatedUserId = 10;
       cy.request("PUT", `/api/user/${impersonatedUserId}`, {
         login_attributes: { role },
       });
