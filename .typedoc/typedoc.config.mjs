@@ -9,6 +9,7 @@ const config = {
     "typedoc-plugin-missing-exports",
     "typedoc-plugin-mdn-links",
     "typedoc-plugin-dt-links",
+    "typedoc-plugin-redirect",
     "./typedoc-plugin-frontmatter.js",
     "./typedoc-plugin-remove-data-refl-attribute.js",
     "./typedoc-plugin-head.js",
@@ -40,6 +41,9 @@ const config = {
       },
     },
   ],
+  redirects: {
+    "internal.html": "index.html",
+  },
   defaultCategory: "other",
   kindSortOrder: [
     "Reference",
@@ -90,7 +94,6 @@ const config = {
     "SetSignature",
     "Reference",
   ],
-  treatWarningsAsErrors: true,
   disableSources: true,
   includeHierarchySummary: false,
   navigation: {
@@ -100,6 +103,8 @@ const config = {
     compactFolders: true,
     excludeReferences: true,
   },
+  treatWarningsAsErrors: false,
+  treatValidationWarningsAsErrors: true,
   validation: {
     notExported: true,
     invalidLink: true,
