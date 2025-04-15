@@ -210,16 +210,13 @@ export const FieldValuesWidgetInner = forwardRef<
     let newValuesMode = valuesMode;
     try {
       if (canUseDashboardEndpoints(dashboard, parameter)) {
-        const dashboardId = checkNotNull(dashboard?.id);
-        const parameterId = checkNotNull(parameter?.id);
-        const filteringParameterValues = getFilteringParameterValuesMap(
-          checkNotNull(parameter),
-          parameters,
-        );
         const request = {
-          dashboard_id: dashboardId,
-          parameter_id: parameterId,
-          ...filteringParameterValues,
+          dashboard_id: checkNotNull(dashboard?.id),
+          parameter_id: checkNotNull(parameter?.id),
+          ...getFilteringParameterValuesMap(
+            checkNotNull(parameter),
+            parameters,
+          ),
         };
         const { values, has_more_values } = query
           ? await searchDashboardParameterValues({ ...request, query }).unwrap()
@@ -227,11 +224,9 @@ export const FieldValuesWidgetInner = forwardRef<
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseCardEndpoints(question, parameter)) {
-        const cardId = checkNotNull(question?.id());
-        const parameterId = checkNotNull(parameter?.id);
         const request = {
-          card_id: cardId,
-          parameter_id: parameterId,
+          card_id: checkNotNull(question?.id()),
+          parameter_id: checkNotNull(parameter?.id),
         };
         const { values, has_more_values } = query
           ? await searchCardParameterValues({ ...request, query }).unwrap()

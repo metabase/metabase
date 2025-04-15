@@ -12,6 +12,7 @@ import type {
   Parameter,
   ParameterId,
   ParameterTarget,
+  ParameterValueOrArray,
   Table,
   UserId,
   VirtualCardDisplay,
@@ -312,13 +313,15 @@ export type GetDashboardParameterValuesRequest = {
   parameter_id: ParameterId;
 };
 
+type LinkedFiltersParameterValues = Record<ParameterId, ParameterValueOrArray>;
+
 export type GetDashboardParameterValuesResponse = {
   values: FieldValue[];
   has_more_values: boolean;
-};
+} & LinkedFiltersParameterValues;
 
 export type SearchDashboardParameterValuesRequest = {
   dashboard_id: DashboardId;
   parameter_id: ParameterId;
   query: string;
-};
+} & LinkedFiltersParameterValues;

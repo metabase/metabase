@@ -96,12 +96,13 @@ export const dashboardApi = Api.injectEndpoints({
         GetDashboardParameterValuesResponse,
         GetDashboardParameterValuesRequest
       >({
-        query: ({ dashboard_id, parameter_id }) => ({
+        query: ({ dashboard_id, parameter_id, ...params }) => ({
           method: "GET",
           url: PLUGIN_API.getDashboardParameterValuesUrl(
             dashboard_id,
             parameter_id,
           ),
+          params,
         }),
         providesTags: (_data, _error, { parameter_id }) =>
           provideParameterValuesTags(parameter_id),
@@ -110,13 +111,14 @@ export const dashboardApi = Api.injectEndpoints({
         GetDashboardParameterValuesResponse,
         SearchDashboardParameterValuesRequest
       >({
-        query: ({ dashboard_id, parameter_id, query }) => ({
+        query: ({ dashboard_id, parameter_id, query, ...params }) => ({
           method: "GET",
           url: PLUGIN_API.getSearchDashboardParameterValuesUrl(
             dashboard_id,
             parameter_id,
             query,
           ),
+          params,
         }),
         providesTags: (_data, _error, { parameter_id }) =>
           provideParameterValuesTags(parameter_id),
