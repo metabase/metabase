@@ -33,8 +33,8 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
   const root = createASTNode(null, null, ROOT, counter);
   root.isRoot = true;
 
-  function error(message: string, data?: any) {
-    const err = new CompileError(message, data);
+  function error(message: string, node?: Node) {
+    const err = new CompileError(message, node);
     if (throwOnError) {
       throw err;
     }
@@ -53,7 +53,8 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
       continue;
     }
     if (token.type === BAD_TOKEN) {
-      error(t`Unexpected token "${token.text}"`, { node, token });
+      error(t`Unexpected token "${token.text}"`, node);
+
       // If we don't throw on error, we skip the bad token
       continue;
     }
@@ -101,7 +102,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
         // If the current token isn't in the list of the AST type's ignored
         // tokens and it's not the terminator the current node requires, we'll
         // throw an error
-        error(t`Expected expression`, { node, token });
+        error(t`Expected expression`, node);
 
         if (token.type === END_OF_INPUT) {
           // We complete and reparent/place the final node by running the for
@@ -122,7 +123,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
         // ie. +42
         continue;
       } else {
-        error(t`Expected expression`, { token });
+        error(t`Expected expression`, node);
       }
     } else {
       // Create the AST node. It will be marked as complete if the node doesn't
@@ -143,7 +144,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
 
   const childViolation = ROOT.checkChildConstraints(root);
   if (childViolation !== null) {
-    error(t`Unexpected token`, { node: root, ...childViolation });
+    error(t`Unexpected token`, node);
   }
   return { root, errors };
 }
@@ -164,15 +165,12 @@ function createASTNode(
   };
 }
 
-function place(node: Node, error: (message: string, data?: any) => void) {
+function place(node: Node, error: (message: string, node?: Node) => void) {
   const { type, parent } = node;
 
   const childViolation = type.checkChildConstraints(node);
   if (childViolation !== null) {
-    error(t`Unexpected token`, {
-      node,
-      ...childViolation,
-    });
+    error(t`Unexpected token`, node);
   }
   assert(parent, "Tried to place a node without a parent", node);
   parent.children.push(node);
