@@ -1707,14 +1707,14 @@
         (let [c1-hash (serdes/identity-hash c1)
               c2-hash (serdes/identity-hash c2)]
           (is (= "f2620cc6"
-                 (serdes/raw-hash ["top level" :yolocorp "ROOT" now])
+                 (serdes/raw-hash ["top level" :yolocorp "ROOT" (:created_at c1)])
                  c1-hash)
               "Top-level collections should use a parent hash of 'ROOT'")
           (is (= "a27aef0f"
-                 (serdes/raw-hash ["nested" :yolocorp c1-hash now])
+                 (serdes/raw-hash ["nested" :yolocorp c1-hash (:created_at c2)])
                  c2-hash))
           (is (= "e816af2d"
-                 (serdes/raw-hash ["grandchild" :yolocorp c2-hash now])
+                 (serdes/raw-hash ["grandchild" :yolocorp c2-hash (:created_at c3)])
                  (serdes/identity-hash c3))))))))
 
 (deftest instance-analytics-collections-test
