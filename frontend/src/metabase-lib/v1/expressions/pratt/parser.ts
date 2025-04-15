@@ -33,6 +33,14 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
   const root = createASTNode(null, null, ROOT, counter);
   root.isRoot = true;
 
+  function error(message: string, data?: any) {
+    const err = new CompileError(message, data);
+    if (throwOnError) {
+      throw err;
+    }
+    errors.push(err);
+  }
+
   let node = root;
   for (
     let index = 0;
@@ -45,11 +53,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
       continue;
     }
     if (token.type === BAD_TOKEN) {
-      const err = new CompileError(t`Unexpected token "${token.text}"`, node);
-      if (throwOnError) {
-        throw err;
-      }
-      errors.push(err);
+      error(t`Unexpected token "${token.text}"`, { node, token });
       // If we don't throw on error, we skip the bad token
       continue;
     }
@@ -84,7 +88,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
 
       // Place the node in its parent children and get the next "active" node
       // which is node.parent
-      node = place(node, errors, opts);
+      node = place(node, error);
       if (node.children.length === node.type.expectedChildCount) {
         node.complete = true;
       }
@@ -97,11 +101,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
         // If the current token isn't in the list of the AST type's ignored
         // tokens and it's not the terminator the current node requires, we'll
         // throw an error
-        const err = new CompileError(t`Expected expression`, node);
-        if (throwOnError) {
-          throw err;
-        }
-        errors.push(err);
+        error(t`Expected expression`, { node, token });
 
         if (token.type === END_OF_INPUT) {
           // We complete and reparent/place the final node by running the for
@@ -122,11 +122,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
         // ie. +42
         continue;
       } else {
-        const err = new CompileError(t`Expected expression`, node);
-        if (throwOnError) {
-          throw err;
-        }
-        errors.push(err);
+        error(t`Expected expression`, { token });
       }
     } else {
       // Create the AST node. It will be marked as complete if the node doesn't
@@ -147,11 +143,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
 
   const childViolation = ROOT.checkChildConstraints(root);
   if (childViolation !== null) {
-    const err = new CompileError(t`Unexpected token`, node);
-    if (throwOnError) {
-      throw err;
-    }
-    errors.push(err);
+    error(t`Unexpected token`, { node: root, ...childViolation });
   }
   return { root, errors };
 }
@@ -172,17 +164,15 @@ function createASTNode(
   };
 }
 
-function place(node: Node, errors: CompileError[], opts: ParserOptions) {
-  const { throwOnError = false } = opts;
+function place(node: Node, error: (message: string, data?: any) => void) {
   const { type, parent } = node;
 
   const childViolation = type.checkChildConstraints(node);
   if (childViolation !== null) {
-    const err = new CompileError(t`Unexpected token`, node);
-    if (throwOnError) {
-      throw err;
-    }
-    errors.push(err);
+    error(t`Unexpected token`, {
+      node,
+      ...childViolation,
+    });
   }
   assert(parent, "Tried to place a node without a parent", node);
   parent.children.push(node);
