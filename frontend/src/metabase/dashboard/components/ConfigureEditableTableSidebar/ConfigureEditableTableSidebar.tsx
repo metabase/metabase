@@ -6,6 +6,7 @@ import { ActionIcon, Box, Flex, Icon, Tabs } from "metabase/ui";
 
 import { getDashCardById, getSidebar } from "../../selectors";
 
+import { ConfigureEditableTableActions } from "./ConfigureEditableTableActions";
 import { ConfigureEditableTableColumns } from "./ConfigureEditableTableColumns";
 import { ConfigureEditableTableFilters } from "./ConfigureEditableTableFilters";
 
@@ -48,9 +49,9 @@ export function ConfigureEditableTableSidebar({
           <Tabs.Panel value="filters">
             <ConfigureEditableTableFilters dashcard={dashcard} />
           </Tabs.Panel>
-          {/*<Tabs.Panel value="actions">*/}
-          {/*  <div>Not implemented</div>*/}
-          {/*</Tabs.Panel>*/}
+          <Tabs.Panel value="actions">
+            <ConfigureEditableTableActions dashcard={dashcard} />
+          </Tabs.Panel>
         </Box>
       </Tabs>
     </Sidebar>

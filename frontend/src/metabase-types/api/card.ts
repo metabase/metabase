@@ -222,6 +222,12 @@ export interface ColumnSettings {
   [key: string]: any;
 }
 
+export type EditableTableRowAction = {
+  id: string; // maybe number ?
+  label?: string; // used for custom actions
+  enabled: boolean;
+};
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
@@ -239,6 +245,7 @@ export type VisualizationSettings = {
   // Table
   "table.columns"?: TableColumnOrderSetting[];
   "table.editableColumns"?: string[]; // list of column names
+  "editableTable.editabledActions"?: EditableTableRowAction[];
 
   // Keys here can be modern (returned by `getColumnKey`) or legacy (`getLegacyColumnKey`).
   // Use `getColumnSettings` which checks for both keys.
