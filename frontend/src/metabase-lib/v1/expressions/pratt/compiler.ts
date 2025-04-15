@@ -11,7 +11,11 @@ import {
   isIntegerLiteral,
   isStringLiteral,
 } from "../matchers";
-import type { ExpressionType, StartRule } from "../types";
+import type {
+  ExpressionType,
+  MBQLClauseFunctionConfig,
+  StartRule,
+} from "../types";
 
 import {
   ADD,
@@ -270,10 +274,21 @@ function compileArgList(
       return withNode(child, compileNode(child, ctx));
     }
 
-    const type =
-      defn.argType?.(index, node.children, ctx.type) ?? defn.args[index];
+    const type = getArgType(defn, index, node.children, ctx.type);
     return withNode(child, compileNode(child, { ...ctx, type }));
   });
+}
+
+function getArgType(
+  defn: MBQLClauseFunctionConfig,
+  index: number,
+  args: Node[],
+  type: ExpressionType,
+): ExpressionType {
+  if (defn.argType) {
+    return defn.argType(index, args, type);
+  }
+  return defn.args[index];
 }
 
 function compileNumber(node: Node): NumberValue | Lib.ExpressionParts {
@@ -372,7 +387,7 @@ function compileUnaryOp(
   assert(isDefinedClause(operator), t`Unknown operator ${operator}`);
 
   const defn = getClauseDefinition(operator);
-  const type = defn?.argType?.(0, node.children, ctx.type) ?? defn?.args[0];
+  const type = getArgType(defn, 0, node.children, ctx.type);
   const arg = compileNode(node.children[0], { ...ctx, type });
 
   return withNode(node, {
@@ -393,9 +408,8 @@ function compileInfixOp(
   assert(isDefinedClause(operator), t`Unknown operator ${operator}`);
 
   const defn = getClauseDefinition(operator);
-  const leftType = defn?.argType?.(0, node.children, ctx.type) ?? defn?.args[0];
-  const rightType =
-    defn?.argType?.(0, node.children, ctx.type) ?? defn?.args[1];
+  const leftType = getArgType(defn, 0, node.children, ctx.type);
+  const rightType = getArgType(defn, 1, node.children, ctx.type);
 
   const leftNode = compileNode(node.children[0], { ...ctx, type: leftType });
   const left =
