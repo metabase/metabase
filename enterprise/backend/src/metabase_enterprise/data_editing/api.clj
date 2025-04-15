@@ -20,7 +20,8 @@
    [metabase.util.malli.schema :as ms]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2])
-  (:import (clojure.lang ExceptionInfo)))
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -156,7 +157,7 @@
   (let [pk-field    (table-id->pk table-id)
         id->db-rows (query-db-rows table-id pk-field rows)
         res         (data-editing/perform-bulk-action! :bulk/delete table-id rows)
-        user-id       api/*current-user-id*]
+        user-id     api/*current-user-id*]
     ;; TODO this publishing needs to move down the stack and be generic all :row/delete invocations
     ;; https://linear.app/metabase/issue/WRK-228/publish-events-when-modified-by-action-execution
     (doseq [row rows]

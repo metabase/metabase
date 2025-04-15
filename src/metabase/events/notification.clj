@@ -139,45 +139,48 @@
                                          [:database pos-int?]]
                                         (into table-id-hydrate-schemas))])
 
+(def ^:private bulk-row-result
+  [:sequential [:map
+                [:pk     :any]
+                [:before [:maybe :map]]
+                [:after  [:maybe :map]]]])
+
 (mr/def :event/action.success
   [:merge ::action-events
    [:multi {:dispatch :action}
-    [:row/create [:map
-                  [:action [:= :row/create]]
-                  single-row-arg
-                  [:result
-                   [:map [:created_row :map]]]]]
-    [:row/update [:map
-                  [:action [:= :row/update]]
-                  single-row-arg
-                  [:result
-                   [:map
-                    [:raw_update [:maybe :map]]
-                    [:after      [:maybe :map]]
-                    [:before     [:maybe :map]]]]]]
-    [:row/delete [:map
-                  [:action [:= :row/delete]]
-                  single-row-arg
-                  [:result
-                   [:map
-                    [:deleted_row :map]]]]]
+    #_[:row/create [:map
+                    [:action [:= :row/create]]
+                    single-row-arg
+                    #_[:result
+                       [:map [:created_row :map]]]]]
+    #_[:row/update [:map
+                    [:action [:= :row/update]]
+                    single-row-arg
+
+                    #_[:result
+                       [:map
+                        [:raw_update [:maybe :map]]
+                        [:after      [:maybe :map]]
+                        [:before     [:maybe :map]]]]]]
+    #_[:row/delete [:map
+                    [:action [:= :row/delete]]
+                    single-row-arg
+                    #_[:result
+                       [:map
+                        [:deleted_row :map]]]]]
     [:bulk/create [:map
                    [:action [:= :bulk/create]]
                    bulk-rows-arg
                    [:result
-                    [:map
-                     [:created_rows [:sequential :map]]]]]]
+                    bulk-row-result]]]
     [:bulk/update [:map
                    [:action [:= :bulk/update]]
                    bulk-rows-arg
-                   #_[:result
-                      [:map
-                       [:rows_updated pos-int?]]]]]
+                   bulk-row-result]]
     [:bulk/delete [:map
                    [:action [:= :bulk/delete]]
                    bulk-rows-arg
-                   #_[:result
-                      [:map
-                       [:deleted_rows [:sequential :map]]]]]]]])
+                   bulk-row-result]]
+    [::mc/default :map]]])
 
 (mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])

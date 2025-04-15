@@ -79,4 +79,17 @@
    :post
    (format "ee/data-editing/table/%d"
            (metabase.test/id :categories))
-   {:rows [{:NAME "New Category"}]}))
+   {:rows [{:NAME "New Category"}]})
+  (metabase.test/user-http-request
+   :crowberto
+   :post
+   (format "ee/data-editing/table/%d/delete"
+           (metabase.test/id :orders))
+   {:rows [{:ID 2}]})
+
+  (metabase.test/user-http-request
+   :crowberto
+   :put
+   (format "ee/data-editing/table/%d"
+           (metabase.test/id :orders))
+   {:rows [{:ID 42 :PRODUCT_ID 3}]}))
