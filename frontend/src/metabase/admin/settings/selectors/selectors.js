@@ -25,7 +25,7 @@ import {
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
-import { SettingsUpdatesForm } from "../components/SettingsUpdatesForm/SettingsUpdatesForm";
+import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettings } from "../components/UploadSettings";
 import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
 import FormattingWidget from "../components/widgets/FormattingWidget";
@@ -75,14 +75,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
   updates: {
     name: t`Updates`,
     order: 30,
-    component: SettingsUpdatesForm,
-    settings: [
-      {
-        key: "check-for-updates",
-        display_name: t`Check for updates`,
-        type: "boolean",
-      },
-    ],
+    component: UpdatesSettingsPage,
+    settings: [],
     adminOnly: true,
   },
   email: {
