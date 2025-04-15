@@ -74,7 +74,7 @@ function start() {
 function test() {
   cd "$FE_FOLDER"
   print_step "Waiting for backend to be ready..."
-  while ! curl 'http://localhost:4000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+  while ! curl -s 'http://localhost:4000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
   print_step "Backend is ready"
 
   print_step "Creating snapshot..."
