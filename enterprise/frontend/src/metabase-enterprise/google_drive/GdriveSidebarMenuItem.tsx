@@ -6,7 +6,7 @@ import { Button, Flex, Icon, Menu, Text, Tooltip } from "metabase/ui";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 
 import { trackSheetConnectionClick } from "./analytics";
-import { getStatus, useShowGdrive } from "./utils";
+import { getErrorMessage, getStatus, useShowGdrive } from "./utils";
 
 export function GdriveSidebarMenuItem({ onClick }: { onClick: () => void }) {
   const showGdrive = useShowGdrive();
@@ -39,7 +39,7 @@ export function GdriveSidebarMenuItem({ onClick }: { onClick: () => void }) {
     .with("active", () => t`Connected`)
     .otherwise(() => null);
 
-  const errorMessage = folder?.message ?? error?.data?.message;
+  const errorMessage = getErrorMessage(error);
 
   const MaybeTooltip = ({ children }: { children: React.ReactNode }) =>
     status === "error" ? (
