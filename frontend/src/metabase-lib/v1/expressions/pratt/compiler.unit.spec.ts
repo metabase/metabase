@@ -316,8 +316,8 @@ describe("pratt/compiler", () => {
           },
         ],
       });
-      expect(expr("func_name(5*6, 4-3)")).toEqual({
-        operator: "func_name",
+      expect(expr("concat(5*6, 4-3)")).toEqual({
+        operator: "concat",
         options: {},
         args: [
           { operator: "*", options: {}, args: [5, 6] },

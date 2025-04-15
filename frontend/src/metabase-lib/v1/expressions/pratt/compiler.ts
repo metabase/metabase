@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { type NumberValue, parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 
-import { getClauseDefinition, getMBQLName } from "../config";
+import { getClauseDefinition, getMBQLName, isDefinedClause } from "../config";
 import { CompileError } from "../errors";
 import {
   isBigIntLiteral,
@@ -173,10 +173,12 @@ function compileFunctionCall(node: Node): Lib.ExpressionParts {
   const args = compileArgList(node.children[0]);
   const options: Lib.ExpressionOptions = {};
 
+  if (!isDefinedClause(operator)) {
+    throw new CompileError(t`Unknown function ${operator}`, node);
+  }
+
   const clause = getClauseDefinition(operator);
   const hasOptions = clause?.hasOptions ?? false;
-
-  assert(clause, `Invalid operator: ${operator}`);
 
   if (hasOptions) {
     const last = args.at(-1);
@@ -191,7 +193,7 @@ function compileFunctionCall(node: Node): Lib.ExpressionParts {
   }
 
   return withNode(node, {
-    operator: clause?.name,
+    operator,
     options,
     args,
   });
