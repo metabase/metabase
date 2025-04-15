@@ -11,6 +11,7 @@
    [metabase.events.notification :as events.notification]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
@@ -312,6 +313,35 @@
   (api/check-404 (t2/select-one :model/Table table-id))
   (let [include-cols [:token :table_id :creator_id]]
     {:tokens (t2/select (into [:table_webhook_token] include-cols) :table_id table-id)}))
+
+(api.macros/defendpoint :get "/action"
+  "Lists all available actions and their parameters for a context.
+  Only supported context is from a dashboard editable right now, the dashcard-id must be supplied
+  as a query parameter.
+  Only returns actions the user has access to.
+  Return type is the same as GET /api/action"
+  [{:as _route-params}
+   {:keys [dashcard-id]} :- [:map
+                             [:dashcard-id ms/PositiveInt]]]
+  (let [dashcard        (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
+        table-id        (:table_id (:visualization_settings dashcard))
+        all-actions     (actions/select-actions nil :type "query")
+        model-ids       (sort (distinct (keep :model_id all-actions)))
+        coll-filter     (collection/visible-collection-filter-clause)
+        models          (when (seq model-ids)
+                          (t2/select :model/Card
+                                     {:where [:and
+                                              [:in :id model-ids]
+                                              [:= :type "model"]
+                                              [:= :archived false]
+                                              coll-filter]}))
+        table-model-ids (->> models
+                             (filter #(= table-id (:table_id %)))
+                             (map :id)
+                             set)
+        actions'        (->> all-actions
+                             (filter #(contains? table-model-ids (:model_id %))))]
+    {:actions (t2/hydrate actions' :creator)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

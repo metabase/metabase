@@ -505,3 +505,59 @@
           (create! [{:n "a"}])
           (update! [{:id 1, :n "e"}])
           (is (= ["a" "c" "d" "e"] (field-values))))))))
+
+(deftest row-action-list-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/toggle-data-editing-enabled! true)
+      (testing "no dashcard is currently an error"
+        (is (= 400 (:status (mt/user-http-request-full-response :crowberto :get "ee/data-editing/action")))))
+      (testing "dashcard does not exist"
+        (is (= 404 (:status (mt/user-http-request-full-response :crowberto :get "ee/data-editing/action" :dashcard-id Long/MAX_VALUE)))))
+      (testing "for a new editable, there are no actions"
+        (mt/with-temp [:model/Table         table     {}
+                       :model/Dashboard     dashboard {}
+                       :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                                       :visualization_settings {:table-id (:id table)}}]
+          (is (= {:status 200
+                  :body   {:actions []}}
+                 (-> (mt/user-http-request-full-response :crowberto :get "ee/data-editing/action" :dashcard-id (:id dashcard))
+                     (select-keys [:status :body]))))))
+      (testing "if a custom sql actions are created against the table they are returned"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Table         table     {}
+                         :model/Dashboard     dashboard {}
+                         :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                                         :visualization_settings {:table_id (:id table)}}
+                         :model/Card          model     {:type :model
+                                                         :table_id (:id table)}
+                         :model/Action        action    {:type :query
+                                                         :name "test action"
+                                                         :model_id (:id model)}]
+            (let [res (mt/user-http-request-full-response :crowberto :get "ee/data-editing/action" :dashcard-id (:id dashcard))
+                  actions (-> res :body :actions)]
+              (is (= 200 (:status res)))
+              (is (= 1 (count actions)))
+              (is (= (:id action) (:id (first actions)))))
+            (testing "non admin does not have collection permissions"
+              ;; I would have liked more explicitly tested coll perms but its like with-temp does not (seem to) work with Collection
+              ;; so copied action test style to save time
+              (let [res (mt/user-http-request-full-response :rasta :get "ee/data-editing/action" :dashcard-id (:id dashcard))
+                    actions (-> res :body :actions)]
+                (is (= 200 (:status res)))
+                (is (= [] actions)))))))
+      (testing "if a custom sql action is created against another table it is not returned"
+        (mt/with-temp [:model/Table         table1    {}
+                       :model/Table         table2    {}
+                       :model/Dashboard     dashboard {}
+                       :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                                       :visualization_settings {:table_id (:id table1)}}
+                       :model/Card          model     {:type :model
+                                                       :table_id (:id table2)}
+                       :model/Action        _         {:type :query
+                                                       :name "test action"
+                                                       :model_id (:id model)}]
+          (let [res (mt/user-http-request-full-response :crowberto :get "ee/data-editing/action" :dashcard-id (:id dashcard))
+                actions (-> res :body :actions)]
+            (is (= 200 (:status res)))
+            (is (= 0 (count actions)))))))))
