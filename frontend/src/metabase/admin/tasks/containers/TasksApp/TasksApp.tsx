@@ -132,37 +132,36 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
                 </tr>
               )}
 
-              {tasks.length > 0 &&
-                tasks.map((task: Task) => {
-                  const db = task.db_id ? databaseByID[task.db_id] : null;
-                  const name = db ? db.name : null;
-                  const engine = db ? db.engine : null;
-                  // only want unknown if there is a db on the task and we don't have info
-                  return (
-                    <tr data-testid="task" key={task.id}>
-                      <td className={CS.textBold}>{task.task}</td>
-                      <td>{task.db_id ? name || t`Unknown name` : null}</td>
-                      <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
-                      <td>{task.started_at}</td>
-                      <td>{task.ended_at}</td>
-                      <td>{task.duration}</td>
-                      <td>
-                        {match(task.status)
-                          .with("failed", () => t`Failed`)
-                          .with("started", () => t`Started`)
-                          .with("success", () => t`Success`)
-                          .with("unknown", () => t`Unknown`)
-                          .exhaustive()}
-                      </td>
-                      <td>
-                        <Link
-                          className={cx(CS.link, CS.textBold)}
-                          to={`/admin/troubleshooting/tasks/${task.id}`}
-                        >{t`View`}</Link>
-                      </td>
-                    </tr>
-                  );
-                })}
+              {tasks.map((task: Task) => {
+                const db = task.db_id ? databaseByID[task.db_id] : null;
+                const name = db ? db.name : null;
+                const engine = db ? db.engine : null;
+                // only want unknown if there is a db on the task and we don't have info
+                return (
+                  <tr data-testid="task" key={task.id}>
+                    <td className={CS.textBold}>{task.task}</td>
+                    <td>{task.db_id ? name || t`Unknown name` : null}</td>
+                    <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
+                    <td>{task.started_at}</td>
+                    <td>{task.ended_at}</td>
+                    <td>{task.duration}</td>
+                    <td>
+                      {match(task.status)
+                        .with("failed", () => t`Failed`)
+                        .with("started", () => t`Started`)
+                        .with("success", () => t`Success`)
+                        .with("unknown", () => t`Unknown`)
+                        .exhaustive()}
+                    </td>
+                    <td>
+                      <Link
+                        className={cx(CS.link, CS.textBold)}
+                        to={`/admin/troubleshooting/tasks/${task.id}`}
+                      >{t`View`}</Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </>
           )}
         </tbody>
