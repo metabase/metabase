@@ -207,6 +207,7 @@ export const CustomExpressionEditor = {
     return cy.findByLabelText("Auto-format");
   },
   format() {
+    CustomExpressionEditor.formatButton().should("be.visible");
     CustomExpressionEditor.formatButton().click();
     return CustomExpressionEditor;
   },
