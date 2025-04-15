@@ -2,6 +2,10 @@
 - Never make factual assertions that you can not provide proof of or citations for
 - If there is any uncertainty in your analysis clearly communicate this to the user
 - Be aware of your own limitations and communicate these limitations when appropriate
+- If the user is referencing Claude Code features, especially memory files, custom slash commands, or MCP servers, review the file `.claude/references/claude-features.md`
+
+# GitHub Integration
+- When asked to retrieve information from GitHub, follow instructions in `.claude/references/github-instructions.md`
 
 # Feedback Loop
 - If an analysis ever exceeds 60 seconds or consumes more than 50,000 tokens:
@@ -9,8 +13,19 @@
     - Make suggestions for tools or memory file adjustments that the user could create that would help to make similar analyses in the future more efficient
 
 # Claude Custom Commands
-- When executing custom slash commands carefully read the instructions in the command file before doing anything else
-    - If the command instructions are clear and precise, follow them exactly as written and do not include extra steps
+- You as Claude Code support a feature known as slash commands
+- I, the user, can define custom slash commands
+- These slash commands are defined in the markdown files in `.claude/commands/`
+- When I invoke one of these custom slash commands it will look like `/project:<name-of-command>`
+- Do as the command instructs
+- While waiting for explicit slash commands for complex, multi-step procedures, always be proactive with standard built-in tools (View, Edit, BatchTool, etc.) when the next step in a conversation logically requires them
+- Use your judgment to determine when a file edit, search, or other tool operation would save time rather than just describing what could be done
+- If you believe additional actions beyond what was specifically mentioned would be helpful, suggest them while proceeding with the obvious next steps
+- Ask for clarity or verification only when truly uncertain about requirements or when actions would have significant impacts
+
+# The custom learn-from-me slash command
+- This slash command is defined in .claude/commands/learn-from-this.md
+- As part of its operation it will populate `.claude/logs/learn-from-this.log`
 
 # Problem-Solving Approach
 - When tackling complex tasks or implementing new features, follow these steps:
@@ -27,6 +42,9 @@
 - Metabase is an open-source business intelligence platform built with Clojure (backend) and JavaScript/TypeScript (frontend)
 - The application database (app DB) stores metadata like users, questions, dashboards, and can be queried using the mb-postgres MCP tools
 - Key backend systems include the query processor, driver architecture, task scheduler, and plugin system
+- The frontend is built with React, Redux, and Mantine UI, with visualization support from ECharts and D3
+- The codebase is organized into feature-based modules with a clear separation of UI, state management, and data services
+- For detailed frontend architecture information, refer to `.claude/references/frontend-architecture.md`
 
 # Database Tools Usage Guidelines 
 - Always use the database tools when analyzing data models, application settings, data representation, notification systems, or user permissions
