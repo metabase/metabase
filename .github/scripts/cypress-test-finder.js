@@ -9,7 +9,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { parse } = require("@babel/parser");
-const traverse = require("@babel/traverse").default;
+const traverse = require("@babel/traverse");
 
 /**
  * Parses git diff output to extract file paths and changed lines
@@ -161,12 +161,8 @@ function generateWorkflowCommand(specPath, testName, burnIn = 20, ref = null) {
   --field grep="${testName}"`;
 }
 
-/**
- * Main function
- */
 function main() {
   try {
-    // Parse command line arguments
     const args = process.argv.slice(2);
 
     // Get burn-in count
@@ -190,10 +186,7 @@ function main() {
       console.log(`Using head ref for workflows: ${ref}`);
     }
 
-    // Get diff from base branch to HEAD
     const diffOutput = execSync(`git diff ${baseBranch}...HEAD`).toString();
-
-    // Parse the diff to get changed files and lines
     const changedFiles = parseDiff(diffOutput);
 
     if (changedFiles.length === 0) {
@@ -201,7 +194,6 @@ function main() {
       return;
     }
 
-    // Find affected tests in each changed file
     let allAffectedTests = [];
 
     for (const file of changedFiles) {
@@ -209,7 +201,6 @@ function main() {
       allAffectedTests = allAffectedTests.concat(tests);
     }
 
-    // Output the results as workflow commands
     if (allAffectedTests.length === 0) {
       console.log("No affected tests found");
     } else {
@@ -219,7 +210,6 @@ function main() {
         const relativePath = path.relative(process.cwd(), test.file);
         console.log(`Test: ${relativePath}: "${test.name}"`);
 
-        // Generate workflow command with the specific ref if provided
         const command = generateWorkflowCommand(
           relativePath,
           test.name,
@@ -253,5 +243,4 @@ function main() {
   }
 }
 
-// Run the script
 main();
