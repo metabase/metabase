@@ -165,7 +165,7 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     });
   });
 
-  it("should undo the question replace action", () => {
+  it("should undo the question replace action", { tags: "@flaky" }, () => {
     visitDashboardAndEdit();
 
     overwriteDashCardTitle(findTargetDashcard(), "Custom name");
@@ -177,9 +177,14 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Orders",
     });
-
-    // There're two toasts: "Undo replace" and "Auto-connect"
-    H.undoToastList().eq(0).button("Undo").click();
+    H.undoToastList()
+      .eq(0)
+      .should(($el) => {
+        // we wait for element to take its position after animation
+        expect($el.position().top).to.be.equal(0);
+      })
+      .button("Undo")
+      .click();
 
     // Ensure we kept viz settings and parameter mapping changes from before
     findTargetDashcard().within(() => {
