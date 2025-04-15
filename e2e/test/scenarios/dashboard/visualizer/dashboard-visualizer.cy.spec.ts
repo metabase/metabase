@@ -1,7 +1,6 @@
 const { H } = cy;
 
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-
 import {
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
@@ -12,7 +11,7 @@ import {
   STEP_COLUMN_CARD,
   VIEWS_COLUMN_CARD,
   createDashboardWithVisualizerDashcards,
-} from "../../../../support/test-visualizer-data";
+} from "e2e/support/test-visualizer-data";
 
 describe("scenarios > dashboard > visualizer", () => {
   beforeEach(() => {

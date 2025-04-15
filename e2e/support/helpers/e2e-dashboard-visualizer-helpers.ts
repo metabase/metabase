@@ -1,5 +1,4 @@
 import type { VisualizationDisplay } from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
 
 import { getDashboardCard } from "./e2e-dashboard-helpers";
 import { modal, sidebar } from "./e2e-ui-elements-helpers";
@@ -99,34 +98,6 @@ export function chartLegendItems() {
 
 export function chartLegendItem(name: string) {
   return chartLegend().findByText(name);
-}
-
-export function createDatetimeColumn(opts: any = {}) {
-  return createMockColumn({
-    base_type: "type/DateTime",
-    effective_type: "type/DateTime",
-    semantic_type: null,
-    unit: "month",
-    ...opts,
-  });
-}
-
-export function createCategoryColumn(opts: any = {}) {
-  return createMockColumn({
-    base_type: "type/Text",
-    effective_type: "type/Text",
-    semantic_type: "type/Category",
-    ...opts,
-  });
-}
-
-export function createNumericColumn(opts: any = {}) {
-  return createMockColumn({
-    base_type: "type/Integer",
-    effective_type: "type/Integer",
-    semantic_type: null,
-    ...opts,
-  });
 }
 
 export function showDashcardVisualizerModal(index = 0) {
