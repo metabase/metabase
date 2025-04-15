@@ -1014,6 +1014,8 @@
        expression-parts-js->cljs
        lib.core/expression-clause
        lib.core/normalize))
+  ([an-operator args]
+   (expression-clause an-operator args {}))
   ([an-operator args options]
    (expression-clause {:lib/type :mbql/expression-parts
                        :operator (keyword an-operator)
