@@ -1,128 +1,171 @@
 ---
-title: "Field types"
+title: "Data and field types"
 redirect_from:
   - /docs/latest/users-guide/field-types
+
+summary: Metabase syncs data types from your database to know the type of each column. In addition to base data types, you can set a semantic type to tell Metabase what that data actually means. Choosing the right field types helps Metabase choose the right format and visualization for your data.
 ---
 
-# Field types
+# Data and field types
 
-While data types indicate to a database how it should interpret the values in a field, **field types** or **semantic types** describe the _meaning_ of a field. For example, a column's data type could be `type/text` but the semantic type may be **Email**. Field types are just one example of metadata—information about data—that [Admins can change](./metadata-editing.md) in Metabase.
+Metabase distinguishes between two types of column metadata: data types and field types.
 
-Field types dictate how Metabase displays its data, as well as the column’s special functionality, if any. By marking columns in a table as **Latitude** and **Longitude**, Metabase can use the columns to create pin and heat maps. Similarly, designating a column as a **URL** allows users to click on the link to visit that URL.
+- [**Data types**](#data-types) are the underlying column type as defined in your database. Metabase reads the data types during the [database sync process](../databases/sync-scan.md).
+- [**Semantic types**](#semantic-types), also called **field types**, are labels that describe how the data should be interpreted. For example, a column can have a data type of `Text`, that you can additionally specify the semantic type `Email`.
 
-## Overall Row
+Data and semantic types determine how Metabase formats the data, which charts are available, how the filters work, and other functionality.
 
-- **Entity Key**: The field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
-- **Entity Name**: Different from the entity key, the entity name represents what each row in the table _is_. For example, in a Users table, you might want to use a field containing usernames as the entity name.
-- **Foreign Key**: The column in this table that (usually) refers to the entity key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
+## Data types
 
-## Common
+Data types are the underlying column types as defined in your database. Metabase reads the data types during the [database sync process](../databases/sync-scan.md). Because Metabase connects to many different databases, it uses its own type hierarchy under the hood, so that it could offer the same functionality for, for example, date fields in MongoDB or PostgreSQL
 
-Common field types are text/varchar types.
+The main data types in Metabase:
 
-- **Category**: If set to category, Metabase will know that it can use this field to group results when creating questions for automatic insights like [X-rays](../exploration-and-organization/x-rays.md).
-- **Comment**
-- **Description**
-- **Title**
+| Data Type  | Example database types                      |
+| ---------- | ------------------------------------------- |
+| Numeric    | `INTEGER`, `FLOAT`                          |
+| Temporal   | `DATE`, `TIMESTAMP`                         |
+| Text       | `VARCHAR`, `TEXT`                           |
+| Text-like  | MongoDB `BSONID`, Postgres `Enum`           |
+| Boolean    | Boolean                                     |
+| Collection | `JSON`, BigQuery `RECORD`, MongoDB `Object` |
 
-## Location
+Metabase currently does not support array types with any database. You'll only be able to use **Is empty** or **Is not empty** filters on columns containing arrays.
 
-Marking fields as locations tell Metabase that it can use the field to display data on a [map chart](../questions/visualizations/map.md).
+For some fields, you tell Metabase to [cast them to a different data type](#editing-data-and-semantic-types) (for example, text to date).
 
-- **City**
-- **Country**
-- **Latitude**: Tells Metabase that the data could be plotted on a [pin map](../questions/visualizations/map.md).
-- **Longitude**: Did you know that you can use the moons of Jupiter to calculate longitude?
-- **State**
-- **Zip Code**
+## Semantic types
 
-## Financial
+Semantic types are extra flavor that you can add to a field to communicate meaning and enable [additional functionality](#additional-functionality-for-data-and-semantic-types). Available semantic types depend on the underlying data types.
 
-Financial field types tell Metabase to treat the field's values as money. If you select any of the financial field types, Metabase will ask which currency you want to use. Metabase treats each of the following types as money, their differences are purely semantic.
+### Semantic types for any field
 
-- **Cost**
-- **Currency**
-- **Discount**
-- **Gross margin**
-- **Income**
-- **Price**
+- Entity key
 
-See [Currency formatting options](../questions/visualizations/table.md#currency-formatting-options).
+  Used to indicate that the field uniquely identifies each row. Could be a Product ID, serial number, etc.
 
-## Numeric
+- Foreign key
 
-Metabase will treat numeric field types as [numbers](../questions/visualizations/table.md#number-formatting-options).
+  Used to refer to an Entity key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the Entity key. If you want to use [linked filters on dashboards](../dashboards/linked-filters.md), you must set up foreign key relationships.
 
-- **Percentage**: Displays the number as a percentage by default.
-- **Quantity**: Displays the number as normal by default.
-- **Score**: Displays the number as normal by default.
-- **Share**: The same as percentage, so prefer "Percentage".
+- Category
 
-See [Number formatting options](../questions/visualizations/table.md#number-formatting-options).
+### Semantic types for numeric fields
 
-## Profile
+- Quantity
+- Score
+- Percentage
+- Financial
+  - Currency
+  - Discount
+  - Income
+- Location
+  - Latitude
+  - Longitude
 
-Fields that deal with people.
+### Semantic types for temporal fields
 
-- **Birthday**. Date field.
-- **Company**: Text field.
-- **Email**: Displays as a [mailto](https://en.wikipedia.org/wiki/Mailto) link.
-- **Owner**: Text field.
-- **Subscription**: Text field.
-- **User**: Text field.
+- Creation date
+- Creation time
+- Creation timestamp
+- Joined date
+- Joined time
+- Joined timestamp
+- Birthday
 
-## Date and Time
+### Semantic types for text fields
 
-Date and time field types tell Metabase the field contains datetime values, so it can use date pickers and display time series (e.g., a line chart).
+- Entity name
+- Email
 
-If your database stores datetimes as a number or string, you can [cast that column to a datetime](./metadata-editing.md#casting-to-a-specific-data-type).
+  - URL
+  - Image URL
+  - Avatar URL
 
-- **Cancelation date**
-- **Cancelation time**
-- **Cancelation timestamp**
-- **Creation date**
-- **Creation time**
-- **Creation timestamp**
-- **Deletion date**
-- **Deletion time**
-- **Deletion timestamp**
-- **Updated date**
-- **Updated time**
-- **Updated timestamp**
-- **Join date**
-- **Join time**
-- **Join timestamp**
-- **UNIX Timestamp (Milliseconds)**
-- **UNIX Timestamp (Seconds)**
+- Category
+- Name
+- Title
+- Product
+- Source
+- Location
+  - City
+  - State
+  - Country
+  - ZipCode
 
-See [Date formatting options](../questions/visualizations/table.md#date-formatting-options).
+### Semantic types for collection fields
 
-## Categorical
+- Field containing JSON.
 
-- **Enum**: An abbreviation for “enumerated type,” the value of an enum draws on a predefined list of options. An example of an enum would be a field for the months of the year. This list of twelve options is defined in the makeup of the column, and no options outside this list would be valid.
-- **Product**
-- **Source**: For example, the source of a visitor to your website (such as a search engine or other website).
+  See [Working with JSON](./json-unfolding.md).
 
-## URLs
+## Editing data and semantic types
 
-Metabase can display fields with URLs as images or links.
+Admins and people with [Manage table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) can cast data types and edit semantic types in Admin Table Metadata settings.
 
-- **Avatar Image URL**: Displays the field as an image in table and detail views.
-- **Image URL**: Displays the field as an image in table and detail views.
-- **URL**: Displays the field as a link.
+### Cast data types
 
-## Other
+Data types can't be edited in Metabase directly, but certain data types can be [cast to different types types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
 
-- **Field containing JSON**. See [Working with JSON](./json-unfolding.md)
-- **No semantic type** – Used for fields that don't fall into any of the above field types.
+Changes made in Table Metadata apply across your entire Metabase. Metabase currently only supports casting to a datetime type in Metadata settings. However, if you you build a query in the query builder, in you can use type casting custom expressions like [`date()`](../questions/query-builder/expressions-list.md#date) or [`integer()`](../questions/query-builder/expressions-list.md#integer) to cast a string to a different type in your query.
 
-## Using field types in Metabase
+### Semantic types don't change the data types
 
-### Set column types in models to enable people to explore results with the query builder
+You can pick a semantic type compatible with the underlying data type in [table metadata settings](./metadata-editing.md#field-types)
 
-You can set field types for [models](./models.md), which helps Metabase understand how to work with data in models built using SQL. If you set each column type in a SQL model, people will be able to explore that model using the query builder and drill-through menus.
+Semantic types add meaning shouldn't be used for type casting. For example, picking a semantic type of "Quantity" for a text field will not force Metabase to treat the field as numeric. Use Semantic types to add additional functionality for your fields, like formatting or visualizations.
 
-With records that include integer entity keys, you can also configure text fields in models to [surface individual records in search](./models.md#surface-individual-records-in-search-by-matching-against-this-column).
+## What data and semantic types enable
+
+### Display format
+
+Some semantic types change the way the data in the field is displayed.
+
+Formatting setting from Table Metadata settings will be applied across your Metabase, but people can change them for individual charts.
+
+| Semantic type          | Format                                                                                                                                                                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Percentage             | Displayed as percentage, for example 0.75 will be displayed as 75\%                                                                                                                                                                                                |
+| Currency               | On charts and in detail view, the values are prepended by the currency symbol, e.g. `$134.65`. In table view, the currency symbol is only displayed in the header by default, but you can change the metadata formatting settings to show the symbol on every row. |
+| Latitude/Longitude     | Displayed as coordinates, e.g. `0.00000000° N`                                                                                                                                                                                                                     |
+| Email                  | Display as a `mailto` link                                                                                                                                                                                                                                         |
+| URL                    | Can format as a clickable link                                                                                                                                                                                                                                     |
+| Image URL              | Can display as an image. See table format settings LINK                                                                                                                                                                                                            |
+| Avatar URL             | Can display as avatar circle image. See table format settings LINK                                                                                                                                                                                                 |
+| Field containing JSON  | In detail view, display as prettified JSON                                                                                                                                                                                                                         |
+| Entity and Foreign key | Highlighted in table view                                                                                                                                                                                                                                          |
+
+### Visualizations
+
+When you build a query in the query builder, Metabase will automatically choose the most suitable chart for you based on the data types and the semantic types of the field in the "Group by" (you can change the chart type later).
+
+| Group by data type   | Automatic chart |
+| -------------------- | --------------- |
+| Text/Category        | Bar chart       |
+| Temporal             | Line chart      |
+| Numeric - binned     | Bar chart       |
+| Numeric - not binned | Table           |
+| Boolean              | Bar chart       |
+| No aggregation       | Table           |
+
+Additionally, if you use location semantic types:
+
+| Group by semantic type          | Functionality            |
+| ------------------------------- | ------------------------ |
+| Latitude/Longitude - binned     | Grid map                 |
+| Latitude/longitude - not binned | Pin map                  |
+| Country                         | World region map         |
+| State                           | United States region map |
+
+### Extract values from columns
+
+For some fields, you can quickly extract values from columns using shortcuts in table view or in the custom expression editor in the query builder:
+
+| Group by data type  | Extract                                 |
+| ------------------- | --------------------------------------- |
+| URL semantic types  | Extract host, domain, subdomain, path   |
+| Email semantic type | Extract host, domain                    |
+| Temporal data types | Extract date parts like month, day, etc |
 
 ### X-rays
 
@@ -132,21 +175,15 @@ When you [X-ray](../exploration-and-organization/x-rays.md) a table, model, or e
 
 Knowing what field types are and how they work is helpful when using [field filters](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters), as you can only create field filters for [certain field types](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
 
-### Editing types in the Table Metadata page
-
-If you're an administrator, you can edit field types using the [Table Metadata page](./metadata-editing.md) in the Admin Panel.
-
-While data types themselves can't be edited in Metabase, admins can manually [cast certain data types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
-
-> Metabase currently supports only casting to a datetime type in Metadata settings.
-
 ### JSON unfolding
 
 See [Working with JSON](./json-unfolding.md).
 
-### Arrays
+## Set semantic types in models to enable people to explore results with the query builder
 
-Metabase currently does not support array types with any database. You'll only be able to use **Is empty** or **Is not empty** filters on columns containing arrays.
+You can set field types for [models](./models.md), which helps Metabase understand how to work with data in models built using SQL. If you set each column type in a SQL model, people will be able to explore that model using the query builder and drill-through menus.
+
+With records that include integer entity keys, you can also configure text fields in models to [surface individual records in search](./models.md#surface-individual-records-in-search-by-matching-against-this-column).
 
 ## Further Reading
 
