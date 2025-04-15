@@ -43,6 +43,44 @@ import {
   StringFilterValuePicker,
 } from "./FilterValuePicker";
 
+type EndpointOpts = {
+  fieldId?: FieldId;
+  searchFieldId?: FieldId;
+  fieldValues?: GetFieldValuesResponse;
+  searchValues?: Record<string, GetFieldValuesResponse>;
+  remappedValues?: Record<string, FieldValue>;
+};
+
+function setupEndpoints({
+  fieldId,
+  searchFieldId = fieldId,
+  fieldValues,
+  searchValues = {},
+  remappedValues = {},
+}: EndpointOpts) {
+  if (fieldValues) {
+    setupFieldValuesEndpoint(fieldValues);
+  }
+  if (fieldId != null && searchFieldId != null) {
+    Object.entries(searchValues).forEach(([value, response]) => {
+      setupFieldSearchValuesEndpoint(
+        fieldId,
+        searchFieldId,
+        value,
+        response.values,
+      );
+    });
+    Object.entries(remappedValues).forEach(([value, fieldValue]) => {
+      setupRemappedFieldValueEndpoint(
+        fieldId,
+        searchFieldId,
+        value,
+        fieldValue,
+      );
+    });
+  }
+}
+
 interface SetupOpts<T> {
   query: Lib.Query;
   stageIndex: number;
@@ -68,27 +106,13 @@ async function setupStringPicker({
 }: SetupOpts<string>) {
   const onChange = jest.fn();
 
-  if (fieldValues) {
-    setupFieldValuesEndpoint(fieldValues);
-  }
-  if (fieldId != null && searchFieldId != null) {
-    Object.entries(searchValues).forEach(([value, response]) => {
-      setupFieldSearchValuesEndpoint(
-        fieldId,
-        searchFieldId,
-        value,
-        response.values,
-      );
-    });
-    Object.entries(remappedValues).forEach(([value, fieldValue]) => {
-      setupRemappedFieldValueEndpoint(
-        fieldId,
-        searchFieldId,
-        value,
-        fieldValue,
-      );
-    });
-  }
+  setupEndpoints({
+    fieldId,
+    searchFieldId,
+    fieldValues,
+    searchValues,
+    remappedValues,
+  });
 
   const { rerender } = renderWithProviders(
     <StringFilterValuePicker
@@ -110,13 +134,21 @@ async function setupNumberPicker({
   stageIndex,
   column,
   values,
+  fieldId,
+  searchFieldId = fieldId,
   fieldValues,
+  searchValues = {},
+  remappedValues = {},
 }: SetupOpts<number>) {
   const onChange = jest.fn();
 
-  if (fieldValues) {
-    setupFieldValuesEndpoint(fieldValues);
-  }
+  setupEndpoints({
+    fieldId,
+    searchFieldId,
+    fieldValues,
+    searchValues,
+    remappedValues,
+  });
 
   const { rerender } = renderWithProviders(
     <NumberFilterValuePicker
@@ -625,7 +657,7 @@ describe("StringFilterValuePicker", () => {
       });
 
       await userEvent.type(
-        screen.getByRole("combobox", { name: "Filter value" }),
+        screen.getByPlaceholderText("Search by Name or enter an ID"),
         "a",
       );
       await userEvent.click(await screen.findByText("a@metabase.test"));
@@ -672,7 +704,7 @@ describe("StringFilterValuePicker", () => {
       });
 
       await userEvent.type(
-        screen.getByRole("combobox", { name: "Filter value" }),
+        screen.getByPlaceholderText("Search by Title or enter an ID"),
         "a",
       );
       await userEvent.click(await screen.findByText("a@metabase.test"));
@@ -1036,8 +1068,67 @@ describe("NumberFilterValuePicker", () => {
     });
   });
 
+  describe("search values", () => {
+    it("should handle type/FK -> column field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createOrdersProductIdField({
+            has_field_values: "search",
+            dimensions: [
+              createMockFieldDimension({
+                type: "external",
+                human_readable_field_id: PRODUCTS.TITLE,
+              }),
+            ],
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column: findColumn("ORDERS", "PRODUCT_ID"),
+        values: [2],
+        fieldId: ORDERS.PRODUCT_ID,
+        searchFieldId: PRODUCTS.TITLE,
+        searchValues: {
+          a: createMockFieldValues({
+            field_id: ORDERS.PRODUCT_ID,
+            values: [[1, "a@metabase.test"]],
+          }),
+          c: createMockFieldValues({
+            field_id: ORDERS.PRODUCT_ID,
+            values: [],
+          }),
+        },
+        remappedValues: {
+          2: [2, "b@metabase.test"],
+        },
+      });
+
+      await userEvent.type(
+        screen.getByPlaceholderText("Search by Title or enter an ID"),
+        "a",
+      );
+      await userEvent.click(await screen.findByText("a@metabase.test"));
+      await waitFor(() => {
+        expect(onChange).toHaveBeenLastCalledWith([2, 1]);
+      });
+
+      await userEvent.type(
+        screen.getByPlaceholderText("Search by Title or enter an ID"),
+        "c",
+      );
+      expect(
+        await screen.findByText("No matching Title found."),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("no values", () => {
-    const column = findColumn("PEOPLE", "PASSWORD");
+    const column = findColumn("ORDERS", "TAX");
 
     it("should allow to add a value", async () => {
       const { onChange } = await setupNumberPicker({

@@ -2400,11 +2400,11 @@
 
   > **Code health:** Single use. Only supports the search info."
   [metadata-providerable column]
-  (-> (lib.field/field-values-search-info metadata-providerable column)
-      (update :has-field-values name)
-      ;; TODO: This should probably reuse `display-info->js` for caching and uniformity.
-      (update-keys cljs-key->js-key)
-      clj->js))
+  (let [{:keys [field-id search-field search-field-id has-field-values]} (lib.field/field-values-search-info metadata-providerable column)]
+    #js {:fieldId        field-id
+         :searchField    search-field
+         :searchFieldId  search-field-id
+         :hasFieldValues (name has-field-values)}))
 
 ;; # Specialized Filtering
 ;; These specialized filter updates support the drag-and-drop "brush" filtering in the UI. Eg. dragging a box on a map

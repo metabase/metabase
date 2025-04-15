@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { ComboboxItem } from "metabase/ui";
 import type { FieldValuesSearchInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
@@ -40,35 +42,32 @@ export function getFieldOptions(fieldValues: FieldValue[]): ComboboxItem[] {
   return fieldValues.filter(([value]) => value != null).map(getFieldOption);
 }
 
-function getSelectedOptions(selectedValues: string[]) {
-  return selectedValues.map((value) => ({
-    value,
-  }));
+export function getStaticPlaceholder(column: Lib.ColumnMetadata) {
+  const isID = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
+  const isNumeric = Lib.isNumeric(column);
+
+  if (isID) {
+    return t`Enter an ID`;
+  } else if (isNumeric) {
+    return t`Enter a number`;
+  } else {
+    return t`Enter some text`;
+  }
 }
 
-export function getEffectiveOptions(
-  fieldValues: FieldValue[],
-  selectedValues: string[],
-  elevatedValues: string[] = [],
-): ComboboxItem[] {
-  const options: { label?: string; value: string }[] = [
-    ...getSelectedOptions(elevatedValues),
-    ...getFieldOptions(fieldValues),
-    ...getSelectedOptions(selectedValues),
-  ];
+export function getSearchPlaceholder(
+  column: Lib.ColumnMetadata,
+  searchColumName: string,
+) {
+  const isID = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
 
-  const mapping = options.reduce((map: Map<string, string>, option) => {
-    if (option.label) {
-      map.set(option.value, option.label);
-    } else if (!map.has(option.value)) {
-      map.set(option.value, option.value);
-    }
-    return map;
-  }, new Map<string, string>());
-
-  return [...mapping.entries()].map(([value, label]) => ({ value, label }));
+  if (isID) {
+    return t`Search by ${searchColumName} or enter an ID`;
+  } else {
+    return t`Search by ${searchColumName}`;
+  }
 }
 
-export function isKeyColumn(column: Lib.ColumnMetadata) {
-  return Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
+export function getNothingFoundMessage(searchColumName: string) {
+  return t`No matching ${searchColumName} found.`;
 }
