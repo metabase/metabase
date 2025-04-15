@@ -20,7 +20,7 @@ import type { Database, Task } from "metabase-types/api";
 import { TaskPicker } from "../../components/TaskPicker";
 import { TaskStatusPicker } from "../../components/TaskStatusPicker";
 
-import { urlStateConfig } from "./url-state";
+import { urlStateConfig } from "./utils";
 
 type TasksAppProps = {
   children: ReactNode;
