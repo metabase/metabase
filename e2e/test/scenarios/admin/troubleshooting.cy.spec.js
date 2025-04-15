@@ -239,6 +239,11 @@ describe("issue 14636", () => {
       .click();
     cy.location("search").should("eq", "?task=field+values+scanning");
     cy.findByPlaceholderText("Filter by status").should("have.value", "");
+    cy.findAllByTestId("task").should("have.length", 1);
+    cy.findByTestId("task")
+      .should("contain.text", "field values scanning")
+      .and("contain.text", "Sample Database")
+      .and("contain.text", "Success");
 
     cy.findByPlaceholderText("Filter by task")
       .parent()
@@ -246,6 +251,7 @@ describe("issue 14636", () => {
       .click();
     cy.location("search").should("eq", "");
     cy.wait("@first");
+    cy.findAllByTestId("task").should("have.length", 50);
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
 
     cy.log("should reset pagination when changing filters");
