@@ -611,3 +611,18 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
     downloads?: string | boolean | null;
   }) => ({ pdf: true, results: true }),
 };
+
+export const PLUGIN_DB_ROUTING = {
+  DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+  getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
+  getDestinationDatabaseRoutes: (_IsAdmin: any) =>
+    null as React.ReactElement | null,
+  useRedirectDestinationDatabase: (
+    _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
+  ): void => {},
+  getPrimaryDBEngineFieldState: (
+    _database: Pick<Database, "router_user_attribute">,
+  ): "default" | "hidden" | "disabled" => "default",
+};

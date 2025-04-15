@@ -124,3 +124,199 @@
                  [:jobs      [:sequential
                               [:map-of :any :any]]]]
                 (mt/user-http-request :crowberto :get 200 "task/info")))))
+
+(deftest ^:synchronized single-filter-test
+  (testing "Check that paging information is applied when provided and included in the response"
+    (t2/delete! :model/TaskHistory)
+    (let [now (t/zoned-date-time)]
+      (mt/with-temp [:model/TaskHistory
+                     _
+                     {:status "success"
+                      :task "success"
+                      :started_at (t/minus now (t/hours 1))
+                      :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
+
+                     :model/TaskHistory
+                     _
+                     {:status :failed
+                      :task "failed"
+                      :started_at (t/zoned-date-time)
+                      :ended_at (t/zoned-date-time)}
+
+                     :model/TaskHistory
+                     _
+                     {:status :started
+                      :task "started"
+                      :started_at (t/zoned-date-time)}]
+        (letfn [(status-test-filtering-response
+                  [status]
+                  (testing (format "Filtering for %s response works correctly" status)
+                    (let [response (mt/user-http-request :crowberto :get 200 "task/" :status status)]
+                      (is (= 1 (-> response :data count)))
+                      (is (= status (-> response :data first :task)))
+                      (is (= status (-> response :data first :status))))))]
+          (status-test-filtering-response "success")
+          (status-test-filtering-response "started")
+          (status-test-filtering-response "failed"))
+        (testing "No filter in query params returns all tasks"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/")]
+            (is (= 3 (-> response :data count)))))
+        (testing "Error is returned on explicit nil status"
+          (is (= "enum of :started, :success, :failed"
+                 (-> (mt/user-http-request :crowberto :get 400 "task/" :status nil) :errors :status first))))
+        (testing "Error is returned for unexpected status values"
+          (is (= "enum of :started, :success, :failed"
+                 (-> (mt/user-http-request :crowberto :get 400 "task/" :status 1) :errors :status first))))
+        (letfn [(task-test-filtering-response
+                  [task]
+                  (testing (format "Filtering for `%s` named task works correctly" task)
+                    (let [response (mt/user-http-request :crowberto :get 200 "task/" :task task)]
+                      (is (= 1 (-> response :data count)))
+                      (is (= task (-> response :data first :task)))
+                      (is (= task (-> response :data first :status))))))]
+          (task-test-filtering-response "success")
+          (task-test-filtering-response "started")
+          (task-test-filtering-response "failed"))))))
+
+(deftest ^:synchronized combined-filter-test
+  (testing "Check that paging information is applied when provided and included in the response"
+    (t2/delete! :model/TaskHistory)
+    (let [now (t/zoned-date-time)]
+      (mt/with-temp [:model/TaskHistory
+                     _
+                     {:status "success"
+                      :task "a"
+                      :started_at (t/minus now (t/hours 1))
+                      :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
+
+                     :model/TaskHistory
+                     _
+                     {:status :failed
+                      :task "b"
+                      :started_at (t/zoned-date-time)
+                      :ended_at (t/zoned-date-time)}
+
+                     :model/TaskHistory
+                     _
+                     {:status :started
+                      :task "c"
+                      :started_at (t/zoned-date-time)}]
+        (doseq [task ["a" "b" "c"]
+                status [:success :failed :started]
+                :let [expecting-results (or (and (= task "a") (= status :success))
+                                            (and (= task "b") (= status :failed))
+                                            (and (= task "c") (= status :started)))]]
+          (let [response (mt/user-http-request :crowberto :get 200 "task/" :task task :status status)]
+            (if expecting-results
+              (testing "Correct results returned for combined filter"
+                (is (= 1 (count (:data response))))
+                (is (= task (-> response :data first :task)))
+                (is (= (name status) (-> response :data first :status))))
+              (testing "No results returned for too strict combined filter"
+                (is (empty? (-> response :data)))))))))))
+
+(deftest ^:synchronized multi-results-combined-filter-test
+  (testing "Check that paging information is applied when provided and included in the response"
+    (t2/delete! :model/TaskHistory)
+    (let [now (t/zoned-date-time)]
+      (mt/with-temp
+        [;; task a
+         :model/TaskHistory
+         _
+         {:status "success"
+          :task "a"
+          :started_at (t/minus now (t/hours 1))
+          :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
+         :model/TaskHistory
+         _
+         {:status "failed"
+          :task "a"
+          :started_at (t/minus now (t/hours 1))
+          :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
+
+         ;; task b
+         :model/TaskHistory
+         _
+         {:status :failed
+          :task "b"
+          :started_at (t/zoned-date-time)
+          :ended_at (t/zoned-date-time)}
+         :model/TaskHistory
+         _
+         {:status :started
+          :task "b"
+          :started_at (t/zoned-date-time)}
+
+         ;; task c
+         :model/TaskHistory
+         _
+         {:status :started
+          :task "c"
+          :started_at (t/zoned-date-time)}
+         :model/TaskHistory
+         _
+         {:status :success
+          :task "c"
+          :started_at (t/zoned-date-time)
+          :ended_at (t/zoned-date-time)}]
+        (testing "Multiple tasks returned for task"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/" :task "a")]
+            (is (= 2 (-> response :data count)))
+            (is (some (comp #{"failed"} :status) (-> response :data)))
+            (is (some (comp #{"success"} :status) (-> response :data)))))
+        (testing "Multiple tasks returned for status"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/" :status :failed)]
+            (is (= 2 (-> response :data count)))
+            (is (some (comp #{"b"} :task) (-> response :data)))
+            (is (some (comp #{"a"} :task) (-> response :data)))))))))
+
+(deftest ^:synchronized unique-tasks-test
+  (testing "Check that paging information is applied when provided and included in the response"
+    (t2/delete! :model/TaskHistory)
+    (testing "Empty vector is returned for empty task list"
+      (is (= []
+             (mt/user-http-request :crowberto :get 200 "task/unique-tasks"))))
+    (let [now (t/zoned-date-time)]
+      (mt/with-temp
+        [;; task a
+         :model/TaskHistory
+         _
+         {:status "success"
+          :task "a"
+          :started_at (t/minus now (t/hours 1))
+          :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
+         :model/TaskHistory
+         _
+         {:status "failed"
+          :task "a"
+          :started_at (t/minus now (t/hours 1))
+          :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
+
+           ;; task b
+         :model/TaskHistory
+         _
+         {:status :failed
+          :task "b"
+          :started_at (t/zoned-date-time)
+          :ended_at (t/zoned-date-time)}
+         :model/TaskHistory
+         _
+         {:status :started
+          :task "b"
+          :started_at (t/zoned-date-time)}
+
+           ;; task c
+         :model/TaskHistory
+         _
+         {:status :started
+          :task "c"
+          :started_at (t/zoned-date-time)}
+         :model/TaskHistory
+         _
+         {:status :success
+          :task "c"
+          :started_at (t/zoned-date-time)
+          :ended_at (t/zoned-date-time)}]
+        (testing "Ordered unique tasks are returned"
+          (is (= ["a" "b" "c"]
+                 (mt/user-http-request :crowberto :get 200 "task/unique-tasks"))))))))

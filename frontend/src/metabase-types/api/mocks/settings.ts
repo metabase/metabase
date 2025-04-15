@@ -130,6 +130,7 @@ export const createMockTokenFeatures = (
   query_reference_validation: false,
   serialization: false,
   cache_preemptive: false,
+  database_routing: false,
   ...opts,
 });
 

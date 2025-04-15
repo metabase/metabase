@@ -1,3 +1,4 @@
+export * from "./viz-settings";
 export * from "./click-actions";
 export * from "./column";
 export * from "./dashboard-card-supports-visualizer";

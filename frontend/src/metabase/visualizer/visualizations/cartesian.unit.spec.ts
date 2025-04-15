@@ -1,4 +1,4 @@
-import { createMockColumn } from "metabase-types/api/mocks";
+import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import { createDataSource, createVisualizerColumnReference } from "../utils";
@@ -7,6 +7,7 @@ import {
   addColumnToCartesianChart,
   addDimensionColumnToCartesianChart,
   addMetricColumnToCartesianChart,
+  removeBubbleSizeFromCartesianChart,
   removeColumnFromCartesianChart,
   replaceMetricColumnAsScatterBubbleSize,
 } from "./cartesian";
@@ -38,6 +39,8 @@ describe("cartesian", () => {
       column2Ref,
     ]);
 
+    const dataset = createMockDataset({});
+
     describe("for scatter", () => {
       it("should add columns in the right order", () => {
         const state: VisualizerHistoryItem = {
@@ -48,13 +51,25 @@ describe("cartesian", () => {
         };
 
         // First column is automatically added as a dimension
-        addColumnToCartesianChart(state, column1, column1Ref, dataSource);
+        addColumnToCartesianChart(
+          state,
+          column1,
+          column1Ref,
+          dataset,
+          dataSource,
+        );
         expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
         expect(Object.keys(state.columnValuesMapping)).toEqual(["COLUMN_1"]);
         expect(state.settings).toEqual({ "graph.dimensions": ["COLUMN_1"] });
 
         // Second column is automatically added as a metric
-        addColumnToCartesianChart(state, column2, column2Ref, dataSource);
+        addColumnToCartesianChart(
+          state,
+          column2,
+          column2Ref,
+          dataset,
+          dataSource,
+        );
         expect(state.columns.map((c) => c.name)).toEqual([
           "COLUMN_1",
           "COLUMN_2",
@@ -69,7 +84,13 @@ describe("cartesian", () => {
         });
 
         // Third column is automatically added as a the bubble size
-        addColumnToCartesianChart(state, column3, column3Ref, dataSource);
+        addColumnToCartesianChart(
+          state,
+          column3,
+          column3Ref,
+          dataset,
+          dataSource,
+        );
         expect(state.columns.map((c) => c.name)).toEqual([
           "COLUMN_1",
           "COLUMN_2",
@@ -237,7 +258,7 @@ describe("cartesian", () => {
       );
 
       // Remove the first column as a bubble
-      removeColumnFromCartesianChart(state, "COLUMN_1");
+      removeBubbleSizeFromCartesianChart(state, "COLUMN_1");
 
       // Check that we have both columns where they should be
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
@@ -252,6 +273,43 @@ describe("cartesian", () => {
       });
       expect(state.settings).toEqual({
         "graph.metrics": ["COLUMN_1"],
+      });
+    });
+
+    it("should not delete a column that is used as the bubble", () => {
+      const state: VisualizerHistoryItem = {
+        columns: [],
+        settings: {},
+        columnValuesMapping: {},
+        display: "scatter",
+      };
+      // Add the first column as the Y axis
+      addMetricColumnToCartesianChart(state, column1, column1Ref, dataSource);
+
+      // Add it as the bubble size too
+      replaceMetricColumnAsScatterBubbleSize(
+        state,
+        column1,
+        column1Ref,
+        dataSource,
+      );
+
+      // Remove the first column as a metric
+      removeColumnFromCartesianChart(state, "COLUMN_1");
+
+      // Check that we have both columns where they should be
+      expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
+      expect(state.columnValuesMapping).toEqual({
+        COLUMN_1: [
+          {
+            name: "COLUMN_1",
+            originalName: "count",
+            sourceId: "card:1",
+          },
+        ],
+      });
+      expect(state.settings).toEqual({
+        "scatter.bubble": "COLUMN_1",
       });
     });
 

@@ -10,10 +10,7 @@ import _ from "underscore";
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { copy } from "metabase/lib/utils";
-import {
-  getColumnVizSettings,
-  isCartesianChart,
-} from "metabase/visualizations";
+import { isCartesianChart } from "metabase/visualizations";
 import type {
   Card,
   CardId,
@@ -37,6 +34,7 @@ import {
   createDataSource,
   createVisualizerColumnReference,
   extractReferencedColumns,
+  getColumnVizSettings,
   getDataSourceIdFromNameRef,
   getDefaultVisualizationName,
   getInitialStateForCardDataSource,
@@ -328,7 +326,7 @@ const visualizerHistoryItemSlice = createSlice({
     },
     removeColumn: (
       state,
-      action: PayloadAction<{ name: string; well?: "bubble" }>,
+      action: PayloadAction<{ name: string; well?: "bubble" | "all" }>,
     ) => {
       const { name, well } = action.payload;
       if (!state.display) {
@@ -336,7 +334,10 @@ const visualizerHistoryItemSlice = createSlice({
       }
 
       if (isCartesianChart(state.display)) {
-        if (well === "bubble") {
+        if (well === "all") {
+          removeColumnFromCartesianChart(state, name);
+          removeBubbleSizeFromCartesianChart(state, name);
+        } else if (well === "bubble") {
           removeBubbleSizeFromCartesianChart(state, name);
         } else {
           removeColumnFromCartesianChart(state, name);

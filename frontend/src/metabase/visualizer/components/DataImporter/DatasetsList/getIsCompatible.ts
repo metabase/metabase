@@ -48,6 +48,10 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     return false;
   }
 
+  if (fields.length === 1) {
+    return currentDisplay === "funnel";
+  }
+
   if (currentDisplay === "pie") {
     return false;
   }
@@ -65,10 +69,6 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
   }
 
   if (!primaryColumn || !targetDataset) {
-    return false;
-  }
-
-  if (fields.length <= 1 && currentDisplay !== "funnel") {
     return false;
   }
 

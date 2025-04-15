@@ -25,8 +25,6 @@ interface VisualizerModalProps {
         extraDataSources?: VisualizerDataSourceId[];
       }
     | { cardId: CardId };
-
-  onClose: () => void;
 }
 
 export function VisualizerModal({
@@ -72,7 +70,11 @@ export function VisualizerModal({
         onClose={onModalClose}
         padding={0}
       >
-        <Visualizer className={S.VisualizerRoot} {...otherProps} />
+        <Visualizer
+          className={S.VisualizerRoot}
+          {...otherProps}
+          onClose={onModalClose}
+        />
       </Modal>
       {modalContent}
     </>

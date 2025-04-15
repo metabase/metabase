@@ -57,4 +57,32 @@ export const globalShortcuts = {
     shortcut: ["?"],
     shortcutGroup: "global",
   },
+
+  "navigate-trash": {
+    name: t`Open trash`,
+    shortcut: ["t"],
+    shortcutGroup: "global",
+  },
+  "navigate-personal-collection": {
+    name: t`Open personal collection`,
+    shortcut: ["p"],
+    shortcutGroup: "global",
+  },
+
+  "toggle-navbar": {
+    name: t`Toggle sidebar`,
+    shortcut: ["["],
+    shortcutGroup: "global",
+  },
+  "navigate-admin-settings": {
+    name: t`Go to admin`,
+    shortcut: ["g a"],
+    shortcutGroup: "global",
+  },
+
+  "navigate-user-settings": {
+    name: t`Go to user settings`,
+    shortcut: ["g u"],
+    shortcutGroup: "global",
+  },
 };

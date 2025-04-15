@@ -20,7 +20,8 @@ import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 import S from "./Header.module.css";
 
 interface HeaderProps {
-  onSave?: (visualization: VisualizerHistoryItem) => void;
+  onSave: (visualization: VisualizerHistoryItem) => void;
+  onClose: () => void;
   saveLabel?: string;
   allowSaveWhenPristine?: boolean;
   className?: string;
@@ -28,6 +29,7 @@ interface HeaderProps {
 
 export function Header({
   onSave,
+  onClose,
   saveLabel,
   allowSaveWhenPristine = false,
   className,
@@ -43,7 +45,7 @@ export function Header({
   const dispatch = useDispatch();
 
   const handleSave = () => {
-    onSave?.(visualizerState);
+    onSave(visualizerState);
   };
 
   const handleChangeTitle = useCallback(
@@ -56,13 +58,7 @@ export function Header({
   const saveButtonEnabled = isRenderable && (isDirty || allowSaveWhenPristine);
 
   return (
-    <Flex
-      p="md"
-      pb="sm"
-      align="center"
-      className={className}
-      data-testid="visualizer-header"
-    >
+    <Flex p="md" gap="md" align="center" className={className} data-testid="visualizer-header">
       <ActionIcon onClick={() => dispatch(toggleDataSideBar())}>
         <Icon name="sidebar_open" />
       </ActionIcon>
@@ -72,25 +68,48 @@ export function Header({
         className={S.title}
       />
 
-      <Flex align="center" gap="sm" ml="auto">
+      {/* Spacer */}
+      <div style={{ flexGrow: 1 }} />
+
+      <Button.Group>
         <Tooltip label={t`Back`}>
-          <ActionIcon disabled={!canUndo} onClick={undo}>
-            <Icon name="chevronleft" />
-          </ActionIcon>
+          <Button
+            size="sm"
+            disabled={!canUndo}
+            onClick={undo}
+            leftSection={
+              <Icon
+                name="undo"
+                color={canUndo ? "unset" : "var(--mb-color-text-light)"}
+              />
+            }
+          />
         </Tooltip>
         <Tooltip label={t`Forward`}>
-          <ActionIcon disabled={!canRedo} onClick={redo}>
-            <Icon name="chevronright" />
-          </ActionIcon>
+          <Button
+            size="sm"
+            disabled={!canRedo}
+            onClick={redo}
+            leftSection={
+              <Icon
+                name="redo"
+                color={canRedo ? "unset" : "var(--mb-color-text-light)"}
+              />
+            }
+          />
         </Tooltip>
-        <Button
-          variant="filled"
-          disabled={!saveButtonEnabled}
-          onClick={handleSave}
-        >
-          {saveLabel ?? t`Add to dashboard`}
-        </Button>
-      </Flex>
+      </Button.Group>
+      <Button
+        variant="filled"
+        size="sm"
+        disabled={!saveButtonEnabled}
+        onClick={handleSave}
+      >
+        {saveLabel ?? t`Add to dashboard`}
+      </Button>
+      <ActionIcon onClick={onClose}>
+        <Icon name="close" />
+      </ActionIcon>
     </Flex>
   );
 }

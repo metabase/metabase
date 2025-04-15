@@ -1,12 +1,16 @@
 import { isNotNull } from "metabase/lib/types";
-import { getColumnVizSettings } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getDefaultDimensionFilter,
   getDefaultMetricFilter,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { Card, Dataset, DatasetColumn } from "metabase-types/api";
+import type {
+  Card,
+  Dataset,
+  DatasetColumn,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import {
@@ -19,6 +23,7 @@ import {
   isVisualizerSupportedVisualization,
 } from "./dashboard-card-supports-visualizer";
 import { createDataSource } from "./data-source";
+import { getColumnVizSettings } from "./viz-settings";
 
 function pickColumnsFromTableToBarChart(
   originalColumns: DatasetColumn[],
@@ -50,6 +55,19 @@ function pickColumnsFromTableToBarChart(
   return columns;
 }
 
+function pickColumns(
+  display: VisualizationDisplay,
+  originalColumns: DatasetColumn[],
+) {
+  if (display === "table") {
+    // if the original card is a table, let's only use two columns
+    // in the resulting bar chart
+    return pickColumnsFromTableToBarChart(originalColumns);
+  }
+
+  return originalColumns;
+}
+
 export function getInitialStateForCardDataSource(
   card: Card,
   dataset: Dataset,
@@ -61,7 +79,9 @@ export function getInitialStateForCardDataSource(
   const state: VisualizerHistoryItem = {
     display: isVisualizerSupportedVisualization(card.display)
       ? card.display
-      : DEFAULT_VISUALIZER_DISPLAY,
+      : card.display === "scalar"
+        ? "funnel"
+        : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
     settings: {},
@@ -69,12 +89,7 @@ export function getInitialStateForCardDataSource(
 
   const dataSource = createDataSource("card", card.id, card.name);
 
-  // if the original card is a table, let's only use two columns
-  // in the resulting bar chart
-  const columns =
-    card.display === "table"
-      ? pickColumnsFromTableToBarChart(originalColumns)
-      : originalColumns;
+  const columns = pickColumns(card.display, originalColumns);
 
   columns.forEach((column) => {
     const columnRef = createVisualizerColumnReference(

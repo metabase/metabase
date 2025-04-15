@@ -81,6 +81,42 @@
     }
   }
 
+  &[data-variant="visualizer"] {
+    --button-color: var(--mb-color-brand);
+    --button-color-hover: var(--mb-color-brand-light);
+
+    border-radius: 8px;
+    display: flex;
+    justify-content: flex-start;
+    color: var(--mb-color-text-dark);
+    font-weight: 500;
+    background-color: transparent;
+    padding: rem(4px) rem(15px);
+
+    & .inner {
+      overflow: hidden;
+    }
+
+    &:hover {
+      color: var(--button-color);
+      background-color: var(--button-color-hover);
+    }
+
+    &[aria-pressed="true"] {
+      color: var(--mb-color-text-white);
+      background-color: var(--button-color);
+    }
+
+    /* Button with icon only */
+    &:has(.label:empty) {
+      overflow: visible;
+
+      &[data-size^="xs"] {
+        padding: rem(2px) rem(6px);
+      }
+    }
+  }
+
   &[data-variant="inverse"] {
     /* need to implement variantColorResolver to support other colors */
     --button-color: var(--mb-color-brand);

@@ -101,7 +101,6 @@ function setup({
       downloadsEnabled
       autoScroll={false}
       reportAutoScrolledToDashcard={jest.fn()}
-      editDashboard={jest.fn()}
     />,
     {
       storeInitialState: {
