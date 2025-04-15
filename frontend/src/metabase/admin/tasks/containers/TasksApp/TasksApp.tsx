@@ -7,11 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
-import {
-  type QueryParam,
-  type UrlStateConfig,
-  useUrlState,
-} from "metabase/common/hooks/use-url-state";
+import { useUrlState } from "metabase/common/hooks/use-url-state";
 import AdminHeader from "metabase/components/AdminHeader";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
@@ -19,53 +15,16 @@ import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
-import type { Database, Task, TaskStatus } from "metabase-types/api";
+import type { Database, Task } from "metabase-types/api";
 
-import { TaskPicker } from "../components/TaskPicker";
-import { TaskStatusPicker } from "../components/TaskStatusPicker";
+import { TaskPicker } from "../../components/TaskPicker";
+import { TaskStatusPicker } from "../../components/TaskStatusPicker";
+
+import { urlStateConfig } from "./url-state";
 
 type TasksAppProps = {
   children: ReactNode;
   location: Location;
-};
-
-type UrlState = {
-  page: number;
-  task: string | null;
-  status: TaskStatus | null;
-};
-
-function parsePage(param: QueryParam): UrlState["page"] {
-  const value = Array.isArray(param) ? param[0] : param;
-  const parsed = parseInt(value || "0", 10);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function parseTask(param: QueryParam): UrlState["task"] {
-  const value = Array.isArray(param) ? param[0] : param;
-  return value ? value : null;
-}
-
-function parseStatus(param: QueryParam): UrlState["status"] {
-  const value = Array.isArray(param) ? param[0] : param;
-  return value && isTaskStatus(value) ? value : null;
-}
-
-function isTaskStatus(value: string): value is TaskStatus {
-  return ["success", "started", "failed", "unknown"].includes(value);
-}
-
-const urlStateConfig: UrlStateConfig<UrlState> = {
-  parse: (query) => ({
-    page: parsePage(query.page),
-    task: parseTask(query.task),
-    status: parseStatus(query.status),
-  }),
-  serialize: ({ page, task, status }) => ({
-    page: page === 0 ? undefined : String(page),
-    task: task === null ? undefined : task,
-    status: status === null ? undefined : status,
-  }),
 };
 
 const PAGE_SIZE = 50;
