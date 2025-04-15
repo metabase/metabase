@@ -83,6 +83,12 @@
 (defn- generate-sql-endpoint []
   (str (ai-proxy-base-url) "/v1/sql/generate"))
 
+(defn- analyze-chart-endpoint []
+  (str (ai-proxy-base-url) "/v1/analyze/chart/"))
+
+(defn- analyze-dashboard-endpoint []
+  (str (ai-proxy-base-url) "/v1/analyze/dashboard/"))
+
 (mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response
   "Make a V2 request to the AI Proxy."
   [{:keys [context messages conversation-id session-id state]}
@@ -203,4 +209,47 @@
       (throw (ex-info (format "Error in request to AI service: unexpected status code: %d %s"
                               (:status response) (:reason-phrase response))
                       {:request (assoc options :body body)
+                       :response response})))))
+
+(defn- build-multipart-request-options
+  "Build request options for multipart upload."
+  [image]
+  (let [base-headers (dissoc (request-headers) "Content-Type")]
+    {:headers          base-headers
+     :multipart        [{:name "image"
+                         :content (:tempfile image)
+                         :filename (:filename image)}]
+     :follow-redirects true
+     :throw-exceptions false}))
+
+(mu/defn analyze-chart
+  "Ask the AI service to analyze a chart image."
+  [image :- [:map
+             [:filename :string]
+             [:tempfile :any]]]
+  (premium-features/assert-has-feature :metabot-v3 "chart analysis")
+  (let [url (analyze-chart-endpoint)
+        options (build-multipart-request-options image)
+        response (post! url options)]
+    (if (= (:status response) 200)
+      (:body response)
+      (throw (ex-info (format "Error in request to AI service: unexpected status code: %d %s"
+                              (:status response) (:reason-phrase response))
+                      {:request options
+                       :response response})))))
+
+(mu/defn analyze-dashboard
+  "Ask the AI service to analyze a dashboard image."
+  [image :- [:map
+             [:filename :string]
+             [:tempfile :any]]]
+  (premium-features/assert-has-feature :metabot-v3 "dashboard analysis")
+  (let [url (analyze-dashboard-endpoint)
+        options (build-multipart-request-options image)
+        response (post! url options)]
+    (if (= (:status response) 200)
+      (:body response)
+      (throw (ex-info (format "Error in request to AI service: unexpected status code: %d %s"
+                              (:status response) (:reason-phrase response))
+                      {:request options
                        :response response})))))
