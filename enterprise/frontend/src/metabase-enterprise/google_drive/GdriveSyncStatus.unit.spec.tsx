@@ -171,7 +171,7 @@ describe("GsheetsSyncStatus", () => {
     screen.getByText("Files sync every 15 minutes");
   });
 
-  it("should show errors", async () => {
+  it("should show error from error response", async () => {
     setup({
       initialFolderPayload: { status: "syncing" },
     });
@@ -183,6 +183,31 @@ describe("GsheetsSyncStatus", () => {
 
     setupGdriveGetFolderEndpoint({
       errorCode: 500,
+    });
+
+    await act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+
+    // error state
+    expect(
+      await screen.findByText(/Error importing Google Sheets/),
+    ).toBeInTheDocument();
+  });
+
+  it("should show from error status", async () => {
+    setup({
+      initialFolderPayload: { status: "syncing" },
+    });
+
+    // initial loading state
+    expect(
+      await screen.findByText("Importing Google Sheets..."),
+    ).toBeInTheDocument();
+
+    setupGdriveGetFolderEndpoint({
+      status: "error",
+      created_by_id: USER_ID,
     });
 
     await act(() => {
