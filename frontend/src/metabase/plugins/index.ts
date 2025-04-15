@@ -55,6 +55,7 @@ import type {
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
+  DashboardId,
   Database as DatabaseType,
   Dataset,
   FieldId,
@@ -644,4 +645,15 @@ export const PLUGIN_API = {
     query: string,
   ) =>
     `/api/card/${cardId}/params/${encodeURIComponent(parameterId)}/search/${encodeURIComponent(query)}`,
+  getDashboardParameterValuesUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/values`,
+  getSearchDashboardParameterValuesUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+    query: string,
+  ) =>
+    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/search/${encodeURIComponent(query)}`,
 };

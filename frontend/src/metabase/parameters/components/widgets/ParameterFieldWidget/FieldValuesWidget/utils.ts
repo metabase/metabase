@@ -46,8 +46,11 @@ export function canUseCardEndpoints(
   return question != null && question.isSaved() && parameter != null;
 }
 
-export function canUseDashboardEndpoints(dashboard?: Dashboard | null) {
-  return dashboard?.id;
+export function canUseDashboardEndpoints(
+  dashboard?: Dashboard | null,
+  parameter?: Parameter,
+) {
+  return dashboard?.id && parameter != null;
 }
 
 export function showRemapping(fields: Field[]) {

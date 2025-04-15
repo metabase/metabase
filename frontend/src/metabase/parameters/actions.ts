@@ -1,17 +1,10 @@
-import { DashboardApi, ParameterApi } from "metabase/services";
+import { ParameterApi } from "metabase/services";
 import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  DashboardId,
-  FieldId,
-  Parameter,
-  ParameterId,
-  ParameterValues,
-} from "metabase-types/api";
+import type { FieldId, Parameter, ParameterValues } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import { getParameterValuesCache } from "./selectors";
-import { getFilteringParameterValuesMap } from "./utils/dashboards";
 
 export const FETCH_PARAMETER_VALUES =
   "metabase/parameters/FETCH_PARAMETER_VALUES";
@@ -45,36 +38,6 @@ export const fetchParameterValues =
     );
   };
 
-export interface FetchDashboardParameterValuesOpts {
-  dashboardId: DashboardId;
-  parameter: Parameter;
-  parameters: Parameter[];
-  query?: string;
-}
-
-export const fetchDashboardParameterValues =
-  ({
-    dashboardId,
-    parameter,
-    parameters,
-    query,
-  }: FetchDashboardParameterValuesOpts) =>
-  (dispatch: Dispatch, getState: GetState) => {
-    const request = {
-      paramId: parameter.id,
-      dashId: dashboardId,
-      query,
-      ...getFilteringParameterValuesMap(parameter, parameters),
-    };
-
-    return fetchParameterValuesWithCache(
-      request,
-      loadDashboardParameterValues,
-      dispatch,
-      getState,
-    );
-  };
-
 interface ParameterValuesRequest {
   parameter: Parameter;
   field_ids: FieldId[];
@@ -85,25 +48,6 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
   const { values, has_more_values } = request.query
     ? await ParameterApi.parameterSearch(request)
     : await ParameterApi.parameterValues(request);
-
-  return {
-    values: values,
-    has_more_values: request.query ? true : has_more_values,
-  };
-};
-
-interface DashboardParameterValuesRequest {
-  dashId: DashboardId;
-  paramId: ParameterId;
-  query?: string;
-}
-
-const loadDashboardParameterValues = async (
-  request: DashboardParameterValuesRequest,
-) => {
-  const { values, has_more_values } = request.query
-    ? await DashboardApi.parameterSearch(request)
-    : await DashboardApi.parameterValues(request);
 
   return {
     values: values,

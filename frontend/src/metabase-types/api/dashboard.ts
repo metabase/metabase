@@ -8,6 +8,7 @@ import type {
   CollectionId,
   Database,
   Field,
+  FieldValue,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -305,3 +306,19 @@ export type UpdateDashboardPropertyRequest<
 export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
+
+export type GetDashboardParameterValuesRequest = {
+  dashboard_id: DashboardId;
+  parameter_id: ParameterId;
+};
+
+export type GetDashboardParameterValuesResponse = {
+  values: FieldValue[];
+  has_more_values: boolean;
+};
+
+export type SearchDashboardParameterValuesRequest = {
+  dashboard_id: DashboardId;
+  parameter_id: ParameterId;
+  query: string;
+};

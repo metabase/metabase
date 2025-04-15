@@ -16,7 +16,9 @@ import {
   skipToken,
   useGetRemappedFieldValueQuery,
   useLazyGetCardParameterValuesQuery,
+  useLazyGetDashboardParameterValuesQuery,
   useLazySearchCardParameterValuesQuery,
+  useLazySearchDashboardParameterValuesQuery,
 } from "metabase/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { ListField } from "metabase/components/ListField";
@@ -30,10 +32,8 @@ import Fields from "metabase/entities/fields";
 import { parseNumber } from "metabase/lib/number";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
-import {
-  fetchDashboardParameterValues,
-  fetchParameterValues,
-} from "metabase/parameters/actions";
+import { fetchParameterValues } from "metabase/parameters/actions";
+import { getFilteringParameterValuesMap } from "metabase/parameters/utils/dashboards";
 import { addRemappings } from "metabase/redux/metadata";
 import {
   type ComboboxItem,
@@ -141,7 +141,7 @@ export const FieldValuesWidgetInner = forwardRef<
     disablePKRemappingForSearch,
     showOptionsInPopover = false,
     parameter,
-    parameters,
+    parameters = [],
     fields,
     dashboard,
     question,
@@ -190,6 +190,10 @@ export const FieldValuesWidgetInner = forwardRef<
     }
   }, [width, previousWidth]);
 
+  const [fetchDashboardParameterValues] =
+    useLazyGetDashboardParameterValuesQuery();
+  const [searchDashboardParameterValues] =
+    useLazySearchDashboardParameterValuesQuery();
   const [fetchCardParameterValues] = useLazyGetCardParameterValuesQuery();
   const [searchCardParameterValues] = useLazySearchCardParameterValuesQuery();
 
@@ -200,9 +204,25 @@ export const FieldValuesWidgetInner = forwardRef<
     let newOptions: FieldValue[] = [];
     let newValuesMode = valuesMode;
     try {
-      if (canUseDashboardEndpoints(dashboard)) {
-        const { values, has_more_values } =
-          await dispatchFetchDashboardParameterValues(query);
+      if (canUseDashboardEndpoints(dashboard, parameter)) {
+        const dashboardId = checkNotNull(dashboard?.id);
+        const parameterId = checkNotNull(parameter?.id);
+        const filteringParameterValues = getFilteringParameterValuesMap(
+          checkNotNull(parameter),
+          parameters,
+        );
+        const { values, has_more_values } = query
+          ? await searchDashboardParameterValues({
+              dashboard_id: dashboardId,
+              parameter_id: parameterId,
+              query,
+              ...filteringParameterValues,
+            }).unwrap()
+          : await fetchDashboardParameterValues({
+              dashboard_id: dashboardId,
+              parameter_id: parameterId,
+              ...filteringParameterValues,
+            }).unwrap();
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseCardEndpoints(question, parameter)) {
@@ -243,23 +263,6 @@ export const FieldValuesWidgetInner = forwardRef<
     return dispatch(
       fetchParameterValues({
         parameter,
-        query,
-      }),
-    );
-  };
-
-  const dispatchFetchDashboardParameterValues = async (query?: string) => {
-    const dashboardId = dashboard?.id;
-
-    if (!isNotNull(dashboardId) || !parameter || !parameters) {
-      return { has_more_values: false, values: [] };
-    }
-
-    return dispatch(
-      fetchDashboardParameterValues({
-        dashboardId,
-        parameter,
-        parameters,
         query,
       }),
     );

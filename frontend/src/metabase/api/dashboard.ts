@@ -1,9 +1,12 @@
+import { PLUGIN_API } from "metabase/plugins";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
   Dashboard,
   DashboardId,
   DashboardQueryMetadata,
+  GetDashboardParameterValuesRequest,
+  GetDashboardParameterValuesResponse,
   GetDashboardQueryMetadataRequest,
   GetDashboardRequest,
   GetEmbeddableDashboard,
@@ -13,6 +16,7 @@ import type {
   ListDashboardsRequest,
   ListDashboardsResponse,
   SaveDashboardRequest,
+  SearchDashboardParameterValuesRequest,
   UpdateDashboardPropertyRequest,
   UpdateDashboardRequest,
 } from "metabase-types/api";
@@ -25,6 +29,7 @@ import {
   provideDashboardListTags,
   provideDashboardQueryMetadataTags,
   provideDashboardTags,
+  provideParameterValuesTags,
   tag,
 } from "./tags";
 
@@ -86,6 +91,35 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}/items`,
           body,
         }),
+      }),
+      getDashboardParameterValues: builder.query<
+        GetDashboardParameterValuesResponse,
+        GetDashboardParameterValuesRequest
+      >({
+        query: ({ dashboard_id, parameter_id }) => ({
+          method: "GET",
+          url: PLUGIN_API.getDashboardParameterValuesUrl(
+            dashboard_id,
+            parameter_id,
+          ),
+        }),
+        providesTags: (_data, _error, { parameter_id }) =>
+          provideParameterValuesTags(parameter_id),
+      }),
+      searchDashboardParameterValues: builder.query<
+        GetDashboardParameterValuesResponse,
+        SearchDashboardParameterValuesRequest
+      >({
+        query: ({ dashboard_id, parameter_id, query }) => ({
+          method: "GET",
+          url: PLUGIN_API.getSearchDashboardParameterValuesUrl(
+            dashboard_id,
+            parameter_id,
+            query,
+          ),
+        }),
+        providesTags: (_data, _error, { parameter_id }) =>
+          provideParameterValuesTags(parameter_id),
       }),
       createDashboard: builder.mutation<Dashboard, CreateDashboardRequest>({
         query: (body) => ({
@@ -222,6 +256,10 @@ export const {
   useDeleteDashboardPublicLinkMutation,
   useUpdateDashboardEnableEmbeddingMutation,
   useUpdateDashboardEmbeddingParamsMutation,
+  useGetDashboardParameterValuesQuery,
+  useLazyGetDashboardParameterValuesQuery,
+  useSearchDashboardParameterValuesQuery,
+  useLazySearchDashboardParameterValuesQuery,
   endpoints: {
     getDashboard,
     deleteDashboardPublicLink,
