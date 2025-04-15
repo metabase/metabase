@@ -233,16 +233,25 @@
                      (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                                  driver/*driver* conn schema table-name))))))))))))))
 
+(defmacro ^:private when-class [k & body]
+  (let [resolved? (try (Class/forName (str k))
+                       true
+                       (catch ClassNotFoundException _ false))]
+    (when resolved?
+      `(do ~@body))))
+
 (deftest timeout-exception?-test
   (testing "Looks throughout chain"
     (let [e (Exception. "bad" (Exception. "bad" (Exception. "bad" (java.sql.SQLTimeoutException. "timeout"))))]
       (is (sql-jdbc.describe-database/timeout-exception? e))))
-  (testing "recognizes snowflake exception"
-    (let [e (net.snowflake.client.jdbc.SnowflakeSQLException. "SQL execution canceled")]
-      (is (sql-jdbc.describe-database/timeout-exception? e))))
-  (testing "recognizes postgres exception"
-    (let [e (org.postgresql.util.PSQLException. "ERROR: canceling statement due to user request" nil)]
-      (is (sql-jdbc.describe-database/timeout-exception? e))))
+  (when-class net.snowflake.client.jdbc.SnowflakeSQLException
+              (testing "recognizes snowflake exception"
+                (let [e (net.snowflake.client.jdbc.SnowflakeSQLException. "SQL execution canceled")]
+                  (is (sql-jdbc.describe-database/timeout-exception? e)))))
+  (when-class org.postgresql.util.PSQLException
+              (testing "recognizes postgres exception"
+                (let [e (org.postgresql.util.PSQLException. "ERROR: canceling statement due to user request" nil)]
+                  (is (sql-jdbc.describe-database/timeout-exception? e)))))
   (doseq [^String msg ["timed out"
                        "time exceeded"
                        "execution aborted"
