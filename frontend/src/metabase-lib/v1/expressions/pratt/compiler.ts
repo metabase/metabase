@@ -173,10 +173,10 @@ function compileFunctionCall(node: Node): Lib.ExpressionParts {
   const args = compileArgList(node.children[0]);
   const options: Lib.ExpressionOptions = {};
 
-  assert(isOperator(operator), t`Invalid operator`);
-
   const clause = getClauseDefinition(operator);
   const hasOptions = clause?.hasOptions ?? false;
+
+  assert(clause, `Invalid operator: ${operator}`);
 
   if (hasOptions) {
     const last = args.at(-1);
@@ -190,7 +190,11 @@ function compileFunctionCall(node: Node): Lib.ExpressionParts {
     }
   }
 
-  return withNode(node, { operator, options, args });
+  return withNode(node, {
+    operator: clause?.name,
+    options,
+    args,
+  });
 }
 
 function compileArgList(
