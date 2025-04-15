@@ -1001,8 +1001,7 @@
         (let [database (t2/select-one :model/Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
-            ;; this is usually 6 but it can be 7 sometimes in CI for some reason
-            (is (contains? #{6 7} (call-count)))))))))
+            (is (= 3 (call-count)))))))))
 
 (deftest empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"
@@ -1020,9 +1019,8 @@
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup!
         (is (= {:list-like?  true
-                :link-table? false
                 :num-fields 2}
-               (-> (#'magic/enhance-table-stats [(t2/select-one :model/Table :id table-id)])
+               (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
                    first
                    :stats)))))))
 
@@ -1034,12 +1032,11 @@
                  :model/Field    _              {:table_id table-id :semantic_type :type/FK}]
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup!
-        (is (= {:list-like?  false
-                :link-table? true
-                :num-fields 3}
-               (-> (#'magic/enhance-table-stats [(t2/select-one :model/Table :id table-id)])
+        (testing "filters out link-tables"
+          (is (nil?
+               (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
                    first
-                   :stats)))))))
+                   :stats))))))))
 
 ;;; ------------------- Definition overloading -------------------
 
