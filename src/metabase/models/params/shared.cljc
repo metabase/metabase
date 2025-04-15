@@ -12,7 +12,8 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.time :as time])
   (:import
    #?@(:clj
        ((java.time.format DateTimeFormatter)))))
@@ -27,12 +28,14 @@
   {:arglists '([tyype value locale])}
   (fn [tyype _value _locale] (keyword tyype)))
 
+;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/single
   [_ value locale]
   #?(:cljs (let [m (.locale (moment value) locale)]
              (.format m "MMMM D, YYYY"))
      :clj  (u.date/format "MMMM d, yyyy" (u.date/parse value) locale)))
 
+;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/month-year
   [_ value locale]
   #?(:cljs (let [m (.locale (moment value "YYYY-MM") locale)]
@@ -49,6 +52,7 @@
      (b/formatter
       "Q" (b/value :iso/quarter-of-year 1) ", " (b/value :year 4))))
 
+;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/quarter-year
   [_ value locale]
   #?(:cljs (let [m (.locale (moment value "[Q]Q-YYYY") locale)]
@@ -82,60 +86,20 @@
     #"^thisyear$"                           (lib/describe-temporal-interval 0 :year)
     #"^(past|next)([0-9]+)([a-z]+)s~?$" :>> (fn [matches] (apply format-relative-date matches))))
 
-#?(:clj (def ^:private day-in (DateTimeFormatter/ofPattern "EEE"
-                                                           ;; always read in en locale
-                                                           (i18n.impl/locale "en"))))
-
-#?(:clj (def ^:private day-out (DateTimeFormatter/ofPattern "EEEE")))
-
 (defn- format-day [value locale]
-  #?(:cljs (let [t (.locale moment)
-                 _ (.locale moment "en") ;; always read in en locale
-                 s (-> value
-                       (moment "ddd")
-                       (.locale locale)
-                       (.format "dddd"))]
-             (.locale moment t)
-             s)
-     :clj (.format (.withLocale ^DateTimeFormatter day-out (i18n.impl/locale locale))
-                   (.parse ^DateTimeFormatter day-in value))))
-
-#?(:clj (def ^:private hour-in (DateTimeFormatter/ofPattern "H"
-                                                            ;; always read in en locale
-                                                            (i18n.impl/locale "en"))))
-
-#?(:clj (def ^:private hour-out (DateTimeFormatter/ofPattern "h a")))
+  (-> value
+      (time/parse-unit  :day-of-week-abbrev "en") ;; always read in en locale
+      (time/format-unit :day-of-week        locale)))
 
 (defn- format-hour [value locale]
-  #?(:cljs (let [t (.locale moment)
-                 _ (.locale moment "en") ;; always read in en locale
-                 s (-> #js{:hour value}
-                       moment
-                       (.locale locale)
-                       (.format "h A"))]
-             (.locale moment t)
-             s)
-     :clj (.format (.withLocale ^DateTimeFormatter hour-out (i18n.impl/locale locale))
-                   (.parse ^DateTimeFormatter hour-in value))))
-
-#?(:clj (def ^:private month-in (DateTimeFormatter/ofPattern "LLL"
-                                                             ;; always read in en locale
-                                                             (i18n.impl/locale "en"))))
-
-#?(:clj (def ^:private month-out (DateTimeFormatter/ofPattern "LLLL")))
+  (-> value
+      (time/parse-unit  :hour-of-day-24     "en") ;; always read in en locale
+      (time/format-unit :hour-of-day        locale)))
 
 (defn- format-month [value locale]
-  #?(:cljs (let [t (.locale moment)
-                 _ (.locale moment "en") ;; always read in en locale
-                 s (-> value
-                       (moment "MMM")
-                       (.locale locale)
-                       (.format "MMMM"))]
-             (.locale moment t)
-             s)
-     :clj (do
-            (.format (.withLocale ^DateTimeFormatter month-out (i18n.impl/locale locale))
-                     (.parse ^DateTimeFormatter month-in value)))))
+  (-> value
+      (time/parse-unit  :month-of-year      "en") ;; always read in en locale
+      (time/format-unit :month-of-year-full locale)))
 
 (defn- format-exclude-unit [value unit locale]
   (case unit
