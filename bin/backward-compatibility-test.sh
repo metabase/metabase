@@ -1,6 +1,6 @@
 set -euo pipefail # exit the script if anything fails
 
-INSTRUCTIONS="Usage: bash bin/embedding-sdk/backward-compatibility-test.sh \$FE_GIT_REF \$BE_GIT_REF <build|start|test>"
+INSTRUCTIONS="Usage: bash bin/backward-compatibility-test.sh \$FE_GIT_REF \$BE_GIT_REF <build|start|test>"
 
 FE_GIT_REF=$1
 BE_GIT_REF=$2
@@ -15,7 +15,7 @@ echo "Using frontend from $FE_GIT_REF"
 echo "Using backend from $BE_GIT_REF"
 echo "---"
 echo "To test locally run:" # log for ci
-echo "sh bin/embedding-sdk/backward-compatibility-test.sh $FE_GIT_REF $BE_GIT_REF <build|start|test>"
+echo "sh bin/backward-compatibility-test.sh $FE_GIT_REF $BE_GIT_REF <build|start|test>"
 echo "---"
 echo "TMP_FOLDER: $TMP_FOLDER"
 echo "FE_FOLDER: $FE_FOLDER"
