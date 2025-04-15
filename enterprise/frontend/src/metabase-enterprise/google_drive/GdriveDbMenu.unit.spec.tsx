@@ -100,6 +100,13 @@ describe("Google Drive > DB Menu", () => {
     expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
   });
 
+  it("shows a menu in error state", async () => {
+    setup({ status: "error" });
+
+    await openMenu();
+    expect(await screen.findByText("Error syncing")).toBeInTheDocument();
+  });
+
   it("shows a menu when loading", async () => {
     setup({ status: "syncing" });
 

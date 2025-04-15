@@ -29,8 +29,8 @@ export const getStatus = ({
   status,
   error,
 }: {
-  status: GdrivePayload["status"] | undefined;
-  error: unknown | undefined;
+  status: GdrivePayload["status"] | undefined | null;
+  error?: unknown | null;
 }): GdrivePayload["status"] =>
   match({ error: !!error, status })
     .returnType<GdrivePayload["status"]>()
