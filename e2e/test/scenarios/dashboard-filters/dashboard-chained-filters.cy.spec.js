@@ -80,7 +80,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.dashboardParametersPopover().within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput().type("An");
+          H.fieldValuesCombobox().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -99,7 +99,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput()
+          H.fieldValuesCombobox()
             .type("{backspace}{backspace}")
             // close the suggestion list
             .blur();
@@ -125,7 +125,7 @@ describe("scenarios > dashboard > chained filter", () => {
       H.filterWidget().contains("Location 1").click();
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput().type("An");
+          H.fieldValuesCombobox().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -140,7 +140,7 @@ describe("scenarios > dashboard > chained filter", () => {
       if (has_field_values === "search") {
         cy.findByTestId("parameter-value-dropdown").within(() => {
           // close the suggestion list
-          H.fieldValuesInput().blur();
+          H.fieldValuesCombobox().blur();
         });
       }
 
@@ -157,10 +157,10 @@ describe("scenarios > dashboard > chained filter", () => {
       H.filterWidget().contains("Location 1").click();
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput().type("An");
+          H.fieldValuesCombobox().type("An");
         }
         if (has_field_values === "list") {
-          cy.findByRole("textbox").type("An");
+          cy.findByRole("combobox").type("An");
         }
       });
 
