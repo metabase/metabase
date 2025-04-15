@@ -1,3 +1,4 @@
+import { PLUGIN_API } from "metabase/plugins";
 import type {
   CreateFieldDimensionRequest,
   Field,
@@ -33,9 +34,9 @@ export const fieldApi = Api.injectEndpoints({
       providesTags: (field) => (field ? provideFieldTags(field) : []),
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
-      query: (id) => ({
+      query: (fieldId) => ({
         method: "GET",
-        url: `/api/field/${id}/values`,
+        url: PLUGIN_API.getFieldValuesUrl(fieldId),
       }),
       providesTags: (_, error, fieldId) => provideFieldValuesTags(fieldId),
     }),
@@ -45,7 +46,7 @@ export const fieldApi = Api.injectEndpoints({
     >({
       query: ({ fieldId, remappedFieldId, ...params }) => ({
         method: "GET",
-        url: `/api/field/${fieldId}/remapping/${remappedFieldId}`,
+        url: PLUGIN_API.getRemappedFieldValueUrl(fieldId, remappedFieldId),
         params,
       }),
       providesTags: (_response, _error, { fieldId, remappedFieldId }) =>
@@ -54,7 +55,7 @@ export const fieldApi = Api.injectEndpoints({
     searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
       query: ({ fieldId, searchFieldId, ...params }) => ({
         method: "GET",
-        url: `/api/field/${fieldId}/search/${searchFieldId}`,
+        url: PLUGIN_API.getSearchFieldValuesUrl(fieldId, searchFieldId),
         params,
       }),
       providesTags: (_response, _error, { fieldId, searchFieldId }) =>

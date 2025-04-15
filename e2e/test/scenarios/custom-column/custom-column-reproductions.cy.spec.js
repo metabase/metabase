@@ -291,7 +291,7 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("14");
+      H.fieldValuesCombobox().type("14");
       cy.button("Add filter").click();
     });
   }
