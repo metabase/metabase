@@ -19,6 +19,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {
+  CardActionMenuContainer,
   CardPreviewSkeleton,
   CardRoot,
   CardStaticSkeleton,
@@ -65,6 +66,10 @@ const PinnedQuestionCard = ({
     </EventSandbox>
   );
 
+  const positionedActionMenu = (
+    <CardActionMenuContainer>{actionMenu}</CardActionMenuContainer>
+  );
+
   const DEFAULT_DESCRIPTION: Record<string, string> = {
     card: t`A question`,
     metric: t`A metric`,
@@ -77,26 +82,30 @@ const PinnedQuestionCard = ({
       className={cx(CS.hoverParent, CS.hoverVisibility)}
     >
       <Flex h="100%" direction="column">
-        <Group justify="space-between" py="0.5rem" px="1rem">
-          <Group gap="0.5rem">
-            <Text fw="bold">{item.name}</Text>
-            <PLUGIN_MODERATION.ModerationStatusIcon
-              status={item.moderated_status}
-              filled
-            />
-          </Group>
-          <Group>
-            {item.description && isPreview && (
-              <Icon
-                className={cx(CS.hoverChild, CS.hoverChildSmooth)}
-                name="info"
-                color="text-light"
-                tooltip={item.description}
+        {isPreview ? (
+          <Group justify="space-between" py="0.5rem" px="1rem">
+            <Group gap="0.5rem">
+              <Text fw="bold">{item.name}</Text>
+              <PLUGIN_MODERATION.ModerationStatusIcon
+                status={item.moderated_status}
+                filled
               />
-            )}
-            {actionMenu}
+            </Group>
+            <Group>
+              {item.description && isPreview && (
+                <Icon
+                  className={cx(CS.hoverChild, CS.hoverChildSmooth)}
+                  name="info"
+                  color="text-light"
+                  tooltip={item.description}
+                />
+              )}
+              {actionMenu}
+            </Group>
           </Group>
-        </Group>
+        ) : (
+          positionedActionMenu
+        )}
         <Box flex="1 0 0">
           {isPreview ? (
             <PinnedQuestionLoader id={item.id}>
