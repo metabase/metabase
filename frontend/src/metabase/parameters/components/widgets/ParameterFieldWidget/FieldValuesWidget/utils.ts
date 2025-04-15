@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import { stripId } from "metabase/lib/formatting";
 import { MetabaseApi } from "metabase/services";
+import type { ComboboxItem } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
@@ -328,4 +329,46 @@ export function getValue(option: FieldValue): RowValue {
     return option[0];
   }
   return option;
+}
+
+export function getLabel(option: FieldValue): string | undefined {
+  if (Array.isArray(option)) {
+    return option[1];
+  }
+  return undefined;
+}
+
+export function getOption(
+  option: string | number | FieldValue,
+): ComboboxItem | null {
+  const value = Array.isArray(option) ? getValue(option) : option;
+  const label = Array.isArray(option) ? getLabel(option) : undefined;
+  if (value == null) {
+    return null;
+  }
+
+  return { value: String(value), label: String(label ?? value) };
+}
+
+export function getFieldsRemappingInfo(fields: (Field | null)[]) {
+  const [field] = fields;
+  const searchField = field?.searchField();
+
+  if (
+    fields.length === 1 &&
+    field != null &&
+    searchField != null &&
+    typeof field.id === "number" &&
+    typeof searchField.id === "number" &&
+    field.id !== searchField.id
+  ) {
+    return {
+      field,
+      fieldId: field.id,
+      searchField,
+      searchFieldId: searchField.id,
+    };
+  } else {
+    return null;
+  }
 }

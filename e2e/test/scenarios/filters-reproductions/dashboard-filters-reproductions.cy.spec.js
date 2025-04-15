@@ -1240,7 +1240,7 @@ describe("issue 22788", () => {
   function addFilterAndAssert() {
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("Gizmo");
+      H.fieldValuesCombobox().type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -2158,7 +2158,7 @@ describe("issue 27768", () => {
 
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("Gizmo");
+      H.fieldValuesCombobox().type("Gizmo");
       cy.button("Add filter").click();
     });
 
