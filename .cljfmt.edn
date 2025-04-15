@@ -300,6 +300,7 @@
   metabase.util.malli/with                                                             [[:default]]
   metabase.util.malli/with-api-error-message                                           [[:default]]
   metabase.util.namespaces/import-fns                                                  [[:default]]
+  metabase.util.queue-test/await-test-while                                            [[:block 1]]
   metabuild-common.core/exit-when-finished-nonzero-on-exception                        [[:block 0]]
   metabuild-common.core/step                                                           [[:block 1]]
   metabuild-common.entrypoint/exit-when-finished-nonzero-on-exception                  [[:block 0]]
