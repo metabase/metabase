@@ -469,9 +469,9 @@ function GET_with(url, omitKeys) {
 function setFieldEndpoints(prefix) {
   PLUGIN_API.getFieldValuesUrl = (fieldId) =>
     `${prefix}/field/${fieldId}/values`;
-  PLUGIN_API.getFieldSearchUrl = (fieldId, searchFieldId) =>
+  PLUGIN_API.getSearchFieldValuesUrl = (fieldId, searchFieldId) =>
     `${prefix}/field/${fieldId}/search/${searchFieldId}`;
-  PLUGIN_API.getFieldRemappingUrl = (fieldId, remappedFieldId) =>
+  PLUGIN_API.getRemappedFieldValueUrl = (fieldId, remappedFieldId) =>
     `${prefix}/field/${fieldId}/remapping/${remappedFieldId}`;
 }
 
