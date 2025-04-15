@@ -127,18 +127,18 @@
 (defn- thread-name-running? [name]
   (some #(= name (.getName ^Thread %)) (keys (Thread/getAllStackTraces))))
 
-(defmacro ^:private await-test
-  "Wait 100 times 10 milliseconds or until `delay-condition` becomes false and evaluate `assertions`.
+(defmacro ^:private await-test-while
+  "Wait 100 times 10 milliseconds or until `delay-condition` becomes false and evaluate `body`.
   Reaching 100 tries results in the test failing."
   {:style/indent 1}
-  [delay-condition & assertions]
+  [delay-condition & body]
   ;; make tries and the sleep time macro parameters if needed
   `(loop [tries# 100]
      (Thread/sleep 10)
      (cond
        (zero? tries#)   (is false "Max waiting time exceeded")
        ~delay-condition (recur (dec tries#))
-       :else            (do ~@assertions))))
+       :else            (do ~@body))))
 
 (deftest listener-handler-test
   (testing "Standard behavior with a handler"
@@ -161,14 +161,14 @@
                                {:max-next-ms 5})))
       (try
         (queue/put-with-delay! queue 0 "a")
-        (await-test (zero? @items-handled)
+        (await-test-while (zero? @items-handled)
           (is (= 1 @items-handled))
           (is (= ["a"] @last-batch)))
 
         (queue/put-with-delay! queue 0 "b")
         (queue/put-with-delay! queue 0 "c")
         (queue/put-with-delay! queue 0 "d")
-        (await-test (< @items-handled 4)
+        (await-test-while (< @items-handled 4)
           (is (= 4 @items-handled))
           (is (some #{"d"} @last-batch)))
 
@@ -201,12 +201,12 @@
                       :max-next-ms    5})
       (try
         (queue/put-with-delay! queue 0 "a")
-        (await-test (zero? @result-count)
+        (await-test-while (zero? @result-count)
           (is (= 0 @error-count))
           (is (= 1 @result-count)))
 
         (queue/put-with-delay! queue 0 "err")
-        (await-test (zero? @error-count)
+        (await-test-while (zero? @error-count)
           (is (= 1 @error-count))
           (is (= 1 @result-count))
           (is (= "Test Error" (.getMessage ^Exception @last-error))))
@@ -239,7 +239,7 @@
         (dotimes [i 100]
           (queue/put-with-delay! queue 0 i))
 
-        (await-test (< @batches-handled 100)
+        (await-test-while (< @batches-handled 100)
           (is (= 100 @batches-handled))
           (is (contains? @handlers-used listener-name)))
 
