@@ -139,7 +139,7 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
                   const engine = db ? db.engine : null;
                   // only want unknown if there is a db on the task and we don't have info
                   return (
-                    <tr key={task.id}>
+                    <tr data-testid="task" key={task.id}>
                       <td className={CS.textBold}>{task.task}</td>
                       <td>{task.db_id ? name || t`Unknown name` : null}</td>
                       <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
