@@ -42,6 +42,8 @@ Form Elements:
   - Align related form fields using Group and Stack
   - Use consistent spacing with gap="md" or gap="lg"
   - Add proper spacing between sections with `<Space h="md" />` or `<Space h="xl" />`
+  - Do not use horizontal rules (Divider) between form elements of the same type within a section
+  - Only use horizontal rules to separate distinctly different types of content or when specifically needed for visual hierarchy
 - For cards with a single setting:
   - Use the card's title as the setting label
   - Use the card's description text to describe the setting
