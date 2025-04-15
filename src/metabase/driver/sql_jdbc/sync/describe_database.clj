@@ -84,29 +84,27 @@
     ;; `net.snowflake.client.jdbc.SnowflakeSQLException: SQL execution canceled`. Compared with lack of select
     ;; privileges in snowflake: `net.snowflake.client.jdbc.SnowflakeSQLException: SQL compilation error:,Failure
     ;; during expansion of`.
-    (or ((fn by-exception-type [e]
-           (or (instance? java.sql.SQLTimeoutException e)
-               (when-let [cause (ex-cause e)]
-                 (recur cause))))
-         e)
-        ;; Common timeout-related messages across different DBs
-        (boolean (re-find #"(?i)time(d|\\s+)*(out|exceeded)" msg))
-        (boolean (re-find #"(?i)cancel(l)*(ed|ing|ation)" msg))
-        (boolean (re-find #"(?i)execution abort(ed)?" msg))
-        (boolean (re-find #"(?i)statement timeout" msg))
-        (boolean (re-find #"(?i)query (has been )?abort(ed)?" msg))
-        (boolean (re-find #"(?i)maximum statement time exceeded" msg))
-
-        ;; DB-specific timeout patterns
-        ;; Snowflake
-        (boolean (re-find #"(?i)SQL execution canceled" msg))
-        ;; PostgreSQL
-        (boolean (re-find #"(?i)canceling statement due to user request" msg))
-        (boolean (re-find #"(?i)canceling statement due to statement timeout" msg))
-        ;; MySQL
-        (boolean (re-find #"(?i)query execution was interrupted" msg))
-        ;; Redshift
-        (boolean (re-find #"(?i)Query cancelled on user(\'s)? request" msg)))))
+    (or (instance? java.sql.SQLTimeoutException e)
+        (boolean (some (fn [re] (re-find re msg))
+                       [;; Common timeout-related messages across different DBs
+                        #"(?i)timed?\s*(?:out|exceeded)"
+                        #"(?i)cancel(l)*(ed|ing|ation)"
+                        #"(?i)execution abort(ed)?"
+                        #"(?i)statement timeout"
+                        #"(?i)query (?:has been )?abort(?:ed)?"
+                        #"(?i)maximum statement time exceeded"
+                        ;; DB-specific timeout patterns
+                        ;; Snowflake
+                        #"(?i)SQL execution canceled"
+                        ;; PostgreSQL
+                        #"(?i)canceling statement due to user request"
+                        #"(?i)canceling statement due to statement timeout"
+                        ;; MySQL
+                        #"(?i)query execution was interrupted"
+                        ;; Redshift
+                        #"(?i)Query cancelled on user(?:\'s)? request"]))
+        (when-let [cause (ex-cause e)]
+          (recur cause)))))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc
   [driver ^Connection conn table-schema table-name]
