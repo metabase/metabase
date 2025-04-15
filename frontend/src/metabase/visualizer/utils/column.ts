@@ -1,5 +1,4 @@
-import { isDate } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, FieldLiteral } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerColumnValueSource,
@@ -73,30 +72,10 @@ export function copyColumn(
   dataSourceName: string,
   existingColumns: DatasetColumn[],
 ): DatasetColumn {
-  const copy: DatasetColumn = {
-    ...column,
-    name,
-    field_ref: [
-      "field",
-      name,
-      { "base-type": column.base_type },
-    ] as FieldLiteral,
-  };
+  const copy: DatasetColumn = { ...column, name };
 
   if (existingColumns.some((col) => col.display_name === copy.display_name)) {
     copy.display_name = `${copy.display_name} (${dataSourceName})`;
-  }
-
-  // TODO Remove manual MBQL manipulation
-  if (isDate(column)) {
-    const opts = copy.field_ref?.[2];
-    const temporalUnit = maybeGetTemporalUnit(column);
-    if (temporalUnit && opts) {
-      // TODO fix type
-      (opts as any)["temporal-unit"] = temporalUnit;
-    }
-    // TODO fix type
-    copy.field_ref = ["field", name, opts as any];
   }
 
   return copy;
@@ -121,11 +100,4 @@ export function extractReferencedColumns(
     (valueSource): valueSource is VisualizerColumnReference =>
       typeof valueSource !== "string",
   );
-}
-
-function maybeGetTemporalUnit(col: DatasetColumn) {
-  const maybeOpts = col.field_ref?.[2];
-  if (maybeOpts && "temporal-unit" in maybeOpts) {
-    return maybeOpts["temporal-unit"];
-  }
 }

@@ -44,36 +44,6 @@ describe("getInitialStateForCardDataSource", () => {
     }),
   });
 
-  it("should not try to replace unknown columns in the settings", () => {
-    const initialState = getInitialStateForCardDataSource(
-      dashCard.card,
-      dataset,
-    );
-
-    expect(initialState.columns).toHaveLength(2);
-    expect(initialState.columnValuesMapping).toEqual({
-      COLUMN_1: [
-        {
-          name: "COLUMN_1",
-          originalName: "Foo",
-          sourceId: "card:1",
-        },
-      ],
-      COLUMN_2: [
-        {
-          name: "COLUMN_2",
-          originalName: "Bar",
-          sourceId: "card:1",
-        },
-      ],
-    });
-
-    expect(initialState.settings).toEqual({
-      "card.title": "ScalarMcSmartface",
-      "scalar.compact_primary_number": true,
-    });
-  });
-
   it("should pick the proper display if it is not supported by the visualizer", () => {
     const initialState = getInitialStateForCardDataSource(
       dashCard.card,

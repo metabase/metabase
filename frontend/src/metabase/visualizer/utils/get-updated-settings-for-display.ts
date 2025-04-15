@@ -227,7 +227,7 @@ const funnelToPie = (
     settings: {
       ...otherSettings,
       "pie.metric": metric,
-      "pie.dimensions": dimension,
+      "pie.dimension": dimension,
     },
   };
 };

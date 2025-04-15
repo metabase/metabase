@@ -1,4 +1,5 @@
 import type { DragEndEvent } from "@dnd-kit/core";
+import _ from "underscore";
 
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -181,7 +182,7 @@ export function removeColumnFromFunnel(
     if (columnName === "METRIC" || columnName === "DIMENSION") {
       state.columns = [];
       state.columnValuesMapping = {};
-      state.settings = {};
+      state.settings = _.pick(state.settings, "card.title");
     } else {
       const index = state.columnValuesMapping.METRIC.findIndex(
         (mapping) => typeof mapping !== "string" && mapping.name === columnName,
