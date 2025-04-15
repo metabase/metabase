@@ -988,24 +988,29 @@
 ;; When rendering expressions, the FE calls [[expression-parts]], which returns a kind of AST for the expression.
 ;; This form is deliberately different from the MBQL representation.
 
-(defn- transform-expression-parts
+(defn- expression-parts-like?
+  "Test if [[x]] has the shape expression-parts, possible with missing :lib/type."
   [x]
-  (walk/postwalk
-   (fn [node]
-     (if (and (map? node)
-              (:operator node)
-              (:args node)
-              (not (:lib/type node))
-              (not (:type node)))
-       (assoc node :lib/type :mbql/expression-parts)
-       node))
-   x))
+  (and (map? x)
+       (:operator x)
+       (:args x)
+       (or
+        (and
+         (not (:lib/type x))
+         (not (:type x)))
+        (= (:lib/type x) :mbql/expression-parts)
+        (= (:type x) :mbql/expression-parts))))
 
 (defn- expression-parts-js->cljs
+  "When coming from js the expression parts will have no :lib/type, so we need to add
+   it back in recursively for each node down the path."
   [x]
-  (-> x
-      (js->clj :keywordize-keys true)
-      transform-expression-parts))
+  (as-> x parts
+    (js->clj parts :keywordize-keys true)
+    (walk/postwalk
+     #(cond-> %
+        (expression-parts-like? %) (assoc :lib/type :mbql/expression-parts))
+     parts)))
 
 (defn ^:export expression-clause
   "Returns a standalone expression clause for the given `operator`, `options`, and list of arguments."
