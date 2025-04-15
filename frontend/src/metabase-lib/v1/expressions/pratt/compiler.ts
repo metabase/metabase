@@ -12,7 +12,6 @@ import {
   isIntegerLiteral,
   isStringLiteral,
 } from "../matchers";
-import { unescapeString } from "../string";
 
 import {
   ADD,
