@@ -35,6 +35,7 @@ import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/component
 
 /**
  * @interface
+ * @expand
  */
 export type BaseInteractiveQuestionProps =
   InteractiveQuestionQuestionIdProps & {
@@ -56,6 +57,7 @@ export type BaseInteractiveQuestionProps =
 
 /**
  * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionProps = BaseInteractiveQuestionProps &

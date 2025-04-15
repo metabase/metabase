@@ -12,6 +12,7 @@ import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 /**
+ * @expand
  * @category CreateDashboardModal
  */
 export interface CreateDashboardModalProps {

@@ -13,6 +13,7 @@ import ToolbarButtonS from "../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../util/ToolbarButton";
 
 /**
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionChartTypeDropdownProps = MenuProps;
