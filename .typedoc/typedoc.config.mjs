@@ -3,12 +3,14 @@ const EMBEDDING_SDK_DOCS_MAIN_PAGE_URL =
 
 /** @type {Partial<import("typedoc").TypeDocOptions>} */
 const config = {
-  name: "Embedding SDK API",
+  name: "Embedded analytics SDK API",
   tsconfig: "./tsconfig.sdk-docs.json",
   plugin: [
     "typedoc-plugin-missing-exports",
     "typedoc-plugin-mdn-links",
     "./typedoc-plugin-frontmatter.js",
+    "./typedoc-plugin-remove-data-refl-attribute.js",
+    "./typedoc-plugin-head.js",
   ],
   entryPoints: ["../resources/embedding-sdk/dist/index.d.ts"],
   router: "structure",
@@ -25,6 +27,7 @@ const config = {
         collapseInternalModule: true,
         visibilityFilters: {},
         frontmatterGlobals: {
+          title: "Embedded analytics SDK documentation",
           layout: "docs-api",
         },
         pretty: true,
