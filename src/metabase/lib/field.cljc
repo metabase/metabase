@@ -124,7 +124,7 @@
                     {::temporal-unit unit})
                   (cond
                     (integer? id-or-name) (or (lib.equality/resolve-field-id query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name (str id-or-name)})
+                                              {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
                     join-alias            {:lib/type :metadata/column, :name (str id-or-name)}
                     :else                 (or (resolve-column-name query stage-number id-or-name)
                                               {:lib/type :metadata/column, :name (str id-or-name)})))]
@@ -186,10 +186,15 @@
                   {:lib/type        :metadata/column}
                   metadata
                   {:display-name (or (:display-name opts)
-                                     (lib.metadata.calculation/display-name query stage-number field-ref))})]
+                                     (lib.metadata.calculation/display-name query stage-number field-ref))})
+        default-type (fn [original default]
+                       (if (or (nil? original) (= original :type/*))
+                         default
+                         original))]
     (cond-> metadata
       source-uuid    (assoc :lib/source-uuid source-uuid)
-      base-type      (assoc :base-type base-type, :effective-type base-type)
+      base-type      (-> (assoc :base-type base-type)
+                         (update :effective-type default-type base-type))
       effective-type (assoc :effective-type effective-type)
       temporal-unit  (assoc ::temporal-unit temporal-unit)
       binning        (assoc ::binning binning)

@@ -34,6 +34,14 @@ export function newDatabase() {
   return `/admin/databases/create`;
 }
 
+export function viewDatabases() {
+  return `/admin/databases`;
+}
+
+export function viewDatabase(databaseId: DatabaseId) {
+  return `/admin/databases/${databaseId}`;
+}
+
 export function editDatabase(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/edit`;
 }

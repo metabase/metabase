@@ -1,3 +1,5 @@
+import { createMockTask } from "metabase-types/api/mocks";
+
 const { H } = cy;
 
 describe("scenarios > admin > troubleshooting > help", () => {
@@ -63,7 +65,7 @@ describe("scenarios > admin > troubleshooting > help (EE)", () => {
   });
 });
 
-describe("scenarios > admin > troubleshooting > tasks", () => {
+describe("issue 14636", () => {
   const total = 57;
   const limit = 50;
 
@@ -109,7 +111,7 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
 
     /** type: {Row} */
     const row = {
-      id: page + 1,
+      id: 1,
       task: tasks[page],
       db_id: 1,
       started_at: "2023-03-04T01:45:26.005475-08:00",
@@ -123,7 +125,10 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     const pageRows = [limit, total - limit];
     const length = pageRows[page];
 
-    const stubbedRows = Array.from({ length }, () => row);
+    const stubbedRows = Array.from({ length }, (_, index) => ({
+      ...row,
+      id: index + 1,
+    }));
     return stubbedRows;
   }
 
@@ -142,13 +147,14 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     cy.visit("/admin/troubleshooting/tasks");
     cy.wait("@first");
 
+    cy.location("search").should("eq", "");
+
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Troubleshooting logs");
     cy.findByLabelText("Previous page").as("previous");
     cy.findByLabelText("Next page").as("next");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("1 - 50");
+    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("field values scanning");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -160,10 +166,12 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     cy.get("@next").click();
     cy.wait("@second");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(`51 - ${total}`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("1 - 50").should("not.exist");
+    cy.location("search").should("eq", "?page=1");
+
+    cy.findByLabelText("pagination")
+      .findByText(`51 - ${total}`)
+      .should("be.visible");
+    cy.findByLabelText("pagination").findByText("1 - 50").should("not.exist");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("analyze");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -171,6 +179,101 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
 
     shouldNotBeDisabled("@previous");
     shouldBeDisabled("@next");
+
+    cy.get("@previous").click();
+
+    cy.location("search").should("eq", "");
+
+    cy.log("pagination should affect browser history");
+    cy.go("back");
+    cy.location("pathname").should("eq", "/admin/troubleshooting/tasks");
+    cy.location("search").should("eq", "?page=1");
+    cy.go("back");
+    cy.location("pathname").should("eq", "/admin/troubleshooting/tasks");
+    cy.location("search").should("eq", "");
+  });
+
+  it("should respect page query param on page load", () => {
+    cy.visit("/admin/troubleshooting/tasks?page=1");
+    cy.wait("@second");
+
+    cy.findByLabelText("pagination")
+      .findByText(`51 - ${total}`)
+      .should("be.visible");
+  });
+});
+
+describe("scenarios > admin > troubleshooting > tasks", () => {
+  const task = createMockTask({
+    task_details: {
+      useful: {
+        information: true,
+      },
+    },
+  });
+
+  const formattedTaskJson = JSON.stringify(task.task_details, null, 2);
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    // The only reliable way of having a consistent list of tasks is mocking them
+    cy.intercept("GET", "/api/task?limit=50&offset=0", (request) => {
+      request.reply((response) => {
+        response.body.data = [task];
+      });
+    }).as("getTasks");
+
+    cy.intercept("GET", `/api/task/${task.id}`, (request) => {
+      request.reply((response) => {
+        response.body = task;
+      });
+    }).as("getTask");
+  });
+
+  it("shows task modal", () => {
+    cy.visit("/admin/troubleshooting/tasks");
+    cy.wait("@getTasks");
+
+    cy.findByRole("link", { name: "View" }).click();
+    cy.wait("@getTask");
+    cy.location("pathname").should(
+      "eq",
+      `/admin/troubleshooting/tasks/${task.id}`,
+    );
+
+    cy.log("task details");
+    H.modal()
+      .get(".cm-content")
+      .should("be.visible")
+      .get(".cm-line")
+      .as("lines");
+    cy.get("@lines").eq(0).should("have.text", "{");
+    cy.get("@lines").eq(1).should("have.text", '  "useful": {');
+    cy.get("@lines").eq(2).should("have.text", '    "information": true');
+    cy.get("@lines").eq(3).should("have.text", "  }");
+    cy.get("@lines").eq(4).should("have.text", "}");
+
+    cy.log("copy button");
+    cy.window().then((window) => {
+      window.clipboardData = {
+        setData: cy.stub(),
+      };
+    });
+    cy.icon("copy").click();
+    cy.window()
+      .its("clipboardData.setData")
+      .should("be.calledWith", "text", formattedTaskJson);
+    cy.findByRole("tooltip").should("have.text", "Copied!");
+
+    cy.log("download button");
+    cy.button(/Download/).click();
+    cy.readFile(`cypress/downloads/task-${task.id}.json`).should(
+      "deep.equal",
+      // Ideally, we would compare raw strings here, but Cypress automatically parses JSON files
+      task.task_details,
+    );
   });
 });
 

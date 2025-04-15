@@ -547,10 +547,12 @@
   (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
                 "Table (EE #390)\n")
     (let [cols          (fn []
-                          (mt/cols
-                           (mt/run-mbql-query venues
-                             {:order-by [[:asc $id]]
-                              :limit    2})))
+                          ;; TODO: it would be nice to check entity_id and ident in this test
+                          (map #(dissoc % :entity_id :ident)
+                               (mt/cols
+                                (mt/run-mbql-query venues
+                                  {:order-by [[:asc $id]]
+                                   :limit    2}))))
           original-cols (cols)
           ;; `with-gtaps!` copies the test DB so this function will update the IDs in `original-cols` so they'll match
           ;; up with the current copy
@@ -1004,7 +1006,7 @@
               (mt/with-column-remappings [orders.product_id products.title]
                 (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
                   (letfn [(format-col [col]
-                            (dissoc col :field_ref :id :table_id :fk_field_id :options :position :lib/external_remap :lib/internal_remap :fk_target_field_id))
+                            (dissoc col :field_ref :id :table_id :fk_field_id :options :position :lib/external_remap :lib/internal_remap :fk_target_field_id :entity_id :ident))
                           (format-results [results]
                             (-> results
                                 (update-in [:data :cols] (partial map format-col))

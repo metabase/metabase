@@ -196,8 +196,8 @@ describe("SemanticTypePicker", () => {
         setup({ fieldId: field.id });
 
         await assertSemanticTypesVisibility({
-          visibleTypes: ["Field containing JSON"],
-          hiddenTypes: ["Category", "Title"],
+          visibleTypes: ["Category", "Field containing JSON"],
+          hiddenTypes: ["Title"],
         });
       },
     );

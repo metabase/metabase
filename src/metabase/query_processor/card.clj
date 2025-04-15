@@ -18,8 +18,10 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -239,6 +241,14 @@
     (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
       (qp (update query :info merge info) rff))))
 
+(defn- enrich-parameters-from-card
+  "Allow the FE to omit type and target for parameters by adding them from the card."
+  [parameters card-parameters]
+  (let [id->card-param (->> card-parameters
+                            (map #(select-keys % [:id :type :target]))
+                            (m/index-by :id))]
+    (mapv #(merge (-> % :id id->card-param) %) parameters)))
+
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.server.streaming_response.StreamingResponse` (see [[metabase.server.streaming-response]]) that should be
@@ -268,8 +278,10 @@
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [card       (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
                                                    :type :result_metadata :visualization_settings :display
-                                                   :cache_invalidated_at :entity_id :created_at :card_schema]
+                                                   :cache_invalidated_at :entity_id :created_at :card_schema
+                                                   :parameters]
                                                   :id card-id))
+        parameters (enrich-parameters-from-card parameters (:parameters card))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)
                      (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
@@ -299,4 +311,6 @@
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
-      (runner query info))))
+      (qp.store/with-metadata-provider (:database_id card)
+        (qp.results-metadata/store-previous-result-metadata! card)
+        (runner query info)))))
