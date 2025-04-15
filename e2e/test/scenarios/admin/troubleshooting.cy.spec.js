@@ -120,6 +120,7 @@ describe("issue 14636", () => {
       task_details: null,
       name: "Item $page}",
       model: "card",
+      status: "success",
     };
 
     const pageRows = [limit, total - limit];
