@@ -8,10 +8,13 @@ import type {
   CreateCardRequest,
   DashboardId,
   Dataset,
+  GetCardParameterValuesRequest,
+  GetCardParameterValuesResponse,
   GetCardRequest,
   GetEmbeddableCard,
   GetPublicCard,
   ListCardsRequest,
+  SearchCardParameterValuesRequest,
   UpdateCardKeyRequest,
   UpdateCardRequest,
 } from "metabase-types/api";
@@ -25,6 +28,7 @@ import {
   provideCardQueryMetadataTags,
   provideCardQueryTags,
   provideCardTags,
+  provideParameterValuesTags,
 } from "./tags";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
@@ -82,6 +86,28 @@ export const cardApi = Api.injectEndpoints({
         }),
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),
+      }),
+      getCardParameterValues: builder.query<
+        GetCardParameterValuesResponse,
+        GetCardParameterValuesRequest
+      >({
+        query: ({ card_id, parameter_id }) => ({
+          method: "GET",
+          url: `/api/card/${card_id}/params/${encodeURIComponent(parameter_id)}/values`,
+        }),
+        providesTags: (_data, _error, { parameter_id }) =>
+          provideParameterValuesTags(parameter_id),
+      }),
+      searchCardParameterValues: builder.query<
+        GetCardParameterValuesResponse,
+        SearchCardParameterValuesRequest
+      >({
+        query: ({ card_id, parameter_id, query }) => ({
+          method: "GET",
+          url: `/api/card/${card_id}/params/${encodeURIComponent(parameter_id)}/search/${encodeURIComponent(query)}`,
+        }),
+        providesTags: (_data, _error, { parameter_id }) =>
+          provideParameterValuesTags(parameter_id),
       }),
       createCard: builder.mutation<Card, CreateCardRequest>({
         query: (body) => ({

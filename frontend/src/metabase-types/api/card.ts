@@ -10,10 +10,10 @@ import type {
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
-import type { Field } from "./field";
+import type { Field, FieldValue } from "./field";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { Parameter } from "./parameters";
+import type { Parameter, ParameterId } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
@@ -452,3 +452,19 @@ export type CardQueryRequest = {
 export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
 
 export type GetEmbeddableCard = Pick<Card, "id" | "name">;
+
+export type GetCardParameterValuesRequest = {
+  card_id: CardId;
+  parameter_id: ParameterId;
+};
+
+export type GetCardParameterValuesResponse = {
+  values: FieldValue[];
+  has_more_values: boolean;
+};
+
+export type SearchCardParameterValuesRequest = {
+  card_id: CardId;
+  parameter_id: ParameterId;
+  query: string;
+};
