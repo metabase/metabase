@@ -23,6 +23,7 @@ import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
 import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
+import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
 type EditTableDataContainerProps = {
   params: {
@@ -75,6 +76,11 @@ export const EditTableDataContainer = ({
     handleModalOpenAndExpandedRow,
   } = useTableCRUD({ tableId, datasetData, stateUpdateStrategy });
 
+  const { undo, redo } = useTableEditingUndoRedo({
+    tableId,
+    stateUpdateStrategy,
+  });
+
   useMount(() => {
     dispatch(closeNavbar());
   });
@@ -100,6 +106,8 @@ export const EditTableDataContainer = ({
             onCreate={handleModalOpenAndExpandedRow}
             onQuestionChange={handleQuestionChange}
             refetchTableDataQuery={refetch}
+            onUndo={undo}
+            onRedo={redo}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (

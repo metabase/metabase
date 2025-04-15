@@ -7,7 +7,9 @@ import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { RowValue } from "metabase-types/api";
 
 import {
+  MISSING_COLUMN_MARK,
   type TableEditingStateUpdateStrategy,
+  mapDataEditingRowObjectsToPartialRowValues,
   mapDataEditingRowObjectsToRowValues,
 } from "./use-table-state-update-strategy";
 
@@ -50,7 +52,7 @@ export function useTableEditingStateDashcardUpdateStrategy(
       }
 
       const pkColumnIndex = cardData.data.cols.findIndex(isPK);
-      const updatedRows = mapDataEditingRowObjectsToRowValues(
+      const updatedRows = mapDataEditingRowObjectsToPartialRowValues(
         rows,
         cardData.data.cols,
       );
@@ -63,7 +65,11 @@ export function useTableEditingStateDashcardUpdateStrategy(
             rows: cardData.data.rows.map((row) => {
               for (const updatedRow of updatedRows) {
                 if (row[pkColumnIndex] === updatedRow[pkColumnIndex]) {
-                  return updatedRow;
+                  // For partial updates (e.g. undo/redo), the updated value may be missing
+                  // so we keep the original value
+                  return updatedRow.map((value, index) =>
+                    value === MISSING_COLUMN_MARK ? row[index] : value,
+                  );
                 }
               }
 

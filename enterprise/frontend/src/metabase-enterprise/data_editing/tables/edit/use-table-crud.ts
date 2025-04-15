@@ -101,7 +101,6 @@ export const useTableCRUD = ({
       const response = await updateTableRows({
         tableId: tableId,
         rows: [updatedRowWithPk],
-        primaryKeyColumnName: pkColumn.name,
       });
 
       stateUpdateStrategy.onRowsUpdated(response.data?.updated);

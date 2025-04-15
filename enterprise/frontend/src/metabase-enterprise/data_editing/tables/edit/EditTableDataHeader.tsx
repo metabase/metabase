@@ -6,7 +6,15 @@ import { TableNotificationsTrigger } from "metabase/notifications/modals";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip"; // TODO: we should not use query builder components
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components"; // TODO: we should not use query builder components
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { Button, Flex, Group, Icon, Stack, Title } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Title,
+} from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { Table as ApiTable } from "metabase-types/api";
@@ -21,6 +29,8 @@ interface EditTableDataHeaderProps {
   onCreate: () => void;
   onQuestionChange: (newQuestion: Question) => void;
   refetchTableDataQuery: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 export const EditTableDataHeader = ({
@@ -30,6 +40,8 @@ export const EditTableDataHeader = ({
   onCreate,
   onQuestionChange,
   refetchTableDataQuery,
+  onUndo,
+  onRedo,
 }: EditTableDataHeaderProps) => {
   const hasFilters = useMemo(
     () =>
@@ -76,6 +88,12 @@ export const EditTableDataHeader = ({
             onRun={refetchTableDataQuery}
           />
           <TableNotificationsTrigger tableId={table.id} />
+          <ActionIcon onClick={onUndo}>
+            <Icon name="triangle_left" />
+          </ActionIcon>
+          <ActionIcon onClick={onRedo}>
+            <Icon name="triangle_right" />
+          </ActionIcon>
         </Group>
       </Flex>
       <QuestionFiltersHeader
