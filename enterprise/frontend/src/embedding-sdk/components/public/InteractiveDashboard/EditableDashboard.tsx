@@ -30,6 +30,7 @@ import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveDashboard
  */
 export type EditableDashboardProps = {
