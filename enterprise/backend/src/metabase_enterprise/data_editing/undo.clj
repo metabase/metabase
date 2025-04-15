@@ -67,11 +67,11 @@
                   :batch_num [:> batch_num]
                   :undone true))))
 
-(defn has-undo?
-  "Return whether we have any saved modifications to (un-)revert.
+(defn next-batch-num
+  "Return the batch number of the new change that we would (un-)revert.
   NOTE: this does not check whether there is a conflict preventing us from actually performing it."
   [undo? user-id table-id]
-  (boolean (seq (next-batch undo? user-id table-id))))
+  (:batch_num (first (next-batch undo? user-id table-id))))
 
 ;; This will be used to fix conflict false positives
 #_{:clj-kondo/ignore [:unused-private-var]}

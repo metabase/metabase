@@ -21,6 +21,10 @@
   color: var(--mb-color-text-secondary);
 }
 
+.gridFooterDashcardVisualization {
+  border-top: 1px solid var(--mb-color-border);
+}
+
 /** DataGrid overrides */
 
 .tableRow {
@@ -61,4 +65,9 @@
   display: flex;
   align-items: center;
   padding: 0 0.75rem;
+}
+
+.sortIndicator {
+  flex-shrink: 0;
+  margin-left: 0.25rem;
 }

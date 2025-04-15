@@ -2,23 +2,21 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import {
-  fetchCardData,
-  showConfigureEditableTableSidebar,
-} from "metabase/dashboard/actions";
-import { DashCardActionButton } from "metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionButton";
-import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_DATA_EDITING } from "metabase/plugins";
-import { Flex, Icon, Title } from "metabase/ui";
+import { Flex, Title } from "metabase/ui";
 import LoadingView from "metabase/visualizations/components/Visualization/LoadingView";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import type { Card, DashboardCard, DatasetData } from "metabase-types/api";
+import Question from "metabase-lib/v1/Question";
+import type { Card, DatasetData } from "metabase-types/api";
 
-import { mergeSettings } from "../lib/settings/typed-utils";
+import { mergeSettings } from "../../lib/settings/typed-utils";
+
+import { TableEditableConfigureActionButton } from "./TableEditableConfigureActionButton";
 
 interface EditableTableState {
   data: DatasetData | null;
   card: Card | null;
+  question: Question | null;
 }
 
 const EditTableDashcardVisualization = PLUGIN_DATA_EDITING.CARD_TABLE_COMPONENT;
@@ -34,8 +32,10 @@ export class TableEditable extends Component<
   static disableClickBehavior = true;
   static supportsSeries = false;
   static disableReplaceCard = true;
+  static disableSettingsConfig = true;
+  static disableNavigateToNewCardFromDashboard = true;
 
-  static additionalDashcardActionButtons = [ActionButtonConfigureEditableTable];
+  static additionalDashcardActionButtons = [TableEditableConfigureActionButton];
 
   static isSensible() {
     return false;
@@ -53,6 +53,7 @@ export class TableEditable extends Component<
   state: EditableTableState = {
     data: null,
     card: null,
+    question: null,
   };
 
   UNSAFE_componentWillMount() {
@@ -66,31 +67,21 @@ export class TableEditable extends Component<
   }
 
   _updateState({ series }: VisualizationProps) {
+    const { metadata } = this.props;
     const [{ card, data }] = series;
-    // construct a Question that is in-sync with query results
+
+    const question = new Question(card, metadata);
 
     this.setState({
       data,
       card,
+      question,
     });
   }
 
-  handleCardDataRefresh = () => {
-    const { dispatch, dashcard } = this.props;
-    const { card } = this.state;
-
-    if (!card || !dashcard) {
-      return null;
-    }
-
-    return dispatch(
-      fetchCardData(card, dashcard, { ignoreCache: true, reload: true }),
-    );
-  };
-
   render() {
     const { dashcard, className, metadata } = this.props;
-    const { data, card } = this.state;
+    const { data, card, question } = this.state;
 
     if (card?.visualization_settings?.table_id && !data && dashcard?.isAdded) {
       // use case for just added and not yet saved table card
@@ -111,7 +102,7 @@ export class TableEditable extends Component<
       );
     }
 
-    if (!card || !card.table_id || !dashcard) {
+    if (!card || !card.table_id || !dashcard || !question) {
       return null;
     }
 
@@ -124,6 +115,22 @@ export class TableEditable extends Component<
       dashcard.visualization_settings,
     );
 
+    // This is a potential bottleneck, however there's no straightforward optimization inside a class component
+    // However based on props and state configuration it shouldn't be a problem for now
+    const hasVisibleColumns =
+      !visualizationSettings?.["table.columns"] ||
+      visualizationSettings?.["table.columns"].some((column) => column.enabled);
+
+    if (!hasVisibleColumns) {
+      return (
+        <Flex align="center" justify="center" h="100%">
+          <Title p="md" order={2}>
+            {t`No results!`}
+          </Title>
+        </Flex>
+      );
+    }
+
     return (
       <EditTableDashcardVisualization
         dashcardId={dashcard.id}
@@ -131,34 +138,9 @@ export class TableEditable extends Component<
         className={className}
         data={data}
         tableId={card.table_id}
-        refetchTableDataQuery={this.handleCardDataRefresh}
         visualizationSettings={visualizationSettings}
+        question={question}
       />
     );
   }
-}
-
-type ActionButtonConfigureEditableTableProps = {
-  dashcard?: DashboardCard;
-};
-
-function ActionButtonConfigureEditableTable({
-  dashcard,
-}: ActionButtonConfigureEditableTableProps) {
-  const dispatch = useDispatch();
-
-  if (!dashcard) {
-    return null;
-  }
-
-  return (
-    <DashCardActionButton
-      key="configure-editable-table"
-      aria-label={t`Configure`}
-      tooltip={t`Configure`}
-      onClick={() => dispatch(showConfigureEditableTableSidebar(dashcard.id))}
-    >
-      <Icon name="gear" />
-    </DashCardActionButton>
-  );
 }

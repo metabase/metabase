@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
+   [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -15,10 +16,11 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.upload :as-alias upload]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [nano-id.core :as nano-id]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -91,11 +93,11 @@
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
   (let [rows'      (data-editing/apply-coercions table-id rows)
-        res        (data-editing/insert! table-id rows')
+        res        (data-editing/insert! api/*current-user-id* table-id rows')
         pk-field   (table-id->pk table-id)
-         ;; actions code does not return coerced values
-         ;; right now the FE works off qp outputs, which coerce output row data
-         ;; still feels messy, revisit this
+        ;; actions code does not return coerced values
+        ;; right now the FE works off qp outputs, which coerce output row data
+        ;; still feels messy, revisit this
         id->db-row (query-db-rows table-id pk-field (map #(update-keys % keyword) (:created-rows res)))]
     (invalidate-field-values! table-id rows')
     {:created-rows (vals id->db-row)}))
@@ -111,7 +113,10 @@
     (let [rows'        (data-editing/apply-coercions table-id rows)
           pk-field     (table-id->pk table-id)
           id->db-row   (query-db-rows table-id pk-field rows')
-          updated-rows (volatile! [])]
+          updated-rows (volatile! [])
+          user-id      api/*current-user-id*]
+      ;; TODO this publishing needs to move down the stack and be generic all :row/delete invocations
+      ;; https://linear.app/metabase/issue/WRK-228/publish-events-when-modified-by-action-execution
       (doseq [row rows']
         (let [;; well, this is a trick, but I haven't figured out how to do single row update
               result     (:rows-updated (data-editing/perform-bulk-action! :bulk/update table-id [row]))
@@ -121,13 +126,22 @@
           (when (pos-int? result)
             (actions/publish-action-success!
              (nano-id/nano-id)
-             api/*current-user-id*
+             user-id
              :row/update
              {:table_id table-id
               :row row}
              {:after      after-row
               :before     row-before
               :raw_update row}))))
+      ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
+      (let [row-pk->old-new-values (->> (for [row rows']
+                                          ;; TODO fix for composite keys here too
+                                          (let [id  (get-row-pk pk-field row)
+                                                pks {(:name pk-field) id}]
+                                            [pks [(get id->db-row id)
+                                                  row]]))
+                                        (into {}))]
+        (undo/track-change! user-id {table-id row-pk->old-new-values}))
 
       (invalidate-field-values! table-id rows')
       {:updated @updated-rows})))
@@ -138,17 +152,30 @@
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
+  ;; TODO fix for composite keys here too
   (let [pk-field    (table-id->pk table-id)
         id->db-rows (query-db-rows table-id pk-field rows)
-        res         (data-editing/perform-bulk-action! :bulk/delete table-id rows)]
+        res         (data-editing/perform-bulk-action! :bulk/delete table-id rows)
+        user-id       api/*current-user-id*]
+    ;; TODO this publishing needs to move down the stack and be generic all :row/delete invocations
+    ;; https://linear.app/metabase/issue/WRK-228/publish-events-when-modified-by-action-execution
     (doseq [row rows]
       (actions/publish-action-success!
        (nano-id/nano-id)
-       api/*current-user-id*
+       user-id
        :row/delete
        {:table_id table-id
         :row      row}
+        ;; TODO fix for composite keys here too
        {:deleted_row (get id->db-rows (get-row-pk pk-field row))}))
+    ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
+    (let [row-pk->old-new-values (->> (for [row rows]
+                                        ;; TODO fix for composite keys here too
+                                        (let [id  (get-row-pk pk-field row)
+                                              pks {(:name pk-field) id}]
+                                          [pks [(get id->db-rows id) nil]]))
+                                      (into {}))]
+      (undo/track-change! user-id {table-id row-pk->old-new-values}))
     res))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
@@ -215,6 +242,58 @@
     (t2/insert! :table_webhook_token {:token token, :table_id table-id, :creator_id user-id})
     {:table_id table-id
      :token token}))
+
+(defn- translate-undo-error [e]
+  (case (:error (ex-data e))
+    :undo/none            (ex-info (tru "Nothing to do")                                         {:status-code 204} e)
+    :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.")                 {:status-code 405} e)
+    :undo/conflict        (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
+    e))
+
+(api.macros/defendpoint :post "/undo"
+  "Undo the last change you made.
+  For now only supports tables, but in future will support editables for sure.
+  Maybe actions, workflows, etc.
+  Could even generalize to things like edits to dashboard definitions themselves."
+  [_
+   _
+   {:keys [table-id no-op]}] :- [:map
+                                 [:table-id ms/PositiveInt]
+                                 [:no-op {:optional true} ms/BooleanValue]]
+  (check-permissions)
+  (api/check-404 (t2/select-one-pk :model/Table table-id))
+  (let [user-id api/*current-user-id*]
+    (if no-op
+      {:batch_num (undo/next-batch-num true user-id table-id)}
+      ;; IDEA encapsulate this in an action
+      ;; IDEA use generic action calling API instead of having this endpoint
+      (try
+        {:result (undo/undo! user-id table-id)}
+        (catch ExceptionInfo e
+          (throw (translate-undo-error e)))))))
+
+(api.macros/defendpoint :post "/redo"
+  "Redo the last change you made.
+  For now only supports tables, but in future will support editables for sure.
+  Maybe actions, workflows, etc.
+  Could even generalize to things like edits to dashboard definitions themselves."
+  [_
+   _
+   {:keys [table-id no-op]}] :- [:map
+                                 [:table-id ms/PositiveInt]
+                                 [:no-op {:optional true} ms/BooleanValue]]
+  (check-permissions)
+  (api/check-404 (t2/select-one :model/Table table-id))
+  (let [user-id api/*current-user-id*]
+    (if no-op
+      {:batch_num (undo/next-batch-num false user-id table-id)}
+      ;; IDEA encapsulate this in an action
+      ;; IDEA use generic action calling API instead of having this endpoint
+      ;; TODO translate errors to http codes
+      (try
+        {:result (undo/redo! user-id table-id)}
+        (catch ExceptionInfo e
+          (throw (translate-undo-error e)))))))
 
 (api.macros/defendpoint :delete "/webhook/:token"
   "Deletes a webhook endpoint token."

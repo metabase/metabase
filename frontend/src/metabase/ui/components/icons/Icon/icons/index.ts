@@ -117,6 +117,8 @@ import download_component from "./download.svg?component";
 import download_source from "./download.svg?source";
 import dyno_component from "./dyno.svg?component";
 import dyno_source from "./dyno.svg?source";
+import edit_disabled_component from "./edit_disabled.svg?component";
+import edit_disabled_source from "./edit_disabled.svg?source";
 import edit_document_component from "./edit_document.svg?component";
 import edit_document_source from "./edit_document.svg?source";
 import ellipsis_component from "./ellipsis.svg?component";
@@ -644,6 +646,10 @@ export const Icons = {
   dyno: {
     component: dyno_component,
     source: dyno_source,
+  },
+  edit_disabled: {
+    component: edit_disabled_component,
+    source: edit_disabled_source,
   },
   edit_document: {
     component: edit_document_component,

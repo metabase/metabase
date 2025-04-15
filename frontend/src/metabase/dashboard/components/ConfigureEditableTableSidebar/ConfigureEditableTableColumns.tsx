@@ -7,17 +7,30 @@ import {
   Sortable,
   SortableList,
 } from "metabase/core/components/Sortable";
-import { onUpdateDashCardVisualizationSettings } from "metabase/dashboard/actions";
+import {
+  onUpdateDashCardVisualizationSettings,
+  updateEditableTableCardQueryInEditMode,
+} from "metabase/dashboard/actions";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { ChartSettingActionIcon } from "metabase/visualizations/components/settings/ChartSettingActionIcon";
 import { ColumnItem } from "metabase/visualizations/components/settings/ColumnItem";
 import { mergeSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import type { OrderByDirection } from "metabase-lib";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type {
+  Card,
   DashboardCard,
+  DatasetColumn,
   Field,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+
+import { ColumnSortingActionMenu } from "./ColumnSortingActionMenu";
+import type { EditableTableColumnSettingItem } from "./types";
+import { useTableSorting } from "./use-table-sorting";
 
 type ConfigureEditableTableColumnsProps = {
   dashcard: DashboardCard;
@@ -30,8 +43,19 @@ export function ConfigureEditableTableColumns({
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
+  const metadata = useSelector(getMetadata);
 
-  const items = useEditableTableColumnSettingItems(dashcard);
+  const card = dashcard.card as Card; // this component is only used for editable table card, which is always a Card
+  const question = useMemo(() => {
+    return new Question(card, metadata);
+  }, [card, metadata]);
+
+  const { getColumnSortDirection } = useTableSorting({ question });
+
+  const items = useEditableTableColumnSettingItems(
+    dashcard,
+    getColumnSortDirection,
+  );
   const isDragDisabled = items.length < 1;
 
   const handleSortEnd = useCallback(
@@ -82,6 +106,48 @@ export function ConfigureEditableTableColumns({
     [dashcard.id, dispatch, items],
   );
 
+  const handleUpdateColumnSorting = useCallback(
+    (columnId: string, direction: OrderByDirection | null) => {
+      const query = question.query();
+      const stageIndex = -1;
+
+      const columns = card.result_metadata ?? [];
+      const columnOrField = columns.find((field) => field.name === columnId);
+
+      if (columnOrField) {
+        const column = Lib.findMatchingColumn(
+          query,
+          stageIndex,
+          Lib.fromLegacyColumn(query, stageIndex, columnOrField),
+          Lib.orderableColumns(query, stageIndex),
+        );
+
+        if (column != null) {
+          let newQuery = Lib.removeOrderBys(query, stageIndex);
+
+          if (direction !== null) {
+            // if direction is null, then we just remove sorting
+            newQuery = Lib.orderBy(newQuery, stageIndex, column, direction);
+          }
+
+          const legacyQuery = Lib.toLegacyQuery(newQuery);
+
+          dispatch(
+            updateEditableTableCardQueryInEditMode({
+              dashcardId: dashcard.id,
+              cardId: card.id,
+              newCard: {
+                ...card,
+                dataset_query: legacyQuery,
+              },
+            }),
+          );
+        }
+      }
+    },
+    [card, dashcard.id, dispatch, question],
+  );
+
   const renderItem = useCallback(
     ({
       item,
@@ -107,15 +173,26 @@ export function ConfigureEditableTableColumns({
           draggable={!isDragDisabled}
           icon={item.icon}
           additionalActions={
-            <ChartSettingActionIcon
-              icon={item.editable ? "pencil" : "line_style_solid"}
-              onClick={() => handleUpdateEditable(item.name, !item.editable)}
-            />
+            <>
+              <ColumnSortingActionMenu
+                columnSettings={item}
+                onSort={handleUpdateColumnSorting}
+              />
+              <ChartSettingActionIcon
+                icon={item.editable ? "pencil" : "edit_disabled"}
+                onClick={() => handleUpdateEditable(item.name, !item.editable)}
+              />
+            </>
           }
         />
       </Sortable>
     ),
-    [isDragDisabled, handleShowHide, handleUpdateEditable],
+    [
+      isDragDisabled,
+      handleUpdateColumnSorting,
+      handleShowHide,
+      handleUpdateEditable,
+    ],
   );
 
   return (
@@ -129,11 +206,12 @@ export function ConfigureEditableTableColumns({
   );
 }
 
-type EditableTableColumnSettingItem = ReturnType<
-  typeof useEditableTableColumnSettingItems
->[number];
-
-function useEditableTableColumnSettingItems(dashcard: DashboardCard) {
+function useEditableTableColumnSettingItems(
+  dashcard: DashboardCard,
+  getColumnSortDirection: (
+    columnOrField: DatasetColumn | Field,
+  ) => OrderByDirection | undefined,
+): EditableTableColumnSettingItem[] {
   return useMemo(() => {
     const fieldsWithRemmapedColumns = dashcard.card.result_metadata ?? [];
     const settings = mergeSettings(
@@ -181,7 +259,7 @@ function useEditableTableColumnSettingItems(dashcard: DashboardCard) {
       }
     }
 
-    // By default all columns are editable if no settings are provided
+    // By default, all columns are editable if no settings are provided
     // If settings are provided, we preserve them even if a new column is added
     const editableColumnSet = new Set(
       columnEditableSettings.length > 0
@@ -202,11 +280,8 @@ function useEditableTableColumnSettingItems(dashcard: DashboardCard) {
         icon: field.semantic_type
           ? FIELD_SEMANTIC_TYPES_MAP[field.semantic_type].icon
           : "string",
+        sortDirection: getColumnSortDirection(field),
       };
     });
-  }, [
-    dashcard.card.result_metadata,
-    dashcard.visualization_settings,
-    dashcard.card.visualization_settings,
-  ]);
+  }, [dashcard, getColumnSortDirection]);
 }

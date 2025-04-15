@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useFormik } from "formik";
-import { Fragment, useCallback, useEffect } from "react";
+import { Fragment, useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
@@ -26,6 +26,7 @@ import type {
 
 import type { UpdatedRowCellsHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
+import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
 import { DeleteRowConfirmationModal } from "./DeleteRowConfirmationModal";
 import S from "./EditingBaseRowModal.module.css";
@@ -42,6 +43,7 @@ interface EditingBaseRowModalProps {
   currentRowData?: RowValues;
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
   isLoading?: boolean;
+  columnsConfig?: EditableTableColumnConfig;
 }
 
 type EditingFormValues = Record<string, RowValue>;
@@ -57,6 +59,7 @@ export function EditingBaseRowModal({
   currentRowData,
   fieldMetadataMap,
   isLoading,
+  columnsConfig,
 }: EditingBaseRowModalProps) {
   const isEditingMode = !!currentRowData;
 
@@ -125,6 +128,44 @@ export function EditingBaseRowModal({
     }
   }, [currentRowIndex, closeDeletionModal, onRowDelete]);
 
+  const disabledColumnNames = useMemo(() => {
+    if (!columnsConfig) {
+      return undefined;
+    }
+
+    return new Set(
+      columnsConfig.filter((it) => !it.editable).map(({ name }) => name),
+    );
+  }, [columnsConfig]);
+
+  // Columns might be reordered to match the order in `columnsConfig`
+  const orderedDatasetColumns = useMemo(() => {
+    if (!columnsConfig) {
+      return datasetColumns;
+    }
+
+    return columnsConfig
+      .filter((it) => it.enabled)
+      .map(({ name }) => datasetColumns.find((it) => it.name === name))
+      .filter((it): it is DatasetColumn => it !== undefined);
+  }, [columnsConfig, datasetColumns]);
+
+  // We can't use `currentRowData` in case
+  // when colums are reordered due to `columnsConfig`
+  const currentRowDataMap = useMemo(() => {
+    if (!currentRowData) {
+      return {};
+    }
+
+    return datasetColumns.reduce(
+      (acc, column, index) => ({
+        ...acc,
+        [column.name]: currentRowData[index],
+      }),
+      {} as Record<string, RowValue>,
+    );
+  }, [currentRowData, datasetColumns]);
+
   if (isDeleteRequested) {
     return (
       <DeleteRowConfirmationModal
@@ -162,7 +203,7 @@ export function EditingBaseRowModal({
             py="lg"
             className={cx(S.modalBody, { [S.modalBodyEditing]: isEditingMode })}
           >
-            {datasetColumns.map((column, index) => {
+            {orderedDatasetColumns.map((column) => {
               const field = fieldMetadataMap?.[column.name];
 
               return (
@@ -180,12 +221,13 @@ export function EditingBaseRowModal({
                   </Text>
                   <ModalEditingInput
                     isEditingMode={isEditingMode}
-                    initialValue={currentRowData ? currentRowData[index] : null}
+                    initialValue={currentRowDataMap[column.name] ?? null}
                     datasetColumn={column}
                     field={field}
                     onSubmitValue={handleValueEdit}
                     onChangeValue={setFieldValue}
                     error={!isEditingMode && !!errors[column.name]}
+                    disabled={disabledColumnNames?.has(column.name)}
                   />
                 </Fragment>
               );
@@ -217,6 +259,7 @@ type EditingInputWithEventsProps = {
   onSubmitValue: (key: string, value: RowValue) => void;
   onChangeValue: (key: string, value: RowValue) => void;
   error?: boolean;
+  disabled?: boolean;
 };
 function ModalEditingInput({
   isEditingMode,
@@ -226,6 +269,7 @@ function ModalEditingInput({
   onSubmitValue,
   onChangeValue,
   error,
+  disabled,
 }: EditingInputWithEventsProps) {
   // The difference is that in editing mode we handle change only when value is ready (e.g. on blur)
   // whereas in creating mode we handle change immediately to update the form state
@@ -256,7 +300,7 @@ function ModalEditingInput({
       onCancel={noop}
       onSubmit={handleValueSubmit}
       onChangeValue={handleValueChange}
-      inputProps={{ error }}
+      inputProps={{ error, disabled }}
     />
   );
 }

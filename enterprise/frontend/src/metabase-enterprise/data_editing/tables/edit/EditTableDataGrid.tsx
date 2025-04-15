@@ -9,8 +9,10 @@ import {
   useDataGridInstance,
 } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting/value";
-import { Box } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
+import type { OrderByDirection } from "metabase-lib";
 import type {
+  DatasetColumn,
   DatasetData,
   FieldWithMetadata,
   RowValue,
@@ -31,6 +33,9 @@ type EditTableDataGridProps = {
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onRowExpandClick: (rowIndex: number) => void;
   columnsConfig?: EditableTableColumnConfig;
+  getColumnSortDirection?: (
+    column: DatasetColumn,
+  ) => OrderByDirection | undefined;
 };
 
 export const EditTableDataGrid = ({
@@ -39,6 +44,7 @@ export const EditTableDataGrid = ({
   onCellValueUpdate,
   onRowExpandClick,
   columnsConfig,
+  getColumnSortDirection,
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
 
@@ -53,20 +59,45 @@ export const EditTableDataGrid = ({
     [cols, columnsConfig],
   );
 
+  const columnVisibility = useMemo(
+    () =>
+      columnsConfig
+        ? columnsConfig.reduce(
+            (acc, { name, enabled }) => ({
+              ...acc,
+              [name]: enabled,
+            }),
+            {},
+          )
+        : undefined,
+    [columnsConfig],
+  );
+
   const columnSizingMap = useMemo(() => ({}), []);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((column, columnIndex) => {
+      const sortDirection = getColumnSortDirection?.(column);
+
       const options: ColumnOptions<RowValues, RowValue> = {
         id: column.name,
         name: column.display_name,
         accessorFn: (row: RowValues) => row[columnIndex],
         formatter: (value) => formatValue(value, { column }),
         wrap: false,
+        sortDirection,
         header: function EditingHeader() {
           return (
             <Box className={S.headerCellContainer}>
               <Ellipsified>{column.display_name}</Ellipsified>
+              {sortDirection != null ? (
+                <Icon
+                  className={S.sortIndicator}
+                  data-testid="header-sort-indicator"
+                  name={sortDirection === "asc" ? "chevronup" : "chevrondown"}
+                  size={10}
+                />
+              ) : null}
             </Box>
           );
         },
@@ -86,10 +117,11 @@ export const EditTableDataGrid = ({
     });
   }, [
     cols,
+    getColumnSortDirection,
     fieldMetadataMap,
-    editingCellId,
-    onCellEditCancel,
     onCellValueUpdate,
+    onCellEditCancel,
+    editingCellId,
   ]);
 
   const rowId: RowIdColumnOptions = useMemo(
@@ -106,6 +138,7 @@ export const EditTableDataGrid = ({
     columnOrder,
     columnSizingMap,
     columnsOptions,
+    columnVisibility,
   });
 
   // Optional

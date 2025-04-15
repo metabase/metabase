@@ -8,6 +8,7 @@ import type {
   RowData,
   SortingState,
   Table,
+  VisibilityState,
 } from "@tanstack/react-table";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import type React from "react";
@@ -157,6 +158,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
 
   /** Width of each column by ID */
   columnSizingMap?: ColumnSizingState;
+
+  /** Visibility state of columns */
+  columnVisibility?: VisibilityState;
 
   /** Array of column sorting options */
   sorting?: SortingState;

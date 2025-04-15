@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import type React from "react";
 import type {
   ComponentType,
@@ -631,15 +632,15 @@ export const PLUGIN_DATA_EDITING = {
       dbId: string;
       tableId: string;
     };
+    location: Location<{ filter?: string }>;
   }>,
-  // TODO [WRK]: add placeholder component
   CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
     dashcardId: number;
     cardId: number;
     data: DatasetData;
     tableId: ConcreteTableId;
     className?: string;
-    refetchTableDataQuery: () => void;
     visualizationSettings?: VisualizationSettings;
+    question: Question;
   }>,
 };

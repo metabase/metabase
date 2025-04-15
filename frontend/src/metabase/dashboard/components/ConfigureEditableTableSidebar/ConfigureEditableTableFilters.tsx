@@ -1,11 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 
-import { datasetApi } from "metabase/api";
-import {
-  setDashCardAttributes,
-  setEditingDashcardData,
-} from "metabase/dashboard/actions";
+import { updateEditableTableCardQueryInEditMode } from "metabase/dashboard/actions";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { FilterPanelPopover } from "metabase/querying/filters/components/FilterPanel/FilterPanelPopover";
@@ -26,9 +22,8 @@ export function ConfigureEditableTableFilters({
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
-  const card = dashcard.card;
+  const card = dashcard.card as Card; // this component is only used for editable table card, which is always a Card
 
-  // TODO: check just added card
   const query = useMemo(() => {
     const question = isQuestionCard(card) ? new Question(card, metadata) : null;
 
@@ -43,33 +38,21 @@ export function ConfigureEditableTableFilters({
   const handleQueryChange = async (newQuery: Lib.Query) => {
     const legacyQuery = Lib.toLegacyQuery(newQuery);
 
-    // set data override to null to show loading state
-    dispatch(setEditingDashcardData(dashcard.id, card.id, null));
+    const cardId = card.id;
 
-    // NOTE: we cannot do data loading inside an action, as we don't support ad-hoc queries as a dashcard
-    const action = dispatch(
-      // TODO: set "dashboard" context for api request ?
-      datasetApi.endpoints.getAdhocQuery.initiate(legacyQuery),
-    );
-    const cardData = await action.unwrap();
-
-    const newCard: Card = {
-      ...card,
-      dataset_query: legacyQuery,
-
-      // @ts-expect-error - we don't have a type for Store card with additional state
-      isDirty: true,
-    };
-
-    dispatch(
-      setDashCardAttributes({
-        id: dashcard.id,
-        attributes: {
-          card: newCard,
-        },
-      }),
-    );
-    dispatch(setEditingDashcardData(dashcard.id, card.id, cardData));
+    if (cardId) {
+      dispatch(
+        updateEditableTableCardQueryInEditMode({
+          dashcardId: dashcard.id,
+          cardId: cardId,
+          newCard: {
+            ...card,
+            id: cardId,
+            dataset_query: legacyQuery,
+          },
+        }),
+      );
+    }
   };
 
   if (!query) {

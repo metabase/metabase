@@ -1,7 +1,8 @@
 (ns metabase-enterprise.data-editing.api-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase-enterprise.data-editing.api]
+   [metabase-enterprise.data-editing.api :as data-editing.api]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -26,7 +27,7 @@
 
 (use-fixtures :each
   (fn [f]
-    (mt/with-dynamic-fn-redefs [metabase-enterprise.data-editing.api/require-authz? (constantly true)]
+    (mt/with-dynamic-fn-redefs [data-editing.api/require-authz? (constantly true)]
       (f))))
 
 (deftest feature-flag-required-test
@@ -38,7 +39,7 @@
 
 (deftest table-operations-test
   (mt/with-premium-features #{:table-data-editing}
-    (mt/with-empty-h2-app-db
+    (mt/test-drivers #{:h2 :postgres}
       (with-open [table-ref (data-editing.tu/open-test-table!)]
         (let [table-id @table-ref
               url      (data-editing.tu/table-url table-id)]
@@ -61,16 +62,18 @@
                    (table-rows table-id))))
 
           (testing "PUT should update the relevant rows and columns"
-            (is (= {:updated [{:id 1, :name "Pidgey", :song "Join us now and share the software"}
-                              {:id 2, :name "Speacolumn", :song "Hold music"}]}
-                   (mt/user-http-request :crowberto :put 200 url
-                                         {:rows [{:id 1 :song "Join us now and share the software"}
-                                                 {:id 2 :name "Speacolumn"}]})))
+            (is (= #{{:id 1, :name "Pidgey", :song "Join us now and share the software"}
+                     {:id 2, :name "Speacolumn", :song "Hold music"}}
+                   (set
+                    (:updated
+                     (mt/user-http-request :crowberto :put 200 url
+                                           {:rows [{:id 1 :song "Join us now and share the software"}
+                                                   {:id 2 :name "Speacolumn"}]})))))
 
-            (is (= [[1 "Pidgey" "Join us now and share the software"]
-                    [2 "Speacolumn" "Hold music"]
-                    [3 "Farfetch'd" "The land of lisp"]]
-                   (table-rows table-id))))
+            (is (= #{[1 "Pidgey" "Join us now and share the software"]
+                     [2 "Speacolumn" "Hold music"]
+                     [3 "Farfetch'd" "The land of lisp"]}
+                   (set (table-rows table-id)))))
 
           (testing "DELETE should remove the corresponding rows"
             (is (= {:success true}
@@ -82,7 +85,7 @@
 
 (deftest editing-allowed-test
   (mt/with-premium-features #{:table-data-editing}
-    (mt/with-empty-h2-app-db
+    (mt/test-drivers #{:h2 :postgres}
       (testing "40x returned if user/database not configured for editing"
         (let [test-endpoints
               (fn [flags]
@@ -93,7 +96,7 @@
                         url             (data-editing.tu/table-url @table-ref)
                         settings        {:database-enable-table-editing (boolean editing-enabled)
                                          :database-enable-actions       (boolean actions-enabled)}
-                        _               (t2/update! :model/Database (mt/id) {:settings settings})
+                        _               (data-editing.tu/alter-appdb-settings! merge settings)
                         user            (if superuser :crowberto :rasta)
                         req             mt/user-http-request-full-response
 
@@ -117,10 +120,10 @@
                   :ok
                   [(:message body body) status]))
 
-              ;; Shorthand config notation
-              ;; :a == action-editing should not affect result
-              ;; :d == data-editing   only allowed to edit if editing enabled
-              ;; :s == super-user     only allowed to edit if a superuser
+             ;; Shorthand config notation
+             ;; :a == action-editing should not affect result
+             ;; :d == data-editing   only allowed to edit if editing enabled
+             ;; :s == super-user     only allowed to edit if a superuser
               tests
               [#{:a}       ["You don't have permissions to do that." 403]
                #{:d}       ["You don't have permissions to do that." 403]
@@ -137,18 +140,17 @@
 
 (deftest create-table-test
   (mt/with-premium-features #{:table-data-editing}
-    (mt/with-empty-h2-app-db
+    (mt/test-drivers #{:h2 :postgres}
       (let [run-example
             (fn [flags req-body]
               (let [{table-name-prefix :name} req-body
                     table-name      (str table-name-prefix "_" (System/currentTimeMillis))
                     req-body'       (u/update-if-exists req-body :name (constantly table-name))
-                    driver          :h2
                     db-id           (mt/id)
+                    driver          driver/*driver*
                     editing-enabled (:d flags)
                     superuser       (:s flags)
-                    settings        {:database-enable-table-editing (boolean editing-enabled)}
-                    _               (t2/update! :model/Database (mt/id) {:settings settings})
+                    _               (data-editing.tu/toggle-data-editing-enabled! editing-enabled)
                     user            (if superuser :crowberto :rasta)
                     url             (format "ee/data-editing/database/%d/table" db-id)
                     res             (delay (mt/user-http-request-full-response user :post url req-body'))
@@ -187,7 +189,7 @@
           {:name "a"
            :columns [{:name "id", :type "int"}]
            :primary_key ["id"]}
-          ;; =>
+           ;; =>
           {:status 200
            :name "a"
            :fields [{:name "id"
@@ -197,10 +199,10 @@
           {:name "a"
            :columns [{:name "id", :type "not-a-type"}]
            :primary_key ["id"]}
-          ;; =>
+         ;; =>
           400
 
-          ;; escaped quotes are not allowed for now
+         ;; escaped quotes are not allowed for now
           #{:s :d}
           {:name "a\""
            :columns [{:name "id", :type "int"}]
@@ -212,34 +214,53 @@
            :primary_key ["id"]}
           400
 
-          ;; underscores, dashes, spaces allowed
+         ;; underscores, dashes, spaces allowed
           #{:s :d}
           {:name "a_b1 -"
            :columns [{:name "id", :type "int"}]
            :primary_key ["id"]}
-          ;; =>
+         ;; =>
           {:status 200
            :name "a_b1 -"
            :fields [{:name "id"
                      :base-type :type/BigInteger}]}
 
-          ;; if not admin, denied
+         ;; if not admin, denied
           #{:d}
           {:name        "a"
            :columns     [{:name "id", :type "int"}]
            :primary_key ["id"]}
           403
 
-          ;; data editing disabled, denied
+         ;; data editing disabled, denied
           #{:s}
           {:name        "a"
            :columns     [{:name "id", :type "int"}]
            :primary_key ["id"]}
           400)))))
 
+(deftest create-table-auto-inc-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/toggle-data-editing-enabled! true)
+      (let [db-id      (mt/id)
+            url        (format "ee/data-editing/database/%d/table" db-id)
+            user       :crowberto
+            table-name (str "test_table_" (System/currentTimeMillis))
+            req-body   {:name table-name
+                        :columns [{:name "id", :type "auto_incrementing_int_pk"}
+                                  {:name "n",  :type "int"}]
+                        :primary_key ["id"]}
+            _          (mt/user-http-request user :post 200 url req-body)
+            db         (t2/select-one :model/Database db-id)
+            table-id   (data-editing.tu/sync-new-table! db table-name)
+            create!    #(mt/user-http-request user :post 200 (table-url table-id) {:rows %})]
+        (create! [{:n 1} {:n 2}])
+        (is (= [[1 1] [2 2]] (table-rows table-id)))))))
+
 (deftest coercion-test
   (mt/with-premium-features #{:table-data-editing}
-    (mt/with-empty-h2-app-db
+    (mt/test-drivers #{:h2 :postgres}
       (data-editing.tu/toggle-data-editing-enabled! true)
       (let [user :crowberto
             req mt/user-http-request
@@ -249,11 +270,18 @@
             update!
             #(req user :put (data-editing.tu/table-url %1) {:rows %2})
 
-            lossy?
+            always-lossy
             #{:Coercion/UNIXNanoSeconds->DateTime
               :Coercion/UNIXMicroSeconds->DateTime
               :Coercion/ISO8601->Date
               :Coercion/ISO8601->Time}
+
+            driver-lossy
+            (case driver/*driver*
+              :postgres #{:Coercion/UNIXMilliSeconds->DateTime}
+              #{})
+
+            lossy? (set/union always-lossy driver-lossy)
 
             do-test
             (fn [t coercion-strategy input expected]
@@ -262,11 +290,12 @@
                                    {:id 'auto-inc-type
                                     :o  [t :null]}
                                    {:primary-key [:id]})]
-                  (let [table-id @table
+                  (let [table-id      @table
                         table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] table-id)
-                        field-id (t2/select-one-fn :id [:model/Field :id] :table_id table-id :name "o")
-                        get-qp-state (fn [] (map #(zipmap [:id :o] %) (table-rows table-id)))
-                        get-db-state (fn [] (sql-jdbc/query :h2 (mt/id) {:select [:*] :from [table-name-kw]}))]
+                        field-id      (t2/select-one-fn :id [:model/Field :id] :table_id table-id :name "o")
+                        driver        driver/*driver*
+                        get-qp-state  (fn [] (map #(zipmap [:id :o] %) (table-rows table-id)))
+                        get-db-state  (fn [] (sql-jdbc/query driver (mt/id) {:select [:*] :from [table-name-kw]}))]
                     (t2/update! :model/Field field-id {:coercion_strategy coercion-strategy})
                     (testing "create"
                       (let [row {:o input}
@@ -289,32 +318,32 @@
                           (is (= input (:o qp-row))))
                         (is (= expected (:o (first (get-db-state)))))))))))]
 
-        ;;    type     coercion                                     input                          database
+       ;;    type     coercion                                     input                          database
         (->> [:text    nil                                          "a"                            "a"
               :text    :Coercion/YYYYMMDDHHMMSSString->Temporal     "2025-03-25T14:34:00Z"         "20250325143400"
               :text    :Coercion/ISO8601->DateTime                  "2025-03-25T14:34:42.314Z"     "2025-03-25T14:34:42.314Z"
               :text    :Coercion/ISO8601->Date                      "2025-03-25T00:00:00Z"         "2025-03-25"
               :text    :Coercion/ISO8601->Time                      "1999-04-05T14:34:42Z"         "14:34:42"
 
-              ;; note fractional seconds in input, remains undefined for Seconds
+             ;; note fractional seconds in input, remains undefined for Seconds
               :int     :Coercion/UNIXSeconds->DateTime              "2025-03-25T14:34:42Z"         (quot (inst-ms #inst "2025-03-25T14:34:42Z") 1000)
               :bigint  :Coercion/UNIXMilliSeconds->DateTime         "2025-03-25T14:34:42.314Z"     (inst-ms #inst "2025-03-25T14:34:42.314Z")
 
-              ;; note fractional secs beyond millis are discarded   (lossy)
+             ;; note fractional secs beyond millis are discarded   (lossy)
               :bigint  :Coercion/UNIXMicroSeconds->DateTime         "2025-03-25T14:34:42.314121Z"  (* (inst-ms #inst "2025-03-25T14:34:42.314Z") 1000)
               :bigint  :Coercion/UNIXNanoSeconds->DateTime          "2025-03-25T14:34:42.3141212Z" (* (inst-ms #inst "2025-03-25T14:34:42.314Z") 1000000)
 
-              ;; nil safe
+             ;; nil safe
               :text    :Coercion/YYYYMMDDHHMMSSString->Temporal     nil                            nil
 
-              ;; seconds component does not work properly here, lost by qp output, bug in existing code?
+             ;; seconds component does not work properly here, lost by qp output, bug in existing code?
               #_#_#_#_:text :Coercion/YYYYMMDDHHMMSSString->Temporal     "2025-03-25T14:34:42Z"     "20250325143442"]
              (partition 4)
              (run! #(apply do-test %)))))))
 
 (deftest webhook-creation-test
   (mt/with-premium-features #{:table-data-editing}
-    (mt/with-empty-h2-app-db
+    (mt/test-drivers #{:h2 :postgres}
       (with-open [test-table (data-editing.tu/open-test-table!)]
         (let [url            "ee/data-editing/webhook"
               req            #(mt/user-http-request-full-response %1 :post url %2)
@@ -336,7 +365,7 @@
 
 (deftest webhook-list-test
   (mt/with-premium-features #{:table-data-editing}
-    (mt/with-empty-h2-app-db
+    (mt/test-drivers #{:h2 :postgres}
       (with-open [test-table1 (data-editing.tu/open-test-table!)
                   test-table2 (data-editing.tu/open-test-table!)]
         (let [url            "ee/data-editing/webhook"
@@ -367,7 +396,7 @@
 
 (deftest webhook-delete-test
   (mt/with-premium-features #{:table-data-editing}
-    (mt/with-empty-h2-app-db
+    (mt/test-drivers #{:h2 :postgres}
       (with-open [test-table (data-editing.tu/open-test-table!)]
         (let [url            #(format "ee/data-editing/webhook/%s" %)
               req            #(mt/user-http-request-full-response %1 :delete (url %2) {})
@@ -393,7 +422,7 @@
 
 (deftest webhook-ingest-test
   (mt/with-premium-features #{:table-data-editing}
-    (mt/with-empty-h2-app-db
+    (mt/test-drivers #{:h2 :postgres}
       (data-editing.tu/toggle-data-editing-enabled! true)
       (with-open [test-table (data-editing.tu/open-test-table!
                               {:id [:int]
@@ -457,7 +486,7 @@
 
 (deftest field-values-invalidated-test
   (mt/with-premium-features #{:table-data-editing}
-    (mt/with-empty-h2-app-db
+    (mt/test-drivers #{:h2 :postgres}
       (data-editing.tu/toggle-data-editing-enabled! true)
       (with-open [table (data-editing.tu/open-test-table! {:id 'auto-inc-type, :n [:text]} {:primary-key [:id]})]
         (let [table-id     @table

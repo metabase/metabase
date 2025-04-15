@@ -47,17 +47,30 @@
   "Inserts rows into the table, recording their creation as an event. Returns the inserted records.
   Expects rows that are acceptable directly by [[actions/perform-action!]]. If casts or reversing coercion strategy
   are required, that work must be done before calling this function."
-  [table-id rows]
-  (let [res (perform-bulk-action! :bulk/create table-id rows)]
-    (when-some [user-id api/*current-user-id*]
-      (doseq [row (:created-rows res)]
-        (actions/publish-action-success!
-         (nano-id/nano-id)
-         user-id
-         :row/create
-         {:table_id table-id
-          :row      row}
-         {:created_row row})))
+  [user-id table-id rows]
+  ;; TODO make sure we're always passed a user, and remove this fallback
+  ;;      hard to make a business case for anonymous lemur's inserting data
+  (let [user-id (or user-id (t2/select-one-pk :model/User :is_superuser true))
+        res (perform-bulk-action! :bulk/create table-id rows)]
+    ;; TODO this publishing needs to move down the stack and be generic all :row/delete invocations
+    ;; https://linear.app/metabase/issue/WRK-228/publish-events-when-modified-by-action-execution
+    (doseq [row (:created-rows res)]
+      (actions/publish-action-success!
+       (nano-id/nano-id)
+       user-id
+       :row/create
+       {:table_id table-id
+        :row      row}
+       {:created_row row}))
+    ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
+    (let [pk-cols (t2/select-fn-vec :name [:model/Field :name] :table_id table-id :semantic_type :type/PK)
+          row-pk->old-new-values (->> (for [row (:created-rows res)]
+                                        (let [pks (zipmap pk-cols (map row pk-cols))]
+                                          [pks [nil row]]))
+                                      (into {}))]
+      ;; TODO Circular reference will be fixed when we remove the hacks from this method.
+      ;;      We'll actually delete this whole method, it'll just become an :editable/insert action invocation.
+      ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!) user-id {table-id row-pk->old-new-values}))
     res))
 
 (comment
