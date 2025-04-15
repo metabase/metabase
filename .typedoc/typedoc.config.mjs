@@ -3,12 +3,15 @@ const EMBEDDING_SDK_DOCS_MAIN_PAGE_URL =
 
 /** @type {Partial<import("typedoc").TypeDocOptions>} */
 const config = {
-  name: "Embedding SDK API",
+  name: "Embedded analytics SDK API",
   tsconfig: "./tsconfig.sdk-docs.json",
   plugin: [
     "typedoc-plugin-missing-exports",
     "typedoc-plugin-mdn-links",
+    "typedoc-plugin-dt-links",
+    "typedoc-plugin-redirect",
     "./typedoc-plugin-frontmatter.js",
+    "./typedoc-plugin-replace-text.js",
   ],
   entryPoints: ["../resources/embedding-sdk/dist/index.d.ts"],
   router: "structure",
@@ -25,6 +28,7 @@ const config = {
         collapseInternalModule: true,
         visibilityFilters: {},
         frontmatterGlobals: {
+          title: "Embedded analytics SDK documentation",
           layout: "docs-api",
         },
         pretty: true,
@@ -36,6 +40,9 @@ const config = {
       },
     },
   ],
+  redirects: {
+    "internal.html": "index.html",
+  },
   defaultCategory: "other",
   kindSortOrder: [
     "Reference",
@@ -86,7 +93,6 @@ const config = {
     "SetSignature",
     "Reference",
   ],
-  treatWarningsAsErrors: true,
   disableSources: true,
   includeHierarchySummary: false,
   navigation: {
@@ -96,6 +102,8 @@ const config = {
     compactFolders: true,
     excludeReferences: true,
   },
+  treatWarningsAsErrors: false,
+  treatValidationWarningsAsErrors: true,
   validation: {
     notExported: true,
     invalidLink: true,
@@ -114,6 +122,14 @@ const config = {
   },
   navigationLinks: {
     "Back to documentation": `javascript:navigateBack({ fallbackUrl: '${EMBEDDING_SDK_DOCS_MAIN_PAGE_URL}' })`,
+  },
+  replaceText: {
+    // To properly inject custom header tags
+    '<meta\\s+name="description"[^>]*>':
+      "{% include docs/embedded-analytics-sdk-metadata.html %}",
+    // For some reason typedoc updates data-refl value having the same visual output
+    // This data attribute is used for full hierarchy page, but we don't use it, it is disabled, so we can safely remove the attribute
+    ' data-refl="[^"]*"': "",
   },
 };
 

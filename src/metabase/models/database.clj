@@ -272,7 +272,9 @@
       (and (driver.impl/registered? driver)
            (map? (:details database))
            (not *normalizing-details*))
-      normalize-details)))
+      normalize-details
+
+      true serdes/add-entity-id)))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
@@ -361,6 +363,11 @@
 (defmethod serdes/hash-fields :model/Database
   [_database]
   [:name :engine])
+
+(defmethod serdes/hash-required-fields :model/Database
+  [_database]
+  {:model :model/Database
+   :required-fields [:name :engine]})
 
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]

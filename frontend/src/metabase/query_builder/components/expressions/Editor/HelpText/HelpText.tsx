@@ -22,7 +22,7 @@ import type { HelpText } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
-  HighlightExampleExpression,
+  HighlightExpressionParts,
   HighlightExpressionSource,
 } from "../../HighlightExpression";
 
@@ -187,7 +187,7 @@ export function HelpText({
           {example != null && (
             <>
               <Box className={S.title}>{t`Example`}</Box>
-              <HighlightExampleExpression
+              <HighlightExpressionParts
                 expression={example}
                 printWidth={50}
                 data-testid="helptext-example"
