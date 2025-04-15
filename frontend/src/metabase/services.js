@@ -134,8 +134,6 @@ export const CardApi = {
   query_pivot: POST("/api/card/pivot/:cardId/query"),
   // related
   compatibleCards: GET("/api/card/:cardId/series"),
-  parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
-  parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
 };
 
 export const DashboardApi = {
@@ -384,17 +382,11 @@ function setFieldEndpoints(prefix) {
 }
 
 function setCardEndpoints(prefix) {
-  // RTK query
   setFieldEndpoints(prefix);
-
-  // legacy API
-  CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
-    "cardId",
-  ]);
-  CardApi.parameterSearch = GET_with(
-    `${prefix}/params/:paramId/search/:query`,
-    ["cardId"],
-  );
+  PLUGIN_API.getCardParameterValuesUrl = (_cardId, parameterId) =>
+    `${prefix}/params/${encodeURIComponent(parameterId)}/values`;
+  PLUGIN_API.getSearchCardParameterValuesUrl = (_cardId, parameterId, query) =>
+    `${prefix}/params/${encodeURIComponent(parameterId)}/search/${encodeURIComponent(query)}`;
 }
 
 function setDashboardEndpoints(prefix) {

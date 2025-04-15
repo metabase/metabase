@@ -1,3 +1,4 @@
+import { PLUGIN_API } from "metabase/plugins";
 import type {
   Card,
   CardId,
@@ -94,7 +95,7 @@ export const cardApi = Api.injectEndpoints({
       >({
         query: ({ card_id, parameter_id }) => ({
           method: "GET",
-          url: `/api/card/${card_id}/params/${encodeURIComponent(parameter_id)}/values`,
+          url: PLUGIN_API.getCardParameterValuesUrl(card_id, parameter_id),
         }),
         providesTags: (_data, _error, { parameter_id }) =>
           provideParameterValuesTags(parameter_id),
@@ -105,7 +106,11 @@ export const cardApi = Api.injectEndpoints({
       >({
         query: ({ card_id, parameter_id, query }) => ({
           method: "GET",
-          url: `/api/card/${card_id}/params/${encodeURIComponent(parameter_id)}/search/${encodeURIComponent(query)}`,
+          url: PLUGIN_API.getSearchCardParameterValuesUrl(
+            card_id,
+            parameter_id,
+            query,
+          ),
         }),
         providesTags: (_data, _error, { parameter_id }) =>
           provideParameterValuesTags(parameter_id),

@@ -205,7 +205,7 @@ export const FieldValuesWidgetInner = forwardRef<
           await dispatchFetchDashboardParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
-      } else if (canUseCardEndpoints(question)) {
+      } else if (canUseCardEndpoints(question, parameter)) {
         const cardId = checkNotNull(question?.id());
         const parameterId = checkNotNull(parameter?.id);
         const { values, has_more_values } = query
