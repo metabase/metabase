@@ -9,6 +9,7 @@ import { ToolbarButton } from "../../util/ToolbarButton";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionQuestionSettingsDropdownProps = {

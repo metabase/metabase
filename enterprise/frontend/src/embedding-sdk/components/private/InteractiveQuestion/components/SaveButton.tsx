@@ -10,6 +10,7 @@ import { ToolbarButton } from "./util/ToolbarButton";
 
 /**
  * @category InteractiveQuestion
+ * @expand
  */
 export type InteractiveQuestionSaveButtonProps = {
   /**

@@ -41,6 +41,7 @@ import "metabase/css/index.module.css";
 import "metabase/css/vendor.css";
 
 /**
+ * @expand
  * @category MetabaseProvider
  */
 export interface MetabaseProviderProps
@@ -162,6 +163,7 @@ export const MetabaseProviderInternal = ({
 /**
  * A component that provides the Metabase SDK context and theme.
  *
+ * @function
  * @category MetabaseProvider
  */
 export const MetabaseProvider = memo(function MetabaseProvider(

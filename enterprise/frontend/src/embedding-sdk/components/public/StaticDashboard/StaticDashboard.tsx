@@ -24,6 +24,7 @@ import { Box } from "metabase/ui";
 
 /**
  * @interface
+ * @expand
  * @category StaticDashboard
  */
 export type StaticDashboardProps = SdkDashboardDisplayProps &

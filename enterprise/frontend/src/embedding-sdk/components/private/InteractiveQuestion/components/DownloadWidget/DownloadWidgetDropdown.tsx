@@ -5,6 +5,7 @@ import { useInteractiveQuestionContext } from "../../context";
 import { ToolbarButton } from "../util/ToolbarButton";
 
 /**
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionDownloadWidgetDropdownProps = PopoverProps;

@@ -55,6 +55,7 @@ const ENTITY_NAME_MAP: Partial<
 
 /**
  * @interface
+ * @expand
  * @category CollectionBrowser
  */
 export type CollectionBrowserProps = {

@@ -17,6 +17,7 @@ import { useInteractiveQuestionContext } from "../context";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionQuestionVisualizationProps = FlexibleSizeProps;
