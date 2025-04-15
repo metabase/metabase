@@ -276,10 +276,13 @@
              :as   _} (normalize-gdrive-conn hm-body)]
         (cond
           (= "error" status)
-          (do
+          (u/prog1 (assoc (setting->response saved-setting)
+                          :status "error"
+                          :error_message cannot-check-message
+                          :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
+                          :hm/response (loggable-response hm-response))
             (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
-            (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body))
-            (error-response-in-body (or (:error-detail hm-body) cannot-check-message) {:hm/response (loggable-response hm-response)}))
+            (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body)))
 
           (= "active" status)
           (assoc (setting->response saved-setting)
@@ -296,9 +299,12 @@
           :else (throw (ex-info "Unexpected status" {:status status}))))
       (if (empty? saved-setting)
         {:status "not-connected"}
-        (do
-          (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body))
-          (error-response-in-body cannot-check-message {:hm/response (loggable-response hm-response)}))))))
+        (u/prog1 (assoc (setting->response saved-setting)
+                        :status "error"
+                        :error_message cannot-check-message
+                        :hm/response (loggable-response hm-response))
+          (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
+          (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body)))))))
 
 (api.macros/defendpoint :get "/folder" :- :gsheets/response
   "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to

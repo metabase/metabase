@@ -40,6 +40,14 @@
       ;; time in seconds from epoch:
       [:next_sync_at pos-int?]
       [:created_by_id pos-int?]
+      [:db_id pos-int?]]]
+    ["error"
+     [:map
+      [:url ms/NonBlankString]
+      ;; time in seconds from epoch:
+      [:created_at pos-int?]
+      [:error_message ms/NonBlankString]
+      [:created_by_id pos-int?]
       [:db_id pos-int?]]]]])
 
 (mr/def :gsheets/setting

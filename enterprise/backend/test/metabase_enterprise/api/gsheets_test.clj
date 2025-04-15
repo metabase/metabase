@@ -113,9 +113,14 @@
   "80b0635a-f0d9-4103-9ac8-389df7fd250a")
 
 (def ^:private
-  gdrive-error-link
-  "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  gdrive-400-error-link
+  "A 400 response from HM. nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
   "93662bf7-b1c7-442b-80ec-18dee23894fa")
+
+(def ^:private
+  gdrive-200-error-link
+  "A 200 'error' response from HM. nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "e8653c8d-4d86-4ebc-92a3-0468252b9d07")
 
 (defmacro with-sample-db-as-dwh [& body]
   "We need an attached dwh for these tests, so let's have the sample db fill in for us:"
@@ -226,12 +231,18 @@
                   (is (nil? (:sync_started_at (gsheets))))
                   (is (nil? (:last_sync_at (gsheets))))
                   (is (nil? (:last_sync_at (gsheets)))))))))
-        (testing "when error response"
-          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-error-link)]
+        (testing "when 400 error response"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-400-error-link)]
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
-              (let [response (mt/user-http-request :crowberto :get 500 "ee/gsheets/folder")]
-                (is (partial= {:errors true, :message "Unable to check google drive connection"}
-                              response))))))))))
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")]
+                (is (partial= {:status "error", :url "test-url" :created_by_id 2} response))
+                (is (pos-int? (:db_id response)))))))
+        (testing "when 200 error response"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-200-error-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")]
+                (is (partial= {:status "error", :url "test-url" :created_by_id 2} response))
+                (is (pos-int? (:db_id response)))))))))))
 
 (deftest delete-folder-test
   (with-sample-db-as-dwh
