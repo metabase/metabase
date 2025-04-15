@@ -25,6 +25,7 @@ import {
   provideDashboardListTags,
   provideDashboardQueryMetadataTags,
   provideDashboardTags,
+  tag,
 } from "./tags";
 
 export const dashboardApi = Api.injectEndpoints({
@@ -109,7 +110,11 @@ export const dashboardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error, { id }) =>
-          invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
+          invalidateTags(error, [
+            listTag("dashboard"),
+            idTag("dashboard", id),
+            tag("parameter-values"),
+          ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
         query: (id) => ({
@@ -126,7 +131,10 @@ export const dashboardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error) =>
-          invalidateTags(error, [listTag("dashboard")]),
+          invalidateTags(error, [
+            listTag("dashboard"),
+            tag("parameter-values"),
+          ]),
       }),
       copyDashboard: builder.mutation<Dashboard, CopyDashboardRequest>({
         query: ({ id, ...body }) => ({

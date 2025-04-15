@@ -5,7 +5,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag } from "./tags";
+import { provideParameterValuesTags } from "./tags";
 
 export const parametersApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -18,9 +18,8 @@ export const parametersApi = Api.injectEndpoints({
         url: `/api/dataset/parameter/values`,
         params,
       }),
-      providesTags: (_values, _error, params) => [
-        idTag("parameter-values", params.parameter.id),
-      ],
+      providesTags: (_values, _error, { parameter }) =>
+        provideParameterValuesTags(parameter.id),
     }),
     searchParameterValues: builder.query<
       ParameterValues,

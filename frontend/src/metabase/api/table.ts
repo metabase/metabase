@@ -97,7 +97,7 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/rescan_values`,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("field-values")]),
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
     discardTableFieldValues: builder.mutation<void, TableId>({
       query: (id) => ({
@@ -105,7 +105,7 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/discard_values`,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("field-values")]),
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
   }),
 });

@@ -29,6 +29,7 @@ import {
   provideCardQueryTags,
   provideCardTags,
   provideParameterValuesTags,
+  tag,
 } from "./tags";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
@@ -153,6 +154,7 @@ export const cardApi = Api.injectEndpoints({
             listTag("card"),
             idTag("card", payload.id),
             idTag("table", `card__${payload.id}`),
+            tag("parameter-values"),
           ];
 
           if (payload.dashboard_id != null) {
