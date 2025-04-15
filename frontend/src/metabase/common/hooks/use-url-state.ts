@@ -35,10 +35,8 @@ export function useUrlState<State extends BaseState>(
 
   const patchUrlState: UrlStateActions<State>["patchUrlState"] = useCallback(
     (patch, action = "PUSH") => {
-      const state = parse(location.query);
       const newState = { ...state, ...patch };
-      const query = serialize(newState);
-      const newLocation = { ...location, query };
+      const newLocation = { ...location, query: serialize(newState) };
 
       match(action)
         .with("PUSH", () => {
@@ -49,7 +47,7 @@ export function useUrlState<State extends BaseState>(
         })
         .exhaustive();
     },
-    [dispatch, location, parse, serialize],
+    [dispatch, location, serialize, state],
   );
 
   useEffectOnce(function cleanInvalidQueryParams() {
