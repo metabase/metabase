@@ -145,14 +145,3 @@ export type NormalizedParameter = {
   values_source_type?: ValuesSourceType;
   values_source_config?: ValuesSourceConfig;
 };
-
-export type GetParameterValuesRequest = {
-  parameter: NormalizedParameter;
-  field_ids: number[];
-};
-
-export type SearchParameterValuesRequest = {
-  parameter: Parameter;
-  field_ids: number[];
-  query: string;
-};
