@@ -37,14 +37,14 @@ const navigateBack = ({ fallbackUrl }) => {
  */
 const setupRedirectsFromInternalModule = () => {
   const href = location.href;
-  const indexPage = href.replace(/(.*\/html)\/.*/, "$1/index.html");
+  const basePath = document.querySelector("html").dataset.base;
 
   const isInternalModule =
     href.endsWith(`${INTERNAL_MODULE_NAME}.html`) ||
     href.endsWith(INTERNAL_MODULE_NAME);
 
   if (isInternalModule) {
-    location.replace(indexPage);
+    location.replace(basePath);
   }
 };
 
