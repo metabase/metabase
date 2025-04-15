@@ -73,17 +73,8 @@ function FilterValuePicker({
 
   if (canSearchFieldValues(fieldInfo, fieldData)) {
     const searchColumn = checkNotNull(fieldInfo.searchField);
-    const placeholder = getSearchPlaceholder(
-      query,
-      stageIndex,
-      column,
-      searchColumn,
-    );
-    const nothingFoundMessage = getNothingFoundMessage(
-      query,
-      stageIndex,
-      searchColumn,
-    );
+    const searchColumInfo = Lib.displayInfo(query, stageIndex, searchColumn);
+    const searchColumName = searchColumInfo.displayName;
 
     return (
       <SearchValuePicker
@@ -91,8 +82,8 @@ function FilterValuePicker({
         searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
-        placeholder={placeholder}
-        nothingFoundMessage={nothingFoundMessage}
+        placeholder={getSearchPlaceholder(column, searchColumName)}
+        nothingFoundMessage={getNothingFoundMessage(searchColumName)}
         autoFocus={autoFocus}
         comboboxProps={comboboxProps}
         parseValue={parseValue}

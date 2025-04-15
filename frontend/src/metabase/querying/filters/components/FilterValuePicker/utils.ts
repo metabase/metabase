@@ -56,27 +56,18 @@ export function getStaticPlaceholder(column: Lib.ColumnMetadata) {
 }
 
 export function getSearchPlaceholder(
-  query: Lib.Query,
-  stageIndex: number,
   column: Lib.ColumnMetadata,
-  searchColumn: Lib.ColumnMetadata,
+  searchColumName: string,
 ) {
   const isID = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
-  const searchColumnInfo = Lib.displayInfo(query, stageIndex, searchColumn);
-  const searchColumnName = searchColumnInfo.displayName;
 
   if (isID) {
-    return t`Search by ${searchColumnName} or enter an ID`;
+    return t`Search by ${searchColumName} or enter an ID`;
   } else {
-    return t`Search by ${searchColumnName}`;
+    return t`Search by ${searchColumName}`;
   }
 }
 
-export function getNothingFoundMessage(
-  query: Lib.Query,
-  stageIndex: number,
-  searchColumn: Lib.ColumnMetadata,
-) {
-  const columnInfo = Lib.displayInfo(query, stageIndex, searchColumn);
-  return t`No matching ${columnInfo.displayName} found.`;
+export function getNothingFoundMessage(searchColumName: string) {
+  return t`No matching ${searchColumName} found.`;
 }
