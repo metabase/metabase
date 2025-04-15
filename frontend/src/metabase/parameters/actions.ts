@@ -1,8 +1,7 @@
-import { CardApi, DashboardApi, ParameterApi } from "metabase/services";
+import { DashboardApi, ParameterApi } from "metabase/services";
 import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
-  CardId,
   DashboardId,
   FieldId,
   Parameter,
@@ -41,29 +40,6 @@ export const fetchParameterValues =
     return fetchParameterValuesWithCache(
       request,
       loadParameterValues,
-      dispatch,
-      getState,
-    );
-  };
-
-export interface FetchCardParameterValuesOpts {
-  cardId: CardId;
-  parameter: Parameter;
-  query?: string;
-}
-
-export const fetchCardParameterValues =
-  ({ cardId, parameter, query }: FetchCardParameterValuesOpts) =>
-  (dispatch: Dispatch, getState: GetState) => {
-    const request = {
-      cardId,
-      paramId: parameter.id,
-      query,
-    };
-
-    return fetchParameterValuesWithCache(
-      request,
-      loadCardParameterValues,
       dispatch,
       getState,
     );
@@ -109,23 +85,6 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
   const { values, has_more_values } = request.query
     ? await ParameterApi.parameterSearch(request)
     : await ParameterApi.parameterValues(request);
-
-  return {
-    values: values,
-    has_more_values: request.query ? true : has_more_values,
-  };
-};
-
-interface CardParameterValuesRequest {
-  cardId: CardId;
-  paramId: ParameterId;
-  query?: string;
-}
-
-const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
-  const { values, has_more_values } = request.query
-    ? await CardApi.parameterSearch(request)
-    : await CardApi.parameterValues(request);
 
   return {
     values: values,

@@ -12,7 +12,12 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { skipToken, useGetRemappedFieldValueQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetRemappedFieldValueQuery,
+  useLazyGetCardParameterValuesQuery,
+  useLazySearchCardParameterValuesQuery,
+} from "metabase/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -24,9 +29,8 @@ import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { parseNumber } from "metabase/lib/number";
 import { connect, useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
+import { checkNotNull, isNotNull } from "metabase/lib/types";
 import {
-  fetchCardParameterValues,
   fetchDashboardParameterValues,
   fetchParameterValues,
 } from "metabase/parameters/actions";
@@ -186,6 +190,9 @@ export const FieldValuesWidgetInner = forwardRef<
     }
   }, [width, previousWidth]);
 
+  const [fetchCardParameterValues] = useLazyGetCardParameterValuesQuery();
+  const [searchCardParameterValues] = useLazySearchCardParameterValuesQuery();
+
   const fetchValues = async (query?: string) => {
     setLoadingState("LOADING");
     setOptions([]);
@@ -199,8 +206,18 @@ export const FieldValuesWidgetInner = forwardRef<
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseCardEndpoints(question)) {
-        const { values, has_more_values } =
-          await dispatchFetchCardParameterValues(query);
+        const cardId = checkNotNull(question?.id());
+        const parameterId = checkNotNull(parameter?.id);
+        const { values, has_more_values } = query
+          ? await searchCardParameterValues({
+              card_id: cardId,
+              parameter_id: parameterId,
+              query,
+            }).unwrap()
+          : await fetchCardParameterValues({
+              card_id: cardId,
+              parameter_id: parameterId,
+            }).unwrap();
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseParameterEndpoints(parameter)) {
@@ -225,22 +242,6 @@ export const FieldValuesWidgetInner = forwardRef<
 
     return dispatch(
       fetchParameterValues({
-        parameter,
-        query,
-      }),
-    );
-  };
-
-  const dispatchFetchCardParameterValues = async (query?: string) => {
-    const cardId = question?.id();
-
-    if (!isNotNull(cardId) || !parameter) {
-      return { has_more_values: false, values: [] };
-    }
-
-    return dispatch(
-      fetchCardParameterValues({
-        cardId,
         parameter,
         query,
       }),

@@ -336,6 +336,10 @@ export const {
   useUpdateCardEnableEmbeddingMutation,
   useGetCardDashboardsQuery,
   useGetMultipleCardsDashboardsQuery,
+  useGetCardParameterValuesQuery,
+  useLazyGetCardParameterValuesQuery,
+  useSearchCardParameterValuesQuery,
+  useLazySearchCardParameterValuesQuery,
   endpoints: {
     createCardPublicLink,
     deleteCardPublicLink,

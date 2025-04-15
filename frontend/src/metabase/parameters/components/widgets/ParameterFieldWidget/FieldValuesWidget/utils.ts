@@ -39,8 +39,11 @@ export function canUseParameterEndpoints(parameter?: Parameter) {
   return parameter != null;
 }
 
-export function canUseCardEndpoints(question?: Question) {
-  return question?.isSaved();
+export function canUseCardEndpoints(
+  question?: Question,
+  parameter?: Parameter,
+) {
+  return question != null && question.isSaved() && parameter != null;
 }
 
 export function canUseDashboardEndpoints(dashboard?: Dashboard | null) {
