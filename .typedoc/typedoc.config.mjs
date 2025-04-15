@@ -27,6 +27,7 @@ const config = {
         collapseInternalModule: true,
         visibilityFilters: {},
         frontmatterGlobals: {
+          title: "Embedded analytics SDK documentation",
           layout: "docs-api",
         },
         pretty: true,

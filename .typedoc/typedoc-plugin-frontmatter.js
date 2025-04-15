@@ -15,8 +15,8 @@ export function load(app) {
     const frontmatterGlobals = app.options.getValue("frontmatterGlobals");
 
     const model = page.model;
-    const title = model.name || "Embedded analytics SDK documentation";
-    frontmatterGlobals.title = title;
+
+    frontmatterGlobals.title = model.name || frontmatterGlobals.title;
 
     const yamlItems = Object.entries(frontmatterGlobals)
       .map(([key, value]) => `${key}: ${value}`)
