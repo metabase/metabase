@@ -1,5 +1,6 @@
 import expression from "ts-dedent";
 
+import * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
 import { dataForFormatting, query } from "../__support__/shared";
@@ -31,7 +32,7 @@ function setup(printWidth: number, startRule: StartRule = "expression") {
         throw res.error;
       }
 
-      const result = await format(res.expression, {
+      const result = await format(res.expressionClause, {
         ...options,
         printWidth,
       });
@@ -48,6 +49,9 @@ describe("format", () => {
 
     it("formats nested arithmetic expressions", async () => {
       await assertFormatted([
+        expression`
+          1 + 1
+        `,
         expression`
           1 + 2 - 3 + 4 / 5
         `,
@@ -81,6 +85,9 @@ describe("format", () => {
         expression`
           1 + 2 + 3 * 4 * 5 + 6
         `,
+        expression`
+          90071992547409901
+        `,
       ]);
     });
 
@@ -101,6 +108,9 @@ describe("format", () => {
             "BAD",
             "OK"
           )
+        `,
+        expression`
+          Offset([Total], -1)
         `,
         expression`
           startsWith(
@@ -177,16 +187,57 @@ describe("format", () => {
               33333333333333
         `,
         expression`
-          NOT (
-            contains(
-              [User → Name],
-              "John"
-            )
-            OR [User ID] = 1
+          NOT concat(
+            [User → Name],
+            "John"
           )
+          OR [User ID] = 1
         `,
       ]);
     });
+  });
+
+  describe("printWidth = 52", () => {
+    const { assertFormatted } = setup(52);
+
+    it("formats bigintegers", async () => {
+      await assertFormatted([
+        expression`
+          922337203685477580855
+        `,
+        expression`
+          -922337203685477580855
+        `,
+        expression`
+          [ID] = -922337203685477580855
+        `,
+      ]);
+    });
+  });
+
+  describe("formats unknown references", () => {
+    const stageIndex = -1;
+
+    const references = {
+      field: "[Unknown Field]",
+      metric: "[Unknown Metric]",
+      segment: "[Unknown Segment]",
+    };
+
+    it.each(Object.entries(references))(
+      "should format an unknown %s as %s",
+      async (type, result) => {
+        const expression = [type, 10000];
+        const clause = Lib.expressionClauseForLegacyExpression(
+          query,
+          stageIndex,
+          expression,
+        );
+
+        const formatted = await format(clause, { query, stageIndex });
+        expect(formatted).toBe(result);
+      },
+    );
   });
 });
 
@@ -201,7 +252,14 @@ describe("if printWidth = Infinity, it should return the same results as the sin
           // unreachable
           return;
         }
-        const result = await format(expression, {
+
+        const stageIndex = -1;
+        const clause = Lib.expressionClauseForLegacyExpression(
+          query,
+          stageIndex,
+          expression,
+        );
+        const result = await format(clause, {
           ...opts,
           printWidth: Infinity,
         });
@@ -210,4 +268,26 @@ describe("if printWidth = Infinity, it should return the same results as the sin
       },
     );
   });
+});
+
+it("should format escaped regex characters (metabase#56596)", async () => {
+  const { assertFormatted } = setup(Infinity);
+  await assertFormatted([
+    // "foo \s bar"
+    expression`
+      "foo \\s bar"
+    `,
+    // "^[Default]\s(.*?)\s-\s"
+    expression`
+     "^\\[Default\\]\\s(.*?)\\s-\\s"
+    `,
+    // "\\"
+    expression`
+      "\\\\"
+    `,
+    // "\n\r\t\v\f\b"
+    expression`
+      "\\n\\r\\t\\v\\f\\b"
+    `,
+  ]);
 });

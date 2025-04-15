@@ -11,7 +11,7 @@ import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import { MultiAutocomplete } from "metabase/ui";
+import { type ComboboxItem, MultiAutocomplete } from "metabase/ui";
 import type {
   Parameter,
   ParameterValue,
@@ -70,11 +70,12 @@ export function NumberInputWidget({
   );
 
   const values = parameter?.values_source_config?.values ?? [];
-  const options =
-    values.map(getOption).filter((item): item is SelectItem => item !== null) ??
-    [];
+  const options = values.map(getOption).filter(isNotNull);
+  const labelByValue = Object.fromEntries(
+    options.map((option) => [option.value, option.label]),
+  );
 
-  const handleCreate = (rawValue: string) => {
+  const parseValue = (rawValue: string) => {
     const number = parseNumber(rawValue);
     return number !== null ? String(number) : null;
   };
@@ -96,7 +97,8 @@ export function NumberInputWidget({
             placeholder={placeholder}
             autoFocus={autoFocus}
             comboboxProps={COMBOBOX_PROPS}
-            onCreate={handleCreate}
+            parseValue={parseValue}
+            renderValue={({ value }) => labelByValue[value] ?? value}
             onChange={handleChange}
           />
         </TokenFieldWrapper>
@@ -137,16 +139,12 @@ export function NumberInputWidget({
   );
 }
 
-type SelectItem = {
-  value: string;
-  label: string;
-};
-
-function getOption(entry: string | number | ParameterValue): SelectItem | null {
+function getOption(
+  entry: string | number | ParameterValue,
+): ComboboxItem | null {
   const value = getValue(entry);
   const label = getLabel(entry);
-
-  if (!value) {
+  if (value == null) {
     return null;
   }
 

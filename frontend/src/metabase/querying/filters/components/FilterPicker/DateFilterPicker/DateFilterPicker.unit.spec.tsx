@@ -103,7 +103,7 @@ describe("DateFilterPicker", () => {
       isNew: true,
     });
 
-    await userEvent.click(screen.getByText("Specific dates…"));
+    await userEvent.click(screen.getByText("Fixed date range…"));
     await userEvent.click(screen.getByText("On"));
     await userEvent.clear(screen.getByLabelText("Date"));
     await userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
@@ -145,7 +145,7 @@ describe("DateFilterPicker", () => {
       isNew: true,
     });
 
-    await userEvent.click(screen.getByText("Relative dates…"));
+    await userEvent.click(screen.getByText("Relative date range…"));
     await userEvent.clear(screen.getByLabelText("Interval"));
     await userEvent.type(screen.getByLabelText("Interval"), "20");
     await userEvent.click(screen.getByText("Add filter"));
@@ -234,12 +234,12 @@ describe("DateFilterPicker", () => {
       isNew: true,
     });
 
-    await userEvent.click(screen.getByText("Specific dates…"));
+    await userEvent.click(screen.getByText("Fixed date range…"));
     await userEvent.click(screen.getByText("On"));
     expect(screen.queryByText("Add time")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByLabelText("Back"));
-    await userEvent.click(screen.getByText("Relative dates…"));
+    await userEvent.click(screen.getByText("Relative date range…"));
     await userEvent.click(screen.getByDisplayValue("days"));
     expect(screen.getByText("days")).toBeInTheDocument();
     expect(screen.queryByText("hours")).not.toBeInTheDocument();

@@ -945,7 +945,7 @@ describe("scenarios > admin > localization", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByText("On").click();
 
       // ensure the date picker is ready

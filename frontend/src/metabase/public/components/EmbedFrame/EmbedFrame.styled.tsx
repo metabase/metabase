@@ -4,13 +4,11 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
-import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
   breakpointMaxSmall,
   breakpointMinLarge,
   breakpointMinSmall,
-  space,
 } from "metabase/styled-components/theme";
 
 export const Root = styled.div<{
@@ -115,53 +113,6 @@ const footerVariantStyles = {
     }
   `,
 };
-
-function getParameterPanelBackgroundColor(theme: DisplayTheme | undefined) {
-  if (theme === "night") {
-    return `color-mix(in srgb, var(--mb-color-bg-black), var(--mb-color-bg-dashboard) 15%)`;
-  }
-
-  if (theme === "transparent") {
-    return `color-mix(in srgb, var(--mb-color-bg-white), transparent 15%)`;
-  }
-
-  return `color-mix(in srgb, var(--mb-color-bg-white), var(--mb-color-bg-dashboard) 15%)`;
-}
-
-function getParameterPanelBorderColor(theme?: DisplayTheme) {
-  if (theme === "transparent") {
-    return "transparent";
-  }
-  return "var(--mb-color-border)";
-}
-
-export const ParametersWidgetContainer = styled(FullWidthContainer)<{
-  embedFrameTheme?: DisplayTheme;
-  allowSticky: boolean;
-  isSticky: boolean;
-}>`
-  padding-top: ${space(1)};
-  padding-bottom: ${space(1)};
-
-  ${({ allowSticky }) =>
-    allowSticky &&
-    css`
-      position: sticky;
-      top: 0;
-      left: 0;
-      width: 100%;
-      z-index: 3;
-      /* this is for proper transitions from the \`transparent\` value to other values if set */
-      border-bottom: 1px solid transparent;
-    `}
-
-  ${({ embedFrameTheme, isSticky }) =>
-    isSticky &&
-    css`
-      background-color: ${getParameterPanelBackgroundColor(embedFrameTheme)};
-      border-bottom-color: ${getParameterPanelBorderColor(embedFrameTheme)};
-    `}
-`;
 
 export const Footer = styled.footer<{ variant: FooterVariant }>`
   display: flex;

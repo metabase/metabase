@@ -595,7 +595,7 @@ describe("scenarios > question > custom column", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByLabelText("Start date").clear().type("12/10/2024");
       cy.findByLabelText("End date").clear().type("01/05/2025");
       cy.button("Add filter").click();
@@ -619,7 +619,7 @@ describe("scenarios > question > custom column", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("MiscDate").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
       cy.findByDisplayValue("days").click();
     });
@@ -960,6 +960,42 @@ describe("scenarios > question > custom column", () => {
     H.visualize();
     cy.findByTestId("scalar-value").should("have.text", "198");
   });
+
+  it("should handle expression references", () => {
+    H.openProductsTable({ mode: "notebook" });
+
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: "[Price]",
+      name: "Foo",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({
+      formula: "[Foo]",
+      name: "Bar",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({
+      formula: "[Bar]",
+      name: "Quu",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").findByText("Foo").click();
+    H.CustomExpressionEditor.value().should("eq", "[Price]");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.getNotebookStep("expression").findByText("Bar").click();
+    H.CustomExpressionEditor.value().should("eq", "[Foo]");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.getNotebookStep("expression").findByText("Quu").click();
+    H.CustomExpressionEditor.value().should("eq", "[Bar]");
+  });
 });
 
 describe(
@@ -1059,7 +1095,7 @@ describe(
       H.popover().within(() => {
         cy.findByText("DoB").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });
@@ -1079,7 +1115,7 @@ describe(
         cy.findByText("MiscDate").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });
@@ -1098,7 +1134,7 @@ describe(
       H.popover().within(() => {
         cy.findByText("MiscDate").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });

@@ -31,6 +31,7 @@ const PeopleListRow = ({
   onAdd,
   onRemove,
   onChange,
+  isConfirmModalOpen,
 }) => {
   const membershipsByGroupId = useMemo(
     () =>
@@ -98,6 +99,7 @@ const PeopleListRow = ({
                 onAdd={onAdd}
                 onRemove={onRemove}
                 onChange={onChange}
+                isConfirmModalOpen={isConfirmModalOpen}
               />
             )}
           </td>

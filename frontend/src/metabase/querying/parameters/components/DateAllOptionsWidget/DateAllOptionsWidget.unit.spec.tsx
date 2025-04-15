@@ -17,7 +17,7 @@ function setup({ value }: SetupOpts = {}) {
 describe("DateAllOptionsWidget", () => {
   it('should allow to select a "specific" filter', async () => {
     const { onChange } = setup();
-    await userEvent.click(screen.getByText("Specific dates…"));
+    await userEvent.click(screen.getByText("Fixed date range…"));
     await userEvent.click(screen.getByText("On"));
     const panel = screen.getByRole("tabpanel", { name: "On" });
     const input = within(panel).getByLabelText("Date");
@@ -36,7 +36,7 @@ describe("DateAllOptionsWidget", () => {
 
   it('should allow to select a "relative" filter', async () => {
     const { onChange } = setup();
-    await userEvent.click(screen.getByText("Relative dates…"));
+    await userEvent.click(screen.getByText("Relative date range…"));
     await userEvent.click(screen.getByText("Current"));
     const panel = screen.getByRole("tabpanel", { name: "Current" });
     await userEvent.click(within(panel).getByText("Week"));

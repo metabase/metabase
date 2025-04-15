@@ -84,7 +84,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
 
       H.popover().button("Add filter").click();
@@ -156,7 +156,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
@@ -202,7 +202,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
 
       H.popover().button("Add filter").click();
@@ -247,7 +247,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
@@ -285,7 +285,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
@@ -492,7 +492,7 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
 
 function searchFieldValuesFilter() {
   cy.findByTestId("parameter-value-dropdown").within(() => {
-    H.fieldValuesInput().type("An");
+    H.fieldValuesTextbox().type("An");
   });
 
   cy.findByTestId("field-values-widget").within(() => {

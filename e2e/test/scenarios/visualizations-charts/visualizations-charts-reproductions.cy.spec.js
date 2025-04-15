@@ -539,13 +539,15 @@ describe("issue 21452", () => {
       .findByDisplayValue("Cumulative sum of Quantity")
       .clear()
       .type("Foo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Display type").click();
-    // Dismiss the popup and close settings
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
 
-    H.cartesianChartCircle().first().realHover();
+    H.popover().findByText("Display type").click();
+
+    cy.log("Dismiss the popup and close settings");
+    H.leftSidebar().button("Done").click();
+
+    // trigger("mousemove") is more reliable than realHover
+    // maybe related to https://github.com/dmtrKovalenko/cypress-real-events/issues/691
+    H.cartesianChartCircle().first().trigger("mousemove");
 
     H.assertEChartsTooltip({
       header: "2022",

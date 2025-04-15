@@ -49,7 +49,9 @@ export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   }
 `;
 
-export const CheckBoxIcon = styled(Icon)<CheckBoxIconProps>`
+export const CheckBoxIcon = styled(Icon, {
+  shouldForwardProp: (propName: string) => propName !== "uncheckedColor",
+})<CheckBoxIconProps>`
   display: block;
   padding: ${DEFAULT_ICON_PADDING / 2}px;
   color: ${(props) => color(props.checked ? "white" : props.uncheckedColor)};
