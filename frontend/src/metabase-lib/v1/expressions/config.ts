@@ -594,6 +594,12 @@ export function isDefinedClause(name: string): name is DefinedClauseName {
 }
 
 export function getClauseDefinition(
+  name: DefinedClauseName,
+): MBQLClauseFunctionConfig;
+export function getClauseDefinition(
+  name: string,
+): MBQLClauseFunctionConfig | undefined;
+export function getClauseDefinition(
   name: string,
 ): MBQLClauseFunctionConfig | undefined {
   if (isDefinedClause(name)) {
