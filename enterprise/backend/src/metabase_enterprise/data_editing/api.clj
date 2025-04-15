@@ -28,7 +28,7 @@
 (defmethod events.notification/notification-filter-for-topic :event/action.success
   [_topic event-info]
   [:and
-   [:= :table_id (-> event-info :result :table_id)]
+   [:= :table_id (-> event-info :args :table_id)]
    [:= :action (u/qualified-name (:action event-info))]])
 
 (defn- qp-result->row-map

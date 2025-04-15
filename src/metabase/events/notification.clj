@@ -131,48 +131,24 @@
 
 (mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
 
-(def ^:private single-row-arg [:args (-> [:map
-                                          [:row :map]]
-                                         (into table-id-hydrate-schemas))])
 (def ^:private bulk-rows-arg [:args (-> [:map
                                          [:arg [:sequential :map]]
                                          [:database pos-int?]]
                                         (into table-id-hydrate-schemas))])
 
 (def ^:private bulk-row-result
-  [:sequential [:map
-                [:pk     :any]
-                [:before [:maybe :map]]
-                [:after  [:maybe :map]]]])
+  [:result [:sequential [:map
+                         [:pk     :any]
+                         [:before [:maybe :map]]
+                         [:after  [:maybe :map]]]]])
 
 (mr/def :event/action.success
   [:merge ::action-events
    [:multi {:dispatch :action}
-    #_[:row/create [:map
-                    [:action [:= :row/create]]
-                    single-row-arg
-                    #_[:result
-                       [:map [:created_row :map]]]]]
-    #_[:row/update [:map
-                    [:action [:= :row/update]]
-                    single-row-arg
-
-                    #_[:result
-                       [:map
-                        [:raw_update [:maybe :map]]
-                        [:after      [:maybe :map]]
-                        [:before     [:maybe :map]]]]]]
-    #_[:row/delete [:map
-                    [:action [:= :row/delete]]
-                    single-row-arg
-                    #_[:result
-                       [:map
-                        [:deleted_row :map]]]]]
     [:bulk/create [:map
                    [:action [:= :bulk/create]]
                    bulk-rows-arg
-                   [:result
-                    bulk-row-result]]]
+                   bulk-row-result]]
     [:bulk/update [:map
                    [:action [:= :bulk/update]]
                    bulk-rows-arg

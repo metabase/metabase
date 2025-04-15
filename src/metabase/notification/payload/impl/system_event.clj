@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
+   [clojure.data :refer [diff]]
    [metabase.channel.email.messages :as messages]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.user :as user]
@@ -34,8 +35,16 @@
   {:arglists '([notification-info])}
   dispatch-on-event-info)
 
-(mr/def ::action.success.row.update
+(mr/def ::action.success.bulk
   [:map
+   [:creator [:map {:gen/return {:first_name  "Meta"
+                                 :last_name   "Bot"
+                                 :common_name "Meta Bot"
+                                 :email       "bot@metabase.com"}}
+              [:first_name :string]
+              [:last_name :string]
+              [:email :string]
+              [:common_name :string]]]
    [:editor [:map {:gen/return {:first_name  "Meta"
                                 :last_name   "Bot"
                                 :common_name "Meta Bot"
@@ -48,45 +57,62 @@
                                :name "orders"}}
             [:id :int]
             [:name :string]]]
-   [:record [:map {:gen/return {:id          1
-                                :product_id  2
-                                :customer_id 42
-                                :total       100.0}
-                   :description "the new record, actual keys will vary based on the table"}
-             [:id :int]
-             [:name :string]]]
-   [:changes [:map {:gen/return {:before {:total 100.0}
-                                 :after  {:total 200.0}}
-                    :description "the changes made to the record, actual keys will vary based on the table"}
-              [:before :map]
-              [:after :map]]]
+   [:records {:gen/return [{:row {:ID 1
+                                  :STATUS "approved"}
+                            :changes {:STATUS {:before "pending"
+                                               :after  "approved"}}}]}
+    [:sequential
+     [:map {:description "A list of records that were updated in the table."}
+      [:row {:description "The row after the changes"} :map]
+      [:changes {:description "Changed keys"}
+       [:map-of :keyword [:map
+                          [:before :any]
+                          [:after :any]]]]]]]
    [:settings [:map]]])
 
-(mu/defmethod transform-event-info [:event/action.success :row/update] :- ::action.success.row.update
+(defn- bulk-row-transformation
   [notification-info]
-  (lib.util.match/match
+  (lib.util.match/match-one
     notification-info
-    {:event_info {:actor    {:first_name  ?first_name
+    {:payload    {:event_name ?event_name
+                  :action     ?action}
+     :creator    {:first_name  ?creator_first_name
+                  :last_name   ?creator_last_name
+                  :email       ?creator_email
+                  :common_name ?creator_common_name}
+     :event_info {:actor    {:first_name  ?first_name
                              :last_name   ?last_name
                              :email       ?email
                              :common_name ?common_name}
-                  :result   {:table_id ?table_id
-                             :table    {:name ?table_name}
-                             :before   ?before
-                             :after    ?after}}}
-    {:editor     {:first_name  ?first_name
-                  :last_name   ?last_name
-                  :email       ?email
-                  :common_name ?common_name}
-     :table      {:id   ?table_id
-                  :name ?table_name
-                  :url  (str (public-settings/site-url) "/table/" ?table_id)}
-     :record     ?after
-     :changes    (into {} (for [[k v] ?after
-                                :let [before-val (get ?before k)]
-                                :when (not= v before-val)]
-                            [k {:before before-val :after v}]))
-     :settings   (notification.payload/default-settings)}))
+                  :args     {:table_id  ?table_id
+                             :table     {:name ?table_name}}
+                  :result   ?result}}
+    {:payload_type :notification/system-event
+     :context      {:action     ?action
+                    :event_name ?event_name}
+     :editor       {:first_name  ?first_name
+                    :last_name   ?last_name
+                    :email       ?email
+                    :common_name ?common_name}
+     :creator      {:first_name  ?creator_first_name
+                    :last_name   ?creator_last_name
+                    :email       ?creator_email
+                    :common_name ?creator_common_name}
+     :table        {:id   ?table_id
+                    :name ?table_name
+                    :url  (str (public-settings/site-url) "/table/" ?table_id)}
+     :records      (for [{:keys [before after]} ?result
+                         :let [changes-key (keys (second (diff before after)))]]
+                     {:row     (if (= ?action :bulk/delete) before after)
+                      :changes (into {} (for [k changes-key]
+                                          [k {:before (get before k)
+                                              :after  (get after k)}]))})
+     :settings     (notification.payload/default-settings)}))
+
+(doseq [event-name [:bulk/create :bulk/update :bulk/delete]]
+  (mu/defmethod transform-event-info [:event/action.success event-name] :- ::action.success.bulk
+    [notification-info]
+    (bulk-row-transformation notification-info)))
 
 (defmethod transform-event-info :default
   [notification-info]
