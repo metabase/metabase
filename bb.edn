@@ -135,7 +135,7 @@
    :task     (let [args (:arguments (cli/parse! (current-task)))]
                (nrepl-eval (first args)))}
 
-  -balance-parens-check
+  -code-is-readable
   {:doc      "Check for unbalanced parens in the current file, given a starting line and ending line"
    :requires [[mage.be-dev :refer [balanced-parens?]]]
    :arg-schema [:or [:tuple [:string {:description "File to check"}]]
