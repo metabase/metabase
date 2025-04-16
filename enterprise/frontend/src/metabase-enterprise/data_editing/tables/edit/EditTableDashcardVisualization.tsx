@@ -108,7 +108,7 @@ export const EditTableDashcardVisualization = ({
               <Icon
                 name="undo"
                 tooltip={t`Undo changes`}
-                c="var(--mantine-color-brand-light-color)"
+                c="var(--mb-color-brand)"
               />
             )}
           </ActionIcon>
@@ -119,7 +119,7 @@ export const EditTableDashcardVisualization = ({
               <Icon
                 name="redo"
                 tooltip={t`Redo changes`}
-                c="var(--mantine-color-brand-light-color)"
+                c="var(--mb-color-brand)"
               />
             )}
           </ActionIcon>
