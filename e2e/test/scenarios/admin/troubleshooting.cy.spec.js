@@ -341,6 +341,56 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
   });
 });
 
+describe("scenarios > admin > troubleshooting > logs", () => {
+  const log1 = {
+    timestamp: "2024-01-10T21:21:58.597Z",
+    level: "DEBUG",
+    fqns: "metabase.server.middleware.log",
+    msg: "message",
+    exception: null,
+    process_uuid: "e7774ef2-42ab-43de-89f7-d6de9fdc624f",
+  };
+  const log2 = {
+    ...log1,
+    timestamp: "2024-01-10T21:21:58.598Z",
+    level: "ERROR",
+  };
+
+  beforeEach(() => {
+    cy.intercept("GET", "/api/util/logs", (request) => {
+      request.reply([log1, log2]);
+    }).as("getLogs");
+
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.visit("/admin/troubleshooting/logs");
+    cy.wait("@getLogs");
+  });
+
+  it("should allow to download logs", () => {
+    cy.button(/Download/).click();
+    cy.readFile("cypress/downloads/logs.txt").should(
+      "equal",
+      [
+        "[e7774ef2-42ab-43de-89f7-d6de9fdc624f] 2024-01-11T04:21:58+07:00 DEBUG metabase.server.middleware.log message",
+        "[e7774ef2-42ab-43de-89f7-d6de9fdc624f] 2024-01-11T04:21:58+07:00 ERROR metabase.server.middleware.log message",
+      ].join("\n"),
+    );
+  });
+
+  it("should allow to download filtered logs", () => {
+    cy.findByPlaceholderText("Filter logs").type("error");
+    cy.button(/Download/).click();
+    cy.readFile("cypress/downloads/logs.txt").should(
+      "equal",
+      [
+        "[e7774ef2-42ab-43de-89f7-d6de9fdc624f] 2024-01-11T04:21:58+07:00 ERROR metabase.server.middleware.log message",
+      ].join("\n"),
+    );
+  });
+});
+
 // Quarantine the whole spec because it is most likely causing the H2 timeouts and the chained failures!
 // NOTE: it will be quarantined on PRs, but will still run on `master`!
 
