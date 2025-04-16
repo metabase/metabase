@@ -89,8 +89,8 @@
                                          {:offset offset}))))
 
 (mu/defn total
-  [filter :- Filter]
   "Return count of all, or filtered if `filter` is provided, task history entries."
+  [filter :- Filter]
   (t2/count :model/TaskHistory ((fnil identity {}) (filter->where filter))))
 
 (defn unique-tasks
