@@ -310,6 +310,7 @@ describe("cartesian", () => {
       });
       expect(state.settings).toEqual({
         "scatter.bubble": "COLUMN_1",
+        "graph.metrics": [],
       });
     });
 

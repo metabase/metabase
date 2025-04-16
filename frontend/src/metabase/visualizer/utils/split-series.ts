@@ -30,7 +30,7 @@ export function splitVisualizerSeries(
   series: RawSeries,
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
 ): RawSeries {
-  if (!series || series.length === 0) {
+  if (!series || series.length === 0 || series.some((s) => !s.data)) {
     return series;
   }
 

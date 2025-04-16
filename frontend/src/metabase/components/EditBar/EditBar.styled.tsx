@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-restricted-imports
 import isPropValid from "@emotion/is-prop-valid";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";

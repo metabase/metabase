@@ -1,6 +1,11 @@
 import _ from "underscore";
 
-import type { Dataset, DatasetColumn, RowValues } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetColumn,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 import type {
   VisualizerColumnValueSource,
   VisualizerDataSource,
@@ -11,12 +16,41 @@ import { extractReferencedColumns } from "./column";
 import { getDataSourceIdFromNameRef, isDataSourceNameRef } from "./data-source";
 
 type MergeVisualizerSeries = {
+  /**
+   * The columns to merge
+   */
   columns: DatasetColumn[];
+  /**
+   * The mapping of column values to their sources
+   */
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
+  /**
+   * The datasets to merge
+   */
   datasets: Record<VisualizerDataSourceId, Dataset | null | undefined>;
+  /**
+   * The data sources to merge
+   */
   dataSources: VisualizerDataSource[];
 };
 
+/**
+ * Checks if the given array of values is empty, i.e. if it contains
+ * any undefined values or is itself undefined.
+ *
+ * @param value - The value to check
+ * @returns Whether the value is empty
+ */
+function isEmpty(value: (RowValue | undefined)[]): boolean {
+  return value === undefined || value.some((v) => v === undefined);
+}
+
+/**
+ * Merges data from multiple datasets into a single dataset.
+ *
+ * @param param0 - The data to merge
+ * @returns the merged data or undefined if the data is loading
+ */
 export function mergeVisualizerData({
   columns,
   columnValuesMapping,
@@ -50,16 +84,18 @@ export function mergeVisualizerData({
         }
         const values = referencedColumnValuesMap[valueSource.name];
         if (!values) {
-          return [];
+          return undefined;
         }
         return values;
       })
       .flat(),
   );
 
-  return {
-    cols: columns,
-    rows: _.zip(...unzippedRows),
-    results_metadata: { columns },
-  };
+  return unzippedRows.some(isEmpty)
+    ? undefined
+    : {
+        cols: columns,
+        rows: _.zip(...unzippedRows),
+        results_metadata: { columns },
+      };
 }
