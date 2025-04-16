@@ -11,6 +11,7 @@ import {
   Loader,
   Stack,
   Text,
+  rem,
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
@@ -105,7 +106,12 @@ export const EditTableDashcardVisualization = ({
         align="center"
         className={S.gridFooterDashcardVisualization}
       >
-        <Group gap="xs">
+        <Group
+          gap="xs"
+          mih={
+            rem(30) /* to avoid jumping when "New record" button is disabled */
+          }
+        >
           <ActionIcon onClick={undo} disabled={isUndoLoading || isRedoLoading}>
             {isUndoLoading ? (
               <Loader size="xs" />
