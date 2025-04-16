@@ -88,6 +88,11 @@
                                        (when offset
                                          {:offset offset}))))
 
+(mu/defn tasks-count
+  [filter :- Filter]
+  "Return count of all, or filtered if `filter` is provided, task history entries."
+  (t2/count :model/TaskHistory ((fnil identity {}) (filter->where filter))))
+
 (defn unique-tasks
   "Return _vector_ of all unique tasks' names in alphabetical order."
   []
