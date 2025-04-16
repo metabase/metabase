@@ -213,6 +213,217 @@
                        (biginteger casted-value))
                     msg)))))))))
 
+;; float()
+
+;; compare with Double/parseDouble from Clojure
+;; convert all values to double before comparing
+
+(deftest ^:parallel float-cast-table-fields
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table fields] [#_[:people [{:field :zip :db-type "TEXT"}]]]
+                {:keys [field db-type]} fields]
+          (testing (str "casting " table "." field "(" db-type ") to float")
+            (let [field-md (lib.metadata/field mp (mt/id table field))
+                  query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                            (lib/with-fields [field-md])
+                            (lib/expression "FLOATCAST" (lib/float field-md))
+                            (lib/limit 100))
+                  result (-> query qp/process-query)
+                  cols (mt/cols result)
+                  rows (mt/rows result)]
+              (is (types/field-is-type? :type/Float (last cols)))
+              (doseq [[uncasted-value casted-value] rows]
+                (is (= (double (Double/parseDouble uncasted-value))
+                       (double casted-value)))))))))))
+
+(deftest ^:parallel float-cast-custom-expressions
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table expressions] [[:people [{:expression (lib/concat "1" ".5")
+                                                :db-type "TEXT"}
+                                               {:expression (lib/concat
+                                                             (lib.metadata/field mp (mt/id :people :id))
+                                                             "."
+                                                             (lib.metadata/field mp (mt/id :people :zip)))
+                                                :db-type "TEXT"}]]]
+                {:keys [expression db-type]} expressions]
+          (testing (str "Casting " db-type " to integer")
+            (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                            (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
+                            (lib/expression "UNCASTED" expression)
+                            (as-> q
+                                  (lib/expression q "FLOATCAST" (lib/float (lib/expression-ref q "UNCASTED"))))
+                            (lib/limit 10))
+                  result (-> query qp/process-query)
+                  cols (mt/cols result)
+                  rows (mt/rows result)]
+              (is (types/field-is-type? :type/Float (last cols)))
+              (doseq [[_ uncasted-value casted-value] rows]
+                (is (= (double (Double/parseDouble uncasted-value))
+                       (double casted-value)))))))))))
+
+(deftest ^:parallel float-cast-nested-native-query
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [{:keys [expression db-type]} [{:expression "'123.7'"  :db-type "TEXT"}
+                                              {:expression "'-123.1'" :db-type "TEXT"}]]
+          (testing (str "Casting " db-type " to integer from native query")
+            (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
+              (mt/with-temp
+                [:model/Card
+                 {card-id :id}
+                 (mt/card-with-source-metadata-for-query native-query)]
+                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                                (lib/with-fields [])
+                                (as-> q
+                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))
+                                (as-> q
+                                      (lib/expression q "FLOATCAST" (lib/float (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))))
+                      result (-> query qp/process-query)
+                      cols (mt/cols result)
+                      rows (mt/rows result)]
+                  (is (types/field-is-type? :type/Number (last cols)))
+                  (doseq [[_ uncasted-value casted-value] rows]
+                    (is (= (double (Double/parseDouble uncasted-value))
+                           (double casted-value)))))))))))))
+
+(deftest ^:parallel float-cast-nested-query
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table fields] [#_[:people [{:field :zip :db-type "TEXT"}]]]
+                {:keys [field db-type]} fields]
+          (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))]
+            (testing (str "Casting " db-type " to float")
+              (mt/with-temp
+                [:model/Card
+                 {card-id :id}
+                 (mt/card-with-source-metadata-for-query nested-query)]
+                (let [field-md (lib.metadata/field mp (mt/id table field))
+                      query (-> (lib/query mp (lib.metadata/card mp card-id))
+                                (lib/with-fields [field-md])
+                                (as-> q
+                                      (lib/expression q "FLOATCAST" (lib/float field-md)))
+                                (lib/limit 100))
+                      result (-> query qp/process-query)
+                      cols (mt/cols result)
+                      rows (mt/rows result)]
+                  (is (types/field-is-type? :type/Number (last cols)))
+                  (doseq [[uncasted-value casted-value] rows]
+                    (is (= (double (Double/parseDouble uncasted-value))
+                           (double casted-value)))))))))))))
+
+(deftest ^:parallel float-cast-nested-query-custom-expressions
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table expressions] [[:people [{:expression (lib/concat
+                                                             (lib.metadata/field mp (mt/id :people :id))
+                                                             "."
+                                                             (lib.metadata/field mp (mt/id :people :zip)))
+                                                :db-type "TEXT"}
+                                               {:expression (lib/concat "1" ".5")
+                                                :db-type "TEXT"}]]]
+                {:keys [expression db-type]} expressions]
+          (let [nested-query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                                 (lib/with-fields [])
+                                 (lib/expression "UNCASTED" expression)
+                                 (lib/limit 10))]
+            (testing (str "Casting " db-type " to float")
+              (mt/with-temp
+                [:model/Card
+                 {card-id :id}
+                 (mt/card-with-source-metadata-for-query nested-query)]
+                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                                (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
+                                (as-> q
+                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)))
+                                (as-> q
+                                      (lib/expression q "FLOATCAST" (lib/float (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
+                                (lib/limit 10))
+                      result (-> query qp/process-query)
+                      cols (mt/cols result)
+                      rows (mt/rows result)]
+                  (is (types/field-is-type? :type/Number (last cols)))
+                  (doseq [[_ uncasted-value casted-value] rows]
+                    (is (= (double (Double/parseDouble uncasted-value))
+                           (double casted-value)))))))))))))
+
+(deftest ^:parallel float-cast-nested-custom-expressions
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table expressions] [[:people [{:expression (fn []
+                                                              (lib/concat
+                                                               (lib.metadata/field mp (mt/id :people :id))
+                                                               "."
+                                                               (lib.metadata/field mp (mt/id :people :zip))))}
+                                               {:expression (fn []
+                                                              (lib/concat "1" ".5"))
+                                                :db-type "TEXT"}]]]
+                {ex :expression} expressions]
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
+                          (lib/expression "UNCASTED" (ex))
+                          (lib/expression "FLOATCAST" (lib/float (ex)))
+                          (lib/limit 10))
+                result (-> query qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (types/field-is-type? :type/Number (last cols)))
+            (doseq [[_ uncasted-value casted-value] rows]
+              (is (= (double (Double/parseDouble uncasted-value))
+                     (double casted-value))))))))))
+
+(deftest ^:parallel float-cast-aggregations
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table fields] [[:people [{:field :zip}]]]
+                {:keys [field]} fields]
+          (testing (str "aggregating " table "." field " and casting to float")
+            (let [field-md (lib.metadata/field mp (mt/id table field))
+                  query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                            (lib/aggregate (lib/max field-md))
+                            (lib/aggregate (lib/max (lib/float field-md))))
+                  result (-> query qp/process-query)
+                  cols (mt/cols result)
+                  rows (mt/rows result)]
+              (is (types/field-is-type? :type/Number (last cols)))
+              (doseq [[uncasted-value casted-value] rows]
+                (is (= (double (Double/parseDouble uncasted-value))
+                       (double casted-value)))))))))))
+
+(deftest ^:parallel float-cast-examples
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)
+            examples [{:original "123.0" :value 123.0 :msg "Easy case."}
+                      {:original "+123.88" :value 123.88 :msg "Initial + sign."}
+                      {:original "00123.34" :value 123.34 :msg "Initial zeros."}
+                      {:original "-123.08" :value -123.08 :msg "Negative sign."}
+                      {:original (pr-str Double/MAX_VALUE) :value Double/MAX_VALUE :msg "Big number."}
+                      {:original (pr-str Double/MIN_VALUE) :value Double/MIN_VALUE :msg "Big number."}]]
+        (doseq [{:keys [original value msg]} examples]
+          (testing (str "integer cast: " msg)
+            (let [field-md (lib.metadata/field mp (mt/id :people :id))
+                  query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                            (lib/with-fields [field-md])
+                            (lib/expression "FLOATCAST" (lib/float original))
+                            (lib/limit 1))
+                  result (-> query qp/process-query)
+                  cols (mt/cols result)
+                  rows (mt/rows result)]
+              (is (types/field-is-type? :type/Number (last cols)))
+              (doseq [[_id casted-value] rows]
+                (is (= (double value)
+                       (double casted-value))
+                    msg)))))))))
+
 ;; date()
 
 (deftest ^:parallel date-parse-table-fields
