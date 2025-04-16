@@ -292,7 +292,7 @@
           (u/prog1 (assoc (setting->response saved-setting)
                           :status "error"
                           :error_message (or status-reason
-                                             (if (= error "not-found") "Unable to sync Google Drive: file does not exist or permissions are not set up correctly.")
+                                             (when (= error "not-found") "Unable to sync Google Drive: file does not exist or permissions are not set up correctly.")
                                              cannot-check-message)
                           :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
                           :hm/response (loggable-response hm-response))
