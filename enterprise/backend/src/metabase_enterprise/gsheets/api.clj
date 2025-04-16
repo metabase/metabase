@@ -272,18 +272,9 @@
                                  :hm/exception e})))))
         [hm-status {hm-body :body}] hm-response]
     (if (= :ok hm-status)
-      (let [{:keys [status last-sync-at last-sync-started-at]
+      (let [{:keys [status status-reason error last-sync-at last-sync-started-at]
              :as   _} (normalize-gdrive-conn hm-body)]
         (cond
-          (= "error" status)
-          (u/prog1 (assoc (setting->response saved-setting)
-                          :status "error"
-                          :error_message cannot-check-message
-                          :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
-                          :hm/response (loggable-response hm-response))
-            (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
-            (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body)))
-
           (= "active" status)
           (assoc (setting->response saved-setting)
                  :status "active"
@@ -296,7 +287,17 @@
                  :last_sync_at (if (nil? last-sync-at) nil (.getEpochSecond ^Instant (t/instant last-sync-at)))
                  :sync_started_at (.getEpochSecond ^Instant (t/instant (or last-sync-started-at (t/instant)))))
 
-          :else (throw (ex-info "Unexpected status" {:status status}))))
+          ;; other statuses are listed as "errors" to the frontend
+          :else
+          (u/prog1 (assoc (setting->response saved-setting)
+                          :status "error"
+                          :error_message (or status-reason
+                                             (if (= error "not-found") "Unable to sync Google Drive: file does not exist or permissions are not set up correctly.")
+                                             cannot-check-message)
+                          :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
+                          :hm/response (loggable-response hm-response))
+            (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
+            (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body)))))
       (if (empty? saved-setting)
         {:status "not-connected"}
         (u/prog1 (assoc (setting->response saved-setting)
