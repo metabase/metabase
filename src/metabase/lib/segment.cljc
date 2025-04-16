@@ -8,7 +8,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
@@ -23,15 +22,11 @@
   (lib.options/ensure-uuid [:segment {} id]))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/segment
-  [_query _stage-number segment-metadata]
-  (lib.schema.expression/type-of segment-metadata))
+  [_query _stage-number _segment-metadata]
+  :type/Boolean)
 
 (defmethod lib.metadata.calculation/type-of-method :segment
   [_query _stage-number _segment-clause]
-  :type/Boolean)
-
-(defmethod lib.schema.expression/type-of-method :metadata/segment
-  [_segment-metadata]
   :type/Boolean)
 
 (defn- fallback-display-name []

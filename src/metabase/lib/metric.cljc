@@ -47,10 +47,6 @@
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/metric
   [_query _stage-number metric-metadata]
-  (lib.schema.expression/type-of metric-metadata))
-
-(defmethod lib.schema.expression/type-of-method :metadata/metric
-  [metric-metadata]
   (or
    (when-let [[aggregation] (not-empty (:aggregation (metric-definition metric-metadata)))]
      (lib.schema.expression/type-of aggregation))
