@@ -358,7 +358,12 @@
     (fn [notification]
       ;; ensure there is always a worker to handle the notification
       (while (< (.getActiveCount ^ExecutorService executor) pool-size)
-        (start-worker!))
+        (log/debugf "Not enough workers, starting a new one %d/%d"
+                    (.getActiveCount ^ExecutorService executor)
+                    pool-size)
+        (start-worker!)
+        ;; wait a bit for the worker to start
+        (Thread/sleep 10))
       (put-notification! queue notification))))
 
 (defonce ^{:private true
