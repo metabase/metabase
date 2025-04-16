@@ -44,6 +44,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     databases,
     isShowingNewbModal,
     isShowingTimelineSidebar,
+    isShowingAIQuestionAnalysisSidebar,
     queryBuilderMode,
     closeQbNewbModal,
     onDismissToast,
@@ -87,7 +88,6 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     isShowingTemplateTagsEditor,
     isShowingDataReference,
     isShowingSnippetSidebar,
-    isAIQuestionAnalysisSidebarVisible,
   } = props;
 
   // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -164,6 +164,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
   const showLeftSidebar =
     isShowingChartSettingsSidebar || isShowingChartTypeSidebar;
   const showRightSidebar =
+    isShowingAIQuestionAnalysisSidebar ||
     isShowingTimelineSidebar ||
     isShowingQuestionInfoSidebar ||
     isShowingQuestionSettingsSidebar ||
@@ -171,8 +172,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     (isNative &&
       (isShowingTemplateTagsEditor ||
         isShowingDataReference ||
-        isShowingSnippetSidebar)) ||
-    isAIQuestionAnalysisSidebarVisible;
+        isShowingSnippetSidebar));
 
   const rightSidebarWidth = match({
     isShowingTimelineSidebar,

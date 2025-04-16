@@ -1,6 +1,5 @@
 import { match } from "ts-pattern";
 
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_AI_ANALYSIS } from "metabase/plugins";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
@@ -8,20 +7,17 @@ import { SummarizeSidebar } from "metabase/query_builder/components/view/sidebar
 import TimelineSidebar from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
 import * as Lib from "metabase-lib";
 
-const getIsAIQuestionAnalysisSidebarVisible = (state) =>
-  state.plugins?.aiAnalysisPlugin?.isAIQuestionAnalysisSidebarVisible || false;
-
-const AIQuestionAnalysisSidebar = PLUGIN_AI_ANALYSIS.AIQuestionAnalysisSidebar;
-
 export const StructuredQueryRightSidebar = ({
   deselectTimelineEvents,
   hideTimelineEvents,
   isShowingQuestionInfoSidebar,
   isShowingQuestionSettingsSidebar,
+  isShowingAIQuestionAnalysisSidebar,
   isShowingSummarySidebar,
   isShowingTimelineSidebar,
   onCloseQuestionInfo,
   onCloseSummary,
+  onCloseAIQuestionAnalysisSidebar,
   onCloseTimelines,
   onOpenModal,
   onSave,
@@ -34,10 +30,6 @@ export const StructuredQueryRightSidebar = ({
   visibleTimelineEventIds,
   xDomain,
 }) => {
-  const isShowingAIQuestionAnalysisSidebar = useSelector(
-    getIsAIQuestionAnalysisSidebarVisible,
-  );
-
   return match({
     isSaved: question.isSaved(),
     isShowingSummarySidebar,
@@ -50,7 +42,13 @@ export const StructuredQueryRightSidebar = ({
       {
         isShowingAIQuestionAnalysisSidebar: true,
       },
-      () => <AIQuestionAnalysisSidebar question={question} />,
+      () => (
+        <PLUGIN_AI_ANALYSIS.AIQuestionAnalysisSidebar
+          question={question}
+          timelines={timelines}
+          onClose={onCloseAIQuestionAnalysisSidebar}
+        />
+      ),
     )
     .with(
       {

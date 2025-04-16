@@ -224,7 +224,9 @@ export function ViewTitleHeaderRightSide({
         </Box>
       )}
       {!isShowingNotebook && <QuestionSharingMenu question={question} />}
-      <PLUGIN_AI_ANALYSIS.AIQuestionAnalysisButton />
+      {!isShowingNotebook && PLUGIN_AI_ANALYSIS.canAnalyzeQuestion(question) ? (
+        <PLUGIN_AI_ANALYSIS.AIQuestionAnalysisButton />
+      ) : null}
       {isSaved && (
         <QuestionActions
           question={question}

@@ -8,6 +8,11 @@ export interface AnalysisParams {
   image: File;
   name: string;
   description?: string;
+  timelineEvents?: {
+    name: string;
+    description?: string;
+    timestamp: string;
+  }[];
 }
 
 export interface AnalysisDashboardParams extends AnalysisParams {
@@ -17,12 +22,15 @@ export interface AnalysisDashboardParams extends AnalysisParams {
 export const aiAnalysisApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     analyzeChart: builder.mutation<AnalysisResponse, AnalysisParams>({
-      query: ({ image, name, description }) => {
+      query: ({ image, name, description, timelineEvents }) => {
         const formData = new FormData();
         formData.append("image", image);
         formData.append("name", name);
         if (description) {
           formData.append("description", description);
+        }
+        if (timelineEvents && timelineEvents.length > 0) {
+          formData.append("timeline_events", JSON.stringify(timelineEvents));
         }
 
         return {

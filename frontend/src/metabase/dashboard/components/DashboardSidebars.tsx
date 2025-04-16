@@ -33,6 +33,7 @@ import { AddCardSidebar } from "./AddCardSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
+import { PLUGIN_AI_ANALYSIS } from "metabase/plugins";
 
 interface DashboardSidebarsProps {
   dashboard: IDashboard;
@@ -230,6 +231,8 @@ export function DashboardSidebars({
           onClose={closeSidebar}
         />
       );
+    case SIDEBAR_NAME.analyze:
+      return <PLUGIN_AI_ANALYSIS.AIDashboardAnalysisSidebar />;
     default:
       return null;
   }

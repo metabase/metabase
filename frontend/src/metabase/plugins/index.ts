@@ -41,6 +41,7 @@ import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type { AIQuestionAnalysisSidebarProps } from "metabase-enterprise/ai-entity-analysis/components/AIQuestionAnalysisSidebar/AIQuestionAnalysisSidebar";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -659,20 +660,22 @@ export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
   GenerateSqlQueryButton: PluginPlaceholder,
 };
 
-export interface AIQuestionAnalysisSidebarProps {
-  question: Question;
-}
-
 export type PluginAiAnalysis = {
-  AIQuestionAnalysisButton: ComponentType<Record<string, never>>;
-  AIDashboardAnalysisButton: ComponentType<Record<string, never>>;
+  AIQuestionAnalysisButton: ComponentType<any>;
+  AIDashboardAnalysisButton: ComponentType<any>;
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
+  AIDashboardAnalysisSidebar: ComponentType<any>;
+  canAnalyzeDashboard: (dashboard: Dashboard) => boolean;
+  canAnalyzeQuestion: (question: Question) => boolean;
 };
 
 export const PLUGIN_AI_ANALYSIS: PluginAiAnalysis = {
   AIQuestionAnalysisButton: PluginPlaceholder,
   AIDashboardAnalysisButton: PluginPlaceholder,
   AIQuestionAnalysisSidebar: PluginPlaceholder,
+  AIDashboardAnalysisSidebar: PluginPlaceholder,
+  canAnalyzeDashboard: () => false,
+  canAnalyzeQuestion: () => false,
 };
 
 export const PLUGIN_METABOT = {

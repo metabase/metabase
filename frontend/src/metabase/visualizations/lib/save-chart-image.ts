@@ -8,6 +8,7 @@ import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/cons
 import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { getCardKey } from "./utils";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
@@ -153,6 +154,16 @@ export const getDashboardImage = async (
 
   const blob = await canvasToBlob(canvas);
   return blob ? blobToFile(blob, "dashboard.png") : undefined;
+};
+
+export const getChartSelector = (
+  input: { dashcardId: number | undefined } | { cardId: number | undefined },
+) => {
+  if ("dashcardId" in input) {
+    return `[data-dashcard-key='${input.dashcardId}']`;
+  } else {
+    return `[data-card-key='${getCardKey(input.cardId)}']`;
+  }
 };
 
 export const saveChartImage = async (selector: string, fileName: string) => {
