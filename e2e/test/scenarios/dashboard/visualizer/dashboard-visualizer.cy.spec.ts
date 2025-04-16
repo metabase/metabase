@@ -698,9 +698,7 @@ describe("scenarios > dashboard > visualizer", () => {
     });
   });
 
-  // TODO: broken
-  // the getIsCompatible function is too strict
-  describe.skip("funnels", () => {
+  describe("funnels", () => {
     it("should build a funnel", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.editDashboard();
@@ -828,11 +826,11 @@ describe("scenarios > dashboard > visualizer", () => {
       H.modal().within(() => {
         cy.findByText("Funnel").click();
 
-        cy.button("Add more data").click();
-        H.addDataset(LANDING_PAGE_VIEWS.name);
+        H.switchToAddMoreData();
+        H.selectDataset(LANDING_PAGE_VIEWS.name);
         H.addDataset(CHECKOUT_PAGE_VIEWS.name);
         H.addDataset(PAYMENT_DONE_PAGE_VIEWS.name);
-        cy.button("Done").click();
+        H.switchToColumnsList();
 
         H.assertDataSourceColumnSelected(LANDING_PAGE_VIEWS.name, "views");
         H.assertDataSourceColumnSelected(CHECKOUT_PAGE_VIEWS.name, "views");
@@ -851,9 +849,7 @@ describe("scenarios > dashboard > visualizer", () => {
         });
 
         // Remove a column from the data manager
-        H.dataSourceColumn(CHECKOUT_PAGE_VIEWS.name, "views")
-          .findByLabelText("Remove")
-          .click();
+        H.deselectColumnFromColumnsList(CHECKOUT_PAGE_VIEWS.name, "views");
         H.assertDataSourceColumnSelected(
           CHECKOUT_PAGE_VIEWS.name,
           "views",
@@ -869,7 +865,7 @@ describe("scenarios > dashboard > visualizer", () => {
         });
 
         // Add a column back
-        H.dataSourceColumn(CHECKOUT_PAGE_VIEWS.name, "views").click();
+        H.selectColumnFromColumnsList(CHECKOUT_PAGE_VIEWS.name, "views");
         H.assertDataSourceColumnSelected(CHECKOUT_PAGE_VIEWS.name, "views");
         H.verticalWell().within(() => {
           cy.findByText("METRIC").should("exist");
@@ -908,9 +904,9 @@ describe("scenarios > dashboard > visualizer", () => {
           .should("have.length", 0);
 
         // Rebuild the funnel
-        H.dataSourceColumn(LANDING_PAGE_VIEWS.name, "views").click();
-        H.dataSourceColumn(CHECKOUT_PAGE_VIEWS.name, "views").click();
-        H.dataSourceColumn(PAYMENT_DONE_PAGE_VIEWS.name, "views").click();
+        H.selectColumnFromColumnsList(LANDING_PAGE_VIEWS.name, "views");
+        H.selectColumnFromColumnsList(CHECKOUT_PAGE_VIEWS.name, "views");
+        H.selectColumnFromColumnsList(PAYMENT_DONE_PAGE_VIEWS.name, "views");
 
         H.assertDataSourceColumnSelected(LANDING_PAGE_VIEWS.name, "views");
         H.assertDataSourceColumnSelected(CHECKOUT_PAGE_VIEWS.name, "views");
