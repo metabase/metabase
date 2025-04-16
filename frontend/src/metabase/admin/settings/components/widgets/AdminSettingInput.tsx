@@ -9,6 +9,7 @@ import {
   type BoxProps,
   Radio,
   Select,
+  Stack,
   Switch,
   TextInput,
   Textarea,
@@ -152,9 +153,11 @@ export function BasicAdminSettingInput({
     case "radio":
       return (
         <Radio.Group id={name} value={localValue} onChange={handleChange}>
-          {options?.map(({ label, value }) => (
-            <Radio key={value} value={value} label={label} />
-          ))}
+          <Stack gap="xs">
+            {options?.map(({ label, value }) => (
+              <Radio key={value} value={value} label={label} />
+            ))}
+          </Stack>
         </Radio.Group>
       );
     case "textarea":

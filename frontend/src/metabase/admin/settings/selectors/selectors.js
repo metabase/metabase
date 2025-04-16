@@ -16,14 +16,13 @@ import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { CloudPanel } from "../components/CloudPanel";
-import { BccToggleWidget } from "../components/Email/BccToggleWidget";
-import { SettingsEmailForm } from "../components/Email/SettingsEmailForm";
 import {
   EmbeddingSdkSettings,
   EmbeddingSettings,
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
+import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
 import { SettingsUpdatesForm } from "../components/SettingsUpdatesForm/SettingsUpdatesForm";
 import { UploadSettings } from "../components/UploadSettings";
@@ -34,7 +33,6 @@ import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
 } from "../components/widgets/PublicLinksListing";
-import SettingCommaDelimitedInput from "../components/widgets/SettingCommaDelimitedInput";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
 
@@ -88,47 +86,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
   email: {
     name: t`Email`,
     order: 40,
-    component: SettingsEmailForm,
-    settings: [
-      {
-        key: "email-from-name",
-        display_name: t`From Name`,
-        placeholder: "Metabase",
-        type: "string",
-        required: false,
-      },
-      {
-        key: "email-from-address",
-        display_name: t`From Address`,
-        placeholder: "metabase@yourcompany.com",
-        type: "string",
-        required: true,
-        validations: [["email", t`That's not a valid email address`]],
-      },
-      {
-        key: "email-reply-to",
-        display_name: t`Reply-To Address`,
-        placeholder: "metabase-replies@yourcompany.com",
-        type: "string",
-        required: false,
-        widget: SettingCommaDelimitedInput,
-        validations: [["email_list", t`That's not a valid email address`]],
-      },
-      {
-        key: "bcc-enabled?",
-        display_name: t`Add Recipients as CC or BCC`,
-        description: t`Control the visibility of alerts and subscriptions recipients.`,
-        options: [
-          { value: true, name: t`BCC - Hide recipients` },
-          {
-            value: false,
-            name: t`CC - Disclose recipients`,
-          },
-        ],
-        defaultValue: true,
-        widget: BccToggleWidget,
-      },
-    ],
+    component: EmailSettingsPage,
+    settings: [],
   },
   "email/smtp": {
     component: SMTPConnectionForm,
