@@ -37,32 +37,57 @@
   (let [col-names (map (comp keyword :name) cols)]
     (map #(zipmap col-names %) rows)))
 
-(defn- table-id->pk
+(defn- table-id->pks
   [table-id]
-  ;; TODO: support composite PKs
   (let [pks (api/check-404 (t2/select :model/Field :table_id table-id :semantic_type :type/PK))]
-    (api/check-500 (= 1 (count pks)))
-    (first pks)))
+    (api/check-500 (pos? (count pks)))
+    pks))
 
-(defn- get-row-pk
-  [pk-field row]
-  (get row (keyword (:name pk-field))))
+(defn- get-row-pks
+  [pk-fields row]
+  (select-keys row (map (comp keyword :name) pk-fields)))
+
+(defn- valid-pks [pks]
+  (every? some? (vals pks)))
+
+(defn- apply*
+  "Work around the fact that the lib logical operators don't have a 0 or 1 arity."
+  [f clauses]
+  (if (<= (count clauses) 1)
+    (first clauses)
+    (apply f clauses)))
 
 (defn- query-db-rows
-  [table-id pk-field rows]
-  (let [{:keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))]
-    (assert pk-field "Table must have a primary key")
-    (assert (every? (partial get-row-pk pk-field) rows) "All rows must have the primary key")
-    (when-let [pk-values (seq (map (partial get-row-pk pk-field) rows))]
+  [table-id pk-fields rows]
+  (assert (seq pk-fields) "Table must have at least on primary key column")
+  ;; TODO pass in the db-id from above rather
+  (let [{:keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
+        row-pks (seq (map (partial get-row-pks pk-fields) rows))]
+    (assert (every? valid-pks row-pks) "All rows must have valid primary keys")
+    (when row-pks
       (qp.store/with-metadata-provider db_id
         (let [mp    (qp.store/metadata-provider)
-              query (-> (lib/query mp (lib.metadata/table mp table-id))
-                        (lib/filter (apply lib/in (lib.metadata/field mp (:id pk-field)) pk-values))
-                        qp/userland-query-with-default-constraints)]
-          (->> (qp/process-query query)
-               :data
-               qp-result->row-map
-               (m/index-by #(get-row-pk pk-field %))))))))
+              query (lib/query mp (lib.metadata/table mp table-id))
+              query (lib/filter
+                     query
+                     ;; We can optimize the most common case considerably.
+                     (if (= 1 (count pk-fields))
+                       (apply lib/in
+                              (lib.metadata/field mp (:id (first pk-fields)))
+                              (map (comp first vals) row-pks))
+                       ;; Optimizing this could be done in many cases, but it would be complex.
+                       (apply* lib/or
+                               (for [row-pk row-pks]
+                                 (apply* lib/and
+                                         (for [field pk-fields]
+                                           (lib/= (lib.metadata/field mp (:id field))
+                                                  (get row-pk (keyword (:name field))))))))))]
+          (->>  query
+                qp/userland-query-with-default-constraints
+                qp/process-query
+                :data
+                qp-result->row-map
+                (m/index-by #(get-row-pks pk-fields %))))))))
 
 (defn- invalidate-field-values! [table-id rows]
   (let [field-name-xf (comp (mapcat keys)
@@ -95,13 +120,13 @@
   (check-permissions)
   (let [rows'      (data-editing/apply-coercions table-id rows)
         res        (data-editing/insert! api/*current-user-id* table-id rows')
-        pk-field   (table-id->pk table-id)
+        pk-fields  (table-id->pks table-id)
         ;; actions code does not return coerced values
         ;; right now the FE works off qp outputs, which coerce output row data
         ;; still feels messy, revisit this
-        id->db-row (query-db-rows table-id pk-field (map #(update-keys % keyword) (:created-rows res)))]
+        pks->db-row (query-db-rows table-id pk-fields (map #(update-keys % keyword) (:created-rows res)))]
     (invalidate-field-values! table-id rows')
-    {:created-rows (vals id->db-row)}))
+    {:created-rows (vals pks->db-row)}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
@@ -112,17 +137,18 @@
   (if (empty? rows)
     {:updated []}
     (let [rows'        (data-editing/apply-coercions table-id rows)
-          pk-field     (table-id->pk table-id)
-          id->db-row   (query-db-rows table-id pk-field rows')
+          pk-fields    (table-id->pks table-id)
+          pks->db-row  (query-db-rows table-id pk-fields rows')
           updated-rows (volatile! [])
           user-id      api/*current-user-id*]
       ;; TODO this publishing needs to move down the stack and be generic all :row/delete invocations
       ;; https://linear.app/metabase/issue/WRK-228/publish-events-when-modified-by-action-execution
       (doseq [row rows']
+        ;; TODO fix this to use bulk action properly
         (let [;; well, this is a trick, but I haven't figured out how to do single row update
               result     (:rows-updated (data-editing/perform-bulk-action! :bulk/update table-id [row]))
-              after-row  (-> (query-db-rows table-id pk-field [row]) vals first)
-              row-before (get id->db-row (get-row-pk pk-field row))]
+              after-row  (-> (query-db-rows table-id pk-fields [row]) vals first)
+              row-before (get pks->db-row (get-row-pks pk-fields row))]
           (vswap! updated-rows conj after-row)
           (when (pos-int? result)
             (actions/publish-action-success!
@@ -136,10 +162,8 @@
               :raw_update row}))))
       ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
       (let [row-pk->old-new-values (->> (for [row rows']
-                                          ;; TODO fix for composite keys here too
-                                          (let [id  (get-row-pk pk-field row)
-                                                pks {(:name pk-field) id}]
-                                            [pks [(get id->db-row id)
+                                          (let [pks (get-row-pks pk-fields row)]
+                                            [pks [(get pks->db-row pks)
                                                   row]]))
                                         (into {}))]
         (undo/track-change! user-id {table-id row-pk->old-new-values}))
@@ -154,8 +178,8 @@
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
   ;; TODO fix for composite keys here too
-  (let [pk-field    (table-id->pk table-id)
-        id->db-rows (query-db-rows table-id pk-field rows)
+  (let [pk-fields    (table-id->pks table-id)
+        pks->db-rows (query-db-rows table-id pk-fields rows)
         res         (data-editing/perform-bulk-action! :bulk/delete table-id rows)
         user-id     api/*current-user-id*]
     ;; TODO this publishing needs to move down the stack and be generic all :row/delete invocations
@@ -167,14 +191,11 @@
        :row/delete
        {:table_id table-id
         :row      row}
-        ;; TODO fix for composite keys here too
-       {:deleted_row (get id->db-rows (get-row-pk pk-field row))}))
+       {:deleted_row (get pks->db-rows (get-row-pks pk-fields row))}))
     ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
     (let [row-pk->old-new-values (->> (for [row rows]
-                                        ;; TODO fix for composite keys here too
-                                        (let [id  (get-row-pk pk-field row)
-                                              pks {(:name pk-field) id}]
-                                          [pks [(get id->db-rows id) nil]]))
+                                        (let [pks  (get-row-pks pk-fields row)]
+                                          [pks [(get pks->db-rows pks) nil]]))
                                       (into {}))]
       (undo/track-change! user-id {table-id row-pk->old-new-values}))
     res))
