@@ -15,19 +15,9 @@ export function mapDataEditingRowObjectsToRowValues(
   return rows.map((row) => columns.map((column) => row[column.name]));
 }
 
-// For undo/redo operations, the updated changeset may be partial
-// so we need to mark the missing columns with a special value
-export const MISSING_COLUMN_MARK = Symbol(
-  "state-update-strategy-missing-column",
-);
-
-export function mapDataEditingRowObjectsToPartialRowValues(
+export function createPrimaryKeyToUpdatedRowObjectMap(
+  pkColumnName: string,
   rows: Record<string, RowValue>[],
-  columns: DatasetColumn[],
 ) {
-  return rows.map((row) =>
-    columns.map((column) =>
-      column.name in row ? row[column.name] : MISSING_COLUMN_MARK,
-    ),
-  );
+  return new Map(rows.map((row) => [row[pkColumnName], row]));
 }

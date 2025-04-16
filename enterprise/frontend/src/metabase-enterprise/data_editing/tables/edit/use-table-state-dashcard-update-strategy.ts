@@ -7,9 +7,8 @@ import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { RowValue } from "metabase-types/api";
 
 import {
-  MISSING_COLUMN_MARK,
   type TableEditingStateUpdateStrategy,
-  mapDataEditingRowObjectsToPartialRowValues,
+  createPrimaryKeyToUpdatedRowObjectMap,
   mapDataEditingRowObjectsToRowValues,
 } from "./use-table-state-update-strategy";
 
@@ -52,10 +51,9 @@ export function useTableEditingStateDashcardUpdateStrategy(
       }
 
       const pkColumnIndex = cardData.data.cols.findIndex(isPK);
-      const updatedRows = mapDataEditingRowObjectsToPartialRowValues(
-        rows,
-        cardData.data.cols,
-      );
+      const pkColumnName = cardData.data.cols[pkColumnIndex].name;
+      const primaryKeyToUpdatedRowObjectMap =
+        createPrimaryKeyToUpdatedRowObjectMap(pkColumnName, rows);
 
       dispatch(
         updateCardData(cardId, dashcardId, {
@@ -63,14 +61,20 @@ export function useTableEditingStateDashcardUpdateStrategy(
           data: {
             ...cardData.data,
             rows: cardData.data.rows.map((row) => {
-              for (const updatedRow of updatedRows) {
-                if (row[pkColumnIndex] === updatedRow[pkColumnIndex]) {
-                  // For partial updates (e.g. undo/redo), the updated value may be missing
-                  // so we keep the original value
-                  return updatedRow.map((value, index) =>
-                    value === MISSING_COLUMN_MARK ? row[index] : value,
-                  );
-                }
+              const updatedRowObject = primaryKeyToUpdatedRowObjectMap.get(
+                row[pkColumnIndex],
+              );
+
+              if (updatedRowObject) {
+                row.map((value, index) => {
+                  const columnName = cardData.data.cols[index].name;
+
+                  if (columnName in updatedRowObject) {
+                    return updatedRowObject[columnName];
+                  }
+
+                  return value;
+                });
               }
 
               return row;

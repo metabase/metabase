@@ -8,8 +8,7 @@ import type { DatasetQuery, RowValue } from "metabase-types/api";
 
 import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
 import {
-  MISSING_COLUMN_MARK,
-  mapDataEditingRowObjectsToPartialRowValues,
+  createPrimaryKeyToUpdatedRowObjectMap,
   mapDataEditingRowObjectsToRowValues,
 } from "./use-table-state-update-strategy";
 
@@ -52,27 +51,20 @@ export function useTableEditingStateApiUpdateStrategy(
           adhocQuery,
           ({ data }) => {
             const pkColumnIndex = data.cols.findIndex(isPK);
-            const updatedRows = mapDataEditingRowObjectsToPartialRowValues(
-              rows,
-              data.cols,
-            );
+            const pkColumnName = data.cols[pkColumnIndex].name;
+            const primaryKeyToUpdatedRowObjectMap =
+              createPrimaryKeyToUpdatedRowObjectMap(pkColumnName, rows);
 
-            // TODO: consider optimization (https://github.com/metabase/metabase/pull/56427/files#r2036106565)
-            // As for now we only do single row updates, so the updatedRows array is always 1,
-            // so we don't have an extra loop here.
-            for (const row of data.rows) {
-              for (const updatedRow of updatedRows) {
-                if (row[pkColumnIndex] === updatedRow[pkColumnIndex]) {
-                  // Update row values array with updated values
-                  for (let i = 0; i < data.cols.length; i++) {
-                    const updatedValue = updatedRow[i];
+            for (const rowArray of data.rows) {
+              const updatedRowObject = primaryKeyToUpdatedRowObjectMap.get(
+                rowArray[pkColumnIndex],
+              );
 
-                    // For partial updates (e.g. undo/redo), the updated value may be missing
-                    // so we keep the original value
-                    row[i] =
-                      updatedValue === MISSING_COLUMN_MARK
-                        ? row[i]
-                        : updatedValue;
+              if (updatedRowObject) {
+                for (let i = 0; i < data.cols.length; i++) {
+                  const columnName = data.cols[i].name;
+                  if (columnName in updatedRowObject) {
+                    rowArray[i] = updatedRowObject[columnName];
                   }
                 }
               }
