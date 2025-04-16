@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import { createMockTask } from "metabase-types/api/mocks";
 
 const { H } = cy;
@@ -373,8 +375,8 @@ describe("scenarios > admin > troubleshooting > logs", () => {
     cy.readFile("cypress/downloads/logs.txt").should(
       "equal",
       [
-        "[e7774ef2-42ab-43de-89f7-d6de9fdc624f] 2024-01-11T04:21:58+07:00 DEBUG metabase.server.middleware.log message",
-        "[e7774ef2-42ab-43de-89f7-d6de9fdc624f] 2024-01-11T04:21:58+07:00 ERROR metabase.server.middleware.log message",
+        `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log1.timestamp)} DEBUG metabase.server.middleware.log message`,
+        `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
       ].join("\n"),
     );
   });
@@ -384,9 +386,17 @@ describe("scenarios > admin > troubleshooting > logs", () => {
     cy.button(/Download/).click();
     cy.readFile("cypress/downloads/logs.txt").should(
       "equal",
-      "[e7774ef2-42ab-43de-89f7-d6de9fdc624f] 2024-01-11T04:21:58+07:00 ERROR metabase.server.middleware.log message",
+      `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
     );
   });
+
+  /**
+   * The formatted timestamp may vary depending on the timezone in which the test is run.
+   * This function makes test assertions timezone-agnostic.
+   */
+  function formatTimestamp(timestamp) {
+    return dayjs(timestamp).format();
+  }
 });
 
 // Quarantine the whole spec because it is most likely causing the H2 timeouts and the chained failures!
