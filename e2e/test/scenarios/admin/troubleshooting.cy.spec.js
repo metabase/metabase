@@ -384,9 +384,7 @@ describe("scenarios > admin > troubleshooting > logs", () => {
     cy.button(/Download/).click();
     cy.readFile("cypress/downloads/logs.txt").should(
       "equal",
-      [
-        "[e7774ef2-42ab-43de-89f7-d6de9fdc624f] 2024-01-11T04:21:58+07:00 ERROR metabase.server.middleware.log message",
-      ].join("\n"),
+      "[e7774ef2-42ab-43de-89f7-d6de9fdc624f] 2024-01-11T04:21:58+07:00 ERROR metabase.server.middleware.log message",
     );
   });
 });
