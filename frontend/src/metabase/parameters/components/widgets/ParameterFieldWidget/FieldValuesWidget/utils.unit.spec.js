@@ -37,6 +37,11 @@ describe("Components > FieldValuesWidget > utils", () => {
         expect(isSearchable({ fields })).toBe(true);
       });
 
+      it("should be false for fields that cannot be searched", () => {
+        const nonSearchableField = metadata.field(PRODUCTS.ID);
+        expect(isSearchable({ fields: [nonSearchableField] })).toBe(false);
+      });
+
       it("should be true if there is at least one field that requires search", () => {
         const fields = [searchField, listField];
         expect(isSearchable({ fields })).toBe(true);
