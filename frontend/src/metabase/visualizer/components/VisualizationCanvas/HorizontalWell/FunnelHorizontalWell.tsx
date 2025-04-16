@@ -146,7 +146,6 @@ function FunnelWellItem({
       bg={isDraggable ? "var(--mb-color-bg-white)" : "transparent"}
       style={{
         cursor: isDraggable ? "grab" : "default",
-        border: `1px solid hsla(204,66,8,51%)`,
       }}
     />
   );

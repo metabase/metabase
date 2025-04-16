@@ -316,7 +316,10 @@ function DashCardInner({
     );
 
   const onEditVisualizationClick = useMemo(() => {
-    if (!isVisualizerSupportedVisualization(dashcard.card.display)) {
+    if (
+      !isVisualizerDashboardCard(dashcard) &&
+      !isVisualizerSupportedVisualization(dashcard.card.display)
+    ) {
       return;
     }
 
