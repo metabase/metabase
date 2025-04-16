@@ -251,6 +251,18 @@
                   1]}
           (lib/expression-parts (lib.tu/venues-query) -1 (lib/= (lib/ref (meta/field-metadata :products :id))
                                                                 1)))))
+
+(deftest ^:parallel normalize-expression-clause-test
+  (let [column (meta/field-metadata :checkins :date)]
+    (testing "normalizes week-mode correctly"
+      (doseq [[expected strings] {:us ["US" "us" "Us"], :iso ["ISO" "iso" "Iso"]}
+              week-mode strings]
+        (is (= expected
+               (last (lib/expression-clause {:lib/type :mbql/expression-parts
+                                             :operator :get-week
+                                             :options {}
+                                             :args [column week-mode]}))))))))
+
 (deftest ^:parallel case-or-if-parts-test
   (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
         int-field    (meta/field-metadata :venues :category-id)

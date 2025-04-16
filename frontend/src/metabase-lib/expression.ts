@@ -57,11 +57,34 @@ export function expressionParts(
 }
 
 export function expressionClause(
+  parts: ExpressionParts | ExpressionArg,
+): ExpressionClause;
+export function expressionClause(
   operator: ExpressionOperator,
-  args: (ExpressionArg | AggregationClause | ExpressionClause | FilterClause)[],
-  options: ExpressionOptions | null = null,
+  args: (
+    | ExpressionParts
+    | ExpressionArg
+    | AggregationClause
+    | ExpressionClause
+    | FilterClause
+  )[],
+  options?: ExpressionOptions | null,
+): ExpressionClause;
+export function expressionClause(
+  operatorOrParts: ExpressionOperator | ExpressionParts | ExpressionArg,
+  args?: (
+    | ExpressionParts
+    | ExpressionArg
+    | AggregationClause
+    | ExpressionClause
+    | FilterClause
+  )[],
+  options?: ExpressionOptions | null,
 ): ExpressionClause {
-  return ML.expression_clause(operator, args, options);
+  if (args === undefined && options === undefined) {
+    return ML.expression_clause(operatorOrParts);
+  }
+  return ML.expression_clause(operatorOrParts, args, options ?? null);
 }
 
 export function expressionClauseForLegacyExpression(

@@ -1,6 +1,4 @@
-import { isProduction } from "metabase/env";
-
-import type { CompileError } from "../errors";
+import { CompileError } from "../errors";
 
 type VariableKind = "dimension" | "segment" | "aggregation" | "expression";
 type Type = VariableKind | "string" | "number" | "boolean";
@@ -124,14 +122,30 @@ class AssertionError extends Error {
   }
 }
 
+/**
+ * Assert compiler invariants and assumptions.
+ * Throws a non-friendly error if the condition is false.
+ */
 export function assert(
   condition: any,
   msg: string,
   data?: any,
 ): asserts condition {
-  if (isProduction) {
-    if (!condition) {
-      throw new AssertionError(msg, data || {});
-    }
+  if (!condition) {
+    throw new AssertionError(msg, data || {});
+  }
+}
+
+/**
+ * Check assumptions that might fail based on the query source.
+ * Throws a user-friendly error if the condition is false.
+ */
+export function check(
+  condition: any,
+  msg: string,
+  node: Node,
+): asserts condition {
+  if (!condition) {
+    throw new CompileError(msg, node);
   }
 }

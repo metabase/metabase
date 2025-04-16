@@ -14,6 +14,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
@@ -205,16 +206,43 @@
   (cond-> clause
     (case-or-if-expression? clause) group-case-or-if-args))
 
+(defmulti expression-clause-method
+  "Builds the expression clause by dispatching on the type of the argument."
+  {:arglists '([value])}
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod expression-clause-method :default
+  [value]
+  value)
+
+(doseq [dispatch-value [:metadata/column
+                        :metadata/segment
+                        :metadata/metric]]
+  (defmethod expression-clause-method dispatch-value
+    [metadata]
+    (lib.ref/ref metadata)))
+
+(defmethod expression-clause-method :mbql/expression-parts
+  [{:keys [operator options args]}]
+  (-> (into [(keyword operator) (or options {})] (map lib.common/->op-arg) args)
+      fix-expression-clause
+      lib.options/ensure-uuid
+      lib.normalize/normalize))
+
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
-  [operator :- :keyword
-    ;; TODO - remove lib.schema.expression/expression here as it might not be supported in all cases
-   args     :- [:sequential [:or ExpressionArg ExpressionParts ::lib.schema.expression/expression]]
-   options  :- [:maybe :map]]
-  (-> (into [operator options] (map lib.common/->op-arg) args)
-      lib.normalize/normalize
-      lib.options/ensure-uuid
-      fix-expression-clause))
+  ;; TODO - remove lib.schema.expression/expression here as it might not be supported in all cases
+  ([parts :- [:or ExpressionParts ExpressionArg ::lib.schema.expression/expression]]
+   (expression-clause-method parts))
+
+  ([operator :- [:or :keyword :string]
+    args     :- [:sequential [:or ExpressionArg ExpressionParts ::lib.schema.expression/expression]]
+    options  :- [:maybe :map]]
+   (expression-clause-method {:lib/type :mbql/expression-parts
+                              :operator operator
+                              :options  options
+                              :args     args})))
 
 (defmethod lib.common/->op-arg :mbql/expression-parts
   [{:keys [operator options args] :or {options {}}}]

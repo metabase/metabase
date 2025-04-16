@@ -10,9 +10,9 @@ import {
   type EDITOR_QUOTES,
   EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
   FIELD_MARKERS,
-  MBQL_CLAUSES,
   OPERATORS,
   OPERATOR_PRECEDENCE,
+  getClauseDefinition,
   getExpressionName,
 } from "../config";
 import {
@@ -291,7 +291,7 @@ function formatExpressionOptions(options: Lib.ExpressionOptions): Doc | null {
   return null;
 }
 
-function isOperator(operator: string): boolean {
+function isOperator(operator: string): operator is OPERATOR {
   return OPERATORS.has(operator as OPERATOR);
 }
 
@@ -378,7 +378,7 @@ function isLogicOperator(op: string) {
 }
 
 function isUnaryOperator(op: string) {
-  const clause = MBQL_CLAUSES[op];
+  const clause = getClauseDefinition(op);
   return clause && clause?.args.length === 1;
 }
 

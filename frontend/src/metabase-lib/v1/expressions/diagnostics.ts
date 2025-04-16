@@ -8,15 +8,13 @@ import { type CompileResult, compileExpression } from "./compiler";
 import {
   COMPARISON_OPERATORS,
   FIELD_MARKERS,
-  MBQL_CLAUSES,
+  getClauseDefinition,
   getMBQLName,
 } from "./config";
 import { DiagnosticError, type ExpressionError, renderError } from "./errors";
 import {
   isCallExpression,
   isCaseOrIfOperator,
-  isExpression,
-  isFunction,
   isOperator,
   isOptionsObject,
 } from "./matchers";
@@ -96,7 +94,7 @@ export function diagnoseAndCompile({
       stageIndex,
     });
 
-    if (!isExpression(result.expression) || result.expressionClause === null) {
+    if (result.expression === null || result.expressionClause === null) {
       const error = result.error ?? new DiagnosticError(t`Invalid expression`);
       throw error;
     }
@@ -129,7 +127,7 @@ function checkOpenParenthesisAfterFunction(
     if (token.type === IDENTIFIER && source[token.start] !== "[") {
       const functionName = source.slice(token.start, token.end);
       const fn = getMBQLName(functionName);
-      const clause = fn ? MBQL_CLAUSES[fn] : null;
+      const clause = fn && getClauseDefinition(fn);
       if (clause && clause.args.length > 0) {
         const next = tokens[i + 1];
         if (next.type !== GROUP) {
@@ -276,7 +274,7 @@ function checkKnownFunctions({ expression }: { expression: Expression }) {
       return;
     }
 
-    const clause = MBQL_CLAUSES[name];
+    const clause = getClauseDefinition(name);
     if (!clause) {
       throw new DiagnosticError(t`Unknown function ${name}`, getToken(node));
     }
@@ -306,7 +304,7 @@ function checkFunctionSupport({
       return;
     }
     const [name] = node;
-    const clause = MBQL_CLAUSES[name];
+    const clause = getClauseDefinition(name);
     if (!clause) {
       return;
     }
@@ -325,7 +323,7 @@ function checkArgValidator({ expression }: { expression: Expression }) {
       return;
     }
     const [name, ...operands] = node;
-    const clause = MBQL_CLAUSES[name];
+    const clause = getClauseDefinition(name);
     if (!clause) {
       return;
     }
@@ -342,20 +340,24 @@ function checkArgValidator({ expression }: { expression: Expression }) {
 
 function checkArgCount({ expression }: { expression: Expression }) {
   visit(expression, (node) => {
-    if (!isFunction(node)) {
+    if (!isCallExpression(node)) {
       return;
     }
 
     const [name, ...operands] = node;
-    const clause = MBQL_CLAUSES[name];
-    if (!clause) {
+    const clause = getClauseDefinition(name);
+    if (!clause || name === "case" || name === "if") {
       return;
     }
 
     const { displayName, args, multiple, hasOptions } = clause;
 
+    const filtered = operands.filter(
+      (arg) => !isOptionsObject(arg) && arg !== null,
+    );
+
     if (multiple) {
-      const argCount = operands.filter((arg) => !isOptionsObject(arg)).length;
+      const argCount = filtered.length;
       const minArgCount = args.length;
 
       if (argCount < minArgCount) {
@@ -374,8 +376,8 @@ function checkArgCount({ expression }: { expression: Expression }) {
         ? expectedArgsLength + 1
         : expectedArgsLength;
       if (
-        operands.length < expectedArgsLength ||
-        operands.length > maxArgCount
+        filtered.length < expectedArgsLength ||
+        filtered.length > maxArgCount
       ) {
         throw new DiagnosticError(
           ngettext(

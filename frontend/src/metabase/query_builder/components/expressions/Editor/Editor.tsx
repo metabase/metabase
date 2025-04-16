@@ -16,10 +16,10 @@ import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import {
   type ExpressionError,
-  MBQL_CLAUSES,
   type StartRule,
   diagnoseAndCompile,
   format,
+  getClauseDefinition,
 } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { COMMA, GROUP } from "metabase-lib/v1/expressions/pratt";
@@ -128,7 +128,7 @@ export function Editor(props: EditorProps) {
     if (!view) {
       return;
     }
-    const clause = MBQL_CLAUSES[name];
+    const clause = getClauseDefinition(name);
     if (!clause) {
       return;
     }

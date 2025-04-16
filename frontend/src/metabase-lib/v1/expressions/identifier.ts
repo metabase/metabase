@@ -89,7 +89,7 @@ export function formatSegmentName(
 // DIMENSIONS
 
 /**
- * Find dimension with matching `name` in query. TODO - How is this "parsing" a dimension? Not sure about this name.
+ * Find dimension with matching `name` in query.
  */
 export function parseDimension(
   name: string,

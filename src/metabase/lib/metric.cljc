@@ -46,10 +46,10 @@
     [:metric options id]))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/metric
-  [query stage-number metric-metadata]
+  [_query _stage-number metric-metadata]
   (or
    (when-let [[aggregation] (not-empty (:aggregation (metric-definition metric-metadata)))]
-     (lib.metadata.calculation/type-of query stage-number aggregation))
+     (lib.schema.expression/type-of aggregation))
    :type/*))
 
 (defmethod lib.metadata.calculation/type-of-method :metric

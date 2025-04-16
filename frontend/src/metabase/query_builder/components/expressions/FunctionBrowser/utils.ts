@@ -7,19 +7,19 @@ import {
   EXPRESSION_FUNCTIONS,
   type HelpText,
   type MBQLClauseFunctionConfig,
-  MBQL_CLAUSES,
   type StartRule,
+  getClauseDefinition,
 } from "metabase-lib/v1/expressions";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-const EXPRESSION_CLAUSES = Array.from(EXPRESSION_FUNCTIONS).map(
-  (name) => MBQL_CLAUSES[name],
-);
-const AGGREGATION_CLAUSES = Array.from(AGGREGATION_FUNCTIONS).map(
-  (name) => MBQL_CLAUSES[name],
-);
+const EXPRESSION_CLAUSES = Array.from(EXPRESSION_FUNCTIONS)
+  .map(getClauseDefinition)
+  .filter(isNotNull);
+const AGGREGATION_CLAUSES = Array.from(AGGREGATION_FUNCTIONS)
+  .map(getClauseDefinition)
+  .filter(isNotNull);
 
 export function getSearchPlaceholder(startRule: StartRule) {
   if (startRule === "expression" || startRule === "boolean") {
