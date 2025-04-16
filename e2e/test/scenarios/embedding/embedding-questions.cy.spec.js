@@ -173,41 +173,37 @@ describe("scenarios > embedding > questions", () => {
     cy.findByText("Subtotal").should("not.exist");
   });
 
-  it(
-    "should display GUI question with explicit joins correctly",
-    { tags: "@flaky" },
-    () => {
-      H.createQuestion(joinedQuestion).then(({ body: { id } }) => {
-        cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
+  it("should display GUI question with explicit joins correctly", () => {
+    H.createQuestion(joinedQuestion).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
-        H.visitQuestion(id);
-      });
+      H.visitQuestion(id);
+    });
 
-      H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
-      H.visitIframe();
+    H.visitIframe();
 
-      // Base question assertions
-      cy.findByTestId("visualization-root")
-        .should("contain", "Product ID as Title")
-        .should("contain", "Awesome Concrete Shoes")
-        .should("contain", "Math")
-        .should("contain", "Billed")
-        .should("contain", "€39.72")
-        .should("contain", "Tue, Feb 11, 2025, 21:40:27")
-        .should("not.contain", "Subtotal");
+    // Base question assertions
+    cy.findByTestId("visualization-root")
+      .should("contain", "Product ID as Title")
+      .should("contain", "Awesome Concrete Shoes")
+      .should("contain", "Math")
+      .should("contain", "Billed")
+      .should("contain", "€39.72")
+      .should("contain", "Tue, Feb 11, 2025, 21:40:27")
+      .should("not.contain", "Subtotal");
 
-      cy.findAllByTestId("mini-bar-container").should("have.length", 5);
-      H.tableInteractiveScrollContainer().scrollTo("right");
+    cy.findAllByTestId("mini-bar-container").should("have.length", 5);
+    H.tableInteractiveScrollContainer().scrollTo("right");
 
-      // Joined table fields
-      cy.findByTestId("visualization-root")
-        .should("contain", "98.52598640° W")
-        .should("contain", "User → Birth Date")
-        .should("contain", "December 12, 1986")
-        .should("contain", "October 7, 2023, 1:34 AM");
-    },
-  );
+    // Joined table fields
+    cy.findByTestId("visualization-root")
+      .should("contain", "98.52598640° W")
+      .should("contain", "User → Birth Date")
+      .should("contain", "December 12, 1986")
+      .should("contain", "October 7, 2023, 1:34 AM");
+  });
 });
 
 describe("scenarios [EE] > embedding > questions", () => {

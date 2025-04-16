@@ -22,7 +22,7 @@ describe("issue 39487", () => {
 
   it(
     "calendar has constant size when using single date picker filter (metabase#39487)",
-    { tags: "@flaky", viewportHeight: 1000 },
+    { viewportHeight: 1000 },
     () => {
       createTimeSeriesQuestionWithFilter([">", CREATED_AT_FIELD, "2015-01-01"]); // 5 day rows
 
