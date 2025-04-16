@@ -77,7 +77,7 @@
    [:status {:optional true} (into [:enum] task-history-status)]
    [:task {:optional true} [:string {:min 1}]]])
 
-(defn params->order-by
+(defn- params->order-by
   [{col :sort_column
     dir :sort_direction}]
   {:order-by [[col dir]]})
