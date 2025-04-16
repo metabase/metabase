@@ -38,4 +38,5 @@
   apply-json-query]
  [metabase.actions.models
   dashcard->action
-  select-action])
+  select-action
+  select-actions])
