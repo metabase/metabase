@@ -146,6 +146,13 @@ jobs:
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
     secrets: inherit
 
+  cross-version-for-breaking-changes:
+    uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
+    secrets: inherit
+    with:
+      fe-ref: ${{ github.base_ref }}
+      be-ref: ${{ github.head_ref }}
+
   embedding-sdk-tests-result:
     needs:
       - embedding-sdk-cli-snippets-type-check
@@ -186,10 +193,3 @@ jobs:
               }
             });
             process.exit(1);
-
-  cross-version-for-breaking-changes:
-    uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
-    secrets: inherit
-    with:
-      fe-ref: ${{ github.base_ref }}
-      be-ref: ${{ github.head_ref }}
