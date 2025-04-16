@@ -107,6 +107,21 @@ describe("Logs", () => {
       });
     });
 
+    it("should display no results if there are no logs after filtering", async () => {
+      fetchMock.get("path:/api/util/logs", [log]);
+      setup({
+        location: createMockLocation({
+          pathname: PATHNAME,
+          search: "?query=something",
+        }),
+      });
+      await waitFor(() => {
+        expect(
+          screen.getByText("Nothing matches your filters."),
+        ).toBeInTheDocument();
+      });
+    });
+
     it("should display results if server responds with logs", async () => {
       fetchMock.get("path:/api/util/logs", [log]);
       setup();
