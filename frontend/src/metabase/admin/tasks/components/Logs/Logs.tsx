@@ -87,13 +87,12 @@ const LogsBase = ({
           </Box>
         )}
 
-        {filteredLogs.length > 0 && (
-          <Button
-            leftSection={<Icon name="download" />}
-            variant="filled"
-            onClick={handleDownload}
-          >{t`Download`}</Button>
-        )}
+        <Button
+          disabled={filteredLogs.length === 0}
+          leftSection={<Icon name="download" />}
+          variant="filled"
+          onClick={handleDownload}
+        >{t`Download`}</Button>
       </Flex>
 
       <LogsContent id="logs-content" ref={scrollRef} onScroll={onScroll}>
