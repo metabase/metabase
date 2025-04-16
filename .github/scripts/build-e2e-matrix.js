@@ -1,4 +1,4 @@
-function buildMatrix(specs) {
+function buildMatrix(inputSpecs, inputChunks) {
   const java = 21;
   const defaultRunner = "ubuntu-22.04";
 
@@ -8,7 +8,7 @@ function buildMatrix(specs) {
     edition: "ee",
   };
 
-  const allSpecs = specs ?? "./e2e/test/scenarios/**/*.cy.spec.*";
+  const allSpecs = inputSpecs ?? "./e2e/test/scenarios/**/*.cy.spec.*";
 
   // see config.js function getSplittableSpecs for logic that excludes some tests from auto splitting
   const specialTests = [
@@ -25,7 +25,6 @@ function buildMatrix(specs) {
     { name: "mongo", tags: "@mongo", specs: allSpecs },
   ];
 
-  const inputChunks = Number(process.env.chunks);
   const regularChunks = inputChunks - specialTests.length;
 
   const regularTests = new Array(regularChunks).fill(1).map((files, index) => ({

@@ -25,9 +25,9 @@ jobs:
       matrix: ${{ steps.matrix.outputs.config }}
       regularChunks: ${{ steps.matrix.outputs.regularChunks }}
     steps:
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: "22.x"
+          node-version: lts/Jod # 22.x.x
       - uses: actions/github-script@v7
         id: matrix
         env:
@@ -35,8 +35,9 @@ jobs:
         with:
           script: | # js
             const { buildMatrix } = require('./.github/scripts/build-e2e-matrix.js');
-            const specs = ${{ inputs.specs }};
-            const { config, regularChunks } = buildMatrix(specs);
+            const inputSpecs = ${{ inputs.specs }};
+            const inputChunks = Number(process.env.chunks);
+            const { config, regularChunks } = buildMatrix(inputSpecs, inputChunks);
 
             core.setOutput("regularChunks", JSON.stringify(regularChunks));
             core.setOutput("config", JSON.stringify({ include: config }));
