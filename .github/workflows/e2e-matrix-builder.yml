@@ -25,6 +25,7 @@ jobs:
       matrix: ${{ steps.matrix.outputs.config }}
       regularChunks: ${{ steps.matrix.outputs.regularChunks }}
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: lts/Jod # 22.x.x
