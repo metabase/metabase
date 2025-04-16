@@ -110,7 +110,5 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/http :notification/system-event]
-  [_channel-type {:keys [payload]} _template _recipients]
-  [{:body {:type    "system_event"
-           :payload payload
-           :sent_at (t/offset-date-time)}}])
+  [_channel-type notification-payload _template _recipients]
+  [{:body notification-payload}])

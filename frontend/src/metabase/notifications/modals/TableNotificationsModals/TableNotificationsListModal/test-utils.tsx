@@ -98,7 +98,7 @@ export const createNotificationForUser = (
     payload: {
       event_name: "event/action.success",
       table_id: index + 1,
-      action: "row/create",
+      action: "bulk/create",
     },
     payload_id: null,
   };

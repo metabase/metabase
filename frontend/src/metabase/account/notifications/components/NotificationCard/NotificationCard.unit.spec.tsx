@@ -209,8 +209,8 @@ describe("NotificationCard", () => {
     expect(onArchive).not.toHaveBeenCalled();
   });
 
-  it("should render a table notification with 'row created' event", () => {
-    const tableNotification = getTableNotificationItem("row/create");
+  it("should render a table notification with 'bulk created' event", () => {
+    const tableNotification = getTableNotificationItem("bulk/create");
     const user = createMockUser();
 
     renderWithTheme(
@@ -233,8 +233,8 @@ describe("NotificationCard", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render a table notification with 'row updated' event", () => {
-    const tableNotification = getTableNotificationItem("row/update");
+  it("should render a table notification with 'bulk updated' event", () => {
+    const tableNotification = getTableNotificationItem("bulk/update");
     const user = createMockUser();
 
     renderWithTheme(
@@ -253,8 +253,8 @@ describe("NotificationCard", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render a table notification with 'row deleted' event", () => {
-    const tableNotification = getTableNotificationItem("row/delete");
+  it("should render a table notification with 'bulk deleted' event", () => {
+    const tableNotification = getTableNotificationItem("bulk/delete");
     const user = createMockUser();
 
     renderWithTheme(
@@ -274,7 +274,7 @@ describe("NotificationCard", () => {
   });
 
   it("should render a table notification with custom table name", () => {
-    const tableNotification = getTableNotificationItem("row/create", "Orders");
+    const tableNotification = getTableNotificationItem("bulk/create", "Orders");
     const user = createMockUser();
 
     renderWithTheme(

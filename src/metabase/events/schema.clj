@@ -6,14 +6,10 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defmulti event-schema
+(defn event-schema
   "Get the Malli schema we should use for events of `topic`. By default, this looks in our registry for a schema
   matching the event topic name; if it fails to find one, it falls back to `:map`."
-  {:arglists '([topic event-info])}
-  (fn [topic _event-info] topic))
-
-(defmethod event-schema :default
-  [topic _event-info]
+  [topic]
   (or (mr/registered-schema topic)
       :map))
 

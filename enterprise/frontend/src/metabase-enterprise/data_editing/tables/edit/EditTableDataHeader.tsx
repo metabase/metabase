@@ -84,35 +84,37 @@ export const EditTableDataHeader = ({
             variant="filled"
             onClick={onCreate}
           >{t`New record`}</Button>
-          <RunButtonWithTooltip
-            iconSize={16}
-            onlyIcon
-            medium
-            compact
-            isRunning={isLoading}
-            onRun={refetchTableDataQuery}
-          />
-          <TableNotificationsTrigger tableId={table.id} />
-          <ActionIcon
-            onClick={onUndo}
-            disabled={isUndoLoading || isRedoLoading}
-          >
-            {isUndoLoading ? (
-              <Loader size="xs" color="currentColor" />
-            ) : (
-              <Icon name="undo" tooltip={t`Undo changes`} />
-            )}
-          </ActionIcon>
-          <ActionIcon
-            onClick={onRedo}
-            disabled={isUndoLoading || isRedoLoading}
-          >
-            {isRedoLoading ? (
-              <Loader size="xs" color="currentColor" />
-            ) : (
-              <Icon name="redo" tooltip={t`Redo changes`} />
-            )}
-          </ActionIcon>
+          <Flex gap="xs">
+            <RunButtonWithTooltip
+              iconSize={16}
+              onlyIcon
+              medium
+              compact
+              isRunning={isLoading}
+              onRun={refetchTableDataQuery}
+            />
+            <TableNotificationsTrigger tableId={table.id} />
+            <ActionIcon
+              onClick={onUndo}
+              disabled={isUndoLoading || isRedoLoading}
+            >
+              {isUndoLoading ? (
+                <Loader size="xs" color="currentColor" />
+              ) : (
+                <Icon name="undo" tooltip={t`Undo changes`} />
+              )}
+            </ActionIcon>
+            <ActionIcon
+              onClick={onRedo}
+              disabled={isUndoLoading || isRedoLoading}
+            >
+              {isRedoLoading ? (
+                <Loader size="xs" color="currentColor" />
+              ) : (
+                <Icon name="redo" tooltip={t`Redo changes`} />
+              )}
+            </ActionIcon>
+          </Flex>
         </Group>
       </Flex>
       <QuestionFiltersHeader

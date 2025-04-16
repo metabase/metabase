@@ -392,6 +392,7 @@
            driver
            events
            models
+           lib
            permissions
            premium-features
            public-settings
