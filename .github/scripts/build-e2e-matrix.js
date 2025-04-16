@@ -22,6 +22,8 @@ function buildMatrix(inputSpecs, inputChunks) {
 
   // Helper to check if specs exist for a given pattern
   const hasMatchingSpecs = (pattern) => {
+    console.log("Checking specs for pattern:", pattern);
+    console.log("Matching specs:", glob.sync(pattern));
     return glob.sync(pattern).length > 0;
   };
 
