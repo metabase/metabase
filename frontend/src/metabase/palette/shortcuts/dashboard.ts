@@ -1,51 +1,51 @@
 import { t } from "ttag";
 
 export const dashboardShortcuts = {
-  "bookmark-dashboard": {
+  "dashboard-bookmark": {
     name: t`Bookmark Dashboard`,
     shortcut: ["o"],
     shortcutGroup: "dashboard",
   },
-  "add-filter": {
+  "dashboard-add-filter": {
     name: t`Add Filter`,
     shortcut: ["f"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
-  "add-notebook-question": {
+  "dashboard-add-notebook-question": {
     name: t`Add Notebook Question`,
     shortcut: ["a q"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
-  "add-native-question": {
+  "dashboard-add-native-question": {
     name: t`Add Native Question`,
     shortcut: ["a n"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
-  "cancel-edit": {
+  "dashboard-cancel-edit": {
     name: t`Cancel Edit Dashboard`,
     shortcut: ["e"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
-  "trash-dashboard": {
+  "dashboard-send-to-trash": {
     name: t`Send tashboard to trash`,
     shortcut: ["$mod+backspace"],
     shortcutGroup: "dashboard",
   },
-  "info-dashboard": {
+  "dashboard-toggle-info-sidebar": {
     name: t`Toggle Dashboard Info`,
     shortcut: ["]"],
     shortcutGroup: "dashboard",
   },
-  "edit-dashboard": {
+  "dashboard-edit": {
     name: t`Edit Dashboard`,
     shortcutGroup: "dashboard",
     shortcut: ["e"],
   },
-  "save-dashboard": {
+  "dashboard-save": {
     name: t`Save Dashboard`,
     shortcut: ["s"],
     shortcutGroup: "dashboard",
