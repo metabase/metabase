@@ -2,17 +2,18 @@ import type {
   QueryParam,
   UrlStateConfig,
 } from "metabase/common/hooks/use-url-state";
-import type { ListTasksRequest, TaskStatus } from "metabase-types/api";
+import type { TaskStatus } from "metabase-types/api";
+import { SortDirection } from "metabase-types/api/sorting";
 
-type SortColumn = NonNullable<ListTasksRequest["sort_column"]>;
+import type { SortColumn } from "./types";
 
 const DEFAULT_SORT_COLUMN = "started_at";
-const DEFAULT_SORT_DIRECTION = "desc";
+const DEFAULT_SORT_DIRECTION = SortDirection.Desc;
 
 type UrlState = {
   page: number;
   sort_column: SortColumn;
-  sort_direction: "asc" | "desc";
+  sort_direction: SortDirection;
   status: TaskStatus | null;
   task: string | null;
 };
@@ -52,7 +53,9 @@ function isSortColumn(value: string): value is SortColumn {
 
 function parseSortDirection(param: QueryParam): UrlState["sort_direction"] {
   const value = Array.isArray(param) ? param[0] : param;
-  return value === "asc" ? "asc" : DEFAULT_SORT_DIRECTION;
+  return value === SortDirection.Asc
+    ? SortDirection.Asc
+    : DEFAULT_SORT_DIRECTION;
 }
 
 function parseStatus(param: QueryParam): UrlState["status"] {

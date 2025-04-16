@@ -16,10 +16,13 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import type { Database, Task } from "metabase-types/api";
+import { SortDirection } from "metabase-types/api/sorting";
 
 import { TaskPicker } from "../../components/TaskPicker";
 import { TaskStatusPicker } from "../../components/TaskStatusPicker";
 
+import { SortableColumnHeader } from "./SortableColumnHeader";
+import type { SortColumn } from "./types";
 import { urlStateConfig } from "./utils";
 
 type TasksAppProps = {
@@ -63,6 +66,16 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
 
   // index databases by id for lookup
   const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
+
+  const handleSort = (column: SortColumn) => {
+    patchUrlState({
+      sort_column: column,
+      sort_direction:
+        sort_direction === SortDirection.Asc
+          ? SortDirection.Desc
+          : SortDirection.Asc,
+    });
+  };
 
   return (
     <Box pl="md">
@@ -108,31 +121,29 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
             <th>{t`DB Name`}</th>
             <th>{t`DB Engine`}</th>
             <th>
-              <Flex
-                align="center"
-                gap="xs"
-                role="button"
-                onClick={() => {
-                  patchUrlState({
-                    sort_column: "started_at",
-                    sort_direction: sort_direction === "asc" ? "desc" : "asc",
-                  });
-                }}
-              >
-                {t`Started at`}
-
-                {sort_column === "started_at" && (
-                  <Icon
-                    name={
-                      sort_direction === "asc" ? "chevronup" : "chevrondown"
-                    }
-                    size={8}
-                  />
-                )}
-              </Flex>
+              <SortableColumnHeader
+                column="started_at"
+                sortColumn={sort_column}
+                sortDirection={sort_direction}
+                onSort={handleSort}
+              >{t`Started at`}</SortableColumnHeader>
             </th>
-            <th>{t`Ended at`}</th>
-            <th>{t`Duration (ms)`}</th>
+            <th>
+              <SortableColumnHeader
+                column="ended_at"
+                sortColumn={sort_column}
+                sortDirection={sort_direction}
+                onSort={handleSort}
+              >{t`Ended at`}</SortableColumnHeader>
+            </th>
+            <th>
+              <SortableColumnHeader
+                column="duration"
+                sortColumn={sort_column}
+                sortDirection={sort_direction}
+                onSort={handleSort}
+              >{t`Duration (ms)`}</SortableColumnHeader>
+            </th>
             <th>{t`Status`}</th>
             <th>{t`Details`}</th>
           </tr>
