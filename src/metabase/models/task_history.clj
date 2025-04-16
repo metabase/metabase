@@ -95,7 +95,7 @@
   "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
-   params :- [:maybe [:union FilterParams SortParams]]]
+   params :- [:maybe [:merge FilterParams SortParams]]]
   (t2/select :model/TaskHistory (merge (params->where params)
                                        (params->order-by params)
                                        (when limit
