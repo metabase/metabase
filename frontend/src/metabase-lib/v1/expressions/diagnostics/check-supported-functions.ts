@@ -6,7 +6,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getClauseDefinition } from "../config";
 import { DiagnosticError } from "../errors";
 import { getDatabase, getToken } from "../utils";
-import { visit } from "../visit";
+import { visit } from "../visitor";
 
 export function checkSupportedFunctions({
   expressionParts,

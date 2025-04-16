@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 import { FIELD_MARKERS, getClauseDefinition } from "../config";
 import { DiagnosticError } from "../errors";
 import { getToken } from "../utils";
-import { visit } from "../visit";
+import { visit } from "../visitor";
 
 export function checkKnownFunctions({
   expressionParts,

@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 import { DiagnosticError } from "../errors";
 import { isCaseOrIfOperator } from "../matchers";
 import { getToken } from "../utils";
-import { visit } from "../visit";
+import { visit } from "../visitor";
 
 export function checkCaseOrIfArgCount({
   expressionParts,

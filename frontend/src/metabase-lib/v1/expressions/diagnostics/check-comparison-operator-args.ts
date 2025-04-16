@@ -6,7 +6,7 @@ import { COMPARISON_OPERATORS } from "../config";
 import { DiagnosticError } from "../errors";
 import type { OPERATOR } from "../tokenizer";
 import { getToken } from "../utils";
-import { visit } from "../visit";
+import { visit } from "../visitor";
 
 export function checkComparisonOperatorArgs({
   expressionParts,
