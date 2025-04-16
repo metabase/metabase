@@ -63,7 +63,7 @@ describe("updateSettingsForDisplay", () => {
       "bar",
       "bar",
     );
-    expect(result).toBeUndefined()
+    expect(result).toBeUndefined();
   });
 
   it("should work if sourceDisplay and targetDisplay are cartesian", () => {
