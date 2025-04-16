@@ -1,7 +1,10 @@
-import { useCallback, useMemo } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { Center } from "metabase/ui";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings";
+import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getVisualizerComputedSettings,
@@ -23,6 +26,8 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
   const settings = useSelector(getVisualizerComputedSettings);
   const dispatch = useDispatch();
 
+  const [error, setError] = useState<Error | null>(null);
+
   const handleChangeSettings = useCallback(
     (settings: VisualizationSettings) => {
       dispatch(updateSettings(settings));
@@ -35,24 +40,43 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
       return [];
     }
 
-    const widgets = getSettingsWidgetsForSeries(
-      transformedSeries,
-      handleChangeSettings,
-      true,
-    );
-    return widgets.filter(
-      (widget) => !HIDDEN_SETTING_WIDGETS.includes(widget.id),
-    );
+    try {
+      const widgets = getSettingsWidgetsForSeries(
+        transformedSeries,
+        handleChangeSettings,
+        true,
+      );
+      return widgets.filter(
+        (widget) => !HIDDEN_SETTING_WIDGETS.includes(widget.id),
+      );
+    } catch (error) {
+      setError(error as Error);
+      return [];
+    }
   }, [transformedSeries, handleChangeSettings]);
 
-  return (
-    <BaseChartSettings
-      series={series}
-      transformedSeries={transformedSeries}
-      chartSettings={settings}
-      widgets={widgets}
-      onChange={handleChangeSettings}
-      className={className}
-    />
+  return error ? (
+    <ErrorComponent message={error.message} />
+  ) : (
+    <ErrorBoundary errorComponent={ErrorComponent}>
+      <BaseChartSettings
+        series={series}
+        transformedSeries={transformedSeries}
+        chartSettings={settings}
+        widgets={widgets}
+        onChange={handleChangeSettings}
+        className={className}
+      />
+    </ErrorBoundary>
   );
 }
+
+const ErrorComponent = forwardRef<HTMLDivElement, { message?: string }>(
+  function ErrorComponent({ message }, ref) {
+    return (
+      <Center style={{ height: "100%" }}>
+        <ErrorView ref={ref} isSmall isDashboard error={message} />
+      </Center>
+    );
+  },
+);
