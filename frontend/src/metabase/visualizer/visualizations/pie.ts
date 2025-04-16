@@ -1,4 +1,5 @@
 import type { DragEndEvent } from "@dnd-kit/core";
+import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
@@ -150,7 +151,7 @@ export function combineWithPieChart(
     addColumnToPieChart(state, column);
   }
 
-  if (!state.settings["pie.dimension"] && dimensions.length === 1) {
+  if (_.isEmpty(state.settings["pie.dimension"]) && dimensions.length === 1) {
     const [dimension] = dimensions;
     const columnRef = createVisualizerColumnReference(
       dataSource,

@@ -220,19 +220,23 @@ export function addColumnToCartesianChart(
         dataSource,
       );
     }
-  }
+  } else {
+    const ownDimensions = state.settings["graph.dimensions"] ?? [];
 
-  const ownMetrics = state.settings["graph.metrics"] ?? [];
-  const ownDimensions = state.settings["graph.dimensions"] ?? [];
-
-  if (
-    ownDimensions.length === 0 ||
-    isCompatibleWithCartesianChart(state, dataset)
-  ) {
-    if (isDimension(column)) {
-      state.settings["graph.dimensions"] = [...ownDimensions, column.name];
-    } else if (isMetric(column)) {
-      state.settings["graph.metrics"] = [...ownMetrics, column.name];
+    if (
+      ownDimensions.length === 0 ||
+      isCompatibleWithCartesianChart(state, dataset)
+    ) {
+      if (isDimension(column) && !isMetric(column)) {
+        addDimensionColumnToCartesianChart(
+          state,
+          column,
+          columnRef,
+          dataSource,
+        );
+      } else if (isMetric(column)) {
+        addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+      }
     }
   }
 }
