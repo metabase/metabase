@@ -14,8 +14,10 @@ import { addUndo } from "metabase/redux/undo";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { TableId, TableNotification } from "metabase-types/api";
 
-import { CreateOrEditTableNotificationModal } from "./CreateOrEditTableNotificationModal/CreateOrEditTableNotificationModal";
-import { TableNotificationsListModal } from "./TableNotificationsListModal/TableNotificationsListModal";
+import { CreateOrEditTableNotificationModal } from "../CreateOrEditTableNotificationModal/CreateOrEditTableNotificationModal";
+import { TableNotificationsListModal } from "../TableNotificationsListModal/TableNotificationsListModal";
+
+import S from "./TableNotificationsTrigger.module.css";
 
 interface TableNotificationsModalProps {
   tableId: TableId;
@@ -121,7 +123,13 @@ export const TableNotificationsTrigger = ({
   return (
     <>
       <Tooltip label={hasNotifications ? t`Edit alerts` : t`Create alert`}>
-        <ActionIcon size="lg" variant="subtle" onClick={handleOpen} {...props}>
+        <ActionIcon
+          className={S.alertIcon}
+          variant="subtle"
+          size="lg"
+          onClick={handleOpen}
+          {...props}
+        >
           <Icon name="alert" />
         </ActionIcon>
       </Tooltip>
