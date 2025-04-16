@@ -433,7 +433,7 @@ describe("issue 28106", () => {
     cy.get("@schemasList").realMouseWheel({ deltaY: 100 });
     cy.wait(100);
 
-    cy.get("@schemasList").then($element => {
+    cy.get("@schemasList").then(($element) => {
       const list = $element[0];
       const isScrolledAllTheWayDown =
         list.scrollHeight - list.scrollTop === list.clientHeight;

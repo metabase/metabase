@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Flex, Icon } from "metabase/ui";
 
 import QuestionDisplayToggleS from "./QuestionDisplayToggle.module.css";
@@ -24,6 +25,15 @@ const QuestionDisplayToggle = ({
       handleToggle();
     }
   };
+  useRegisterShortcut(
+    [
+      {
+        id: "toggle-visualization",
+        perform: () => onToggleRawTable(!isShowingRawTable),
+      },
+    ],
+    [isShowingRawTable, onToggleRawTable],
+  );
 
   return (
     <Flex

@@ -100,7 +100,7 @@ export function createBaseQuestions() {
     query: {
       "source-table": ORDERS_ID,
     },
-  }).then(response => cy.wrap(response.body).as("ordersQuestion"));
+  }).then((response) => cy.wrap(response.body).as("ordersQuestion"));
 
   cy.then(function () {
     H.createQuestion({
@@ -109,7 +109,7 @@ export function createBaseQuestions() {
       query: {
         "source-table": `card__${this.ordersQuestion.id}`,
       },
-    }).then(response => cy.wrap(response.body).as("baseQuestion"));
+    }).then((response) => cy.wrap(response.body).as("baseQuestion"));
 
     H.createQuestion({
       type: "model",
@@ -117,7 +117,7 @@ export function createBaseQuestions() {
       query: {
         "source-table": `card__${this.ordersQuestion.id}`,
       },
-    }).then(response => cy.wrap(response.body).as("baseModel"));
+    }).then((response) => cy.wrap(response.body).as("baseModel"));
   });
 }
 
@@ -332,25 +332,25 @@ export function createAndVisitDashboardWithCardMatrix(
       type: "question",
       query: createQuery(this.baseQuestion),
       name: "Question-based Question",
-    }).then(response => cy.wrap(response.body).as("qbq"));
+    }).then((response) => cy.wrap(response.body).as("qbq"));
 
     H.createQuestion({
       type: "question",
       query: createQuery(this.baseModel),
       name: "Model-based Question",
-    }).then(response => cy.wrap(response.body).as("mbq"));
+    }).then((response) => cy.wrap(response.body).as("mbq"));
 
     H.createQuestion({
       type: "model",
       name: "Question-based Model",
       query: createQuery(this.baseQuestion),
-    }).then(response => cy.wrap(response.body).as("qbm"));
+    }).then((response) => cy.wrap(response.body).as("qbm"));
 
     H.createQuestion({
       type: "model",
       name: "Model-based Model",
       query: createQuery(this.baseModel),
-    }).then(response => cy.wrap(response.body).as("mbm"));
+    }).then((response) => cy.wrap(response.body).as("mbm"));
   });
 
   cy.then(function () {
@@ -382,7 +382,7 @@ export function createAndVisitDashboard(cards: Card[]) {
         card_id: card.id,
       })),
     ],
-  }).then(dashboard => {
+  }).then((dashboard) => {
     H.visitDashboard(dashboard.id);
     cy.wrap(dashboard.id).as("dashboardId");
     cy.wait("@getDashboard");
@@ -404,16 +404,17 @@ export function setup1stStageExplicitJoinFilter() {
     getPopoverItem("Reviewer", 0).click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply1stStageExplicitJoinFilter() {
   H.filterWidget().eq(0).click();
-  H.popover().within(() => {
-    cy.findByPlaceholderText("Search the list").type("abe.gorczany");
-    cy.button("Add filter").click();
-  });
+  H.popover()
+    .first()
+    .within(() => {
+      cy.findByPlaceholderText("Search the list").type("abe.gorczany");
+      cy.button("Add filter").click();
+    });
 }
 
 export function setup1stStageImplicitJoinFromSourceFilter() {
@@ -433,8 +434,7 @@ export function setup1stStageImplicitJoinFromSourceFilter() {
     getPopoverItem("Price", 0).click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -460,8 +460,7 @@ export function setup1stStageImplicitJoinFromJoinFilter() {
     getPopoverItem("Category", 1).click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -488,8 +487,7 @@ export function setup1stStageCustomColumnFilter() {
     getPopoverItem("Net").click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -519,8 +517,7 @@ export function setup1stStageAggregationFilter() {
     getPopoverItem("Count").click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -548,8 +545,7 @@ export function setup1stStageBreakoutFilter() {
     getPopoverItem("Category", 1).click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -574,14 +570,15 @@ export function setup2ndStageExplicitJoinFilter() {
     getPopoverItem("Reviewer", 1).click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
-  H.popover().within(() => {
-    cy.findByPlaceholderText("Search the list").type("abe.gorczany");
-    cy.button("Add filter").click();
-  });
+  H.popover()
+    .first()
+    .within(() => {
+      cy.findByPlaceholderText("Search the list").type("abe.gorczany");
+      cy.button("Add filter").click();
+    });
   cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
@@ -604,8 +601,7 @@ export function setup2ndStageCustomColumnFilter() {
     getPopoverItem("5 * Count").click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply2ndStageCustomColumnFilter() {
@@ -629,28 +625,24 @@ export function setup2ndStageAggregationFilter() {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Count", 1).click();
   });
-  dismissToast();
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Count", 1).click();
   });
-  dismissToast();
 
   H.getDashboardCard(2).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverItem("Count").click();
   });
-  dismissToast();
 
   H.getDashboardCard(3).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverItem("Count").click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply2ndStageAggregationFilter() {
@@ -672,28 +664,24 @@ export function setup2ndStageBreakoutFilter() {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Category", 2).click();
   });
-  dismissToast();
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Category", 2).click();
   });
-  dismissToast();
 
   H.getDashboardCard(2).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverItem("Products Via Product ID Category").click();
   });
-  dismissToast();
 
   H.getDashboardCard(3).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverItem("Products Via Product ID Category").click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply2ndStageBreakoutFilter() {
@@ -728,12 +716,6 @@ export function getPopoverItem(name: string, index = 0) {
   return cy.findAllByText(name).eq(index).scrollIntoView();
 }
 
-export function dismissToast() {
-  cy.findByTestId("toast-undo")
-    .findByRole("img", { name: /close icon/ })
-    .click();
-}
-
 export function clickAway() {
   cy.get("body").click(0, 0);
 }
@@ -746,7 +728,7 @@ export function goBackToDashboard() {
 export function getDashboardId(): Cypress.Chainable<number> {
   return cy
     .get("@dashboardId")
-    .then(dashboardId => dashboardId as unknown as number);
+    .then((dashboardId) => dashboardId as unknown as number);
 }
 
 export function waitForPublicDashboardData() {
@@ -803,7 +785,7 @@ export function verifyPopoverMappingOptions(sections: MappingSection[]) {
   );
 
   H.popover().within(() => {
-    getPopoverItems().then($items => {
+    getPopoverItems().then(($items) => {
       let index = 0;
 
       for (const [sectionName, columnNames] of sections) {
@@ -833,12 +815,12 @@ export function verifyDashcardRowsCount({
   queryBuilderCount,
 }: {
   dashcardIndex: number;
-  dashboardCount: string;
+  dashboardCount: number;
   queryBuilderCount: string;
 }) {
-  H.getDashboardCard(dashcardIndex)
-    .findByText(dashboardCount)
-    .should("be.visible");
+  H.getDashboardCard(dashcardIndex).within(() => {
+    H.assertTableRowsCount(dashboardCount);
+  });
   H.getDashboardCard(dashcardIndex)
     .findByTestId("legend-caption-title")
     .click();
@@ -858,8 +840,8 @@ export function verifyDashcardCellValues({
 
     // eslint-disable-next-line no-unsafe-element-filtering
     H.getDashboardCard(dashcardIndex)
-      .findByTestId("table-row")
-      .findAllByTestId("cell-data")
+      .findByRole("row")
+      .findAllByRole("gridcell")
       .eq(valueIndex)
       .should("have.text", value);
   }
@@ -871,9 +853,8 @@ export function verifyDashcardCellValues({
 
   for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
     const value = values[valueIndex];
-    const cellIndex = valueIndex + values.length; // values.length to skip header row
 
     // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("cell-data").eq(cellIndex).should("have.text", value);
+    cy.findAllByRole("gridcell").eq(valueIndex).should("have.text", value);
   }
 }

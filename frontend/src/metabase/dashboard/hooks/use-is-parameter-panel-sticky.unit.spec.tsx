@@ -135,7 +135,7 @@ describe("useIsParameterPanelSticky", () => {
 function mockRaf() {
   const originalRaf = global.requestAnimationFrame;
 
-  global.requestAnimationFrame = callback => setTimeout(callback, 0);
+  global.requestAnimationFrame = (callback) => setTimeout(callback, 0);
 
   return function unmockRaf() {
     global.requestAnimationFrame = originalRaf;

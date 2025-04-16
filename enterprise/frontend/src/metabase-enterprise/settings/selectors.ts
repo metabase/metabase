@@ -1,14 +1,14 @@
 import noResultsSource from "assets/img/no_results.svg";
 import type { IllustrationValue } from "metabase/plugins";
 import { getSetting, getSettings } from "metabase/selectors/settings";
+import type {
+  EnterpriseSettings,
+  IllustrationSettingValue,
+} from "metabase-types/api";
 
 import { LOADING_MESSAGE_BY_SETTING } from "../whitelabel/lib/loading-message";
 
-import type {
-  EnterpriseSettings,
-  EnterpriseState,
-  IllustrationSettingValue,
-} from "./types";
+import type { EnterpriseState } from "./types";
 
 const DEFAULT_LOGO_URL = "app/assets/img/logo.svg";
 

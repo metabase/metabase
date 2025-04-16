@@ -12,7 +12,7 @@ interface RadioGroupProps {
 
 const RadioGroup = styled.div<RadioGroupProps>`
   display: flex;
-  flex-direction: ${props => (props.vertical ? "column" : "row")};
+  flex-direction: ${(props) => (props.vertical ? "column" : "row")};
 `;
 
 export const RadioGroupNormal = styled(RadioGroup)`
@@ -34,15 +34,15 @@ const RadioLabel = styled.label<RadioLabelProps>`
 
 export const RadioLabelNormal = styled(RadioLabel)`
   &:not(:last-child) {
-    margin-right: ${props => (!props.vertical ? "2rem" : "")};
-    margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
+    margin-right: ${(props) => (!props.vertical ? "2rem" : "")};
+    margin-bottom: ${(props) => (props.vertical ? "0.5rem" : "")};
   }
 `;
 
 export const RadioLabelBubble = styled(RadioLabel)`
   &:not(:last-child) {
-    margin-right: ${props => (!props.vertical ? "0.5rem" : "")};
-    margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
+    margin-right: ${(props) => (!props.vertical ? "0.5rem" : "")};
+    margin-bottom: ${(props) => (props.vertical ? "0.5rem" : "")};
   }
 `;
 
@@ -64,10 +64,10 @@ interface RadioContainerProps {
 const RadioContainer = styled.div<RadioContainerProps>`
   display: flex;
   align-items: center;
-  cursor: ${props => (props.disabled ? "" : "pointer")};
+  cursor: ${(props) => (props.disabled ? "" : "pointer")};
 
   &:hover {
-    color: ${props =>
+    color: ${(props) =>
       !props.checked && !props.showButtons
         ? getSchemeColor(props.colorScheme)
         : ""};
@@ -83,13 +83,13 @@ const RadioContainer = styled.div<RadioContainerProps>`
 `;
 
 export const RadioContainerNormal = styled(RadioContainer)`
-  color: ${props => (props.checked ? getSchemeColor(props.colorScheme) : "")};
+  color: ${(props) => (props.checked ? getSchemeColor(props.colorScheme) : "")};
 `;
 
 export const RadioContainerUnderlined = styled(RadioContainer)`
-  color: ${props => (props.checked ? getSchemeColor(props.colorScheme) : "")};
+  color: ${(props) => (props.checked ? getSchemeColor(props.colorScheme) : "")};
   border-bottom: 3px solid
-    ${props =>
+    ${(props) =>
       props.checked ? getSchemeColor(props.colorScheme) : "transparent"};
   padding: 1rem 0;
 `;
@@ -98,21 +98,21 @@ export const RadioContainerBubble = styled(RadioContainer)`
   padding: 0.5rem 1rem;
   border-radius: 10rem;
   font-weight: bold;
-  color: ${props =>
+  color: ${(props) =>
     props.checked
       ? color("text-white")
       : getContrastSchemeColor(props.colorScheme)};
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.checked
       ? getSchemeColor(props.colorScheme)
       : lighten(getSchemeColor(props.colorScheme))};
 
   &:hover {
-    color: ${props =>
+    color: ${(props) =>
       !props.checked && !props.showButtons
         ? getContrastSchemeColor(props.colorScheme)
         : ""};
-    background-color: ${props =>
+    background-color: ${(props) =>
       props.checked ? "" : lighten(getSchemeColor(props.colorScheme), 0.38)};
     transition: background-color 300ms linear;
   }
@@ -132,9 +132,9 @@ export const RadioButton = styled.span<RadioButtonProps>`
   border: 2px solid white;
   border-radius: 0.75rem;
   box-shadow: 0 0 0 2px
-    ${props =>
+    ${(props) =>
       props.checked ? getSchemeColor(props.colorScheme) : color("text-medium")};
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.checked ? getSchemeColor(props.colorScheme) : "transparent"};
 `;
 

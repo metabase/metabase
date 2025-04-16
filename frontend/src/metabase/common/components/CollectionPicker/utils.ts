@@ -105,7 +105,7 @@ export const isFolderFactory =
   (item: CollectionPickerItem): boolean => {
     return Boolean(
       item.model === "collection" &&
-        models.some(model => item?.here?.includes(model)),
+        models.some((model) => item?.here?.includes(model)),
     );
   };
 
@@ -134,7 +134,7 @@ export const getPathLevelForItem = (
 
   // set selected item at the correct level
   const pathLevel = path.findIndex(
-    level => String(level?.query?.id) === String(parentCollectionId),
+    (level) => String(level?.query?.id) === String(parentCollectionId),
   );
 
   return pathLevel === -1 ? 0 : pathLevel;

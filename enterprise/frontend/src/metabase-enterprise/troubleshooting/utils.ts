@@ -35,13 +35,13 @@ export const formatErrorString = (errors: CardError[]) => {
 
   const errorsByType = _.groupBy(errors, "type");
 
-  errorTypes.forEach(errorType => {
+  errorTypes.forEach((errorType) => {
     if (errorsByType[errorType]) {
       const errorDef = ERROR_DICTIONARY[errorType];
 
       messages.push(
         `${errorDef.entity} ${errorsByType[errorType]
-          .map(error => error[errorDef.messageProp])
+          .map((error) => error[errorDef.messageProp])
           .join(", ")} ${errorDef.problem}`,
       );
     }

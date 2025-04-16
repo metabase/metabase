@@ -39,7 +39,7 @@ export const EditorContainer = styled(ContentContainer)`
 export const Column = styled.div<{ full?: boolean }>`
   display: flex;
   flex-direction: column;
-  flex: ${props => (props.full ? 1 : "unset")};
+  flex: ${(props) => (props.full ? 1 : "unset")};
   min-width: ${DRAG_HANDLE_SIZE}px;
 `;
 

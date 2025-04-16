@@ -1,13 +1,8 @@
-import {
-  type CSSProperties,
-  type ReactNode,
-  useCallback,
-  useEffect,
-} from "react";
+import { type ReactNode, useCallback, useEffect } from "react";
 import _ from "underscore";
 
-import type { MetabasePluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
+import type { InteractiveQuestionDefaultViewProps } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   SdkLoader,
@@ -22,6 +17,7 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
+import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
@@ -29,22 +25,39 @@ import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
+import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
+
 import { InteractiveDashboardProvider } from "./context";
 
+/**
+ * @interface
+ * @expand
+ * @category InteractiveDashboard
+ */
 export type InteractiveDashboardProps = {
-  className?: string;
-  style?: CSSProperties;
+  /**
+   * Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.
+   */
   plugins?: MetabasePluginsConfig;
 
+  // @todo pass the question context to the question view component,
+  //       once we have a public-facing question context.
   /**
    * A custom React component to render the question layout.
    * Use namespaced InteractiveQuestion components to build the layout.
-   *
-   * @todo pass the question context to the question view component,
-   *       once we have a public-facing question context.
    */
   renderDrillThroughQuestion?: () => ReactNode;
+
+  /**
+   * Height of a question component when drilled from the dashboard to a question level.
+   */
   drillThroughQuestionHeight?: number;
+
+  /**
+   * Props of a question component when drilled from the dashboard to a question level.
+   */
+  drillThroughQuestionProps?: Omit<BaseInteractiveQuestionProps, "questionId"> &
+    InteractiveQuestionDefaultViewProps;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
@@ -62,6 +75,11 @@ const InteractiveDashboardInner = ({
   onLoadWithoutCards,
   className,
   style,
+  drillThroughQuestionProps = {
+    title: withTitle,
+    height: drillThroughQuestionHeight,
+    plugins: plugins,
+  },
   renderDrillThroughQuestion: AdHocQuestionView,
 }: InteractiveDashboardProps) => {
   const {
@@ -132,10 +150,8 @@ const InteractiveDashboardInner = ({
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
-          title={withTitle}
-          height={drillThroughQuestionHeight}
-          plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
+          {...drillThroughQuestionProps}
         >
           {AdHocQuestionView && <AdHocQuestionView />}
         </InteractiveAdHocQuestion>
@@ -164,7 +180,7 @@ const InteractiveDashboardInner = ({
             navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
             onLoad={onLoad}
             onLoadWithoutCards={onLoadWithoutCards}
-            downloadsEnabled={withDownloads}
+            downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
             isNightMode={false}
             onNightModeChange={_.noop}
             hasNightModeToggle={false}
@@ -175,6 +191,12 @@ const InteractiveDashboardInner = ({
   );
 };
 
+/**
+ * A dashboard component with drill downs, click behaviors, and the ability to view and click into questions.
+ *
+ * @function
+ * @category InteractiveDashboard
+ */
 export const InteractiveDashboard = renderOnlyInSdkProvider(
   InteractiveDashboardInner,
 );

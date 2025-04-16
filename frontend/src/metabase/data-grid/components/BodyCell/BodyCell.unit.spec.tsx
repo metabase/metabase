@@ -62,7 +62,7 @@ describe("BodyCell", () => {
     renderWithProviders(
       <BodyCell
         value="Expandable"
-        formatter={value => `formatted:${value}`}
+        formatter={(value) => `formatted:${value}`}
         canExpand={true}
         columnId="col1"
         rowIndex={0}

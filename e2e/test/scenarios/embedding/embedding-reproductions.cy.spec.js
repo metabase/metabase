@@ -263,7 +263,7 @@ describe("issue 20438", () => {
     cy.button("Add filter").click();
     cy.wait("@getEmbed");
 
-    cy.findAllByTestId("cell-data")
+    cy.findAllByRole("gridcell")
       // One of product titles for Doohickey
       .should("contain", "Small Marble Shoes")
       // One of product titles for Gizmo
@@ -359,7 +359,7 @@ describe("issues 20845, 25031", () => {
     };
   }
   const defaultFilterValues = [undefined, "10"];
-  defaultFilterValues.forEach(value => {
+  defaultFilterValues.forEach((value) => {
     const conditionalPartOfTestTitle = value
       ? "and the required filter with the default value"
       : "";
@@ -417,7 +417,7 @@ describe("issues 20845, 25031", () => {
     });
 
     it(`QUESTION: locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#20845)`, () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
           embedding_params: {
@@ -427,7 +427,7 @@ describe("issues 20845, 25031", () => {
 
         // This issue is not possible to reproduce using UI from this point on.
         // We have to manually send the payload in order to make sure it works for both strings and integers.
-        ["string", "integer"].forEach(type => {
+        ["string", "integer"].forEach((type) => {
           cy.log(
             `Make sure it works with ${type.toUpperCase()} in the payload`,
           );
@@ -440,13 +440,13 @@ describe("issues 20845, 25031", () => {
           });
         });
 
-        cy.findByTestId("column-header").should("contain", "COUNT(*)");
-        cy.findByTestId("cell-data").should("contain", "5");
+        H.tableInteractiveHeader("COUNT(*)");
+        cy.findByRole("gridcell").should("contain", "5");
       });
     });
 
     it(`DASHBOARD: locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#25031)`, () => {
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         H.visitDashboard(dashboardId);
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           enable_embedding: true,
@@ -457,7 +457,7 @@ describe("issues 20845, 25031", () => {
 
         // This issue is not possible to reproduce using UI from this point on.
         // We have to manually send the payload in order to make sure it works for both strings and integers.
-        ["string", "integer"].forEach(type => {
+        ["string", "integer"].forEach((type) => {
           cy.log(
             `Make sure it works with ${type.toUpperCase()} in the payload`,
           );
@@ -489,7 +489,7 @@ describe("issues 20845, 25031", () => {
 describe("issue 27643", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
   const TEMPLATE_TAG_NAME = "expected_invoice";
-  const getQuestionDetails = fieldId => {
+  const getQuestionDetails = (fieldId) => {
     return {
       name: "27643",
       database: PG_DB_ID,
@@ -544,7 +544,7 @@ describe("issue 27643", { tags: "@external" }, () => {
       };
 
       cy.get("@postgresInvoicesExpectedInvoiceId")
-        .then(fieldId => {
+        .then((fieldId) => {
           H.createNativeQuestionAndDashboard({
             questionDetails: getQuestionDetails(fieldId),
             dashboardDetails,
@@ -578,7 +578,7 @@ describe("issue 27643", { tags: "@external" }, () => {
       H.getDashboardCard().should("contain", "false");
 
       cy.log("Test the embedded dashboard");
-      cy.get("@dashboardId").then(dashboard => {
+      cy.get("@dashboardId").then((dashboard) => {
         H.visitEmbeddedPage({
           resource: { dashboard },
           params: {},
@@ -590,7 +590,7 @@ describe("issue 27643", { tags: "@external" }, () => {
       });
 
       cy.log("Test the public dashboard");
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         // We were signed out due to the previous visitEmbeddedPage
         cy.signInAsAdmin();
         H.visitPublicDashboard(dashboardId);
@@ -604,7 +604,7 @@ describe("issue 27643", { tags: "@external" }, () => {
 
   describe("should allow a native question filter to map to a boolean field filter parameter (metabase#27643)", () => {
     beforeEach(() => {
-      cy.get("@postgresInvoicesExpectedInvoiceId").then(fieldId => {
+      cy.get("@postgresInvoicesExpectedInvoiceId").then((fieldId) => {
         H.createNativeQuestion(getQuestionDetails(fieldId), {
           wrapId: true,
           idAlias: "questionId",
@@ -615,32 +615,32 @@ describe("issue 27643", { tags: "@external" }, () => {
     it("in static embedding and in public question scenarios (metabase#27643-2)", () => {
       cy.log("Test the question");
       H.visitQuestion("@questionId");
-      cy.findAllByTestId("cell-data").should("contain", "true");
+      cy.findAllByRole("gridcell").should("contain", "true");
       H.toggleFilterWidgetValues(["false"]);
       H.queryBuilderMain().button("Get Answer").click();
-      cy.findAllByTestId("cell-data").should("contain", "false");
+      cy.findAllByRole("gridcell").should("contain", "false");
 
       cy.log("Test the embedded question");
-      cy.get("@questionId").then(question => {
+      cy.get("@questionId").then((question) => {
         H.visitEmbeddedPage({
           resource: { question },
           params: {},
         });
 
-        cy.findAllByTestId("cell-data").should("contain", "true");
+        cy.findAllByRole("gridcell").should("contain", "true");
         H.toggleFilterWidgetValues(["false"]);
-        cy.findAllByTestId("cell-data").should("contain", "false");
+        cy.findAllByRole("gridcell").should("contain", "false");
       });
 
       cy.log("Test the public question");
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         // We were signed out due to the previous visitEmbeddedPage
         cy.signInAsAdmin();
         H.visitPublicQuestion(questionId);
 
-        cy.findAllByTestId("cell-data").should("contain", "true");
+        cy.findAllByRole("gridcell").should("contain", "true");
         H.toggleFilterWidgetValues(["false"]);
-        cy.findAllByTestId("cell-data").should("contain", "false");
+        cy.findAllByRole("gridcell").should("contain", "false");
       });
     });
   });
@@ -681,7 +681,7 @@ describe("issue 30535", () => {
       acceptTerms: false,
     });
 
-    cy.document().then(doc => {
+    cy.document().then((doc) => {
       const iframe = doc.querySelector("iframe");
 
       cy.signOut();
@@ -690,7 +690,7 @@ describe("issue 30535", () => {
       cy.visit(iframe.src);
     });
 
-    cy.findByRole("table").within(() => {
+    cy.findByRole("grid").within(() => {
       // The sandboxed user has an attribute cat="Widget"
       cy.findAllByText("Widget");
       // Sandboxing shouldn't affect results so we should see other product categories as well
@@ -1119,8 +1119,8 @@ describe("issue 8490", () => {
         url: "/api/embed/dashboard/*",
         middleware: true,
       },
-      req => {
-        req.on("response", res => {
+      (req) => {
+        req.on("response", (res) => {
           const MINUTE = 60 * 1000;
           res.setDelay(MINUTE);
         });
@@ -1132,8 +1132,8 @@ describe("issue 8490", () => {
         url: "/api/embed/card/*",
         middleware: true,
       },
-      req => {
-        req.on("response", res => {
+      (req) => {
+        req.on("response", (res) => {
           const MINUTE = 60 * 1000;
           res.setDelay(MINUTE);
         });
@@ -1141,7 +1141,7 @@ describe("issue 8490", () => {
     ).as("questionRequest");
 
     cy.log("test a static embedded dashboard");
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       H.visitEmbeddedPage(
         {
           resource: { dashboard: dashboardId },
@@ -1159,7 +1159,7 @@ describe("issue 8490", () => {
     cy.findByTestId("embed-frame").findByText("로딩...").should("be.visible");
 
     cy.log("test a static embedded question");
-    cy.get("@lineChartQuestionId").then(lineChartQuestionId => {
+    cy.get("@lineChartQuestionId").then((lineChartQuestionId) => {
       H.visitEmbeddedPage(
         {
           resource: { question: lineChartQuestionId },
@@ -1191,7 +1191,7 @@ describe("issue 8490", () => {
       () => dashboardLoaderPromise,
     ).as("dashboardRequest");
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       H.visitEmbeddedPage(
         {
           resource: { dashboard: dashboardId },
@@ -1258,7 +1258,7 @@ describe("issue 8490", () => {
     ).as("questionRequest");
 
     cy.log("assert the line chart");
-    cy.get("@lineChartQuestionId").then(lineChartQuestionId => {
+    cy.get("@lineChartQuestionId").then((lineChartQuestionId) => {
       H.visitEmbeddedPage(
         {
           resource: { question: lineChartQuestionId },
@@ -1296,14 +1296,14 @@ describe("issue 50373", () => {
         method: "GET",
         url: /^\/app\/dist\/(.*)\.js$/,
       },
-      req => {
+      (req) => {
         // When running in development (e.g. with `yarn dev`),
         // the *.hot.bundle.js hot-reloaded file is served by the dev server.
         if (req.url.includes("hot.bundle.js")) {
           return;
         }
 
-        req.on("response", res => {
+        req.on("response", (res) => {
           expect(
             res.headers["cache-control"],
             `Invalid Cache-Control header for ${req.url}`,

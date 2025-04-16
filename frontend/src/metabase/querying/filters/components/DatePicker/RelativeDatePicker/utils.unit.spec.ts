@@ -15,7 +15,7 @@ describe("setDirection", () => {
       "month",
       "quarter",
       "year",
-    ])('should remove the value for "%s" unit', unit => {
+    ])('should remove the value for "%s" unit', (unit) => {
       const value: RelativeDatePickerValue = {
         type: "relative",
         value: 1,

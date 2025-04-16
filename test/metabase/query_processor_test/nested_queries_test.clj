@@ -979,6 +979,42 @@
                     (mt/run-mbql-query nil
                       {:source-table "card__1"}))))))))))
 
+(deftest ^:parallel expression-literals-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expression-literals)
+    (let [query (mt/mbql-query venues
+                  {:fields      [[:expression "one"]
+                                 [:expression "foo"]
+                                 [:expression "MyTrue"]
+                                 [:expression "MyFalse"]]
+                   :expressions {"one"     [:value 1     {:base_type :type/Integer}]
+                                 "foo"     [:value "foo" {:base_type :type/Text}]
+                                 "MyTrue"  [:value true  {:base_type :type/Boolean}]
+                                 "MyFalse" [:value false {:base_type :type/Boolean}]}
+                   :limit       1})]
+      (letfn [(check-result [rows]
+                (is (= [[1 "foo" true false]]
+                       (mt/formatted-rows
+                        [int str mt/boolish->bool mt/boolish->bool]
+                        rows))))]
+        (testing "can you use nested queries that have expression literals in them?"
+          (check-result (mt/run-mbql-query nil
+                          {:source-query (:query query)}))
+          (testing "if source query with expression literals is from a Card"
+            (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                              [query])
+              (check-result (mt/run-mbql-query nil
+                              {:source-table "card__1"}))))
+          (testing "if source query with expression literals is from a Model"
+            (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                              (mt/application-database-metadata-provider (mt/id))
+                                              {:cards [{:id 1
+                                                        :type :model
+                                                        :name "Model 1"
+                                                        :database-id (mt/id)
+                                                        :dataset-query query}]})
+              (check-result (mt/run-mbql-query nil
+                              {:source-table "card__1"})))))))))
+
 (defmulti bucketing-already-bucketed-year-test-expected-rows
   {:arglists '([driver])}
   tx/dispatch-on-driver-with-test-extensions

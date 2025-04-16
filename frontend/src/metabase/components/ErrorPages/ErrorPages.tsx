@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color } from "metabase/lib/colors";
-import { getIsEmbedded } from "metabase/selectors/embed";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
 import {
@@ -108,16 +108,16 @@ export const SmallGenericError = forwardRef<
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
     useToggle(false);
 
-  const isEmbedded = getIsEmbedded();
+  const isEmbeddingIframe = getIsEmbeddingIframe();
 
-  const tooltipMessage = isEmbedded
+  const tooltipMessage = isEmbeddingIframe
     ? message
     : message + t` Click for more information`;
 
   return (
     <ErrorPageRoot bordered={bordered} {...props} ref={ref}>
       <Tooltip label={tooltipMessage}>
-        {isEmbedded ? (
+        {isEmbeddingIframe ? (
           <Icon name="warning" size={32} color={color("text-light")} />
         ) : (
           <Button

@@ -43,8 +43,8 @@ describe("metabase#31587", () => {
             .last()
             .should("have.text", "Click Me");
 
-          actionButtonContainer.then(actionButtonElem => {
-            dashCard.then(dashCardElem => {
+          actionButtonContainer.then((actionButtonElem) => {
+            dashCard.then((dashCardElem) => {
               expect(actionButtonElem[0].scrollHeight).to.eq(
                 dashCardElem[0].scrollHeight,
               );
@@ -71,8 +71,8 @@ describe("metabase#31587", () => {
             .last()
             .should("have.text", "Click Me");
 
-          actionButtonContainer.then(actionButtonElem => {
-            dashCard.then(dashCardElem => {
+          actionButtonContainer.then((actionButtonElem) => {
+            dashCard.then((dashCardElem) => {
               expect(actionButtonElem[0].scrollHeight).to.eq(
                 dashCardElem[0].scrollHeight,
               );
@@ -202,7 +202,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   });
 
   it("can submit query action linked with dashboard parameters (metabase#32974)", () => {
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.createAction({ ...QUERY_ACTION, model_id: modelId }).then(
         ({ body: { id: actionId } }) => {
           cy.wrap(actionId).as("actionId");
@@ -421,7 +421,7 @@ describe("issue 32840", () => {
       },
     );
 
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.createAction({
         type: "implicit",
         kind: "row/update",

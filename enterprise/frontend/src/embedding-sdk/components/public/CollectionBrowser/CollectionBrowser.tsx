@@ -1,23 +1,17 @@
-import {
-  type CSSProperties,
-  type ComponentType,
-  useEffect,
-  useState,
-} from "react";
+import { type ComponentType, useEffect, useState } from "react";
 
 import {
   CollectionNotFoundError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import {
-  type SDKCollectionReference,
-  getCollectionIdSlugFromReference,
-} from "embedding-sdk/store/collections";
+import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
+import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
+import type { SdkCollectionId } from "embedding-sdk/types/collection";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { isNotNull } from "metabase/lib/types";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs/CollectionBreadcrumbs";
 import { Stack } from "metabase/ui";
@@ -59,16 +53,42 @@ const ENTITY_NAME_MAP: Partial<
   model: "dataset",
 };
 
+/**
+ * @interface
+ * @expand
+ * @category CollectionBrowser
+ */
 export type CollectionBrowserProps = {
-  collectionId?: SDKCollectionReference;
-  onClick?: (item: CollectionItem) => void;
+  /**
+   * The numerical ID of the collection, "personal" for the user's personal collection, or "root" for the root collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. Defaults to "personal"
+   */
+  collectionId?: SdkCollectionId;
+
+  /**
+   * The number of items to display per page. The default is 25.
+   */
   pageSize?: number;
+
+  /**
+   * The types of entities that should be visible. If not provided, all entities will be shown.
+   */
   visibleEntityTypes?: UserFacingEntityName[];
-  EmptyContentComponent?: ComponentType | null;
+
+  /**
+   * The columns to display in the collection items table. If not provided, all columns will be shown.
+   */
   visibleColumns?: CollectionBrowserListColumns[];
-  className?: string;
-  style?: CSSProperties;
-};
+
+  /**
+   * A component to display when there are no items in the collection.
+   */
+  EmptyContentComponent?: ComponentType | null;
+
+  /**
+   * A function to call when an item is clicked.
+   */
+  onClick?: (item: CollectionItem) => void;
+} & CommonStylingProps;
 
 export const CollectionBrowserInner = ({
   collectionId = "personal",
@@ -79,8 +99,10 @@ export const CollectionBrowserInner = ({
   visibleColumns = COLLECTION_BROWSER_LIST_COLUMNS,
   className,
   style,
-}: CollectionBrowserProps) => {
-  const baseCollectionId = useSdkSelector(state =>
+}: Omit<CollectionBrowserProps, "collectionId"> & {
+  collectionId: CollectionId;
+}) => {
+  const baseCollectionId = useSdkSelector((state) =>
     getCollectionIdSlugFromReference(state, collectionId),
   );
 
@@ -106,7 +128,7 @@ export const CollectionBrowserInner = ({
   };
 
   const collectionTypes = visibleEntityTypes
-    .map(entityType => ENTITY_NAME_MAP[entityType])
+    .map((entityType) => ENTITY_NAME_MAP[entityType])
     .filter(isNotNull);
 
   return (
@@ -132,11 +154,7 @@ const CollectionBrowserWrapper = ({
   collectionId = "personal",
   ...restProps
 }: CollectionBrowserProps) => {
-  const { id, isLoading } = useValidatedEntityId<
-    "collection",
-    SDKCollectionReference
-  >({
-    type: "collection",
+  const { id, isLoading } = useTranslatedCollectionId({
     id: collectionId,
   });
 
@@ -144,21 +162,19 @@ const CollectionBrowserWrapper = ({
     return <SdkLoader />;
   }
 
-  const isValidId =
-    id ||
-    typeof collectionId === "number" ||
-    collectionId === "personal" ||
-    collectionId === "root";
-
-  if (!isValidId) {
+  if (!id) {
     return <CollectionNotFoundError id={collectionId} />;
   }
 
-  return (
-    <CollectionBrowserInner collectionId={id ?? collectionId} {...restProps} />
-  );
+  return <CollectionBrowserInner collectionId={id} {...restProps} />;
 };
 
+/**
+ * A component that allows you to browse collections and their items.
+ *
+ * @function
+ * @category CollectionBrowser
+ */
 export const CollectionBrowser = withPublicComponentWrapper(
   CollectionBrowserWrapper,
 );

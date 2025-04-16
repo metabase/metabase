@@ -1,35 +1,38 @@
-/* eslint-disable jest/expect-expect */
+import expression from "ts-dedent";
 
+import * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
 import { dataForFormatting, query } from "../__support__/shared";
-import { processSource } from "../process";
+import { compileExpression } from "../compiler";
+import type { StartRule } from "../types";
 
 import { format } from "./formatter";
 
-function setup(printWidth: number, startRule: string = "expression") {
-  async function isFormatted(expressions: string | string[]): Promise<void> {
+function setup(printWidth: number, startRule: StartRule = "expression") {
+  async function assertFormatted(
+    expressions: string | string[],
+  ): Promise<void> {
     if (!Array.isArray(expressions)) {
-      return isFormatted([expressions]);
+      return assertFormatted([expressions]);
     }
-    for (const expr of expressions) {
+    for (const source of expressions) {
       const options = {
         query,
         startRule,
         stageIndex: -1,
       };
 
-      const source = dedent(expr);
-      const { expression: mbql, compileError } = processSource({
+      const res = compileExpression({
         ...options,
         source,
       });
 
-      if (!mbql || compileError) {
-        throw new Error(`Cannot compile expression: ${compileError?.message}`);
+      if (res.error) {
+        throw res.error;
       }
 
-      const result = await format(mbql, {
+      const result = await format(res.expressionClause, {
         ...options,
         printWidth,
       });
@@ -37,15 +40,18 @@ function setup(printWidth: number, startRule: string = "expression") {
       expect(result).toBe(source);
     }
   }
-  return { isFormatted };
+  return { assertFormatted };
 }
 
 describe("format", () => {
   describe("printWidth = 25", () => {
-    const { isFormatted } = setup(25);
+    const { assertFormatted } = setup(25);
 
     it("formats nested arithmetic expressions", async () => {
-      await isFormatted([
+      await assertFormatted([
+        expression`
+          1 + 1
+        `,
         expression`
           1 + 2 - 3 + 4 / 5
         `,
@@ -79,11 +85,14 @@ describe("format", () => {
         expression`
           1 + 2 + 3 * 4 * 5 + 6
         `,
+        expression`
+          90071992547409901
+        `,
       ]);
     });
 
     it("formats function calls", async () => {
-      await isFormatted([
+      await assertFormatted([
         expression`
           concat(
             "http://mysite.com/user/",
@@ -99,6 +108,9 @@ describe("format", () => {
             "BAD",
             "OK"
           )
+        `,
+        expression`
+          Offset([Total], -1)
         `,
         expression`
           startsWith(
@@ -119,7 +131,7 @@ describe("format", () => {
     });
 
     it("formats chained function calls", async () => {
-      await isFormatted([
+      await assertFormatted([
         expression`
           concat("a", "b")
           AND concat("c", "d")
@@ -160,8 +172,8 @@ describe("format", () => {
     });
 
     it("formats unary operators", async () => {
-      const { isFormatted } = setup(25, "boolean");
-      await isFormatted([
+      const { assertFormatted } = setup(25, "boolean");
+      await assertFormatted([
         expression`
           NOT [Total] < 10
         `,
@@ -175,16 +187,57 @@ describe("format", () => {
               33333333333333
         `,
         expression`
-          NOT (
-            contains(
-              [User → Name],
-              "John"
-            )
-            OR [User ID] = 1
+          NOT concat(
+            [User → Name],
+            "John"
           )
+          OR [User ID] = 1
         `,
       ]);
     });
+  });
+
+  describe("printWidth = 52", () => {
+    const { assertFormatted } = setup(52);
+
+    it("formats bigintegers", async () => {
+      await assertFormatted([
+        expression`
+          922337203685477580855
+        `,
+        expression`
+          -922337203685477580855
+        `,
+        expression`
+          [ID] = -922337203685477580855
+        `,
+      ]);
+    });
+  });
+
+  describe("formats unknown references", () => {
+    const stageIndex = -1;
+
+    const references = {
+      field: "[Unknown Field]",
+      metric: "[Unknown Metric]",
+      segment: "[Unknown Segment]",
+    };
+
+    it.each(Object.entries(references))(
+      "should format an unknown %s as %s",
+      async (type, result) => {
+        const expression = [type, 10000];
+        const clause = Lib.expressionClauseForLegacyExpression(
+          query,
+          stageIndex,
+          expression,
+        );
+
+        const formatted = await format(clause, { query, stageIndex });
+        expect(formatted).toBe(result);
+      },
+    );
   });
 });
 
@@ -199,7 +252,14 @@ describe("if printWidth = Infinity, it should return the same results as the sin
           // unreachable
           return;
         }
-        const result = await format(expression, {
+
+        const stageIndex = -1;
+        const clause = Lib.expressionClauseForLegacyExpression(
+          query,
+          stageIndex,
+          expression,
+        );
+        const result = await format(clause, {
           ...opts,
           printWidth: Infinity,
         });
@@ -210,20 +270,24 @@ describe("if printWidth = Infinity, it should return the same results as the sin
   });
 });
 
-// dedents an expression by assuming the first line is no indented
-function dedent(input: string): string {
-  const lines = input.split("\n").slice(1);
-  const indent = lines[0].match(/^ */)?.[0]?.length;
-  if (!indent) {
-    return input;
-  }
-  return lines
-    .map(line => line.slice(indent))
-    .join("\n")
-    .trim();
-}
-
-// A simple template tag to mark a string as an expression and dedent it
-function expression(strings: TemplateStringsArray) {
-  return strings.join("");
-}
+it("should format escaped regex characters (metabase#56596)", async () => {
+  const { assertFormatted } = setup(Infinity);
+  await assertFormatted([
+    // "foo \s bar"
+    expression`
+      "foo \\s bar"
+    `,
+    // "^[Default]\s(.*?)\s-\s"
+    expression`
+     "^\\[Default\\]\\s(.*?)\\s-\\s"
+    `,
+    // "\\"
+    expression`
+      "\\\\"
+    `,
+    // "\n\r\t\v\f\b"
+    expression`
+      "\\n\\r\\t\\v\\f\\b"
+    `,
+  ]);
+});

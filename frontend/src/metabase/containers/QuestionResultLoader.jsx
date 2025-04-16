@@ -59,7 +59,7 @@ export class QuestionResultLoader extends Component {
         this._cancelDeferred = defer();
 
         // begin the request, set cancel in state so the query can be canceled
-        this.setState(prev => ({
+        this.setState((prev) => ({
           loading: true,
           results: keepPreviousWhileLoading ? prev.results : null,
           error: null,

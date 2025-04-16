@@ -7,6 +7,7 @@ import CollapseSection from "metabase/components/CollapseSection";
 import CS from "metabase/css/core/index.css";
 import { getPulseParameters } from "metabase/lib/pulse";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   PULSE_PARAM_USE_DEFAULT,
@@ -43,9 +44,9 @@ export const MutableParametersSection = ({
   );
 
   const setParameterValue = (id: ParameterId, value: any) => {
-    const parameter = parameters.find(parameter => parameter.id === id);
+    const parameter = parameters.find((parameter) => parameter.id === id);
     const filteredParameters = pulseParameters.filter(
-      parameter => parameter.id !== id,
+      (parameter) => parameter.id !== id,
     );
     const newParameters =
       value === PULSE_PARAM_USE_DEFAULT
@@ -59,13 +60,8 @@ export const MutableParametersSection = ({
   };
 
   const connectedParameters = useMemo(() => {
-    return parameters.filter(parameter => {
-      if ("fields" in parameter) {
-        return parameter.fields?.length > 0;
-      }
-      return false;
-    });
-  }, [parameters]);
+    return getVisibleParameters(parameters, hiddenParameters);
+  }, [parameters, hiddenParameters]);
 
   return _.isEmpty(connectedParameters) ? null : (
     <CollapseSection

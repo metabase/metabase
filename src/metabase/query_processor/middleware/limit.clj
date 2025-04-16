@@ -68,7 +68,7 @@
   (when-not (disable-max-results? query)
     (let [context (-> query :info :context)
           download-context? #{:csv-download :json-download :xlsx-download}
-          attachment-context? #{:dashboard-subscription :pulse}
+          attachment-context? #{:dashboard-subscription :pulse :notification}
           download-limit (when (download-context? context) (download-row-limit))
           attachment-limit (when (attachment-context? context) (attachment-row-limit))
           res (u/safe-min (mbql.u/query->max-rows-limit query)

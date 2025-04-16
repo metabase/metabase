@@ -9,7 +9,6 @@ import {
   LOCATION,
   NUMBER,
   PRIMARY_KEY,
-  SCOPE,
   STRING,
   STRING_LIKE,
   SUMMABLE,
@@ -108,27 +107,26 @@ export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
 export const isStringLike = isFieldType.bind(null, STRING_LIKE);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
-export const isScope = isFieldType.bind(null, SCOPE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
-const hasNonMetricName = col => {
+const hasNonMetricName = (col) => {
   const name = col.name.toLowerCase();
   return name === "id" || name.endsWith("_id") || name.endsWith("-id");
 };
 
-export const isDimension = col => col && col.source !== "aggregation";
-export const isMetric = col =>
+export const isDimension = (col) => col && col.source !== "aggregation";
+export const isMetric = (col) =>
   col && col.source !== "breakout" && isSummable(col) && !hasNonMetricName(col);
 
-export const isFK = field => field && isTypeFK(field.semantic_type);
-export const isPK = field => field && isTypePK(field.semantic_type);
-export const isEntityName = field =>
+export const isFK = (field) => field && isTypeFK(field.semantic_type);
+export const isPK = (field) => field && isTypePK(field.semantic_type);
+export const isEntityName = (field) =>
   field && isa(field.semantic_type, TYPE.Name);
 
-export const isAny = col => true;
+export const isAny = (col) => true;
 
-export const isNumericBaseType = field => {
+export const isNumericBaseType = (field) => {
   if (!field) {
     return false;
   }
@@ -139,7 +137,7 @@ export const isNumericBaseType = field => {
   }
 };
 
-export const isDateWithoutTime = field => {
+export const isDateWithoutTime = (field) => {
   if (!field) {
     return false;
   }
@@ -151,14 +149,14 @@ export const isDateWithoutTime = field => {
 };
 
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
-export const isNumber = field =>
+export const isNumber = (field) =>
   field &&
   isNumericBaseType(field) &&
   (field.semantic_type == null ||
     isa(field.semantic_type, TYPE.Number) ||
     isa(field.semantic_type, TYPE.Category));
 
-export const isTime = field => {
+export const isTime = (field) => {
   if (!field) {
     return false;
   }
@@ -169,40 +167,29 @@ export const isTime = field => {
   }
 };
 
-export const isAddress = field =>
-  field && isa(field.semantic_type, TYPE.Address);
-export const isCity = field => field && isa(field.semantic_type, TYPE.City);
-export const isState = field => field && isa(field.semantic_type, TYPE.State);
-export const isZipCode = field =>
-  field && isa(field.semantic_type, TYPE.ZipCode);
-export const isCountry = field =>
+export const isState = (field) => field && isa(field.semantic_type, TYPE.State);
+export const isCountry = (field) =>
   field && isa(field.semantic_type, TYPE.Country);
-export const isCoordinate = field =>
+export const isCoordinate = (field) =>
   field && isa(field.semantic_type, TYPE.Coordinate);
-export const isLatitude = field =>
+export const isLatitude = (field) =>
   field && isa(field.semantic_type, TYPE.Latitude);
-export const isLongitude = field =>
+export const isLongitude = (field) =>
   field && isa(field.semantic_type, TYPE.Longitude);
 
-export const isCurrency = field =>
+export const isCurrency = (field) =>
   field && isa(field.semantic_type, TYPE.Currency);
 
-export const isPercentage = field =>
+export const isPercentage = (field) =>
   field && isa(field.semantic_type, TYPE.Percentage);
 
-export const isDescription = field =>
-  field && isa(field.semantic_type, TYPE.Description);
+export const isID = (field) => isFK(field) || isPK(field);
 
-export const isComment = field =>
-  field && isa(field.semantic_type, TYPE.Comment);
-
-export const isID = field => isFK(field) || isPK(field);
-
-export const isURL = field => field && isa(field.semantic_type, TYPE.URL);
-export const isEmail = field => field && isa(field.semantic_type, TYPE.Email);
-export const isAvatarURL = field =>
+export const isURL = (field) => field && isa(field.semantic_type, TYPE.URL);
+export const isEmail = (field) => field && isa(field.semantic_type, TYPE.Email);
+export const isAvatarURL = (field) =>
   field && isa(field.semantic_type, TYPE.AvatarURL);
-export const isImageURL = field =>
+export const isImageURL = (field) =>
   field && isa(field.semantic_type, TYPE.ImageURL);
 
 export function hasLatitudeAndLongitudeColumns(cols) {
@@ -219,7 +206,7 @@ export function hasLatitudeAndLongitudeColumns(cols) {
   return hasLatitude && hasLongitude;
 }
 
-export const getIsPKFromTablePredicate = tableId => column => {
+export const getIsPKFromTablePredicate = (tableId) => (column) => {
   const isPrimaryKey = isPK(column);
 
   // FIXME: columns of nested questions at this moment miss table_id value

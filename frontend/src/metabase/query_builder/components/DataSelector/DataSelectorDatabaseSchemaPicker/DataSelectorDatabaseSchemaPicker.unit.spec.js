@@ -7,7 +7,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import DataSelectorDatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
 
-const setup = opts => {
+const setup = (opts) => {
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [opts.database] }),
   });

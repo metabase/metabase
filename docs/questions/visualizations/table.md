@@ -10,13 +10,29 @@ The **Table** option is good for looking at tabular data (duh), or for lists of 
 
 ## Rearranging, adding, and removing columns
 
-Open up the settings for your table and you'll see the Columns tab, which displays all the columns currently being shown in the table. To hide a column, click the eye icon.
+Open up the settings for your table visualization and you'll see the Columns tab, which displays all the columns currently being shown in the table. To hide a column, click the eye icon.
 
 To manage these columns, including columns from linked tables, just click **add or remove columns**. Check the boxes next to the columns you want to show in the **visible section**, or uncheck to hide them.
 
+When viewing tables, you can click on the **gear** icon in the bottom left to bring up the columns picker. Click **Add or remove columns** to search for and pick columns, including columns from related tables.
+
+![Adding or removing columns](../images/column-selection.png)
+
+Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata-editing.md#column-visibility).
+
+> **Hiding columns should _not_ be used to secure sensitive information**. Hiding columns in table visualization settings only affects the visibility of the columns _in the visualization_, not in the query results. Even people with view-only permissions to the question will be able to change the visualization settings and unhide columns. To exclude a column from the results of a specific query, uncheck the column in the "Data" block of the query builder. 
+
 To rearrange the order of the columns, simply click and drag any of the columns in the sidebar. You can also click on a column's heading in the table and drag the column to another position in the table.
 
-> Changing these options doesn't change the actual table itself; these changes create a custom view of the table that you can save as a **question** in Metabase and refer to later, share with others, or add to a [dashboard](../../dashboards/start.md).
+## Add row numbers to a table
+
+To number the rows of a table, click on the **gear** icon in bottom left to bring up the table formatting sidebar. In the **Columns** tab, and toggle on **Show row index**. Metabase will add a column to the left of the table displaying a number for each row.
+
+![Add row numbers to a table](../images/show-row-index.png)
+
+## Resize columns
+
+To change the width of a column, you can click and drag the edges of the column's header.
 
 ## Column heading options for filtering and summarizing
 
@@ -66,15 +82,16 @@ From a datetime, you can grab:
 - **Quarter of year**: Q1, Q2...
 - **Year**: 2024, 2025...
 
-### Extract domain, host
+### Extract domain, subdomain, host, or path
 
-Grab the domain or host from a URL or email. So if you have `https://www.example.com`:
+Grab the domain or host from a URL or email. So if you have `https://www.example.com/path/to/page#heading-on-page`:
 
 - Host: `example.com`
 - Domain: `example`
 - Subdomain: `www`
+- Path: `/path/to/page`
 
-> Extracting domain and host from a URL or email is unavailable for MongoDB, SQLite, and SQL Server. For Druid, extracting domain and host is only available for the Druid-JDBC driver.
+> Extracting parts of a URL or email is unavailable for MongoDB, SQLite, and SQL Server. For Druid, extracting domain and host is only available for the Druid-JDBC driver.
 
 ### Sum over time
 
@@ -94,9 +111,23 @@ The options you see will differ depending on the type of column you're viewing:
 
 You can rename the column.
 
+## Align text
+
+You can display the text on the left, right, or in the middle (i.e., centered) of the column.
+
+## Wrap text
+
+You can toggle text wrapping, which is useful for columns with long text values like comments.
+
 ### Display as
 
-You can display the text as is, or if the text is a URL, you can display the text as a link or image. 
+You can display a column as:
+
+- Text
+- [Link](#display-text-as-a-link)
+- Email link
+- [Image](#display-url-as-an-image)
+- Automatic (Metabase guesses based on the values). 
 
 #### Display text as a link
 
@@ -121,6 +152,10 @@ If you select image, and the text is a link to an image asset, Metabase will dis
 ## Date formatting options
 
 Date formatting options include the same options as [Text formatting](#text-formatting-options), as well as:
+
+### Align date
+
+You can display the date on the left, right, or in the middle (i.e., centered) of the column.
 
 ### Date style
 
@@ -224,12 +259,22 @@ When you add a new rule, you'll first need to pick which column(s) should be aff
 - **Single color**. Pick single color if you want to highlight cells in the column if they're greater, less than, or equal to a specific number, or if they match or contain a certain word or phrase. You can optionally highlight the whole row of a cell that matches the condition you pick so that it's easier to spot as you scroll down your table.
 - **Color range**. Choose color range if you want to tint all the cells in the column from smallest to largest or vice versa. This option is only available for numeric columns.
 
-You can set as many rules on a table as you want. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
+You can set as many rules on a table as you want, and change the order in which those rules are applied. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
+
+## Table pagination on dashboard cards
+
+When you add a table to dashboard, the table will be scrollable by default. You can paginate the rows by:
+
+1. Clicking on the **Pencil** icon to edit the dashboard.
+2. Hovering over the dashcard containing the table, and clicking the **Visualization** icon.
+3. In the **Columns** tab, toggle on **Paginate results**.
+
+![Paginate table results on dashboard card](../images/paginate-table-on-dashboard-card.png)
 
 ### Pivoted tables
+
+> This auto-pivoting is distinct from the [pivot table](./pivot-table.md) visualization.
 
 If your table is a result that contains one numeric column and two grouping columns, Metabase will also automatically "pivot" your table, like in the example below. Pivoting takes one of your columns and rotates it 90 degrees ("pivots" it) so that each of its values becomes a column heading. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong; or you can also turn the pivoting behavior off entirely.
 
 ![Pivot table](../images/pivot.png)
-
-This auto-pivoting is distinct from the [pivot table](./pivot-table.md) visualization.

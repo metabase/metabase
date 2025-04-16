@@ -21,10 +21,10 @@ describe("scenarios > question > relative-datetime", () => {
   });
 
   describe("starting from", () => {
-    const date = values =>
+    const date = (values) =>
       values.reduce((val, [num, unit]) => val.add(num, unit), now.clone());
 
-    STARTING_FROM_UNITS.forEach(unit =>
+    STARTING_FROM_UNITS.forEach((unit) =>
       it(`should work with Past filters (${unit} ago)`, () => {
         nativeSQL([
           now,
@@ -39,7 +39,7 @@ describe("scenarios > question > relative-datetime", () => {
       }),
     );
 
-    STARTING_FROM_UNITS.forEach(unit =>
+    STARTING_FROM_UNITS.forEach((unit) =>
       it(`should work with Next filters (${unit} from now)`, () => {
         nativeSQL([
           now,
@@ -93,7 +93,7 @@ describe("scenarios > question > relative-datetime", () => {
       H.tableHeaderClick("Created At");
       H.clickActionsPopover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
       });
 
       addStartingFrom();
@@ -124,9 +124,9 @@ describe("scenarios > question > relative-datetime", () => {
       H.tableHeaderClick("Created At");
       H.popover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Specific dates…").click();
+        cy.findByText("Fixed date range…").click();
         cy.icon("chevronleft").first().click();
-        cy.findByText("Specific dates…").should("exist");
+        cy.findByText("Fixed date range…").should("exist");
         cy.findByText("Between").should("not.exist");
       });
     });
@@ -137,7 +137,7 @@ describe("scenarios > question > relative-datetime", () => {
       H.tableHeaderClick("Created At");
       H.popover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Current").click();
         cy.findByText("Year").click();
       });
@@ -158,7 +158,7 @@ describe("scenarios > question > relative-datetime", () => {
       H.tableHeaderClick("Created At");
       H.popover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Day").should("not.exist");
         cy.findByText("Quarter").should("not.exist");
         cy.findByText("Month").should("not.exist");
@@ -233,10 +233,10 @@ describe("scenarios > question > relative-datetime", () => {
   });
 });
 
-const nativeSQL = values => {
+const nativeSQL = (values) => {
   cy.intercept("POST", "/api/dataset").as("dataset");
 
-  const queries = values.map(value => {
+  const queries = values.map((value) => {
     const date = moment(value).utc();
     return `SELECT '${date.toISOString()}'::timestamp as "testcol"`;
   });
@@ -255,11 +255,11 @@ const nativeSQL = values => {
   cy.wait("@dataset");
 };
 
-const openCreatedAt = tab => {
+const openCreatedAt = (tab) => {
   H.tableHeaderClick("Created At");
   H.popover().within(() => {
     cy.findByText("Filter by this column").click();
-    cy.findByText("Relative dates…").click();
+    cy.findByText("Relative date range…").click();
     tab && cy.findByText(tab).click();
   });
 };
@@ -270,16 +270,16 @@ const addStartingFrom = () => {
     .click();
 };
 
-const setRelativeDatetimeUnit = unit => {
+const setRelativeDatetimeUnit = (unit) => {
   cy.findByRole("textbox", { name: "Unit" }).click();
   cy.findByRole("option", { name: unit }).click();
 };
 
-const setRelativeDatetimeValue = value => {
+const setRelativeDatetimeValue = (value) => {
   cy.findByLabelText("Interval").click().clear().type(value).blur();
 };
 
-const setStartingFromValue = value => {
+const setStartingFromValue = (value) => {
   cy.findByLabelText("Starting from interval")
     .click()
     .clear()
@@ -290,7 +290,7 @@ const setStartingFromValue = value => {
 const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {
   H.tableHeaderClick("testcol");
   cy.findByTextEnsureVisible("Filter by this column").click();
-  cy.findByTextEnsureVisible("Relative dates…").click();
+  cy.findByTextEnsureVisible("Relative date range…").click();
   H.clickActionsPopover().within(() => {
     cy.findByText(dir).click();
   });

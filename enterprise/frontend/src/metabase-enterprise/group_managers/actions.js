@@ -61,7 +61,7 @@ export const confirmUpdateMembership = createThunkAction(
 export const DELETE_GROUP = "metabase-enterprise/group_managers/DELETE_GROUP";
 export const deleteGroup = createThunkAction(
   DELETE_GROUP,
-  group => async (dispatch, getState) => {
+  (group) => async (dispatch, getState) => {
     const groups = Groups.selectors.getList(getState());
     const isLastGroup = groups.length === 1;
 

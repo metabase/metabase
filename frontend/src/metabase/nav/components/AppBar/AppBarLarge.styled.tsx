@@ -15,7 +15,8 @@ export const AppBarRoot = styled.div<AppBarRootProps>`
   padding-left: 1.325rem;
   padding-right: 1rem;
   border-bottom: 1px solid
-    ${props => (props.isNavBarOpen ? "var(--mb-color-border)" : "transparent")};
+    ${(props) =>
+      props.isNavBarOpen ? "var(--mb-color-border)" : "transparent"};
   background-color: var(--mb-color-bg-white);
   transition: border-bottom-color 200ms ease;
 `;
@@ -43,9 +44,9 @@ interface AppBarInfoContainerProps {
 export const AppBarInfoContainer = styled.div<AppBarInfoContainerProps>`
   display: flex;
   min-width: 0;
-  opacity: ${props => (props.isVisible ? 1 : 0)};
-  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
-  transition: ${props =>
+  opacity: ${(props) => (props.isVisible ? 1 : 0)};
+  visibility: ${(props) => (props.isVisible ? "visible" : "hidden")};
+  transition: ${(props) =>
     props.isVisible ? `opacity 0.5s` : `opacity 0.5s, visibility 0s`};
 `;
 

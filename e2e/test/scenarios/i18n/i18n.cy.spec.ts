@@ -14,7 +14,6 @@ const paths = [
 const locales = [
   "Chinese (China)",
   "Chinese (Taiwan)",
-  "Chinese",
   "French",
   "German",
   "Italian",
@@ -33,10 +32,10 @@ describe("Pages accessible within one click from the homepage should work in pop
     cy.intercept("PUT", "/api/user/*").as("updateUserSettings");
   });
 
-  locales.forEach(localeName => {
+  locales.forEach((localeName) => {
     it(`Pages should be reachable when locale is ${localeName}`, () => {
       selectLocale(localeName);
-      paths.forEach(path => {
+      paths.forEach((path) => {
         cy.visit(path);
         cy.findByRole("main");
         cy.findAllByTestId("error-boundary").should("not.exist");

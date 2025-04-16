@@ -1,8 +1,11 @@
 import type {
+  BaseEntityId,
   Collection,
   CollectionEssentials,
   CollectionItem,
 } from "metabase-types/api";
+
+import { createMockEntityId } from "./entity-id";
 
 export const createMockCollection = (
   opts?: Partial<Collection>,
@@ -17,7 +20,7 @@ export const createMockCollection = (
   archived: false,
   is_personal: false,
   authority_level: null,
-  entity_id: "an_entity_id",
+  entity_id: createMockEntityId(),
   ...opts,
 });
 
@@ -25,6 +28,7 @@ export const createMockCollectionItem = (
   opts?: Partial<CollectionItem>,
 ): CollectionItem => ({
   id: 1,
+  entity_id: createMockEntityId(),
   model: "card",
   name: "Question",
   description: null,
@@ -45,6 +49,7 @@ export const createMockCollectionItemFromCollection = (
   createMockCollectionItem({
     ...opts,
     id: opts?.id as number,
+    entity_id: opts?.entity_id as BaseEntityId,
     model: "collection",
     type: undefined,
     location: opts?.location || "/",

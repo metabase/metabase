@@ -50,7 +50,7 @@ export const questionDetails = {
   display: "scalar",
 };
 
-export const questionDetailsWithDefaults = produce(questionDetails, draft => {
+export const questionDetailsWithDefaults = produce(questionDetails, (draft) => {
   const tags = draft.native["template-tags"];
   tags.id.default = [1, 2];
   tags.name.default = ["Lina Heaney"];

@@ -8,7 +8,7 @@ export default {
   component: BookmarkToggle,
 };
 
-const Template: StoryFn<typeof BookmarkToggle> = args => {
+const Template: StoryFn<typeof BookmarkToggle> = (args) => {
   const [{ isBookmarked }, updateArgs] = useArgs();
   const handleCreateBookmark = () => updateArgs({ isBookmarked: true });
   const handleDeleteBookmark = () => updateArgs({ isBookmarked: false });

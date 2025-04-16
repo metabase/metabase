@@ -39,7 +39,7 @@ export const MOBILE_HEIGHT_BY_DISPLAY_TYPE: Record<
 > = {
   action: 1,
   link: 1,
-  text: desktopHeight => Math.max(2, desktopHeight),
+  text: (desktopHeight) => Math.max(2, desktopHeight),
   heading: 2,
   scalar: 4,
 };

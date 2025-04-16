@@ -67,7 +67,7 @@ export const CollectionBulkActions = memo(
       if (selectedItems) {
         await tryOrClear(
           Promise.all(
-            selectedItems.map(item => item.setCollection?.(destination)),
+            selectedItems.map((item) => item.setCollection?.(destination)),
           ),
         );
       }
@@ -84,14 +84,14 @@ export const CollectionBulkActions = memo(
         // otherwise, destination is a dashboard
         else if (destination.model === "dashboard") {
           // ensure that all selected items are cards. This should be enforced by the picker
-          if (!selectedItems.every(item => item.model === "card")) {
+          if (!selectedItems.every((item) => item.model === "card")) {
             throw new Error("can't move non-cards into dashboards");
           }
           //determine if we need to display a confirmation modal
 
           //Check how many items are cards that appear in a dashboard
           const potentialConfirmCards = selectedItems.filter(
-            item => item.dashboard_count && item.dashboard_count > 0,
+            (item) => item.dashboard_count && item.dashboard_count > 0,
           );
 
           //If there are none, then do the move

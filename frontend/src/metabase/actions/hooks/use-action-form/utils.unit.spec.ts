@@ -128,7 +128,7 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
 
     const timezones = ["-02:00", "-07:00", "+01:00", "+09:00"];
 
-    timezones.forEach(offset => {
+    timezones.forEach((offset) => {
       describe(`with timezone ${offset}`, () => {
         it("formats dates", () => {
           const result = formatInitialValue(

@@ -248,7 +248,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,
-            dashboardCount: "Rows 1-1 of 953",
+            dashboardCount: 953,
             queryBuilderCount: "Showing 953 rows",
           });
 
@@ -256,27 +256,27 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 1,
-            dashboardCount: "Rows 1-1 of 953",
+            dashboardCount: 953,
             queryBuilderCount: "Showing 953 rows",
           });
 
           cy.log("public dashboard");
-          QSHelpers.getDashboardId().then(dashboardId =>
+          QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
           QSHelpers.apply1stStageExplicitJoinFilter();
           QSHelpers.waitForPublicDashboardData();
 
-          H.getDashboardCard(0)
-            .findByText("Rows 1-1 of 953")
-            .should("be.visible");
-          H.getDashboardCard(1)
-            .findByText("Rows 1-1 of 953")
-            .should("be.visible");
+          H.getDashboardCard(0).within(() => {
+            H.assertTableRowsCount(953);
+          });
+          H.getDashboardCard(1).within(() => {
+            H.assertTableRowsCount(953);
+          });
 
           cy.log("embedded dashboard");
-          QSHelpers.getDashboardId().then(dashboardId => {
+          QSHelpers.getDashboardId().then((dashboardId) => {
             H.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},
@@ -286,12 +286,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.apply1stStageExplicitJoinFilter();
           QSHelpers.waitForEmbeddedDashboardData();
 
-          H.getDashboardCard(0)
-            .findByText("Rows 1-1 of 953")
-            .should("be.visible");
-          H.getDashboardCard(1)
-            .findByText("Rows 1-1 of 953")
-            .should("be.visible");
+          H.getDashboardCard(0).within(() => {
+            H.assertTableRowsCount(953);
+          });
+          H.getDashboardCard(1).within(() => {
+            H.assertTableRowsCount(953);
+          });
         });
 
         it("1st stage implicit join (data source)", () => {
@@ -299,7 +299,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,
-            dashboardCount: "Rows 1-1 of 1044",
+            dashboardCount: 1044,
             queryBuilderCount: "Showing 1,044 rows",
           });
 
@@ -307,7 +307,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 1,
-            dashboardCount: "Rows 1-1 of 1044",
+            dashboardCount: 1044,
             queryBuilderCount: "Showing 1,044 rows",
           });
         });
@@ -318,7 +318,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,
-            dashboardCount: "Rows 1-1 of 1077",
+            dashboardCount: 1077,
             queryBuilderCount: "Showing 1,077 rows",
           });
 
@@ -326,7 +326,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 1,
-            dashboardCount: "Rows 1-1 of 1077",
+            dashboardCount: 1077,
             queryBuilderCount: "Showing 1,077 rows",
           });
         });
@@ -336,7 +336,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,
-            dashboardCount: "Rows 1-1 of 688",
+            dashboardCount: 688,
             queryBuilderCount: "Showing 688 rows",
           });
 
@@ -344,7 +344,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 1,
-            dashboardCount: "Rows 1-1 of 688",
+            dashboardCount: 688,
             queryBuilderCount: "Showing 688 rows",
           });
         });
@@ -354,7 +354,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 1,
-            dashboardCount: "Rows 1-1 of 3",
+            dashboardCount: 3,
             queryBuilderCount: "Showing 3 rows",
           });
 
@@ -362,7 +362,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 1,
-            dashboardCount: "Rows 1-1 of 3",
+            dashboardCount: 3,
             queryBuilderCount: "Showing 3 rows",
           });
         });
@@ -373,7 +373,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,
-            dashboardCount: "Rows 1-1 of 1077",
+            dashboardCount: 1077,
             queryBuilderCount: "Showing 1,077 rows",
           });
 
@@ -381,7 +381,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 1,
-            dashboardCount: "Rows 1-1 of 1077",
+            dashboardCount: 1077,
             queryBuilderCount: "Showing 1,077 rows",
           });
         });
@@ -391,7 +391,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,
-            dashboardCount: "Rows 1-1 of 4",
+            dashboardCount: 4,
             queryBuilderCount: "Showing 4 rows",
           });
 
@@ -399,7 +399,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 1,
-            dashboardCount: "Rows 1-1 of 4",
+            dashboardCount: 4,
             queryBuilderCount: "Showing 4 rows",
           });
         });
@@ -411,7 +411,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,
-            dashboardCount: "Rows 1-1 of 31",
+            dashboardCount: 31,
             queryBuilderCount: "Showing 31 rows",
           });
 
@@ -419,27 +419,27 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 1,
-            dashboardCount: "Rows 1-1 of 31",
+            dashboardCount: 31,
             queryBuilderCount: "Showing 31 rows",
           });
 
           cy.log("public dashboard");
-          QSHelpers.getDashboardId().then(dashboardId =>
+          QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
           QSHelpers.apply2ndStageCustomColumnFilter();
           QSHelpers.waitForPublicDashboardData();
 
-          H.getDashboardCard(0)
-            .findByText("Rows 1-1 of 31")
-            .should("be.visible");
-          H.getDashboardCard(1)
-            .findByText("Rows 1-1 of 31")
-            .should("be.visible");
+          H.getDashboardCard(0).within(() => {
+            H.assertTableRowsCount(31);
+          });
+          H.getDashboardCard(1).within(() => {
+            H.assertTableRowsCount(31);
+          });
 
           cy.log("embedded dashboard");
-          QSHelpers.getDashboardId().then(dashboardId => {
+          QSHelpers.getDashboardId().then((dashboardId) => {
             H.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},
@@ -449,12 +449,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.apply2ndStageCustomColumnFilter();
           QSHelpers.waitForEmbeddedDashboardData();
 
-          H.getDashboardCard(0)
-            .findByText("Rows 1-1 of 31")
-            .should("be.visible");
-          H.getDashboardCard(1)
-            .findByText("Rows 1-1 of 31")
-            .should("be.visible");
+          H.getDashboardCard(0).within(() => {
+            H.assertTableRowsCount(31);
+          });
+          H.getDashboardCard(1).within(() => {
+            H.assertTableRowsCount(31);
+          });
         });
 
         it("2nd stage aggregation", () => {
@@ -464,7 +464,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,
-            dashboardCount: "Rows 1-1 of 6",
+            dashboardCount: 6,
             queryBuilderCount: "Showing 6 rows",
           });
 
@@ -472,7 +472,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 1,
-            dashboardCount: "Rows 1-1 of 6",
+            dashboardCount: 6,
             queryBuilderCount: "Showing 6 rows",
           });
 
@@ -480,7 +480,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 2,
-            dashboardCount: "Rows 1-1 of 6",
+            dashboardCount: 6,
             queryBuilderCount: "Showing 6 rows",
           });
 
@@ -488,33 +488,33 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 3,
-            dashboardCount: "Rows 1-1 of 6",
+            dashboardCount: 6,
             queryBuilderCount: "Showing 6 rows",
           });
 
           cy.log("public dashboard");
-          QSHelpers.getDashboardId().then(dashboardId =>
+          QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
           QSHelpers.apply2ndStageAggregationFilter();
           QSHelpers.waitForPublicDashboardData();
 
-          H.getDashboardCard(0)
-            .findByText("Rows 1-1 of 6")
-            .should("be.visible");
-          H.getDashboardCard(1)
-            .findByText("Rows 1-1 of 6")
-            .should("be.visible");
-          H.getDashboardCard(2)
-            .findByText("Rows 1-1 of 6")
-            .should("be.visible");
-          H.getDashboardCard(3)
-            .findByText("Rows 1-1 of 6")
-            .should("be.visible");
+          H.getDashboardCard(0).within(() => {
+            H.assertTableRowsCount(6);
+          });
+          H.getDashboardCard(1).within(() => {
+            H.assertTableRowsCount(6);
+          });
+          H.getDashboardCard(2).within(() => {
+            H.assertTableRowsCount(6);
+          });
+          H.getDashboardCard(3).within(() => {
+            H.assertTableRowsCount(6);
+          });
 
           cy.log("embedded dashboard");
-          QSHelpers.getDashboardId().then(dashboardId => {
+          QSHelpers.getDashboardId().then((dashboardId) => {
             H.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},
@@ -524,18 +524,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.apply2ndStageAggregationFilter();
           QSHelpers.waitForEmbeddedDashboardData();
 
-          H.getDashboardCard(0)
-            .findByText("Rows 1-1 of 6")
-            .should("be.visible");
-          H.getDashboardCard(1)
-            .findByText("Rows 1-1 of 6")
-            .should("be.visible");
-          H.getDashboardCard(2)
-            .findByText("Rows 1-1 of 6")
-            .should("be.visible");
-          H.getDashboardCard(3)
-            .findByText("Rows 1-1 of 6")
-            .should("be.visible");
+          H.getDashboardCard(0).within(() => {
+            H.assertTableRowsCount(6);
+          });
+          H.getDashboardCard(1).within(() => {
+            H.assertTableRowsCount(6);
+          });
+          H.getDashboardCard(2).within(() => {
+            H.assertTableRowsCount(6);
+          });
+          H.getDashboardCard(3).within(() => {
+            H.assertTableRowsCount(6);
+          });
         });
 
         it("2nd stage breakout", () => {
@@ -545,7 +545,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,
-            dashboardCount: "Rows 1-1 of 1077",
+            dashboardCount: 1077,
             queryBuilderCount: "Showing 1,077 rows",
           });
 
@@ -553,7 +553,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 1,
-            dashboardCount: "Rows 1-1 of 1077",
+            dashboardCount: 1077,
             queryBuilderCount: "Showing 1,077 rows",
           });
 
@@ -561,7 +561,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 2,
-            dashboardCount: "Rows 1-1 of 1077",
+            dashboardCount: 1077,
             queryBuilderCount: "Showing 1,077 rows",
           });
 
@@ -569,39 +569,41 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 3,
-            dashboardCount: "Rows 1-1 of 1077",
+            dashboardCount: 1077,
             queryBuilderCount: "Showing 1,077 rows",
           });
 
           cy.log("public dashboard");
-          QSHelpers.getDashboardId().then(dashboardId =>
+          QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
           // We're not using apply2ndStageBreakoutFilter() here because in public dashboards
           // there are no field values to choose from. We need to search for those values manually.
           H.filterWidget().eq(0).click();
-          H.popover().within(() => {
-            cy.findByPlaceholderText("Enter some text").type("Gadget");
-            cy.button("Add filter").click();
-          });
+          H.popover()
+            .first()
+            .within(() => {
+              cy.findByPlaceholderText("Enter some text").type("Gadget");
+              cy.button("Add filter").click();
+            });
           QSHelpers.waitForPublicDashboardData();
 
-          H.getDashboardCard(0)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
-          H.getDashboardCard(1)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
-          H.getDashboardCard(2)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
-          H.getDashboardCard(3)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
+          H.getDashboardCard(0).within(() => {
+            H.assertTableRowsCount(1077);
+          });
+          H.getDashboardCard(1).within(() => {
+            H.assertTableRowsCount(1077);
+          });
+          H.getDashboardCard(2).within(() => {
+            H.assertTableRowsCount(1077);
+          });
+          H.getDashboardCard(3).within(() => {
+            H.assertTableRowsCount(1077);
+          });
 
           cy.log("embedded dashboard");
-          QSHelpers.getDashboardId().then(dashboardId => {
+          QSHelpers.getDashboardId().then((dashboardId) => {
             H.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},
@@ -611,24 +613,26 @@ describe("scenarios > dashboard > filters > query stages", () => {
           // We're not using apply2ndStageBreakoutFilter() here because in public dashboards
           // there are no field values to choose from. We need to search for those values manually.
           H.filterWidget().eq(0).click();
-          H.popover().within(() => {
-            cy.findByPlaceholderText("Enter some text").type("Gadget");
-            cy.button("Add filter").click();
-          });
+          H.popover()
+            .first()
+            .within(() => {
+              cy.findByPlaceholderText("Enter some text").type("Gadget");
+              cy.button("Add filter").click();
+            });
           QSHelpers.waitForEmbeddedDashboardData();
 
-          H.getDashboardCard(0)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
-          H.getDashboardCard(1)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
-          H.getDashboardCard(2)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
-          H.getDashboardCard(3)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
+          H.getDashboardCard(0).within(() => {
+            H.assertTableRowsCount(1077);
+          });
+          H.getDashboardCard(1).within(() => {
+            H.assertTableRowsCount(1077);
+          });
+          H.getDashboardCard(2).within(() => {
+            H.assertTableRowsCount(1077);
+          });
+          H.getDashboardCard(3).within(() => {
+            H.assertTableRowsCount(1077);
+          });
         });
       });
     });

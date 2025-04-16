@@ -108,7 +108,7 @@ describe("entities > collections > utils", () => {
 
         const transformed = buildCollectionTree(
           [collection],
-          model => model === "dataset",
+          (model) => model === "dataset",
         );
 
         expect(transformed).toMatchObject([
@@ -156,7 +156,7 @@ describe("entities > collections > utils", () => {
 
         const transformed = buildCollectionTree(
           [collectionWithDatasets, collectionWithCards],
-          model => model === "dataset",
+          (model) => model === "dataset",
         );
 
         expect(transformed).toMatchObject([
@@ -208,7 +208,7 @@ describe("entities > collections > utils", () => {
 
         const collectionTree = buildCollectionTree(
           [collection],
-          model => model === "card",
+          (model) => model === "card",
         );
 
         expect(collectionTree).toMatchObject([
@@ -249,7 +249,7 @@ describe("entities > collections > utils", () => {
 
         const collectionTree = buildCollectionTree(
           [collection],
-          model => model === "card",
+          (model) => model === "card",
         );
 
         expect(collectionTree).toEqual([]);
@@ -376,7 +376,7 @@ describe("entities > collections > utils", () => {
     ];
 
     describe("OSS", () => {
-      testCasesOSS.forEach(testCase => {
+      testCasesOSS.forEach((testCase) => {
         const { name, collection, expectedIcon } = testCase;
 
         it(`returns '${expectedIcon}' for '${name}'`, () => {
@@ -392,7 +392,7 @@ describe("entities > collections > utils", () => {
         setupEnterpriseTest();
       });
 
-      testCasesEE.forEach(testCase => {
+      testCasesEE.forEach((testCase) => {
         const { name, collection, expectedIcon } = testCase;
 
         it(`returns '${expectedIcon}' for '${name}'`, () => {

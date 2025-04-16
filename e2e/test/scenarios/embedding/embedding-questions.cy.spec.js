@@ -173,46 +173,41 @@ describe("scenarios > embedding > questions", () => {
     cy.findByText("Subtotal").should("not.exist");
   });
 
-  it("should display GUI question with explicit joins correctly", () => {
-    H.createQuestion(joinedQuestion).then(({ body: { id } }) => {
-      cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
+  it(
+    "should display GUI question with explicit joins correctly",
+    { tags: "@flaky" },
+    () => {
+      H.createQuestion(joinedQuestion).then(({ body: { id } }) => {
+        cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
-      H.visitQuestion(id);
-    });
+        H.visitQuestion(id);
+      });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
-    H.visitIframe();
+      H.visitIframe();
 
-    // Base question assertions
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Product ID as Title");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Awesome Concrete Shoes");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Math");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Billed");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("€39.72");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tue, Feb 11, 2025, 21:40:27");
-    cy.findAllByTestId("mini-bar-container");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Subtotal").should("not.exist");
+      // Base question assertions
+      cy.findByTestId("visualization-root")
+        .should("contain", "Product ID as Title")
+        .should("contain", "Awesome Concrete Shoes")
+        .should("contain", "Math")
+        .should("contain", "Billed")
+        .should("contain", "€39.72")
+        .should("contain", "Tue, Feb 11, 2025, 21:40:27")
+        .should("not.contain", "Subtotal");
 
-    // Joined table fields
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("98.52598640° W");
+      cy.findAllByTestId("mini-bar-container").should("have.length", 5);
+      H.tableInteractiveScrollContainer().scrollTo("right");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("User → Birth Date");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("December 12, 1986");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("October 7, 2023, 1:34 AM");
-  });
+      // Joined table fields
+      cy.findByTestId("visualization-root")
+        .should("contain", "98.52598640° W")
+        .should("contain", "User → Birth Date")
+        .should("contain", "December 12, 1986")
+        .should("contain", "October 7, 2023, 1:34 AM");
+    },
+  );
 });
 
 describe("scenarios [EE] > embedding > questions", () => {
@@ -257,7 +252,8 @@ describe("scenarios [EE] > embedding > questions", () => {
     cy.wait("@deLocale");
 
     H.main().findByText("Februar 11, 2025, 9:40 PM");
-    H.main().findByText("Zeilen", { exact: false });
+    cy.findByTestId("download-button").realHover();
+    H.tooltip().findByText("Lade alle Ergebnisse herunter", { exact: false });
 
     cy.url().should("include", "locale=de");
   });
@@ -320,7 +316,7 @@ describe("scenarios > embedding > questions > downloads", () => {
 
   context("without token", () => {
     it("should not be possible to disable downloads", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
         H.openStaticEmbeddingModal({ activeTab: "lookAndFeel" });
@@ -330,7 +326,7 @@ describe("scenarios > embedding > questions > downloads", () => {
         );
         cy.findByLabelText("Customizing look and feel").should(
           "not.contain",
-          "Download buttons",
+          "Download (csv, xlsx, json, png)",
         );
 
         cy.log('Use API to "publish" this question and to enable its filter');
@@ -353,7 +349,7 @@ describe("scenarios > embedding > questions > downloads", () => {
           setFilters: { text: "Foo" },
         });
 
-        cy.get("[data-testid=cell-data]").should("have.text", "Foo");
+        cy.findByRole("gridcell").should("have.text", "Foo");
         cy.findByRole("contentinfo").icon("download").click();
 
         H.popover().within(() => {
@@ -366,11 +362,11 @@ describe("scenarios > embedding > questions > downloads", () => {
         cy.log(
           "Trying to prevent downloads via query params doesn't have any effect",
         );
-        cy.url().then(url => {
+        cy.url().then((url) => {
           cy.visit(url + "&downloads=false");
         });
 
-        cy.get("[data-testid=cell-data]").should("have.text", "Foo");
+        cy.findByRole("gridcell").should("have.text", "Foo");
         cy.findByRole("contentinfo").icon("download");
       });
     });
@@ -380,7 +376,7 @@ describe("scenarios > embedding > questions > downloads", () => {
     beforeEach(() => H.setTokenFeatures("all"));
 
     it("should be possible to disable downloads", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
         H.openStaticEmbeddingModal({
@@ -389,11 +385,11 @@ describe("scenarios > embedding > questions > downloads", () => {
         });
 
         cy.log("Disable downloads");
-        cy.findByLabelText("Download buttons")
+        cy.findByLabelText("Download (csv, xlsx, json, png)")
           .as("allow-download-toggle")
           .should("be.checked");
 
-        cy.findByText("Download buttons").click();
+        cy.findByText("Download (csv, xlsx, json, png)").click();
         cy.get("@allow-download-toggle").should("not.be.checked");
 
         cy.log('Use API to "publish" this question and to enable its filter');
@@ -407,7 +403,7 @@ describe("scenarios > embedding > questions > downloads", () => {
         H.visitIframe();
 
         H.filterWidget().type("Foo{enter}");
-        cy.get("[data-testid=cell-data]").should("have.text", "Foo");
+        cy.findByRole("gridcell").should("have.text", "Foo");
 
         cy.location("search").should("eq", "?text=Foo");
         cy.location("hash").should("match", /&downloads=false$/);

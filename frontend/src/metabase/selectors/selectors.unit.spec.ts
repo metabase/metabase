@@ -106,7 +106,7 @@ describe("getDocsUrl", () => {
     ["v1.41.3-snapshot", "latest"],
     ["v1.41.2-rc1", "v0.41"],
     ["v1.41.1-RANDOM-SUFFIX", "v0.41"],
-  ].forEach(v => {
+  ].forEach((v) => {
     it("handles version " + v[0] + " by pointing it to " + v[1], () => {
       const state = createMockState({
         settings: createMockSettingsState({

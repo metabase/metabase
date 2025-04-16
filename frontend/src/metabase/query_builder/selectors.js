@@ -1,7 +1,7 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
 import * as d3 from "d3";
-import { getIn, merge, updateIn } from "icepick";
+import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
 import { getDashboardById } from "metabase/dashboard/selectors";
@@ -12,7 +12,10 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import {
+  getEmbedOptions,
+  getIsEmbeddingIframe,
+} from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -47,20 +50,21 @@ import {
   isSavedQuestionChanged,
 } from "./utils/question";
 
-export const getUiControls = state => state.qb.uiControls;
-export const getQueryStatus = state => state.qb.queryStatus;
-export const getLoadingControls = state => state.qb.loadingControls;
+// This selector can be called from public questions / dashboards, which do not have state.qb
+export const getUiControls = (state) => state.qb?.uiControls;
+export const getQueryStatus = (state) => state.qb.queryStatus;
+export const getLoadingControls = (state) => state.qb.loadingControls;
 
-export const getIsShowingTemplateTagsEditor = state =>
+export const getIsShowingTemplateTagsEditor = (state) =>
   getUiControls(state).isShowingTemplateTagsEditor;
-export const getIsShowingSnippetSidebar = state =>
+export const getIsShowingSnippetSidebar = (state) =>
   getUiControls(state).isShowingSnippetSidebar;
-export const getIsShowingDataReference = state =>
+export const getIsShowingDataReference = (state) =>
   getUiControls(state).isShowingDataReference;
 
 // This selector can be called from public questions / dashboards, which do not
 // have state.qb
-export const getIsShowingRawTable = state =>
+export const getIsShowingRawTable = (state) =>
   !!state.qb?.uiControls.isShowingRawTable;
 
 const SIDEBARS = [
@@ -76,46 +80,47 @@ const SIDEBARS = [
   "isShowingSnippetSidebar",
 ];
 
-export const getIsAnySidebarOpen = createSelector([getUiControls], uiControls =>
-  SIDEBARS.some(sidebar => uiControls[sidebar]),
+export const getIsAnySidebarOpen = createSelector(
+  [getUiControls],
+  (uiControls) => SIDEBARS.some((sidebar) => uiControls[sidebar]),
 );
 
-export const getIsRunning = state => getUiControls(state).isRunning;
-export const getIsLoadingComplete = state =>
+export const getIsRunning = (state) => getUiControls(state).isRunning;
+export const getIsLoadingComplete = (state) =>
   getQueryStatus(state) === "complete";
 
-export const getCard = state => state.qb.card;
-export const getOriginalCard = state => state.qb.originalCard;
-export const getLastRunCard = state => state.qb.lastRunCard;
+export const getCard = (state) => state.qb.card;
+export const getOriginalCard = (state) => state.qb.originalCard;
+export const getLastRunCard = (state) => state.qb.lastRunCard;
 
-export const getParameterValues = state => state.qb.parameterValues;
-export const getParameterValuesSearchCache = state =>
+export const getParameterValues = (state) => state.qb.parameterValues;
+export const getParameterValuesSearchCache = (state) =>
   state.qb.parameterValuesSearchCache;
 
-export const getMetadataDiff = state => state.qb.metadataDiff;
+export const getMetadataDiff = (state) => state.qb.metadataDiff;
 
-export const getEntities = state => state.entities;
-export const getVisibleTimelineEventIds = state =>
+export const getEntities = (state) => state.entities;
+export const getVisibleTimelineEventIds = (state) =>
   state.qb.visibleTimelineEventIds;
-export const getSelectedTimelineEventIds = state =>
+export const getSelectedTimelineEventIds = (state) =>
   state.qb.selectedTimelineEventIds;
 
-const getRawQueryResults = state => state.qb.queryResults;
+const getRawQueryResults = (state) => state.qb.queryResults;
 
 export const getIsBookmarked = (state, props) =>
   props.bookmarks.some(
-    bookmark =>
+    (bookmark) =>
       bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
   );
 
 export const getQueryBuilderMode = createSelector(
   [getUiControls],
-  uiControls => uiControls.queryBuilderMode,
+  (uiControls) => uiControls.queryBuilderMode,
 );
 
 const getCardResultMetadata = createSelector(
   [getCard],
-  card => card?.result_metadata,
+  (card) => card?.result_metadata,
 );
 
 const getModelMetadataDiff = createSelector(
@@ -128,7 +133,7 @@ const getModelMetadataDiff = createSelector(
     return {
       ...metadataDiff,
       ...Object.fromEntries(
-        resultMetadata.map(column => [
+        resultMetadata.map((column) => [
           column.name,
           {
             ...getWritableColumnProperties(column),
@@ -174,12 +179,162 @@ export const getQueryResults = createSelector(
   },
 );
 
-export const getFirstQueryResult = createSelector([getQueryResults], results =>
-  Array.isArray(results) ? results[0] : null,
+export const getFirstQueryResult = createSelector(
+  [getQueryResults],
+  (results) => (Array.isArray(results) ? results[0] : null),
 );
 
-export const getTableId = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "query", "source-table"]),
+export const getQueryStartTime = (state) => state.qb.queryStartTime;
+
+export const getDatabaseId = createSelector(
+  [getCard],
+  (card) => card && card.dataset_query && card.dataset_query.database,
+);
+
+export const getTableForeignKeyReferences = (state) =>
+  state.qb.tableForeignKeyReferences;
+
+const getDatabasesListDefaultValue = [];
+export const getDatabasesList = (state) =>
+  Databases.selectors.getList(state, {
+    entityQuery: { include: "tables", saved: true },
+  }) || getDatabasesListDefaultValue;
+
+export const getSampleDatabaseId = createSelector(
+  [getDatabasesList],
+  (databases) => {
+    const sampleDatabase = _.findWhere(databases, { is_sample: true });
+    return sampleDatabase && sampleDatabase.id;
+  },
+);
+
+export const getParameters = createSelector(
+  [getCard, getMetadata, getParameterValues],
+  (card, metadata, parameterValues) =>
+    getCardUiParameters(card, metadata, parameterValues),
+);
+
+const getLastRunDatasetQuery = createSelector(
+  [getLastRunCard],
+  (card) => card && card.dataset_query,
+);
+export const getNextRunDatasetQuery = createSelector(
+  [getCard],
+  (card) => card && card.dataset_query,
+);
+
+const getLastRunParameters = createSelector(
+  [getFirstQueryResult],
+  (queryResult) =>
+    (queryResult &&
+      queryResult.json_query &&
+      queryResult.json_query.parameters) ||
+    [],
+);
+const getLastRunParameterValues = createSelector(
+  [getLastRunParameters],
+  (parameters) => parameters.map((parameter) => parameter.value),
+);
+const getNextRunParameterValues = createSelector(
+  [getParameters],
+  (parameters) =>
+    parameters.map((parameter) =>
+      // parameters are "normalized" immediately before a query run, so in order
+      // to compare current parameters to previously-used parameters we need
+      // to run parameters through this normalization function
+      normalizeParameterValue(parameter.type, parameter.value),
+    ),
+);
+
+export const getNextRunParameters = createSelector(
+  [getParameters],
+  (parameters) => normalizeParameters(parameters),
+);
+
+export const getPreviousQueryBuilderMode = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls.previousQueryBuilderMode,
+);
+
+export const getDatasetEditorTab = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls.datasetEditorTab,
+);
+
+export const getOriginalQuestion = createSelector(
+  [getMetadata, getOriginalCard],
+  (metadata, card) => metadata && card && new Question(card, metadata),
+);
+
+export const getOriginalQuestionWithParameterValues = createSelector(
+  [getMetadata, getOriginalCard, getParameterValues],
+  (metadata, card, parameterValues) =>
+    metadata && card && new Question(card, metadata, parameterValues),
+);
+
+export const getLastRunQuestion = createSelector(
+  [getMetadata, getLastRunCard, getParameterValues],
+  (metadata, card, parameterValues) =>
+    card && metadata && new Question(card, metadata, parameterValues),
+);
+
+export const getQuestionWithParameters = createSelector(
+  [getCard, getMetadata, getParameterValues],
+  (card, metadata, parameterValues) => {
+    if (!card || !metadata) {
+      return;
+    }
+    return new Question(card, metadata, parameterValues);
+  },
+);
+
+export const getQuestion = createSelector(
+  [getQuestionWithParameters, getQueryBuilderMode],
+  (question, queryBuilderMode) => {
+    if (!question) {
+      return;
+    }
+
+    const isModel = question.type() === "model";
+    const isMetric = question.type() === "metric";
+    if ((isModel || isMetric) && queryBuilderMode === "dataset") {
+      return isModel ? question.lockDisplay() : question;
+    }
+
+    // When opening a model or a metric, we construct a question
+    // with a clean, ad-hoc, query.
+    // This has to be skipped for users without data permissions.
+    // See https://github.com/metabase/metabase/issues/20042
+    const composedQuestion =
+      isModel || isMetric ? question.composeQuestion() : question;
+    const { isEditable } = Lib.queryDisplayInfo(composedQuestion.query());
+    return isEditable ? composedQuestion : question;
+  },
+);
+
+export const getTableId = createSelector([getQuestion], (question) => {
+  if (!question) {
+    return;
+  }
+
+  return Lib.sourceTableOrCardId(question.query());
+});
+
+export const getTableMetadata = createSelector(
+  [getTableId, getMetadata],
+  (tableId, metadata) => metadata.table(tableId),
+);
+
+export const getTableForeignKeys = createSelector(
+  [getTableMetadata],
+  (table) => {
+    const tableForeignKeys = table?.fks ?? [];
+    const tableForeignKeysWithoutHiddenTables = tableForeignKeys.filter(
+      (tableForeignKey) => tableForeignKey.origin != null,
+    );
+
+    return tableForeignKeysWithoutHiddenTables;
+  },
 );
 
 export const getPKColumnIndex = createSelector(
@@ -239,166 +394,6 @@ export const getRowIndexToPKMap = createSelector(
       map[index] = PKValue;
     });
     return map;
-  },
-);
-
-export const getQueryStartTime = state => state.qb.queryStartTime;
-
-export const getDatabaseId = createSelector(
-  [getCard],
-  card => card && card.dataset_query && card.dataset_query.database,
-);
-
-export const getTableForeignKeyReferences = state =>
-  state.qb.tableForeignKeyReferences;
-
-const getDatabasesListDefaultValue = [];
-export const getDatabasesList = state =>
-  Databases.selectors.getList(state, {
-    entityQuery: { include: "tables", saved: true },
-  }) || getDatabasesListDefaultValue;
-
-const getTablesDefaultValue = [];
-export const getTables = createSelector(
-  [getDatabaseId, getDatabasesList],
-  (databaseId, databases) => {
-    if (databaseId != null && databases && databases.length > 0) {
-      const db = _.findWhere(databases, { id: databaseId });
-      if (db && db.tables) {
-        return db.tables;
-      }
-    }
-
-    return getTablesDefaultValue;
-  },
-);
-
-export const getTableMetadata = createSelector(
-  [getTableId, getMetadata],
-  (tableId, metadata) => metadata.table(tableId),
-);
-
-export const getTableForeignKeys = createSelector([getTableMetadata], table => {
-  const tableForeignKeys = table?.fks ?? [];
-  const tableForeignKeysWithoutHiddenTables = tableForeignKeys.filter(
-    tableForeignKey => tableForeignKey.origin != null,
-  );
-
-  return tableForeignKeysWithoutHiddenTables;
-});
-
-export const getSampleDatabaseId = createSelector(
-  [getDatabasesList],
-  databases => {
-    const sampleDatabase = _.findWhere(databases, { is_sample: true });
-    return sampleDatabase && sampleDatabase.id;
-  },
-);
-
-export const getDatabaseFields = createSelector(
-  [getDatabaseId, state => state.qb.databaseFields],
-  (databaseId, databaseFields) => [], // FIXME!
-);
-
-export const getParameters = createSelector(
-  [getCard, getMetadata, getParameterValues],
-  (card, metadata, parameterValues) =>
-    getCardUiParameters(card, metadata, parameterValues),
-);
-
-const getLastRunDatasetQuery = createSelector(
-  [getLastRunCard],
-  card => card && card.dataset_query,
-);
-const getNextRunDatasetQuery = createSelector(
-  [getCard],
-  card => card && card.dataset_query,
-);
-
-const getLastRunParameters = createSelector(
-  [getFirstQueryResult],
-  queryResult =>
-    (queryResult &&
-      queryResult.json_query &&
-      queryResult.json_query.parameters) ||
-    [],
-);
-const getLastRunParameterValues = createSelector(
-  [getLastRunParameters],
-  parameters => parameters.map(parameter => parameter.value),
-);
-const getNextRunParameterValues = createSelector([getParameters], parameters =>
-  parameters.map(parameter =>
-    // parameters are "normalized" immediately before a query run, so in order
-    // to compare current parameters to previously-used parameters we need
-    // to run parameters through this normalization function
-    normalizeParameterValue(parameter.type, parameter.value),
-  ),
-);
-
-export const getNextRunParameters = createSelector(
-  [getParameters],
-  parameters => normalizeParameters(parameters),
-);
-
-export const getPreviousQueryBuilderMode = createSelector(
-  [getUiControls],
-  uiControls => uiControls.previousQueryBuilderMode,
-);
-
-export const getDatasetEditorTab = createSelector(
-  [getUiControls],
-  uiControls => uiControls.datasetEditorTab,
-);
-
-export const getOriginalQuestion = createSelector(
-  [getMetadata, getOriginalCard],
-  (metadata, card) => metadata && card && new Question(card, metadata),
-);
-
-export const getOriginalQuestionWithParameterValues = createSelector(
-  [getMetadata, getOriginalCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    metadata && card && new Question(card, metadata, parameterValues),
-);
-
-export const getLastRunQuestion = createSelector(
-  [getMetadata, getLastRunCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    card && metadata && new Question(card, metadata, parameterValues),
-);
-
-export const getQuestionWithParameters = createSelector(
-  [getCard, getMetadata, getParameterValues],
-  (card, metadata, parameterValues) => {
-    if (!card || !metadata) {
-      return;
-    }
-    return new Question(card, metadata, parameterValues);
-  },
-);
-
-export const getQuestion = createSelector(
-  [getQuestionWithParameters, getQueryBuilderMode],
-  (question, queryBuilderMode) => {
-    if (!question) {
-      return;
-    }
-
-    const isModel = question.type() === "model";
-    const isMetric = question.type() === "metric";
-    if ((isModel || isMetric) && queryBuilderMode === "dataset") {
-      return isModel ? question.lockDisplay() : question;
-    }
-
-    // When opening a model or a metric, we construct a question
-    // with a clean, ad-hoc, query.
-    // This has to be skipped for users without data permissions.
-    // See https://github.com/metabase/metabase/issues/20042
-    const { isEditable } = Lib.queryDisplayInfo(question.query());
-    return (isModel || isMetric) && isEditable
-      ? question.composeQuestion()
-      : question;
   },
 );
 
@@ -512,7 +507,7 @@ export const getIsResultDirty = createSelector(
   },
 );
 
-export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
+export const getZoomedObjectId = (state) => state.qb.zoomedRowObjectId;
 
 const getZoomedObjectRowIndex = createSelector(
   [getPKRowIndexMap, getZoomedObjectId],
@@ -554,7 +549,7 @@ export const getNextRowPKValue = createSelector(
 
 export const getCanZoomPreviousRow = createSelector(
   [getZoomedObjectRowIndex],
-  rowIndex => rowIndex !== 0,
+  (rowIndex) => rowIndex !== 0,
 );
 
 export const getCanZoomNextRow = createSelector(
@@ -580,12 +575,12 @@ export const getZoomRow = createSelector(
 
 const isZoomingRow = createSelector(
   [getZoomedObjectId],
-  index => index != null,
+  (index) => index != null,
 );
 
 export const getMode = createSelector(
   [getLastRunQuestion],
-  question => question && getQuestionMode(question),
+  (question) => question && getQuestionMode(question),
 );
 
 export const getIsObjectDetail = createSelector(
@@ -610,12 +605,12 @@ export const getIsRunnable = createSelector(
 
 export const getResultsMetadata = createSelector(
   [getFirstQueryResult],
-  result => result && result.data && result.data.results_metadata,
+  (result) => result && result.data && result.data.results_metadata,
 );
 
 export const isResultsMetadataDirty = createSelector(
   [getMetadataDiff],
-  metadataDiff => {
+  (metadataDiff) => {
     return Object.keys(metadataDiff).length > 0;
   },
 );
@@ -711,7 +706,7 @@ export const getRawSeries = createSelector(
 
 const _getVisualizationTransformed = createSelector(
   [getRawSeries],
-  rawSeries =>
+  (rawSeries) =>
     rawSeries && getVisualizationTransformed(extractRemappings(rawSeries)),
 );
 
@@ -721,12 +716,12 @@ const _getVisualizationTransformed = createSelector(
  */
 export const getTransformedSeries = createSelector(
   [_getVisualizationTransformed],
-  transformed => transformed && transformed.series,
+  (transformed) => transformed && transformed.series,
 );
 
 export const getTransformedVisualization = createSelector(
   [_getVisualizationTransformed],
-  transformed => transformed && transformed.visualization,
+  (transformed) => transformed && transformed.visualization,
 );
 
 /**
@@ -734,7 +729,7 @@ export const getTransformedVisualization = createSelector(
  */
 export const getVisualizationSettings = createSelector(
   [getTransformedSeries],
-  series => series && getComputedSettingsForSeries(series),
+  (series) => series && getComputedSettingsForSeries(series),
 );
 
 /**
@@ -742,7 +737,7 @@ export const getVisualizationSettings = createSelector(
  */
 export const getIsNative = createSelector(
   [getQuestion],
-  question => question && Lib.queryDisplayInfo(question.query()).isNative,
+  (question) => question && Lib.queryDisplayInfo(question.query()).isNative,
 );
 
 /**
@@ -753,14 +748,19 @@ export const getIsNativeEditorOpen = createSelector(
   (isNative, uiControls) => isNative && uiControls.isNativeEditorOpen,
 );
 
-const getNativeEditorSelectedRange = createSelector(
+export const getNativeEditorSelectedRange = createSelector(
   [getUiControls],
-  uiControls => uiControls && uiControls.nativeEditorSelectedRange,
+  (uiControls) => uiControls && uiControls.nativeEditorSelectedRange?.[0],
+);
+
+const getNativeEditorSelectedRanges = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls && uiControls.nativeEditorSelectedRange,
 );
 
 export const getIsTimeseries = createSelector(
   [getVisualizationSettings],
-  settings => settings && isTimeseries(settings),
+  (settings) => settings && isTimeseries(settings),
 );
 
 export const getTimeseriesXValues = createSelector(
@@ -782,11 +782,11 @@ const getTimeseriesDataInterval = createSelector(
     }
     const columns = series[0]?.data?.cols ?? [];
     const dimensions = settings?.["graph.dimensions"] ?? [];
-    const dimensionColumns = dimensions.map(dimension =>
-      columns.find(column => column != null && column.name === dimension),
+    const dimensionColumns = dimensions.map((dimension) =>
+      columns.find((column) => column != null && column.name === dimension),
     );
     const columnUnits = dimensionColumns
-      .map(column =>
+      .map((column) =>
         isAbsoluteDateTimeUnit(column?.unit) ? column.unit : null,
       )
       .filter(isNotNull);
@@ -809,20 +809,20 @@ export const getTimeseriesXDomain = createSelector(
   },
 );
 
-export const getFetchedTimelines = createSelector([getEntities], entities => {
+export const getFetchedTimelines = createSelector([getEntities], (entities) => {
   const entityQuery = { include: "events" };
   return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
 });
 
 export const getTransformedTimelines = createSelector(
   [getFetchedTimelines],
-  timelines => {
+  (timelines) => {
     return getSortedTimelines(
-      timelines.map(timeline =>
+      timelines.map((timeline) =>
         updateIn(timeline, ["events"], (events = []) =>
           _.chain(events)
-            .map(event => updateIn(event, ["timestamp"], parseTimestamp))
-            .filter(event => !event.archived)
+            .map((event) => updateIn(event, ["timestamp"], parseTimestamp))
+            .filter((event) => !event.archived)
             .value(),
         ),
       ),
@@ -858,16 +858,16 @@ export const getFilteredTimelines = createSelector(
   (timelines, xDomain, dataInterval) => {
     const timelineXDomain = getXDomainForTimelines(xDomain, dataInterval);
     return timelines
-      .map(timeline =>
-        updateIn(timeline, ["events"], events =>
+      .map((timeline) =>
+        updateIn(timeline, ["events"], (events) =>
           xDomain
-            ? events.filter(event =>
+            ? events.filter((event) =>
                 isEventWithinDomain(event, timelineXDomain),
               )
             : events,
         ),
       )
-      .filter(timeline => timeline.events.length > 0);
+      .filter((timeline) => timeline.events.length > 0);
   },
 );
 
@@ -875,14 +875,14 @@ export const getVisibleTimelineEvents = createSelector(
   [getFilteredTimelines, getVisibleTimelineEventIds],
   (timelines, visibleTimelineEventIds) =>
     _.chain(timelines)
-      .map(timeline => timeline.events)
+      .map((timeline) => timeline.events)
       .flatten()
-      .filter(event => visibleTimelineEventIds.includes(event.id))
-      .sortBy(event => event.timestamp)
+      .filter((event) => visibleTimelineEventIds.includes(event.id))
+      .sortBy((event) => event.timestamp)
       .value(),
 );
 
-function getOffsetForQueryAndPosition(queryText, { row, column }) {
+export function getOffsetForQueryAndPosition(queryText, { row, column }) {
   const queryLines = queryText.split("\n");
   return (
     // the total length of the previous rows
@@ -919,14 +919,36 @@ export const getNativeEditorSelectedText = createSelector(
   },
 );
 
+export const getAllNativeEditorSelectedText = createSelector(
+  [getNativeEditorSelectedRanges, getNextRunDatasetQuery],
+  (selectedRanges, query) => {
+    if (
+      selectedRanges == null ||
+      selectedRanges.length === 0 ||
+      query == null ||
+      query.native == null
+    ) {
+      return null;
+    }
+    const queryText = query.native.query;
+    const selectedText = selectedRanges.map((range) =>
+      queryText.slice(
+        getOffsetForQueryAndPosition(queryText, range.start),
+        getOffsetForQueryAndPosition(queryText, range.end),
+      ),
+    );
+    return selectedText.join("");
+  },
+);
+
 export const getModalSnippet = createSelector(
   [getUiControls],
-  uiControls => uiControls && uiControls.modalSnippet,
+  (uiControls) => uiControls && uiControls.modalSnippet,
 );
 
 export const getSnippetCollectionId = createSelector(
   [getUiControls],
-  uiControls => uiControls && uiControls.snippetCollectionId,
+  (uiControls) => uiControls && uiControls.snippetCollectionId,
 );
 
 export const getIsVisualized = createSelector(
@@ -957,24 +979,24 @@ export const getIsLiveResizable = createSelector(
 
 export const getQuestionDetailsTimelineDrawerState = createSelector(
   [getUiControls],
-  uiControls => uiControls && uiControls.questionDetailsTimelineDrawerState,
+  (uiControls) => uiControls && uiControls.questionDetailsTimelineDrawerState,
 );
 
 export const isBasedOnExistingQuestion = createSelector(
   [getOriginalQuestion],
-  originalQuestion => {
+  (originalQuestion) => {
     return originalQuestion != null;
   },
 );
 
 export const getDocumentTitle = createSelector(
   [getLoadingControls],
-  loadingControls => loadingControls?.documentTitle,
+  (loadingControls) => loadingControls?.documentTitle,
 );
 
 export const getPageFavicon = createSelector(
   [getLoadingControls],
-  loadingControls =>
+  (loadingControls) =>
     loadingControls?.showLoadCompleteFavicon
       ? LOAD_COMPLETE_FAVICON
       : undefined,
@@ -982,22 +1004,25 @@ export const getPageFavicon = createSelector(
 
 export const getTimeoutId = createSelector(
   [getLoadingControls],
-  loadingControls => loadingControls.timeoutId,
+  (loadingControls) => loadingControls.timeoutId,
 );
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
+    !isEmbeddingIframe || embedOptions.header,
 );
 
 export const getIsActionListVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.action_buttons,
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
+    !isEmbeddingIframe || embedOptions.action_buttons,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
+    !isEmbeddingIframe || embedOptions.additional_info,
 );
 
 export const getDataReferenceStack = createSelector(
@@ -1010,23 +1035,19 @@ export const getDataReferenceStack = createSelector(
         : [],
 );
 
-export const getDashboardId = state => {
+export const getDashboardId = (state) => {
   return state.qb.parentDashboard.dashboardId;
 };
 
-export const getIsEditingInDashboard = state => {
+export const getIsEditingInDashboard = (state) => {
   return state.qb.parentDashboard.isEditing;
 };
 
-export const getDashboard = state => {
+export const getDashboard = (state) => {
   return getDashboardById(state, getDashboardId(state));
 };
 
-export const getTemplateTags = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "native", "template-tags"]),
-);
-
-export const getEmbeddingParameters = createSelector([getCard], card => {
+export const getEmbeddingParameters = createSelector([getCard], (card) => {
   if (!card?.enable_embedding) {
     return {};
   }
@@ -1082,8 +1103,8 @@ export const getSubmittableQuestion = (state, question) => {
   return submittableQuestion;
 };
 
-export const getIsNotebookNativePreviewShown = state =>
+export const getIsNotebookNativePreviewShown = (state) =>
   getSetting(state, "notebook-native-preview-shown");
 
-export const getNotebookNativePreviewSidebarWidth = state =>
+export const getNotebookNativePreviewSidebarWidth = (state) =>
   getSetting(state, "notebook-native-preview-sidebar-width");

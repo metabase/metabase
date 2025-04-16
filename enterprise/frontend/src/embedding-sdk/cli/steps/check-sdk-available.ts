@@ -5,7 +5,7 @@ import { installSdk } from "../steps/install-sdk";
 import type { CliStepMethod } from "../types/cli";
 import { getPackageVersions } from "../utils/get-package-version";
 
-export const checkSdkAvailable: CliStepMethod = async state => {
+export const checkSdkAvailable: CliStepMethod = async (state) => {
   const spinner = ora("Checking if SDK is installed…").start();
 
   const projectDependencies = await getPackageVersions(SDK_PACKAGE_NAME);

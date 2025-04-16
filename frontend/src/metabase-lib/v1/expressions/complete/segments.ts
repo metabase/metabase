@@ -12,7 +12,7 @@ export type Options = {
 };
 
 export function suggestSegments({ query, stageIndex }: Options) {
-  const segments = Lib.availableSegments(query, stageIndex)?.map(segment => {
+  const segments = Lib.availableSegments(query, stageIndex)?.map((segment) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, segment);
     return {
       type: "segment",

@@ -29,7 +29,7 @@ export const SlackChannelFieldNew = ({
     useState(false);
 
   const channelField = channelSpec.fields?.find(
-    field => field.name === CHANNEL_FIELD_NAME,
+    (field) => field.name === CHANNEL_FIELD_NAME,
   );
   const value = channel.recipients[0]?.details.value ?? "";
 

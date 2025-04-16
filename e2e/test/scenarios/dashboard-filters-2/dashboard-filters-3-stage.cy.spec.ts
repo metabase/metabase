@@ -392,8 +392,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             QSHelpers.getPopoverItem("Category", 2).click();
           });
 
-          cy.button("Save").click();
-          cy.wait("@updateDashboard");
+          H.saveDashboard({ waitMs: 250 });
 
           H.filterWidget().eq(0).click();
           H.popover().within(() => {

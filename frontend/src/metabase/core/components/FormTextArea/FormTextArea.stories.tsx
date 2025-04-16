@@ -9,7 +9,7 @@ export default {
   component: FormTextArea,
 };
 
-const Template: StoryFn<typeof FormTextArea> = args => {
+const Template: StoryFn<typeof FormTextArea> = (args) => {
   const initialValues = { value: false };
   const handleSubmit = () => undefined;
 

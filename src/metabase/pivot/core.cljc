@@ -37,17 +37,22 @@
      (let [breakout-indexes (range num-breakouts)]
        (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) pivot-group)) breakout-indexes))))))
 
+(defn- remove-item-by-index
+  "Remove an item with the given `index` from collection `v`."
+  [coll index-to-remove]
+  (reduce-kv (fn [acc i x]
+               (if (<= i index-to-remove)
+                 acc
+                 (conj acc x)))
+             (subvec coll 0 index-to-remove)
+             coll))
+
 (defn- process-grouped-rows
   "Processes rows for a specific pivot group value (k).
    Returns a tuple of [active-breakout-indexes, rows-with-pivot-column-removed]."
   [pivot-group rows pivot-group-index num-breakouts]
   (let [active-indexes (get-active-breakout-indexes pivot-group num-breakouts)
-        processed-rows (mapv
-                        (fn [row]
-                          (let [before (subvec row 0 pivot-group-index)
-                                after (subvec row (inc pivot-group-index))]
-                            (into before after)))
-                        rows)]
+        processed-rows (mapv #(remove-item-by-index % pivot-group-index) rows)]
     [active-indexes processed-rows]))
 
 (defn split-pivot-data
@@ -63,7 +68,7 @@
                            (group-by #(nth % group-index))
                            (m/map-kv #(process-grouped-rows %1 %2 group-index num-breakouts)))]
     {:pivot-data pivot-data
-     :primary-rows-key (into [] (range num-breakouts))
+     :primary-rows-key (vec (range num-breakouts))
      :columns columns}))
 
 (defn- get-subtotal-values
@@ -125,39 +130,41 @@
   {:children (ordered-map/ordered-map)}."
   [path tree]
   (if (seq path)
-    (let [v       (first path)
-          subtree (or (get-in tree [v :children]) (ordered-map/ordered-map))]
-      (-> tree
-          (assoc-in [v :children] (add-path-to-tree (rest path) subtree))
-          (assoc-in [v :isCollapsed] false)))
+    (let [v (first path)]
+      (update tree v
+              (fn [node]
+                (let [subtree (or (:children node) (ordered-map/ordered-map))]
+                  (-> node
+                      (assoc :children (add-path-to-tree (rest path) subtree))
+                      (assoc :isCollapsed false))))))
     tree))
 
 (defn- select-indexes
   "Given a row, returns a subset of its values according to the provided indexes."
   [row indexes]
-  (map #(nth row %) indexes))
+  (mapv #(nth row %) indexes))
 
 (defn- build-values-by-key
   "Creates a mapping from row and column indexes to the values, as well as
   metadata used for conditional formatting and drill-throughs."
   [rows cols row-indexes col-indexes val-indexes]
-  (let [col-and-row-indexes (concat col-indexes row-indexes)]
+  (let [col-and-row-indexes (into (vec col-indexes) row-indexes)]
     (reduce
      (fn [acc row]
        (let [value-key  (select-indexes row col-and-row-indexes)
              values     (select-indexes row val-indexes)
-             data       (map-indexed
-                         (fn [index value]
-                           {:value value
-                            :colIdx index})
-                         row)
-             dimensions (->> row
-                             (map-indexed (fn [index value]
-                                            {:value value
-                                             :column (nth cols index)
-                                             :colIdx index}))
-                             (filter (fn [{column :column}] (= (column :source) "breakout")))
-                             (map #(dissoc % :column)))
+             data       (into []
+                              (map-indexed
+                               (fn [index value]
+                                 {:value value
+                                  :colIdx index}))
+                              row)
+             dimensions (into []
+                              (keep-indexed (fn [index value]
+                                              (when (= (:source (nth cols index)) "breakout")
+                                                {:value value
+                                                 :colIdx index})))
+                              row)
              col-names  (->> (select-indexes cols val-indexes)
                              (map :name)
                              (into []))]
@@ -199,12 +206,12 @@
   "Converts each level of a tree to a sorted map as needed, based on the values
   in `sort-orders`."
   [tree sort-orders]
-  (into
-   (if-let [curr-compare-fn (compare-fn (first sort-orders))]
-     (sorted-map-by curr-compare-fn)
-     (ordered-map/ordered-map))
-   (for [[k v] tree]
-     [k (assoc v :children (sort-tree (:children v) (rest sort-orders)))])))
+  (reduce-kv (fn [dest k v]
+               (assoc dest k (assoc v :children (sort-tree (:children v) (rest sort-orders)))))
+             (if-let [curr-compare-fn (compare-fn (first sort-orders))]
+               (sorted-map-by curr-compare-fn)
+               (ordered-map/ordered-map))
+             tree))
 
 ;; TODO: can we move this to the COLLAPSED_ROW_SETTING itself?
 (defn- filter-collapsed-subtotals
@@ -274,7 +281,7 @@
   [tree formatters cols col-indexes]
   (let [formatter (first formatters)
         col-idx   (first col-indexes)]
-    (map
+    (mapv
      (fn [{:keys [value children] :as node}]
        (assoc node
               :value (formatter value)
@@ -336,27 +343,29 @@
 (defn- process-children
   "Recursively processes children nodes to add subtotals."
   [children rest-subtotal-settings should-show-fn]
-  (mapcat (fn [child]
-            (if (not-empty (:children child))
-              (add-subtotal child
-                            rest-subtotal-settings
-                            (should-show-fn child))
-              [child]))
-          children))
+  (persistent!
+   (reduce (fn [acc child]
+             (if (seq (:children child))
+               (add-subtotal child
+                             rest-subtotal-settings
+                             (should-show-fn child)
+                             acc)
+               (conj! acc child)))
+           (transient []) children)))
 
 (defn- add-subtotal
   "Adds subtotal nodes to a row item based on subtotal settings.
-   Returns a sequence of nodes (the original node and possibly a subtotal node)."
-  [row-item subtotal-settings-by-col should-show-subtotal]
+   Returns a sequence of nodes (the original node and possibly a subtotal node).
+  `transient-row` is the accumulator where results are added."
+  [row-item subtotal-settings-by-col should-show-subtotal transient-row]
   (let [current-col-setting    (first subtotal-settings-by-col)
         remaining-col-settings (rest subtotal-settings-by-col)
         subtotal-enabled?      (should-create-subtotal? current-col-setting should-show-subtotal)
-        subtotal-nodes         (if subtotal-enabled?
-                                 [(create-subtotal-node row-item)]
-                                 [])]
+        subtotal-node          (when subtotal-enabled?
+                                 (create-subtotal-node row-item))]
     (if (:isCollapsed row-item)
-      ;; For collapsed items, just return subtotal if applicable
-      subtotal-nodes
+      ;; For collapsed items, just add subtotals if applicable
+      (conj! transient-row subtotal-node)
       ;; For expanded items, process children recursively
       (let [should-show-fn     (fn [child]
                                  (or (> (count (:children child)) 1)
@@ -364,19 +373,18 @@
             processed-children (process-children (:children row-item)
                                                  remaining-col-settings
                                                  should-show-fn)
-            updated-node       (merge row-item
-                                      {:hasSubtotal subtotal-enabled?
-                                       :children processed-children})]
-        (if (not-empty subtotal-nodes)
-          [updated-node (first subtotal-nodes)]
-          [updated-node])))))
+            updated-node       (-> row-item
+                                   (assoc :children processed-children)
+                                   (assoc :hasSubtotal subtotal-enabled?))]
+        (cond-> (conj! transient-row updated-node)
+          subtotal-node (conj! subtotal-node))))))
 
 (defn- add-subtotals
   "Adds subtotal rows to the pivot table based on settings.
    Returns the tree with subtotals added where appropriate."
   [row-tree row-indexes settings col-settings]
   (if-not (should-show-column-totals? settings)
-    row-tree
+    (vec row-tree)
     (let [subtotal-settings-by-col (map (fn [idx]
                                           (not= ((nth col-settings idx) :pivot_table.column_show_totals)
                                                 false))
@@ -385,11 +393,13 @@
           should-show-root-total   (fn [row-item]
                                      (or has-multiple-children
                                          (> (count (:children row-item)) 1)))]
-      (mapcat (fn [row-item]
-                (add-subtotal row-item
-                              subtotal-settings-by-col
-                              (should-show-root-total row-item)))
-              row-tree))))
+      (persistent!
+       (reduce (fn [acc row-item]
+                 (add-subtotal row-item
+                               subtotal-settings-by-col
+                               (should-show-root-total row-item)
+                               acc))
+               (transient []) row-tree)))))
 
 (defn display-name-for-col
   "Translated from frontend/src/metabase/lib/formatting/column.ts"
@@ -425,20 +435,19 @@
       (<= (count val-cols) 1) col-tree
       :else (map #(update-node % leaf-nodes) col-tree))))
 
-(defn- maybe-add-empty-path [paths]
-  (if (empty? paths)
-    [[]]
-    paths))
-
 (defn- enumerate-paths
   "Given a node of a row or column tree, generates all paths to leaf nodes."
-  [{:keys [rawValue isGrandTotal children isValueColumn]} & [path]]
-  (let [path (or path [])]
-    (cond
-      isGrandTotal [[]]
-      isValueColumn [path]
-      (empty? children) [(conj path rawValue)]
-      :else (mapcat #(enumerate-paths % (conj path rawValue)) children))))
+  ([node transient-acc]
+   (enumerate-paths node transient-acc []))
+  ([{:keys [rawValue isGrandTotal children isValueColumn]} transient-acc path]
+   (let [path (or path [])]
+     (cond
+       isGrandTotal (conj! transient-acc [])
+       isValueColumn (conj! transient-acc path)
+       (empty? children) (conj! transient-acc (conj path rawValue))
+       :else (reduce (fn [acc child]
+                       (enumerate-paths child acc (conj path rawValue)))
+                     transient-acc children)))))
 
 (defn- format-values
   [values value-formatters]
@@ -543,7 +552,7 @@
 
    Note - some keywords are camelCase to match expected object keys in TypeScript."
   [tree]
-  (let [result (transient [])]
+  (let [result (volatile! (transient []))]
     (letfn [(process-tree [nodes depth offset path]
               (if (empty? nodes)
                 {:span 1 :max-depth 0}
@@ -556,39 +565,46 @@
                     (let [{:keys [children rawValue isGrandTotal isValueColumn] :as node} (first remaining)
                           path-with-value (if (or isValueColumn isGrandTotal) nil (conj path rawValue))
                           item            (-> (dissoc node :children)
-                                              (assoc :depth depth
-                                                     :offset current-offset
-                                                     :hasChildren (boolean (seq children))
-                                                     :path path-with-value))
-                          item-index      (count result)
-                          _               (conj! result item)
+                                              (assoc :depth depth)
+                                              (assoc :offset current-offset)
+                                              (assoc :hasChildren (boolean (seq children)))
+                                              (assoc :path path-with-value))
+                          item-index      (count @result)
+                          _               (vswap! result conj! item)
                           result-value    (process-tree children (inc depth) current-offset path-with-value)
-                          _               (assoc! result item-index (assoc (nth result item-index)
-                                                                           :span (:span result-value)
-                                                                           :maxDepthBelow (:max-depth result-value)))]
+                          _               (vswap! result assoc! item-index
+                                                  (-> (nth @result item-index)
+                                                      (assoc :span (:span result-value))
+                                                      (assoc :maxDepthBelow (:max-depth result-value))))]
                       (recur (rest remaining)
                              (long (+ total-span (:span result-value)))
                              (long (max max-depth (:max-depth result-value)))
                              (+ current-offset (:span result-value))))))))]
       (process-tree tree 0 0 [])
-      (persistent! result))))
+      (persistent! @result))))
 
 (defn- compute-row-paths [columns row-indexes row-tree left-formatters settings col-settings]
   (let [left-index-columns (select-indexes columns row-indexes)
         formatted-row-tree-without-subtotals (format-values-in-tree row-tree left-formatters left-index-columns row-indexes)
-        formatted-row-tree (into [] (add-subtotals formatted-row-tree-without-subtotals row-indexes settings col-settings))
+        formatted-row-tree (add-subtotals formatted-row-tree-without-subtotals row-indexes settings col-settings)
         formatted-row-tree-with-totals (if (> (count formatted-row-tree-without-subtotals) 1)
                                          (maybe-add-grand-totals-row formatted-row-tree settings)
                                          formatted-row-tree)]
     {:formatted-row-tree-with-totals formatted-row-tree-with-totals
-     :row-paths (->> formatted-row-tree-with-totals (mapcat enumerate-paths) maybe-add-empty-path (into []))}))
+     :row-paths (or (not-empty (persistent! (reduce (fn [acc node]
+                                                      (enumerate-paths node acc))
+                                                    (transient []) formatted-row-tree-with-totals)))
+                    [[]])}))
 
 (defn- compute-col-paths [columns col-indexes col-tree top-formatters settings]
   (let [top-index-columns (select-indexes columns col-indexes)
         formatted-col-tree-without-values (into [] (format-values-in-tree col-tree top-formatters top-index-columns col-indexes))
         formatted-col-tree-with-totals (maybe-add-row-totals-column formatted-col-tree-without-values settings)]
     {:formatted-col-tree-with-totals formatted-col-tree-with-totals
-     :col-paths (->> formatted-col-tree-with-totals (mapcat enumerate-paths) maybe-add-empty-path (into []))}))
+     :col-paths (or (not-empty (persistent! (reduce (fn [acc node]
+                                                      (enumerate-paths node acc))
+                                                    (transient []) formatted-col-tree-with-totals)))
+                    [[]])}))
 
 (defn process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
@@ -600,6 +616,7 @@
          primary-rows (get pivot-data primary-rows-key)
          color-getter #?(:cljs (make-color-getter (clj->js primary-rows))
                          :clj (make-color-getter))
+         columns (vec columns)
          {:keys [row-tree col-tree values-by-key]}
          (build-pivot-trees primary-rows columns row-indexes col-indexes val-indexes settings col-settings)
 

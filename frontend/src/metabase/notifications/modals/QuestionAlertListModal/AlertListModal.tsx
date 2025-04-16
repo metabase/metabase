@@ -64,7 +64,7 @@ export const AlertListModal = ({
       title={t`Edit alerts`}
     >
       <Stack gap="lg" mb="lg" mt="1rem">
-        {sortedQuestionAlerts.map(alert => {
+        {sortedQuestionAlerts.map((alert) => {
           const canEditAlert =
             isAdmin ||
             (canManageSubscriptions && isCreatedByCurrentUser(alert));

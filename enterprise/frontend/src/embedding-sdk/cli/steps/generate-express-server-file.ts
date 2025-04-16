@@ -9,7 +9,7 @@ import { getExpressServerSnippet } from "../snippets";
 import type { CliStepMethod } from "../types/cli";
 import { printError } from "../utils/print";
 
-export const generateExpressServerFile: CliStepMethod = async state => {
+export const generateExpressServerFile: CliStepMethod = async (state) => {
   const { instanceUrl } = state;
 
   if (!instanceUrl) {
@@ -25,7 +25,7 @@ export const generateExpressServerFile: CliStepMethod = async state => {
     mockServerDir = await input({
       message: "Where should we save the example Express mock server folder?",
       default: "mock-server",
-      validate: value => {
+      validate: (value) => {
         if (!value) {
           return "The path cannot be empty.";
         }

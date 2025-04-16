@@ -34,7 +34,7 @@ describe("nav > containers > MainNavbar", () => {
   });
 
   describe("how to use Metabase", () => {
-    it.each(["admin", "non-admin"])("should render for %s", async user => {
+    it.each(["admin", "non-admin"])("should render for %s", async (user) => {
       await setup({ user: createMockUser({ is_superuser: user === "admin" }) });
       const link = screen.getByRole("link", { name: /How to use Metabase/i });
       expect(link).toBeInTheDocument();

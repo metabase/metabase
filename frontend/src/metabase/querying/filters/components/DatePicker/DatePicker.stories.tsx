@@ -44,7 +44,7 @@ type CustomStoryProps = {
 };
 const Template: StoryFn<
   ComponentProps<typeof DatePicker> & CustomStoryProps
-> = args => {
+> = (args) => {
   const isDarkTheme = args.theme === "dark";
 
   useEffect(() => {

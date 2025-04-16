@@ -17,7 +17,7 @@ export function TemporalUnitWidget({
 }: TemporalUnitWidgetProps) {
   const availableUnits =
     parameter.temporal_units ?? Lib.availableTemporalUnits();
-  const availableItems = availableUnits.map(unit => ({
+  const availableItems = availableUnits.map((unit) => ({
     value: unit,
     label: Lib.describeTemporalUnit(unit),
   }));

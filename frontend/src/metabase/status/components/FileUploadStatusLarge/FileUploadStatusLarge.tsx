@@ -52,7 +52,7 @@ const FileUploadLarge = ({
 
   const status = {
     title,
-    items: uploads.map(upload => ({
+    items: uploads.map((upload) => ({
       id: upload.id,
       title: getName(upload),
       icon: "model",
@@ -92,7 +92,7 @@ const getTitle = (
 ) => {
   const isDone = uploads.every(isUploadCompleted);
   const isOnlyReplace = uploads.every(
-    upload => upload.uploadMode === UploadMode.replace,
+    (upload) => upload.uploadMode === UploadMode.replace,
   );
   const isError = uploads.some(isUploadAborted);
 

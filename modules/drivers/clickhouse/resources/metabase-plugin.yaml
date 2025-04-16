@@ -1,0 +1,55 @@
+info:
+  name: Metabase ClickHouse Driver
+  version: 1.53.3
+  description: Allows Metabase to connect to ClickHouse databases.
+driver:
+  name: clickhouse
+  display-name: ClickHouse
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 8123
+    - user
+    - password
+    - name: dbname
+      display-name: Databases
+      placeholder: default
+      helper-text: "To specify multiple databases, separate them by the space symbol. For example: default data logs."
+    - name: scan-all-databases
+      display-name: Scan all databases
+      type: boolean
+      default: false
+      description: Scan all tables from all available ClickHouse databases except the system ones.
+
+    - ssl
+    - ssh-tunnel
+    - advanced-options-start
+    - name: use-no-proxy
+      display-name: Disable system wide proxy settings
+      default: false
+      type: boolean
+      visible-if:
+        advanced-options: true
+    - name: clickhouse-settings
+      display-name: ClickHouse settings (comma-separated)
+      placeholder: "allow_experimental_analyzer=1,max_result_rows=100"
+      visible-if:
+        advanced-options: true
+    - name: max-open-connections
+      display-name: "Max open HTTP connections in the JDBC driver (default: 100)"
+      placeholder: 100
+      visible-if:
+        advanced-options: true
+    - merge:
+        - additional-options
+        - placeholder: "connection_timeout=1000&socket_timeout=300000"
+    - default-advanced-options
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.clickhouse
+  - step: register-jdbc-driver
+    class: com.clickhouse.jdbc.ClickHouseDriver

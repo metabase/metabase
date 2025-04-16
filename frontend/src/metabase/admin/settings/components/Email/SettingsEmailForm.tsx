@@ -42,7 +42,7 @@ export function SettingsEmailForm({
   }, [dispatch, isHosted, isEmailConfigured]);
 
   const settingElements = elements.filter(
-    setting => !setting.getHidden?.(settingValues, derivedSettingValues),
+    (setting) => !setting.getHidden?.(settingValues, derivedSettingValues),
   );
 
   return (

@@ -10,11 +10,11 @@ import {
 
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import { enclosingFunction } from "metabase-lib/v1/expressions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { HelpText } from "../HelpText";
 import { Listbox, useCompletions } from "../Listbox";
-import { enclosingFunction } from "../utils";
 
 import S from "./Tooltip.module.css";
 
@@ -49,26 +49,34 @@ export function Tooltip({
 
   useEffect(() => {
     setHasMovedCursor(
-      hasMovedCursor => hasMovedCursor || state.selection.main.head !== 0,
+      (hasMovedCursor) => hasMovedCursor || state.selection.main.head !== 0,
     );
   }, [state.selection.main.head]);
 
   const { options: completions } = useCompletions(state);
 
-  const [isHelpTextOpen, setIsHelpTextOpen] = useState(false);
-  const handleToggleHelpText = useCallback(
-    () => setIsHelpTextOpen(open => !open),
-    [],
-  );
+  const [isHelpTextOpen, setIsHelpTextOpen] = useState(true);
+  const [preferHelpText, setPreferHelpText] = useState(false);
+
+  const handleToggleHelpText = useCallback(() => {
+    if (completions.length > 0) {
+      setIsHelpTextOpen(!preferHelpText);
+      setPreferHelpText(!preferHelpText);
+      return;
+    }
+    setIsHelpTextOpen((open) => !open);
+  }, [completions, preferHelpText]);
 
   useEffect(() => {
-    if (completions.length === 0) {
-      setIsHelpTextOpen(true);
+    if (completions.length > 0) {
+      setPreferHelpText(false);
     }
-    if (enclosingFn && completions.length > 0) {
-      setIsHelpTextOpen(false);
-    }
-  }, [enclosingFn, completions.length]);
+  }, [completions.length, enclosingFn]);
+
+  const shouldShowHelpText =
+    completions.length === 0 ? isHelpTextOpen : preferHelpText;
+  const shouldShowCompletions =
+    completions.length === 0 ? false : !preferHelpText;
 
   return (
     <Popover
@@ -94,10 +102,10 @@ export function Tooltip({
             query={query}
             metadata={metadata}
             reportTimezone={reportTimezone}
-            open={isHelpTextOpen}
+            open={shouldShowHelpText}
             onToggle={handleToggleHelpText}
           />
-          {(!isHelpTextOpen || !enclosingFn) && (
+          {shouldShowCompletions && (
             <Listbox
               state={state}
               view={view}

@@ -120,6 +120,7 @@ serdes/meta:
   label: 90th_percentile_of_query_run_time__seconds_
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: Glqmoytsnu0n6rfLUjock
 metabase_version: vUNKNOWN (9aa572c)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb

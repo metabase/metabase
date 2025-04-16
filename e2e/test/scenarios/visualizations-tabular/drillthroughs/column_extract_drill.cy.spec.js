@@ -5,7 +5,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const DATE_CASES = [
   {
@@ -68,6 +68,10 @@ const URL_CASES = [
     option: "Host",
     value: "yahoo.com",
     example: "example.com, online.com",
+  },
+  {
+    option: "Path",
+    example: "/en/docs/feature",
   },
 ];
 
@@ -238,9 +242,9 @@ H.describeWithSnowplow("extract action", () => {
       H.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
-        option: "Tag der Woche",
+        option: "Tag in der Woche",
         value: "Dienstag",
-        extraction: "Auszug Tag, Monat...",
+        extraction: "Auszug Tag, Monat…",
       });
     });
   });
@@ -287,6 +291,71 @@ H.describeWithSnowplow("extract action", () => {
           example,
           extraction: "Extract domain, subdomain…",
         });
+      });
+    });
+
+    it("should be able to extract path from URL column", () => {
+      function assertTableData({ title, value }) {
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.tableInteractive()
+          .findAllByTestId("header-cell")
+          .last()
+          .should("have.text", title);
+
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.tableInteractiveBody()
+          .findAllByTestId("cell-data")
+          .last()
+          .should("have.text", value);
+      }
+
+      const CC_NAME = "URL_URL";
+      const questionDetails = {
+        name: "path from url",
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 1,
+          expressions: {
+            [CC_NAME]: [
+              "concat",
+              "http://",
+              ["domain", ["field", PEOPLE.EMAIL, null]],
+              ".com/my/path",
+            ],
+          },
+        },
+        type: "model",
+      };
+
+      H.createQuestion(questionDetails).then(({ body: { id: modelId } }) => {
+        // set semantic type to URL
+        H.setModelMetadata(modelId, (field) => {
+          if (field.name === CC_NAME) {
+            return { ...field, semantic_type: "type/URL" };
+          }
+
+          return field;
+        });
+
+        // this is the way to open model definition with columns
+        cy.visit(`/model/${modelId}/query`);
+        cy.findByTestId("dataset-edit-bar").findByText("Cancel").click();
+      });
+
+      cy.findByTestId("table-scroll-container").scrollTo("right");
+
+      const urlCase = URL_CASES.find((c) => c.option === "Path");
+      extractColumnAndCheck({
+        column: CC_NAME,
+        option: urlCase.option,
+        example: urlCase.example,
+        extraction: "Extract domain, subdomain…",
+      });
+
+      const extractedValue = "/my/path";
+      assertTableData({
+        title: "Path",
+        value: extractedValue,
       });
     });
   });

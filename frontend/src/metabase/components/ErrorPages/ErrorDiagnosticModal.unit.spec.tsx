@@ -112,7 +112,7 @@ describe("ErrorDiagnosticsModal", () => {
     "metric",
   ];
 
-  entityNames.forEach(entityName => {
+  entityNames.forEach((entityName) => {
     it(`should show entity definition checkbox for ${entityName} definition`, () => {
       setup({
         ...defaultErrorPayload,

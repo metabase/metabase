@@ -91,7 +91,7 @@ export default function Gauge({
               startAngle={START_ANGLE}
               endAngle={END_ANGLE}
             >
-              {pie => {
+              {(pie) => {
                 // Renders similar to Pie's default children.
                 // https://github.com/airbnb/visx/blob/978c143dae4057e482b0ca909e8c5a16c85dfd1e/packages/visx-shape/src/shapes/Pie.tsx#L86-L98
                 const baseArcPath = pie.path({

@@ -159,7 +159,7 @@ H.describeWithSnowplow("Onboarding checklist events", () => {
       );
       H.expectGoodSnowplowEvents(PAGE_VIEW);
 
-      items.forEach(i => {
+      items.forEach((i) => {
         cy.findByTestId(`${i}-item`).click();
         H.expectGoodSnowplowEvent({
           event: "onboarding_checklist_item_expanded",

@@ -13,7 +13,7 @@ const sampleStyle = {
   gap: "2rem",
 };
 
-const Template: StoryFn<LinkProps> = args => {
+const Template: StoryFn<LinkProps> = (args) => {
   return (
     <div style={sampleStyle}>
       <Link {...args}>Click Me</Link>

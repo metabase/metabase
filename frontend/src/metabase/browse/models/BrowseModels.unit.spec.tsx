@@ -21,14 +21,14 @@ const defaultRootCollection = createMockCollection({
 });
 
 const setup = (modelCount: number, recentModelCount = 5) => {
-  const mockModelResults = mockModels.map(model =>
+  const mockModelResults = mockModels.map((model) =>
     createMockModelResult(model),
   );
   const mockRecentModels = mockModels
     .slice(0, recentModelCount)
-    .map(model => createMockRecentModel(model));
+    .map((model) => createMockRecentModel(model));
   const models = mockModelResults.slice(0, modelCount);
-  setupSearchEndpoints(models.map(model => createMockSearchResult(model)));
+  setupSearchEndpoints(models.map((model) => createMockSearchResult(model)));
   setupSettingsEndpoints([]);
   setupRecentViewsEndpoints(mockRecentModels);
   return renderWithProviders(<BrowseModels />, {

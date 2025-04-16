@@ -21,7 +21,7 @@ function TestComponent() {
 
   return (
     <div>
-      {data.map(revision => (
+      {data.map((revision) => (
         <div key={revision.id}>{revision.description}</div>
       ))}
 

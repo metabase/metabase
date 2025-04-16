@@ -20,9 +20,10 @@ export type CodeMirrorEditorProps = {
   query: Lib.Query;
   onChange?: (queryText: string) => void;
   readOnly?: boolean;
+  onRunQuery?: () => void;
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
-  onSelectionChange?: (range: SelectionRange) => void;
+  onSelectionChange?: (range: SelectionRange[]) => void;
 };
 
 export interface CodeMirrorEditorRef {
@@ -33,8 +34,9 @@ export interface CodeMirrorEditorRef {
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions } from "./extensions";
 import {
-  convertSelectionToRange,
+  areAllRangesEqual,
   getPlaceholderText,
+  getSelectedRanges,
   matchCardIdAtCursor,
 } from "./util";
 
@@ -47,12 +49,13 @@ export const CodeMirrorEditor = forwardRef<
     query,
     onChange,
     readOnly,
+    onRunQuery,
     onSelectionChange,
     onRightClickSelection,
     onCursorMoveOverCardTag,
   } = props;
 
-  const extensions = useExtensions(query);
+  const extensions = useExtensions({ query, onRunQuery });
 
   const engine = Lib.engine(query);
   const placeholder = getPlaceholderText(engine);
@@ -71,22 +74,12 @@ export const CodeMirrorEditor = forwardRef<
   const handleUpdate = useCallback(
     (update: ViewUpdate) => {
       // handle selection changes
-      const value = update.state.doc.toString();
       if (onSelectionChange) {
-        const beforeRange = convertSelectionToRange(
-          update.startState.doc.toString(),
-          update.startState.selection.main,
-        );
-        const afterRange = convertSelectionToRange(
-          value,
-          update.state.selection.main,
-        );
+        const beforeRanges = getSelectedRanges(update.startState);
+        const afterRanges = getSelectedRanges(update.state);
 
-        if (
-          beforeRange.start !== afterRange.start ||
-          beforeRange.end !== afterRange.end
-        ) {
-          onSelectionChange(afterRange);
+        if (!areAllRangesEqual(beforeRanges, afterRanges)) {
+          onSelectionChange(afterRanges);
         }
       }
       if (onCursorMoveOverCardTag) {
@@ -115,7 +108,7 @@ export const CodeMirrorEditor = forwardRef<
         document.querySelectorAll(".cm-selectionBackground"),
       );
 
-      if (selections.some(selection => isEventOverElement(evt, selection))) {
+      if (selections.some((selection) => isEventOverElement(evt, selection))) {
         evt.preventDefault();
         onRightClickSelection?.();
       }

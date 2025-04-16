@@ -90,7 +90,7 @@ describe("useAdminSetting", () => {
     });
 
     const apiCalls = fetchMock.calls();
-    const putCall = apiCalls.find(call => call[1]?.method === "PUT");
+    const putCall = apiCalls.find((call) => call[1]?.method === "PUT");
 
     expect(putCall?.[0]).toContain("/api/setting/site-name");
   });

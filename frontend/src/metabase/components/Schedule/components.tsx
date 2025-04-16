@@ -49,7 +49,7 @@ export const SelectFrequency = ({
 
   const scheduleTypeOptions = useMemo(
     () =>
-      scheduleOptions.map(option => ({
+      scheduleOptions.map((option) => ({
         label: scheduleOptionNames[option] || capitalize(option),
         value: option,
       })),
@@ -140,7 +140,7 @@ export const SelectTime = ({
             lh="1rem"
             radius="sm"
             value={amPm.toString()}
-            onChange={value =>
+            onChange={(value) =>
               updateSchedule(
                 "schedule_hour",
                 hourTo24HourFormat(hour, parseInt(value)),
@@ -225,16 +225,18 @@ export const SelectWeekdayOfMonth = ({
 export const SelectMinute = ({
   schedule_minute,
   updateSchedule,
+  range = minutes,
 }: {
   schedule_minute: ScheduleSettings["schedule_minute"];
   updateSchedule: UpdateSchedule;
+  range?: typeof minutes;
 }) => {
   const minuteOfHour = isNaN(schedule_minute as number) ? 0 : schedule_minute;
   const label = useMemo(() => getScheduleComponentLabel("minute"), []);
   return (
     <AutoWidthSelect
       value={(minuteOfHour || 0).toString()}
-      data={minutes}
+      data={range}
       onChange={(value: string) =>
         updateSchedule("schedule_minute", Number(value))
       }

@@ -1,5 +1,7 @@
 import { Children, type ReactNode, isValidElement } from "react";
 
+import { Text } from "metabase/ui";
+
 import S from "./Schedule.module.css";
 import { combineConsecutiveStrings } from "./utils";
 
@@ -29,6 +31,14 @@ import { combineConsecutiveStrings } from "./utils";
  *
  * (For ease of explanation, I've omitted classnames from the HTML, and I'm
  * pretending that a Mantine Select is rendered as <select />.)
+ *
+ * Customization:
+ *
+ * If you need to break the default layout flow, the following
+ * hatches are available:
+ * - [data-group="separate"] – providing this attribute will cause the component
+ *   to be placed in its own group (when otherwise it would've been grouped with
+ *   the previous component).
  * */
 export const GroupControlsTogether = ({
   children,
@@ -41,12 +51,43 @@ export const GroupControlsTogether = ({
 
   const compactChildren = combineConsecutiveStrings(childNodes);
 
-  compactChildren.forEach((child, index) => {
+  for (let index = 0; index < compactChildren.length; index++) {
+    const child = compactChildren[index];
     if (isValidElement(child)) {
       currentGroup.push(child);
 
-      if (!isValidElement(compactChildren[index + 1])) {
+      const nextIndex = index + 1;
+      const nextChild = compactChildren[nextIndex];
+      if (!isValidElement(nextChild)) {
+        // If next child is the last string, add it to the current group
+        // to prevent it from being left hanging on the last line.
+        if (nextIndex === compactChildren.length - 1) {
+          if (typeof nextChild === "string" && !!nextChild.trim()) {
+            currentGroup.push(
+              <Text key={`node-${nextIndex}`} ml="0.5rem">
+                {nextChild}
+              </Text>,
+            );
+          }
+          groupedNodes.push(
+            <div className={S.ControlGroup} key={`node-${index}`}>
+              {currentGroup}
+            </div>,
+          );
+          break;
+        }
         // Flush current group
+        groupedNodes.push(
+          <div className={S.ControlGroup} key={`node-${index}`}>
+            {currentGroup}
+          </div>,
+        );
+        currentGroup = [];
+      } else if (
+        nextChild.props?.["data-group"] === GROUP_ATTRIBUTES.separate
+      ) {
+        // If the next child has a "separate" attribute, break the current group cycle
+        // and start a new one
         groupedNodes.push(
           <div className={S.ControlGroup} key={`node-${index}`}>
             {currentGroup}
@@ -76,7 +117,11 @@ export const GroupControlsTogether = ({
         </div>,
       );
     }
-  });
+  }
 
   return <>{groupedNodes}</>;
+};
+
+export const GROUP_ATTRIBUTES = {
+  separate: "separate",
 };

@@ -2,8 +2,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { useRef, useState } from "react";
 
-import ConfirmContent from "metabase/components/ConfirmContent";
-import Modal from "metabase/components/Modal";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { Tooltip } from "metabase/ui";
@@ -64,7 +63,7 @@ export function PermissionsTable({
   };
 
   const handleConfirm = () => {
-    setConfirmations(prev => prev.slice(1));
+    setConfirmations((prev) => prev.slice(1));
     if (confirmations.length === 1) {
       confirmActionRef.current();
       confirmActionRef.current = null;
@@ -100,7 +99,7 @@ export function PermissionsTable({
           </tr>
         </thead>
         <tbody>
-          {entities.map(entity => {
+          {entities.map((entity) => {
             const entityName = (
               <span className={cx(CS.flex, CS.alignCenter)}>
                 <Ellipsified>{entity.name}</Ellipsified>
@@ -133,7 +132,7 @@ export function PermissionsTable({
                         onChange={(value, toggleState) =>
                           handleChange(value, toggleState, entity, permission)
                         }
-                        onAction={actionCreator =>
+                        onAction={(actionCreator) =>
                           onAction(actionCreator, entity)
                         }
                         colorScheme={colorScheme}
@@ -147,15 +146,12 @@ export function PermissionsTable({
         </tbody>
       </PermissionsTableRoot>
       {!hasItems && emptyState}
-      {confirmations?.length > 0 && (
-        <Modal>
-          <ConfirmContent
-            {...confirmations[0]}
-            onAction={handleConfirm}
-            onCancel={handleCancelConfirm}
-          />
-        </Modal>
-      )}
+      <ConfirmModal
+        opened={confirmations?.length > 0}
+        {...confirmations[0]}
+        onConfirm={handleConfirm}
+        onClose={handleCancelConfirm}
+      />
     </>
   );
 }

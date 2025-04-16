@@ -62,7 +62,7 @@ export const CardTitle = styled.div<CardTitleProps>`
   line-height: 1.25rem;
   font-weight: bold;
   word-wrap: break-word;
-  ${props => props.to && cardTitleHoverStyles};
+  ${(props) => props.to && cardTitleHoverStyles};
 `;
 
 export const CardDescription = styled(Markdown)`

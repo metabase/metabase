@@ -143,7 +143,7 @@ export const SMTPConnectionForm = ({
   }, [dispatch, isHosted]);
 
   const allSetByEnvVars = useMemo(() => {
-    return elements.every(element => element.is_env_setting);
+    return elements.every((element) => element.is_env_setting);
   }, [elements]);
 
   return (

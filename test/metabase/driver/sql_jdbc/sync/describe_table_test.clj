@@ -756,6 +756,13 @@
          (is (= #{{:type :normal-column-index :value "id"}}
                 (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index))))))))))
 
+(deftest describe-fields-are-sorted-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :describe-fields)
+    (let [returned-fields (into [] (driver/describe-fields driver/*driver* (mt/db)))
+          sorted-fields (sort-by (juxt :table-schema :table-name :database-position) returned-fields)]
+      (is (= sorted-fields
+             returned-fields)))))
+
 (defmethod driver/database-supports? [::driver/driver ::describe-materialized-view-fields]
   [_driver _feature _database]
   true)
@@ -784,6 +791,7 @@
                 :sparksql
                 :sqlite
                 :athena
+                :starburst
                 :vertica]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]

@@ -89,12 +89,12 @@ export const SHORTCUT_OPTION_GROUPS: ShortcutOption[][] = [
 
 export const TYPE_OPTIONS: TypeOption[] = [
   {
-    label: t`Specific dates…`,
+    label: t`Fixed date range…`,
     type: "specific",
     operators: ["=", "<", ">", "between"],
   },
   {
-    label: t`Relative dates…`,
+    label: t`Relative date range…`,
     type: "relative",
     operators: [],
   },

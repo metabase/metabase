@@ -1,16 +1,11 @@
 name: E2E Component Tests for Embedding SDK
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
-  cancel-in-progress: true
+  workflow_call:
+    inputs:
+      cached-embedding-sdk-dist-artifact-name:
+        required: true
+        type: string
 
 jobs:
   files-changed:
@@ -63,7 +58,7 @@ jobs:
               node_version: requirements.node,
             };
 
-  build:
+  build-uberjar:
     needs: [files-changed, get-build-requirements]
     if: |
       !cancelled() &&
@@ -77,10 +72,12 @@ jobs:
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
+
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
         with:
           node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
@@ -96,12 +93,17 @@ jobs:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
   e2e-tests:
-    needs: [get-build-requirements, build]
+    needs: [get-build-requirements, build-uberjar]
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() &&
+      needs.build-uberjar.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
-    name: e2e-tests-embedding-sdk
+    strategy:
+      matrix:
+        react-version: [18, 19]
+      fail-fast: false
+    name: React ${{ matrix.react-version }}
     env:
       MB_EDITION: ee
       DISPLAY: ""
@@ -147,18 +149,21 @@ jobs:
         with:
           m2-cache-key: "cljs"
 
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-        shell: bash
-
-      - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.cached-embedding-sdk-dist-artifact-name }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
       - name: Make app db snapshot
         run: node e2e/runner/run_cypress_ci.js snapshot --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      # Has to be run after the app db snapshot is made, as it is not compatible with React 19
+      - name: Change React version to ${{ matrix.react-version }}
+        run: ./bin/embedding-sdk/change-react-version.bash ${{ matrix.react-version }}
 
       - name: Run component tests for Embedding SDK
         run: node e2e/runner/run_cypress_ci.js component --browser ${{ steps.cypress-prep.outputs.chrome-path }}
@@ -168,7 +173,7 @@ jobs:
         if: always()
         with:
           input-path: ./target/junit
-          output-name: e2e-embedding-sdk
+          output-name: e2e-embedding-sdk-react-${{ matrix.react-version }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
@@ -179,7 +184,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: cypress-recording-embedding-sdk-latest
+          name: cypress-recording-embedding-sdk-react-${{ matrix.react-version }}
           path: |
             ./cypress
             ./logs/test.log
@@ -201,16 +206,3 @@ jobs:
              const summary = formatSummary(results);
 
              await core.summary.addRaw(summary).write();
-
-# This doesn't do anything at the moment, this was used as stub when the task was required but the job is currently not required (but it should)
-# e2e-tests-skipped-stub:
-#   needs: [e2e-tests]
-#   if: |
-#     !cancelled() &&
-#     needs.e2e-tests.result == 'skipped'
-#   runs-on: ubuntu-22.04
-#   timeout-minutes: 5
-#   name: e2e-tests-embedding-sdk
-#   steps:
-#     - run: |
-#         echo "Didn't run due to conditional filtering"

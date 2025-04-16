@@ -66,7 +66,7 @@ describe("time", () => {
 
     it("should parse week of year correctly", () => {
       const daysOfWeek = [0, 1, 2, 3, 4, 5, 6];
-      daysOfWeek.forEach(dayOfWeek => {
+      daysOfWeek.forEach((dayOfWeek) => {
         moment.updateLocale(moment.locale(), { week: { dow: dayOfWeek } });
         expect(parseTimestamp(1, "week-of-year").isoWeek()).toBe(1);
         expect(parseTimestamp(2, "week-of-year").isoWeek()).toBe(2);

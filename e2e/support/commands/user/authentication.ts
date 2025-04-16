@@ -61,10 +61,10 @@ Cypress.Commands.add(
 
     const { email: username, password } = USERS[user];
     cy.request("POST", "/api/session", { username, password }).then(
-      response => {
+      (response) => {
         if (setupCache) {
           cy.log("saving login token for user", user);
-          cy.getCookie("metabase.DEVICE").then(deviceCookie => {
+          cy.getCookie("metabase.DEVICE").then((deviceCookie) => {
             loginCache[user] = {
               sessionId: response.body.id,
               deviceId: deviceCookie?.value ?? "my-device-id",

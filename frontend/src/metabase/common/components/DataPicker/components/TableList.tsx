@@ -25,7 +25,7 @@ export const TableList = ({
   onClick,
 }: Props) => {
   const items: DataPickerValueItem[] | undefined = useMemo(() => {
-    return tables?.map(table => ({
+    return tables?.map((table) => ({
       id: table.id,
       model: "table",
       name: table.display_name,

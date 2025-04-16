@@ -67,7 +67,7 @@ describe("AutocompleteInput", () => {
     const filterOptions = (value: string | undefined, options: string[]) => {
       if (value && options) {
         return options.filter(
-          option =>
+          (option) =>
             !option.toLocaleLowerCase().includes(value.toLocaleLowerCase()),
         );
       }

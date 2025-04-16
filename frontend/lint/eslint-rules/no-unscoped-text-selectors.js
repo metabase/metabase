@@ -21,7 +21,7 @@ Valid usage:
   };
 }
 
-const isTestBlock = node => {
+const isTestBlock = (node) => {
   return ["it", "before", "beforeEach"].includes(
     // when it's a plain it() call, we look at the callee name
     node?.parent?.parent?.callee?.name ??
@@ -30,11 +30,11 @@ const isTestBlock = node => {
   );
 };
 
-const hasDirectParentTestBlock = node => {
+const hasDirectParentTestBlock = (node) => {
   return isTestBlock(findNearestBlockStatement(node));
 };
 
-const findNearestBlockStatement = node => {
+const findNearestBlockStatement = (node) => {
   if (!node?.parent) {
     return null;
   }
@@ -44,7 +44,7 @@ const findNearestBlockStatement = node => {
   return findNearestBlockStatement(node.parent);
 };
 
-const isDirectlyChainedOffOfCy = node => {
+const isDirectlyChainedOffOfCy = (node) => {
   // Check if it's directly chained off cy (cy.contains())
   if (node.parent.object?.name === "cy") {
     return true;
@@ -54,15 +54,15 @@ const isDirectlyChainedOffOfCy = node => {
   return false;
 };
 
-const isFindByText = node => {
+const isFindByText = (node) => {
   return node.name === "findByText";
 };
 
-const isContains = node => {
+const isContains = (node) => {
   return node.name === "contains";
 };
 
-const isBadFindByText = node => {
+const isBadFindByText = (node) => {
   if (isFindByText(node) && isDirectlyChainedOffOfCy(node)) {
     return true;
   }

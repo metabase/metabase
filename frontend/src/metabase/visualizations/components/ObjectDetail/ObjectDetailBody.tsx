@@ -1,5 +1,9 @@
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type {
+  DatasetData,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";
 import { DetailsTable } from "./ObjectDetailsTable";
@@ -9,7 +13,7 @@ import type { OnVisualizationClickType } from "./types";
 export interface ObjectDetailBodyProps {
   data: DatasetData;
   objectName: string;
-  zoomedRow: unknown[];
+  zoomedRow: RowValue[];
   settings: VisualizationSettings;
   hasRelationships: boolean;
   onVisualizationClick: OnVisualizationClickType;
@@ -33,12 +37,6 @@ export function ObjectDetailBody({
   tableForeignKeyReferences,
   followForeignKey,
 }: ObjectDetailBodyProps): JSX.Element {
-  const showRelationships =
-    hasRelationships &&
-    tableForeignKeys &&
-    tableForeignKeyReferences &&
-    followForeignKey;
-
   return (
     <ObjectDetailBodyWrapper>
       <DetailsTable
@@ -48,7 +46,7 @@ export function ObjectDetailBody({
         onVisualizationClick={onVisualizationClick}
         visualizationIsClickable={visualizationIsClickable}
       />
-      {showRelationships && (
+      {hasRelationships && (
         <Relationships
           objectName={objectName}
           tableForeignKeys={tableForeignKeys}

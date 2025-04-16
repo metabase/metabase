@@ -56,7 +56,7 @@ export function SelectEmbedTypePane({
     utm: utmTags,
   });
 
-  const isPublicSharingEnabled = useSelector(state =>
+  const isPublicSharingEnabled = useSelector((state) =>
     getSetting(state, "enable-public-sharing"),
   );
 
@@ -145,7 +145,7 @@ export function SelectEmbedTypePane({
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
               <List.Item>{t`Embed all of Metabase in an iframe.`}</List.Item>
-              <List.Item>{t`Let people can click on to explore.`}</List.Item>
+              <List.Item>{t`Let people click to explore.`}</List.Item>
               <List.Item>{t`Customize appearance with your logo, font, and colors.`}</List.Item>
             </List>
             {!isInteractiveEmbeddingAvailable && (

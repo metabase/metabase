@@ -16,7 +16,7 @@ import {
 import { printError, printSuccess } from "../utils/print";
 import { getGeneratedComponentsDefaultPath } from "../utils/snippets-helpers";
 
-export const generateReactComponentFiles: CliStepMethod = async state => {
+export const generateReactComponentFiles: CliStepMethod = async (state) => {
   const { instanceUrl, apiKey, dashboards = [], token } = state;
 
   if (!instanceUrl || !apiKey) {
@@ -60,9 +60,9 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     dashboards,
     isNextJs,
 
-    // Enable user switching only when a valid license is present,
-    // as JWT requires a valid license.
-    userSwitcherEnabled: !!token,
+    // Enable user switching only when a valid license is present
+    // as JWT requires a valid license, and does not use a sample database.
+    userSwitcherEnabled: !!token && !state.useSampleDatabase,
   });
 
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
@@ -85,7 +85,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   // Generate index.js file with all the component exports.
   const exportIndexContent = sampleComponents
-    .map(file => `export * from "./${file.fileName}"`)
+    .map((file) => `export * from "./${file.fileName}"`)
     .join("\n")
     .trim();
 

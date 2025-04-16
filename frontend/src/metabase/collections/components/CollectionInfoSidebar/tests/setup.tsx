@@ -6,6 +6,7 @@ import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { CollectionInfoSidebar } from "../CollectionInfoSidebar";
@@ -50,13 +51,13 @@ export const setup = ({
 export const regularCollection = createMockCollection({
   name: "Normal collection",
   description: "Description of a normal collection",
-  entity_id: "entity_id_of_normal_collection",
+  entity_id: createMockEntityId("entity_id_of_normal_collection"),
   authority_level: null,
 });
 
 export const officialCollection = createMockCollection({
   name: "Trusted collection",
   description: "Description of a trusted collection",
-  entity_id: "entity_id_of_trusted_collection",
+  entity_id: createMockEntityId("entity_id_of_trusted_collection"),
   authority_level: "official",
 });

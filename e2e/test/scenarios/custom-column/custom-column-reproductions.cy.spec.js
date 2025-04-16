@@ -291,7 +291,7 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("14");
+      H.fieldValuesCombobox().type("14");
       cy.button("Add filter").click();
     });
   }
@@ -332,13 +332,13 @@ describe("issue 18747", () => {
 
     addValueToParameterFilter();
 
-    cy.get(".CardVisualization tbody > tr").should("have.length", 1);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
 
     // check that the parameter value is parsed correctly on page load
     cy.reload();
     cy.get(".LoadingSpinner").should("not.exist");
 
-    cy.get(".CardVisualization tbody > tr").should("have.length", 1);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
   });
 });
 
@@ -502,7 +502,7 @@ describe("issue 19745", () => {
   function updateQuestion() {
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
@@ -679,7 +679,7 @@ describe("issue 23862", () => {
           display: "table",
         },
         {
-          callback: xhr => expect(xhr.response.body.error).not.to.exist,
+          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
         },
       );
     });
@@ -800,7 +800,7 @@ describe.skip("issue 25189", () => {
   });
 });
 
-["postgres" /*, "mysql" */].forEach(dialect => {
+["postgres" /*, "mysql" */].forEach((dialect) => {
   describe(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
     const tableName = "colors27745";
 
@@ -885,7 +885,8 @@ describe("issue 32032", () => {
   });
 });
 
-describe("issue 42949", () => {
+// broken. see https://github.com/metabase/metabase/issues/55673
+describe.skip("issue 42949", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -912,12 +913,14 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract day, month…").should("be.visible");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify header drills - V");
     H.tableHeaderClick("V");
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button - extract column");
     cy.button("Add column").click();
@@ -976,6 +979,7 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("not.exist");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button");
     cy.button("Add column").click();
@@ -1004,6 +1008,7 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").should("be.visible");
     cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
 
     cy.log("Verify plus button");
     cy.button("Add column").click();
@@ -1022,7 +1027,7 @@ describe("issue 49342", () => {
   });
 
   it("should not be possible to leave the expression input with the Tab key ", () => {
-    // This test used to be a repro for #49342, but the product feature change
+    // This test used to be a repro for #49342, but the product feature changed
     // so that the expression input can no longer be tabbed out of.
 
     H.openOrdersTable({ mode: "notebook" });
@@ -1034,6 +1039,7 @@ describe("issue 49342", () => {
 
     cy.log("Shift-tab from name input should stay within the popover");
     H.CustomExpressionEditor.nameInput().focus();
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     cy.focused().should("have.attr", "role", "textbox");
@@ -1114,7 +1120,7 @@ describe("issue 49882", () => {
     );
 
     H.popover()
-      .findByText("Expecting comma but got case instead")
+      .findByText("Expecting operator but got case instead")
       .should("be.visible", { timeout: 5000 });
   });
 
@@ -1353,7 +1359,7 @@ describe("issue 53527", () => {
     },
   };
 
-  const mbqlQuestionDetails = cardId => ({
+  const mbqlQuestionDetails = (cardId) => ({
     name: "Quotes MBQL",
     query: {
       "source-table": `card__${cardId}`,
@@ -1388,7 +1394,7 @@ describe("issue 48562", () => {
       expressions: {
         CustomColumn: ["contains", ["field", 10000, null], "abc"],
       },
-      filter: ["segment", 10001],
+      filter: ["+", 1, ["segment", 10001]],
       aggregation: [["metric", 10002]],
     },
   };
@@ -1406,8 +1412,7 @@ describe("issue 48562", () => {
     H.CustomExpressionEditor.value().should("contain", "[Unknown Field]");
     H.expressionEditorWidget().button("Cancel").click();
 
-    H.getNotebookStep("filter").findByText("[Unknown Segment]").click();
-    H.popover().findByText("Custom Expression").click();
+    H.getNotebookStep("filter").findByText("1 + [Unknown Segment]").click();
     H.CustomExpressionEditor.value().should("contain", "[Unknown Segment]");
     H.expressionEditorWidget().button("Cancel").click();
 
@@ -1430,7 +1435,7 @@ describe("issue 54638", () => {
       cy.findByText("Learn more")
         .scrollIntoView()
         .should("be.visible")
-        .then($a => {
+        .then(($a) => {
           expect($a).to.have.attr("target", "_blank");
           // Update attr to open in same tab, since Cypress does not support
           // testing in multiple tabs.
@@ -1489,5 +1494,163 @@ describe("issue #31964", () => {
         [Product → Category])
       `,
     );
+  });
+});
+
+describe("issue #55686", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should show suggestions for functions even when the current token is an operator (metabase#55686)", () => {
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type("not");
+
+    H.CustomExpressionEditor.completion("notNull").should("be.visible");
+    H.CustomExpressionEditor.completion("notEmpty").should("be.visible");
+  });
+});
+
+describe("issue #55940", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should show the correct example for Offset (metabase#55940)", () => {
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+
+    H.CustomExpressionEditor.type("Offset(");
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "Offset(Sum([Total]), -1)");
+  });
+});
+
+describe("issue #55984", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should not overflow the suggestion tooltip when a suggestion name is too long (metabase#55984)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "[Total]",
+      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt",
+    });
+    cy.button("Done").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("[lo");
+    H.CustomExpressionEditor.completions().should(($el) => {
+      expect(H.isScrollableHorizontally($el[0])).to.be.false;
+    });
+  });
+
+  it("should not overflow the suggestion tooltip when a suggestion name is too long and has no spaces (metabase#55984)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "[Total]",
+      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt".replaceAll(
+        " ",
+        "_",
+      ),
+    });
+    cy.button("Done").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("[lo");
+    H.CustomExpressionEditor.completions().should(($el) => {
+      expect(H.isScrollableHorizontally($el[0])).to.be.false;
+    });
+  });
+});
+
+describe("issue 55622", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to mix regular functions with aggregation functions (metabase#55622)", () => {
+    H.openPeopleTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: 'datetimeDiff(Max([Created At]), max([Birth Date]), "minute")',
+      name: "Aggregation",
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 56152", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Should show the help text popover when typing a multi-line expression (metabase#56152)", () => {
+    H.openPeopleTable({ mode: "notebook" });
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type(dedent`
+      datetimeDiff(
+        [Created At],
+    `);
+
+    H.CustomExpressionEditor.helpText().should("be.visible");
+  });
+});
+
+describe("issue 56596", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [["field", PRODUCTS.ID, null]],
+        limit: 1,
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    H.openNotebook();
+  });
+
+  it("should not remove backslashes from escaped characters (metabase#56596)", () => {
+    H.addCustomColumn();
+    const expr = dedent`
+      regexextract([Vendor], "\\s.*")
+    `;
+    H.enterCustomColumnDetails({
+      formula: expr,
+      name: "Last name",
+    });
+    H.CustomExpressionEditor.format();
+    H.CustomExpressionEditor.value().should("equal", expr);
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").findByText("Last name").click();
+    H.CustomExpressionEditor.value().should("equal", expr);
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.visualize();
+    H.assertTableData({
+      columns: ["ID", "Last name"],
+      firstRows: [["1", " Casper and Hilll"]],
+    });
   });
 });

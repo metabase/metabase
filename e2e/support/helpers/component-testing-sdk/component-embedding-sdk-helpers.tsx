@@ -23,7 +23,7 @@ export const DEFAULT_SDK_AUTH_PROVIDER_CONFIG = {
 };
 
 export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
-  cy.intercept("GET", AUTH_PROVIDER_URL, async req => {
+  cy.intercept("GET", AUTH_PROVIDER_URL, async (req) => {
     try {
       const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
       const token = await new jose.SignJWT({

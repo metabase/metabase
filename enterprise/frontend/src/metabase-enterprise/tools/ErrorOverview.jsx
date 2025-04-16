@@ -11,7 +11,7 @@ import * as Queries from "../audit_app/lib/cards/queries";
 
 import { ErrorMode } from "./mode";
 
-const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
+const getSortOrder = (isAscending) => (isAscending ? "asc" : "desc");
 
 const CARD_ID_COL = 0;
 
@@ -28,9 +28,9 @@ export default function ErrorOverview(props) {
 
   const [rowChecked, setRowChecked] = useState({});
 
-  const handleAllSelectClick = e => {
+  const handleAllSelectClick = (e) => {
     const newRowChecked = { ...rowChecked };
-    const noRowChecked = Object.values(rowChecked).every(v => !v);
+    const noRowChecked = Object.values(rowChecked).every((v) => !v);
     for (const rowIndex of Array(e.rows.length).keys()) {
       const cardIndex = e.rows[rowIndex][CARD_ID_COL];
       if (noRowChecked) {
@@ -42,7 +42,7 @@ export default function ErrorOverview(props) {
     setRowChecked(newRowChecked);
   };
 
-  const handleRowSelectClick = e => {
+  const handleRowSelectClick = (e) => {
     const newRowChecked = { ...rowChecked };
     const cardIndex = e.row[CARD_ID_COL];
     newRowChecked[cardIndex] = !(rowChecked[cardIndex] || false);
@@ -54,7 +54,7 @@ export default function ErrorOverview(props) {
 
     await Promise.all(
       checkedCardIds.map(
-        async member => await CardApi.query({ cardId: member }),
+        async (member) => await CardApi.query({ cardId: member }),
       ),
     );
     setRowChecked({});
@@ -62,9 +62,9 @@ export default function ErrorOverview(props) {
     reloadRef.current?.();
   };
 
-  const handleSortingChange = sorting => setSorting(sorting);
+  const handleSortingChange = (sorting) => setSorting(sorting);
 
-  const handleLoad = result => {
+  const handleLoad = (result) => {
     setHasResults(result[0].row_count !== 0);
     setIsReloading(false);
   };
@@ -82,7 +82,9 @@ export default function ErrorOverview(props) {
           {
             key: "reloadSelected",
             label: t`Rerun Selected`,
-            disabled: Object.values(rowChecked).every(isChecked => !isChecked),
+            disabled: Object.values(rowChecked).every(
+              (isChecked) => !isChecked,
+            ),
             onClick: handleReloadSelected,
           },
         ]}

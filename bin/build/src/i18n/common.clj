@@ -17,7 +17,8 @@
    (sorted-set)
    (for [^java.io.File file (.listFiles (io/file (u/filename u/project-root-directory "locales")))
          :let               [file-name (.getName file)]
-         :when              (str/ends-with? file-name ".po")]
+         :when              (and (str/ends-with? file-name ".po")
+                                 (not (str/starts-with? file-name "metabase")))]
      (str/replace file-name #"\.po$" ""))))
 
 (defn locale-source-po-filename
@@ -39,7 +40,9 @@
   (when-let [^Message message (.locateHeader (catalog locale))]
     (let [header-fields (HeaderFields/wrap (.getMsgstr message))]
       (into {} (for [^String k (.getKeys header-fields)]
-                 [k (.getValue header-fields k)])))))
+                 [k (if (= k "Language")
+                      locale
+                      (.getValue header-fields k))])))))
 
 (defn- po-messages-seq [locale]
   (for [^Message message (iterator-seq (.iterator (catalog locale)))

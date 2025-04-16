@@ -7,7 +7,7 @@ export default {
   component: Tooltip,
 };
 
-const Template: StoryFn<typeof Tooltip> = args => {
+const Template: StoryFn<typeof Tooltip> = (args) => {
   return <Tooltip {...args}>Hover me</Tooltip>;
 };
 

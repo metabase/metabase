@@ -29,7 +29,7 @@ class ItemDragSource extends Component {
 }
 
 export default DragSource(
-  props => dragTypeForItem(props.item),
+  (props) => dragTypeForItem(props.item),
   {
     canDrag({ isSelected, selected, collection, item }, monitor) {
       // can't drag if can't write the parent collection
@@ -55,11 +55,11 @@ export default DragSource(
         try {
           if (collection !== undefined) {
             await Promise.all(
-              items.map(i => i.setCollection && i.setCollection(collection)),
+              items.map((i) => i.setCollection && i.setCollection(collection)),
             );
           } else if (pinIndex !== undefined) {
             await Promise.all(
-              items.map(i => i.setPinned && i.setPinned(pinIndex)),
+              items.map((i) => i.setPinned && i.setPinned(pinIndex)),
             );
           }
 

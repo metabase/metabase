@@ -125,7 +125,7 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
     },
   ];
 
-  const parameterMapping = filterDetails.map(filter => ({
+  const parameterMapping = filterDetails.map((filter) => ({
     parameter_id: filter.id,
     target: ["variable", ["template-tag", filter.slug]],
   }));
@@ -155,7 +155,7 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
             id,
             card_id,
             ...dashcardDetails,
-            parameter_mappings: parameterMapping.map(mapping => ({
+            parameter_mappings: parameterMapping.map((mapping) => ({
               ...mapping,
               card_id,
             })),
@@ -171,7 +171,7 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
     cy.findByPlaceholderText("Price").type("95").blur();
     cy.findByPlaceholderText("Rating").type("3.8").blur();
 
-    cy.findAllByTestId("table-row")
+    cy.findAllByRole("row")
       .should("have.length", 2)
       // first line price
       .and("contain", "98.82")

@@ -9,7 +9,7 @@ import {
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
-import { DEFAULT_EMBED_OPTIONS } from "metabase/redux/embed";
+import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -291,7 +291,7 @@ function setup({
       app: createMockAppState({ isNavbarOpen: false }),
       embed: createMockEmbedState({
         options: createMockEmbedOptions({
-          ...DEFAULT_EMBED_OPTIONS,
+          ...DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
           ...embedOptions,
         }),
       }),

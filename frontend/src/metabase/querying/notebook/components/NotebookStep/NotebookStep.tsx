@@ -51,7 +51,7 @@ export function NotebookStep({
       isLastStep && step.actions.some(hasLargeButton);
 
     actions.push(
-      ...step.actions.map(action => {
+      ...step.actions.map((action) => {
         const stepUi = getStepConfig(action.type);
         const title = stepUi.title;
         return {
@@ -76,7 +76,7 @@ export function NotebookStep({
 
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
-    return actions.map(action => action.button);
+    return actions.map((action) => action.button);
   }, [step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {

@@ -32,7 +32,7 @@ function BaseTreeNodeList({
 
   return (
     <ListRoot className={className} role={role}>
-      {items.map(item => {
+      {items.map((item) => {
         const isSelected = selectedId === item.id;
         const hasChildren =
           Array.isArray(item.children) && item.children.length > 0;

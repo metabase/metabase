@@ -10,8 +10,9 @@ import type { DatasetData } from "metabase-types/api";
 
 export const useObjectDetail = ({ rows, cols }: DatasetData) => {
   const dispatch = useDispatch();
-  const rowIndexToPkMap: Record<number, ObjectId> =
-    useSelector(getRowIndexToPKMap);
+  const rowIndexToPkMap: Record<number, ObjectId> = useSelector((state) =>
+    state.qb != null ? getRowIndexToPKMap(state) : {},
+  );
 
   const primaryKeyColumn: ColumnDescriptor | null = useMemo(() => {
     const primaryKeyColumns = cols.filter(isPK);

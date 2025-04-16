@@ -3,7 +3,6 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import type Question from "metabase-lib/v1/Question";
@@ -18,6 +17,7 @@ import type { Dashboard, RowValue } from "metabase-types/api";
 
 import { Footer, WidgetRoot } from "../Widget";
 
+import FieldValuesWidget from "./FieldValuesWidget";
 import { normalizeValue } from "./normalizeValue";
 
 interface ParameterFieldWidgetProps {
@@ -52,7 +52,7 @@ export function ParameterFieldWidget({
     multi && !parameter.hasVariableTemplateTagTarget;
 
   const isValid =
-    unsavedValue.every(value => value != null) &&
+    unsavedValue.every((value) => value != null) &&
     (supportsMultipleValues || unsavedValue.length === numFields);
 
   return (
@@ -62,7 +62,7 @@ export function ParameterFieldWidget({
           <div className={cx(CS.textBold, CS.mb1)}>{verboseName}...</div>
         )}
 
-        {_.times(numFields, index => {
+        {_.times(numFields, (index) => {
           const value = supportsMultipleValues
             ? unsavedValue
             : [unsavedValue[index]];

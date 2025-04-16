@@ -23,7 +23,7 @@ export function MetabaseLinksToggleDescription() {
           style={{ userSelect: "none", cursor: "pointer" }}
           onClick={(event: MouseEvent) => {
             event.preventDefault();
-            setOpened(opened => !opened);
+            setOpened((opened) => !opened);
           }}
         >
           {t`Learn more`}

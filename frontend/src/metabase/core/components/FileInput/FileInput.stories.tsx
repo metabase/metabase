@@ -7,7 +7,7 @@ export default {
   component: FileInput,
 };
 
-const Template: StoryFn<typeof FileInput> = args => {
+const Template: StoryFn<typeof FileInput> = (args) => {
   return <FileInput {...args} />;
 };
 

@@ -25,7 +25,7 @@ describe("hasCyclicFlow", () => {
         ["B", "C"],
       ],
     ],
-  ])("should detect a cycle in the flow", rows => {
+  ])("should detect a cycle in the flow", (rows) => {
     expect(hasCyclicFlow(rows, 0, 1)).toBe(true);
   });
 

@@ -46,6 +46,6 @@ const LearnAboutDataLink = () => (
         </Text>
       </BrowseHeaderIconContainer>
     </Link>
-    <PLUGIN_UPLOAD_MANAGEMENT.GsheetConnectButton />
+    <PLUGIN_UPLOAD_MANAGEMENT.GdriveDbMenu />
   </Flex>
 );

@@ -1,8 +1,7 @@
 import { type ChangeEvent, type KeyboardEvent, useCallback } from "react";
 
 import { TextInput } from "metabase/ui";
-
-import type { StartRule } from "../types";
+import type { StartRule } from "metabase-lib/v1/expressions";
 
 import S from "./NameInput.module.css";
 import { getPlaceholder } from "./utils";

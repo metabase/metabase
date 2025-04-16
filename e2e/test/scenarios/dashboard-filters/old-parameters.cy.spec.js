@@ -123,13 +123,11 @@ describe("scenarios > dashboard > OLD parameters", () => {
     it("should work", () => {
       cy.findByLabelText("City").click();
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("Flagstaff{enter}");
+        H.fieldValuesCombobox().type("Flagstaff{enter}{esc}");
         cy.findByText("Add filter").click();
       });
 
-      cy.findByTestId("dashcard-container")
-        .get("tbody tr")
-        .should("have.length", 1);
+      H.assertTableRowsCount(1);
     });
   });
 

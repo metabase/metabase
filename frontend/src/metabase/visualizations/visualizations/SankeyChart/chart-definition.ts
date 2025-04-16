@@ -128,7 +128,7 @@ export const SANKEY_CHART_DEFINITION = {
   isSensible: (data: DatasetData) => {
     const { cols, rows } = data;
     const numDimensions = cols.filter(
-      col => isDimension(col) && !isDate(col),
+      (col) => isDimension(col) && !isDate(col),
     ).length;
     const numMetrics = cols.filter(isMetric).length;
 
@@ -197,7 +197,7 @@ export const SANKEY_CHART_DEFINITION = {
     }
 
     const nodesCount = new Set(
-      rows.flatMap(row => [
+      rows.flatMap((row) => [
         row[sankeyColumns.source.index],
         row[sankeyColumns.target.index],
       ]),
@@ -209,6 +209,7 @@ export const SANKEY_CHART_DEFINITION = {
       );
     }
   },
+  hasEmptyState: true,
   settings: {
     ...SETTINGS_DEFINITIONS,
   } as any as VisualizationSettingsDefinitions,

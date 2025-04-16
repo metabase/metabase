@@ -94,7 +94,7 @@ describe("scenarios > auth > signin", () => {
     cy.findAllByRole("gridcell", { name: "37.65" });
   });
 
-  sizes.forEach(size => {
+  sizes.forEach((size) => {
     it(`should redirect from /auth/forgot_password back to /auth/login (viewport: ${size}) (metabase#12658)`, () => {
       if (Array.isArray(size)) {
         cy.viewport(size[0], size[1]);

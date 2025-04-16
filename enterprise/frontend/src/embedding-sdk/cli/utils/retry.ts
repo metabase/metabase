@@ -1,5 +1,5 @@
 const waitFor = (delayMs: number) =>
-  new Promise(resolve => setTimeout(resolve, delayMs));
+  new Promise((resolve) => setTimeout(resolve, delayMs));
 
 export async function retry<T>(
   task: () => Promise<T>,

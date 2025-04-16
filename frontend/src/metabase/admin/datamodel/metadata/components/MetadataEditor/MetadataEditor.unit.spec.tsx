@@ -300,12 +300,15 @@ describe("MetadataEditor", () => {
       await setup();
 
       await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(await screen.findByLabelText("Edit column order"));
       await userEvent.click(await screen.findByLabelText("Sort"));
 
-      expect(await screen.findByText("Database")).toBeInTheDocument();
-      expect(screen.getByText("Alphabetical")).toBeInTheDocument();
-      expect(screen.getByText("Custom")).toBeInTheDocument();
-      expect(screen.getByText("Smart")).toBeInTheDocument();
+      const popover = await screen.findByRole("listbox");
+
+      expect(within(popover).getByText("Database")).toBeInTheDocument();
+      expect(within(popover).getByText("Alphabetical")).toBeInTheDocument();
+      expect(within(popover).getByText("Custom")).toBeInTheDocument();
+      expect(within(popover).getByText("Smart")).toBeInTheDocument();
     });
 
     it("should display field visibility options", async () => {
@@ -315,12 +318,11 @@ describe("MetadataEditor", () => {
       const section = within(
         await screen.findByLabelText(ORDERS_ID_FIELD.name),
       );
-      await userEvent.click(section.getByText("Everywhere"));
+      await userEvent.click(section.getByDisplayValue("Everywhere"));
 
-      expect(
-        await screen.findByText("Only in detail views"),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Do not include")).toBeInTheDocument();
+      const popover = within(await screen.findByRole("listbox"));
+      expect(popover.getByText("Only in detail views")).toBeInTheDocument();
+      expect(popover.getByText("Do not include")).toBeInTheDocument();
     });
 
     it("should allow to search for field semantic types", async () => {
@@ -328,30 +330,39 @@ describe("MetadataEditor", () => {
       await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
 
       const section = within(
-        await screen.findByLabelText(ORDERS_ID_FIELD.name),
+        await screen.findByLabelText(ORDERS_DISCOUNT_FIELD.name),
       );
-      await userEvent.click(section.getByText("Entity Key"));
-      expect(await screen.findByText("Entity Name")).toBeInTheDocument();
+      await userEvent.click(
+        section.getByPlaceholderText("Select a semantic type"),
+      );
+      const popover = within(await screen.findByRole("listbox"));
+      expect(await popover.findByText("Currency")).toBeInTheDocument();
 
-      await userEvent.type(screen.getByPlaceholderText("Find..."), "Pri");
-      expect(screen.getByText("Price")).toBeInTheDocument();
-      expect(screen.queryByText("Score")).not.toBeInTheDocument();
+      const typeInput = await section.findByPlaceholderText(
+        "Select a semantic type",
+      );
+
+      await userEvent.clear(typeInput);
+      await userEvent.type(typeInput, "In");
+      expect(popover.getByText("Income")).toBeInTheDocument();
+      expect(popover.queryByText("Currency")).not.toBeInTheDocument();
     });
 
     it("should show the foreign key target for foreign keys", async () => {
       await setup();
       await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
 
-      const section = within(
-        await screen.findByLabelText(ORDERS_PRODUCT_ID_FIELD.name),
+      const targetInput = await screen.findByLabelText(
+        ORDERS_PRODUCT_ID_FIELD.name,
       );
-      await userEvent.click(section.getByText("Products → ID"));
+      const section = within(targetInput);
+      await userEvent.click(section.getByDisplayValue("Products → ID"));
 
-      const popover = within(await screen.findByTestId("popover"));
+      const popover = within(await screen.findByRole("listbox"));
       expect(popover.getByText("Products → ID")).toBeInTheDocument();
       expect(popover.queryByText("Orders → ID")).not.toBeInTheDocument();
 
-      await userEvent.type(popover.getByPlaceholderText("Find..."), "Products");
+      await userEvent.type(targetInput, "Products");
       expect(popover.getByText("Products → ID")).toBeInTheDocument();
     });
 
@@ -362,7 +373,9 @@ describe("MetadataEditor", () => {
       const section = within(
         await screen.findByLabelText(ORDERS_USER_ID_FIELD.name),
       );
-      expect(section.getByText("Field access denied")).toBeInTheDocument();
+      expect(
+        section.getByPlaceholderText("Field access denied"),
+      ).toBeInTheDocument();
     });
 
     it("should not show the foreign key target for non-foreign keys", async () => {
@@ -383,13 +396,18 @@ describe("MetadataEditor", () => {
       const section = within(
         await screen.findByLabelText(ORDERS_DISCOUNT_FIELD.name),
       );
-      await userEvent.click(section.getByText("US Dollar"));
+      const currencyInput = section.getByPlaceholderText(
+        "Select a currency type",
+      );
+      await userEvent.click(currencyInput);
 
-      const popover = within(await screen.findByTestId("popover"));
+      const popover = within(await screen.findByRole("listbox"));
       expect(popover.getByText("Canadian Dollar")).toBeInTheDocument();
       expect(popover.getByText("Euro")).toBeInTheDocument();
 
-      await userEvent.type(popover.getByPlaceholderText("Find..."), "Dollar");
+      await userEvent.clear(currencyInput);
+      await userEvent.type(currencyInput, "Dollar");
+
       expect(popover.getByText("US Dollar")).toBeInTheDocument();
       expect(popover.getByText("Canadian Dollar")).toBeInTheDocument();
       expect(popover.queryByText("Euro")).not.toBeInTheDocument();

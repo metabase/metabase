@@ -127,7 +127,7 @@ describe("issue 8030 + 32444", () => {
     ).as("getCardQuery2");
   };
 
-  const addFilterValue = value => {
+  const addFilterValue = (value) => {
     H.filterWidget().click();
     cy.findByText(value).click();
     cy.button("Add filter").click();
@@ -305,7 +305,6 @@ describe("issue 12720, issue 47172", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     H.getDashboardCard(1).within(() => {
-      cy.findByTestId("TableFooter").should("exist");
       cy.findByText("There was a problem displaying this chart.").should(
         "not.exist",
       );
@@ -1134,7 +1133,7 @@ describe("issue 21528", () => {
   });
 
   it("should show dashboard ID filter values when mapped to a native question with a foreign key field filter", () => {
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       cy.visit(`/question/${questionId}`);
     });
 
@@ -1193,7 +1192,7 @@ describe("issue 22482", () => {
 
     H.filterWidget().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates…").click();
+    cy.findByText("Relative date range…").click();
   });
 
   it("should round relative date range (metabase#22482)", () => {
@@ -1241,7 +1240,7 @@ describe("issue 22788", () => {
   function addFilterAndAssert() {
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("Gizmo");
+      H.fieldValuesCombobox().type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -1379,7 +1378,7 @@ describe("issue 24235", () => {
 
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.button("Update filter").should("be.disabled");
     });
   });
@@ -1577,14 +1576,16 @@ describe("issue 25322", () => {
     );
   };
 
-  const throttleFieldValuesRequest = dashboard_id => {
+  const throttleFieldValuesRequest = (dashboard_id) => {
     const matcher = {
       method: "GET",
       url: `/api/dashboard/${dashboard_id}/params/${parameterDetails.id}/values`,
       middleware: true,
     };
 
-    cy.intercept(matcher, req => req.on("response", res => res.setDelay(100)));
+    cy.intercept(matcher, (req) =>
+      req.on("response", (res) => res.setDelay(100)),
+    );
   };
 
   beforeEach(() => {
@@ -1786,9 +1787,8 @@ describe("issue 25374", () => {
     H.getDashboardCard(0).findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
-    cy.get("[data-testid=cell-data]")
-      .should("contain", "COUNT(*)")
-      .and("contain", "3");
+    H.tableInteractiveHeader("COUNT(*)");
+    H.tableInteractiveBody().findByText("3");
 
     cy.location("search").should("eq", "?num=1%2C2%2C3");
   });
@@ -1819,7 +1819,7 @@ describe("issue 25374", () => {
 
     H.saveDashboard();
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    H.getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
+    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
 
     cy.button("Clear").click();
     cy.wait("@dashcardQuery");
@@ -1831,7 +1831,7 @@ describe("issue 25374", () => {
 
     cy.button("Reset filter to default state").click();
     cy.wait("@dashcardQuery");
-    H.getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
+    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
     // Drill-through and go to the question
@@ -1855,7 +1855,7 @@ describe("issue 25374", () => {
       .type("1,2,3");
     H.saveDashboard();
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    H.getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
+    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
 
     cy.button("Clear").click();
     cy.wait("@dashcardQuery");
@@ -1870,15 +1870,14 @@ describe("issue 25374", () => {
     cy.wait("@dashcardQuery");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    H.getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
+    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
 
     // Drill-through and go to the question
     H.getDashboardCard(0).findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
-    cy.get("[data-testid=cell-data]")
-      .should("contain", "COUNT(*)")
-      .and("contain", "3");
+    H.tableHeaderColumn("COUNT(*)");
+    H.tableInteractiveBody().findByRole("gridcell").should("have.text", "3");
 
     cy.location("search").should("eq", "?num=1%2C2%2C3");
   });
@@ -1927,7 +1926,7 @@ describe("issue 25908", () => {
               row: 0,
               col: 0,
               size_x: 17,
-              size_y: 8,
+              size_y: 30,
               series: [],
               visualization_settings: {},
               parameter_mappings: [
@@ -1944,7 +1943,7 @@ describe("issue 25908", () => {
         // Note the capital first letter
         cy.visit(`/dashboard/${dashboard_id}?text_contains=Li`);
         cy.wait("@dashcardQuery");
-        cy.contains(new RegExp(`^Rows 1-\\d+ of ${CASE_INSENSITIVE_ROWS}$`));
+        cy.findAllByRole("row").should("have.length", CASE_INSENSITIVE_ROWS);
       },
     );
   });
@@ -2159,7 +2158,7 @@ describe("issue 27768", () => {
 
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("Gizmo");
+      H.fieldValuesCombobox().type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -2209,11 +2208,11 @@ describe("issues 29347, 29346", () => {
     },
   };
 
-  const getRemappedValue = fieldValue => {
+  const getRemappedValue = (fieldValue) => {
     return `N${fieldValue}`;
   };
 
-  const addFieldRemapping = fieldId => {
+  const addFieldRemapping = (fieldId) => {
     cy.request("PUT", `/api/field/${fieldId}`, {
       semantic_type: "type/Category",
     });
@@ -2262,7 +2261,7 @@ describe("issues 29347, 29346", () => {
     );
   };
 
-  const filterOnRemappedValues = fieldValue => {
+  const filterOnRemappedValues = (fieldValue) => {
     H.filterWidget().within(() => {
       cy.findByText(filterDetails.name).click();
     });
@@ -2273,18 +2272,18 @@ describe("issues 29347, 29346", () => {
     });
   };
 
-  const verifyRemappedValues = fieldValue => {
+  const verifyRemappedValues = (fieldValue) => {
     verifyRemappedFilterValues(filterValue);
     verifyRemappedCardValues(fieldValue);
   };
 
-  const verifyRemappedFilterValues = fieldValue => {
+  const verifyRemappedFilterValues = (fieldValue) => {
     H.filterWidget().within(() => {
       cy.findByText(getRemappedValue(fieldValue)).should("be.visible");
     });
   };
 
-  const verifyRemappedCardValues = fieldValue => {
+  const verifyRemappedCardValues = (fieldValue) => {
     H.getDashboardCard().within(() => {
       cy.findAllByText(getRemappedValue(fieldValue)).should("have.length", 2);
     });
@@ -2335,7 +2334,7 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
       createDashboard();
-      cy.get("@dashboardId").then(dashboardId =>
+      cy.get("@dashboardId").then((dashboardId) =>
         H.visitEmbeddedPage({
           resource: { dashboard: dashboardId },
           params: {},
@@ -2352,7 +2351,7 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values in the token (metabase#29347, metabase#29346)", () => {
       createDashboard({ dashboardDetails: lockedDashboardDetails });
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         H.visitEmbeddedPage({
           resource: { dashboard: dashboardId },
           params: {
@@ -2368,7 +2367,7 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
       createDashboard();
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         H.visitEmbeddedPage(
           {
             resource: { dashboard: dashboardId },
@@ -2394,7 +2393,7 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
       createDashboard();
-      cy.get("@dashboardId").then(dashboardId =>
+      cy.get("@dashboardId").then((dashboardId) =>
         H.visitPublicDashboard(dashboardId),
       );
       cy.wait("@dashboard");
@@ -2408,7 +2407,7 @@ describe("issues 29347, 29346", () => {
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
       createDashboard();
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         H.visitPublicDashboard(dashboardId, {
           params: { [filterDetails.slug]: filterValue },
         });
@@ -2499,7 +2498,7 @@ describe("issue 38245", () => {
       tabs: [TAB_1, TAB_2],
       parameters: [DASHBOARD_TEXT_FILTER],
       dashcards: [],
-    }).then(dashboard => H.visitDashboard(dashboard.id));
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
 
     H.editDashboard();
     H.openQuestionsSidebar();
@@ -2555,7 +2554,7 @@ describe("issue 43154", () => {
     },
   };
 
-  const questionDetails = modelId => ({
+  const questionDetails = (modelId) => ({
     name: "Question",
     type: "question",
     query: {
@@ -2563,7 +2562,7 @@ describe("issue 43154", () => {
     },
   });
 
-  const questionWithAggregationDetails = modelId => ({
+  const questionWithAggregationDetails = (modelId) => ({
     name: "Question",
     type: "question",
     query: {
@@ -2623,7 +2622,7 @@ describe("issue 42829", () => {
     semantic_type: "type/State",
   };
 
-  const getQuestionDetails = modelId => ({
+  const getQuestionDetails = (modelId) => ({
     name: "SQL model-based question",
     type: "question",
     query: {
@@ -2651,7 +2650,7 @@ describe("issue 42829", () => {
     },
   };
 
-  const getParameterMapping = questionId => ({
+  const getParameterMapping = (questionId) => ({
     parameter_id: parameterDetails.id,
     card_id: questionId,
     target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],
@@ -2680,7 +2679,7 @@ describe("issue 42829", () => {
     H.createNativeQuestion(modelDetails).then(({ body: model }) => {
       // populate result_metadata
       cy.request("POST", `/api/card/${model.id}/query`);
-      H.setModelMetadata(model.id, field => {
+      H.setModelMetadata(model.id, (field) => {
         if (field.display_name === "STATE") {
           return { ...field, ...stateFieldDetails };
         }
@@ -2711,14 +2710,14 @@ describe("issue 42829", () => {
   });
 
   it("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
-    cy.get("@dashboardId").then(dashboardId =>
+    cy.get("@dashboardId").then((dashboardId) =>
       H.visitPublicDashboard(dashboardId),
     );
     filterAndVerifyResults();
   });
 
   it("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
-    cy.get("@dashboardId").then(dashboardId =>
+    cy.get("@dashboardId").then((dashboardId) =>
       H.visitEmbeddedPage({
         resource: { dashboard: dashboardId },
         params: {},
@@ -2952,13 +2951,13 @@ describe("issue 44288", () => {
 
     cy.log("public dashboards");
     cy.signInAsAdmin();
-    cy.get("@dashboardId").then(dashboardId =>
+    cy.get("@dashboardId").then((dashboardId) =>
       H.visitPublicDashboard(dashboardId),
     );
     verifyFilter();
 
     cy.log("embedded dashboards");
-    cy.get("@dashboardId").then(dashboardId =>
+    cy.get("@dashboardId").then((dashboardId) =>
       H.visitEmbeddedPage({
         resource: { dashboard: dashboardId },
         params: {},
@@ -2987,7 +2986,7 @@ describe("issue 27579", () => {
       cy.findByText("Select all").click();
       cy.findByLabelText("12 AM").should("be.checked");
 
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByLabelText("12 AM").should("not.be.checked");
     });
   });
@@ -3013,7 +3012,7 @@ describe("issue 32804", () => {
     parameters: [parameterDetails],
   };
 
-  const getQuestion2Details = card => ({
+  const getQuestion2Details = (card) => ({
     name: "Q2",
     query: {
       "source-table": `card__${card.id}`,
@@ -3025,7 +3024,7 @@ describe("issue 32804", () => {
     },
   });
 
-  const getParameterMapping = card => ({
+  const getParameterMapping = (card) => ({
     card_id: card.id,
     parameter_id: parameterDetails.id,
     target: [
@@ -3611,19 +3610,18 @@ describe("issue 34955", () => {
       H.saveDashboard();
 
       // eslint-disable-next-line no-unsafe-element-filtering
-      cy.findAllByTestId("column-header")
-        .eq(-2)
-        .should("have.text", "Created At");
+      cy.findAllByRole("columnheader").eq(-2).should("have.text", "Created At");
       // eslint-disable-next-line no-unsafe-element-filtering
-      cy.findAllByTestId("column-header").eq(-1).should("have.text", ccName);
-      cy.findAllByTestId("cell-data")
+      cy.findAllByRole("columnheader").eq(-1).should("have.text", ccName);
+      H.tableInteractiveBody()
+        .findAllByRole("gridcell")
         .filter(":contains(May 15, 2024, 8:04 AM)")
         .should("have.length", 2);
     });
   });
 
   it("should connect specific date filter (`Between`) to the temporal custom column (metabase#34955-1)", () => {
-    cy.get("@dashboardId").then(dashboard_id => {
+    cy.get("@dashboardId").then((dashboard_id) => {
       // Apply filter through URL to prevent the typing flakes
       cy.visit(`/dashboard/${dashboard_id}?on=&between=2024-01-01~2024-03-01`);
       // eslint-disable-next-line no-unsafe-element-filtering
@@ -3639,7 +3637,7 @@ describe("issue 34955", () => {
 
   // TODO: Once the issue is fixed, merge into a single repro to avoid unnecessary overhead!
   it.skip("should connect specific date filter (`On`) to the temporal custom column (metabase#34955-2)", () => {
-    cy.get("@dashboardId").then(dashboard_id => {
+    cy.get("@dashboardId").then((dashboard_id) => {
       // Apply filter through URL to prevent the typing flakes
       cy.visit(`/dashboard/${dashboard_id}?on=2024-01-01&between=`);
       cy.findAllByTestId("field-set-content")
@@ -3680,7 +3678,7 @@ describe("issue 35852", () => {
 
   it("should show filter values for a model based on sql query (metabase#35852)", () => {
     H.createNativeQuestion(model).then(({ body: { id: modelId } }) => {
-      H.setModelMetadata(modelId, field => {
+      H.setModelMetadata(modelId, (field) => {
         if (field.display_name === "CATEGORY") {
           return {
             ...field,
@@ -3884,12 +3882,12 @@ describe("issue 45670", { tags: ["@external"] }, () => {
 
   function getField() {
     return cy.request("GET", "/api/table").then(({ body: tables }) => {
-      const table = tables.find(table => table.name === tableName);
+      const table = tables.find((table) => table.name === tableName);
       return cy
         .request("GET", `/api/table/${table.id}/query_metadata`)
         .then(({ body: metadata }) => {
           const { fields } = metadata;
-          return fields.find(field => field.name === "boolean");
+          return fields.find((field) => field.name === "boolean");
         });
     });
   }
@@ -3930,7 +3928,7 @@ describe("issue 45670", { tags: ["@external"] }, () => {
   });
 
   it("should be able to pass query string parameters for boolean parameters in dashboards (metabase#45670)", () => {
-    getField().then(field => {
+    getField().then((field) => {
       H.createNativeQuestion(getQuestionDetails(field.id)).then(
         ({ body: card }) => {
           H.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
@@ -3991,7 +3989,7 @@ describe("issue 48351", () => {
           size_y: 8,
         }),
       ],
-    }).then(dashboard1 => {
+    }).then((dashboard1) => {
       H.createDashboardWithTabs({
         name: "Dashboard 2",
         tabs: [
@@ -4028,11 +4026,11 @@ describe("issue 48351", () => {
             size_y: 8,
           }),
         ],
-      }).then(dashboard2 => H.visitDashboard(dashboard2.id));
+      }).then((dashboard2) => H.visitDashboard(dashboard2.id));
     });
     H.goToTab("Tab 4");
     H.getDashboardCard().within(() =>
-      cy.findAllByTestId("cell-data").eq(0).click(),
+      cy.findAllByRole("gridcell").eq(0).click(),
     );
     cy.findByTestId("dashboard-name-heading").should(
       "have.value",
@@ -4121,10 +4119,10 @@ describe("issue 40396", { tags: "@external " }, () => {
   it("should be possible to use dashboard filters with native enum fields (metabase#40396)", () => {
     cy.log("create a dashboard with a question with a type/Enum field");
     cy.request("GET", "/api/table").then(({ body: tables }) => {
-      const table = tables.find(table => table.name === tableName);
+      const table = tables.find((table) => table.name === tableName);
       cy.request("GET", `/api/table/${table.id}/query_metadata`).then(
         ({ body: metadata }) => {
-          const field = metadata.fields.find(field => field.name === "enum");
+          const field = metadata.fields.find((field) => field.name === "enum");
           cy.request("PUT", `/api/field/${field.id}`, {
             semantic_type: "type/Enum",
           });
@@ -4155,6 +4153,7 @@ describe("issue 40396", { tags: "@external " }, () => {
       cy.button("Add filter").click();
     });
     cy.wait("@dashcardQuery");
+    H.tableInteractiveScrollContainer().scrollTo("right");
     H.getDashboardCard().findAllByText("beta").should("have.length.gte", 1);
   });
 });
@@ -4240,7 +4239,7 @@ describe("issue 52918", () => {
     H.setFilter("Date picker", "All Options");
     H.sidebar().findByLabelText("No default").click();
     H.popover().within(() => {
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByText("Between").should("be.visible");
     });
     cy.log("check that there is no overflow in the popover");
@@ -4263,7 +4262,7 @@ describe("issue 54236", () => {
     H.setFilter("Date picker", "All Options");
     H.sidebar().findByLabelText("No default").click();
     H.popover().within(() => {
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Next").click();
       cy.findByDisplayValue("30").clear().type("1");
       cy.findAllByDisplayValue("day").filter(":visible").click();
@@ -4303,7 +4302,7 @@ describe("issue 17061", () => {
     },
   };
 
-  const getParameterMapping = cardId => ({
+  const getParameterMapping = (cardId) => ({
     parameter_id: parameterDetails.id,
     card_id: cardId,
     target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],
@@ -4393,5 +4392,83 @@ describe.skip("issue 48824", () => {
     H.filterWidget()
       .findByText("Vorheriger 30 Tage, ab vor 7 tage")
       .should("be.visible");
+  });
+});
+
+describe("issue 55678", () => {
+  const parameterDetails = {
+    name: "date",
+    slug: "date",
+    id: "f8ec7c71",
+    type: "date/all-options",
+    sectionId: "date",
+    default: "2020-01-01~2024-12-31",
+  };
+
+  const questionDetails = {
+    name: "Orders",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+    display: "line",
+  };
+
+  const dashboardDetails = {
+    name: "Dashboard",
+    parameters: [parameterDetails],
+  };
+
+  function setupDashboard() {
+    return H.createQuestion(questionDetails).then(
+      ({ body: { id: card_id } }) => {
+        H.createDashboard(dashboardDetails).then(
+          ({ body: { id: dashboard_id } }) => {
+            H.addOrUpdateDashboardCard({
+              dashboard_id,
+              card_id,
+              card: {
+                parameter_mappings: [
+                  {
+                    card_id,
+                    parameter_id: parameterDetails.id,
+                    target: [
+                      "dimension",
+                      ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+                      { "stage-number": 1 },
+                    ],
+                  },
+                ],
+              },
+            });
+            H.visitDashboard(dashboard_id);
+          },
+        );
+      },
+    );
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should ignore parameters mapped to post-aggregation stages when doing query drills (metabase#55678)", () => {
+    setupDashboard();
+    H.getDashboardCard().within(() => {
+      H.cartesianChartCircle().first().click();
+    });
+    H.popover().findByText("See this Order").click();
+    H.queryBuilderFiltersPanel()
+      .findByText("Created At is Apr 1–30, 2022")
+      .should("be.visible");
+    H.assertQueryBuilderRowCount(1);
   });
 });

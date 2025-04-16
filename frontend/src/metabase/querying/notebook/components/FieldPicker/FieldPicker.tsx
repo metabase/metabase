@@ -45,19 +45,19 @@ export const FieldPicker = ({
   ...props
 }: FieldPickerProps) => {
   const items = useMemo(() => {
-    const items = columns.map(column => ({
+    const items = columns.map((column) => ({
       column,
       columnInfo: Lib.displayInfo(query, stageIndex, column),
     }));
-    return items.map(item => ({
+    return items.map((item) => ({
       ...item,
       isSelected: isColumnSelected(item, items),
       isDisabled: isColumnDisabled?.(item, items),
     }));
   }, [query, stageIndex, columns, isColumnSelected, isColumnDisabled]);
 
-  const isAll = items.every(item => item.isSelected);
-  const isNone = items.every(item => !item.isSelected);
+  const isAll = items.every((item) => item.isSelected);
+  const isNone = items.every((item) => !item.isSelected);
 
   const handleLabelToggle = () => {
     if (isAll) {
@@ -77,19 +77,19 @@ export const FieldPicker = ({
             indeterminate={!isAll && !isNone}
             onChange={handleLabelToggle}
           />
-          <div className={S.ItemTitle}>
-            {isAll ? t`Select none` : t`Select all`}
-          </div>
+          <div className={S.ItemTitle}>{t`Select all`}</div>
         </HoverParent>
       </li>
       <DelayGroup>
-        {items.map(item => (
+        {items.map((item) => (
           <li key={item.columnInfo.longDisplayName}>
             <HoverParent className={S.Label} as="label">
               <Checkbox
                 checked={item.isSelected}
                 disabled={item.isDisabled}
-                onChange={event => onToggle(item.column, event.target.checked)}
+                onChange={(event) =>
+                  onToggle(item.column, event.target.checked)
+                }
               />
               <QueryColumnInfoIcon
                 className={S.ItemIcon}

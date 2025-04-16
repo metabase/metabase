@@ -5,9 +5,5 @@
   padding: 0 0.75em;
   color: var(--mb-color-text-light);
   cursor: default;
-  border-bottom: 1px solid var(--mb-color-border);
-}
-
-.withName {
-  background-color: var(--mb-color-bg-white);
+  border-bottom: unset;
 }

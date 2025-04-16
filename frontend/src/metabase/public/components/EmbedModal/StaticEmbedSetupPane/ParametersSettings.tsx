@@ -52,7 +52,7 @@ export const ParametersSettings = ({
   );
 
   const hasRequiredParameters = resourceParameters.some(
-    param => param.required,
+    (param) => param.required,
   );
 
   return resourceParameters.length > 0 ? (
@@ -63,7 +63,7 @@ export const ParametersSettings = ({
         <Stack gap="1rem">
           <Text>{t`Parameters are disabled by default, which also makes them hidden from end-users. Make them editable so that end-users can see and modify them. Make them locked so that they are hidden from end-users but you can set their values from your app.`}</Text>
 
-          {resourceParameters.map(parameter => (
+          {resourceParameters.map((parameter) => (
             <div key={parameter.id} className={cx(CS.flex, CS.alignCenter)}>
               <Icon name={getIconForParameter(parameter)} className={CS.mr2} />
               <h3>
@@ -117,7 +117,7 @@ export const ParametersSettings = ({
             <Stack gap="1rem">
               <Text>{t`Try passing some sample values to your locked parameters here. Your server will have to provide the actual values in the signed token when doing this for real.`}</Text>
 
-              {valuePopulatedLockedParameters.map(parameter => (
+              {valuePopulatedLockedParameters.map((parameter) => (
                 <StaticParameterWidget
                   key={parameter.id}
                   className={CS.m0}

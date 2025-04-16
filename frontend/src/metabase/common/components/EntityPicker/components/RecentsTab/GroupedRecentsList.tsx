@@ -20,7 +20,7 @@ export function GroupedRecentsList({
 
   return (
     <Box style={{ overflowY: "auto" }} p="xl">
-      {recentGroups.map(group => (
+      {recentGroups.map((group) => (
         <RecentSection
           key={group.title}
           title={group.title}

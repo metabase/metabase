@@ -1,11 +1,15 @@
 import type {
+  Cell,
   CellContext,
   ColumnDefTemplate,
   ColumnSizingState,
   HeaderContext,
+  Row,
   RowData,
+  SortingState,
   Table,
 } from "@tanstack/react-table";
+import type { VirtualItem } from "@tanstack/react-virtual";
 import type React from "react";
 import type { RefObject } from "react";
 
@@ -17,6 +21,7 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     wrap?: boolean;
     enableReordering?: boolean;
+    enableSelection?: boolean;
     headerClickTargetSelector?: string;
   }
 }
@@ -36,6 +41,7 @@ export type BodyCellBaseProps<TValue> = {
   canExpand?: boolean;
   columnId: string;
   rowIndex: number;
+  isSelected?: boolean;
   className?: string;
   style?: React.CSSProperties;
   onExpand?: (id: string, formattedValue: React.ReactNode) => void;
@@ -111,6 +117,9 @@ export interface DataGridTheme {
   /** Table font size, defaults to ~12.5px */
   fontSize?: string;
 
+  /** Background color of the table header that stays fixed while scrolling. Defaults to `white` if no cell background color is set */
+  stickyBackgroundColor?: string;
+
   cell?: {
     /** Text color default body cells, defaults to `text-primary`. */
     textColor?: string;
@@ -141,6 +150,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Width of each column by ID */
   columnSizingMap?: ColumnSizingState;
 
+  /** Array of column sorting options */
+  sorting?: SortingState;
+
   /** Default row height in pixels */
   defaultRowHeight?: number;
 
@@ -155,6 +167,12 @@ export interface DataGridOptions<TData = any, TValue = any> {
 
   /** Data grid theme */
   theme?: DataGridTheme;
+
+  /** Controlls whether cell selection is enabled */
+  enableSelection?: boolean;
+
+  /** Items per page. Undefined disables pagination. */
+  pageSize?: number;
 
   /** Callback when a column is resized */
   onColumnResize?: (columnSizingMap: ColumnSizingState) => void;
@@ -175,7 +193,7 @@ export interface DataGridOptions<TData = any, TValue = any> {
 export type CellAlign = "left" | "middle" | "right";
 export type BodyCellVariant = "text" | "pill";
 export type HeaderCellVariant = "light" | "outline";
-export type RowIdVariant = "indexExpand" | "expandButton";
+export type RowIdVariant = "indexExpand" | "expandButton" | "index";
 
 export type CellFormatter<TValue> = (
   value: TValue,
@@ -185,13 +203,47 @@ export type CellFormatter<TValue> = (
 
 export type ExpandedColumnsState = Record<string, boolean>;
 
+export type DataGridSelection = {
+  selectedCells: SelectedCell[];
+  isEnabled: boolean;
+  isCellSelected: (cell: Cell<any, any>) => boolean;
+  isRowSelected: (rowId: string) => boolean;
+  handlers: {
+    handleCellMouseDown: (
+      e: React.MouseEvent<HTMLElement>,
+      cell: Cell<any, any>,
+    ) => void;
+    handleCellMouseUp: (
+      e: React.MouseEvent<HTMLElement>,
+      cell: Cell<any, any>,
+    ) => void;
+    handleCellMouseOver: (
+      e: React.MouseEvent<HTMLElement>,
+      cell: Cell<any, any>,
+    ) => void;
+    handleCellsKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+  };
+};
+
+export type SelectedCell = {
+  rowId: string;
+  columnId: string;
+  cellId: string;
+};
+
 export interface DataGridInstance<TData> {
   table: Table<TData>;
   gridRef: RefObject<HTMLDivElement>;
   virtualGrid: VirtualGrid;
   measureRoot: React.ReactNode;
   columnsReordering: ColumnsReordering;
+  selection: DataGridSelection;
+  enableRowVirtualization: boolean;
+  enablePagination: boolean;
+  theme?: DataGridTheme;
   measureColumnWidths: () => void;
+  getTotalHeight: () => number;
+  getVisibleRows: () => MaybeVirtualRow<TData>[];
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
     columnId?: string,
@@ -202,5 +254,12 @@ export interface DataGridInstance<TData> {
     columnId: string,
   ) => void;
   onAddColumnClick?: React.MouseEventHandler<HTMLButtonElement>;
-  onScroll?: React.UIEventHandler<HTMLDivElement>;
+  onWheel?: React.UIEventHandler<HTMLDivElement>;
 }
+
+export type VirtualRow<TData> = {
+  row: Row<TData>;
+  virtualRow: VirtualItem;
+};
+
+export type MaybeVirtualRow<TData> = Row<TData> | VirtualRow<TData>;

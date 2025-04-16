@@ -129,14 +129,14 @@ export function useSnippetCompletion() {
 
       const query = tag.content.text;
       const results =
-        snippets?.filter(snippet =>
+        snippets?.filter((snippet) =>
           snippet.name.toLowerCase().includes(query.toLowerCase()),
         ) ?? [];
 
       return {
         from: tag.content.from,
         to: tag.content.to,
-        options: results.map(snippet => ({
+        options: results.map((snippet) => ({
           label: snippet.name,
           apply: tag.hasClosingTag ? snippet.name : `${snippet.name} }}`,
           detail: t`Snippet`,
@@ -228,14 +228,14 @@ export function useReferencedCardCompletion({
   > => {
     const shouldCache = true;
     const data = await Promise.all(
-      referencedCardIds.map(id => getCard({ id }, shouldCache)),
+      referencedCardIds.map((id) => getCard({ id }, shouldCache)),
     );
 
     return data
-      .map(item => item.data)
+      .map((item) => item.data)
       .filter(isNotNull)
-      .flatMap(card =>
-        card.result_metadata.map(field => ({
+      .flatMap((card) =>
+        card.result_metadata.map((field) => ({
           card,
           field,
         })),
@@ -275,9 +275,9 @@ export function useReferencedCardCompletion({
         validFor(text: string) {
           return text.startsWith(word.text);
         },
-        options: results.map(column => ({
+        options: results.map((column) => ({
           label: column.field.name,
-          detail: `${column.card.name} :${column.field.base_type}`,
+          detail: `${column.card.name} ${column.field.database_type}`,
         })),
       };
     },
@@ -346,9 +346,9 @@ export function useLocalsCompletion({ engine }: LocalsCompletionOptions) {
       const full = word.text.concat(suffix?.text ?? "");
 
       const options = Array.from(set)
-        .filter(value => value.toLowerCase().startsWith(full.toLowerCase()))
-        .filter(value => value !== full)
-        .map(value => ({
+        .filter((value) => value.toLowerCase().startsWith(full.toLowerCase()))
+        .filter((value) => value !== full)
+        .map((value) => ({
           label: value,
           detail: "local",
         }));
@@ -375,7 +375,7 @@ export function useKeywordsCompletion({ engine }: LocalsCompletionOptions) {
       return () => null;
     }
 
-    const completions = keywords.words.map(keyword => ({
+    const completions = keywords.words.map((keyword) => ({
       label: keyword,
       detail: t`keyword`,
     }));
@@ -401,7 +401,7 @@ export function useKeywordsCompletion({ engine }: LocalsCompletionOptions) {
 
       const suffix = matchAfter(context, /\w+/);
 
-      const options = completions.filter(option => {
+      const options = completions.filter((option) => {
         if (keywords.caseSensitive) {
           return option.label.startsWith(word.text);
         }

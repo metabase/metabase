@@ -20,11 +20,11 @@ export function useHiddenSourceTables(
 
   const sourceTableId = Lib.sourceTableOrCardId(query);
 
-  const joinTablesInfo = Lib.stageIndexes(query).flatMap(stageIndex =>
+  const joinTablesInfo = Lib.stageIndexes(query).flatMap((stageIndex) =>
     Lib.joins(query, stageIndex)
-      .map(join => Lib.joinedThing(query, join))
-      .filter(joinTable => joinTable != null)
-      .map(joinTable => Lib.displayInfo(query, stageIndex, joinTable)),
+      .map((join) => Lib.joinedThing(query, join))
+      .filter((joinTable) => joinTable != null)
+      .map((joinTable) => Lib.displayInfo(query, stageIndex, joinTable)),
   );
 
   if (sourceTableId) {
@@ -39,7 +39,7 @@ export function useHiddenSourceTables(
   }
 
   return joinTablesInfo.filter(
-    tableInfo =>
+    (tableInfo) =>
       !tableInfo.isSourceTable ||
       (tableInfo.visibilityType !== null &&
         tableInfo.visibilityType !== "normal"),
