@@ -70,6 +70,7 @@ export function Header({
       </ActionIcon>
       <EditableText
         initialValue={title}
+        isOptional
         onChange={handleChangeTitle}
         className={S.title}
       />
