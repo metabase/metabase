@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { Location } from "history";
 import * as React from "react";
 import { useMemo } from "react";
@@ -8,7 +7,6 @@ import { t } from "ttag";
 
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import Select, { Option } from "metabase/core/components/Select";
-import CS from "metabase/css/core/index.css";
 import { openSaveDialog } from "metabase/lib/dom";
 import { Box, Button, Flex, Icon, TextInput } from "metabase/ui";
 
@@ -67,7 +65,23 @@ const LogsBase = ({
         <Flex align="center" gap="md">
           <TextInput
             placeholder={t`Filter logs`}
+            rightSection={
+              query.length > 0 ? (
+                <Button
+                  aria-label={t`Clear`}
+                  c="text-dark"
+                  leftSection={<Icon name="close" />}
+                  size="xs"
+                  variant="subtle"
+                  onClick={() => {
+                    patchUrlState({ query: "" });
+                    refollow();
+                  }}
+                />
+              ) : undefined
+            }
             value={query ?? ""}
+            w={220} // set width to prevent CLS when clear button appears/disappears
             onChange={(event) => {
               patchUrlState({ query: event.target.value });
               refollow();
@@ -77,15 +91,13 @@ const LogsBase = ({
           {processUUIDs.length > 1 && (
             <Box>
               <Select
-                aria-label={t`Select Metabase process`}
                 defaultValue="ALL"
                 value={process}
+                width={400}
                 onChange={(e: { target: { value: string } }) => {
                   patchUrlState({ process: e.target.value });
                   refollow();
                 }}
-                className={cx(CS.inlineBlock, CS.ml1)}
-                width={400}
               >
                 <Option
                   value="ALL"
