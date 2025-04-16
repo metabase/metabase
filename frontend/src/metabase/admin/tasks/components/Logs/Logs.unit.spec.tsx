@@ -107,7 +107,7 @@ describe("Logs", () => {
       });
     });
 
-    it("should display no results if there are no logs after filtering", async () => {
+    it("should filter out logs not matching the query", async () => {
       fetchMock.get("path:/api/util/logs", [log]);
       setup({
         location: createMockLocation({
@@ -120,6 +120,19 @@ describe("Logs", () => {
           screen.getByText("Nothing matches your filters."),
         ).toBeInTheDocument();
       });
+    });
+
+    it("should not filter out logs matching the query", async () => {
+      fetchMock.get("path:/api/util/logs", [log]);
+      setup({
+        location: createMockLocation({
+          pathname: PATHNAME,
+          search: `?query=${log.fqns}`,
+        }),
+      });
+      expect(
+        await screen.findByText(new RegExp(log.process_uuid)),
+      ).toBeInTheDocument();
     });
 
     it("should display results if server responds with logs", async () => {
