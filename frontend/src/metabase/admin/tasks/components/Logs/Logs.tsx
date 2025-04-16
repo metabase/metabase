@@ -9,6 +9,8 @@ import { t } from "ttag";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import Select, { Option } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
+import { openSaveDialog } from "metabase/lib/dom";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
@@ -53,11 +55,17 @@ const LogsBase = ({
     return reactAnsiStyle(React, logText);
   }, [filteredLogs]);
 
+  const handleDownload = () => {
+    const logs = filteredLogs.map(formatLog).join("\n");
+    const blob = new Blob([logs], { type: "text/json" });
+    openSaveDialog("logs.txt", blob);
+  };
+
   return (
     <LogsContainer loading={!loaded} error={error}>
-      <div className={CS.pb1}>
+      <Flex align="center" justify="space-between" mb="md">
         {processUUIDs.length > 1 && (
-          <>
+          <Box>
             <label>{t`Select Metabase process:`}</label>
             <Select
               defaultValue="ALL"
@@ -76,9 +84,17 @@ const LogsBase = ({
                 </Option>
               ))}
             </Select>
-          </>
+          </Box>
         )}
-      </div>
+
+        {filteredLogs.length > 0 && (
+          <Button
+            leftSection={<Icon name="download" />}
+            variant="filled"
+            onClick={handleDownload}
+          >{t`Download`}</Button>
+        )}
+      </Flex>
 
       <LogsContent id="logs-content" ref={scrollRef} onScroll={onScroll}>
         {displayLogs}
