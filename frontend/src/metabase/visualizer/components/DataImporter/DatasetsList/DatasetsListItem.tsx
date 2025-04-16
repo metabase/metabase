@@ -85,7 +85,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
           <Icon color="inherit" className={S.TableIcon} name="table2" mr="xs" />
         }
       >
-        <Ellipsified>{item.name}</Ellipsified>
+        <Ellipsified style={{ height: 17 }}>{item.name}</Ellipsified>
       </Button>
       {selected ? (
         <Button
