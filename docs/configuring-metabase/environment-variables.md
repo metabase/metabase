@@ -1426,7 +1426,7 @@ Is SCIM currently enabled?
 ### `MB_SEARCH_ENGINE`
 
 - Type: keyword
-- Default: `:appdb`
+- Default: `:in-place`
 
 Which engine to use when performing search. Supported values are :in-place and :appdb.
 
