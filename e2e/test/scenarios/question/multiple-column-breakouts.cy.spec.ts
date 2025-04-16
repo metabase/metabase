@@ -835,7 +835,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         }) {
           H.popover().within(() => {
             cy.findByText(columnName).click();
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);
@@ -1160,7 +1160,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.popover().within(() => {
             cy.findByText("Summaries").click();
             cy.findByText(columnName).click();
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);
@@ -1416,7 +1416,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         }) {
           H.popover().within(() => {
             cy.findAllByText(columnName).click();
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);

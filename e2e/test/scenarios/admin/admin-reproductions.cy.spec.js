@@ -200,7 +200,7 @@ describe("(metabase#46714)", () => {
   it("should allow users to apply relative date options in the segment date picker", () => {
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByRole("tab", { name: "Previous" }).click();
       cy.findByLabelText("Starting from…").click();
     });
