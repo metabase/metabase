@@ -220,9 +220,11 @@
 
 (deftest ^:parallel float-cast-table-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
-    (mt/dataset test-data
+    (mt/dataset string-nums-db
       (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [#_[:people [{:field :zip :db-type "TEXT"}]]]
+        (doseq [[table fields] [[:string_nums [{:field :float_col :db-type "TEXT"}
+                                               {:field :int_col :db-type "TEXT"}
+                                               {:field :mix_col :db-type "TEXT"}]]]
                 {:keys [field db-type]} fields]
           (testing (str "casting " table "." field "(" db-type ") to float")
             (let [field-md (lib.metadata/field mp (mt/id table field))
@@ -250,7 +252,7 @@
                                                              (lib.metadata/field mp (mt/id :people :zip)))
                                                 :db-type "TEXT"}]]]
                 {:keys [expression db-type]} expressions]
-          (testing (str "Casting " db-type " to integer")
+          (testing (str "Casting " db-type " to float")
             (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                             (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
                             (lib/expression "UNCASTED" expression)
@@ -271,7 +273,7 @@
       (let [mp (mt/metadata-provider)]
         (doseq [{:keys [expression db-type]} [{:expression "'123.7'"  :db-type "TEXT"}
                                               {:expression "'-123.1'" :db-type "TEXT"}]]
-          (testing (str "Casting " db-type " to integer from native query")
+          (testing (str "Casting " db-type " to float from native query")
             (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
               (mt/with-temp
                 [:model/Card
@@ -293,9 +295,11 @@
 
 (deftest ^:parallel float-cast-nested-query
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
-    (mt/dataset test-data
+    (mt/dataset string-nums-db
       (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [#_[:people [{:field :zip :db-type "TEXT"}]]]
+        (doseq [[table fields] [[:string_nums [{:field :float_col :db-type "TEXT"}
+                                               {:field :int_col :db-type "TEXT"}
+                                               {:field :mix_col :db-type "TEXT"}]]]
                 {:keys [field db-type]} fields]
           (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))]
             (testing (str "Casting " db-type " to float")
@@ -409,7 +413,7 @@
                       {:original (pr-str Double/MAX_VALUE) :value Double/MAX_VALUE :msg "Big number."}
                       {:original (pr-str Double/MIN_VALUE) :value Double/MIN_VALUE :msg "Big number."}]]
         (doseq [{:keys [original value msg]} examples]
-          (testing (str "integer cast: " msg)
+          (testing (str "float cast: " msg)
             (let [field-md (lib.metadata/field mp (mt/id :people :id))
                   query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                             (lib/with-fields [field-md])
