@@ -162,10 +162,10 @@
           (let [response (mt/user-http-request :crowberto :get 200 "task/")]
             (is (= 3 (-> response :data count)))))
         (testing "Error is returned on explicit nil status"
-          (is (= "enum of :started, :success, :failed"
+          (is (= "enum of :started, :unknown, :success, :failed"
                  (-> (mt/user-http-request :crowberto :get 400 "task/" :status nil) :errors :status first))))
         (testing "Error is returned for unexpected status values"
-          (is (= "enum of :started, :success, :failed"
+          (is (= "enum of :started, :unknown, :success, :failed"
                  (-> (mt/user-http-request :crowberto :get 400 "task/" :status 1) :errors :status first))))
         (letfn [(task-test-filtering-response
                   [task]
@@ -320,3 +320,85 @@
         (testing "Ordered unique tasks are returned"
           (is (= ["a" "b" "c"]
                  (mt/user-http-request :crowberto :get 200 "task/unique-tasks"))))))))
+
+(deftest ^:synchronized unknown-task-status-test
+  (testing "Filtering for unknown status works as expected"
+    (t2/delete! :model/TaskHistory)
+    (let [now (t/zoned-date-time)]
+      (mt/with-temp
+        [;; task a
+         :model/TaskHistory
+         _
+         {:status "unknown"
+          :task "a"
+          :started_at (t/minus now (t/hours 1))
+          :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
+         :model/TaskHistory
+         _
+         {:status "failed"
+          :task "b"
+          :started_at (t/minus now (t/hours 1))
+          :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
+         :model/TaskHistory
+         _
+         {:status "unknown"
+          :task "c"
+          :started_at (t/minus now (t/hours 1))
+          :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}]
+        (let [response (mt/user-http-request :crowberto :get 200 "task/" :status :unknown :offset 1 :limit 1)]
+          (is (= 2 (-> response :total)))
+          (is (= 1 (-> response :data count)))
+          (is (= "unknown" (-> response :data first :status))))))))
+
+(deftest ^:synchronized filtered-tasks-count-test
+  (testing "Count respects filtering"
+    (t2/delete! :model/TaskHistory)
+    (let [now (t/zoned-date-time)]
+      (mt/with-temp
+        [;; task a
+         :model/TaskHistory
+         _
+         {:status "success"
+          :task "a"
+          :started_at (t/minus now (t/hours 1))
+          :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
+         :model/TaskHistory
+         _
+         {:status "failed"
+          :task "a"
+          :started_at (t/minus now (t/hours 1))
+          :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
+
+          ;; task b
+         :model/TaskHistory
+         _
+         {:status :failed
+          :task "b"
+          :started_at (t/zoned-date-time)
+          :ended_at (t/zoned-date-time)}
+         :model/TaskHistory
+         _
+         {:status :started
+          :task "b"
+          :started_at (t/zoned-date-time)}
+
+         ;; task c
+         :model/TaskHistory
+         _
+         {:status :started
+          :task "c"
+          :started_at (t/zoned-date-time)}
+         :model/TaskHistory
+         _
+         {:status :success
+          :task "c"
+          :started_at (t/zoned-date-time)
+          :ended_at (t/zoned-date-time)}]
+        (let [response (mt/user-http-request :crowberto :get 200 "task/" :task "a" :offset 0 :limit 1)]
+          (is (= 2 (-> response :total)))
+          (is (= 1 (-> response :data count)))
+          (is (= "a" (-> response :data first :task))))
+        (let [response (mt/user-http-request :crowberto :get 200 "task/" :status :success :offset 0 :limit 1)]
+          (is (= 2 (-> response :total)))
+          (is (= 1 (-> response :data count)))
+          (is (= "success" (-> response :data first :status))))))))
