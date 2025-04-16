@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: .github/workflows/e2e-matrix-builder.yml
+          sparse-checkout: ./.github/scripts/e2e-matrix-builder.yml
           sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v4
         with:
