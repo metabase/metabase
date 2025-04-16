@@ -13,7 +13,7 @@ export type NotificationCardSendCondition =
 
 export type SystemEvent = "event/action.success";
 
-export type ActionType = "row/create" | "row/update" | "row/delete";
+export type ActionType = "bulk/create" | "bulk/update" | "bulk/delete";
 
 type NotificationPayloadType =
   | "notification/card"

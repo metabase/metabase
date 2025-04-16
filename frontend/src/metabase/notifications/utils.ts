@@ -153,6 +153,6 @@ export const getDefaultTableNotificationRequest = ({
       currentUserId,
       userCanAccessSettings,
     }),
-    condition: ["=", ["context", "payload", "result", "table_id"], tableId],
+    condition: ["=", ["context", "table", "id"], tableId],
   };
 };

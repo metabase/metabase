@@ -180,7 +180,7 @@ describe("CreateOrEditTableNotificationModal", () => {
   it("should show notification data when in edit mode", async () => {
     // Create a custom notification with 'row updated' event
     const mockNotification = createMockTableNotification({
-      action: "row/update",
+      action: "bulk/update",
     });
 
     setup({
@@ -230,7 +230,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     });
 
     await waitFor(() => {
-      expect(parsedBody.payload.action).toBe("row/create");
+      expect(parsedBody.payload.action).toBe("bulk/create");
     });
 
     // Verify it has the default table_id
@@ -280,7 +280,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     });
 
     await waitFor(() => {
-      expect(parsedBody.payload.action).toBe("row/update");
+      expect(parsedBody.payload.action).toBe("bulk/update");
     });
 
     // Additional assertions...
@@ -335,7 +335,7 @@ describe("CreateOrEditTableNotificationModal", () => {
       return parsedBody; // Return the parsed body for later assertions
     }).then((parsedBody) => {
       // Verify the event has been changed to 'row updated'
-      expect(parsedBody.payload.action).toBe("row/update");
+      expect(parsedBody.payload.action).toBe("bulk/update");
     });
 
     expect(onNotificationUpdatedMock).toHaveBeenCalledTimes(1);
@@ -346,7 +346,7 @@ describe("CreateOrEditTableNotificationModal", () => {
 function createMockTableNotification({
   id = 123,
   event_name = "event/action.success",
-  action = "row/create",
+  action = "bulk/create",
   table_id = 42,
   user_id = 1,
 }: {

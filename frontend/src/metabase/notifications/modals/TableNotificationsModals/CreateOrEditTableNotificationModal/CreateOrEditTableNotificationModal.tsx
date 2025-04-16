@@ -54,29 +54,29 @@ const NOTIFICATION_TRIGGER_OPTIONS_MAP: Record<
   ActionType,
   TableNotificationTriggerOption
 > = {
-  "row/create": {
+  "bulk/create": {
     value: {
       eventName: "event/action.success",
-      action: "row/create",
+      action: "bulk/create",
     },
     label: t`When new records are created`,
-    action: "row/create",
+    action: "bulk/create",
   },
-  "row/update": {
+  "bulk/update": {
     value: {
       eventName: "event/action.success",
-      action: "row/update",
+      action: "bulk/update",
     },
     label: t`When any cell changes it's value`,
-    action: "row/update",
+    action: "bulk/update",
   },
-  "row/delete": {
+  "bulk/delete": {
     value: {
       eventName: "event/action.success",
-      action: "row/delete",
+      action: "bulk/delete",
     },
-    label: t`When a record is deleted`,
-    action: "row/delete",
+    label: t`When records are deleted`,
+    action: "bulk/delete",
   },
 };
 
@@ -130,7 +130,7 @@ export const CreateOrEditTableNotificationModal = ({
 
   const triggerOptions = useMemo(
     () =>
-      (["row/create", "row/update", "row/delete"] as ActionType[]).map(
+      (["bulk/create", "bulk/update", "bulk/delete"] as ActionType[]).map(
         (action) => ({
           value: action,
           label: NOTIFICATION_TRIGGER_OPTIONS_MAP[action].label,
@@ -142,7 +142,7 @@ export const CreateOrEditTableNotificationModal = ({
 
   useEffect(() => {
     if (tableId && channelSpec && user && hookChannels && !requestBody) {
-      const defaultOption = NOTIFICATION_TRIGGER_OPTIONS_MAP["row/create"];
+      const defaultOption = NOTIFICATION_TRIGGER_OPTIONS_MAP["bulk/create"];
       setRequestBody(
         isEditMode
           ? { ...notification }

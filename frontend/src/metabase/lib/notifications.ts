@@ -55,12 +55,12 @@ function formatEventName(event_name: SystemEvent, action: ActionType) {
   switch (event_name) {
     case "event/action.success":
       switch (action) {
-        case "row/create":
-          return t`Row created`;
-        case "row/update":
-          return t`Row updated`;
-        case "row/delete":
-          return t`Row deleted`;
+        case "bulk/create":
+          return t`Rows created`;
+        case "bulk/update":
+          return t`Rows updated`;
+        case "bulk/delete":
+          return t`Rows deleted`;
         default:
           return event_name;
       }
