@@ -25,9 +25,10 @@ jobs:
       matrix: ${{ steps.matrix.outputs.config }}
       regularChunks: ${{ steps.matrix.outputs.regularChunks }}
     steps:
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: lts/Jod # 22.x.x
       - name: Install glob package
         run: npm install glob
       - uses: actions/github-script@v7
@@ -36,72 +37,10 @@ jobs:
           chunks: ${{ inputs.chunks }}
         with:
           script: | # js
-            const java = 21;
-            const defaultRunner = "ubuntu-22.04";
-            const SPECS_PER_CHUNK = 5; // number of specs per chunk when running specific specs
-
-            const defaultOptions = {
-              "java-version": java,
-              runner: defaultRunner,
-              edition: "ee",
-            };
-
-            // Log the raw input value
-            console.log('Input specs value:', "${{ inputs.specs }}");
-
-            // Use input.specs if provided, otherwise use default pattern
-            const allSpecs = "${{ inputs.specs }}" || "./e2e/test/scenarios/**/*.cy.spec.*";
-            const isDefaultSpecPattern = allSpecs === "./e2e/test/scenarios/**/*.cy.spec.*";
-
-            // Log the processed value
-            console.log('Processed specs value:', allSpecs);
-            console.log('Is default pattern:', isDefaultSpecPattern);
-
-            // Helper to check if specs exist for a given pattern
-            const hasMatchingSpecs = (pattern) => {
-              const { globSync } = require('glob');
-              return globSync(pattern).length > 0;
-            };
-
-            // Define special test configurations and filter out those without matching specs
-            const specialTestConfigs = [
-              { name: "embedding-sdk", specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*" },
-              { name: "oss-subset", edition: 'oss', tags: "@OSS @smoke+-@EE", specs: allSpecs },
-              { name: "mongo", tags: "@mongo", specs: allSpecs },
-            ];
-
-            // Filter special tests based on matching specs
-            const specialTests = specialTestConfigs.filter(test => hasMatchingSpecs(test.specs));
-
-            // Calculate chunks based on whether we're running all tests or specific ones
+            const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
+            const inputSpecs = "${{ inputs.specs }}";
             const inputChunks = Number(process.env.chunks);
-            let regularChunks;
-
-            if (isDefaultSpecPattern) {
-              // For default pattern, use input chunks minus special tests
-              regularChunks = inputChunks - specialTests.length;
-            } else {
-              // For specific specs, calculate based on number of matching files
-              const matchingSpecsCount = hasMatchingSpecs(allSpecs);
-              regularChunks = Math.max(1, Math.ceil(matchingSpecsCount / SPECS_PER_CHUNK));
-            }
-
-            // Create regular test chunks
-            const regularTests = new Array(regularChunks).fill(1)
-              .map((files, index) => ({
-                name: `e2e-group-${index + 1}`,
-                ...(!isDefaultSpecPattern && { specs: allSpecs })
-              }));
-
-            // Combine regular and special tests if special tests exist
-            const testSets = specialTests.length > 0
-              ? [...regularTests, ...specialTests]
-              : regularTests;
-
-            const config = testSets.map((options) => ({
-              ...defaultOptions,
-              ...options,
-            }));
+            const { config, regularChunks } = buildMatrix(inputSpecs, inputChunks);
 
             core.setOutput("regularChunks", JSON.stringify(regularChunks));
             core.setOutput("config", JSON.stringify({ include: config }));
