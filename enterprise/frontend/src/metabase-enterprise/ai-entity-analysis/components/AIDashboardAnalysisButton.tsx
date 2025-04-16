@@ -3,16 +3,16 @@ import { t } from "ttag";
 import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { useDispatch } from "metabase/lib/redux";
 
-import { toggleExplainSidebar } from "../state";
+import { toggleAIQuestionAnalysisSidebar } from "../state";
 
-export const MetabotExplainChartButton = () => {
+export const AIDashboardAnalysisButton = () => {
   const dispatch = useDispatch();
 
   const handleClick = () => {
-    dispatch(toggleExplainSidebar());
+    dispatch(toggleAIQuestionAnalysisSidebar());
   };
 
-  const tooltipLabel = t`Explain this chart`;
+  const tooltipLabel = t`Explain this dashboard`;
 
   return (
     <ToolbarButton

@@ -8,10 +8,10 @@ import { SummarizeSidebar } from "metabase/query_builder/components/view/sidebar
 import TimelineSidebar from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
 import * as Lib from "metabase-lib";
 
-const getIsExplainSidebarVisible = (state) =>
-  state.plugins?.aiAnalysisPlugin?.isExplainSidebarVisible || false;
+const getIsAIQuestionAnalysisSidebarVisible = (state) =>
+  state.plugins?.aiAnalysisPlugin?.isAIQuestionAnalysisSidebarVisible || false;
 
-const MetabotExplainSidebar = PLUGIN_AI_ANALYSIS.ExplainSidebar;
+const AIQuestionAnalysisSidebar = PLUGIN_AI_ANALYSIS.AIQuestionAnalysisSidebar;
 
 export const StructuredQueryRightSidebar = ({
   deselectTimelineEvents,
@@ -34,8 +34,8 @@ export const StructuredQueryRightSidebar = ({
   visibleTimelineEventIds,
   xDomain,
 }) => {
-  const isShowingMetabotExplainSidebar = useSelector(
-    getIsExplainSidebarVisible,
+  const isShowingAIQuestionAnalysisSidebar = useSelector(
+    getIsAIQuestionAnalysisSidebarVisible,
   );
 
   return match({
@@ -44,13 +44,13 @@ export const StructuredQueryRightSidebar = ({
     isShowingTimelineSidebar,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
-    isShowingMetabotExplainSidebar,
+    isShowingAIQuestionAnalysisSidebar,
   })
     .with(
       {
-        isShowingMetabotExplainSidebar: true,
+        isShowingAIQuestionAnalysisSidebar: true,
       },
-      () => <MetabotExplainSidebar />,
+      () => <AIQuestionAnalysisSidebar question={question} />,
     )
     .with(
       {

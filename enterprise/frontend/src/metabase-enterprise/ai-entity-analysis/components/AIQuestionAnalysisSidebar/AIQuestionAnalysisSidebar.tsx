@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
@@ -6,37 +5,39 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { getIsAnySidebarOpen } from "metabase/query_builder/selectors";
 import { getChartImage } from "metabase/visualizations/lib/save-chart-image";
+import type Question from "metabase-lib/v1/Question";
 
 import { useAnalyzeChartMutation } from "../../../api/ai-entity-analysis";
-import { closeExplainSidebar } from "../../state";
+import { closeAIQuestionAnalysisSidebar } from "../../state";
 import type { AiAnalysisStoreState } from "../../state/selectors";
-import { getIsExplainSidebarVisible } from "../../state/selectors";
+import { getIsAIQuestionAnalysisSidebarVisible } from "../../state/selectors";
 import { AIAnalysisContent } from "../AIAnalysisContent";
 
 import styles from "./AIQuestionAnalysisSidebar.module.css";
 
-type AIQuestionAnalysisSidebarProps = {
-  className?: string;
-};
+export interface AIQuestionAnalysisSidebarProps {
+  question: Question;
+}
 
 export function AIQuestionAnalysisSidebar({
-  className,
+  question,
 }: AIQuestionAnalysisSidebarProps) {
   const dispatch = useDispatch();
   const isVisible = useSelector((state) =>
-    getIsExplainSidebarVisible(state as unknown as AiAnalysisStoreState),
+    getIsAIQuestionAnalysisSidebarVisible(
+      state as unknown as AiAnalysisStoreState,
+    ),
   );
   const isAnySidebarOpen = useSelector(getIsAnySidebarOpen);
-  const [analyzeChart, { isLoading, data: analysisData, error: apiError }] =
-    useAnalyzeChartMutation();
+  const [analyzeChart, { data: analysisData }] = useAnalyzeChartMutation();
 
   const handleClose = useCallback(() => {
-    dispatch(closeExplainSidebar());
+    dispatch(closeAIQuestionAnalysisSidebar());
   }, [dispatch]);
 
   useEffect(() => {
     if (isVisible && isAnySidebarOpen) {
-      dispatch(closeExplainSidebar());
+      dispatch(closeAIQuestionAnalysisSidebar());
     }
   }, [isVisible, isAnySidebarOpen, dispatch]);
 
@@ -50,32 +51,26 @@ export function AIQuestionAnalysisSidebar({
       if (imageFile) {
         await analyzeChart({
           image: imageFile,
-          name: "Chart Analysis",
+          name: question.card().name,
         });
       }
     };
 
     fetchData();
-  }, [isVisible, analysisData, analyzeChart]);
+  }, [isVisible, analysisData, analyzeChart, question]);
 
   if (!isVisible) {
     return null;
   }
 
-  const error = apiError ? t`Failed to analyze chart` : null;
-
   return (
     <SidebarContent
-      className={cx(styles.sidebarContent, className)}
       title={t`Explain these results`}
       onClose={handleClose}
+      icon="metabot"
     >
       <div className={styles.contentWrapper}>
-        <AIAnalysisContent
-          explanation={analysisData?.summary || null}
-          isLoading={isLoading}
-          error={error}
-        />
+        <AIAnalysisContent explanation={analysisData?.summary} />
       </div>
     </SidebarContent>
   );

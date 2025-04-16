@@ -224,7 +224,7 @@ export function ViewTitleHeaderRightSide({
         </Box>
       )}
       {!isShowingNotebook && <QuestionSharingMenu question={question} />}
-      <PLUGIN_AI_ANALYSIS.ExplainChartButton />
+      <PLUGIN_AI_ANALYSIS.AIQuestionAnalysisButton />
       {isSaved && (
         <QuestionActions
           question={question}

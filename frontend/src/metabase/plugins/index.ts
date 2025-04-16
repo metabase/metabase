@@ -659,16 +659,20 @@ export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
   GenerateSqlQueryButton: PluginPlaceholder,
 };
 
+export interface AIQuestionAnalysisSidebarProps {
+  question: Question;
+}
+
 export type PluginAiAnalysis = {
-  ExplainChartButton: ComponentType<any>;
-  ExplainDashboardButton: ComponentType<any>;
-  ExplainSidebar: ComponentType<any>;
+  AIQuestionAnalysisButton: ComponentType<Record<string, never>>;
+  AIDashboardAnalysisButton: ComponentType<Record<string, never>>;
+  AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
 };
 
 export const PLUGIN_AI_ANALYSIS: PluginAiAnalysis = {
-  ExplainChartButton: PluginPlaceholder,
-  ExplainDashboardButton: PluginPlaceholder,
-  ExplainSidebar: PluginPlaceholder,
+  AIQuestionAnalysisButton: PluginPlaceholder,
+  AIDashboardAnalysisButton: PluginPlaceholder,
+  AIQuestionAnalysisSidebar: PluginPlaceholder,
 };
 
 export const PLUGIN_METABOT = {

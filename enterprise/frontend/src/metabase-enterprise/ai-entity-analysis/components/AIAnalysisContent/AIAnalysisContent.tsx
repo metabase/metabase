@@ -1,35 +1,20 @@
 import Markdown from "metabase/core/components/Markdown";
+import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { Skeleton } from "metabase/ui/components/feedback/Skeleton/Skeleton";
 
-import styles from "./AIAnalysisContent.module.css";
-
 interface AIAnalysisContentProps {
-  explanation: string | null;
-  isLoading: boolean;
-  error: string | null;
+  explanation?: string;
 }
 
-export function AIAnalysisContent({
-  explanation,
-  isLoading,
-  error,
-}: AIAnalysisContentProps) {
+export function AIAnalysisContent({ explanation }: AIAnalysisContentProps) {
   return (
-    <div className={styles.container}>
-      {isLoading ? (
-        <div className={styles.loaderContainer}>
-          <Skeleton h="1rem" natural />
-          <Skeleton h="1rem" natural />
-          <Skeleton h="1rem" natural />
-          <Skeleton h="1rem" natural />
-          <Skeleton h="1rem" natural />
-        </div>
-      ) : error ? (
-        <div className={styles.errorContainer}>{error}</div>
+    <div>
+      {explanation == null ? (
+        <Repeat times={8}>
+          <Skeleton h="1rem" natural mb="0.5rem" />
+        </Repeat>
       ) : (
-        <div className={styles.markdownWrapper}>
-          <Markdown>{explanation || ""}</Markdown>
-        </div>
+        <Markdown>{explanation}</Markdown>
       )}
     </div>
   );

@@ -1,10 +1,3 @@
-.sidebarContent {
-  width: 400px;
-  max-width: 400px;
-  box-sizing: border-box;
-  position: relative;
-}
-
 .header {
   display: flex;
   align-items: center;
@@ -48,10 +41,8 @@
 }
 
 .contentWrapper {
-  padding: 0 16px 16px;
+  padding: 0 1.5rem 1rem;
   overflow-y: auto;
-  overflow-x: hidden;
-  box-sizing: border-box;
   width: 100%;
   max-width: 100%;
 }

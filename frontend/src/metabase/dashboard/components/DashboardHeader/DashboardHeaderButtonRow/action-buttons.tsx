@@ -173,7 +173,7 @@ export const dashboardActionButtons: Record<
       !dashboard.archived,
   },
   // [DASHBOARD_ACTION.METABOT_EXPLAIN]: {
-  //   component: PLUGIN_AI_ANALYSIS.ExplainDashboardButton,
+  //   component: PLUGIN_AI_ANALYSIS.AIDashboardAnalysisButton,
   //   enabled: ({ isEditing }) => !isEditing,
   // },
 

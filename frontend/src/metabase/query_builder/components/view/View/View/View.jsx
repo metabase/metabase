@@ -87,7 +87,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     isShowingTemplateTagsEditor,
     isShowingDataReference,
     isShowingSnippetSidebar,
-    isExplainSidebarVisible,
+    isAIQuestionAnalysisSidebarVisible,
   } = props;
 
   // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -172,7 +172,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
       (isShowingTemplateTagsEditor ||
         isShowingDataReference ||
         isShowingSnippetSidebar)) ||
-    isExplainSidebarVisible;
+    isAIQuestionAnalysisSidebarVisible;
 
   const rightSidebarWidth = match({
     isShowingTimelineSidebar,

@@ -1,29 +1,33 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 export interface AiAnalysisState {
-  isExplainSidebarVisible: boolean;
+  isAIQuestionAnalysisSidebarVisible: boolean;
 }
 
 export const aiAnalysisInitialState: AiAnalysisState = {
-  isExplainSidebarVisible: false,
+  isAIQuestionAnalysisSidebarVisible: false,
 };
 
 export const aiAnalysis = createSlice({
   name: "metabase-enterprise/ai-analysis",
   initialState: aiAnalysisInitialState,
   reducers: {
-    openExplainSidebar: (state) => {
-      state.isExplainSidebarVisible = true;
+    openAIQuestionAnalysisSidebar: (state) => {
+      state.isAIQuestionAnalysisSidebarVisible = true;
     },
-    closeExplainSidebar: (state) => {
-      state.isExplainSidebarVisible = false;
+    closeAIQuestionAnalysisSidebar: (state) => {
+      state.isAIQuestionAnalysisSidebarVisible = false;
     },
-    toggleExplainSidebar: (state) => {
-      state.isExplainSidebarVisible = !state.isExplainSidebarVisible;
+    toggleAIQuestionAnalysisSidebar: (state) => {
+      state.isAIQuestionAnalysisSidebarVisible =
+        !state.isAIQuestionAnalysisSidebarVisible;
     },
   },
 });
 
-export const { openExplainSidebar, closeExplainSidebar, toggleExplainSidebar } =
-  aiAnalysis.actions;
+export const {
+  openAIQuestionAnalysisSidebar,
+  closeAIQuestionAnalysisSidebar,
+  toggleAIQuestionAnalysisSidebar,
+} = aiAnalysis.actions;
 export const aiAnalysisReducer = aiAnalysis.reducer;

@@ -11,7 +11,7 @@ export type AiAnalysisStoreState = {
 export const getAiAnalysis = (state: AiAnalysisStoreState) =>
   state.plugins.aiAnalysisPlugin;
 
-export const getIsExplainSidebarVisible = createSelector(
+export const getIsAIQuestionAnalysisSidebarVisible = createSelector(
   [getAiAnalysis],
-  (aiAnalysis) => aiAnalysis.isExplainSidebarVisible,
+  (aiAnalysis) => aiAnalysis.isAIQuestionAnalysisSidebarVisible,
 );
