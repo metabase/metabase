@@ -26,27 +26,39 @@ const modelCachingOptions = [
   },
   {
     value: "0 0 0/2 * * ? *",
-    label: t`2 hours`,
+    get label() {
+      return t`2 hours`;
+    },
   },
   {
     value: "0 0 0/3 * * ? *",
-    label: t`3 hours`,
+    get label() {
+      return t`3 hours`;
+    },
   },
   {
     value: "0 0 0/6 * * ? *",
-    label: t`6 hours`,
+    get label() {
+      return t`6 hours`;
+    },
   },
   {
     value: "0 0 0/12 * * ? *",
-    label: t`12 hours`,
+    get label() {
+      return t`12 hours`;
+    },
   },
   {
     value: "0 0 0 ? * * *",
-    label: t`24 hours`,
+    get label() {
+      return t`24 hours`;
+    },
   },
   {
     value: "custom",
-    label: t`Custom…`,
+    get label() {
+      return t`Custom…`;
+    },
   },
 ];
 

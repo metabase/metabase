@@ -2,51 +2,69 @@ import { t } from "ttag";
 
 export const dashboardShortcuts = {
   "bookmark-dashboard": {
-    name: t`Bookmark Dashboard`,
+    get name() {
+      return t`Bookmark Dashboard`;
+    },
     shortcut: ["o"],
     shortcutGroup: "dashboard",
   },
   "add-filter": {
-    name: t`Add Filter`,
+    get name() {
+      return t`Add Filter`;
+    },
     shortcut: ["f"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
   "add-notebook-question": {
-    name: t`Add Notebook Question`,
+    get name() {
+      return t`Add Notebook Question`;
+    },
     shortcut: ["a q"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
   "add-native-question": {
-    name: t`Add Native Question`,
+    get name() {
+      return t`Add Native Question`;
+    },
     shortcut: ["a n"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
   "cancel-edit": {
-    name: t`Cancel Edit Dashboard`,
+    get name() {
+      return t`Cancel Edit Dashboard`;
+    },
     shortcut: ["e"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",
   },
   "trash-dashboard": {
-    name: t`Send tashboard to trash`,
+    get name() {
+      return t`Send tashboard to trash`;
+    },
     shortcut: ["$mod+backspace"],
     shortcutGroup: "dashboard",
   },
   "info-dashboard": {
-    name: t`Toggle Dashboard Info`,
+    get name() {
+      return t`Toggle Dashboard Info`;
+    },
     shortcut: ["]"],
     shortcutGroup: "dashboard",
   },
   "edit-dashboard": {
-    name: t`Edit Dashboard`,
+    get name() {
+      return t`Edit Dashboard`;
+    },
     shortcutGroup: "dashboard",
     shortcut: ["e"],
   },
   "save-dashboard": {
-    name: t`Save Dashboard`,
+    get name() {
+      return t`Save Dashboard`;
+    },
     shortcut: ["s"],
     shortcutGroup: "dashboard",
     shortcutContext: "When editing",

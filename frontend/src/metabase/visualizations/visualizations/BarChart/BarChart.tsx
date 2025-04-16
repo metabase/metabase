@@ -18,10 +18,14 @@ import type {
 Object.assign(
   BarChart,
   getCartesianChartDefinition({
-    uiName: t`Bar`,
+    get uiName() {
+      return t`Bar`;
+    },
     identifier: "bar",
     iconName: "bar",
-    noun: t`bar chart`,
+    get noun() {
+      return t`bar chart`;
+    },
     minSize: getMinSize("bar"),
     defaultSize: getDefaultSize("bar"),
     settings: {

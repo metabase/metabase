@@ -13,7 +13,9 @@ const isForm = (object: any, computedSettings: VisualizationSettings) =>
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Action, {
-  uiName: t`Action`,
+  get uiName() {
+    return t`Action`;
+  },
   identifier: "action",
   iconName: "play",
 
@@ -38,36 +40,83 @@ export default Object.assign(Action, {
       dashboard: false,
     },
     actionDisplayType: {
-      section: t`Display`,
-      title: t`Action Form Display`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Action Form Display`;
+      },
       widget: "radio",
       hidden: true,
       props: {
         options: [
-          { name: t`Form`, value: "form" },
-          { name: t`Button`, value: "button" },
+          {
+            get name() {
+              return t`Form`;
+            },
+            value: "form",
+          },
+          {
+            get name() {
+              return t`Button`;
+            },
+            value: "button",
+          },
         ],
       },
     },
     "button.label": {
-      section: t`Display`,
-      title: t`Label`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Label`;
+      },
       widget: "input",
       getHidden: isForm,
     },
     "button.variant": {
-      section: t`Display`,
-      title: t`Variant`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Variant`;
+      },
       widget: "select",
       default: "primary",
       getHidden: isForm,
       props: {
         options: [
-          { name: t`Primary`, value: "primary" },
-          { name: t`Outline`, value: "default" },
-          { name: t`Danger`, value: "danger" },
-          { name: t`Success`, value: "success" },
-          { name: t`Borderless`, value: "borderless" },
+          {
+            get name() {
+              return t`Primary`;
+            },
+            value: "primary",
+          },
+          {
+            get name() {
+              return t`Outline`;
+            },
+            value: "default",
+          },
+          {
+            get name() {
+              return t`Danger`;
+            },
+            value: "danger",
+          },
+          {
+            get name() {
+              return t`Success`;
+            },
+            value: "success",
+          },
+          {
+            get name() {
+              return t`Borderless`;
+            },
+            value: "borderless",
+          },
         ],
       },
     },

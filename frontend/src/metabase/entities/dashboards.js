@@ -47,8 +47,12 @@ const Dashboards = createEntity({
   nameOne: "dashboard",
   path: "/api/dashboard",
 
-  displayNameOne: t`dashboard`,
-  displayNameMany: t`dashboards`,
+  get displayNameOne() {
+    return t`dashboard`;
+  },
+  get displayNameMany() {
+    return t`dashboards`;
+  },
 
   rtk: {
     getUseGetQuery: () => ({

@@ -33,9 +33,15 @@ import { SetByEnvVarWrapper } from "../SettingsSetting";
 const BREADCRUMBS = [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
 
 const SEND_TEST_BUTTON_STATES = {
-  default: t`Send test email`,
-  working: t`Sending...`,
-  success: t`Sent!`,
+  get default() {
+    return t`Send test email`;
+  },
+  get working() {
+    return t`Sending...`;
+  },
+  get success() {
+    return t`Sent!`;
+  },
 };
 type ButtonStateType = keyof typeof SEND_TEST_BUTTON_STATES;
 

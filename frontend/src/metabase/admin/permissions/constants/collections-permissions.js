@@ -2,19 +2,25 @@ import { t } from "ttag";
 
 export const COLLECTION_OPTIONS = {
   write: {
-    label: t`Curate`,
+    get label() {
+      return t`Curate`;
+    },
     value: "write",
     icon: "check",
     iconColor: "success",
   },
   read: {
-    label: t`View`,
+    get label() {
+      return t`View`;
+    },
     value: "read",
     icon: "eye",
     iconColor: "warning",
   },
   none: {
-    label: t`No access`,
+    get label() {
+      return t`No access`;
+    },
     value: "none",
     icon: "close",
     iconColor: "danger",
