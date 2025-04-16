@@ -77,7 +77,7 @@
                  :task   {:optional true} [:string {:min 1}]]]])
 
 (mu/defn all
-  "Return all TaskHistory entries, applying `limit` and `offset` if not nil"
+  "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
    filter :- Filter]
