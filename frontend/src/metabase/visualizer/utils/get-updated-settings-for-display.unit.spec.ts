@@ -65,7 +65,7 @@ describe("updateSettingsForDisplay", () => {
     expect(result).toBeUndefined();
   });
 
-  it("should return undefined if sourceDisplay and targetDisplay are cartesian", () => {
+  it("should work if sourceDisplay and targetDisplay are cartesian", () => {
     const settings = {};
     const sourceDisplay = "bar";
     const targetDisplay = "bar";
@@ -76,7 +76,11 @@ describe("updateSettingsForDisplay", () => {
       sourceDisplay,
       targetDisplay,
     );
-    expect(result).toBeUndefined();
+    expect(result).toStrictEqual({
+      columnValuesMapping,
+      columns,
+      settings: { "graph.dimensions": [], "graph.metrics": [] },
+    });
   });
 
   describe("cartesian -> pie", () => {
