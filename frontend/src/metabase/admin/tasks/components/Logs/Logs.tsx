@@ -43,19 +43,25 @@ const LogsBase = ({
     () => filterLogs(logs, { process, query }),
     [logs, process, query],
   );
+  const isAnyFilterApplied = process !== "ALL" || query.length > 0;
   const { scrollRef, onScroll, refollow } = useTailLogs(filteredLogs);
+  const logText = useMemo(
+    () => filteredLogs.map(formatLog).join("\n"),
+    [filteredLogs],
+  );
 
   const displayLogs = useMemo(() => {
-    const noResults = filteredLogs.length === 0;
-    const logText = noResults
-      ? t`There's nothing here, yet.`
-      : filteredLogs.map(formatLog).join("\n");
+    if (!logText) {
+      return isAnyFilterApplied
+        ? t`Nothing matches your filter.`
+        : t`There's nothing here, yet.`;
+    }
+
     return reactAnsiStyle(React, logText);
-  }, [filteredLogs]);
+  }, [logText, isAnyFilterApplied]);
 
   const handleDownload = () => {
-    const logs = filteredLogs.map(formatLog).join("\n");
-    const blob = new Blob([logs], { type: "text/json" });
+    const blob = new Blob([logText], { type: "text/json" });
     openSaveDialog("logs.txt", blob);
   };
 
@@ -80,8 +86,8 @@ const LogsBase = ({
                 />
               ) : undefined
             }
-            value={query ?? ""}
-            w={220} // set width to prevent CLS when clear button appears/disappears
+            value={query}
+            w={220} // set width to prevent CLS when the "Clear" button appears/disappears
             onChange={(event) => {
               patchUrlState({ query: event.target.value });
               refollow();
@@ -114,7 +120,7 @@ const LogsBase = ({
         </Flex>
 
         <Button
-          disabled={filteredLogs.length === 0}
+          disabled={logText.length === 0}
           leftSection={<Icon name="download" />}
           variant="filled"
           onClick={handleDownload}
