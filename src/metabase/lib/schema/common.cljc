@@ -23,9 +23,8 @@
   string. This is preferable to using [[clojure.core/keyword]] directly, because that will be tried on things that
   should not get converted to keywords, like numbers."
   [x]
-  (if (string? x)
-    (keyword (u/lower-case-en x))
-    x))
+  (cond-> x
+    (string? x) (-> u/lower-case-en keyword)))
 
 (defn normalize-map
   "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`."
