@@ -1,7 +1,7 @@
-import { type ShortcutId, shortcuts } from ".";
+import { type KeyboardShortcutId, shortcuts } from ".";
 
 const getShortcutsWithPrefix = (prefix: string) => {
-  const allIds = Object.keys(shortcuts) as ShortcutId[];
+  const allIds = Object.keys(shortcuts) as KeyboardShortcutId[];
   return allIds
     .filter((id) => id.startsWith(prefix))
     .map((id) => ({ ...shortcuts[id], id }));
