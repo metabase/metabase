@@ -170,7 +170,7 @@
 (defn start-listener!
   "Starts the ingestion listener on the queue"
   []
-  (queue/listen! listener-name queue bulk-ingest!
+  (queue/listen! listener-name queue #(bulk-ingest! % false)
                  {:success-handler     (fn [result duration _]
                                          (report->prometheus! duration result)
                                          (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))
