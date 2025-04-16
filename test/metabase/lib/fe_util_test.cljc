@@ -256,8 +256,9 @@
 (deftest ^:parallel normalize-expression-clause-test
   (let [column (meta/field-metadata :checkins :date)]
     (testing "normalizes week-mode correctly"
-      (doseq [week-mode ["US" "us" "Us" "ISO" "iso" "Iso"]]
-        (is (= (keyword (u/lower-case-en week-mode))
+      (doseq [[expected strings] {:us ["US" "us" "Us"], :iso ["ISO" "iso" "Iso"]}
+              week-mode strings]
+        (is (= expected
                (last (lib/expression-clause {:lib/type :mbql/expression-parts
                                              :operator :get-week
                                              :options {}
