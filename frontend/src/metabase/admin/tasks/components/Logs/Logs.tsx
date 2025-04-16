@@ -43,7 +43,7 @@ const LogsBase = ({
     () => filterLogs(logs, { process, query }),
     [logs, process, query],
   );
-  const isAnyFilterApplied = process !== "ALL" || query.length > 0;
+  const hasAnyLogs = logs.length > 0;
   const { scrollRef, onScroll, refollow } = useTailLogs(filteredLogs);
   const logText = useMemo(
     () => filteredLogs.map(formatLog).join("\n"),
@@ -52,13 +52,13 @@ const LogsBase = ({
 
   const displayLogs = useMemo(() => {
     if (!logText) {
-      return isAnyFilterApplied
+      return hasAnyLogs
         ? t`Nothing matches your filters.`
         : t`There's nothing here, yet.`;
     }
 
     return reactAnsiStyle(React, logText);
-  }, [logText, isAnyFilterApplied]);
+  }, [hasAnyLogs, logText]);
 
   const handleDownload = () => {
     const blob = new Blob([logText], { type: "text/json" });
