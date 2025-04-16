@@ -12,6 +12,12 @@ export function load(app) {
   });
 
   app.renderer.on(PageEvent.END, (page) => {
+    const isHtmlPage = page.url.endsWith(".html");
+
+    if (!isHtmlPage) {
+      return;
+    }
+
     const frontmatterGlobals = app.options.getValue("frontmatterGlobals");
 
     const model = page.model;
