@@ -65,6 +65,13 @@ export function ensureDisplayIsSelected(display: VisualizationDisplay) {
   cy.findByDisplayValue(display).should("be.checked");
 }
 
+export function selectColumnFromColumnsList(
+  datasetName: string,
+  columnName: string,
+) {
+  dataSourceColumn(datasetName, columnName).click();
+}
+
 export function deselectColumnFromColumnsList(
   datasetName: string,
   columnName: string,

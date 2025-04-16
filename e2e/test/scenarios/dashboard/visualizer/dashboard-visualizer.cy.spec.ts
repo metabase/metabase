@@ -4,6 +4,7 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
+  PIVOT_TABLE_CARD,
   PRODUCTS_COUNT_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
   PRODUCTS_COUNT_BY_CREATED_AT,
@@ -952,6 +953,47 @@ describe("scenarios > dashboard > visualizer", () => {
           .findAllByTestId("well-item")
           .should("have.length", 0);
       });
+    });
+  });
+
+  it("should work correctly when built from a non-cartesian chart", () => {
+    H.createQuestion(PIVOT_TABLE_CARD);
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(PIVOT_TABLE_CARD.name);
+
+    H.modal().within(() => {
+      H.deselectColumnFromColumnsList(
+        PIVOT_TABLE_CARD.name,
+        "Product → Category",
+      );
+      H.deselectColumnFromColumnsList(
+        PIVOT_TABLE_CARD.name,
+        "Average of Quantity",
+      );
+      H.deselectColumnFromColumnsList(PIVOT_TABLE_CARD.name, "pivot-grouping");
+
+      H.switchToAddMoreData();
+      H.addDataset(ORDERS_COUNT_BY_CREATED_AT.name);
+      H.switchToColumnsList();
+      // Shouldn't this be automatic though?
+      H.selectColumnFromColumnsList(ORDERS_COUNT_BY_CREATED_AT.name, "Count");
+
+      H.verticalWell().within(() => {
+        cy.findByText("Count").should("exist");
+        cy.findByText(`Count (${ORDERS_COUNT_BY_CREATED_AT.name})`).should(
+          "exist",
+        );
+        cy.findAllByTestId("well-item").should("have.length", 2);
+      });
+      H.horizontalWell().within(() => {
+        cy.findByText("Created At: Year").should("exist");
+        cy.findAllByTestId("well-item").should("have.length", 1);
+      });
+
+      H.chartLegendItems().should("have.length", 2);
     });
   });
 });

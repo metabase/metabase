@@ -147,6 +147,19 @@ export const SCALAR_CARD: Record<string, NativeQuestionDetailsWithName> = {
   },
 };
 
+export const PIVOT_TABLE_CARD: StructuredQuestionDetailsWithName = {
+  name: "Pivot table",
+  display: "pivot",
+  query: {
+    aggregation: [["count"], ["avg", ["field", ORDERS.QUANTITY, null]]],
+    breakout: [
+      ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+    ],
+    "source-table": ORDERS_ID,
+  },
+};
+
 export const STEP_COLUMN_CARD: NativeQuestionDetailsWithName = {
   name: "Step Column",
   display: "table",
