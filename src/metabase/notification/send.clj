@@ -357,7 +357,8 @@
       (start-worker!))
     (fn [notification]
       ;; ensure there is always a worker to handle the notification
-      (start-worker!)
+      (while (< (.getActiveCount ^ExecutorService executor) pool-size)
+        (start-worker!))
       (put-notification! queue notification))))
 
 (defonce ^{:private true
