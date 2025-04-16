@@ -9,16 +9,12 @@
   by [[initialize-events!]]."
   (:require
    [clojure.spec.alpha :as s]
-   [malli.core :as mc]
-   [malli.generator :as mg]
-   [metabase.config :as config]
    [metabase.events.schema :as events.schema]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.methodical.null-cache :as u.methodical.null-cache]
    [metabase.util.methodical.unsorted-dispatcher :as u.methodical.unsorted-dispatcher]
    [methodical.core :as methodical]
@@ -108,7 +104,6 @@
   (assert (map? event)
           (format "Invalid event %s: event must be a map." (pr-str event)))
   (try
-    (def event event)
     (when-let [schema (and (mu/instrument-ns? *ns*) (events.schema/event-schema topic))]
       (mu/validate-throw schema event))
     (next-method topic event)

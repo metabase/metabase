@@ -71,24 +71,3 @@
       ;;      We'll actually delete this whole method, it'll just become an :editable/insert action invocation.
       ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!) user-id {table-id row-pk->old-new-values}))
     res))
-
-(comment
-  (metabase.test/user-http-request
-   :crowberto
-   :post
-   (format "ee/data-editing/table/%d"
-           (metabase.test/id :categories))
-   {:rows [{:NAME "New Category"}]})
-  (metabase.test/user-http-request
-   :crowberto
-   :post
-   (format "ee/data-editing/table/%d/delete"
-           (metabase.test/id :orders))
-   {:rows [{:ID 2}]})
-
-  (metabase.test/user-http-request
-   :crowberto
-   :put
-   (format "ee/data-editing/table/%d"
-           (metabase.test/id :orders))
-   {:rows [{:ID 42 :PRODUCT_ID 3}]}))

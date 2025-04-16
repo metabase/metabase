@@ -11,7 +11,6 @@
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
-   [malli.generator :as mg]
    [malli.util :as mut]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr])

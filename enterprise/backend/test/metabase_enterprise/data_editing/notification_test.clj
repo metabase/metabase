@@ -181,7 +181,7 @@
   (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :table    {:id 1 :name "orders"}
-           :records  [{:row {:ID 1 :STATUS "approved"} :changes {:STATUS {:lefore "pending" :after "approved"}}}]
+           :records  [{:row {:ID 1 :STATUS "approved"} :changes {:STATUS {:before "pending" :after "approved"}}}]
            :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event

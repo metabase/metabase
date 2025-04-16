@@ -17,6 +17,7 @@
         (let [send-alert-by-user! (fn [user-kw]
                                     (-> (assoc notification :creator_id (mt/user->id user-kw))
                                         notification.payload/notification-payload
+                                        :payload
                                         :card_part
                                         :result
                                         :data
