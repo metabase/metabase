@@ -19,16 +19,12 @@ export function canListFieldValues({
   return values.length > 0 && !has_more_values;
 }
 
-export function canSearchFieldValues(
-  { fieldId, searchFieldId, hasFieldValues }: FieldValuesSearchInfo,
-  fieldData: GetFieldValuesResponse | undefined,
-): boolean {
-  return (
-    fieldId != null &&
-    searchFieldId != null &&
-    ((hasFieldValues === "list" && fieldData?.has_more_values) ||
-      hasFieldValues === "search")
-  );
+export function canSearchFieldValues({
+  fieldId,
+  searchFieldId,
+  hasFieldValues,
+}: FieldValuesSearchInfo): boolean {
+  return fieldId != null && searchFieldId != null && hasFieldValues !== "none";
 }
 
 export function getFieldOption([value, label]: FieldValue): ComboboxItem {

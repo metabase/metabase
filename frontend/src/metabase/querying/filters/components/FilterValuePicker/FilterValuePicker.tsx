@@ -71,7 +71,7 @@ function FilterValuePicker({
     );
   }
 
-  if (canSearchFieldValues(fieldInfo, fieldData)) {
+  if (canSearchFieldValues(fieldInfo)) {
     const searchColumn = checkNotNull(fieldInfo.searchField);
     const searchColumInfo = Lib.displayInfo(query, stageIndex, searchColumn);
     const searchColumName = searchColumInfo.displayName;
