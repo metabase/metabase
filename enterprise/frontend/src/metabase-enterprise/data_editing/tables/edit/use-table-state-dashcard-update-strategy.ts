@@ -8,6 +8,7 @@ import type { RowValue } from "metabase-types/api";
 
 import {
   type TableEditingStateUpdateStrategy,
+  createPrimaryKeyToUpdatedRowObjectMap,
   mapDataEditingRowObjectsToRowValues,
 } from "./use-table-state-update-strategy";
 
@@ -50,10 +51,9 @@ export function useTableEditingStateDashcardUpdateStrategy(
       }
 
       const pkColumnIndex = cardData.data.cols.findIndex(isPK);
-      const updatedRows = mapDataEditingRowObjectsToRowValues(
-        rows,
-        cardData.data.cols,
-      );
+      const pkColumnName = cardData.data.cols[pkColumnIndex].name;
+      const primaryKeyToUpdatedRowObjectMap =
+        createPrimaryKeyToUpdatedRowObjectMap(pkColumnName, rows);
 
       dispatch(
         updateCardData(cardId, dashcardId, {
@@ -61,10 +61,20 @@ export function useTableEditingStateDashcardUpdateStrategy(
           data: {
             ...cardData.data,
             rows: cardData.data.rows.map((row) => {
-              for (const updatedRow of updatedRows) {
-                if (row[pkColumnIndex] === updatedRow[pkColumnIndex]) {
-                  return updatedRow;
-                }
+              const updatedRowObject = primaryKeyToUpdatedRowObjectMap.get(
+                row[pkColumnIndex],
+              );
+
+              if (updatedRowObject) {
+                return row.map((value, index) => {
+                  const columnName = cardData.data.cols[index].name;
+
+                  if (columnName in updatedRowObject) {
+                    return updatedRowObject[columnName];
+                  }
+
+                  return value;
+                });
               }
 
               return row;

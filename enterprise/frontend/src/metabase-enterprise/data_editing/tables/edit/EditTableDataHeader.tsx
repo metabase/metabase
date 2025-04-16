@@ -6,7 +6,16 @@ import { TableNotificationsTrigger } from "metabase/notifications/modals";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip"; // TODO: we should not use query builder components
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components"; // TODO: we should not use query builder components
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { Button, Flex, Group, Icon, Stack, Title } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Loader,
+  Stack,
+  Title,
+} from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { Table as ApiTable } from "metabase-types/api";
@@ -18,18 +27,26 @@ interface EditTableDataHeaderProps {
   table: Table | ApiTable;
   question: Question;
   isLoading: boolean;
+  isUndoLoading: boolean;
+  isRedoLoading: boolean;
   onCreate: () => void;
   onQuestionChange: (newQuestion: Question) => void;
   refetchTableDataQuery: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 export const EditTableDataHeader = ({
   table,
   question,
   isLoading,
+  isUndoLoading,
+  isRedoLoading,
   onCreate,
   onQuestionChange,
   refetchTableDataQuery,
+  onUndo,
+  onRedo,
 }: EditTableDataHeaderProps) => {
   const hasFilters = useMemo(
     () =>
@@ -77,6 +94,26 @@ export const EditTableDataHeader = ({
               onRun={refetchTableDataQuery}
             />
             <TableNotificationsTrigger tableId={table.id} />
+            <ActionIcon
+              onClick={onUndo}
+              disabled={isUndoLoading || isRedoLoading}
+            >
+              {isUndoLoading ? (
+                <Loader size="xs" color="currentColor" />
+              ) : (
+                <Icon name="undo" tooltip={t`Undo changes`} />
+              )}
+            </ActionIcon>
+            <ActionIcon
+              onClick={onRedo}
+              disabled={isUndoLoading || isRedoLoading}
+            >
+              {isRedoLoading ? (
+                <Loader size="xs" color="currentColor" />
+              ) : (
+                <Icon name="redo" tooltip={t`Redo changes`} />
+              )}
+            </ActionIcon>
           </Flex>
         </Group>
       </Flex>
