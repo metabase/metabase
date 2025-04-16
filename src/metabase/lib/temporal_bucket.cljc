@@ -63,6 +63,22 @@
       :last    -1
       0)))
 
+(defn- temporal-interval-tru
+  "Chooses the correct temporal interval description based on the provided amount `n`."
+  [n
+   this-interval-message
+   prev-interval-message
+   prev-interval-plural-message
+   next-interval-message
+   next-interval-plural-message]
+  (cond
+    (zero? n) this-interval-message
+    (= n -1)  prev-interval-message
+    (= n 1)   next-interval-message
+    (neg? n)  prev-interval-plural-message
+    (pos? n)  next-interval-plural-message
+    :else     (throw (ex-info (str "Invalid n: " n) {:n n}))))
+
 (mu/defn describe-temporal-interval :- ::lib.schema.common/non-blank-string
   "Get a translated description of a temporal bucketing interval. If unit is unspecified, assume `:day`."
   [n    :- TemporalIntervalAmount
@@ -70,18 +86,62 @@
   (let [n    (interval-n->int n)
         unit (or unit :day)]
     (case (keyword unit)
-      :default         (lib.temporal-bucket.util/temporal-interval-tru n "default period")
-      :millisecond     (lib.temporal-bucket.util/temporal-interval-tru n "millisecond")
-      :second          (lib.temporal-bucket.util/temporal-interval-tru n "second")
-      :minute          (lib.temporal-bucket.util/temporal-interval-tru n "minute")
-      :hour            (lib.temporal-bucket.util/temporal-interval-tru n "hour")
-      :day             (lib.temporal-bucket.util/temporal-interval-tru n "day" "Today" "Yesterday" "Tomorrow")
-      :week            (lib.temporal-bucket.util/temporal-interval-tru n "week")
-      :month           (lib.temporal-bucket.util/temporal-interval-tru n "month")
-      :quarter         (lib.temporal-bucket.util/temporal-interval-tru n "quarter")
-      :year            (lib.temporal-bucket.util/temporal-interval-tru n "year")
+      :millisecond     (temporal-interval-tru n
+                                              (i18n/tru  "This millisecond")
+                                              (i18n/tru  "Previous millisecond")
+                                              (i18n/trun "Previus millisecond" "Previous {0} milliseconds" (abs n))
+                                              (i18n/tru  "Next millisecond")
+                                              (i18n/trun "Next millisecond" "Next {0} milliseconds" (abs n)))
+      :second          (temporal-interval-tru n
+                                              (i18n/tru  "This second")
+                                              (i18n/tru  "Previous second")
+                                              (i18n/trun "Previus second" "Previous {0} seconds" (abs n))
+                                              (i18n/tru  "Next second")
+                                              (i18n/trun "Next second" "Next {0} seconds" (abs n)))
+      :minute          (temporal-interval-tru n
+                                              (i18n/tru  "This minute")
+                                              (i18n/tru  "Previous minute")
+                                              (i18n/trun "Previus minute" "Previous {0} minutes" (abs n))
+                                              (i18n/tru  "Next minute")
+                                              (i18n/trun "Next minute" "Next {0} minutes" (abs n)))
+      :hour            (temporal-interval-tru n
+                                              (i18n/tru  "This hour")
+                                              (i18n/tru  "Previous hour")
+                                              (i18n/trun "Previus hour" "Previous {0} hours" (abs n))
+                                              (i18n/tru  "Next hour")
+                                              (i18n/trun "Next hour" "Next {0} hours" (abs n)))
+      :day             (temporal-interval-tru n
+                                              (i18n/tru  "Today")
+                                              (i18n/tru  "Yesterday")
+                                              (i18n/trun "Yesterday" "Previous {0} days" (abs n))
+                                              (i18n/tru  "Tomorrow")
+                                              (i18n/trun "Tomorrow" "Next {0} days" (abs n)))
+      :week            (temporal-interval-tru n
+                                              (i18n/tru  "This week")
+                                              (i18n/tru  "Previous week")
+                                              (i18n/trun "Previus week" "Previous {0} weeks" (abs n))
+                                              (i18n/tru  "Next week")
+                                              (i18n/trun "Next week" "Next {0} weeks" (abs n)))
+      :month           (temporal-interval-tru n
+                                              (i18n/tru  "This month")
+                                              (i18n/tru  "Previous month")
+                                              (i18n/trun "Previus month" "Previous {0} months" (abs n))
+                                              (i18n/tru  "Next month")
+                                              (i18n/trun "Next month" "Next {0} months" (abs n)))
+      :quarter         (temporal-interval-tru n
+                                              (i18n/tru  "This quarter")
+                                              (i18n/tru  "Previous quarter")
+                                              (i18n/trun "Previus quarter" "Previous {0} quarters" (abs n))
+                                              (i18n/tru  "Next quarter")
+                                              (i18n/trun "Next quarter" "Next {0} quarters" (abs n)))
+      :year            (temporal-interval-tru n
+                                              (i18n/tru  "This year")
+                                              (i18n/tru  "Previous year")
+                                              (i18n/trun "Previus year" "Previous {0} years" (abs n))
+                                              (i18n/tru  "Next year")
+                                              (i18n/trun "Next year" "Next {0} years" (abs n)))
       ;; else
-      (lib.temporal-bucket.util/temporal-interval-tru n "unknown unit"))))
+      (i18n/tru "Unknown unit"))))
 
 (mu/defn describe-relative-datetime :- ::lib.schema.common/non-blank-string
   "Get a translated description of the offset part of a relative datetime interval.

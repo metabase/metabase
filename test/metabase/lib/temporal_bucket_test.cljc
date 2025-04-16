@@ -29,13 +29,9 @@
       1  "Next month"
       2  "Next 2 months"))
   (testing "unknown unit"
-    (are [n expected] (= expected
-                         (lib.temporal-bucket/describe-temporal-interval n :century))
-      -2 "Previous 2 unknown units"
-      -1 "Previous unknown unit"
-      0  "This unknown unit"
-      1  "Next unknown unit"
-      2  "Next 2 unknown units")))
+    (are [n] (= "Unknown unit"
+                (lib.temporal-bucket/describe-temporal-interval n :century))
+      -2 -1 0 1 2)))
 
 (deftest ^:parallel describe-relative-datetime-test
   (doseq [unit [:day nil]]
