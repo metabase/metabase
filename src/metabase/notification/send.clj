@@ -344,7 +344,14 @@
                                                    (log/info "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
                                                  (catch Throwable e
-                                                   (log/error e "Error in notification worker")))))))]
+                                                   (log/error e "Error in notification worker")))))))
+        ensure-enough-workers! (fn []
+                                 (dotimes [i (- pool-size (.getActiveCount ^ThreadPoolExecutor executor))]
+                                   (log/debugf "Not enough workers, starting a new one %d/%d"
+                                               (+ (.getActiveCount ^ThreadPoolExecutor executor) i)
+                                               pool-size)
+                                   (start-worker!)))]
+
     (.addShutdownHook
      (Runtime/getRuntime)
      (Thread. ^Runnable (fn []
@@ -356,12 +363,7 @@
     (dotimes [_ pool-size]
       (start-worker!))
     (fn [notification]
-      ;; ensure there is always a worker to handle the notification
-      (dotimes [_ (- pool-size (.getActiveCount ^ThreadPoolExecutor executor))]
-        (log/debugf "Not enough workers, starting a new one %d/%d"
-                    (.getActiveCount ^ThreadPoolExecutor executor)
-                    pool-size)
-        (start-worker!))
+      (ensure-enough-workers!)
       (put-notification! queue notification))))
 
 (defonce ^{:private true
