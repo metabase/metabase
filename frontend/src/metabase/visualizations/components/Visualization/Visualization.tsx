@@ -758,7 +758,7 @@ class Visualization extends PureComponent<
             <EmptyVizState
               chartType={visualization?.identifier}
               isSummarizeSidebarOpen={isShowingSummarySidebar}
-              onEditSummary={onEditSummary}
+              onEditSummary={isDashboard ? undefined : onEditSummary}
             />
           ) : (
             series && (
