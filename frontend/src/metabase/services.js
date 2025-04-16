@@ -54,15 +54,15 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   const mapping = [
     [CardApi.query, CardApi.query_pivot],
     [DashboardApi.cardQuery, DashboardApi.cardQueryPivot],
-    [MetabaseApi.dataset, MetabaseApi.dataset_pivot],
+    [MetabaseApi.dataset, MetabaseApi.dataset_pivot, { wrap: true }],
     [PublicApi.cardQuery, PublicApi.cardQueryPivot],
     [PublicApi.dashboardCardQuery, PublicApi.dashboardCardQueryPivot],
     [EmbedApi.cardQuery, EmbedApi.cardQueryPivot],
     [EmbedApi.dashboardCardQuery, EmbedApi.dashboardCardQueryPivot],
   ];
-  for (const [from, to] of mapping) {
+  for (const [from, to, options = {}] of mapping) {
     if (api === from) {
-      return wrap(to);
+      return options.wrap ? wrap(to) : to;
     }
   }
   return api;
