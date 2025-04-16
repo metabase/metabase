@@ -9,11 +9,13 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
+   (java.time ZonedDateTime)
    (java.util.concurrent Callable Executors ExecutorService)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
    (org.quartz CronExpression)))
@@ -379,14 +381,47 @@
   "The default options for sending a notification."
   {:notification/sync? false})
 
+(setting/defsetting notification-cutoff-timestamp
+  "Timestamp that serves as an anchor point for notifications.
+  Timestamp should be ISO 8601 format and in UTC.
+  Tip: Use the `date -u -Iseconds` command to get the current time in UTC.
+
+  Used for staging instances to skip sending existing notifications."
+  :type       :string
+  :default    nil
+  :encryption :no
+  :export?    false
+  :cache? false
+  :getter     (fn []
+                (when-let [timestamp (some-> (setting/get-value-of-type :string :notification-cutoff-timestamp)
+                                             u.date/parse ;; expects ISO 8601 format
+                                             (#(.toOffsetDateTime ^ZonedDateTime %)))]
+                  (assert (t/< timestamp (t/offset-date-time)) "Cutoff timestamp must be in the past")
+                  timestamp))
+  :visibility :internal)
+
+(defn- skip-notification-because-of-cutoff?
+  "If `notification-cutoff-timestamp2` is set, returns true for notifications that have updated_at older than the cutoff timestamp.
+
+  This should be done on staging instances only.
+  IMPORTANT: DO NOT LET THIS MERGE TO MASTER."
+  [notification]
+  (and (:updated_at notification)
+       (notification-cutoff-timestamp)
+       (t/< (:updated_at notification)
+            (notification-cutoff-timestamp))))
+
 (mu/defn send-notification!
   "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
   [notification & {:keys [] :as options} :- [:maybe Options]]
-  (log/with-context {:notification_id (:id notification)
-                     :payload_type    (:payload_type notification)}
-    (let [options      (merge *default-options* options)
-          notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
-      (log/debugf "Will be send %s" (if (:notification/sync? options) "synchronously" "asynchronously"))
-      (if (:notification/sync? options)
-        (send-notification-sync! notification)
-        (send-notification-async! notification)))))
+  (if-not (skip-notification-because-of-cutoff? notification)
+    (log/with-context {:notification_id (:id notification)
+                       :payload_type    (:payload_type notification)}
+      (let [options      (merge *default-options* options)
+            notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
+        (log/debugf "Will be send %s" (if (:notification/sync? options) "synchronously" "asynchronously"))
+        (if (:notification/sync? options)
+          (send-notification-sync! notification)
+          (send-notification-async! notification))))
+    (log/infof "Skipping notification %s because it is older than the cutoff timestamp: %s. YOU SHOULDN'T SEE THIS ON PROD, REPORT IF YOU ARE!!!"
+               (:id notification) (notification-cutoff-timestamp))))

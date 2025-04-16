@@ -690,3 +690,28 @@
             (is (= {:channel/metabase-test 1} (update-vals channel-messages count))))
           (testing "no messages received when condition returns false"
             (is (empty? channel-messages))))))))
+
+(deftest cutoff-notification-env-test
+  (let [sent-went-through? (fn [notification]
+                             (let [yes (atom false)]
+                               (with-redefs [notification.send/send-notification-sync! (fn [_notification]
+                                                                                         (reset! yes true))]
+                                 (#'notification.send/send-notification! notification :notification/sync? true))
+                               @yes))]
+    (testing "if not set, send any notifications"
+      (mt/with-temporary-setting-values [notification-cutoff-timestamp nil]
+        (doseq [updated-at [(t/zoned-date-time)
+                            (t/plus (t/zoned-date-time) (t/days 1))
+                            (t/minus (t/zoned-date-time) (t/days 1))
+                            nil]]
+          (is (true? (sent-went-through? {:updated_at updated-at}))))))
+    (testing "if set"
+      (let [cutoff (t/offset-date-time)]
+        (mt/with-temporary-setting-values [notification-cutoff-timestamp (str cutoff)]
+          (doseq [[went-through? updated-at context]
+                  [[false (t/minus cutoff (t/seconds 1)) "skip if notifications were updated before cut off"]
+                   [true  (t/plus cutoff (t/seconds 1)) "send if notifications were updated after cut off"]
+                   ;; for unsaved notifications
+                   [true  nil "send if no updated_at"]]]
+            (testing context
+              (is (= went-through? (sent-went-through? {:updated_at updated-at}))))))))))
