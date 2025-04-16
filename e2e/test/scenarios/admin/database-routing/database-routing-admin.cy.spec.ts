@@ -310,11 +310,11 @@ describe("admin > database > database routing", () => {
       cy.log("should be disabled if uploads are enabled for the database");
       cy.visit("/admin/settings/uploads");
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a database")
+        .findByPlaceholderText("Select a database")
         .click();
       H.popover().findByText("Writable Postgres12").click();
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a schema")
+        .findByPlaceholderText("Select a schema")
         .click();
 
       H.popover().findByText("public").click();
