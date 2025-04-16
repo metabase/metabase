@@ -1,11 +1,18 @@
 import fetchMock from "fetch-mock";
+import type { Location } from "history";
 import { Route } from "react-router";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UtilApi } from "metabase/services";
+import {
+  createMockLocation,
+  createMockRoutingState,
+} from "metabase-types/store/mocks";
 
 import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";
+
+const PATHNAME = "/admin/troubleshooting/logs";
 
 const log = {
   timestamp: "2024-01-10T21:21:58.597Z",
@@ -18,10 +25,27 @@ const log = {
 
 let utilSpy: any;
 
-function setup() {
-  return renderWithProviders(<Route path="/" component={() => <Logs />} />, {
-    withRouter: true,
-  });
+interface SetupOpts {
+  location?: Location;
+}
+
+function setup({
+  location = createMockLocation({
+    pathname: PATHNAME,
+  }),
+}: SetupOpts = {}) {
+  return renderWithProviders(
+    <Route path={location.pathname} component={() => <Logs />} />,
+    {
+      initialRoute: `${location.pathname}${location.search}`,
+      storeInitialState: {
+        routing: createMockRoutingState({
+          locationBeforeTransitions: location,
+        }),
+      },
+      withRouter: true,
+    },
+  );
 }
 
 describe("Logs", () => {
