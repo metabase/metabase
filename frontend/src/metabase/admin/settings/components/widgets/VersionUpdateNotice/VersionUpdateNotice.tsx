@@ -11,24 +11,19 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { newVersionAvailable, versionIsLatest } from "metabase/lib/utils";
-import { getIsHosted } from "metabase/setup/selectors";
 import type { VersionInfoRecord } from "metabase-types/api";
 
-import {
-  NewVersionContainer,
-  OnLatestVersionMessage,
-} from "./VersionUpdateNotice.styled";
+import S from "./VersionUpdateNotice.module.css";
 
 export function VersionUpdateNotice() {
   const currentVersion = useSelector(getCurrentVersion);
   const latestVersion = useSelector(getLatestVersion);
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
+  const displayVersion = formatVersion(currentVersion);
 
   if (isHosted) {
-    return <CloudCustomers currentVersion={currentVersion} />;
+    return <CloudCustomers currentVersion={displayVersion} />;
   }
-
-  const displayVersion = formatVersion(currentVersion);
 
   if (versionIsLatest({ currentVersion, latestVersion })) {
     return <OnLatestVersion currentVersion={displayVersion} />;
@@ -51,10 +46,10 @@ function CloudCustomers({ currentVersion }: { currentVersion: string }) {
 function OnLatestVersion({ currentVersion }: { currentVersion: string }) {
   return (
     <div>
-      <OnLatestVersionMessage>
+      <div className={S.message}>
         {c(`{0} is a version number`)
           .t`You're running Metabase ${currentVersion} which is the latest and greatest!`}
-      </OnLatestVersionMessage>
+      </div>
     </div>
   );
 }
@@ -62,10 +57,10 @@ function OnLatestVersion({ currentVersion }: { currentVersion: string }) {
 function DefaultUpdateMessage({ currentVersion }: { currentVersion: string }) {
   return (
     <div>
-      <OnLatestVersionMessage>
+      <div className={S.message}>
         {c(`{0} is a version number`)
           .t`You're running Metabase ${currentVersion}`}
-      </OnLatestVersionMessage>
+      </div>
     </div>
   );
 }
@@ -79,8 +74,9 @@ function NewVersionAvailable({ currentVersion }: { currentVersion: string }) {
 
   return (
     <div>
-      <NewVersionContainer
+      <div
         className={cx(
+          S.container,
           CS.p2,
           CS.bordered,
           CS.rounded,
@@ -92,8 +88,7 @@ function NewVersionAvailable({ currentVersion }: { currentVersion: string }) {
         )}
       >
         <span className={cx(CS.textWhite, CS.textBold)}>
-          {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
-          {t`You're running ${currentVersion}`}
+          {t`Metabase ${formatVersion(latestVersion)} is available. You're running ${currentVersion}.`}
         </span>
         <ExternalLink
           className={cx(
@@ -110,7 +105,7 @@ function NewVersionAvailable({ currentVersion }: { currentVersion: string }) {
         >
           {t`Update`}
         </ExternalLink>
-      </NewVersionContainer>
+      </div>
 
       {versionInfo && (
         <div

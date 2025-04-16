@@ -31,6 +31,7 @@ import { InteractiveDashboardProvider } from "./context";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveDashboard
  */
 export type InteractiveDashboardProps = {

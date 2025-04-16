@@ -1192,7 +1192,7 @@ describe("issue 22482", () => {
 
     H.filterWidget().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates…").click();
+    cy.findByText("Relative date range…").click();
   });
 
   it("should round relative date range (metabase#22482)", () => {
@@ -1240,7 +1240,7 @@ describe("issue 22788", () => {
   function addFilterAndAssert() {
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("Gizmo");
+      H.fieldValuesCombobox().type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -2158,7 +2158,7 @@ describe("issue 27768", () => {
 
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("Gizmo");
+      H.fieldValuesCombobox().type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -4239,7 +4239,7 @@ describe("issue 52918", () => {
     H.setFilter("Date picker", "All Options");
     H.sidebar().findByLabelText("No default").click();
     H.popover().within(() => {
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByText("Between").should("be.visible");
     });
     cy.log("check that there is no overflow in the popover");
@@ -4262,7 +4262,7 @@ describe("issue 54236", () => {
     H.setFilter("Date picker", "All Options");
     H.sidebar().findByLabelText("No default").click();
     H.popover().within(() => {
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Next").click();
       cy.findByDisplayValue("30").clear().type("1");
       cy.findAllByDisplayValue("day").filter(":visible").click();
