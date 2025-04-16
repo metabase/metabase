@@ -159,7 +159,7 @@
                     (fn []
                       (-> (driver/describe-table driver (t2/select-one :model/Database db-id) {:name table-name})
                           (update :name   {table-name table-name-prefix})
-                          (update :fields (partial mapv #(select-keys % [:name :base-type])))))]
+                          (update :fields #(sort-by :name (for [f %] (select-keys f [:name :base-type :pk?]))))))]
                 (try
                   (if (<= 200 (:status @res) 299)
                     (merge
@@ -187,12 +187,16 @@
 
           #{:s :d}
           {:name "a"
-           :columns [{:name "id", :type "int"}]
+           :columns [{:name "id", :type "int"}
+                     {:name "name", :type "int"}]
            :primary_key ["id"]}
            ;; =>
           {:status 200
            :name "a"
            :fields [{:name "id"
+                     :base-type :type/BigInteger
+                     :pk? true}
+                    {:name "name"
                      :base-type :type/BigInteger}]}
 
           #{:s :d}
@@ -223,7 +227,8 @@
           {:status 200
            :name "a_b1 -"
            :fields [{:name "id"
-                     :base-type :type/BigInteger}]}
+                     :base-type :type/BigInteger
+                     :pk? true}]}
 
          ;; if not admin, denied
           #{:d}
@@ -237,7 +242,23 @@
           {:name        "a"
            :columns     [{:name "id", :type "int"}]
            :primary_key ["id"]}
-          400)))))
+          400
+
+          ;; compound pk
+          #{:s :d}
+          {:name "a"
+           :columns [{:name "id_p1", :type "int"}
+                     {:name "id_p2", :type "int"}]
+           :primary_key ["id_p1" "id_p2"]}
+          ;; =>
+          {:status 200
+           :name "a"
+           :fields [{:name "id_p1"
+                     :base-type :type/BigInteger
+                     :pk? true}
+                    {:name "id_p2"
+                     :base-type :type/BigInteger
+                     :pk? true}]})))))
 
 (deftest create-table-auto-inc-test
   (mt/with-premium-features #{:table-data-editing}
