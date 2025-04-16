@@ -14,7 +14,7 @@
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent Callable Executors ExecutorService ThreadPoolExecutor)
+   (java.util.concurrent Callable Executors ThreadPoolExecutor)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
    (org.quartz CronExpression)))
 
@@ -334,7 +334,7 @@
                    (doto (BasicThreadFactory$Builder.)
                      (.namingPattern "send-notification-thread-pool-%d"))))
         start-worker! (fn []
-                        (.submit ^ExecutorService executor
+                        (.submit ^ThreadPoolExecutor executor
                                  ^Callable (fn []
                                              (while (not (Thread/interrupted))
                                                (try
@@ -348,9 +348,9 @@
     (.addShutdownHook
      (Runtime/getRuntime)
      (Thread. ^Runnable (fn []
-                          (.shutdownNow ^ExecutorService executor)
+                          (.shutdownNow ^ThreadPoolExecutor executor)
                           (try
-                            (.awaitTermination ^ExecutorService executor 30 java.util.concurrent.TimeUnit/SECONDS)
+                            (.awaitTermination ^ThreadPoolExecutor executor 30 java.util.concurrent.TimeUnit/SECONDS)
                             (catch InterruptedException _
                               (log/warn "Interrupted while waiting for notification executor to terminate"))))))
     (dotimes [_ pool-size]
