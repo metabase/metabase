@@ -35,7 +35,7 @@ jobs:
           chunks: ${{ inputs.chunks }}
         with:
           script: | # js
-            const { buildMatrix } = require('./.github/scripts/build-e2e-matrix.js');
+            const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
             const inputSpecs = "${{ inputs.specs }}";
             const inputChunks = Number(process.env.chunks);
             const { config, regularChunks } = buildMatrix(inputSpecs, inputChunks);
