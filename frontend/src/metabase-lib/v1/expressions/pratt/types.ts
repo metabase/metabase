@@ -1,5 +1,3 @@
-import { isProduction } from "metabase/env";
-
 import type { CompileError } from "../errors";
 
 type VariableKind = "dimension" | "segment" | "aggregation" | "expression";
@@ -129,9 +127,7 @@ export function assert(
   msg: string,
   data?: any,
 ): asserts condition {
-  if (isProduction) {
-    if (!condition) {
-      throw new AssertionError(msg, data || {});
-    }
+  if (!condition) {
+    throw new AssertionError(msg, data || {});
   }
 }
