@@ -105,6 +105,7 @@ describe("Logs", () => {
           screen.getByText(`There's nothing here, yet.`),
         ).toBeInTheDocument();
       });
+      expect(screen.getByRole("button", { name: /Download/ })).toBeDisabled();
     });
 
     it("should filter out logs not matching the query", async () => {
@@ -120,6 +121,7 @@ describe("Logs", () => {
           screen.getByText("Nothing matches your filters."),
         ).toBeInTheDocument();
       });
+      expect(screen.getByRole("button", { name: /Download/ })).toBeDisabled();
     });
 
     it("should not filter out logs matching the query", async () => {
@@ -133,6 +135,7 @@ describe("Logs", () => {
       expect(
         await screen.findByText(new RegExp(log.process_uuid)),
       ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Download/ })).toBeEnabled();
     });
 
     it("should display results if server responds with logs", async () => {
@@ -143,6 +146,7 @@ describe("Logs", () => {
           screen.getByText(new RegExp(log.process_uuid)),
         ).toBeInTheDocument();
       });
+      expect(screen.getByRole("button", { name: /Download/ })).toBeEnabled();
     });
 
     it("should display server error message if an error occurs", async () => {
@@ -155,6 +159,9 @@ describe("Logs", () => {
       await waitFor(() => {
         expect(screen.getByText(errMsg)).toBeInTheDocument();
       });
+      expect(
+        screen.queryByRole("button", { name: /Download/ }),
+      ).not.toBeInTheDocument();
     });
 
     it("should stop polling on unmount", async () => {
