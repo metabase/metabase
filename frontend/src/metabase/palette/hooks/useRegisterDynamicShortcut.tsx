@@ -2,14 +2,20 @@ import { KBarContext, useRegisterActions } from "kbar";
 import { type DependencyList, useContext } from "react";
 
 import { shortcuts } from "../shortcuts";
-import type { ShortcutAction } from "../types";
+import type { ShortcutAction, ShortcutDef } from "../types";
 
 export type RegisterShortcutProps = {
-  id: keyof typeof shortcuts;
+  shortcutId: keyof typeof shortcuts;
+  id: string;
   perform: () => void;
+  shortcut: string[];
 } & Partial<ShortcutAction>;
 
-export const useRegisterShortcut = (
+// This hook is very similar to useRegisterShortcut, but is used in places where we need individual
+// shortcuts based on the number of things on screen (like dashboard tabs). We point to a reference
+// shortcut def, but a shortcut must be passed in to register
+
+export const useRegisterDynamicShortcut = (
   shortcutsToRegister: RegisterShortcutProps[],
   deps: DependencyList = [],
 ) => {
@@ -22,11 +28,17 @@ export const useRegisterShortcut = (
   const ctx = useContext(KBarContext);
 
   const actions = ctx.query
-    ? shortcutsToRegister.map(({ id, ...rest }) => {
-        const shortcutDef = shortcuts[id];
+    ? shortcutsToRegister.map(({ shortcutId, id, ...rest }) => {
+        const shortcutDef = shortcuts[shortcutId] as ShortcutDef;
 
-        if (shortcutDef === undefined && !rest.shortcut) {
+        if (shortcutDef === undefined) {
           throw Error(`Unrecgonized shortcut id ${id}`);
+        }
+
+        if (!shortcutDef.dynamic) {
+          throw Error(
+            `Shortcut is not defined as dynamic. Use useRegisterShortcut instead`,
+          );
         }
 
         return {
