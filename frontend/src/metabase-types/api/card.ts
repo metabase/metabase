@@ -238,7 +238,6 @@ export type VisualizationSettings = {
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
-  "table.editableColumns"?: string[]; // list of column names
 
   // Keys here can be modern (returned by `getColumnKey`) or legacy (`getLegacyColumnKey`).
   // Use `getColumnSettings` which checks for both keys.

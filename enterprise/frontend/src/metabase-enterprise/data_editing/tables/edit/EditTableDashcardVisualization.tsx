@@ -11,6 +11,7 @@ import {
   Loader,
   Stack,
   Text,
+  rem,
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
@@ -25,6 +26,7 @@ import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
+import { useTableActions } from "./use-table-actions";
 import { useTableCRUD } from "./use-table-crud";
 import { useTableSorting } from "./use-table-sorting";
 import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-dashcard-update-strategy";
@@ -76,6 +78,10 @@ export const EditTableDashcardVisualization = ({
     visualizationSettings,
   );
 
+  const { hasCreateAction, hasDeleteAction } = useTableActions(
+    visualizationSettings,
+  );
+
   const { getColumnSortDirection } = useTableSorting({
     question,
   });
@@ -100,7 +106,12 @@ export const EditTableDashcardVisualization = ({
         align="center"
         className={S.gridFooterDashcardVisualization}
       >
-        <Group gap="xs">
+        <Group
+          gap="xs"
+          mih={
+            rem(30) /* to avoid jumping when "New record" button is disabled */
+          }
+        >
           <ActionIcon onClick={undo} disabled={isUndoLoading || isRedoLoading}>
             {isUndoLoading ? (
               <Loader size="xs" />
@@ -123,13 +134,15 @@ export const EditTableDashcardVisualization = ({
               />
             )}
           </ActionIcon>
-          <Button
-            variant="subtle"
-            size="xs"
-            fz="sm"
-            leftSection={<Icon name="add" />}
-            onClick={() => handleModalOpenAndExpandedRow()}
-          >{t`New record`}</Button>
+          {hasCreateAction && (
+            <Button
+              variant="subtle"
+              size="xs"
+              fz="sm"
+              leftSection={<Icon name="add" />}
+              onClick={() => handleModalOpenAndExpandedRow()}
+            >{t`New record`}</Button>
+          )}
         </Group>
         <Text fz="sm" fw="bold">
           {getEditTableRowCountMessage(data)}
@@ -137,6 +150,7 @@ export const EditTableDashcardVisualization = ({
       </Flex>
       <EditingBaseRowModal
         opened={isCreateRowModalOpen}
+        hasDeleteAction={hasDeleteAction}
         onClose={closeCreateRowModal}
         onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
