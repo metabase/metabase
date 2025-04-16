@@ -67,15 +67,17 @@ export const EditTableDataHeader = ({
             variant="filled"
             onClick={onCreate}
           >{t`New record`}</Button>
-          <RunButtonWithTooltip
-            iconSize={16}
-            onlyIcon
-            medium
-            compact
-            isRunning={isLoading}
-            onRun={refetchTableDataQuery}
-          />
-          <TableNotificationsTrigger tableId={table.id} />
+          <Flex gap="xs">
+            <RunButtonWithTooltip
+              iconSize={16}
+              onlyIcon
+              medium
+              compact
+              isRunning={isLoading}
+              onRun={refetchTableDataQuery}
+            />
+            <TableNotificationsTrigger tableId={table.id} />
+          </Flex>
         </Group>
       </Flex>
       <QuestionFiltersHeader

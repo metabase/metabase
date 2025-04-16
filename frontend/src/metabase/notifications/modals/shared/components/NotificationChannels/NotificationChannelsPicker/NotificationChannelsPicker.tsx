@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { jt, t } from "ttag";
 
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
+import { CodeBlock } from "metabase/components/CodeBlock";
 import { getNotificationHandlersGroupedByTypes } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
 import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
@@ -11,6 +12,7 @@ import {
   type ChannelToAddOption,
   NotificationChannelsAddMenu,
 } from "metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsAddMenu";
+import { TemplateEditor } from "metabase/notifications/modals/shared/components/TemplateEditor/TemplateEditor";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import {
   Accordion,
@@ -19,8 +21,6 @@ import {
   Popover,
   Stack,
   Text,
-  TextInput,
-  Textarea,
   Tooltip,
 } from "metabase/ui";
 import type {
@@ -64,7 +64,6 @@ type TemplateAction =
       channel: SupportedChannelKey;
     };
 
-// Reducer function for template state management
 const templateReducer = (
   state: TemplateState,
   action: TemplateAction,
@@ -112,7 +111,6 @@ const templateTypeMap = {
   },
 };
 
-// Get template content for a handler
 const getTemplateContent = (
   handler: NotificationHandler,
   templates: TemplateState["templates"],
@@ -173,6 +171,7 @@ const TemplateHelperTooltip = ({
       <Popover.Dropdown p="sm" px="md" onClick={(e) => e.stopPropagation()}>
         <Text>{jt`We support ${(
           <a
+            key="link"
             href="https://handlebarsjs.com/guide/"
             target="_blank"
             rel="noopener noreferrer"
@@ -184,18 +183,18 @@ const TemplateHelperTooltip = ({
             Handlebars
           </a>
         )} templates.`}</Text>
-        <Text>{t`Use "{{ }}" to reference payload fields, "@key" and "@value" when iterating over objects, or "@index" for arrays.`}</Text>
+        <Text>{jt`Use ${(<code key="brackets">{"{{ }}"}</code>)} to reference fields, ${(<code key="key">{"@key"}</code>)} and ${(<code key="value">{"@value"}</code>)} when iterating over objects, or ${(<code key="index">{"@index"}</code>)} for arrays.`}</Text>
         <Text>{t`Example payload for selected alert:`}</Text>
         <br />
-        <pre
+        <div
           style={{
             margin: 0,
             maxHeight: "25rem",
-            whiteSpace: "pre",
+            overflowY: "auto",
           }}
         >
-          {formattedJson}
-        </pre>
+          <CodeBlock language="json" code={formattedJson} />
+        </div>
       </Popover.Dropdown>
     </Popover>
   );
@@ -225,7 +224,7 @@ export const NotificationChannelsPicker = ({
   const hasEmailChannel = !!channels.email?.configured && !!emailHandler;
   const hasSlackChannel = !!channels.slack?.configured && !!slackHandler;
 
-  // Track separate validation states for each channel
+  // TODO: Create an abstraction to validate only required fields, when we introduce webhooks.
   const [validationErrors, setValidationErrors] = useState({
     email: { subject: false, body: false },
     slack: { subject: false, body: false },
@@ -275,89 +274,89 @@ export const NotificationChannelsPicker = ({
     templateReducer,
     initialTemplateState,
   );
-
-  // Re-initialize template state if handlers change externally (e.g., loading a saved alert)
+  // Re-initialize template state if handlers change externally
   useEffect(() => {
     dispatch({ type: "INITIALIZE_TEMPLATE", payload: initialTemplateState });
-    // Reset validation errors as well when handlers change
-    setValidationErrors({
-      email: { subject: false, body: false },
-      slack: { subject: false, body: false },
-    });
   }, [initialTemplateState]);
 
-  const addChannel = (channel: ChannelToAddOption) => {
-    let newChannel: NotificationHandler;
+  const addChannel = useCallback(
+    (channel: ChannelToAddOption) => {
+      let newChannel: NotificationHandler;
 
-    switch (channel.type) {
-      case "channel/http": {
-        newChannel = {
-          channel_type: channel.type,
-          channel_id: channel.channel_id,
-          recipients: [],
-        };
-        break;
+      switch (channel.type) {
+        case "channel/http": {
+          newChannel = {
+            channel_type: channel.type,
+            channel_id: channel.channel_id,
+            recipients: [],
+          };
+          break;
+        }
+        case "channel/email": {
+          newChannel = {
+            channel_type: channel.type,
+            recipients: user
+              ? [
+                  {
+                    type: "notification-recipient/user",
+                    user_id: user.id,
+                    details: null,
+                  },
+                ]
+              : [],
+          };
+          break;
+        }
+        case "channel/slack": {
+          newChannel = {
+            channel_type: channel.type,
+            recipients: [],
+          };
+          break;
+        }
       }
-      case "channel/email": {
-        newChannel = {
-          channel_type: channel.type,
-          recipients: user
-            ? [
-                {
-                  type: "notification-recipient/user",
-                  user_id: user.id,
-                  details: null,
-                },
-              ]
-            : [],
-        };
-        break;
+
+      onChange(notificationHandlers.concat(newChannel));
+    },
+    [notificationHandlers, onChange, user],
+  );
+
+  const onChannelChange = useCallback(
+    (oldConfig: NotificationHandler, newConfig: NotificationHandler) => {
+      const updatedChannels = notificationHandlers.map((value) =>
+        value === oldConfig ? newConfig : value,
+      );
+      onChange(updatedChannels);
+    },
+    [notificationHandlers, onChange],
+  );
+
+  const onRemoveChannel = useCallback(
+    (channel: NotificationHandler) => {
+      const updatedChannels = notificationHandlers.filter(
+        (value) => value !== channel,
+      );
+
+      if (enableTemplates) {
+        if (channel.channel_type === "channel/email") {
+          dispatch({ type: "REMOVE_TEMPLATE", channel: "email" });
+          setValidationErrors((prev) => ({
+            ...prev,
+            email: { subject: false, body: false },
+          }));
+        } else if (channel.channel_type === "channel/slack") {
+          dispatch({ type: "REMOVE_TEMPLATE", channel: "slack" });
+          setValidationErrors((prev) => ({
+            ...prev,
+            slack: { subject: false, body: false },
+          }));
+        }
       }
-      case "channel/slack": {
-        newChannel = {
-          channel_type: channel.type,
-          recipients: [],
-        };
-        break;
-      }
-    }
 
-    onChange(notificationHandlers.concat(newChannel));
-  };
-
-  const onChannelChange = (
-    oldConfig: NotificationHandler,
-    newConfig: NotificationHandler,
-  ) => {
-    const updatedChannels = notificationHandlers.map((value) =>
-      value === oldConfig ? newConfig : value,
-    );
-    onChange(updatedChannels);
-  };
-
-  const onRemoveChannel = (channel: NotificationHandler) => {
-    const updatedChannels = notificationHandlers.filter(
-      (value) => value !== channel,
-    );
-
-    if (enableTemplates) {
-      if (channel.channel_type === "channel/email") {
-        dispatch({ type: "REMOVE_TEMPLATE", channel: "email" });
-        setValidationErrors((prev) => ({
-          ...prev,
-          email: { subject: false, body: false },
-        }));
-      } else if (channel.channel_type === "channel/slack") {
-        dispatch({ type: "REMOVE_TEMPLATE", channel: "slack" });
-        setValidationErrors((prev) => ({
-          ...prev,
-          slack: { subject: false, body: false },
-        }));
-      }
-    }
-
-    onChange(updatedChannels);
-  };
+      onChange(updatedChannels);
+    },
+    [notificationHandlers, onChange, enableTemplates, dispatch],
+  );
 
   const updateTemplateForChannel = (
     channelKey: SupportedChannelKey,
@@ -371,6 +370,11 @@ export const NotificationChannelsPicker = ({
       const handlerChannelType =
         handler.channel_type as keyof typeof templateTypeMap;
       const templateConfig = templateTypeMap[handlerChannelType];
+
+      if (templateConfig.stateKey !== channelKey) {
+        return handler;
+      }
+
       const templateContent = getTemplateContent(handler, state.templates);
 
       const isRemovingTemplate = state.templates[channelKey] === null;
@@ -424,30 +428,19 @@ export const NotificationChannelsPicker = ({
     }
   };
 
-  const handleTemplateUpdate = (
+  const handleTemplateBlur = (
     channel: SupportedChannelKey,
     field: "subject" | "body",
     value: string,
   ) => {
-    dispatch({ type: "UPDATE_TEMPLATE", channel, field, value });
-
-    if (
-      validationErrors[channel][
-        field as keyof (typeof validationErrors)[SupportedChannelKey]
-      ]
-    ) {
-      setValidationErrors((prev) => ({
-        ...prev,
-        [channel]: {
-          ...prev[channel],
-          [field]: false,
-        },
-      }));
-    }
-  };
-
-  const handleTemplateBlur = (channel: SupportedChannelKey) => {
-    const template = templateState.templates[channel];
+    const updateAction: TemplateAction = {
+      type: "UPDATE_TEMPLATE",
+      channel,
+      field,
+      value,
+    };
+    const stateAfterUpdateAction = templateReducer(templateState, updateAction);
+    const template = stateAfterUpdateAction.templates[channel];
     const subjectValue = template?.subject || "";
     const bodyValue = template?.body || "";
 
@@ -484,15 +477,19 @@ export const NotificationChannelsPicker = ({
     }
 
     if (shouldRemove) {
-      const action: TemplateAction = { type: "REMOVE_TEMPLATE", channel };
-      dispatch(action);
-      // Derive next state for immediate update call
-      const nextState = templateReducer(templateState, action);
-      updateTemplateForChannel(channel, nextState);
+      const removeAction: TemplateAction = { type: "REMOVE_TEMPLATE", channel };
+      dispatch(removeAction);
+      const stateAfterRemoveAction = templateReducer(
+        stateAfterUpdateAction,
+        removeAction,
+      );
+      updateTemplateForChannel(channel, stateAfterRemoveAction);
+      return;
     } else if (shouldUpdate) {
-      // State already updated by input's onChange, just sync with parent handler state
-      updateTemplateForChannel(channel);
+      updateTemplateForChannel(channel, stateAfterUpdateAction);
     }
+
+    dispatch(updateAction);
   };
 
   const getTemplateValue = (
@@ -502,7 +499,17 @@ export const NotificationChannelsPicker = ({
     return templateState.templates[channel]?.[field] || "";
   };
 
-  const emailErrorMsg = t`Both subject and content are required when customizing`;
+  const parsedTemplateContext = useMemo(() => {
+    if (!formattedJsonTemplate) {
+      return undefined;
+    }
+    try {
+      return JSON.parse(formattedJsonTemplate);
+    } catch (e) {
+      console.error("Failed to parse template context JSON:", e);
+      return undefined;
+    }
+  }, [formattedJsonTemplate]);
 
   return (
     <Stack gap="xl" align="start" w="100%">
@@ -540,44 +547,46 @@ export const NotificationChannelsPicker = ({
                     />
                   </Flex>
                 </Accordion.Control>
-                <Accordion.Panel>
+                <Accordion.Panel styles={{ content: { padding: 0 } }}>
                   <Stack>
-                    <TextInput
-                      label={t`Subject`}
-                      placeholder={t`Alert from {{payload.result.table.name}} table`}
-                      value={getTemplateValue("email", "subject")}
-                      onChange={(event) =>
-                        handleTemplateUpdate(
-                          "email",
-                          "subject",
-                          event.currentTarget.value,
-                        )
-                      }
-                      onBlur={() => handleTemplateBlur("email")}
-                      error={
-                        validationErrors.email.subject
-                          ? emailErrorMsg
-                          : undefined
-                      }
-                    />
-                    <Textarea
-                      label={t`Content`}
-                      placeholder={t`Your custom HTML template`}
-                      minRows={4}
-                      autosize
-                      value={getTemplateValue("email", "body")}
-                      onChange={(event) =>
-                        handleTemplateUpdate(
-                          "email",
-                          "body",
-                          event.currentTarget.value,
-                        )
-                      }
-                      onBlur={() => handleTemplateBlur("email")}
-                      error={
-                        validationErrors.email.body ? emailErrorMsg : undefined
-                      }
-                    />
+                    <Stack gap="xs">
+                      <Text size="sm" fw={700}>{t`Subject`}</Text>
+                      <TemplateEditor
+                        variant="textinput"
+                        placeholder={t`Alert from {{payload.result.table.name}} table`}
+                        templateContext={parsedTemplateContext} // Pass parsed context
+                        minHeight="auto"
+                        defaultValue={getTemplateValue("email", "subject")}
+                        onBlur={(newValue) => {
+                          handleTemplateBlur("email", "subject", newValue);
+                        }}
+                        error={
+                          validationErrors.email.subject
+                            ? t`Subject cannot be empty`
+                            : false
+                        }
+                        language="mustache"
+                      />
+                    </Stack>
+                    <Stack gap="xs">
+                      <Text size="sm" fw={700}>{t`Content`}</Text>
+                      <TemplateEditor
+                        variant="textarea"
+                        placeholder={t`Your custom email template`}
+                        templateContext={parsedTemplateContext} // Pass parsed context
+                        minHeight="12rem"
+                        defaultValue={getTemplateValue("email", "body")}
+                        onBlur={(newValue) => {
+                          handleTemplateBlur("email", "body", newValue);
+                        }}
+                        error={
+                          validationErrors.email.body
+                            ? t`Content cannot be empty`
+                            : false
+                        }
+                        language="mustache"
+                      />
+                    </Stack>
                   </Stack>
                 </Accordion.Panel>
               </Accordion.Item>
@@ -619,22 +628,20 @@ export const NotificationChannelsPicker = ({
                     />
                   </Flex>
                 </Accordion.Control>
-                <Accordion.Panel>
-                  <Textarea
-                    label={t`Content`}
-                    placeholder={t`Your custom Markdown template`}
-                    minRows={4}
-                    autosize
-                    value={getTemplateValue("slack", "body")}
-                    onChange={(event) =>
-                      handleTemplateUpdate(
-                        "slack",
-                        "body",
-                        event.currentTarget.value,
-                      )
-                    }
-                    onBlur={() => handleTemplateBlur("slack")}
-                  />
+                <Accordion.Panel styles={{ content: { padding: 0 } }}>
+                  <Stack gap="xs">
+                    <Text size="sm" fw={700}>{t`Content`}</Text>
+                    <TemplateEditor
+                      placeholder={t`Your custom Markdown template`}
+                      templateContext={parsedTemplateContext} // Pass parsed context
+                      minHeight="12rem"
+                      defaultValue={getTemplateValue("slack", "body")}
+                      onBlur={(newValue) => {
+                        handleTemplateBlur("slack", "body", newValue);
+                      }}
+                      language="markdown"
+                    />
+                  </Stack>
                 </Accordion.Panel>
               </Accordion.Item>
             </Accordion>
