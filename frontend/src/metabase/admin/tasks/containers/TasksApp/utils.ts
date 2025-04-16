@@ -27,7 +27,7 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
   }),
   serialize: ({ page, sort_column, sort_direction, status, task }) => ({
     page: page === 0 ? undefined : String(page),
-    sort_column: sort_column === null ? undefined : sort_column,
+    sort_column: sort_column === DEFAULT_SORT_COLUMN ? undefined : sort_column,
     sort_direction:
       sort_direction === DEFAULT_SORT_DIRECTION ? undefined : sort_direction,
     status: status === null ? undefined : status,

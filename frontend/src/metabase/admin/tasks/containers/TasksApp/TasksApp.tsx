@@ -107,7 +107,30 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
             <th>{t`Task`}</th>
             <th>{t`DB Name`}</th>
             <th>{t`DB Engine`}</th>
-            <th>{t`Started at`}</th>
+            <th>
+              <Flex
+                align="center"
+                gap="xs"
+                role="button"
+                onClick={() => {
+                  patchUrlState({
+                    sort_column: "started_at",
+                    sort_direction: sort_direction === "asc" ? "desc" : "asc",
+                  });
+                }}
+              >
+                {t`Started at`}
+
+                {sort_column === "started_at" && (
+                  <Icon
+                    name={
+                      sort_direction === "asc" ? "chevronup" : "chevrondown"
+                    }
+                    size={8}
+                  />
+                )}
+              </Flex>
+            </th>
             <th>{t`Ended at`}</th>
             <th>{t`Duration (ms)`}</th>
             <th>{t`Status`}</th>
