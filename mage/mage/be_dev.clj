@@ -43,7 +43,7 @@
                 (in-ns ns-sym)
                 (eval (read-string " (pr-str (or code "::loaded")) ")))"))
 
-(defn bootstrap-code
+(defn- bootstrap-code
   "Capture output and return it as strings along with the value from the orignal code."
   [code-string]
   (str "
