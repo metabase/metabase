@@ -674,3 +674,21 @@
                                    vals)]
           (is (> (count consumer-counts) 1))
           (is (every? pos? consumer-counts)))))))
+
+(deftest no-pool-exhasution-test
+  (testing "if there are failure inside the notification thread pool, it should not exhaust the pool (#56379)"
+    (let [noti-count (atom 0)
+          queue-size (notification.send/notification-thread-pool-size)]
+      (with-redefs [notification.payload/notification-payload (fn [& _]
+                                                                (assert false))
+                    notification.send/send-notification-sync! (fn [_notification]
+                                                                (swap! noti-count inc))]
+
+        (notification.tu/with-card-notification
+          [notification {}]
+          (doseq [_ (range (+ 2 queue-size))]
+            (notification.send/send-notification! notification :notification/sync? false)))
+        (u/poll {:thunk       (fn [] @noti-count)
+                 :done?       (fn [cnt] (= cnt (+ 2 queue-size)))
+                 :interval-ms 10
+                 :timeout-ms  1000})))))
