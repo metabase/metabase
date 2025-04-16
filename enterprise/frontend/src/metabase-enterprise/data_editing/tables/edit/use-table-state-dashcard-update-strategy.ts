@@ -66,7 +66,7 @@ export function useTableEditingStateDashcardUpdateStrategy(
               );
 
               if (updatedRowObject) {
-                row.map((value, index) => {
+                return row.map((value, index) => {
                   const columnName = cardData.data.cols[index].name;
 
                   if (columnName in updatedRowObject) {
