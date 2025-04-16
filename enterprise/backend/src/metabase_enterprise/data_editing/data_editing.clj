@@ -13,8 +13,7 @@
   [table-id input-rows]
   (let [input-keys  (into #{} (mapcat keys) input-rows)
         field-names (map name input-keys)
-        ;; TODO not sure how to do an :in clause with toucan2
-        fields      (mapv #(t2/select-one :model/Field :table_id table-id :name %) field-names)
+        fields      (t2/select :model/Field :table_id table-id :name [:in field-names])
         coerce-fn   (->> (for [{field-name :name, :keys [coercion_strategy, semantic_type]} fields
                                :when (not (isa? semantic_type :type/PK))]
                            [(keyword field-name)
@@ -59,8 +58,9 @@
        (nano-id/nano-id)
        user-id
        :row/create
-       {:table_id    table-id
-        :created_row row}))
+       {:table_id table-id
+        :row      row}
+       {:created_row row}))
     ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
     (let [pk-cols (t2/select-fn-vec :name [:model/Field :name] :table_id table-id :semantic_type :type/PK)
           row-pk->old-new-values (->> (for [row (:created-rows res)]

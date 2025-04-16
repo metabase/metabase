@@ -195,35 +195,46 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (def ^:private action->template
-  {:row/create {:channel_type :channel/slack
-                :details      {:type :slack/handlebars-text
-                               :body (str "# {{payload.actor.first_name}} {{payload.actor.last_name}} has created a row for {{payload.result.table.name}}"
-                                          "\n\n\n"
-                                          "{{#each payload.result.created_row}}\n"
-                                          "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
-                                          "{{/each}}")}}
-   :row/update {:channel_type :channel/slack
-                :details      {:type :slack/handlebars-text
-                               :body (str "# {{payload.actor.first_name}} {{payload.actor.last_name}} has updated a from {{payload.result.table.name}}\n\n"
-                                          "## Update:"
-                                          "\n\n"
-                                          "{{#each payload.result.raw_update}}\n"
-                                          "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
-                                          "{{/each}}")}}
-   :row/delete {:channel_type :channel/slack
-                :details      {:type :slack/handlebars-text
-                               :body (str "# {{payload.actor.first_name}} {{payload.actor.last_name}} has deleted a from {{payload.result.table.name}}"
-                                          "\n\n"
-                                          "{{#each payload.result.deleted_row}}\n"
-                                          "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
-                                          "{{/each}}")}}})
+  {:bulk/create {:channel_type :channel/slack
+                 :details      {:type :slack/handlebars-text
+                                :body (str "# {{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
+                                           "\n\n"
+                                           "## Created row:"
+                                           "\n\n"
+                                           "{{#each records}}\n"
+                                           "{{#each this.row}}\n"
+                                           "- {{@key}} : {{@value}}\n"
+                                           "{{/each}}\n"
+                                           "{{/each}}")}}
+   :bulk/update {:channel_type :channel/slack
+                 :details      {:type :slack/handlebars-text
+                                :body (str "# {{editor.first_name}} {{editor.last_name}} has updated a row from {{table.name}}\n\n"
+                                           "\n\n"
+                                           "## Update:"
+                                           "\n\n"
+                                           "{{#each records}}\n"
+                                           "{{#each this.changes}}\n"
+                                           "- {{@key}} : {{@value.after}}\n"
+                                           "{{/each}}\n"
+                                           "{{/each}}")}}
+   :bulk/delete {:channel_type :channel/slack
+                 :details      {:type :slack/handlebars-text
+                                :body (str "# {{editor.first_name}} {{editor.last_name}} has deleted a row from {{table.name}}"
+                                           "\n\n"
+                                           "## Deleted row:"
+                                           "\n\n"
+                                           "{{#each records}}\n"
+                                           "{{#each this.row}}\n"
+                                           "- {{@key}} : {{@value}}\n"
+                                           "{{/each}}\n"
+                                           "{{/each}}")}}})
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload] :as notification-payload} template recipients]
-  (let [event-name (:event_name payload)
+  [_channel-type {:keys [context] :as notification-payload} template recipients]
+  (let [event-name (:event_name context)
         template    (or template
                         (when (= :event/action.success event-name)
-                          (get action->template (:action payload))))]
+                          (get action->template (:action context))))]
     (assert template (str "No template found for event " event-name))
     (if-not template
       []

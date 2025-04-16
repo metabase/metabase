@@ -16,8 +16,7 @@
          admin-email        "ngoc@metabase.com"]
         (is (= {:payload_type :notification/system-event
                 :payload      {:foo          :bar
-                               :event_name   :event/user-joined
-                               :custom       {}}
+                               :event_name   :event/user-joined}
                 :context      {:application_name     "Metabase Test"
                                :application_color    "#509EE3"
                                :application_logo_url "http://static.metabase.com/email_logo.png"

@@ -137,12 +137,12 @@ const formatTitle = (eventName: SystemEvent, action: ActionType): string => {
   switch (eventName) {
     case "event/action.success":
       switch (action) {
-        case "row/create":
-          return t`Notify when new record is created`;
-        case "row/update":
-          return t`Notify when record is updated`;
-        case "row/delete":
-          return t`Notify when record is deleted`;
+        case "bulk/create":
+          return t`Notify when new records are created`;
+        case "bulk/update":
+          return t`Notify when records are updated`;
+        case "bulk/delete":
+          return t`Notify when records are deleted`;
         default:
           return eventName;
       }
