@@ -31,7 +31,7 @@ export const dashboardShortcuts = {
     shortcutContext: "When editing",
   },
   "trash-dashboard": {
-    name: t`Send tashboard to trash`,
+    name: t`Send Dashboard to trash`,
     shortcut: ["$mod+backspace"],
     shortcutGroup: "dashboard",
   },
