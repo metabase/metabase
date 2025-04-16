@@ -4,10 +4,10 @@ import { jt, t } from "ttag";
 
 import {
   skipToken,
-  useAdminSetting,
   useListDatabasesQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
+import { useAdminSetting } from "metabase/api/utils";
 import { useSetting, useToast } from "metabase/common/hooks";
 import ActionButton from "metabase/components/ActionButton";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";

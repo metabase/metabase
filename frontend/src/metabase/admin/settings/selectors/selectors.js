@@ -25,8 +25,8 @@ import {
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
+import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
-import { SettingsUpdatesForm } from "../components/SettingsUpdatesForm/SettingsUpdatesForm";
 import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
 import FormattingWidget from "../components/widgets/FormattingWidget";
 import {

@@ -5,8 +5,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/containers/UndoListing";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import type { UploadsSettings } from "metabase-types/api/settings";
@@ -79,11 +77,7 @@ function setup({
   renderWithProviders(
     <>
       <UploadSettingsFormView
-        databases={
-          databases.map(({ id }) =>
-            checkNotNull(metadata.database(id)),
-          ) as Database[]
-        }
+        databases={databases}
         uploadsSettings={uploadsSettings}
         updateSetting={updateSpy}
       />
@@ -156,6 +150,7 @@ describe("Admin > Settings > UploadSettingsForm", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       key: "uploads-settings",
+      toast: false,
       value: {
         db_id: 1,
         schema_name: "uploads",
@@ -185,6 +180,7 @@ describe("Admin > Settings > UploadSettingsForm", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       key: "uploads-settings",
+      toast: false,
       value: {
         db_id: 2,
         schema_name: null,
@@ -221,6 +217,7 @@ describe("Admin > Settings > UploadSettingsForm", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       key: "uploads-settings",
+      toast: false,
       value: {
         db_id: 1,
         schema_name: "uploads",
@@ -266,6 +263,7 @@ describe("Admin > Settings > UploadSettingsForm", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       key: "uploads-settings",
+      toast: false,
       value: {
         db_id: 2,
         schema_name: null,
@@ -290,6 +288,7 @@ describe("Admin > Settings > UploadSettingsForm", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       key: "uploads-settings",
+      toast: false,
       value: {
         db_id: null,
         schema_name: null,
@@ -313,6 +312,7 @@ describe("Admin > Settings > UploadSettingsForm", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       key: "uploads-settings",
+      toast: false,
       value: {
         db_id: null,
         schema_name: null,
@@ -413,6 +413,7 @@ describe("Admin > Settings > UploadSettingsForm", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       key: "uploads-settings",
+      toast: false,
       value: {
         db_id: 1,
         schema_name: "uploads",

@@ -8,7 +8,7 @@ export function UploadSettingsPage() {
   return (
     <Stack gap="xl" maw="60rem" px="lg" py="sm">
       <Flex justify="space-between" align="flex-start" gap="md">
-        <UploadSettingsForm saveStatusRef={saveStatusRef} />
+        <UploadSettingsForm />
         <UpsellUploads source="settings-uploads" />
       </Flex>
       <PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable />

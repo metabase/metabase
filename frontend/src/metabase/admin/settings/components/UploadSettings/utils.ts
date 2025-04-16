@@ -2,10 +2,10 @@ import type { Database, SchemaName } from "metabase-types/api";
 
 export const getDatabaseOptions = (databases: Database[]) =>
   databases.map((db) => ({
-    name: db.router_user_attribute
+    label: db.router_user_attribute
       ? `${db.name} (DB Routing Enabled)`
       : db.name,
-    value: db.id,
+    value: String(db.id),
     disabled: !!db.router_user_attribute,
   }));
 
