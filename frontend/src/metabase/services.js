@@ -233,7 +233,6 @@ export const MetabaseApi = {
     formData: true,
     fetch: true,
   }),
-  field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   dataset: POST("/api/dataset"),
   dataset_pivot: POST("/api/dataset/pivot"),
 
@@ -396,9 +395,6 @@ function setCardEndpoints(prefix) {
     `${prefix}/params/:paramId/search/:query`,
     ["cardId"],
   );
-  MetabaseApi.field_search = GET_with(
-    `${prefix}/field/:fieldId/search/:searchFieldId`,
-  );
 }
 
 function setDashboardEndpoints(prefix) {
@@ -412,9 +408,6 @@ function setDashboardEndpoints(prefix) {
   DashboardApi.parameterSearch = GET_with(
     `${prefix}/params/:paramId/search/:query`,
     ["dashId"],
-  );
-  MetabaseApi.field_search = GET_with(
-    `${prefix}/dashboard/:dashId/field/:fieldId/search/:searchFieldId`,
   );
 }
 
