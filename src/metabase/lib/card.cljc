@@ -68,7 +68,7 @@
                           (throw (ex-info "Cannot infer columns for a model with no :entity-id!"
                                           {:card card}))))]
       (cond->> cols
-        model-eid (map #(update % :ident lib.metadata.ident/model-ident model-eid))))))
+        model-eid (map #(lib.metadata.ident/add-model-ident % model-eid))))))
 
 (def ^:private Card
   [:map

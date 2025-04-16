@@ -564,7 +564,7 @@
     (cond-> col
       ;; Check that the ident isn't already set for this model, to avoid "double-bagging".
       (not (lib/valid-model-ident? col card-entity-id))
-      (update :ident lib/model-ident card-entity-id))))
+      (lib/add-model-ident card-entity-id))))
 
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
@@ -701,8 +701,15 @@
 ;; TODO: Start recording the :ident of the inner column under a different key.
 ;; TODO: Use `:ident`s for matching up model metadata!
 (defn- merge-model-metadata
-  [query-metadata model-metadata card-entity-id]
-  (qp.util/combine-metadata query-metadata model-metadata))
+  [query-metadata model-metadata _card-entity-id]
+  (qp.util/combine-metadata query-metadata model-metadata)
+  ;; FIXME: Breadcrumbs during development.
+  #_(qp.util/combine-metadata
+     (for [{:keys [source name display_name] :as col} query-metadata]
+       (cond-> col
+         (and (= source :native)
+              (= name display_name)) (assoc :display_name (humanization/name->human-readable-name name))))
+     model-metadata))
 
 (defn- add-column-info-xform
   [query metadata rf]

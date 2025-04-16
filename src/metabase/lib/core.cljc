@@ -300,6 +300,7 @@
  [lib.metadata.composed-provider
   composed-metadata-provider]
  [lib.metadata.ident
+  add-model-ident
   assert-idents-present!
   explicitly-joined-ident
   implicit-join-clause-ident
@@ -307,6 +308,7 @@
   model-ident
   native-ident
   placeholder-card-entity-id-for-adhoc-query
+  remove-model-ident
   replace-placeholder-idents
   valid-basic-ident?
   valid-model-ident?

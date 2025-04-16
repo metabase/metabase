@@ -48,7 +48,9 @@ saved later when it is ready."
   [{:keys [query metadata original-metadata valid-metadata? entity-id]} :- [:map
                                                                             [:valid-metadata? :any]]]
   (log/debug "Querying for metadata and blending model metadata")
-  (let [futur     (legacy-result-metadata-future query)
+  (let [futur     (-> query
+                      (assoc-in [:info :card-entity-id] entity-id)
+                      legacy-result-metadata-future)
         metadata' (if valid-metadata?
                     (map mbql.normalize/normalize-source-metadata metadata)
                     original-metadata)
@@ -107,7 +109,10 @@ saved later when it is ready."
   [{:keys [original-query query metadata original-metadata model? entity-id], :as options}]
   (let [valid-metadata? (and metadata
                              (mr/validate analyze/ResultsMetadata metadata)
-                             (maybe-validate-model-idents metadata model? entity-id))]
+                             ;; FIXME: Breadcrumb: This check breaks the logic here because newly created MBQL models
+                             ;; come in with _inner_ query idents, and that's correct behaviour.
+                             ;; Probably this can just be deleted.
+                             #_(maybe-validate-model-idents metadata model? entity-id))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata
@@ -123,7 +128,9 @@ saved later when it is ready."
             valid-metadata?))
       (do
         (log/debug "Reusing provided metadata")
-        {:metadata metadata})
+        ;; TODO: Passing this synthetic `card` is pretty hacky. Better to refactor `fix-incoming-idents`.
+        {:metadata (fix-incoming-idents metadata {:entity_id entity-id
+                                                  :type      (if model? :model :question)})})
 
       ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
       ;; means the metadata won't be updated at all.
@@ -212,8 +219,7 @@ saved later when it is ready."
     (let [eid (:entity_id card)]
       (map (fn [col]
              (cond-> col
-               (not (lib/valid-model-ident? col eid))
-               (update :ident lib/model-ident eid)))))
+               (not (lib/valid-model-ident? col eid)) (lib/add-model-ident eid)))))
     identity))
 
 (defn infer-metadata-with-model-overrides
@@ -242,7 +248,7 @@ saved later when it is ready."
                  (->> (remove (comp old-names :name) new-metadata)
                       (map update-fn))))))
 
-(defn- fix-incoming-idents
+(defn fix-incoming-idents
   "Result metadata included with an insert or update should already be in its final form, but might:
   - Have placeholders, if we didn't have an `:entity_id` for a new card when the query ran
   - Be for an inner query, not for a model, and need to be wrapped with the [[lib/model-ident]]."

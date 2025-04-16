@@ -401,7 +401,7 @@
 
 (defn- expected-model-metadata [the-model]
   (for [col expected-inner-metadata]
-    (update col :ident lib/model-ident (:entity_id the-model))))
+    (lib/add-model-ident col (:entity_id the-model))))
 
 (deftest multiple-models-e2e-test
   (testing "caching works across the whole QP where two models have the same inner query"

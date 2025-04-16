@@ -1031,3 +1031,26 @@
                      (map
                       #(select-keys % [:display_name :field_ref :source_alias :ident])
                       metadata))))))))))
+
+(deftest ^:parallel native-model-display-name-humanization-test
+  (testing ":display_name for a native model's columns should be humanized"
+    (mt/with-temp
+      [:model/Card card (mt/card-with-metadata
+                         {:dataset_query (mt/native-query {:query "SELECT * FROM orders"})
+                          :type          :model})]
+      (letfn [(col-fn [name display-name]
+                {:name   name
+                 :display_name display-name
+                 :ident        (-> name
+                                   (lib/native-ident (:entity_id card))
+                                   (lib/model-ident (:entity_id card)))})]
+        (is (=? [(col-fn "ID"         "ID")
+                 (col-fn "USER_ID"    "User ID")
+                 (col-fn "PRODUCT_ID" "Product ID")
+                 (col-fn "SUBTOTAL"   "Subtotal")
+                 (col-fn "TAX"        "Tax")
+                 (col-fn "TOTAL"      "Total")
+                 (col-fn "DISCOUNT"   "Discount")
+                 (col-fn "CREATED_AT" "Created At")
+                 (col-fn "QUANTITY"   "Quantity")]
+                (:result_metadata card)))))))

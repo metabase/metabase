@@ -345,7 +345,8 @@
                  :entity-id eid)
           (m/update-existing :result-metadata
                              (fn [metadata]
-                               (mapv #(m/update-existing % :ident lib/model-ident eid)
+                               (mapv #(cond-> %
+                                        (:ident %) (lib/add-model-ident eid))
                                      metadata)))))))
 
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal

@@ -661,7 +661,8 @@
           old-card-info (when (or (contains? changes :type)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (t2/select-one [:model/Card :dataset_query :type :card_schema] :id (u/the-id id)))]
+                          (t2/select-one [:model/Card :dataset_query :type :result_metadata :card_schema]
+                                         :id (u/the-id id)))]
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])
@@ -683,7 +684,7 @@
                  (= (:type old-card-info) :model)
                  (not (model-supports-implicit-actions? changes)))
         (disable-implicit-action-for-model! id))
-      ;; Changing from a Question to a Model: archive associated actions
+      ;; Changing from a Model to a Question: archive associated actions and strip the model out of `:ident`s.
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
         (t2/update! :model/Action {:model_id id :type [:not= :implicit]} {:archived true})
@@ -818,7 +819,7 @@
               (mapv (fn [{column-name :name, [_field ref-name] :field_ref, :as col}]
                       (cond-> (assoc col :ident (lib/native-ident (or ref-name column-name)
                                                                   eid))
-                        (= (:type card) :model) (update :ident lib/model-ident eid)))
+                        (= (:type card) :model) (lib/add-model-ident eid)))
                     result-metadata)
               (throw (ex-info (str "Cannot backfill result_metadata for a native card without an entity_id! "
                                    "Include :entity_id in your query.")
@@ -945,6 +946,24 @@
     (assoc changes :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))
     changes))
 
+(defn- strip-model-from-idents
+  [result-metadata
+   {eid :entity_id :as _card}]
+  (mapv #(lib/remove-model-ident % eid) result-metadata))
+
+(defn- normalize-result-metadata-idents
+  "If the `:type` is changing, the `:result_metadata` needs to change too, either adding or removing model details
+  from the `:ident`s."
+  [card-updates card-entity changes]
+  (let [input-metadata   (or (:result_metadata card-updates)
+                             (:result_metadata card-entity))
+        updated-metadata (case (:type changes)
+                           :question (strip-model-from-idents input-metadata card-entity)
+                           :model    (card.metadata/fix-incoming-idents input-metadata card-entity)
+                           nil)]
+    (cond-> card-updates
+      updated-metadata (assoc :result_metadata updated-metadata))))
+
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
   ;; remove all the unchanged keys from the map, except for `:id`, so the functions below can do the right thing since
@@ -960,6 +979,7 @@
     (-> (into (select-keys card [:id :type :entity_id]) changes)
         apply-dashboard-question-updates
         maybe-normalize-query
+        (normalize-result-metadata-idents card changes)
         ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
         ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
         ;; verified-result-metadata? flag (see #37009).
@@ -1122,11 +1142,14 @@
                                                  :parameter_mappings (or parameter_mappings [])
                                                  :entity_id          (u/generate-nano-id))
                                                 (cond-> (nil? type)
-                                                  (assoc :type :question)))
-         {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata {:query     dataset_query
-                                                                                        :metadata  result_metadata
-                                                                                        :entity-id (:entity_id card-data)
-                                                                                        :model?    (model? card-data)})
+                                                  (assoc :type :question))
+                                                maybe-normalize-query
+                                                (ensure-clause-idents ::before-insert))
+         {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
+                                             {:query     (:dataset_query card-data)
+                                              :metadata  result_metadata
+                                              :entity-id (:entity_id card-data)
+                                              :model?    (model? card-data)})
          card                               (t2/with-transaction [_conn]
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed

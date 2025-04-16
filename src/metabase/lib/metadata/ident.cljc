@@ -2,7 +2,8 @@
   "Helpers for working with `:ident` fields on columns."
   (:require
    [clojure.string :as str]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn explicitly-joined-ident
   "Returns the ident for an explicitly joined column, given the idents of the join clause and the target column.
@@ -27,9 +28,43 @@
 (defn model-ident
   "Returns the `:ident` for this column on a model.
 
+  Prefer calling [[add-model-ident]] if attaching this to a whole column!
+
   Needs the `entity_id` for the model's card and the column's `:ident`."
   [target-ident card-entity-id]
+  (when (and (seq target-ident)
+             (str/starts-with? target-ident (model-ident "" card-entity-id)))
+    (throw (ex-info "Double-bagged!" {:ident target-ident
+                                      :eid   card-entity-id})))
   (str "model__" card-entity-id "__" target-ident))
+
+(defn add-model-ident
+  "Given a column with a basic, \"inner\" `:ident` and the `card-entity-id`, returns the column with `:ident` for the
+  model and `:model/inner-ident` with the original."
+  [{:keys [ident] :as column} card-entity-id]
+  (-> column
+      (assoc :model/inner-ident ident)
+      (update :ident model-ident card-entity-id)))
+
+(defn- strip-model-ident
+  [modeled-ident card-entity-id]
+  (let [prefix (model-ident "" card-entity-id)]
+    (if (str/starts-with? modeled-ident prefix)
+      (subs modeled-ident (count prefix))
+      (do (log/warnf "Attempting to strip-model-ident for %s but ident is not for that model: %s"
+                     card-entity-id modeled-ident)
+          modeled-ident))))
+
+(defn remove-model-ident
+  "Given a column with a [[model-ident]] style `:ident`, return the original, \"inner\" ident for that column.
+
+  Typically this should come from the `:model/inner-ident` key on the column, which is removed if present.
+  Will fall back to parsing the [[model-ident]] prefix if necessary."
+  [{:keys [ident model/inner-ident] :as column} card-entity-id]
+  (let [inner-ident (or inner-ident (strip-model-ident ident card-entity-id))]
+    (-> column
+        (dissoc :model/inner-ident)
+        (assoc :ident inner-ident))))
 
 (defn native-ident
   "Returns the `:ident` for a given field name on a native query.
