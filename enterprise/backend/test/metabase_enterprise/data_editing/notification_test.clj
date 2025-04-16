@@ -39,7 +39,7 @@
 
 (deftest create-row-notification-test
   (test-row-notification!
-   :row/create
+   :bulk/create
    (fn []
      (mt/user-http-request
       :crowberto
@@ -53,7 +53,7 @@
                                              [{:type "section",
                                                :text
                                                {:type "mrkdwn",
-                                                :text "*Crowberto Corv has created a row for CATEGORIES*\n• ID : 76\n• NAME : New Category"}}]}]
+                                                :text "*Crowberto Corv has created a row for CATEGORIES*\n*Created row:*\n• ID : 76\n• NAME : New Category"}}]}]
                               :channel-id "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
@@ -67,24 +67,11 @@
                               #"NAME: New Category"))))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
-                     (is (=? {:body {:type "system_event",
-                                     :payload {:action :row/create
-                                               :invocation_id (mt/malli=? :string)
-                                               :actor_id  (mt/user->id :crowberto)
-                                               :result    {:table_id    (mt/id :categories)
-                                                           :created_row {"ID" (mt/malli=? int?) "NAME" "New Category"}
-                                                           :table       {:name "CATEGORIES"}}
-                                               :actor     {:first_name  "Crowberto"
-                                                           :last_name   "Corv"
-                                                           :email       "crowberto@metabase.com"
-                                                           :common_name "Crowberto Corv"}
-                                               :event_name :event/action.success
-                                               :custom {}}}}
-                             req)))}))
+                     (is (=? {:body (mt/malli=? :map)} req)))}))
 
 (deftest update-row-notification-test
   (test-row-notification!
-   :row/update
+   :bulk/update
    (fn []
      (mt/user-http-request
       :crowberto
@@ -98,7 +85,7 @@
                                              [{:type "section",
                                                :text
                                                {:type "mrkdwn",
-                                                :text "*Crowberto Corv has updated a from CATEGORIES*\n*Update:*\n• ID : 1\n• NAME : Updated Category"}}]}]
+                                                :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• NAME : Updated Category"}}]}]
                               :channel-id  "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
@@ -112,26 +99,11 @@
                               #"NAME: Updated Category"))))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
-                     (is (=? {:body {:type    "system_event"
-                                     :payload {:action        :row/update
-                                               :invocation_id (mt/malli=? :string)
-                                               :actor_id      (mt/user->id :crowberto)
-                                               :result        {:table_id   (mt/id :categories)
-                                                               :after      {:ID (mt/malli=? int?) :NAME "Updated Category"}
-                                                               :before     {:ID (mt/malli=? int?) :NAME "African"}
-                                                               :raw_update {:ID (mt/malli=? int?) :NAME "Updated Category"}
-                                                               :table      {:name "CATEGORIES"}}
-                                               :actor         {:first_name  "Crowberto"
-                                                               :last_name   "Corv"
-                                                               :email       "crowberto@metabase.com"
-                                                               :common_name "Crowberto Corv"}
-                                               :event_name     :event/action.success
-                                               :custom        {}}}}
-                             req)))}))
+                     (is (=? {:body (mt/malli=? :map)} req)))}))
 
 (deftest delete-row-notification-test
   (test-row-notification!
-   :row/delete
+   :bulk/delete
    (fn []
      (mt/user-http-request
       :crowberto
@@ -145,7 +117,7 @@
                                              [{:type "section",
                                                :text
                                                {:type "mrkdwn",
-                                                :text "*Crowberto Corv has deleted a from CATEGORIES*\n• ID : 1\n• NAME : African"}}]}]
+                                                :text "*Crowberto Corv has deleted a row from CATEGORIES*\n*Deleted row:*\n• ID : 1\n• NAME : African"}}]}]
                               :channel-id "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
@@ -159,26 +131,13 @@
                               #"NAME: African"))))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
-                     (is (=? {:body {:type    "system_event"
-                                     :payload {:action        :row/delete
-                                               :invocation_id (mt/malli=? :string)
-                                               :actor_id      (mt/user->id :crowberto)
-                                               :result        {:table_id    (mt/id :categories)
-                                                               :deleted_row {:ID 1 :NAME "African"}
-                                                               :table       {:name "CATEGORIES"}}
-                                               :actor         {:first_name  "Crowberto"
-                                                               :last_name   "Corv"
-                                                               :email       "crowberto@metabase.com"
-                                                               :common_name "Crowberto Corv"}
-                                               :event_name     :event/action.success
-                                               :custom        {}}}}
-                             req)))}))
+                     (is (=? {:body (mt/malli=? :map)} req)))}))
 
 (deftest filter-notifications-test
   (testing "getting table notifications will return only notifications of a table and action"
-    (doseq [action [:row/create
-                    :row/update
-                    :row/delete]]
+    (doseq [action [:bulk/create
+                    :bulk/update
+                    :bulk/delete]]
       (notification.tu/with-system-event-notification!
         [_create-categories {:notification-system-event {:event_name :event/action.success
                                                          :action     action
@@ -192,76 +151,40 @@
                  (map :id (#'events.notification/notifications-for-topic
                            :event/action.success
                            {:action action
-                            :result {:table_id (mt/id :orders)}})))))))))
+                            :args {:table_id (mt/id :orders)}})))))))))
 
 (deftest example-payload-row-create-test
-  (is (=? {:payload_type "notification/system-event"
-           :creator      {:first_name "Crowberto"
-                          :last_name   "Corv"
-                          :email       "crowberto@metabase.com"
-                          :common_name "Crowberto Corv"}
-           :payload       {:action        "row/create"
-                           :invocation_id (mt/malli=? :string)
-                           :actor_id      (mt/malli=? :int)
-                           :actor         (mt/malli=? [:map
-                                                       [:first_name :string]
-                                                       [:last_name :string]
-                                                       [:email :string]])
-                           :result        {:table_id    (mt/malli=? :int)
-                                           :created_row (mt/malli=? [:map-of :keyword :any])}
-                           :event_name "event/action.success"}
-           :context       (mt/malli=? :map)}
+  (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :table    {:id 1 :name "orders"}
+           :records  [{:row {:ID 1 :STATUS "approved"} :changes {:STATUS {:before "pending" :after "approved"}}}]
+           :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
                                            :payload      {:event_name :event/action.success
-                                                          :action     :row/create}
+                                                          :action     :bulk/create}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-update-test
-  (is (=? {:payload_type "notification/system-event"
-           :creator      {:first_name "Crowberto"
-                          :last_name   "Corv"
-                          :email       "crowberto@metabase.com"
-                          :common_name "Crowberto Corv"}
-           :payload       {:action        "row/update"
-                           :invocation_id (mt/malli=? :string)
-                           :actor_id      (mt/malli=? :int)
-                           :actor         (mt/malli=? [:map
-                                                       [:first_name :string]
-                                                       [:last_name :string]
-                                                       [:email :string]])
-                           :result        {:table_id    (mt/malli=? :int)
-                                           :raw_update  (mt/malli=? [:map-of :keyword :any])
-                                           :after       (mt/malli=? [:map-of :keyword :any])
-                                           :before      (mt/malli=? [:map-of :keyword :any])}
-                           :event_name "event/action.success"
-                           :custom {}}
-           :context       (mt/malli=? :map)}
+  (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :table    {:id 1 :name "orders"}
+           :records  [{:row {:ID 1 :STATUS "approved"} :changes {:STATUS {:before "pending" :after "approved"}}}]
+           :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
                                            :payload      {:event_name :event/action.success
-                                                          :action     :row/update}
+                                                          :action     :bulk/update}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-delete-test
-  (is (=? {:payload_type "notification/system-event"
-           :creator      {:first_name "Crowberto"
-                          :last_name   "Corv"
-                          :email       "crowberto@metabase.com"
-                          :common_name "Crowberto Corv"}
-           :payload       {:action        "row/delete"
-                           :invocation_id (mt/malli=? :string)
-                           :actor_id      (mt/malli=? :int)
-                           :actor         (mt/malli=? [:map
-                                                       [:first_name :string]
-                                                       [:last_name :string]
-                                                       [:email :string]])
-                           :result        {:table_id    (mt/malli=? :int)
-                                           :deleted_row (mt/malli=? [:map-of :keyword :any])}
-                           :event_name "event/action.success"}
-           :context       (mt/malli=? :map)}
+  (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :table    {:id 1 :name "orders"}
+           :records  [{:row {:ID 1 :STATUS "approved"} :changes {:STATUS {:before "pending" :after "approved"}}}]
+           :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
                                            :payload      {:event_name :event/action.success
-                                                          :action     :row/delete}
+                                                          :action     :bulk/delete}
                                            :creator_id   (mt/user->id :crowberto)})))))

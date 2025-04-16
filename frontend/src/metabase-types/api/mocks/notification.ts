@@ -114,7 +114,7 @@ export const createMockTableNotification = (
   payload: {
     event_name: "event/action.success",
     table_id: 42,
-    action: "row/create",
+    action: "bulk/create",
   },
   creator: createMockUserInfo(),
   creator_id: 3,

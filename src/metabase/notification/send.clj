@@ -124,7 +124,7 @@
 
 (defmethod do-after-notification-sent :default [_notification-info _notification-payload] nil)
 
-(def ^:private payload-labels         (for [payload-type (keys (methods notification.payload/payload))]
+(def ^:private payload-labels         (for [payload-type (keys (methods notification.payload/notification-payload))]
                                         {:payload-type payload-type}))
 (def ^:private payload-channel-labels (for [[channel-type payload-type] (keys (methods channel/render-notification))]
                                         {:payload-type payload-type

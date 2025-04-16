@@ -20,14 +20,15 @@
    [metabase.util.malli.schema :as ms]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2])
-  (:import (clojure.lang ExceptionInfo)))
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
 (defmethod events.notification/notification-filter-for-topic :event/action.success
   [_topic event-info]
   [:and
-   [:= :table_id (-> event-info :result :table_id)]
+   [:= :table_id (-> event-info :args :table_id)]
    [:= :action (u/qualified-name (:action event-info))]])
 
 (defn- qp-result->row-map
@@ -128,8 +129,9 @@
              (nano-id/nano-id)
              user-id
              :row/update
-             {:table_id   table-id
-              :after      after-row
+             {:table_id table-id
+              :row row}
+             {:after      after-row
               :before     row-before
               :raw_update row}))))
       ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
@@ -155,7 +157,7 @@
   (let [pk-field    (table-id->pk table-id)
         id->db-rows (query-db-rows table-id pk-field rows)
         res         (data-editing/perform-bulk-action! :bulk/delete table-id rows)
-        user-id       api/*current-user-id*]
+        user-id     api/*current-user-id*]
     ;; TODO this publishing needs to move down the stack and be generic all :row/delete invocations
     ;; https://linear.app/metabase/issue/WRK-228/publish-events-when-modified-by-action-execution
     (doseq [row rows]
@@ -163,9 +165,10 @@
        (nano-id/nano-id)
        user-id
        :row/delete
-       {:table_id   table-id
+       {:table_id table-id
+        :row      row}
         ;; TODO fix for composite keys here too
-        :deleted_row (get id->db-rows (get-row-pk pk-field row))}))
+       {:deleted_row (get id->db-rows (get-row-pk pk-field row))}))
     ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
     (let [row-pk->old-new-values (->> (for [row rows]
                                         ;; TODO fix for composite keys here too
