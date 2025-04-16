@@ -76,7 +76,7 @@ export const EditTableDataContainer = ({
     handleModalOpenAndExpandedRow,
   } = useTableCRUD({ tableId, datasetData, stateUpdateStrategy });
 
-  const { undo, redo } = useTableEditingUndoRedo({
+  const { undo, redo, isUndoLoading, isRedoLoading } = useTableEditingUndoRedo({
     tableId,
     stateUpdateStrategy,
   });
@@ -103,6 +103,8 @@ export const EditTableDataContainer = ({
             table={table}
             question={fakeTableQuestion}
             isLoading={isFetching}
+            isUndoLoading={isUndoLoading}
+            isRedoLoading={isRedoLoading}
             onCreate={handleModalOpenAndExpandedRow}
             onQuestionChange={handleQuestionChange}
             refetchTableDataQuery={refetch}

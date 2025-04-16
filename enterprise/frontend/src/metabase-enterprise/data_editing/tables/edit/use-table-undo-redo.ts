@@ -96,5 +96,5 @@ export function useTableEditingUndoRedo({
     handleResponse("redo", response);
   }, [redoMutation, tableId, handleResponse]);
 
-  return { undo, redo, isLoading: isUndoLoading || isRedoLoading };
+  return { undo, redo, isUndoLoading, isRedoLoading };
 }

@@ -12,6 +12,7 @@ import {
   Flex,
   Group,
   Icon,
+  Loader,
   Stack,
   Title,
 } from "metabase/ui";
@@ -26,6 +27,8 @@ interface EditTableDataHeaderProps {
   table: Table | ApiTable;
   question: Question;
   isLoading: boolean;
+  isUndoLoading: boolean;
+  isRedoLoading: boolean;
   onCreate: () => void;
   onQuestionChange: (newQuestion: Question) => void;
   refetchTableDataQuery: () => void;
@@ -37,6 +40,8 @@ export const EditTableDataHeader = ({
   table,
   question,
   isLoading,
+  isUndoLoading,
+  isRedoLoading,
   onCreate,
   onQuestionChange,
   refetchTableDataQuery,
@@ -88,11 +93,25 @@ export const EditTableDataHeader = ({
             onRun={refetchTableDataQuery}
           />
           <TableNotificationsTrigger tableId={table.id} />
-          <ActionIcon onClick={onUndo}>
-            <Icon name="triangle_left" />
+          <ActionIcon
+            onClick={onUndo}
+            disabled={isUndoLoading || isRedoLoading}
+          >
+            {isUndoLoading ? (
+              <Loader size="xs" color="currentColor" />
+            ) : (
+              <Icon name="undo" tooltip={t`Undo changes`} />
+            )}
           </ActionIcon>
-          <ActionIcon onClick={onRedo}>
-            <Icon name="triangle_right" />
+          <ActionIcon
+            onClick={onRedo}
+            disabled={isUndoLoading || isRedoLoading}
+          >
+            {isRedoLoading ? (
+              <Loader size="xs" color="currentColor" />
+            ) : (
+              <Icon name="redo" tooltip={t`Redo changes`} />
+            )}
           </ActionIcon>
         </Group>
       </Flex>
