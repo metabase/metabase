@@ -143,9 +143,9 @@
 (defn- with-schema-fn
   "Helper function for generating a function form with schema metadata.
    Takes the function body (arities or single arity) and adds schema metadata."
-  [fn-body parsed]
+  [fn parsed]
   `(vary-meta
-    (core/fn ~@fn-body)
+    ~fn
     merge
     {:schema ~(fn-schema parsed {:target :target/metadata})}))
 
@@ -173,11 +173,7 @@
     ;; =>
     (fn [x] (inc x))"
   [parsed & [fn-name]]
-  (with-schema-fn
-    (if fn-name
-      (list* fn-name (deparameterized-fn-tail parsed))
-      (deparameterized-fn-tail parsed))
-    parsed))
+  `(core/fn ~@(when fn-name [fn-name]) ~@(deparameterized-fn-tail parsed)))
 
 (def ^:dynamic *enforce*
   "Whether [[validate-input]] and [[validate-output]] should validate things or not. In Cljc code, you can
@@ -333,11 +329,15 @@
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
   [error-context parsed & [fn-name]]
-  (let [schema (fn-schema parsed)]
-    `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
-       ~(with-schema-fn
-          (instrumented-fn-tail error-context schema)
-          parsed))))
+  `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
+     (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
+
+(defn instrumented-fn-form-with-schema
+  "Like [[instrumented-fn-form]] but the fn will have schema in metadata."
+  [error-context parsed & args]
+  (with-schema-fn
+    (instrumented-fn-form error-context parsed args)
+    parsed))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
@@ -403,10 +403,10 @@
   fix this later."
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)
-        instrument? (instrument-ns? *ns*)
-        fn-name (when (symbol? (first fn-tail)) (first fn-tail))]
+        instrument? (instrument-ns? *ns*)]
     (if-not instrument?
-      (deparameterized-fn-form parsed fn-name)
-      (let [error-context (if fn-name
-                            {:fn-name (list 'quote fn-name)} {})]
-        (instrumented-fn-form error-context parsed fn-name)))))
+      (deparameterized-fn-form parsed)
+      (let [error-context (if (symbol? (first fn-tail))
+                            ;; We want the quoted symbol of first fn-tail:
+                            {:fn-name (list 'quote (first fn-tail))} {})]
+        (instrumented-fn-form error-context parsed)))))

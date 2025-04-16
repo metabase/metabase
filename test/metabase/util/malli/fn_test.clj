@@ -361,13 +361,3 @@
                     (f)))
              (catch Exception _e
                (is false "it threw a schema error")))))))
-
-(deftest ^:parallel fn-metadata-schema-test
-  (doseq [instrument? [true false]]
-    (testing (format "instrument is %s" instrument?)
-      (mt/with-dynamic-fn-redefs [mu.fn/instrument-ns? (constantly instrument?)]
-        (testing "mu.fn/fn returns a function with metadata that includes the schema"
-          (let [f (mu.fn/fn :- :int [x :- :string] (Integer/parseInt x))
-                schema-meta (-> f meta :schema)]
-            (is (= [:=> [:cat :string] :int]
-                   schema-meta))))))))
