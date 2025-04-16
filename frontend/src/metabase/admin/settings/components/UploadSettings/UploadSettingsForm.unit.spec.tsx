@@ -336,7 +336,9 @@ describe("Admin > Settings > UploadSettingsForm", () => {
     expect(await screen.findByDisplayValue("Db Uno")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("1")).toBeInTheDocument();
 
-    expect(await screen.findByDisplayValue("top_secret")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getAllByDisplayValue("top_secret")).toHaveLength(2),
+    );
   });
 
   it("should populate db and stable prefix from existing settings", async () => {
