@@ -60,6 +60,29 @@ describe("Admin > UploadSettings > utils", () => {
     });
   });
 
+  it("should disable any options for dbs with db routing enabled", () => {
+    expect(
+      getDatabaseOptions([
+        ...databases,
+        createMockDatabase({
+          id: 700,
+          name: "Routed",
+          engine: "postgres",
+          router_user_attribute: "wut",
+        }),
+      ]),
+    ).toEqual([
+      { label: "Database", value: "100", disabled: false },
+      { label: "Database", value: "200", disabled: false },
+      { label: "Database", value: "300", disabled: false },
+      { label: "Routed (DB Routing Enabled)", value: "700", disabled: true },
+    ]);
+  });
+
+  it("should return an empty array if there are no databases", () => {
+    expect(getDatabaseOptions([])).toEqual([]);
+  });
+
   describe("getSchemaOptions", () => {
     it("should return an array of schema", () => {
       expect(getSchemaOptions(schemas.map((schema) => schema.name))).toEqual([
