@@ -40,13 +40,7 @@ function getData() {
    * Using a Record, so that this gives compilation error when TaskStatus is extended,
    * so that whoever changes that type does not forget to update this function.
    */
-  const statusNames: Record<
-    TaskStatus,
-    {
-      label: string;
-      value: TaskStatus;
-    }
-  > = {
+  const statusNames: { [T in TaskStatus]: { label: string; value: T } } = {
     failed: { label: t`Failed`, value: "failed" },
     started: { label: t`Started`, value: "started" },
     success: { label: t`Success`, value: "success" },
