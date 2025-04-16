@@ -156,7 +156,8 @@
   (#'search.engine/consume!
    :search.engine/appdb
    (#'search.ingestion/query->documents
-    (#'search.ingestion/spec-index-reducible model where-clause))))
+    (#'search.ingestion/spec-index-reducible model where-clause))
+   false))
 
 (defn fetch [model & clauses]
   (apply t2/select (search.index/active-table) :model model clauses))
