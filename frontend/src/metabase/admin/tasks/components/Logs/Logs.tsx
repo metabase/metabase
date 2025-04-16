@@ -10,7 +10,7 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import Select, { Option } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import { openSaveDialog } from "metabase/lib/dom";
-import { Box, Button, Flex, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon, TextInput } from "metabase/ui";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
@@ -63,29 +63,43 @@ const LogsBase = ({
 
   return (
     <LogsContainer loading={!loaded} error={error}>
-      <Flex align="center" justify="space-between" mb="md">
-        {processUUIDs.length > 1 && (
-          <Box>
-            <label>{t`Select Metabase process:`}</label>
-            <Select
-              defaultValue="ALL"
-              value={process}
-              onChange={(e: { target: { value: string } }) => {
-                refollow();
-                patchUrlState({ process: e.target.value });
-              }}
-              className={cx(CS.inlineBlock, CS.ml1)}
-              width={400}
-            >
-              <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
-              {processUUIDs.map((uuid) => (
-                <Option key={uuid} value={uuid}>
-                  <code>{uuid}</code>
-                </Option>
-              ))}
-            </Select>
-          </Box>
-        )}
+      <Flex align="center" gap="md" justify="space-between" mb="md">
+        <Flex align="center" gap="md">
+          <TextInput
+            placeholder={t`Filter logs`}
+            value={query ?? ""}
+            onChange={(event) => {
+              patchUrlState({ query: event.target.value });
+              refollow();
+            }}
+          />
+
+          {processUUIDs.length > 1 && (
+            <Box>
+              <Select
+                aria-label={t`Select Metabase process`}
+                defaultValue="ALL"
+                value={process}
+                onChange={(e: { target: { value: string } }) => {
+                  patchUrlState({ process: e.target.value });
+                  refollow();
+                }}
+                className={cx(CS.inlineBlock, CS.ml1)}
+                width={400}
+              >
+                <Option
+                  value="ALL"
+                  key="ALL"
+                >{t`All Metabase processes`}</Option>
+                {processUUIDs.map((uuid) => (
+                  <Option key={uuid} value={uuid}>
+                    <code>{uuid}</code>
+                  </Option>
+                ))}
+              </Select>
+            </Box>
+          )}
+        </Flex>
 
         <Button
           disabled={filteredLogs.length === 0}

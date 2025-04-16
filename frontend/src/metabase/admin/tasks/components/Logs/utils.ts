@@ -12,7 +12,7 @@ const MAX_LOGS = 50000;
 
 type UrlState = {
   process: string | "ALL";
-  query: string | null;
+  query: string;
 };
 
 export const urlStateConfig: UrlStateConfig<UrlState> = {
@@ -21,8 +21,8 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
     query: parseQuery(query.query),
   }),
   serialize: ({ process, query }) => ({
-    process: process === null || process === "ALL" ? undefined : process,
-    query: query === null ? undefined : query,
+    process: process === "ALL" ? undefined : process,
+    query: query.length === 0 ? undefined : query,
   }),
 };
 
@@ -33,7 +33,7 @@ function parseProcess(param: QueryParam): UrlState["process"] {
 
 function parseQuery(param: QueryParam): UrlState["query"] {
   const value = Array.isArray(param) ? param[0] : param;
-  return value && value.length > 0 ? value : null;
+  return value ?? "";
 }
 
 function logEventKey(ev: Log) {
