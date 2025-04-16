@@ -8,7 +8,7 @@ import { t } from "ttag";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import Select, { Option } from "metabase/core/components/Select";
 import { openSaveDialog } from "metabase/lib/dom";
-import { Box, Button, Flex, Icon, TextInput } from "metabase/ui";
+import { Button, Flex, Icon, TextInput } from "metabase/ui";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
@@ -95,27 +95,22 @@ const LogsBase = ({
           />
 
           {processUUIDs.length > 1 && (
-            <Box>
-              <Select
-                defaultValue="ALL"
-                value={process}
-                width={400}
-                onChange={(e: { target: { value: string } }) => {
-                  patchUrlState({ process: e.target.value });
-                  refollow();
-                }}
-              >
-                <Option
-                  value="ALL"
-                  key="ALL"
-                >{t`All Metabase processes`}</Option>
-                {processUUIDs.map((uuid) => (
-                  <Option key={uuid} value={uuid}>
-                    <code>{uuid}</code>
-                  </Option>
-                ))}
-              </Select>
-            </Box>
+            <Select
+              defaultValue="ALL"
+              value={process}
+              width={400}
+              onChange={(e: { target: { value: string } }) => {
+                patchUrlState({ process: e.target.value });
+                refollow();
+              }}
+            >
+              <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
+              {processUUIDs.map((uuid) => (
+                <Option key={uuid} value={uuid}>
+                  <code>{uuid}</code>
+                </Option>
+              ))}
+            </Select>
           )}
         </Flex>
 
