@@ -1,6 +1,11 @@
 import _ from "underscore";
 
-import type { Dataset, DatasetColumn, RowValues } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetColumn,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 import type {
   VisualizerColumnValueSource,
   VisualizerDataSource,
@@ -28,6 +33,17 @@ type MergeVisualizerSeries = {
    */
   dataSources: VisualizerDataSource[];
 };
+
+/**
+ * Checks if the given array of values is empty, i.e. if it contains
+ * any undefined values or is itself undefined.
+ *
+ * @param value - The value to check
+ * @returns Whether the value is empty
+ */
+function isEmpty(value: (RowValue | undefined)[]): boolean {
+  return value === undefined || value.some((v) => v === undefined);
+}
 
 /**
  * Merges data from multiple datasets into a single dataset.
@@ -75,7 +91,7 @@ export function mergeVisualizerData({
       .flat(),
   );
 
-  return unzippedRows.some((v) => !v || v.some((_v) => _v === undefined))
+  return unzippedRows.some(isEmpty)
     ? undefined
     : {
         cols: columns,
