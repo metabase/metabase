@@ -14,7 +14,7 @@
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent Callable Executors ExecutorService)
+   (java.util.concurrent Callable Executors ExecutorService ThreadPoolExecutor)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
    (org.quartz CronExpression)))
 
@@ -357,9 +357,9 @@
       (start-worker!))
     (fn [notification]
       ;; ensure there is always a worker to handle the notification
-      (dotimes [_ (- pool-size (.getActiveCount ^ExecutorService executor))]
+      (dotimes [_ (- pool-size (.getActiveCount ^ThreadPoolExecutor executor))]
         (log/debugf "Not enough workers, starting a new one %d/%d"
-                    (.getActiveCount ^ExecutorService executor)
+                    (.getActiveCount ^ThreadPoolExecutor executor)
                     pool-size)
         (start-worker!))
       (put-notification! queue notification))))
