@@ -595,7 +595,7 @@ describe("scenarios > question > custom column", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByLabelText("Start date").clear().type("12/10/2024");
       cy.findByLabelText("End date").clear().type("01/05/2025");
       cy.button("Add filter").click();
@@ -619,7 +619,7 @@ describe("scenarios > question > custom column", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("MiscDate").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
       cy.findByDisplayValue("days").click();
     });
@@ -1095,7 +1095,7 @@ describe(
       H.popover().within(() => {
         cy.findByText("DoB").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });
@@ -1115,7 +1115,7 @@ describe(
         cy.findByText("MiscDate").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });
@@ -1134,7 +1134,7 @@ describe(
       H.popover().within(() => {
         cy.findByText("MiscDate").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });

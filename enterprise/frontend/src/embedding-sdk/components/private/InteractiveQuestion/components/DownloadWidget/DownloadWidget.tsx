@@ -9,6 +9,7 @@ import { useInteractiveQuestionContext } from "../../context";
 
 // TODO: Add props for formatting, file type, etc
 /**
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionDownloadWidgetProps = StackProps;

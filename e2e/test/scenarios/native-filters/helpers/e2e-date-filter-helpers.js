@@ -46,7 +46,7 @@ export function setAdHocFilter(
   { condition, quantity, timeBucket, includeCurrent = false } = {},
   buttonLabel = "Add filter",
 ) {
-  cy.findByText("Relative dates…").click();
+  cy.findByText("Relative date range…").click();
   if (condition) {
     cy.findByText(condition).click({ force: true });
   } else {

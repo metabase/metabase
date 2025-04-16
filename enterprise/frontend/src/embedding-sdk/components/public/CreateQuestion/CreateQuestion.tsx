@@ -5,10 +5,12 @@ import {
 
 /**
  * @interface
+ * @expand
  * @category CreateQuestion
  */
-export type CreateQuestionProps = Partial<
-  Omit<BaseInteractiveQuestionProps, "questionId" | "children">
+export type CreateQuestionProps = Omit<
+  Partial<BaseInteractiveQuestionProps>,
+  "questionId" | "children"
 >;
 
 /**

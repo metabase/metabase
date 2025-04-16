@@ -658,6 +658,7 @@ export interface ClickObject {
 
 export interface FieldValuesSearchInfo {
   fieldId: FieldId | null;
+  searchField: ColumnMetadata | null;
   searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
 }

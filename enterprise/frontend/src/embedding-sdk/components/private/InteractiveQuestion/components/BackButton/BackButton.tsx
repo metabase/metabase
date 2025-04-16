@@ -6,6 +6,7 @@ import {
 import { useInteractiveQuestionContext } from "../../context";
 
 /**
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionBackButtonProps = Omit<
