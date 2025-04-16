@@ -337,6 +337,23 @@
   (let [include-cols [:token :table_id :creator_id]]
     {:tokens (t2/select (into [:table_webhook_token] include-cols) :table_id table-id)}))
 
+(api.macros/defendpoint :get "/row-action/:action-id"
+  "Like /api/action but specialises the parameter requirements for a dashcard context where selected rows
+  maybe provided values for e.g primary key values.
+  Parameter names that intersect with the tables fields will be omitted from the parameter list.
+  Later when evaluated as a row action using /row-action/:action-id/execute, you will also be able to omit these parameters."
+  [{:keys [action-id]}   :- [:map [:action-id   :string]]
+   {:keys [dashcard-id]} :- [:map [:dashcard-id ms/PositiveInt]]]
+  (let [action             (-> (actions/select-action :id (parse-long action-id) :archived false)
+                               (t2/hydrate :creator)
+                               api/read-check)
+        {:keys [card_id]}  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        {:keys [table_id]} (api/check-404 (t2/select-one :model/Card card_id))
+        fields             (t2/select [:model/Field :name] :table_id table_id)
+        field-names        (set (map :name fields))
+        include?           #(not (contains? field-names (:slug %)))]
+    (update action :parameters #(some->> % (filterv include?)))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
   (api.macros/ns-handler *ns* +auth))
