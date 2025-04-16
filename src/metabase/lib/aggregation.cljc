@@ -233,7 +233,7 @@
 
 (lib.common/defop count       [] [x])
 (lib.common/defop cum-count   [] [x])
-(lib.common/defop count-where [x y])
+(lib.common/defop count-where [x])
 (lib.common/defop avg         [x])
 (lib.common/defop distinct    [x])
 (lib.common/defop max         [x])
