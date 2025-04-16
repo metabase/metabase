@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { ELLIPSIS } from "../constants";
+
 export const dashboardShortcuts = {
   "dashboard-bookmark": {
     get name() {
@@ -100,5 +102,11 @@ export const dashboardShortcuts = {
     get shortcutContext() {
       return t`When editing`;
     },
+  },
+  "dashboard-change-tab": {
+    name: t`Change dashboard tab`,
+    shortcut: ["1", "2", "3", ELLIPSIS],
+    shortcutGroup: "dashboard",
+    dynamic: true,
   },
 };

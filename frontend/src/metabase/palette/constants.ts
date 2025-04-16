@@ -4,3 +4,5 @@ export const GROUP_LABLES = {
   question: "Querying & the notebook",
   collection: "Collection",
 };
+
+export const ELLIPSIS = "...";

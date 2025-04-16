@@ -17,7 +17,7 @@ import {
   Text,
 } from "metabase/ui";
 
-import { GROUP_LABLES } from "../../constants";
+import { ELLIPSIS, GROUP_LABLES } from "../../constants";
 
 const groupedShortcuts = _.groupBy(
   _.mapObject(ALL_SHORTCUTS, (val, id) => ({ id, ...val })),
@@ -100,7 +100,14 @@ export const PaletteShortcutsModal = ({
                       my="sm"
                     >
                       <Text>{shortcut.name}</Text>
-                      <Shortcut shortcut={shortcut.shortcut[0]} />
+                      <Group gap="0.25rem">
+                        {shortcut.shortcut.map((shortcutKeys) => (
+                          <Shortcut
+                            key={shortcutKeys}
+                            shortcut={shortcutKeys}
+                          />
+                        ))}
+                      </Group>
                     </Group>
                   )),
                 ]);
@@ -114,6 +121,10 @@ export const PaletteShortcutsModal = ({
 };
 
 const Shortcut = (props: { shortcut: string }) => {
+  if (props.shortcut === ELLIPSIS) {
+    return props.shortcut;
+  }
+
   const string = props.shortcut
     .replace("$mod", METAKEY)
     .replace(" ", " > ")
