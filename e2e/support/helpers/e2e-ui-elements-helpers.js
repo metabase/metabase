@@ -499,9 +499,12 @@ export function multiAutocompleteInput(filter = ":eq(0)") {
   return cy.findAllByRole("combobox").filter(filter).get("input").first();
 }
 
-export function fieldValuesInput(filter = ":eq(0)") {
-  // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByRole("textbox").filter(filter).get("input").last();
+export function fieldValuesCombobox() {
+  return cy.findByRole("combobox");
+}
+
+export function fieldValuesTextbox() {
+  return cy.findByRole("textbox");
 }
 
 export function fieldValuesValue(index) {
@@ -511,7 +514,11 @@ export function fieldValuesValue(index) {
 
 export function removeFieldValuesValue(index) {
   // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
+  return cy
+    .findAllByTestId("token-field")
+    .findAllByLabelText("Remove")
+    .eq(index)
+    .click();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
