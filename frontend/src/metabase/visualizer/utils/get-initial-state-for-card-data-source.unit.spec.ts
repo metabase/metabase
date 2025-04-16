@@ -50,12 +50,19 @@ describe("getInitialStateForCardDataSource", () => {
       dataset,
     );
 
-    expect(initialState.columns).toHaveLength(1);
+    expect(initialState.columns).toHaveLength(2);
     expect(initialState.columnValuesMapping).toEqual({
       COLUMN_1: [
         {
           name: "COLUMN_1",
           originalName: "Foo",
+          sourceId: "card:1",
+        },
+      ],
+      COLUMN_2: [
+        {
+          name: "COLUMN_2",
+          originalName: "Bar",
           sourceId: "card:1",
         },
       ],
