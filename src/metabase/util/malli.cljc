@@ -5,6 +5,7 @@
        ([metabase.config :as config]
         [metabase.util.malli.defn :as mu.defn]
         [metabase.util.malli.fn :as mu.fn]
+        [malli.generator :as mg]
         [net.cgrand.macrovich :as macros]
         [potemkin :as p]))
    [clojure.core :as core]
