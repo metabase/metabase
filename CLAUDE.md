@@ -31,8 +31,8 @@
 - **Lint Changes:** `./bin/mage kondo-updated HEAD`
 - **Format:** `./bin/mage cljfmt-files [path]`
 - **Test file:** `clojure -X:dev:test :only namespace/test-name`
-- **Check Parenthesis Balance** `./bin/mage -balance-parens-check` with optional line-number
-  - Run this after every change to clojure code, only accept balanced code
+- **Check Code Readability** `./bin/mage -code-is-readable` with optional line-number
+  - Run this after every change to Clojure code, only accept readable code
 - **Evaluating Clojure Code** `./bin/mage -eval '<code>'`
   - See `Sending code to the REPL` for more details
 
@@ -68,11 +68,14 @@
 
 ### How to evaluate code
 
-#### Keeping parens balanced
+#### Keeping Code Readable
 
-- Edit clojure files one step at a time.
-- After every change to a clojure form, call `mage -balance-parens-check thefile.clj <line-number>`.
-- If the change results in unbalanced parens, try again until it is balanced.
+The `-code-is-readable` command checks if your code can be properly parsed by Clojure. 
+This ensures your changes maintain valid syntax and structure.
+
+- Edit Clojure files one step at a time.
+- After every change to a Clojure form, call `mage -code-is-readable thefile.clj <line-number>`.
+- If the change results in unreadable code, try again until it is readable.
 
 So if you change this file (line numbers on the left) in `yourfile.clj`:
 
@@ -82,9 +85,9 @@ So if you change this file (line numbers on the left) in `yourfile.clj`:
 12| +  (* x x))
 ```
 
-After EVERY change: call `mage -balance-parens-check yourfile.clj 12`, which checks if the entire square function is balanced. Always pay close attention to the results: Unbalanced Code Is Unacceptable!
+After EVERY change: call `mage -code-is-readable yourfile.clj 12`, which checks if the entire square function is readable. Always pay close attention to the results: Unreadable Code Is Unacceptable!
 
-You can also call `mage -balance-parens-check yourfile.clj` without the line number to check the entire file.
+You can also call `mage -code-is-readable yourfile.clj` without the line number to check the entire file.
 
 #### Bottom-up dev loop
 

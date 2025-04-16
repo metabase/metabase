@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn parse-int
+(defn- safe-parse-int
   "Parse a string into an integer. Returns nil if parsing fails. Returns the input unchanged if not a string."
   [s-or-i]
   (if (string? s-or-i)
@@ -19,11 +19,11 @@
         (catch Exception _ nil)))
     s-or-i))
 
-(defn nrepl-port
+(defn- nrepl-port
   "Get the nREPL port from the .nrepl-port file. Throws an ex-info with friendly error message if file not found."
   []
   (try
-    (parse-int (slurp ".nrepl-port"))
+    (safe-parse-int (slurp ".nrepl-port"))
     (catch java.io.FileNotFoundException _
       (throw (ex-info (str "Metabase backend is not running. To start it, run:\n\n"
                            (c/green "  clj -M:dev:ee:ee-dev:drivers:drivers-dev:dev-start\n\n")
@@ -31,7 +31,7 @@
                            "The REPL server creates a .nrepl-port file when it starts.")
                       {:cause :backend-not-running})))))
 
-(defn bootstrap-code
+(defn- bootstrap-code
   "Capture output and return it as strings along with the value from the orignal code."
   [code-string]
   (str "
@@ -57,7 +57,7 @@
          (throw e)))))
   ([port code]
    (try
-     (let [port (parse-int port)
+     (let [port (safe-parse-int port)
            s (java.net.Socket. "localhost" port)
            out (.getOutputStream s)
            in (java.io.PushbackInputStream. (.getInputStream s))
@@ -83,7 +83,7 @@
                      (c/green "  clj -M:dev:ee:ee-dev:drivers:drivers-dev:dev-start\n\n")
                      "If you prefer a different way to start the backend, please use that instead."))))))
 
-(defn find-data-readers []
+(defn- find-data-readers []
   (let [reader-tags (conj (keys (read-string
                                  (slurp "resources/data_readers.clj")))
                           'js)]
@@ -92,7 +92,7 @@
                                (eval `(fn [v] (list (quote ~tag) v))))
                              reader-tags))))
 
-(defn balanced-parens-in-content? [s]
+(defn- can-read-content? [s]
   (try
     (edamame/parse-string-all s {:all true
                                  :map m/ordered-map
@@ -103,9 +103,9 @@
                                  :eof ::done
                                  :row-key :line
                                  :col-key :column})
-    {:balanced true}
+    {:readable true}
     (catch Exception e
-      {:balanced false
+      {:readable false
        :reason (ex-message e)
        :data (ex-data e)})))
 
@@ -151,7 +151,9 @@
 ;;     [4 {:start 4, :end 7}]
 ;;     [5 {:start 4, :end 7}]]
   )
-(defn- bp-usage [reason]
+
+(defn- rc-usage [reason]
+  (println "There was a problem with the command: " reason)
   (println)
   (println "Usage: bb be-dev/balanced-parens file-path starting-line-number ending-line-number")
   (println "  file-path:            path to the file to check")
@@ -159,65 +161,94 @@
   (println)
   (throw (ex-info "Usage error" {:cause :usage :reason reason})))
 
-(defn balanced-parens?
-  "Check if the file has balanced parens.
+(defn readability-check
+  "Check if the file has balanced parens, and can be read by the Clojure reader.
 
-  If line-number is not provided, check the whole file.
-  If line-number is provided, check the top level form file which contains line-number."
+  Emulation of the Clojure reader, is done by edamame, which has been configured to work with our codebase.
+
+  If line-number is not provided, checks the whole file.
+  If line-number is provided, checks the top level form file which contains line-number."
   [file & [line-number]]
-  (let [content (try (slurp file) (catch Exception _ (bp-usage :missing-file)))]
+  (let [content (try (slurp file) (catch Exception _ (rc-usage :missing-file)))]
     (if-not line-number
       #_:clj-kondo/ignore
-      (let [result (balanced-parens-in-content? content)]
+      (let [result (can-read-content? content)]
         (prn result)
         result)
       (try (let [line-number (try (if (int? line-number) line-number (Integer/parseInt line-number))
-                                  (catch Exception _ (bp-usage :invalid-line-number)))
+                                  (catch Exception _ (rc-usage :invalid-line-number)))
                  lines (str/split-lines content)
                  line-count (count lines)
                  _ (when (> line-number line-count)
-                     (throw (ex-info (str "Line number " line-number " is greater than the number of lines in the file (" line-count ").")
+                     (throw (ex-info (str "Line number (" line-number ") is greater than the number of lines in the file (" line-count ").")
                                      {:cause :line-number-too-high})))
 
                  {:keys [start end]} (line-bounds content line-number)
-                 corpus (str/join "\n" (take (- end start) (drop (dec start) lines)))]
+                 corpus (str/join "\n" (take
+                                        (- end start)
+                                        (drop (dec start) lines)))]
              (println (str "Checking chunk containing line " line-number ": \n----"))
              (println corpus)
              (println "----")
              (let [result (assoc
-                           (balanced-parens-in-content? corpus)
+                           (can-read-content? corpus)
                            :starting-at (str/join "\n" [(nth lines (dec start)) (nth lines start)]))]
                #_:clj-kondo/ignore
                (prn result)
                result))
            (catch Exception e
              (println "message: " (ex-message e))
-             (println "data:    " (pr-str (ex-data e))))))))
+             (println "data:    " (pr-str (ex-data e)))
+             {:readable false
+              :exception true
+              :message (ex-message e)
+              :data (ex-data e)})))))
 
-(comment
+(comment ;; hi self
 
-  (balanced-parens? "test/metabase/models/card_test.clj" 20)
-  (println corpus)
+  (readability-check "test/metabase/models/card_test.clj" 20)
+  ;; => {:readable true, :starting-at "(ns metabase.models.card-test\n  (:require"}
 
-  (balanced-parens-in-content? corpus)
+  (readability-check "test/metabase/models/card_test.clj" 20000)
+  ;; => {:readable false, :exception true,
+  ;;     :message "Line number 20000 is greater than the number of lines in the file (1472).",
+  ;;     :data {:cause :line-number-too-high}}
 
-  (balanced-parens? "mage/mage/be_dev.clj" 179)
+  (can-read-content? (str/join "\n" ["[" "[" "}" "]" "]"]))
+  ;; => {:readable false, :reason "Unmatched delimiter: }, expected: ] to match [ at [2 1]",
+  ;;     :data {:type :edamame/error, :line 3, :column 1, :edamame/opened-delimiter "[",
+  ;;            :edamame/opened-delimiter-loc {:row 2, :col 1}, :edamame/expected-delimiter "]"}}
+
+  (can-read-content? "[[[]] ")
+  ;; => {:readable false, :reason "EOF while reading, expected ] to match [ at [1,1]",
+  ;;     :data {:type :edamame/error, :line 1, :column 7, :edamame/expected-delimiter "]",
+  ;;            :edamame/opened-delimiter "[", :edamame/opened-delimiter-loc {:row 1, :col 1}}}
+
+  (can-read-content? "1a")
+  ;; => {:readable false, :reason "Invalid number: 1a", :data {:type :edamame/error, :line 1, :column 2}}
+
+  (readability-check "mage/mage/be_dev.clj" 220)
+  ;; => {:readable true, :starting-at "\n(comment ;; hi self"}
+
                                         ;soo meta :) :| :(
   ;; these cannot trip it up:
-  ")" "}]" #inst "2020" @(atom 1)  #_\)
+  ")" "}]" #inst "2020" @(atom 1)  #_\) \) #_#_#_a a a
   "uncomment this to try, it works, but is unreadable in bb:"  ;;#something-cool 13
-  (balanced-parens? "bin/build/test/i18n/create_artifacts/backend_test.clj" 29))
-
+  (readability-check "bin/build/test/i18n/create_artifacts/backend_test.clj" 29)
+  ;; => {:readable true, :starting-at "\n(deftest ^:parallel backend-message?"}
+  )
 (comment
 
+  ;; this should be a test:
   (require '[babashka.fs :as fs])
-  (defn run-all []
-    (keep (fn [f] (let [result (balanced-parens? f)] (when-not (:balanced result) [f result])))
-          (str/split-lines (str/join "\n"
-                                     (concat (fs/glob "." "**/*.clj")
-                                             (fs/glob "." "**/*.cljc")
-                                             (fs/glob "." "**/*.cljs"))))))
+  (defn read-all-files []
+    (set
+     (keep (fn [f] (let [result (readability-check f)] (when-not (:readable result) [f result])))
+           (str/split-lines (str/join "\n"
+                                      (concat (fs/glob "." "**/*.clj")
+                                              (fs/glob "." "**/*.cljc")
+                                              (fs/glob "." "**/*.cljs")))))))
 
   ;; run all files in the current directory and subdirectories, including in /jars:
   ;; filtering out readable ones:
-  (= (run-all) []))
+  (= (read-all-files) #{{:readable true}}))
