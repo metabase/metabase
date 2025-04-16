@@ -601,6 +601,7 @@
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
+    ;; TODO if this is an "editable", validate that the :dataset_query is "simple enough" (e.g. no breakouts or joins)
     (let [{:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
                                               {:original-query    (:dataset_query card-before-update)
                                                :query             dataset_query
