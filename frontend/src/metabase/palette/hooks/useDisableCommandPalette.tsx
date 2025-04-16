@@ -10,7 +10,7 @@ export const useDisableCommandPalette = ({ disabled }: Props) => {
 
   useEffect(() => {
     // If there is no context, do nothing
-    if (!context) {
+    if (!context?.query) {
       return;
     }
 
