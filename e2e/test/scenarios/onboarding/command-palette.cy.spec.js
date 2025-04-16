@@ -1,5 +1,5 @@
 const { H } = cy;
-import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -371,27 +371,16 @@ describe("command palette", () => {
       cy.findByText("Report an issue").should("be.visible");
     });
   });
-
-  it("The data picker does not cover the command palette (metabase#45469)", () => {
-    cy.visit("/");
-    cy.log("Click on the New button in the navigation bar and select Question");
-    H.newButton("Question").click();
-    cy.findByRole("dialog", { name: "Pick your starting data" });
-    cy.log("Open the command palette with a shortcut key");
-    cy.get("body").type("{ctrl+k}{cmd+k}");
-    H.commandPalette().within(() => {
-      H.commandPaletteInput().should("be.visible");
-    });
-  });
 });
 
-describe("shortcuts", () => {
+describe("shortcuts", { tags: ["@actions"] }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
   it("should render a shortcuts modal, and global shortcuts should be available", () => {
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
     cy.visit("/");
     cy.findByTestId("home-page")
       .findByTestId("loading-indicator")
@@ -430,6 +419,38 @@ describe("shortcuts", () => {
 
     cy.realPress("g").realPress("t");
     cy.location("pathname").should("equal", "/trash");
+
+    cy.log("shortcuts should not be enabled when working in a modal (ADM 658)");
+
+    H.navigationSidebar().should("be.visible");
+    // Mantine Modals
+    H.newButton("Collection").click();
+
+    H.modal()
+      .findByLabelText(/collection it's saved in/i)
+      .click();
+
+    // Remove focus
+    H.entityPickerModal().findByRole("heading").click();
+
+    cy.realPress("[");
+    H.navigationSidebar().should("be.visible");
+    cy.realPress("Escape");
+    cy.realPress("[");
+    H.navigationSidebar().should("be.visible");
+    cy.realPress("Escape");
+    // Legacy Modals
+
+    H.newButton("Action").click();
+    // Remove focus
+    H.modal()
+      .findByText(/Build custom forms/)
+      .click();
+    cy.realPress("[");
+    H.navigationSidebar().should("be.visible");
+    cy.realPress("Escape");
+    cy.realPress("[");
+    H.navigationSidebar().should("not.visible");
   });
 
   it("should support dashboard shortcuts", () => {
