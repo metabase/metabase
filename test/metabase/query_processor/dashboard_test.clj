@@ -36,16 +36,26 @@
                  :value  4
                  :target [:dimension [:field (mt/id :venues :price) nil]]}]
                (resolve-params [{:id "_PRICE_", :value 4}]))))
-      (testing "Should error if parameter doesn't exist"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\".*"
-             (resolve-params [{:id "_THIS_PARAMETER_DOES_NOT_EXIST_", :value 3}]))))
       (testing "Should error if parameter is of a different type"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid parameter type :number/!= for parameter \"_PRICE_\".*"
-             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}]))))))
+             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}]))))
+      (testing "If parameter doesn't exist, it means that this is a new parameter, just like in the preview scenario (#49319)"
+        (is (= [{:type   :category
+                 :id     "_PRICE_"
+                 :value  4
+                 :target [:dimension [:field (mt/id :venues :price) nil]]}
+                {:id "_THIS_PARAMETER_DOES_NOT_EXIST_"
+                 :type :text
+                 :value "w"
+                 :target [:dimension [:field (mt/id :venues :name) nil]]}]
+               (resolve-params [{:id "_PRICE_"
+                                 :value 4}
+                                {:id "_THIS_PARAMETER_DOES_NOT_EXIST_"
+                                 :type :text
+                                 :value "w"
+                                 :target [:dimension [:field (mt/id :venues :name) nil]]}]))))))
   (testing "Resolves new operator type arguments without error (#25031)"
     (mt/dataset test-data
       (let [query (mt/native-query {:query         "select COUNT(*) from \"ORDERS\" where true [[AND quantity={{qty_locked}}]]"
