@@ -31,7 +31,7 @@ function parsePage(param: QueryParam): UrlState["page"] {
 
 function parseTask(param: QueryParam): UrlState["task"] {
   const value = Array.isArray(param) ? param[0] : param;
-  return value ? value : null;
+  return value && value.trim().length > 0 ? value.trim() : null;
 }
 
 function parseStatus(param: QueryParam): UrlState["status"] {
