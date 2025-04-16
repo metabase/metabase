@@ -63,7 +63,7 @@ const AppBarLarge = ({
           isNavBarEnabled={isNavBarEnabled}
         />
         <AppBarInfoContainer
-          isVisible={!isNavBarVisible || isQuestionLineageVisible}
+          isVisible={isCollectionPathVisible || isQuestionLineageVisible}
         >
           {isQuestionLineageVisible ? (
             <QuestionLineage />
