@@ -53,7 +53,7 @@ const LogsBase = ({
   const displayLogs = useMemo(() => {
     if (!logText) {
       return isAnyFilterApplied
-        ? t`Nothing matches your filter.`
+        ? t`Nothing matches your filters.`
         : t`There's nothing here, yet.`;
     }
 
