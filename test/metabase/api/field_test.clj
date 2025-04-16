@@ -36,7 +36,7 @@
   (testing "GET /api/field/:id"
     (is (= (-> (merge
                 (mt/object-defaults :model/Field)
-                (t2/select-one [:model/Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
+                (t2/select-one [:model/Field :id :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
                                 :database_position :database_required :database_default
                                 :database_is_auto_increment :database_is_nullable :database_is_generated
                                 :entity_id :name :table_id :parent_id]
