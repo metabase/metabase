@@ -1,26 +1,26 @@
 const { buildMatrix } = require("./build-e2e-matrix");
 
 describe("buildMatrix", () => {
-  test("should calculate correct regular chunks with default parameters", () => {
+  it("should calculate correct regular chunks with default parameters", () => {
     const result = buildMatrix("./e2e/test/scenarios/**/*.cy.spec.*", 30);
 
     expect(result.regularChunks).toBe(27);
   });
 
-  test("should create correct number of configuration objects", () => {
+  it("should create correct number of configuration objects", () => {
     const result = buildMatrix("./e2e/test/scenarios/**/*.cy.spec.*", 10);
 
     expect(result.config.length).toBe(10);
   });
 
-  test("should apply default specs path when null is provided", () => {
+  it("should apply default specs path when null is provided", () => {
     const result = buildMatrix(null, 5);
 
     expect(result.regularChunks).toBe(2);
     expect(result.config.length).toBe(5);
   });
 
-  test("should name regular test groups sequentially", () => {
+  it("should name regular test groups sequentially", () => {
     const result = buildMatrix("./e2e/test/scenarios/**/*.cy.spec.*", 10);
     const regularTests = result.config.filter((cfg) =>
       cfg.name.startsWith("e2e-group-"),
@@ -31,7 +31,7 @@ describe("buildMatrix", () => {
     });
   });
 
-  test("should handle case when input chunks equals special tests count", () => {
+  it("should handle case when input chunks equals special tests count", () => {
     const result = buildMatrix("./e2e/test/scenarios/**/*.cy.spec.*", 3);
 
     expect(result.regularChunks).toBe(0);
