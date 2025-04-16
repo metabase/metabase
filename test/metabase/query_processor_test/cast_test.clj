@@ -21,7 +21,8 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
+        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]
+                                [:orders [{:field :total :db-type "FLOAT"}]]]
                 {:keys [field db-type]} fields]
           (testing (str "casting " table "." field "(" db-type ") to integer")
             (let [field-md (lib.metadata/field mp (mt/id table field))
@@ -34,8 +35,11 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[uncasted-value casted-value] rows]
-                (is (= (biginteger (Long/parseLong uncasted-value))
-                       (biginteger casted-value)))))))))))
+                (is (= (biginteger (case db-type
+                                     "TEXT" (Long/parseLong uncasted-value)
+                                     (Math/round (double uncasted-value))))
+                       (biginteger casted-value))
+                    (str "Casting " (pr-str uncasted-value)))))))))))
 
 (deftest ^:parallel integer-cast-custom-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
@@ -44,7 +48,10 @@
         (doseq [[table expressions] [[:people [{:expression (lib/concat
                                                              (lib.metadata/field mp (mt/id :people :id))
                                                              (lib.metadata/field mp (mt/id :people :zip)))
-                                                :db-type "TEXT"}]]]
+                                                :db-type "TEXT"}]]
+                                     [:orders [{:expression (lib/- (lib.metadata/field mp (mt/id :orders :total))
+                                                                   (lib.metadata/field mp (mt/id :orders :subtotal)))
+                                                :db-type "FLOAT"}]]]
                 {:keys [expression db-type]} expressions]
           (testing (str "Casting " db-type " to integer")
             (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
@@ -58,7 +65,9 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[_ uncasted-value casted-value] rows]
-                (is (= (biginteger (Long/parseLong uncasted-value))
+                (is (= (biginteger (case db-type
+                                     "TEXT" (Long/parseLong uncasted-value)
+                                     (Math/round (double uncasted-value))))
                        (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-nested-native-query
@@ -66,7 +75,10 @@
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [{:keys [expression db-type]} [{:expression "'123'"  :db-type "TEXT"}
-                                              {:expression "'-123'" :db-type "TEXT"}]]
+                                              {:expression "'-123'" :db-type "TEXT"}
+                                              {:expression "1.4"    :db-type "FLOAT"}
+                                              {:expression "-1.98"  :db-type "FLOAT"}
+                                              {:expression "100.1"  :db-type "FLOAT"}]]
           (testing (str "Casting " db-type " to integer from native query")
             (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
               (mt/with-temp
@@ -84,14 +96,17 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
-                    (is (= (biginteger (Long/parseLong uncasted-value))
+                    (is (= (biginteger (case db-type
+                                         "TEXT" (Long/parseLong uncasted-value)
+                                         (Math/round (double uncasted-value))))
                            (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
+        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]
+                                [:orders [{:field :total :db-type "FLOAT"}]]]
                 {:keys [field db-type]} fields]
           (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))]
             (testing (str "Casting " db-type " to integer")
@@ -110,7 +125,9 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[uncasted-value casted-value] rows]
-                    (is (= (biginteger (Long/parseLong uncasted-value))
+                    (is (= (biginteger (case db-type
+                                         "TEXT" (Long/parseLong uncasted-value)
+                                         (Math/round (double uncasted-value))))
                            (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query-custom-expressions
@@ -120,7 +137,10 @@
         (doseq [[table expressions] [[:people [{:expression (lib/concat
                                                              (lib.metadata/field mp (mt/id :people :id))
                                                              (lib.metadata/field mp (mt/id :people :zip)))
-                                                :db-type "TEXT"}]]]
+                                                :db-type "TEXT"}]]
+                                     [:orders [{:expression (lib/- (lib.metadata/field mp (mt/id :orders :total))
+                                                                   (lib.metadata/field mp (mt/id :orders :subtotal)))
+                                                :db-type "FLOAT"}]]]
                 {:keys [expression db-type]} expressions]
           (let [nested-query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                                  (lib/with-fields [])
@@ -143,7 +163,9 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
-                    (is (= (biginteger (Long/parseLong uncasted-value))
+                    (is (= (biginteger (case db-type
+                                         "TEXT" (Long/parseLong uncasted-value)
+                                         (Math/round (double uncasted-value))))
                            (biginteger casted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-custom-expressions
@@ -153,8 +175,13 @@
         (doseq [[table expressions] [[:people [{:expression (fn []
                                                               (lib/concat
                                                                (lib.metadata/field mp (mt/id :people :id))
-                                                               (lib.metadata/field mp (mt/id :people :zip))))}]]]
-                {ex :expression} expressions]
+                                                               (lib.metadata/field mp (mt/id :people :zip))))
+                                                :db-type "TEXT"}]]
+                                     [:orders [{:expression (fn []
+                                                              (lib/- (lib.metadata/field mp (mt/id :orders :total))
+                                                                     (lib.metadata/field mp (mt/id :orders :subtotal))))
+                                                :db-type "FLOAT"}]]]
+                {ex :expression db-type :db-type} expressions]
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                           (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
                           (lib/expression "UNCASTED" (ex))
@@ -165,15 +192,18 @@
                 rows (mt/rows result)]
             (is (types/field-is-type? :type/Number (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
-              (is (= (biginteger (Long/parseLong uncasted-value))
+              (is (= (biginteger (case db-type
+                                   "TEXT" (Long/parseLong uncasted-value)
+                                   (Math/round (double uncasted-value))))
                      (biginteger casted-value))))))))))
 
 (deftest ^:parallel integer-cast-aggregations
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip}]]]
-                {:keys [field]} fields]
+        (doseq [[table fields] [[:people [{:field :zip   :db-type "TEXT"}]]
+                                [:orders [{:field :total :db-type "FLOAT"}]]]
+                {:keys [field db-type]} fields]
           (testing (str "aggregating " table "." field " and casting to integer")
             (let [field-md (lib.metadata/field mp (mt/id table field))
                   query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
@@ -184,7 +214,9 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[uncasted-value casted-value] rows]
-                (is (= (biginteger (Long/parseLong uncasted-value))
+                (is (= (biginteger (case db-type
+                                     "TEXT" (Long/parseLong uncasted-value)
+                                     (Math/round (double uncasted-value))))
                        (biginteger casted-value)))))))))))
 
 (deftest ^:parallel integer-cast-examples
@@ -196,7 +228,9 @@
                       {:original "00123" :value 123 :msg "Initial zeros."}
                       {:original "-123" :value -123 :msg "Negative sign."}
                       {:original (pr-str Long/MAX_VALUE) :value Long/MAX_VALUE :msg "Big number."}
-                      {:original (pr-str Long/MIN_VALUE) :value Long/MIN_VALUE :msg "Big number."}]]
+                      {:original (pr-str Long/MIN_VALUE) :value Long/MIN_VALUE :msg "Big number."}
+                      {:original 123.3 :value 123 :msg "Easy case."}
+                      {:original -123.4 :value -123 :msg "Negative sign."}]]
         (doseq [{:keys [original value msg]} examples]
           (testing (str "integer cast: " msg)
             (let [field-md (lib.metadata/field mp (mt/id :people :id))
