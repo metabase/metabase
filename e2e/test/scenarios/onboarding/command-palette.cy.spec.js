@@ -402,14 +402,14 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("Escape");
     H.expectGoodSnowplowEvent({
       event: "keyboard_shortcut_performed",
-      event_detail: "create-collection",
+      event_detail: "create-new-collection",
     });
     cy.realPress("c").realPress("d");
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
     H.expectGoodSnowplowEvent({
       event: "keyboard_shortcut_performed",
-      event_detail: "create-dashboard",
+      event_detail: "create-new-dashboard",
     });
 
     cy.realPress("g").realPress("d");
