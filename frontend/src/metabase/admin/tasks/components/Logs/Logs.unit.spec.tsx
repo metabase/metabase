@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
-import { act, render, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UtilApi } from "metabase/services";
 
 import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
@@ -17,6 +18,12 @@ const log = {
 
 let utilSpy: any;
 
+function setup() {
+  return renderWithProviders(<Route path="/" component={() => <Logs />} />, {
+    withRouter: true,
+  });
+}
+
 describe("Logs", () => {
   describe("log fetching", () => {
     beforeEach(() => {
@@ -32,7 +39,7 @@ describe("Logs", () => {
 
     it("should call UtilApi.logs every 1 second", async () => {
       fetchMock.get("path:/api/util/logs", []);
-      render(<Logs />);
+      setup();
       await waitFor(() => [
         expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),
         expect(utilSpy).toHaveBeenCalledTimes(1),
@@ -43,7 +50,7 @@ describe("Logs", () => {
       fetchMock.get("path:/api/util/logs", []);
       let resolve: any;
       utilSpy.mockReturnValueOnce(new Promise((res) => (resolve = res)));
-      render(<Logs />);
+      setup();
       await waitFor(() => [
         expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),
         expect(utilSpy).toHaveBeenCalledTimes(1),
@@ -68,7 +75,7 @@ describe("Logs", () => {
 
     it("should display no results if there are no logs", async () => {
       fetchMock.get("path:/api/util/logs", []);
-      render(<Logs />);
+      setup();
       await waitFor(() => {
         expect(
           screen.getByText(`There's nothing here, yet.`),
@@ -78,7 +85,7 @@ describe("Logs", () => {
 
     it("should display results if server responds with logs", async () => {
       fetchMock.get("path:/api/util/logs", [log]);
-      render(<Logs />);
+      setup();
       await waitFor(() => {
         expect(
           screen.getByText(new RegExp(log.process_uuid)),
@@ -92,7 +99,7 @@ describe("Logs", () => {
         status: 500,
         body: { message: errMsg },
       });
-      render(<Logs />);
+      setup();
       await waitFor(() => {
         expect(screen.getByText(errMsg)).toBeInTheDocument();
       });
@@ -100,7 +107,7 @@ describe("Logs", () => {
 
     it("should stop polling on unmount", async () => {
       fetchMock.get("path:/api/util/logs", [log]);
-      const { unmount } = render(<Logs />);
+      const { unmount } = setup();
       expect(
         await screen.findByText(new RegExp(log.process_uuid)),
       ).toBeInTheDocument();
