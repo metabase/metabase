@@ -364,7 +364,7 @@ describe("admin > database > database routing", () => {
       cy.log("should not allow enabling database for uploads");
       cy.visit("/admin/settings/uploads");
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a database")
+        .findByPlaceholderText("Select a database")
         .click();
       H.popover()
         .findByText("Writable Postgres12 (DB Routing Enabled)")
