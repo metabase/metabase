@@ -178,8 +178,7 @@
                           (doseq [message messages]
                             (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
-                          (log/warnf e "Error sending to channel %s"
-                                     (handler->channel-name handler))))))))
+                          (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))))
               (do-after-notification-sent notification-info notification-payload)
               (log/info "Sent successfully")
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
@@ -333,7 +332,19 @@
                   pool-size
                   (.build
                    (doto (BasicThreadFactory$Builder.)
-                     (.namingPattern "send-notification-thread-pool-%d"))))]
+                     (.namingPattern "send-notification-thread-pool-%d"))))
+        start-worker! (fn []
+                        (.submit ^ExecutorService executor
+                                 ^Callable (fn []
+                                             (while (not (Thread/interrupted))
+                                               (try
+                                                 (let [notification (take-notification! queue)]
+                                                   (send-notification-sync! notification))
+                                                 (catch InterruptedException _
+                                                   (log/info "Notification worker interrupted, shutting down")
+                                                   (throw (InterruptedException.)))
+                                                 (catch Throwable e
+                                                   (log/error e "Error in notification worker")))))))]
     (.addShutdownHook
      (Runtime/getRuntime)
      (Thread. ^Runnable (fn []
@@ -343,18 +354,10 @@
                             (catch InterruptedException _
                               (log/warn "Interrupted while waiting for notification executor to terminate"))))))
     (dotimes [_ pool-size]
-      (.submit ^ExecutorService executor
-               ^Callable (fn []
-                           (while (not (Thread/interrupted))
-                             (try
-                               (let [notification (take-notification! queue)]
-                                 (send-notification-sync! notification))
-                               (catch InterruptedException _
-                                 (log/info "Notification worker interrupted, shutting down")
-                                 (throw (InterruptedException.)))
-                               (catch Exception e
-                                 (log/error e "Error in notification worker")))))))
+      (start-worker!))
     (fn [notification]
+      ;; ensure there is always a worker to handle the notification
+      (start-worker!)
       (put-notification! queue notification))))
 
 (defonce ^{:private true
