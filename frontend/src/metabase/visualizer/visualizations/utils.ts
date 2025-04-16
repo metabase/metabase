@@ -26,5 +26,11 @@ export function removeColumnFromStateUnlessUsedElseWhere(
   }
 
   state.columns = state.columns.filter((col) => col.name !== columnName);
-  delete state.columnValuesMapping[columnName];
+
+  // This should not be necessary, but for some reason
+  // directly mutating the state also removes it from any past/future states
+  // that are in the history. ¯\_(ツ)_/¯
+  const columnValuesMapping = { ...state.columnValuesMapping };
+  delete columnValuesMapping[columnName];
+  state.columnValuesMapping = columnValuesMapping;
 }
