@@ -4,7 +4,6 @@ import { type NumberValue, parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 
 import { getClauseDefinition, getMBQLName, isDefinedClause } from "../config";
-import { CompileError } from "../errors";
 import {
   isBigIntLiteral,
   isBooleanLiteral,
@@ -33,7 +32,7 @@ import {
   STRING,
   SUB,
 } from "./syntax";
-import { type Node, type NodeType, assert } from "./types";
+import { type Node, type NodeType, assert, check } from "./types";
 
 type CompileFn = (node: Node) => Lib.ExpressionParts | Lib.ExpressionArg;
 
@@ -43,9 +42,7 @@ export function compile(node: Node) {
 
 function compileNode(node: Node): Lib.ExpressionParts | Lib.ExpressionArg {
   const fn = COMPILE.get(node.type);
-  if (!fn) {
-    throw new CompileError(t`Invalid node type`, node);
-  }
+  assert(fn, `Invalid node type: ${node.type}`);
   return fn(node);
 }
 
@@ -170,9 +167,9 @@ function compileFunctionCall(node: Node): Lib.ExpressionParts {
 
   const text = node.token?.text.trim().toLowerCase();
   const operator = getMBQLName(text) ?? text;
-  if (!isDefinedClause(operator)) {
-    throw new CompileError(t`Unknown function ${operator}`, node);
-  }
+
+  check(isDefinedClause(operator), t`Unknown function ${operator}`, node);
+
   const args = compileArgList(node.children[0]);
   const options: Lib.ExpressionOptions = {};
   const clause = getClauseDefinition(operator);
@@ -213,9 +210,7 @@ function compileNumber(node: Node): NumberValue | Lib.ExpressionParts {
   assert(node.token?.text, t`No token text`);
 
   const number = parseNumber(node.token.text);
-  if (number == null) {
-    throw new CompileError(t`Invalid number format`, node);
-  }
+  check(number != null, t`Invalid number format`, node);
 
   if (typeof number === "bigint") {
     return withNode(node, compileValue(String(number), "type/BigInteger"));
@@ -296,12 +291,8 @@ function compileUnaryOp(
   operator: Lib.ExpressionOperator,
   node: Node,
 ): Lib.ExpressionParts {
-  if (node.children.length > 1) {
-    throw new CompileError(t`Unexpected expression`, node.children[1]);
-  }
-  if (node.children.length === 0) {
-    throw new CompileError(t`Expected expression`, node);
-  }
+  check(node.children.length > 0, t`Expected expression`, node);
+  check(node.children.length < 2, t`Unexpected expression`, node.children[1]);
 
   return withNode(node, {
     operator,
@@ -314,12 +305,8 @@ function compileInfixOp(
   operator: Lib.ExpressionOperator,
   node: Node,
 ): Lib.ExpressionParts {
-  if (node.children.length > 2) {
-    throw new CompileError(t`Unexpected expression`, node.children[2]);
-  }
-  if (node.children.length === 0) {
-    throw new CompileError(t`Expected expression`, node);
-  }
+  check(node.children.length > 0, t`Expected expression`, node);
+  check(node.children.length < 3, t`Unxpected expression`, node.children[2]);
 
   const leftNode = compileNode(node.children[0]);
   const left =

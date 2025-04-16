@@ -795,5 +795,15 @@ describe("pratt/compiler", () => {
         args: [1, { operator: "-", options: {}, args: [0, -10] }],
       });
     });
+
+    it("should throw error on inclomplete expressions", () => {
+      expect(() => expr(`1 +`)).toThrow("Expected expression");
+    });
+
+    it("should throw error on unknown function", () => {
+      expect(() => expr(`unknown_fn(1)`)).toThrow(
+        "Unknown function unknown_fn",
+      );
+    });
   });
 });
