@@ -3,16 +3,13 @@
   (:require
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.setting :as setting]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -228,59 +225,18 @@
         :info          info}
        (events/publish-event! :event/action.failure)))
 
-(defn- qp-result->row-map
-  [{:keys [rows cols]}]
-  ;; rows from the request are keywordized
-  (let [col-names (map (comp keyword :name) cols)]
-    (map #(zipmap col-names %) rows)))
-
-(defn- table-id->pk
-  [table-id]
-  ;; TODO: support composite PKs
-  (let [pks (api/check-404 (t2/select :model/Field :table_id table-id :semantic_type :type/PK))]
-    (api/check-500 (= 1 (count pks)))
-    (first pks)))
-
-(defn- get-row-pk
-  [pk-field row]
-  (get row (keyword (:name pk-field))))
-
-(defn- query-db-rows
-  "Given a table ID and a primary key field, return a map of rows from the database with the primary key as the key."
-  [table-id pk-field rows]
-  (let [{:keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))]
-    (assert pk-field "Table must have a primary key")
-    (when-let [pk-values (seq (map (partial get-row-pk pk-field) rows))]
-      (qp.store/with-metadata-provider db_id
-        (let [mp    (qp.store/metadata-provider)
-              query (-> (lib/query mp (lib.metadata/table mp table-id))
-                        (lib/filter (apply lib/in (lib.metadata/field mp (:id pk-field)) pk-values))
-                        qp/userland-query-with-default-constraints)]
-          (->> (qp/process-query query)
-               :data
-               qp-result->row-map
-               (m/index-by #(get-row-pk pk-field %))))))))
-
 (defn perform-with-system-events!
   "Eventually, all calls to perform-action! should go through this... Proceeding with caution."
   [action-kw args-map & {:as opts}]
-  (let [table-id          (:table-id args-map) ;; TODO not all argmap has table-id
-        pk-field          (when table-id (table-id->pk table-id))
-        rows              (:arg args-map) ;; TODO: this is not always the argmap
-        pk->db-row-before (query-db-rows table-id pk-field rows)
+  ;; TODO will fix requiring-resolve when we remove all this table-action specific stuff, which has NO place here
+  (let [qry-context       ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/qry-context) args-map)
+        pk->db-row-before ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-previous-rows) action-kw qry-context)
         invocation-id     (nano-id/nano-id)
         user-id           api/*current-user-id*]
-    ;; TODO: we'll need to get these fields more generically
-    (assert (and table-id pk-field (seq rows)))
     (publish-action-invocation! invocation-id user-id action-kw args-map)
     (try
       (let [result           (perform-action! action-kw args-map opts)
-            pk->db-row-after (case action-kw
-                               (:bulk/update :bulk/delete)
-                               (query-db-rows table-id pk-field rows)
-                               :bulk/create
-                               (into {} (for [row (:created-rows result)]
-                                          [(get-row-pk pk-field row) (update-keys row keyword)])))
+            pk->db-row-after ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-latest-rows) action-kw qry-context result)
             all-pks          (set/union (set (keys pk->db-row-before))
                                         (set (keys pk->db-row-after)))
             row-changes      (for [pk all-pks
