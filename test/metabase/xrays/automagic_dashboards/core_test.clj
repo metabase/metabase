@@ -1018,11 +1018,10 @@
                  :model/Field    _ {:table_id table-id}]
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup!
-        (is (= {:list-like?  true
-                :num-fields 2}
-               (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
-                   first
-                   :stats)))))))
+        (is (partial= {:list-like?  true
+                       :num-fields 2}
+                      (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
+                          first)))))))
 
 (deftest enhance-table-stats-fk-test
   (mt/with-temp [:model/Database {db-id :id}    {}
@@ -1033,10 +1032,8 @@
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup!
         (testing "filters out link-tables"
-          (is (nil?
-               (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
-                   first
-                   :stats))))))))
+          (is (empty?
+               (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]]))))))))
 
 ;;; ------------------- Definition overloading -------------------
 

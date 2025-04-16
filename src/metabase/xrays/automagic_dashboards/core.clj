@@ -149,7 +149,6 @@
    [kixi.stats.math :as math]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.field :as field]
    [metabase.models.interface :as mi]
@@ -924,33 +923,27 @@
 
   Filters out tables that are link-tables"
   [clauses]
-  (let [tables  (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
-                            [:ts.count :field-count]
-                            [:ts.count_non_pks :non-pk-count]
-                            [:ts.count_pks_and_fks :pk-and-fk-count]]
-                           {:join [[{:select   [:f.table_id
-                                                [:%count.* "count"]
-                                                [[:count [:case [:or [:not= :semantic_type "type/PK"]
-                                                                 [:= :f.semantic_type nil]]
-                                                          [:inline 1] :else [:inline nil]]]
-                                                 :count_non_pks]
-                                                [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
-                                                          [:inline 1] :else [:inline nil]]]
-                                                 :count_pks_and_fks]]
-                                     :from     [[:metabase_field :f]]
-                                     :where    [:= :f.active true]
-                                     :group-by [:f.table_id]} :ts]
-                                   [:= :ts.table_id :id]]
-                            :where (into [:and] clauses)})]
-    (for [table tables
-          :let [{:keys [field-count non-pk-count pk-and-fk-count]} table
-                any-fields? (not (nil? field-count))]
-          :when (or (not any-fields?) ;; TODO: this could probably happen in the query
-                    (not (= field-count pk-and-fk-count))
-                    (= field-count 0))]
-      (-> (dissoc table :field-count :non-pk-count :pk-and-fk-count)
-          (assoc :stats {:num-fields  (or field-count 0)
-                         :list-like?  (and any-fields? (>= field-count 2) (= 1 non-pk-count))})))))
+  (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
+              [:ts.count :num-fields]
+              [[:and
+                [:>= :ts.count 2]
+                [:= :ts.count_non_pks 1]] :list-like?]]
+             {:inner-join [[{:select   [:f.table_id
+                                        [:%count.* "count"]
+                                        [[:count [:case [:or [:not= :semantic_type "type/PK"]
+                                                         [:= :f.semantic_type nil]]
+                                                  [:inline 1] :else [:inline nil]]]
+                                         :count_non_pks]
+                                        [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
+                                                  [:inline 1] :else [:inline nil]]]
+                                         :count_pks_and_fks]]
+                             :from     [[:metabase_field :f]]
+                             :where    [:= :f.active true]
+                             :group-by [:f.table_id]} :ts]
+                           [:and [:= :ts.table_id :id]
+                            [:> :ts.count 0]
+                            [:!= :ts.count :ts.count_pks_and_fks]]]
+              :where (into [:and] clauses)}))
 
 (def ^:private ^:const ^Long max-candidate-tables
   "Maximal number of tables per schema shown in `candidate-tables`."
@@ -985,8 +978,8 @@
                    {:url                     (format "%stable/%s" public-endpoint (u/the-id table))
                     :title                   (:short-name root)
                     :score                   (+ (math/sq (:specificity dashboard-template))
-                                                (math/log (-> table :stats :num-fields))
-                                                (if (-> table :stats :list-like?)
+                                                (math/log (:num-fields table))
+                                                (if (:list-like? table)
                                                   -10
                                                   0))
                     :description             (:description dashboard)
