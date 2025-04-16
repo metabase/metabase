@@ -35,6 +35,8 @@ export const StoreApi = {
 export function maybeUsePivotEndpoint(api, card, metadata) {
   const question = new Question(card, metadata);
 
+  // we need to pass pivot_rows & pivot_cols only for ad-hoc queries endpoints
+  // in other cases the BE extracts these options from the viz settings
   function wrap(api) {
     return (params, ...rest) => {
       const { pivot_rows, pivot_cols } = getPivotOptions(question);
@@ -52,9 +54,9 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   }
 
   const mapping = [
+    [MetabaseApi.dataset, MetabaseApi.dataset_pivot, { wrap: true }],
     [CardApi.query, CardApi.query_pivot],
     [DashboardApi.cardQuery, DashboardApi.cardQueryPivot],
-    [MetabaseApi.dataset, MetabaseApi.dataset_pivot, { wrap: true }],
     [PublicApi.cardQuery, PublicApi.cardQueryPivot],
     [PublicApi.dashboardCardQuery, PublicApi.dashboardCardQueryPivot],
     [EmbedApi.cardQuery, EmbedApi.cardQueryPivot],
