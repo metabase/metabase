@@ -30,10 +30,10 @@ type TasksAppProps = {
 const PAGE_SIZE = 50;
 
 const TasksAppBase = ({ children, location }: TasksAppProps) => {
-  const [{ page, task, status }, { patchUrlState }] = useUrlState(
-    location,
-    urlStateConfig,
-  );
+  const [
+    { page, sort_column, sort_direction, status, task },
+    { patchUrlState },
+  ] = useUrlState(location, urlStateConfig);
 
   const {
     data: tasksData,
@@ -42,8 +42,10 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
   } = useListTasksQuery({
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
-    task: task ?? undefined,
+    sort_column,
+    sort_direction,
     status: status ?? undefined,
+    task: task ?? undefined,
   });
 
   const {
