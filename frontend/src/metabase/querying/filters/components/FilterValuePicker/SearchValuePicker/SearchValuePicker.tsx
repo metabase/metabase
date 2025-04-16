@@ -19,14 +19,15 @@ import type { FieldId, FieldValue } from "metabase-types/api";
 import { getFieldOption, getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
-import { getNothingFoundMessage, shouldSearch } from "./utils";
+import { getEmptyResultsMessage, shouldSearch } from "./utils";
 
 type SearchValuePickerProps = {
   fieldId: FieldId;
   searchFieldId: FieldId;
   fieldValues: FieldValue[];
   selectedValues: string[];
-  columnDisplayName: string;
+  placeholder?: string;
+  nothingFoundMessage?: string;
   autoFocus?: boolean;
   comboboxProps?: ComboboxProps;
   parseValue?: (rawValue: string) => string | null;
@@ -38,7 +39,8 @@ export function SearchValuePicker({
   searchFieldId,
   fieldValues: initialFieldValues,
   selectedValues,
-  columnDisplayName,
+  placeholder,
+  nothingFoundMessage,
   autoFocus,
   comboboxProps,
   parseValue,
@@ -68,8 +70,8 @@ export function SearchValuePicker({
   const searchOptions = canSearch
     ? getFieldOptions(searchFieldValues)
     : getFieldOptions(initialFieldValues);
-  const nothingFoundMessage = getNothingFoundMessage(
-    columnDisplayName,
+  const emptyResultsMessage = getEmptyResultsMessage(
+    nothingFoundMessage,
     searchError,
     canSearch,
     isSearching,
@@ -94,10 +96,10 @@ export function SearchValuePicker({
     <MultiAutocomplete
       value={selectedValues}
       data={searchOptions}
-      placeholder={t`Search by ${columnDisplayName}`}
+      placeholder={placeholder}
       autoFocus={autoFocus}
       rightSection={isSearching ? <Loader size="xs" /> : undefined}
-      nothingFoundMessage={nothingFoundMessage}
+      nothingFoundMessage={emptyResultsMessage}
       comboboxProps={comboboxProps}
       aria-label={t`Filter value`}
       parseValue={parseValue}

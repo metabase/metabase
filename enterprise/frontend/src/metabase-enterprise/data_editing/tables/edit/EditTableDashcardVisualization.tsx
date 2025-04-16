@@ -1,7 +1,17 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import { formatRowCount } from "metabase-lib/v1/queries/utils/row-count";
@@ -19,6 +29,7 @@ import { useTableActions } from "./use-table-actions";
 import { useTableCRUD } from "./use-table-crud";
 import { useTableSorting } from "./use-table-sorting";
 import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-dashcard-update-strategy";
+import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
 type EditTableDashcardVisualizationProps = {
   dashcardId: number;
@@ -57,6 +68,11 @@ export const EditTableDashcardVisualization = ({
     handleModalOpenAndExpandedRow,
   } = useTableCRUD({ tableId, datasetData: data, stateUpdateStrategy });
 
+  const { undo, redo, isUndoLoading, isRedoLoading } = useTableEditingUndoRedo({
+    tableId,
+    stateUpdateStrategy,
+  });
+
   const columnsConfig = useEditableTableColumnConfigFromVisualizationSettings(
     visualizationSettings,
   );
@@ -84,23 +100,44 @@ export const EditTableDashcardVisualization = ({
 
       <Flex
         p="xs"
-        pr="1rem"
+        px="1rem"
         justify="space-between"
         align="center"
         className={S.gridFooterDashcardVisualization}
       >
-        {hasCreateAction ? (
-          <Button
-            variant="subtle"
-            size="xs"
-            fz="sm"
-            leftSection={<Icon name="add" />}
-            onClick={() => handleModalOpenAndExpandedRow()}
-          >{t`New record`}</Button>
-        ) : (
-          <div />
-        )}
-
+        <Group gap="xs">
+          <ActionIcon onClick={undo} disabled={isUndoLoading || isRedoLoading}>
+            {isUndoLoading ? (
+              <Loader size="xs" />
+            ) : (
+              <Icon
+                name="undo"
+                tooltip={t`Undo changes`}
+                c="var(--mb-color-brand)"
+              />
+            )}
+          </ActionIcon>
+          <ActionIcon onClick={redo} disabled={isUndoLoading || isRedoLoading}>
+            {isRedoLoading ? (
+              <Loader size="xs" />
+            ) : (
+              <Icon
+                name="redo"
+                tooltip={t`Redo changes`}
+                c="var(--mb-color-brand)"
+              />
+            )}
+          </ActionIcon>
+          {hasCreateAction && (
+            <Button
+              variant="subtle"
+              size="xs"
+              fz="sm"
+              leftSection={<Icon name="add" />}
+              onClick={() => handleModalOpenAndExpandedRow()}
+            >{t`New record`}</Button>
+          )}
+        </Group>
         <Text fz="sm" fw="bold">
           {getEditTableRowCountMessage(data)}
         </Text>

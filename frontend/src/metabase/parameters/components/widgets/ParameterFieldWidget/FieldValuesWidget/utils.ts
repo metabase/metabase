@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { stripId } from "metabase/lib/formatting";
-import { MetabaseApi } from "metabase/services";
+import type { ComboboxItem } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
@@ -25,39 +25,6 @@ import type {
 } from "metabase-types/api";
 
 import type { ValuesMode } from "./types";
-
-export async function searchFieldValues(
-  {
-    fields,
-    value,
-    disablePKRemappingForSearch,
-    maxResults,
-  }: {
-    fields: Field[];
-    value: string;
-    disablePKRemappingForSearch?: boolean;
-    maxResults: number;
-  },
-  cancelled: Promise<unknown>,
-) {
-  const options: null | FieldValue[] = dedupeValues(
-    await Promise.all(
-      fields.map((field: Field) =>
-        MetabaseApi.field_search(
-          {
-            value,
-            fieldId: field.id,
-            searchFieldId: field.searchField(disablePKRemappingForSearch)?.id,
-            limit: maxResults,
-          },
-          { cancelled },
-        ),
-      ),
-    ),
-  );
-
-  return options;
-}
 
 export function getNonVirtualFields(fields: Field[]) {
   return fields.filter((field) => !field.isVirtual());
@@ -328,4 +295,46 @@ export function getValue(option: FieldValue): RowValue {
     return option[0];
   }
   return option;
+}
+
+export function getLabel(option: FieldValue): string | undefined {
+  if (Array.isArray(option)) {
+    return option[1];
+  }
+  return undefined;
+}
+
+export function getOption(
+  option: string | number | FieldValue,
+): ComboboxItem | null {
+  const value = Array.isArray(option) ? getValue(option) : option;
+  const label = Array.isArray(option) ? getLabel(option) : undefined;
+  if (value == null) {
+    return null;
+  }
+
+  return { value: String(value), label: String(label ?? value) };
+}
+
+export function getFieldsRemappingInfo(fields: (Field | null)[]) {
+  const [field] = fields;
+  const searchField = field?.searchField();
+
+  if (
+    fields.length === 1 &&
+    field != null &&
+    searchField != null &&
+    typeof field.id === "number" &&
+    typeof searchField.id === "number" &&
+    field.id !== searchField.id
+  ) {
+    return {
+      field,
+      fieldId: field.id,
+      searchField,
+      searchFieldId: searchField.id,
+    };
+  } else {
+    return null;
+  }
 }

@@ -17,6 +17,7 @@ import {
 } from "../use-summarize-data";
 
 /**
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionSummarizeDropdownProps = Omit<

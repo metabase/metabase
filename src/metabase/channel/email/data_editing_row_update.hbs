@@ -1,11 +1,13 @@
 {{> metabase/channel/email/_header.hbs }}
   <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08);">
-    <p>{{payload.actor.first_name}} {{payload.actor.last_name}} has updated a row in {{payload.result.table.name}}.</p>
+    <p>{{editor.first_name}} {{editor.last_name}} has updated a row in {{table.name}}.</p>
     <p>Update:</p>
-    <ul></ul>
-      {{#each payload.result.raw_update}}
-        <li>{{@key}}: {{@value}}</li>
-      {{/each}}
-    </ul>
+    {{#each records}}
+      <ul>
+        {{#each this.changes}}
+          <li>{{@key}}: {{@value.after}}</li>
+        {{/each}}
+      </ul>
+    {{/each}}
   </div>
 {{> metabase/channel/email/_footer.hbs }}

@@ -101,7 +101,6 @@ export const useTableCRUD = ({
       const response = await updateTableRows({
         tableId: tableId,
         rows: [updatedRowWithPk],
-        primaryKeyColumnName: pkColumn.name,
       });
 
       stateUpdateStrategy.onRowsUpdated(response.data?.updated);
@@ -160,7 +159,6 @@ export const useTableCRUD = ({
       const response = await deleteTableRows({
         rows,
         tableId: tableId,
-        primaryKeyColumnName: pkColumn.name,
       });
 
       if (response.data?.success) {

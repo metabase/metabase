@@ -33,22 +33,6 @@ const navigateBack = ({ fallbackUrl }) => {
 };
 
 /**
- * Redirects from the "internal" module index page to the main index page
- */
-const setupRedirectsFromInternalModule = () => {
-  const href = location.href;
-  const basePath = document.querySelector("html").dataset.base;
-
-  const isInternalModule =
-    href.endsWith(`${INTERNAL_MODULE_NAME}.html`) ||
-    href.endsWith(INTERNAL_MODULE_NAME);
-
-  if (isInternalModule) {
-    location.replace(basePath);
-  }
-};
-
-/**
  * Inserts word breaks (<wbr> tags) into the text content of an element
  */
 function insertWordBreaks(textContent) {
@@ -163,7 +147,6 @@ observer.observe(document.body, {
 
 const init = () => {
   storeReturnUrl();
-  setupRedirectsFromInternalModule();
   setupWordBreaks();
 };
 

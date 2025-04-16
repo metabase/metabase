@@ -14,3 +14,10 @@ export function mapDataEditingRowObjectsToRowValues(
 ) {
   return rows.map((row) => columns.map((column) => row[column.name]));
 }
+
+export function createPrimaryKeyToUpdatedRowObjectMap(
+  pkColumnName: string,
+  rows: Record<string, RowValue>[],
+) {
+  return new Map(rows.map((row) => [row[pkColumnName], row]));
+}
