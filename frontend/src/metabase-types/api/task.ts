@@ -16,6 +16,8 @@ export interface Task {
 }
 
 export type ListTasksRequest = {
+  sort_column?: "started_at" | "ended_at" | "duration";
+  sort_direction?: "asc" | "desc";
   status?: TaskStatus;
   task?: string;
 } & PaginationRequest;
