@@ -35,6 +35,7 @@ import {
   PRODUCT_CATEGORY_VALUES,
   createOrdersProductIdField,
   createPeopleIdField,
+  createProductsCategoryField,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -541,6 +542,67 @@ describe("StringFilterValuePicker", () => {
       await userEvent.type(input, "g");
       await userEvent.click(await screen.findByText("Gizmo"));
       expect(onChange).toHaveBeenLastCalledWith(["Gizmo"]);
+    });
+
+    it('should default to search box for a field with has_field_values = "list" when there are no field values but the field is searchable', async () => {
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        fieldId,
+        fieldValues: createMockFieldValues({
+          field_id: fieldId,
+          values: [],
+          has_more_values: false,
+        }),
+        searchValues: {
+          g: createMockFieldValues({
+            field_id: fieldId,
+            values: [["Gadget"], ["Gizmo"]],
+            has_more_values: false,
+          }),
+        },
+      });
+
+      const input = screen.getByPlaceholderText("Search by Category");
+      expect(input).toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Search the list"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.type(input, "g");
+      await userEvent.click(await screen.findByText("Gizmo"));
+      expect(onChange).toHaveBeenLastCalledWith(["Gizmo"]);
+    });
+
+    it('should not default to search box for a field with has_field_values = "none" when there are no field values but the field is searchable', async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createProductsCategoryField({
+            has_field_values: "none",
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column: findColumn("PRODUCTS", "CATEGORY"),
+        values: [],
+        fieldId: PRODUCTS.CATEGORY,
+        fieldValues: createMockFieldValues({
+          field_id: PRODUCTS.CATEGORY,
+          values: [],
+          has_more_values: false,
+        }),
+      });
+
+      const input = screen.getByPlaceholderText("Enter some text");
+      await userEvent.type(input, "gadget");
+      expect(onChange).toHaveBeenLastCalledWith(["gadget"]);
     });
   });
 
