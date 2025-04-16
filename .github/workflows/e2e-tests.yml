@@ -6,9 +6,6 @@ on:
       skip:
         type: boolean
         default: false
-      skip-build:
-        type: boolean
-        default: false
       specs:
         type: string
         default: "./e2e/test/scenarios/**/*.cy.spec.*"
@@ -57,7 +54,7 @@ jobs:
 
   build:
     needs: [get-build-requirements]
-    if: ${{ !cancelled() && !inputs.skip && !inputs.skip-build }}
+    if: ${{ !cancelled() && !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     strategy:
@@ -82,7 +79,7 @@ jobs:
 
       - name: Build uberjar with ./bin/build.sh
         timeout-minutes: 10
-        run:  ./bin/build.sh
+        run: ./bin/build.sh
         shell: bash
 
       - name: Prepare uberjar artifact
@@ -128,7 +125,7 @@ jobs:
       - e2e-matrix-builder
       - build
     if: |
-      !cancelled() && (needs.build.result == 'success'  || needs.build.result == 'skipped')
+      !cancelled() && needs.build.result == 'success'
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -141,7 +138,6 @@ jobs:
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
-      use-previous-uberjar: ${{ inputs.skip-build }}
 
   # run this separately to make it non-blocking
   flaky-e2e-tests:
@@ -149,13 +145,12 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs: build
     if: |
-      !cancelled() && (needs.build.result == 'success'  || needs.build.result == 'skipped')
+      !cancelled() && needs.build.result == 'success'
     secrets: inherit
     with:
       name: Flaky
       tags: "@flaky"
       specs: "./e2e/test/scenarios/**/*.cy.spec.*"
-      use-previous-uberjar: ${{ inputs.skip-build }}
 
   e2e-tests-result:
     needs:

@@ -88,5 +88,4 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
-      skip-build: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.frontend_sources != 'true' }}
       specs: ${{ needs.files-changed.outputs.e2e_specs }}
