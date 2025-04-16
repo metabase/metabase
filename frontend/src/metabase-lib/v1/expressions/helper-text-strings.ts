@@ -1,11 +1,15 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
+import type {
+  HelpText,
+  HelpTextConfig,
+} from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
-import { applyPasses } from "./passes";
-import type { HelpText, HelpTextConfig } from "./types";
+import { isLiteral } from "./matchers";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
@@ -35,6 +39,7 @@ const getNowAtTimezone = (
     ? moment().tz(reportTimezone).format("LT")
     : moment().format("LT");
 
+// some of the structure names below are duplicated in src/metabase/lib/expression.cljc
 const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "count",
@@ -1412,18 +1417,53 @@ function isArgsExpression(x: unknown): x is ["args", Expression[]] {
   return Array.isArray(x) && x[0] === "args";
 }
 
-const getHelpExample = ({ name, args = [] }: HelpTextConfig): Expression => {
-  const parameters: Expression[] = [];
+/**
+ * Build the expression example as a Lib.ExpressionParts manually.
+ * This is necessary because we don't have a query to refer to in the examples.
+ *
+ * TODO: can we approach this differently?
+ */
+const getHelpExample = ({
+  name,
+  args = [],
+}: HelpTextConfig): Lib.ExpressionParts => {
+  const parameters: (Lib.ExpressionArg | Lib.ExpressionParts)[] = [];
+
   for (const arg of args) {
     if (isArgsExpression(arg.example)) {
-      parameters.push(...arg.example[1]);
+      const [_op, args] = arg.example;
+      parameters.push(...args.map(toExpressionParts));
     } else {
-      parameters.push(arg.example);
+      parameters.push(toExpressionParts(arg.example));
     }
   }
 
-  return applyPasses([name, ...parameters]);
+  return {
+    operator: name as Lib.ExpressionOperator,
+    options: {},
+    args: parameters,
+  };
 };
+
+function toExpressionParts(
+  value: Expression,
+): Lib.ExpressionParts | Lib.ExpressionArg {
+  if (isLiteral(value)) {
+    return value;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error("Expression example: expected array");
+  }
+
+  const [operator, ...args] = value;
+  return {
+    operator: operator as Lib.ExpressionOperator,
+    options: {},
+    // @ts-expect-error: we don't handle all the cases here.
+    args: args.map(toExpressionParts),
+  };
+}
 
 export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
   return docsPage

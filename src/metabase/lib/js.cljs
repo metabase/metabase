@@ -1018,7 +1018,8 @@
        (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
          (let [{:keys [operator options args]} node]
            #js {:operator (name operator)
-                :options (clj->js (select-keys options [:case-sensitive :include-current]))
+                :options (fix-namespaced-values
+                          (clj->js (select-keys options [:case-sensitive :include-current :base-type]) :keyword-fn u/qualified-name))
                 :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
          node))
      parts)))
@@ -1201,14 +1202,29 @@
       #js {:operator (name operator)
            :column   column})))
 
-;; TODO remove once all filter-parts are migrated to MBQL lib
-(defn ^:export is-column-metadata
+(defn ^:export column-metadata?
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
 
-  > **Code health:** Smelly. When is this called and why does the FE need to know? The values are supposed to be opaque,
-  and we should see if there's a better way to get the needed information."
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
   [arg]
   (and (map? arg) (= :metadata/column (:lib/type arg))))
+
+(defn ^:export metric-metadata?
+  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/metric`.
+
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
+  [arg]
+  (and (map? arg) (= :metadata/metric (:lib/type arg))))
+
+(defn ^:export segment-metadata?
+  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/segment`.
+
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
+  [arg]
+  (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
 ;; # Field selection
 ;; Queries can specify a subset of fields to return from their source table or previous stage. There are several
@@ -2384,11 +2400,11 @@
 
   > **Code health:** Single use. Only supports the search info."
   [metadata-providerable column]
-  (-> (lib.field/field-values-search-info metadata-providerable column)
-      (update :has-field-values name)
-      ;; TODO: This should probably reuse `display-info->js` for caching and uniformity.
-      (update-keys cljs-key->js-key)
-      clj->js))
+  (let [{:keys [field-id search-field search-field-id has-field-values]} (lib.field/field-values-search-info metadata-providerable column)]
+    #js {:fieldId        field-id
+         :searchField    search-field
+         :searchFieldId  search-field-id
+         :hasFieldValues (name has-field-values)}))
 
 ;; # Specialized Filtering
 ;; These specialized filter updates support the drag-and-drop "brush" filtering in the UI. Eg. dragging a box on a map

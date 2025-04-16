@@ -5,9 +5,7 @@ import { t } from "ttag";
 import { Checkbox, Icon, Stack, Text, TextInput } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 
-import { getEffectiveOptions } from "../utils";
-
-import { searchOptions } from "./utils";
+import { getEffectiveOptions, searchOptions } from "./utils";
 
 interface ListValuePickerProps {
   fieldValues: FieldValue[];

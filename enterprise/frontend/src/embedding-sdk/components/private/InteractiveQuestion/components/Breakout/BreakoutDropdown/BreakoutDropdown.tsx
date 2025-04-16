@@ -16,6 +16,7 @@ import { BreakoutPicker } from "../BreakoutPicker";
 import { type SDKBreakoutItem, useBreakoutData } from "../use-breakout-data";
 
 /**
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionBreakoutDropdownProps = Omit<
