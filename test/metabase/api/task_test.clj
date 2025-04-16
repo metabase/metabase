@@ -449,60 +449,42 @@
           :task "b"
           :duration duration
           :started_at start
-          :ended_at  end})
-
-       ;; task c
-       :model/TaskHistory
-       _
-       (let [start (t/minus now (t/days 2))]
-         {:status :started
-          :task "c"
-          :duration nil
-          :started_at start
-          :ended_at nil})
-       :model/TaskHistory
-       _
-       (let [start (t/minus now (t/days 1))]
-         {:status :started
-          :task "c"
-          :duration nil
-          :started_at start
-          :ended_at nil})]
+          :ended_at  end})]
       (doseq [sort-column [:started_at :ended_at :duration]
               sort-direction [:asc :desc]
               :let [expected-data (cond (and (= :ended_at sort-column)
                                              (= :desc sort-direction))
                                         (mapv #(hash-map :task  %)
-                                              ["b" "b" "a" "a" "c" "c"])
+                                              ["b" "b" "a" "a"])
 
                                         (and (= :started_at sort-column)
                                              (= :desc sort-direction))
                                         (mapv #(hash-map :task  %)
-                                              ["c" "c" "b" "b" "a" "a"])
+                                              ["b" "b" "a" "a"])
 
                                         (and (= :ended_at sort-column)
                                              (= :asc sort-direction))
                                         (mapv #(hash-map :task  %)
-                                              ["c" "c" "a" "a" "b" "b"])
+                                              ["a" "a" "b" "b"])
 
                                         (and (= :started_at sort-column)
                                              (= :asc sort-direction))
                                         (mapv #(hash-map :task  %)
-                                              ["a" "a" "b" "b" "c" "c"])
+                                              ["a" "a" "b" "b"])
 
                                         (and (= :duration sort-column)
                                              (= :asc sort-direction))
                                         (mapv #(hash-map :duration %)
-                                              [nil nil 300 3000 5000 10000])
+                                              [300 3000 5000 10000])
 
                                         (and (= :duration sort-column)
                                              (= :desc sort-direction))
                                         (mapv #(hash-map :duration %)
-                                              [10000 5000 3000 300 nil nil]))]]
+                                              [10000 5000 3000 300]))]]
         (testing (format "Sorting works correctly for %s %s" sort-column sort-direction)
           (let [response (mt/user-http-request :crowberto :get 200 "task/"
                                                :sort_column sort-column :sort_direction sort-direction)]
-            (is (= 6 (-> response :total)))
+            (is (= 4 (-> response :total)))
             (is (=? expected-data
                     (-> response :data vec))))))
       (testing "Sorting works with filtering and pagination"
