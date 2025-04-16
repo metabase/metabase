@@ -128,7 +128,7 @@ export const canSearchFieldValues = (
     field.searchField(disablePKRemapping),
   );
   const hasNoPlainInputField = fields.some(
-    (field) => field.has_field_values === "none",
+    (field) => field.has_field_values !== "none",
   );
 
   return hasFields && canSearch && hasNoPlainInputField;
