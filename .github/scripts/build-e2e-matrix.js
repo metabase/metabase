@@ -11,7 +11,7 @@ function buildMatrix(inputSpecs, inputChunks) {
     edition: "ee",
   };
 
-  const allSpecs = inputSpecs ?? "./e2e/test/scenarios/**/*.cy.spec.*";
+  const allSpecs = inputSpecs || "./e2e/test/scenarios/**/*.cy.spec.*";
 
   const isDefaultSpecPattern =
     allSpecs === "./e2e/test/scenarios/**/*.cy.spec.*";

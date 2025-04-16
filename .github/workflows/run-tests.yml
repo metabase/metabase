@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
-      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs_files }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
