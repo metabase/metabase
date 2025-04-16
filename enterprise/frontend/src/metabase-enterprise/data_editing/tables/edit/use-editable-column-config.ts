@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  DashCardVisualizationSettings,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 export type EditableTableColumnConfig = {
   name: string;
@@ -9,7 +12,7 @@ export type EditableTableColumnConfig = {
 }[];
 
 export function useEditableTableColumnConfigFromVisualizationSettings(
-  visualizationSettings?: VisualizationSettings,
+  visualizationSettings?: VisualizationSettings & DashCardVisualizationSettings,
 ): EditableTableColumnConfig | undefined {
   return useMemo(() => {
     if (!visualizationSettings) {

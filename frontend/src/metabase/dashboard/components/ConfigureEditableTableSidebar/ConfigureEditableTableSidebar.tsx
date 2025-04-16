@@ -6,6 +6,7 @@ import { ActionIcon, Box, Flex, Icon, Tabs } from "metabase/ui";
 
 import { getDashCardById, getSidebar } from "../../selectors";
 
+import { ConfigureEditableTableActions } from "./ConfigureEditableTableActions";
 import { ConfigureEditableTableColumns } from "./ConfigureEditableTableColumns";
 import { ConfigureEditableTableFilters } from "./ConfigureEditableTableFilters";
 
@@ -32,7 +33,7 @@ export function ConfigureEditableTableSidebar({
         <Tabs.List px="md" pt="sm">
           <Tabs.Tab value="columns">{t`Columns`}</Tabs.Tab>
           <Tabs.Tab value="filters">{t`Filters`}</Tabs.Tab>
-          {/*<Tabs.Tab value="actions">{t`Actions`}</Tabs.Tab>*/}
+          <Tabs.Tab value="actions">{t`Actions`}</Tabs.Tab>
 
           <Flex flex="1" justify="flex-end" align="center">
             <ActionIcon onClick={onClose}>
@@ -48,9 +49,9 @@ export function ConfigureEditableTableSidebar({
           <Tabs.Panel value="filters">
             <ConfigureEditableTableFilters dashcard={dashcard} />
           </Tabs.Panel>
-          {/*<Tabs.Panel value="actions">*/}
-          {/*  <div>Not implemented</div>*/}
-          {/*</Tabs.Panel>*/}
+          <Tabs.Panel value="actions">
+            <ConfigureEditableTableActions dashcard={dashcard} />
+          </Tabs.Panel>
         </Box>
       </Tabs>
     </Sidebar>

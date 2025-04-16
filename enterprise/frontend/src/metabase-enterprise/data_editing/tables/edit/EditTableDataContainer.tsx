@@ -158,6 +158,7 @@ export const EditTableDataContainer = ({
         }
         fieldMetadataMap={tableFieldMetadataMap}
         isLoading={isInserting}
+        hasDeleteAction
       />
     </>
   );
