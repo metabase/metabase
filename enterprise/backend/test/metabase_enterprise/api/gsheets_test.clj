@@ -113,6 +113,11 @@
   "80b0635a-f0d9-4103-9ac8-389df7fd250a")
 
 (def ^:private
+  gdrive-paused-link
+  "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
+  "eef1ae21-924e-4cba-9420-3a57aa06c955")
+
+(def ^:private
   gdrive-400-error-link
   "A 400 response from HM. nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
   "93662bf7-b1c7-442b-80ec-18dee23894fa")
@@ -227,6 +232,19 @@
                 (is (nil? (:sync_started_at response)))
                 (is (pos-int? (:last_sync_at response)))
                 (is (pos-int? (:next_sync_at response)))
+                (testing "current state info doesn't get persisted"
+                  (is (nil? (:sync_started_at (gsheets))))
+                  (is (nil? (:last_sync_at (gsheets))))
+                  (is (nil? (:last_sync_at (gsheets)))))))))
+        (testing "when paused"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-paused-link)]
+            (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")]
+                (is (partial= {:status "error", :url "test-url" :created_by_id 2 :error_message "DWH quota exceeded"}
+                              response))
+                (is (pos-int? (:db_id response)))
+                (is (nil? (:sync_started_at response)))
+                (is (pos-int? (:last_sync_at response)))
                 (testing "current state info doesn't get persisted"
                   (is (nil? (:sync_started_at (gsheets))))
                   (is (nil? (:last_sync_at (gsheets))))
