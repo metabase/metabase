@@ -23,15 +23,15 @@
   (lib.options/ensure-uuid [:segment {} id]))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/segment
-  [_query _stage-number _metric-metadata]
-  :type/Boolean)
+  [_query _stage-number segment-metadata]
+  (lib.schema.expression/type-of segment-metadata))
 
 (defmethod lib.metadata.calculation/type-of-method :segment
   [_query _stage-number _segment-clause]
   :type/Boolean)
 
 (defmethod lib.schema.expression/type-of-method :metadata/segment
-  [_query _stage-number _segment-clause]
+  [_segment-metadata]
   :type/Boolean)
 
 (defn- fallback-display-name []

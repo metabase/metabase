@@ -162,7 +162,7 @@
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/column
   [_query _stage-number column-metadata]
-  (column-metadata-effective-type column-metadata))
+  (lib.schema.expression/type-of column-metadata))
 
 (defmethod lib.schema.expression/type-of-method :metadata/column
   [column-metadata]
