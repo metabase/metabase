@@ -16,7 +16,7 @@ import { refreshCurrentUser } from "metabase/redux/user";
 import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "./reducer";
-import { getFetchRefreshTokenFn } from "./selectors";
+import { getAuthInterface, getFetchRefreshTokenFn } from "./selectors";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
@@ -96,7 +96,9 @@ export const refreshTokenAsync = createAsyncThunk(
       getState() as SdkStoreState,
     );
 
-    const getRefreshToken = customGetRefreshToken ?? defaultGetRefreshTokenFn;
+    const authInterface = getAuthInterface(getState() as SdkStoreState)
+
+    const getRefreshToken = customGetRefreshToken ?? getRefreshFunction({ authInterface });
 
     // # How does the error handling work?
     // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
@@ -151,7 +153,76 @@ const safeStringify = (value: unknown) => {
   }
 };
 
-export const defaultGetRefreshTokenFn = async (url) => {
+export const getRefreshFunction = ({ authInterface }: Pick<SdkStoreState['sdk'], "authInterface">) => {
+  console.log({ authInterface })
+  if (authInterface === "popup") {
+    return popupRefreshTokenFn
+  }
+
+  return silentIframeRefreshFunction
+
+}
+
+
+export const silentIframeRefreshFunction = async (url: string): Promise<MetabaseEmbeddingSessionToken> => {
+  // This function is only for token refreshes where the user is already authenticated
+  return new Promise((resolve, reject) => {
+    // Add parameters to indicate this is a token refresh
+    const tokenUrl = url.includes("?")
+      ? `${url}&token=true&origin=${encodeURIComponent(window.location.origin)}&refresh=true`
+      : `${url}?token=true&origin=${encodeURIComponent(window.location.origin)}&refresh=true`;
+
+    // Open a minimal popup window for token refresh
+    // Make it tiny and position in corner to minimize visibility
+    const width = 1;
+    const height = 1;
+    const left = window.screen.width - width;
+    const top = 0;
+
+    const authWindow = window.open(
+      tokenUrl,
+      "samlRefresh",
+      `width=${width},height=${height},left=${left},top=${top},resizable=no,status=no,location=no,toolbar=no,menubar=no`
+    );
+
+    if (!authWindow) {
+      reject(new Error("Auth window was blocked. Please allow popups for this site."));
+      return;
+    }
+
+    // Listen for message from auth window
+    const messageHandler = (event: MessageEvent) => {
+      // Only accept messages with the correct type
+      if (event.data?.type === 'SAML_AUTH_COMPLETE' && event.data.authData) {
+        // Remove event listener
+        window.removeEventListener('message', messageHandler);
+
+        // Make sure window is closed
+        if (!authWindow.closed) {
+          authWindow.close();
+        }
+
+        // Resolve with auth data
+        resolve(event.data.authData);
+      }
+    };
+
+    window.addEventListener('message', messageHandler);
+
+    // Set timeout to prevent hanging indefinitely
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener('message', messageHandler);
+
+      if (!authWindow.closed) {
+        authWindow.close();
+      }
+
+      reject(new Error("Authentication timed out"));
+    }, 30000); // 30 second timeout
+  });
+};
+
+export const popupRefreshTokenFn = async (url: string) => {
   // For SAML authentication, use a popup approach
   return new Promise((resolve, reject) => {
     // Define popup dimensions
@@ -162,8 +233,8 @@ export const defaultGetRefreshTokenFn = async (url) => {
 
     // Just use the token=true parameter to get the HTML response
     const tokenUrl = url.includes("?")
-      ? `${url}&token=true`
-      : `${url}?token=true`;
+      ? `${url}&token=true&popup=true`
+      : `${url}?token=true&popup=true`;
 
     // Open popup
     const popup = window.open(
@@ -178,7 +249,7 @@ export const defaultGetRefreshTokenFn = async (url) => {
     }
 
     // Listen for message from the popup
-    const messageHandler = (event) => {
+    const messageHandler = (event: MessageEvent) => {
       // Security check - only accept messages from our popup
       if (event.source !== popup) {
         return;

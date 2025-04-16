@@ -134,6 +134,7 @@
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
         token-requested? (= "true" (get-in req [:params :token]))
+        popup-requested? (= "true" (get-in req [:params :popup]))
         redirect-url (if (nil? redirect)
                        (do
                          (log/warn "Warning: expected `redirect` param, but none is present")
@@ -141,16 +142,22 @@
                        (if (sso-utils/relative-uri? redirect)
                          (str (public-settings/site-url) redirect)
                          redirect))
-        ;; Add token parameter to the redirect URL if requested
+        ;; Add token parameter if requested
         redirect-with-token (if token-requested?
                               (str redirect-url
                                    (if (.contains redirect-url "?") "&" "?")
                                    "token=true")
-                              redirect-url)]
+                              redirect-url)
+        ;; Add popup parameter if requested
+        redirect-with-params (if popup-requested?
+                               (str redirect-with-token
+                                    (if (.contains redirect-with-token "?") "&" "?")
+                                    "popup=true")
+                               redirect-with-token)]
     (sso-utils/check-sso-redirect redirect-url)
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
-            relay-state  (u/encode-base64 redirect-with-token)]
+            relay-state  (u/encode-base64 redirect-with-params)]
         (saml/idp-redirect-response {:request-id       (str "id-" (random-uuid))
                                      :sp-name          (sso-settings/saml-application-name)
                                      :issuer           (sso-settings/saml-application-name)
@@ -203,51 +210,51 @@
         ;; Check for token param in the relay state/continue URL
         token-requested? (and continue-url
                               (re-find #"[?&]token=true" continue-url))
+        popup-requested? (and continue-url
+                              (re-find #"[?&]popup=true" continue-url))
         ;; Clean the continue URL by removing our token parameter if present
-        clean-continue-url (if token-requested?
-                             (str/replace continue-url #"[?&]token=true(&|$)" "$1")
-                             continue-url)]
+        clean-continue-url (-> continue-url
+                               (cond-> token-requested? (str/replace #"[?&]token=true(&|$)" "$1"))
+                               (cond-> popup-requested? (str/replace #"[?&]popup=true(&|$)" "$1")))]
     (sso-utils/check-sso-redirect clean-continue-url)
     (try
       (let [saml-response (saml/validate-response request
-                                                  {:idp-cert (idp-cert)
-                                                   :sp-private-key (sp-cert-keystore-details)
-                                                   :acs-url (acs-url)
-                                                  ;; remove :in-response-to validation since we're not
-                                                  ;; tracking that in metabase
-                                                   :response-validators [:issuer
-                                                                         :signature
-                                                                         :require-authenticated]
-                                                   :assertion-validators [:signature
-                                                                          :recipient
-                                                                          :not-on-or-after
-                                                                          :not-before
-                                                                          :address
-                                                                          :issuer]
-                                                   :issuer (sso-settings/saml-identity-provider-issuer)})
+                                                   {:idp-cert (idp-cert)
+                                                    :sp-private-key (sp-cert-keystore-details)
+                                                    :acs-url (acs-url)
+                                                    :response-validators [:issuer
+                                                                          :signature
+                                                                          :require-authenticated]
+                                                    :assertion-validators [:signature
+                                                                           :recipient
+                                                                           :not-on-or-after
+                                                                           :not-before
+                                                                           :address
+                                                                           :issuer]
+                                                    :issuer (sso-settings/saml-identity-provider-issuer)})
             attrs         (saml-response->attributes saml-response)
             email         (get attrs (sso-settings/saml-attribute-email))
             first-name    (get attrs (sso-settings/saml-attribute-firstname))
             last-name     (get attrs (sso-settings/saml-attribute-lastname))
             groups        (get attrs (sso-settings/saml-attribute-group))
             session       (fetch-or-create-user!
-                           {:first-name      first-name
-                            :last-name       last-name
-                            :email           email
-                            :group-names     groups
-                            :user-attributes attrs
-                            :device-info     (request/device-info request)})]
+                            {:first-name    first-name
+                             :last-name     last-name
+                             :email         email
+                             :group-names   groups
+                             :user-attributes attrs
+                             :device-info   (request/device-info request)})]
 
         ;; Check if token was requested
-       ;; Add this to your sso.i/sso-post :saml method
-;; inside the try block, after you've created the session
+        ;; Add this to your sso.i/sso-post :saml method
+        ;; inside the try block, after you've created the session
 
-;; When token=true, return HTML instead of JSON
-        (if token-requested?
-  ;; Return HTML that will pass the session data to the parent window
+        (cond
+          ;; Case 1: Both token and popup are requested
+          (and token-requested? popup-requested?)
           (let [;; Current time in seconds since epoch
                 current-time (quot (System/currentTimeMillis) 1000)
-        ;; Expiration time - 24 hours from now (86400 seconds)
+                ;; Expiration time - 24 hours from now (86400 seconds)
                 expiration-time (+ current-time 86400)]
             {:status 200
              :headers {"Content-Type" "text/html"}
@@ -265,28 +272,68 @@
       iat: " current-time ",
       status: \"ok\"
     };
-
-    // Send the data back to the parent window
-    window.opener.postMessage({
-      type: 'saml_auth_complete',
-      payload: authData
-    }, '*');
-
-    // Show a message while the window closes
-    document.body.innerHTML = '<h3>Authentication successful. This window will close automatically.</h3>';
+    // Store the token in local storage
+    localStorage.setItem('metabaseAuthToken', JSON.stringify(authData));
+    // Redirect back to the client URL
+    window.location.href = '" clean-continue-url "';
   </script>
 </body>
 </html>")})
 
-  ;; Otherwise, proceed with the normal redirect flow
+          ;; Case 2: Only token is requested (no popup)
+;; Case 2: Only token is requested (no popup)
+token-requested?
+(let [;; Current time in seconds since epoch
+      current-time (quot (System/currentTimeMillis) 1000)
+      ;; Expiration time - 24 hours from now (86400 seconds)
+      expiration-time (+ current-time 86400)
+      ;; Get the origin parameter for postMessage targeting
+      origin (get-in request [:params :origin])]
+  {:status 200
+   :headers {"Content-Type" "text/html"}
+   :body (str "<!DOCTYPE html>
+<html>
+<head>
+  <title>Authentication Complete</title>
+  <script>
+    // The authentication data in the required shape
+    const authData = {
+      id: \"" (:key session) "\",
+      exp: " expiration-time ",
+      iat: " current-time ",
+      status: \"ok\"
+    };
+
+    // Send message to opening window with specific origin
+    if (window.opener) {
+      window.opener.postMessage({
+        type: 'SAML_AUTH_COMPLETE',
+        authData: authData
+      }, '" (or origin "*") "');
+
+      // Auto-close this window immediately to minimize visibility
+      window.close();
+    } else {
+      // If there's no opener (direct navigation), redirect
+      window.location.href = '" clean-continue-url "';
+    }
+  </script>
+</head>
+<body style=\"background-color: transparent; margin: 0; padding: 0;\">
+  <!-- Minimal visible content -->
+</body>
+</html>")})
+
+          ;; Case 3: Default case - neither token nor popup requested (or only popup but no token)
+          :else
           (let [response (response/redirect (or clean-continue-url (public-settings/site-url)))]
             (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
 
       (catch Throwable e
         (log/error e "SAML response validation failed")
         (throw (ex-info (tru "Unable to log in: SAML response validation failed")
-                        {:status-code 401}
-                        e))))))
+                         {:status-code 401}
+                         e))))))
 
 (defmethod sso.i/sso-handle-slo :saml
   [{:keys [cookies] :as req}]

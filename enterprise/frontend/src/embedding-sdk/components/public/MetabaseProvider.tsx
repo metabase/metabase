@@ -6,6 +6,7 @@ import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvi
 import { useInitData } from "embedding-sdk/hooks";
 import { getSdkStore } from "embedding-sdk/store";
 import {
+  setAuthInterface,
   setErrorComponent,
   setEventHandlers,
   setLoaderComponent,
@@ -108,6 +109,11 @@ export const MetabaseProviderInternal = ({
   useEffect(() => {
     store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
   }, [store, authConfig.metabaseInstanceUrl]);
+
+  useEffect(() => {
+    console.log(authConfig.authInterface)
+    store.dispatch(setAuthInterface(authConfig.authInterface));
+  }, [store, authConfig.authInterface]);
 
   return (
     <SdkContextProvider>

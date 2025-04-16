@@ -13,11 +13,13 @@ type BaseMetabaseAuthConfig = {
 export type MetabaseAuthConfigWithProvider = BaseMetabaseAuthConfig & {
   authProviderUri: string;
   apiKey?: never;
+  authInterface: "popup" | "redirect"
 };
 
 export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
   apiKey: string;
   authProviderUri?: never;
+  authInterface?: never;
 };
 
 export type MetabaseAuthConfig =
