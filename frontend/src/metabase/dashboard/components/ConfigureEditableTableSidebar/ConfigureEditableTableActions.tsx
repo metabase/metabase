@@ -1,15 +1,24 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
+import { t } from "ttag";
 
-import { useListActionsQuery } from "metabase/api";
 import { onUpdateDashCardVisualizationSettings } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
-import { Checkbox, Loader, Stack } from "metabase/ui";
+import { Checkbox, Stack } from "metabase/ui";
 import type {
   DashboardCard,
-  WritebackImplicitQueryAction,
+  EditableTableRowActionDisplaySetting,
 } from "metabase-types/api";
 
-const SUPPORTED_IMPLICIT_ACTIONS = ["row/create", "row/delete"];
+const DEFAULT_ACTIONS = [
+  {
+    id: "row/create" as const,
+    label: t`Create a new record`,
+  },
+  {
+    id: "row/delete" as const,
+    label: t`Delete a record`,
+  },
+];
 
 export const ConfigureEditableTableActions = ({
   dashcard,
@@ -19,29 +28,12 @@ export const ConfigureEditableTableActions = ({
   const dispatch = useDispatch();
 
   const enabledActions =
-    dashcard.card.visualization_settings?.["editableTable.enabledActions"] ??
-    [];
-
-  const { data: actions, isLoading } = useListActionsQuery({
-    "model-id": dashcard.card.id,
-  });
-
-  const implicitActions = useMemo(() => {
-    return (
-      actions?.filter(
-        (action) =>
-          action.type === "implicit" &&
-          SUPPORTED_IMPLICIT_ACTIONS.includes(action.kind),
-      ) ?? ([] as WritebackImplicitQueryAction[])
-    );
-  }, [actions]);
+    dashcard.visualization_settings?.["editableTable.enabledActions"] ?? [];
 
   const handleToggleAction = useCallback(
-    ({ id, enabled }: { id: number; enabled: boolean }) => {
+    ({ id, enabled }: EditableTableRowActionDisplaySetting) => {
       const enabledActions =
-        dashcard.card.visualization_settings?.[
-          "editableTable.enabledActions"
-        ] ?? implicitActions.map(({ id }) => ({ id, enabled: true }));
+        dashcard.visualization_settings?.["editableTable.enabledActions"] || [];
 
       const newArray = enabledActions.map((action) => {
         if (action.id === id) {
@@ -59,29 +51,20 @@ export const ConfigureEditableTableActions = ({
         }),
       );
     },
-    [
-      dashcard.card.visualization_settings,
-      dashcard.id,
-      dispatch,
-      implicitActions,
-    ],
+    [dashcard.visualization_settings, dashcard.id, dispatch],
   );
-
-  if (isLoading) {
-    return <Loader />;
-  }
 
   return (
     <Stack>
-      {implicitActions?.map(({ name, id }) => {
-        const isEnabled = enabledActions.length
-          ? enabledActions.find(({ id: itemId }) => itemId === id)?.enabled
-          : true; // default to enabled if no actions are set
+      {DEFAULT_ACTIONS?.map(({ id, label }) => {
+        const isEnabled =
+          enabledActions.find(({ id: itemId }) => itemId === id)?.enabled ||
+          false;
 
         return (
           <Checkbox
-            key={name}
-            label={name}
+            key={id}
+            label={label}
             checked={isEnabled}
             onChange={() => handleToggleAction({ id, enabled: !isEnabled })}
           />

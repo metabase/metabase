@@ -42,6 +42,7 @@ interface EditingBaseRowModalProps {
   currentRowIndex?: number;
   currentRowData?: RowValues;
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
+  hasDeleteAction: boolean;
   isLoading?: boolean;
   columnsConfig?: EditableTableColumnConfig;
 }
@@ -58,6 +59,7 @@ export function EditingBaseRowModal({
   currentRowIndex,
   currentRowData,
   fieldMetadataMap,
+  hasDeleteAction,
   isLoading,
   columnsConfig,
 }: EditingBaseRowModalProps) {
@@ -188,7 +190,7 @@ export function EditingBaseRowModal({
               gap="xs"
               mr={rem(-5) /* aligns cross with modal right padding */}
             >
-              {isEditingMode && (
+              {isEditingMode && hasDeleteAction && (
                 <ActionIcon variant="subtle" onClick={requestDeletion}>
                   <Icon name="trash" />
                 </ActionIcon>

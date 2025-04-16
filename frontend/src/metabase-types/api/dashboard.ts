@@ -12,15 +12,13 @@ import type {
   ParameterId,
   ParameterTarget,
   Table,
+  TableColumnOrderSetting,
   UserId,
   VirtualCardDisplay,
+  WritebackActionId,
 } from "metabase-types/api";
 
-import type {
-  ActionDisplayType,
-  WritebackAction,
-  WritebackActionId,
-} from "./actions";
+import type { ActionDisplayType, WritebackAction } from "./actions";
 import type { Card, CardId, VisualizationSettings } from "./card";
 import type { Dataset } from "./dataset";
 import type { ModerationReview } from "./moderation";
@@ -101,10 +99,20 @@ export type DashboardCardLayoutAttrs = {
   size_y: number;
 };
 
+export type EditableTableRowActionDisplaySetting = {
+  id: WritebackActionId | "row/create" | "row/delete";
+  enabled: boolean;
+};
+
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
   iframe?: string;
+
+  // "table-editable" specific settings
+  "table.columns"?: TableColumnOrderSetting[];
+  "table.editableColumns"?: string[]; // list of column names
+  "editableTable.enabledActions"?: EditableTableRowActionDisplaySetting[];
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {

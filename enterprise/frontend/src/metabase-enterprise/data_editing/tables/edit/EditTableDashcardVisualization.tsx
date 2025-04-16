@@ -15,6 +15,7 @@ import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
+import { useTableActions } from "./use-table-actions";
 import { useTableCRUD } from "./use-table-crud";
 import { useTableSorting } from "./use-table-sorting";
 import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-dashcard-update-strategy";
@@ -60,6 +61,10 @@ export const EditTableDashcardVisualization = ({
     visualizationSettings,
   );
 
+  const { hasCreateAction, hasDeleteAction } = useTableActions(
+    visualizationSettings,
+  );
+
   const { getColumnSortDirection } = useTableSorting({
     question,
   });
@@ -84,19 +89,25 @@ export const EditTableDashcardVisualization = ({
         align="center"
         className={S.gridFooterDashcardVisualization}
       >
-        <Button
-          variant="subtle"
-          size="xs"
-          fz="sm"
-          leftSection={<Icon name="add" />}
-          onClick={() => handleModalOpenAndExpandedRow()}
-        >{t`New record`}</Button>
+        {hasCreateAction ? (
+          <Button
+            variant="subtle"
+            size="xs"
+            fz="sm"
+            leftSection={<Icon name="add" />}
+            onClick={() => handleModalOpenAndExpandedRow()}
+          >{t`New record`}</Button>
+        ) : (
+          <div />
+        )}
+
         <Text fz="sm" fw="bold">
           {getEditTableRowCountMessage(data)}
         </Text>
       </Flex>
       <EditingBaseRowModal
         opened={isCreateRowModalOpen}
+        hasDeleteAction={hasDeleteAction}
         onClose={closeCreateRowModal}
         onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}

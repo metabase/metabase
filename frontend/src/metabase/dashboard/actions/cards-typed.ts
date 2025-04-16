@@ -221,6 +221,16 @@ export const addEditableTableDashCardToDashboard =
           card: card as VirtualCard,
           visualization_settings: {
             table_id: tableId,
+            "editableTable.enabledActions": [
+              {
+                id: "row/create",
+                enabled: true,
+              },
+              {
+                id: "row/delete",
+                enabled: true,
+              },
+            ],
           },
         },
       }),
