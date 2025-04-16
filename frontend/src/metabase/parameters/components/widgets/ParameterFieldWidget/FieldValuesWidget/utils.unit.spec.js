@@ -32,9 +32,9 @@ describe("Components > FieldValuesWidget > utils", () => {
     });
 
     describe("when all fields are searchable", () => {
-      it("should be false if there are no fields that require search", () => {
+      it("should be true for list fields that can be searched", () => {
         const fields = [listField];
-        expect(isSearchable({ fields })).toBe(false);
+        expect(isSearchable({ fields })).toBe(true);
       });
 
       it("should be true if there is at least one field that requires search", () => {

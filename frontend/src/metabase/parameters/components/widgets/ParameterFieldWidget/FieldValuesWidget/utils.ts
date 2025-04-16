@@ -263,6 +263,10 @@ export function getValuesMode({
   disableSearch: boolean;
   disablePKRemappingForSearch?: boolean;
 }): ValuesMode {
+  if (shouldList({ parameter, fields, disableSearch })) {
+    return "list";
+  }
+
   if (
     isSearchable({
       parameter,
@@ -273,10 +277,6 @@ export function getValuesMode({
     })
   ) {
     return "search";
-  }
-
-  if (shouldList({ parameter, fields, disableSearch })) {
-    return "list";
   }
 
   return "none";
