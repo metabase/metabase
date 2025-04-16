@@ -39,15 +39,18 @@
       height: auto;
       line-height: calc(2.5rem - 2px);
     }
+
     :global(.cm-content) {
       line-height: calc(2.5rem - 2px);
     }
+
     :global(.cm-scroller) {
       overflow-x: hidden;
       overflow-y: hidden;
       display: flex;
       align-items: center;
     }
+
     :global(.cm-gutters) {
       display: none;
     }

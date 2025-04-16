@@ -3,6 +3,8 @@ import type {
   TableDeleteRowsResponse,
   TableInsertRowsRequest,
   TableInsertRowsResponse,
+  TableUndoRedoRequest,
+  TableUndoRedoResponse,
   TableUpdateRowsRequest,
   TableUpdateRowsResponse,
 } from "metabase-enterprise/data_editing/tables/types";
@@ -41,6 +43,20 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         body: { rows },
       }),
     }),
+    tableUndo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
+      query: ({ tableId, noOp }) => ({
+        method: "POST",
+        url: `/api/ee/data-editing/undo`,
+        body: { "table-id": tableId, "no-op": noOp },
+      }),
+    }),
+    tableRedo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
+      query: ({ tableId, noOp }) => ({
+        method: "POST",
+        url: `/api/ee/data-editing/redo`,
+        body: { "table-id": tableId, "no-op": noOp },
+      }),
+    }),
   }),
 });
 
@@ -48,4 +64,6 @@ export const {
   useInsertTableRowsMutation,
   useUpdateTableRowsMutation,
   useDeleteTableRowsMutation,
+  useTableUndoMutation,
+  useTableRedoMutation,
 } = tableDataEditApi;
