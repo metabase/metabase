@@ -59,6 +59,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
     <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>
       <Button
         fullWidth
+        data-testid="swap-dataset-button"
         variant="visualizer"
         aria-pressed={selected}
         size="xs"

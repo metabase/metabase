@@ -47,9 +47,20 @@ export function assertDataSourceColumnSelected(
   );
 }
 
-export function addDataset(datasetName: string) {
+export function selectDataset(datasetName: string) {
   cy.findByPlaceholderText("Search for something").type(datasetName);
-  cy.findByTestId("add-dataset-button").click({ force: true });
+  cy.findAllByText(datasetName).first().click({ force: true });
+  cy.wait("@cardQuery");
+}
+
+export function addDataset(datasetName: string) {
+  cy.findByPlaceholderText("Search for something").clear().type(datasetName);
+  cy.findAllByText(datasetName)
+    .first()
+    .closest("button")
+    .siblings('[data-testid="add-dataset-button"]')
+    .first()
+    .click({ force: true });
   cy.wait("@cardQuery");
 }
 
@@ -63,6 +74,13 @@ export function switchToColumnsList() {
 
 export function ensureDisplayIsSelected(display: VisualizationDisplay) {
   cy.findByDisplayValue(display).should("be.checked");
+}
+
+export function selectColumnFromColumnsList(
+  datasetName: string,
+  columnName: string,
+) {
+  dataSourceColumn(datasetName, columnName).click();
 }
 
 export function deselectColumnFromColumnsList(
