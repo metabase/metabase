@@ -15,7 +15,7 @@
    {:keys [_status _task]
     :as filter} :- task-history/Filter]
   (validation/check-has-application-permission :monitoring)
-  {:total  (task-history/tasks-count filter)
+  {:total  (task-history/total filter)
    :limit  (request/limit)
    :offset (request/offset)
    :data   (task-history/all (request/limit) (request/offset) filter)})
