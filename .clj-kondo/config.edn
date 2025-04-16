@@ -347,6 +347,7 @@
     metabase-enterprise.audit-app.pages.common                    common
     metabase-enterprise.sandbox.api.table                         table
     metabase-enterprise.sandbox.api.util                          sandbox.api.util
+    metabase-enterprise.database-routing.core                     database-routing
     metabase-enterprise.test                                      met
     metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
@@ -752,6 +753,7 @@
    clojurewerkz.quartzite.schedule.cron/schedule                                        macros.quartz/schedule
    clojurewerkz.quartzite.schedule.simple/schedule                                      macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                                macros.quartz/build-trigger
+   metabase-enterprise.database-routing.e2e-test/with-temp-dbs!                         macros.metabase-enterprise.database-routing.e2e-test/with-temp-dbs!
    metabase-enterprise.impersonation.util-test/with-impersonations!                     macros.metabase-enterprise.impersonation.util-test/with-impersonations!
    metabase-enterprise.query-reference-validation.api-test/with-test-setup!             macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
    metabase-enterprise.sandbox.test-util/with-gtaps!                                    macros.metabase-enterprise.sandbox.test-util/with-gtaps!
@@ -774,6 +776,7 @@
    metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing! macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
    metabase.query-analysis.task.test-setup/with-test-setup!                             macros.metabase.query-analysis.task.test-setup/with-test-setup!
    metabase.query-processor.streaming/streaming-response                                macros.metabase.query-processor.streaming/streaming-response
+   metabase.server.statistics-handler-test/with-server                                  macros.metabase.server.statistics-handler-test/with-server
    metabase.test.data.users/with-group-for-user                                         macros.metabase.test.data.users/with-group-for-user
    metabase.test.util/with-temp-env-var-value!                                          macros.metabase.test.util/with-temp-env-var-value!
    metabase.test.util/with-temporary-raw-setting-values                                 macros.metabase.test.util/with-temporary-raw-setting-values

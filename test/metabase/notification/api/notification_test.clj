@@ -113,10 +113,9 @@
 
 (defn do-with-send-messages-sync!
   [f]
-  (let [orig-send-email! @#'messages/send-email!]
-    (with-redefs [messages/send-email! (fn [& args]
-                                         (deref (apply orig-send-email! args)))]
-      (f))))
+  (mt/with-dynamic-fn-redefs [messages/send-email! (fn [& args]
+                                                     (apply @#'messages/send-email-sync! args))]
+    (f)))
 
 (defmacro with-send-messages-sync!
   [& body]
@@ -932,10 +931,11 @@
                                                                      :handlers     [{:channel_type "channel/email"
                                                                                      :recipients   [{:type    :notification-recipient/user
                                                                                                      :user_id (mt/user->id :lucky)}]}]}]
-          (let [[email :as emails] (notification.tu/with-mock-inbox-email!
-                                     (with-send-messages-sync!
-                                       (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
-                a-href (format "<a href=\".*/question/%d\">My Card</a>."
+          (let [[email :as emails]
+                (notification.tu/with-mock-inbox-email!
+                  (with-send-messages-sync!
+                    (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
+                a-href (format "<a href=\"https://testmb.com/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
             (testing (format "\nNotification: \n%s\n" notification)
               (testing (format "\nEmail: \n%s\n" email)

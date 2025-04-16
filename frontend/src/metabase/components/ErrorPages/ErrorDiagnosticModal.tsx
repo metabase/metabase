@@ -269,8 +269,7 @@ export const ErrorExplanationModal = ({
         {t`We’ve run into an error, try to refresh the page or go back.`}
       </Text>
       <Text my="md">
-        {c("indicates an email address to which to send diagnostic information")
-          .jt`If the error persists, you can download diagnostic information`}
+        {t`If the error persists, you can download diagnostic information`}
       </Text>
       <Flex justify="flex-end">
         <Button variant="filled" onClick={openDiagnosticModal}>

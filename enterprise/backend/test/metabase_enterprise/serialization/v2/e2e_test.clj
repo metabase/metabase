@@ -726,6 +726,28 @@
                     (is (= new-coll-id (:collection_id
                                         (t2/select-one :model/Card new-card-id))))))))))))))
 
+(deftest database-routing-test
+  (testing "Destination Databases and Database Routers are excluded from serialization"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (mt/with-temp
+            [:model/Database {router-db-id :id} {:name "Router"}
+             :model/DatabaseRouter _ {:database_id router-db-id :user_attribute "foobar"}
+             :model/Database _ {:router_database_id router-db-id
+                                :name "Destination"}]
+            (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+              (storage/store! (seq extraction) dump-dir))
+            (testing "ingest and load"
+              (ts/with-db dest-db
+                (testing "doing ingestion"
+                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                      "successful"))
+                (testing "only the router database was exported"
+                  (is (t2/exists? :model/Database :name "Router"))
+                  (is (not (t2/exists? :model/Database :name "Destination")))
+                  (is (= 0 (t2/count :model/DatabaseRouter))))))))))))
+
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]

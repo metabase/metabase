@@ -413,9 +413,13 @@ describe("issue 52806", () => {
     "should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)",
     { tags: "@flaky" },
     () => {
+      cy.intercept("/api/automagic-dashboards/database/*/candidates").as(
+        "candidates",
+      );
       H.visitQuestionAdhoc(questionDetails);
       cy.findByTestId("main-logo-link").click();
       H.modal().button("Discard changes").click();
+      cy.wait("@candidates");
       cy.location().should((location) => expect(location.search).to.eq(""));
     },
   );
@@ -475,4 +479,70 @@ describe("issue 55951", () => {
       initial_sync_status: "incomplete" as const,
     }));
   }
+});
+
+describe("issue 54799", () => {
+  const questionDetails = {
+    native: {
+      query: "select 'foo', 'bar'",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  function select(el: Cypress.Chainable, pos: Cypress.PositionType = "center") {
+    const macOSX = Cypress.platform === "darwin";
+    el.dblclick(pos, {
+      metaKey: macOSX,
+      ctrlKey: !macOSX,
+    });
+  }
+
+  it("it should be possible to select multiple ranges and run those (metabase#54799)", () => {
+    cy.findByTestId("visibility-toggler").click();
+
+    cy.get("[data-testid=cell-data]").contains("foo").should("be.visible");
+    cy.get("[data-testid=cell-data]").contains("bar").should("be.visible");
+
+    select(H.NativeEditor.get().findByText("select"));
+    select(H.NativeEditor.get().findByText("'foo'"));
+    select(H.NativeEditor.get().findByText("'foo'"), "left");
+    select(H.NativeEditor.get().findByText("'bar'"));
+    select(H.NativeEditor.get().findByText("'bar'"), "right");
+
+    getRunQueryButton().click();
+
+    cy.get("[data-testid=cell-data]").contains(/^foo$/).should("not.exist");
+    cy.get("[data-testid=cell-data]").contains(/^bar$/).should("not.exist");
+
+    cy.get("[data-testid=cell-data]")
+      .contains(/^'foobar'$/)
+      .should("be.visible");
+    cy.get("[data-testid=cell-data]")
+      .contains(/foobar/)
+      .should("be.visible");
+  });
+});
+
+describe("issue 56570", () => {
+  const questionDetails = {
+    native: {
+      query: `select '${"ab".repeat(200)}'`,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  it("should not push the toolbar off-screen (metabase#56570)", () => {
+    cy.findByTestId("visibility-toggler").click();
+    cy.findByTestId("native-query-editor-sidebar").should("be.visible");
+  });
 });

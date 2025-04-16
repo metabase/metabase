@@ -16,19 +16,18 @@ describe("issue 26470", { tags: "@external" }, () => {
       "unpersist",
     );
 
-    cy.clock(Date.now());
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
 
     cy.findByTestId("database-model-features-section")
       .findByLabelText("Model persistence")
       .should("not.be.checked")
-      .click();
+      .click({ force: true });
     cy.wait("@persist").its("response.statusCode").should("eq", 204);
 
     cy.findByTestId("database-model-features-section")
       .findByLabelText("Model persistence")
       .should("be.checked")
-      .click();
+      .click({ force: true });
     cy.wait("@unpersist").its("response.statusCode").should("eq", 204);
 
     cy.findByTestId("database-model-features-section")
@@ -201,7 +200,7 @@ describe("(metabase#46714)", () => {
   it("should allow users to apply relative date options in the segment date picker", () => {
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByRole("tab", { name: "Previous" }).click();
       cy.findByLabelText("Starting from…").click();
     });

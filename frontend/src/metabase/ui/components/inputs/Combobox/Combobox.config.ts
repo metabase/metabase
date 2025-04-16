@@ -1,6 +1,10 @@
-import { Combobox, type MantineThemeOverride } from "@mantine/core";
+import {
+  Combobox,
+  ComboboxChevron,
+  type MantineThemeOverride,
+} from "@mantine/core";
 
-import ComboboxStyles from "./Combobox.module.css";
+import S from "./Combobox.module.css";
 
 export const comboboxOverrides: MantineThemeOverride["components"] = {
   Combobox: Combobox.extend({
@@ -8,8 +12,14 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
       size: "md",
     },
     classNames: {
-      empty: ComboboxStyles.empty,
-      option: ComboboxStyles.option,
+      options: S.options,
+      option: S.option,
+      empty: S.empty,
+    },
+  }),
+  ComboboxChevron: ComboboxChevron.extend({
+    classNames: {
+      chevron: S.chevron,
     },
   }),
 };

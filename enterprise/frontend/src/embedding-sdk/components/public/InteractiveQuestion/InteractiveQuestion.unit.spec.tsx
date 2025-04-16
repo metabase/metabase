@@ -40,8 +40,8 @@ import {
 import { useInteractiveQuestionContext } from "../../private/InteractiveQuestion/context";
 
 import {
+  type BaseInteractiveQuestionProps,
   InteractiveQuestion,
-  type InteractiveQuestionProps,
 } from "./InteractiveQuestion";
 
 const TEST_PARAM = createMockParameter({
@@ -99,7 +99,7 @@ const setup = ({
   withChartTypeSelector = false,
   initialSqlParameters,
 }: Partial<
-  Pick<InteractiveQuestionProps, "initialSqlParameters"> &
+  Pick<BaseInteractiveQuestionProps, "initialSqlParameters"> &
     Pick<
       InteractiveQuestionDefaultViewProps,
       "withChartTypeSelector" | "title"

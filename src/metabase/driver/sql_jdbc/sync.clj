@@ -30,6 +30,7 @@
  [sql-jdbc.describe-table
   add-table-pks
   describe-fields
+  describe-fields-pre-process-xf
   describe-fields-sql
   describe-fks
   describe-fks-sql
