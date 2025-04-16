@@ -52,11 +52,11 @@ export const QuestionActions = ({
   useRegisterShortcut(
     [
       {
-        id: "question-info-sidebar",
+        id: "query-builder-info-sidebar",
         perform: onInfoClick,
       },
       {
-        id: "bookmark-question",
+        id: "query-builder-bookmark",
         perform: onToggleBookmark,
       },
     ],

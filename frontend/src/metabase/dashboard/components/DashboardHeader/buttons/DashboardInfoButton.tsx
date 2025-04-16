@@ -22,7 +22,7 @@ export const DashboardInfoButton = () => {
   useRegisterShortcut(
     [
       {
-        id: "info-dashboard",
+        id: "dashboard-toggle-info-sidebar",
         perform: handleClick,
       },
     ],

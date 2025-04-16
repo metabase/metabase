@@ -37,11 +37,11 @@ export const LeftViewFooterButtonGroup = () => {
   useRegisterShortcut(
     [
       {
-        id: "toggle-viz-types",
+        id: "query-builder-toggle-viz-types",
         perform: handleVizTypeClick,
       },
       {
-        id: "toggle-viz-settings",
+        id: "query-builder-toggle-viz-settings",
         perform: handleVizSettingClick,
       },
     ],

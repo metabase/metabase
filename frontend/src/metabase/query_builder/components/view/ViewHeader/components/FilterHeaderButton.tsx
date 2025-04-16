@@ -44,7 +44,7 @@ export function FilterHeaderButton({
 
   useRegisterShortcut([
     {
-      id: "visualization-open-filter",
+      id: "query-builder-visualization-open-filter",
       perform: toggle,
     },
   ]);

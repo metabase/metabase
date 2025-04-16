@@ -60,7 +60,7 @@ const DashboardActionMenuInner = ({
   useRegisterShortcut(
     [
       {
-        id: "trash-dashboard",
+        id: "dashboard-send-to-trash",
         perform: () => dispatch(push(`${location?.pathname}/archive`)),
       },
     ],

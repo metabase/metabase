@@ -9,7 +9,7 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 export const CancelEditButton = (props: { onClick: () => void }) => {
   useRegisterShortcut([
     {
-      id: "cancel-edit",
+      id: "dashboard-cancel-edit",
       perform: props.onClick,
     },
   ]);

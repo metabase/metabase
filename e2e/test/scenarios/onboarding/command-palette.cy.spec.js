@@ -406,14 +406,14 @@ describe("shortcuts", () => {
     H.shortcutModal().should("not.exist");
 
     // Test a few global shortcuts
-    cy.realPress("c");
+    cy.realPress("c").realPress("f");
     cy.findByRole("dialog", { name: /collection/i }).should("exist");
     cy.realPress("Escape");
-    cy.realPress("d");
+    cy.realPress("c").realPress("d");
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
 
-    cy.realPress("b").realPress("d");
+    cy.realPress("g").realPress("d");
     cy.location("pathname").should("contain", "browse/databases");
     cy.realPress("Escape");
 
@@ -422,13 +422,13 @@ describe("shortcuts", () => {
     cy.realPress("[");
     H.navigationSidebar().should("be.visible");
 
-    cy.realPress("p");
+    cy.realPress("g").realPress("p");
     cy.location("pathname").should(
       "equal",
       `/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
     );
 
-    cy.realPress("t");
+    cy.realPress("g").realPress("t");
     cy.location("pathname").should("equal", "/trash");
   });
 

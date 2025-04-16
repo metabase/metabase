@@ -210,7 +210,7 @@ export const QuestionMoreActionsMenu = ({
     hasCollectionPermissions
       ? [
           {
-            id: "trash-question",
+            id: "query-builder-send-to-trash",
             perform: () => onOpenModal(MODAL_TYPES.ARCHIVE),
           },
         ]
