@@ -167,6 +167,7 @@ const generateDtsRollup = () => {
     `${SDK_DIST_DIR_PATH}/enterprise`,
     `${SDK_DIST_DIR_PATH}/frontend`,
     `${SDK_DIST_DIR_PATH}/target`,
+    `${SDK_DIST_DIR_PATH}/e2e`,
   ].forEach((path) => {
     fs.rmSync(path, {
       force: true,
