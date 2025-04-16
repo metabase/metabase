@@ -159,7 +159,6 @@ export const useTableCRUD = ({
       const response = await deleteTableRows({
         rows,
         tableId: tableId,
-        primaryKeyColumnName: pkColumn.name,
       });
 
       if (response.data?.success) {
