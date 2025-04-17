@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetFieldValuesQuery } from "metabase/api";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { parseNumber } from "metabase/lib/number";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
 import { Center, type ComboboxProps, Loader } from "metabase/ui";
@@ -51,6 +52,8 @@ function FilterValuePicker({
     { skip: !canLoadFieldValues(fieldInfo) },
   );
 
+  const tc = useTranslateContent();
+
   if (isLoading) {
     return (
       <Center h="2.5rem">
@@ -73,8 +76,9 @@ function FilterValuePicker({
 
   if (canSearchFieldValues(fieldInfo, fieldData)) {
     const searchColumn = checkNotNull(fieldInfo.searchField);
-    const searchColumInfo = Lib.displayInfo(query, stageIndex, searchColumn);
-    const searchColumName = searchColumInfo.displayName;
+    const searchColumnInfo = Lib.displayInfo(query, stageIndex, searchColumn);
+    const searchColumnName = searchColumnInfo.displayName;
+    const searchColumnNameTranslated = tc(searchColumnName);
 
     return (
       <SearchValuePicker
@@ -82,8 +86,8 @@ function FilterValuePicker({
         searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
-        placeholder={getSearchPlaceholder(column, searchColumName)}
-        nothingFoundMessage={getNothingFoundMessage(searchColumName)}
+        placeholder={getSearchPlaceholder(column, searchColumnNameTranslated)}
+        nothingFoundMessage={getNothingFoundMessage(searchColumnNameTranslated)}
         autoFocus={autoFocus}
         comboboxProps={comboboxProps}
         parseValue={parseValue}

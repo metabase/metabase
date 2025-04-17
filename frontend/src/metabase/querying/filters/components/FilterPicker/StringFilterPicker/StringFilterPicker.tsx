@@ -2,6 +2,7 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import {
   type OperatorType,
   useStringFilter,
@@ -29,6 +30,7 @@ export function StringFilterPicker({
     () => Lib.displayInfo(query, stageIndex, column),
     [query, stageIndex, column],
   );
+  const tc = useTranslateContent();
 
   const {
     type,
@@ -71,7 +73,7 @@ export function StringFilterPicker({
       onSubmit={handleSubmit}
     >
       <FilterPickerHeader
-        columnName={columnInfo.longDisplayName}
+        columnName={tc(columnInfo.longDisplayName)}
         onBack={onBack}
       >
         <FilterOperatorPicker

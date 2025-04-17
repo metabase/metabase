@@ -6,6 +6,7 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { DelayGroup } from "metabase/ui";
@@ -65,15 +66,17 @@ export function QueryColumnPicker({
   alwaysExpanded,
   disableSearch,
 }: QueryColumnPickerProps) {
+  const tc = useTranslateContent();
   const sections: Sections[] = useMemo(
     () =>
       columnGroups.map((group) => {
         const groupInfo = Lib.displayInfo(query, stageIndex, group);
-
-        const items = Lib.getColumnsFromColumnGroup(group).map((column) => ({
-          ...Lib.displayInfo(query, stageIndex, column),
-          column,
-        }));
+        const items = Lib.getColumnsFromColumnGroup(group)
+          .map((column) => ({
+            ...Lib.displayInfo(query, stageIndex, column, tc),
+            column,
+          }))
+          .toSorted((a, b) => a.displayName.localeCompare(b.displayName));
 
         return {
           name: groupInfo.displayName,
@@ -81,7 +84,7 @@ export function QueryColumnPicker({
           items,
         };
       }),
-    [query, stageIndex, columnGroups],
+    [query, stageIndex, columnGroups, tc],
   );
 
   const handleSelect = useCallback(

@@ -2,6 +2,7 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { isNotNull } from "metabase/lib/types";
 import {
   type NumberOrEmptyValue,
@@ -27,9 +28,10 @@ export function NumberFilterPicker({
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
+  const tc = useTranslateContent();
   const columnInfo = useMemo(
-    () => Lib.displayInfo(query, stageIndex, column),
-    [query, stageIndex, column],
+    () => Lib.displayInfo(query, stageIndex, column, tc),
+    [query, stageIndex, column, tc],
   );
 
   const {

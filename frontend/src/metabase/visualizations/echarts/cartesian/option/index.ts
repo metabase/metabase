@@ -1,6 +1,7 @@
 import type { EChartsCoreOption } from "echarts/core";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
@@ -49,6 +50,7 @@ export const getCartesianChartOption = (
   chartWidth: number,
   isAnimated: boolean,
   renderingContext: RenderingContext,
+  tc?: ContentTranslationFunction,
 ): EChartsCoreOption => {
   const hasTimelineEvents = timelineEventsModel != null;
   const timelineEventsSeries = hasTimelineEvents
@@ -66,6 +68,7 @@ export const getCartesianChartOption = (
     chartMeasurements,
     renderingContext,
   );
+
   const goalSeriesOption = getGoalLineSeriesOption(
     chartModel,
     settings,
@@ -130,6 +133,7 @@ export const getCartesianChartOption = (
       settings,
       hasTimelineEvents,
       renderingContext,
+      tc,
     ),
   };
 };
