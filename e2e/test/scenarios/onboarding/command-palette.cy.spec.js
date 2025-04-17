@@ -373,10 +373,12 @@ describe("command palette", () => {
   });
 });
 
-describe("shortcuts", { tags: ["@actions"] }, () => {
+H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
+    H.enableTracking();
   });
 
   it("should render a shortcuts modal, and global shortcuts should be available", () => {
@@ -398,9 +400,17 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("c").realPress("f");
     cy.findByRole("dialog", { name: /collection/i }).should("exist");
     cy.realPress("Escape");
+    H.expectGoodSnowplowEvent({
+      event: "keyboard_shortcut_performed",
+      event_detail: "create-new-collection",
+    });
     cy.realPress("c").realPress("d");
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
+    H.expectGoodSnowplowEvent({
+      event: "keyboard_shortcut_performed",
+      event_detail: "create-new-dashboard",
+    });
 
     cy.realPress("g").realPress("d");
     cy.location("pathname").should("contain", "browse/databases");
@@ -410,15 +420,31 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     H.navigationSidebar().should("not.be.visible");
     cy.realPress("[");
     H.navigationSidebar().should("be.visible");
+    H.expectGoodSnowplowEvent(
+      {
+        event: "keyboard_shortcut_performed",
+        event_detail: "toggle-navbar",
+      },
+      2,
+    );
 
     cy.realPress("g").realPress("p");
     cy.location("pathname").should(
       "equal",
       `/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
     );
+    H.expectGoodSnowplowEvent({
+      event: "keyboard_shortcut_performed",
+      event_detail: "navigate-personal-collection",
+    });
 
     cy.realPress("g").realPress("t");
     cy.location("pathname").should("equal", "/trash");
+
+    H.expectGoodSnowplowEvent({
+      event: "keyboard_shortcut_performed",
+      event_detail: "navigate-trash",
+    });
 
     cy.log("shortcuts should not be enabled when working in a modal (ADM 658)");
 
@@ -501,7 +527,8 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     // Sidesheet
     cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("exist");
-    cy.realPress("]");
+    // Should be able to toggle again in ], but modals disable shortcuts
+    cy.realPress("Escape");
     cy.findByRole("dialog", { name: "Info" }).should("not.exist");
 
     // Viz Settings
