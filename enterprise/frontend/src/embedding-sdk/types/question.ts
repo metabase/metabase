@@ -4,7 +4,7 @@ import type { Deferred } from "metabase/lib/promise";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type InternalQuestion from "metabase-lib/v1/Question";
-import type { Card, CardId, ParameterId } from "metabase-types/api";
+import type { Card, CardId } from "metabase-types/api";
 
 import type { SdkEntityId } from "./entity-id";
 
@@ -61,4 +61,4 @@ export type SdkQuestionTitleProps =
 
 export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
 
-export type SqlParameterValues = Record<ParameterId, string | number>;
+export type SqlParameterValues = Record<string, string | number>;
