@@ -86,7 +86,12 @@ module.exports = (env) => {
           resourceQuery: { not: [/component|source/] },
         },
         {
+          test: /sdk\-styles\.css$/,
+          type: "asset/source",
+        },
+        {
           test: /\.css$/,
+          exclude: /sdk\-styles\.css$/,
           use: [
             { loader: MiniCssExtractPlugin.loader },
             { loader: "css-loader", options: CSS_CONFIG },
@@ -146,7 +151,7 @@ module.exports = (env) => {
     plugins: [
       // Style extraction for web components
       new MiniCssExtractPlugin({
-        filename: "styles.css",
+        filename: "sdk-styles.css",
         chunkFilename: "[id].css",
       }),
       new WebpackManifestPlugin({
@@ -207,6 +212,8 @@ module.exports = (env) => {
 
     // Allows importing side effects that applies only to the SDK.
     "sdk-specific-imports": SDK_SRC_PATH + "/lib/sdk-specific-imports.ts",
+
+    "@sdk-styles": BUILD_PATH + "/dist/sdk-styles.css",
   };
 
   if (config.cache) {
