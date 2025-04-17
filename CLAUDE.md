@@ -33,7 +33,7 @@
 - **Test file:** `clojure -X:dev:test :only namespace/test-name`
 - **Check Code Readability** `./bin/mage -code-is-readable` with optional line-number
   - Run this after every change to Clojure code, only accept readable code
-- **Evaluating Clojure Code** `./bin/mage -eval '<code>'`
+- **Evaluating Clojure Code** `./bin/mage -repl '<code>'`
   - See `Sending code to the REPL` for more details
 
 ### ClojureScript
@@ -91,38 +91,36 @@ You can also call `mage -code-is-readable yourfile.clj` without the line number 
 
 #### Bottom-up dev loop
 
-1. Write code into a file
-2. Evaluate the file's namespace and make sure it loads correctly
-3. Call functions in the namespace with test inputs, and observe that the outputs are correct 3.1 Feel free to copy
-   these REPL session trials into actual test cases using `deftest` and `is`.
+1. Write code into a file.
+2. Evaluate the file's namespace and make sure it loads correctly with:
+
+```
+mage -repl --namespace metabase.db.connection
+```
+
+3. Call functions in the namespace with test inputs, and observe that the outputs are correct 3.1
+   Feel free to copy these REPL session trials into actual test cases using `deftest` and `is`.
 4. Once you know these functions are good, return to 1, and compose them into the task that you need to build.
 
 #### Sending code to the REPL
 
-- Send code to the metabase process REPL using: `./bin/mage -eval '(+ 1 1)'` where `(+ 1 1)` is your Clojure code.
-  - This will evaluate it in the user namespace.
-  - If the Metabase backend is not running, you'll see an error message with instructions on how to start it. The
-    error will tell you whether the REPL server is missing or if there's nothing listening on the port.
+- Send code to the metabase process REPL using: `./bin/mage -repl '(+ 1 1)'` where `(+ 1 1)` is your Clojure code.
+  - See `./bin/mage -repl -h` for more details.
+  - If the Metabase backend is not running, you'll see an error message with instructions on how to start it.
 
 ##### Working with files and namespaces
 
-The simplest and most reliable way to work with your code is:
-
 1. **Load a file and call functions with fully qualified names**:
 
-   ```
-   ./bin/mage -eval '(load-file "path/to/your/file.clj") (your.namespace/your-function arg1 arg2)'
-   ```
-
-   Example:
+To call `your.namespace/your-function` on `arg1` and `arg2`:
 
    ```
-   ./bin/mage -eval '(load-file "dev/src/dev/nocommit/eight_queens.clj") (dev.nocommit.eight-queens/solve-n-queens 4)'
+   ./bin/mage -repl --namespace your.namespace (your-function arg1 arg2)'
    ```
 
 ##### Understanding the response
 
-The `./bin/mage -eval` command returns three separate, independent outputs:
+The `./bin/mage -repl` command returns three separate, independent outputs:
 
 - `value`: The return value of the last expression (best for data structures)
 - `stdout`: Any printed output from `println` etc. (best for messages)
@@ -131,7 +129,7 @@ The `./bin/mage -eval` command returns three separate, independent outputs:
 Example call:
 
 ```bash
-./bin/mage -eval '(println "Hello, world!") '\''({0 1, 1 3, 2 0, 3 2} {0 2, 1 0, 2 3, 3 1})'
+./bin/mage -repl '(println "Hello, world!") '\''({0 1, 1 3, 2 0, 3 2} {0 2, 1 0, 2 3, 3 1})'
 ```
 
 Example response:
@@ -148,11 +146,9 @@ For effective REPL usage:
 
 - Return data structures as function return values
 - Use `println` for human-readable messages
-- Let errors propagate naturally to stderr
+- Print errors to stderr
 
 ## Tips
 
 - End all files with a newline.
 - When editing tabular code, where the columns line up, try to keep them aligned.
-- When you see misaligned code elements (like a `goal-met?` function on line 290 that should align with one on line 289), make sure to align them properly.
-
