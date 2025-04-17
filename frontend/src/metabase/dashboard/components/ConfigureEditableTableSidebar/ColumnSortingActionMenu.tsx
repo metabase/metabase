@@ -25,7 +25,10 @@ export const ColumnSortingActionMenu = ({
       onSort(columnId, "asc");
     }
 
-    toggle();
+    // we need a tick for sorting state to be updated before opening the menu to avoid instant label flickering
+    setTimeout(() => {
+      toggle();
+    });
   };
 
   const icon = !sortDirection
