@@ -236,7 +236,9 @@
                       {:original (pr-str Long/MAX_VALUE) :value Long/MAX_VALUE :msg "Big number."}
                       {:original (pr-str Long/MIN_VALUE) :value Long/MIN_VALUE :msg "Big number."}
                       {:original 123.3 :value 123 :msg "Easy case."}
-                      {:original -123.4 :value -123 :msg "Negative sign."}]]
+                      {:original -123.4 :value -123 :msg "Easy negative case."}
+
+                      {:original 123.9 :value 124 :msg "Check for correct rounding."}]]
         (doseq [{:keys [original value msg]} examples]
           (testing (str "integer cast: " msg)
             (let [field-md (lib.metadata/field mp (mt/id :people :id))
