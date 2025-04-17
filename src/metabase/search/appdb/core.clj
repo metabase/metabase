@@ -160,5 +160,5 @@
       ;; keep the current table, just delete its contents
       (t2/delete! table))
     (search.index/maybe-create-pending!))
-  (u/prog1 (populate-index! :search/reindexing)
+  (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
     (search.index/activate-table!)))
