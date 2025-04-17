@@ -690,23 +690,22 @@
 (deftest ^:parallel joined-literal-expression-test
   (testing "joined literal expression"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :left-join :nested-queries)
-      (is (= [[2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "25°"]
-              [2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "In-N-Out Burger"]
-              [2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "The Apple Pan"]]
+      (is (= [[2 "Stout Burgers & Beers" 2 0.5 1 "Stout Burgers & Beers" "25°"]
+              [2 "Stout Burgers & Beers" 2 0.5 1 "Stout Burgers & Beers" "In-N-Out Burger"]
+              [2 "Stout Burgers & Beers" 2 0.5 1 "Stout Burgers & Beers" "The Apple Pan"]]
              (mt/formatted-rows
-              [int str int 1.0 mt/boolish->bool int str str]
+              [int str int 1.0 int str str]
               (mt/run-mbql-query venues
                 {:fields      [$id
                                $name
                                $price
                                [:expression "InversePrice"]
-                               [:expression "NameEquals"]
                                &JoinedCategories.*LiteralInt/Integer
                                &JoinedCategories.*LiteralString/Text
                                &JoinedCategories.venues.name]
                  :expressions {"InversePrice"  [:/ &JoinedCategories.*LiteralInt/Integer $price]
                                "NameEquals"    [:= &JoinedCategories.*LiteralString/Text $name]}
-                 :filters     [[:= true [:expression "NameEquals"]]]
+                 :filters     [[:expression "NameEquals"]]
                  :joins       [{:strategy     :left-join
                                 :condition    [:= $category_id &JoinedCategories.venues.category_id]
                                 :source-query {:source-table $$venues

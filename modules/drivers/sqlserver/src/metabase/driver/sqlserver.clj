@@ -46,6 +46,7 @@
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
+                              :expression-literals                    true
                               :index-info                             true
                               :now                                    true
                               :regex                                  false
@@ -518,6 +519,55 @@
     (-> (parent-method driver :order-by honeysql-form query)
         ;; order bys have to be distinct in SQL Server!!!!!!!1
         (update :order-by distinct))))
+
+(defn- bit->boolean-expr
+  "Convert 0 and 1 to equivalent boolean expressions."
+  [value]
+  ;; Use this function to convert 0 and 1 BIT values to an equivalent boolean expression in filter clauses.
+  ;;
+  ;; SQLServer uses 0 and 1 for boolean constants. These constants have type BIT, but BITs are not allowed in the top
+  ;; level of a WHERE clause or AND or OR expressions. Those clauses expect a true Boolean, but seemingly the only way
+  ;; to get one is as the result of a comparison operator. For example, none of the following queries are valid:
+  ;;
+  ;; - SELECT 1 WHERE 1
+  ;; - SELECT 1 WHERE 1 AND 1
+  ;; - SELECT 1 WHERE 0 OR 1
+  ;;
+  ;; But these are
+  ;;
+  ;; - SELECT 1 WHERE (1 = 1)
+  ;; - SELECT 1 WHERE (1 = 1) AND (1 = 1)
+  ;; - SELECT 1 WHERE (0 = 1) OR  (1 = 1)
+  ;;
+  ;; https://learn.microsoft.com/en-us/sql/t-sql/data-types/constants-transact-sql#boolean-constants
+  ;; https://learn.microsoft.com/en-us/sql/t-sql/language-elements/comparison-operators-transact-sql#boolean-data-type
+  ;; https://learn.microsoft.com/en-us/sql/t-sql/language-elements/and-transact-sql
+  (condp = value
+    0 [:= 0 1]
+    1 [:= 1 1]
+    value))
+
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
+  [driver _ honeysql-form {clause :filter}]
+  (sql.helpers/where honeysql-form (-> (sql.qp/->honeysql driver clause)
+                                       bit->boolean-expr)))
+
+(defn- compile-logical-op [driver [tag & _ :as clause]]
+  (let [parent-method (get-method sql.qp/->honeysql [:sql-jdbc tag])]
+    (->> (parent-method driver clause)
+         (mapv bit->boolean-expr))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :and]
+  [driver clause]
+  (compile-logical-op driver clause))
+
+(defmethod sql.qp/->honeysql [:sqlserver :or]
+  [driver clause]
+  (compile-logical-op driver clause))
+
+(defmethod sql.qp/->honeysql [:sqlserver :not]
+  [driver clause]
+  (compile-logical-op driver clause))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
