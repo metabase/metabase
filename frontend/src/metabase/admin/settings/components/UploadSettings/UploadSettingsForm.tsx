@@ -110,7 +110,7 @@ export function UploadSettingsFormView({
   const showError = (msg: string) => {
     setErrorMessage(msg);
     setTimeout(() => setErrorMessage(null), FEEDBACK_TIMEOUT);
-    sendToast({ type: "error", message: msg });
+    sendToast({ icon: "warning", message: msg });
   };
 
   const handleEnableUploads = async () => {
@@ -125,11 +125,10 @@ export function UploadSettingsFormView({
     }).then((response) => {
       if (response.error) {
         showError(getErrorMessage(enableErrorMessage));
-        throw new Error("Error enabling uploads");
+        throw new Error(t`Error enabling uploads`);
       }
-      setSchemaName(schemaName);
-      setTablePrefix(tablePrefix);
-      sendToast({ message: "Uploads enabled" });
+
+      sendToast({ message: t`Uploads enabled` });
     });
   };
 
@@ -145,12 +144,12 @@ export function UploadSettingsFormView({
     }).then((response) => {
       if (response.error) {
         showError(getErrorMessage(disableErrorMessage));
-        throw new Error("Error disabling uploads");
+        throw new Error(t`Error disabling uploads`);
       }
       setDbId(null);
       setSchemaName(null);
       setTablePrefix(null);
-      sendToast({ message: "Uploads disabled" });
+      sendToast({ message: t`Uploads disabled` });
     });
   };
 
