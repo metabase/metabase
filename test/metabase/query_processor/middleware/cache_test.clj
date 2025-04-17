@@ -401,7 +401,9 @@
 
 (defn- expected-model-metadata [the-model]
   (for [col expected-inner-metadata]
-    (lib/add-model-ident col (:entity_id the-model))))
+    (-> (lib/add-model-ident col (:entity_id the-model))
+        ;; TODO: Inner idents are not returned on query results... but perhaps should be?
+        (dissoc :model/inner_ident))))
 
 (deftest multiple-models-e2e-test
   (testing "caching works across the whole QP where two models have the same inner query"

@@ -482,6 +482,11 @@
                           (assoc-in [:info :card-entity-id] entity-id)
                           actual-query-results)}))
 
+(defn- as-model [result-metadata entity-id]
+  (for [col result-metadata]
+    (cond-> col
+      (not (lib/valid-model-ident? col entity-id)) (lib/add-model-ident entity-id))))
+
 (defn card-with-metadata
   "Given a (partial) Card, such as might be passed to `with-temp`, fill in its `:result_metadata` based on the query."
   [{:keys [dataset_query] :as card}]
@@ -490,7 +495,8 @@
            :entity_id       entity-id
            :result_metadata (-> dataset_query
                                 (assoc-in [:info :card-entity-id] entity-id)
-                                actual-query-results))))
+                                actual-query-results
+                                (cond-> (= (:type card) :model) (as-model entity-id))))))
 
 (defn card-with-updated-metadata
   "Like [[card-with-metadata]] but takes an extra argument: a function `(f column-metadata card) => column-metadata`.

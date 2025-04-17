@@ -40,10 +40,10 @@
 
 (defn add-model-ident
   "Given a column with a basic, \"inner\" `:ident` and the `card-entity-id`, returns the column with `:ident` for the
-  model and `:model/inner-ident` with the original."
+  model and `:model/inner_ident` with the original."
   [{:keys [ident] :as column} card-entity-id]
   (-> column
-      (assoc :model/inner-ident ident)
+      (assoc :model/inner_ident ident)
       (update :ident model-ident card-entity-id)))
 
 (defn- strip-model-ident
@@ -58,13 +58,13 @@
 (defn remove-model-ident
   "Given a column with a [[model-ident]] style `:ident`, return the original, \"inner\" ident for that column.
 
-  Typically this should come from the `:model/inner-ident` key on the column, which is removed if present.
+  Typically this should come from the `:model/inner_ident` key on the column, which is removed if present.
   Will fall back to parsing the [[model-ident]] prefix if necessary."
-  [{:keys [ident model/inner-ident] :as column} card-entity-id]
-  (let [inner-ident (or inner-ident (strip-model-ident ident card-entity-id))]
+  [{:keys [ident model/inner_ident] :as column} card-entity-id]
+  (let [inner_ident (or inner_ident (strip-model-ident ident card-entity-id))]
     (-> column
-        (dissoc :model/inner-ident)
-        (assoc :ident inner-ident))))
+        (dissoc :model/inner_ident)
+        (assoc :ident inner_ident))))
 
 (defn native-ident
   "Returns the `:ident` for a given field name on a native query.
