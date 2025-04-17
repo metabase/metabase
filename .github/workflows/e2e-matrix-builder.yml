@@ -25,15 +25,12 @@ jobs:
       matrix: ${{ steps.matrix.outputs.config }}
       regularChunks: ${{ steps.matrix.outputs.regularChunks }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github/scripts/build-e2e-matrix.js
-          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v4
         with:
           node-version: lts/Jod # 22.x.x
       - name: Install glob package
         run: npm install glob
+      - uses: actions/checkout@v4
       - uses: actions/github-script@v7
         id: matrix
         env:
