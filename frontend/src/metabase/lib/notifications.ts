@@ -14,7 +14,6 @@ import {
 } from "metabase-lib/v1/Alert";
 import type Question from "metabase-lib/v1/Question";
 import type {
-  ActionType,
   ChannelApiResponse,
   ChannelType,
   Notification,
@@ -27,8 +26,8 @@ import type {
   NotificationHandlerSlack,
   NotificationRecipient,
   NotificationRecipientRawValue,
+  NotificationTriggerEvent,
   ScheduleSettings,
-  SystemEvent,
   User,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -44,26 +43,21 @@ export const formatTitle = ({ item, type }: NotificationListItem) => {
     case "table-notification": {
       const payload = item.payload;
       return (
-        t`${payload.table!.display_name} table - ${formatEventName(payload.event_name, payload.action)}` ||
+        t`${payload.table!.display_name} table - ${formatEventName(payload.event_name)}` ||
         t`Table Notification`
       );
     }
   }
 };
 
-function formatEventName(event_name: SystemEvent, action: ActionType) {
+function formatEventName(event_name: NotificationTriggerEvent) {
   switch (event_name) {
-    case "event/action.success":
-      switch (action) {
-        case "bulk/create":
-          return t`Rows created`;
-        case "bulk/update":
-          return t`Rows updated`;
-        case "bulk/delete":
-          return t`Rows deleted`;
-        default:
-          return event_name;
-      }
+    case "event/rows.created":
+      return t`Rows created`;
+    case "event/rows.updated":
+      return t`Rows updated`;
+    case "event/rows.deleted":
+      return t`Rows deleted`;
     default:
       return event_name;
   }

@@ -306,19 +306,24 @@
                      :when (seq emails)]
                  emails)))
 
-(def ^:private action->template
-  {:bulk/create {:channel_type :channel/email
-                 :details      {:type    :email/handlebars-resource
-                                :subject "Table {{table.name}} has a new row"
-                                :path    "metabase/channel/email/data_editing_row_create.hbs"}}
-   :bulk/update {:channel_type :channel/email
-                 :details      {:type    :email/handlebars-resource
-                                :subject "Table {{table.name}} has been updated"
-                                :path    "metabase/channel/email/data_editing_row_update.hbs"}}
-   :bulk/delete {:channel_type :channel/email
-                 :details      {:type    :email/handlebars-resource
-                                :subject "Table {{table.name}} has a row deleted"
-                                :path    "metabase/channel/email/data_editing_row_delete.hbs"}}})
+(def ^:private event->template
+  {:event/rows.created
+   {:channel_type :channel/email
+    :details      {:type    :email/handlebars-resource
+                   :subject "Table {{table.name}} has a new row"
+                   :path    "metabase/channel/email/data_editing_row_create.hbs"}}
+
+   :event/rows.updated
+   {:channel_type :channel/email
+    :details      {:type    :email/handlebars-resource
+                   :subject "Table {{table.name}} has been updated"
+                   :path    "metabase/channel/email/data_editing_row_update.hbs"}}
+
+   :event/rows.deleted
+   {:channel_type :channel/email
+    :details      {:type    :email/handlebars-resource
+                   :subject "Table {{table.name}} has a row deleted"
+                   :path    "metabase/channel/email/data_editing_row_delete.hbs"}}})
 
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
@@ -327,9 +332,7 @@
    template             :- [:maybe ::models.channel/ChannelTemplate]
    recipients           :- [:sequential ::models.notification/NotificationRecipient]]
   (let [event-name  (get-in notification-payload [:context :event_name])
-        template    (or template
-                        (when (= :event/action.success event-name)
-                          (get action->template (get-in notification-payload [:context :action]))))]
+        template    (or template (get event->template event-name))]
     (assert template (str "No template found for event " event-name))
     (if-not template
       []

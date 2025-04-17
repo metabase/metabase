@@ -7,24 +7,16 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
-   [metabase.events.notification :as events.notification]
    [metabase.models.field-values :as field-values]
    [metabase.upload :as-alias upload]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   [nano-id.core :as nano-id]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
-
-(defmethod events.notification/notification-filter-for-topic :event/action.success
-  [_topic event-info]
-  [:and
-   [:= :table_id (-> event-info :args :table_id)]
-   [:= :action (u/qualified-name (:action event-info))]])
 
 (defn- invalidate-field-values! [table-id rows]
   (let [field-name-xf (comp (mapcat keys)
@@ -76,8 +68,8 @@
     (let [rows'        (data-editing/apply-coercions table-id rows)
           pk-fields    (data-editing/select-table-pk-fields table-id)
           pks->db-row  (data-editing/query-db-rows table-id pk-fields rows')
-          updated-rows (volatile! [])
           user-id      api/*current-user-id*]
+      (data-editing/perform-bulk-action! :bulk/update table-id rows')
       ;; TODO this should also become a subscription to the "data written" system event
       (let [row-pk->old-new-values (->> (for [row rows']
                                           (let [pks (data-editing/get-row-pks pk-fields row)]
@@ -87,7 +79,7 @@
         (undo/track-change! user-id {table-id row-pk->old-new-values}))
 
       (invalidate-field-values! table-id rows')
-      {:updated @updated-rows})))
+      {:updated (vals (data-editing/query-db-rows table-id pk-fields rows'))})))
 
 (api.macros/defendpoint :post "/table/:table-id/delete"
   "Delete row(s) from the given table"

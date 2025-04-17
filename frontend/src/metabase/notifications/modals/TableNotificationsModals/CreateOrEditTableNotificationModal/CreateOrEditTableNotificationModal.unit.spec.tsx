@@ -13,10 +13,9 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditTableNotificationModal } from "metabase/notifications/modals";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
-  ActionType,
   ChannelApiResponse,
   NotificationChannel,
-  SystemEvent,
+  NotificationTriggerEvent,
   TableNotification,
 } from "metabase-types/api";
 import {
@@ -351,8 +350,7 @@ function createMockTableNotification({
   user_id = 1,
 }: {
   id?: number;
-  event_name?: SystemEvent;
-  action?: ActionType;
+  event_name?: NotificationTriggerEvent;
   table_id?: number;
   user_id?: number;
 }): TableNotification {

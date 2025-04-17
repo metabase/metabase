@@ -1,7 +1,11 @@
 import { fireEvent, screen } from "@testing-library/react";
 
 import { renderWithTheme } from "__support__/ui";
-import type { ActionType, AlertNotification } from "metabase-types/api";
+import { action } from "metabase/lib/urls";
+import type {
+  AlertNotification,
+  NotificationTriggerEvent,
+} from "metabase-types/api";
 import {
   createMockAlertNotification,
   createMockNotificationCronSubscription,
@@ -27,7 +31,7 @@ const getQuestionAlertItem = (
 });
 
 const getTableNotificationItem = (
-  action: ActionType,
+  event: NotificationTriggerEvent,
   tableName = "Sample Table",
 ): TableNotificationListItem => {
   const mockTable = createMockTable({

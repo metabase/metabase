@@ -12,9 +12,8 @@ import {
 import { getUser } from "metabase/selectors/user";
 import { Box, Group, Text } from "metabase/ui";
 import type {
-  ActionType,
   NotificationChannel,
-  SystemEvent,
+  NotificationTriggerEvent,
   TableNotification,
   User,
 } from "metabase-types/api";
@@ -85,10 +84,7 @@ export const TableNotificationsListItem = ({
       onMouseLeave={handleMouseLeave}
     >
       <Text className={S.itemTitle} size="md" lineClamp={1} fw="bold">
-        {formatTitle(
-          notification.payload.event_name,
-          notification.payload.action,
-        )}
+        {formatTitle(notification.payload.event_name)}
       </Text>
       <Group gap="xs" align="center" c="text-secondary">
         {user && (
@@ -133,19 +129,14 @@ export const TableNotificationsListItem = ({
   );
 };
 
-const formatTitle = (eventName: SystemEvent, action: ActionType): string => {
+const formatTitle = (eventName: NotificationTriggerEvent): string => {
   switch (eventName) {
-    case "event/action.success":
-      switch (action) {
-        case "bulk/create":
-          return t`Notify when new records are created`;
-        case "bulk/update":
-          return t`Notify when records are updated`;
-        case "bulk/delete":
-          return t`Notify when records are deleted`;
-        default:
-          return eventName;
-      }
+    case "event/rows.created":
+      return t`Notify when new records are created`;
+    case "event/rows.updated":
+      return t`Notify when records are updated`;
+    case "event/rows.deleted":
+      return t`Notify when records are deleted`;
     default:
       return t`Notification`;
   }

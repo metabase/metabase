@@ -22,12 +22,11 @@
     :channel_id   http-channel-id}])
 
 (defn test-row-notification!
-  [action request-fn channel-type->assert-fns]
+  [event request-fn channel-type->assert-fns]
   (data-editing.tu/with-temp-test-db!
     (mt/with-temp [:model/Channel chn {:type :channel/http}]
       (notification.tu/with-system-event-notification!
-        [_notification {:notification-system-event {:event_name :event/action.success
-                                                    :action     action
+        [_notification {:notification-system-event {:event_name event
                                                     :table_id   (mt/id :categories)}
                         :handlers                  (all-handlers (:id chn))}]
         (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
@@ -39,7 +38,7 @@
 
 (deftest create-row-notification-test
   (test-row-notification!
-   :bulk/create
+   :event/rows.created
    (fn []
      (mt/user-http-request
       :crowberto
@@ -71,7 +70,7 @@
 
 (deftest update-row-notification-test
   (test-row-notification!
-   :bulk/update
+   :event/rows.updated
    (fn []
      (mt/user-http-request
       :crowberto
@@ -103,7 +102,7 @@
 
 (deftest delete-row-notification-test
   (test-row-notification!
-   :bulk/delete
+   :event/rows.deleted
    (fn []
      (mt/user-http-request
       :crowberto
@@ -135,23 +134,20 @@
 
 (deftest filter-notifications-test
   (testing "getting table notifications will return only notifications of a table and action"
-    (doseq [action [:bulk/create
-                    :bulk/update
-                    :bulk/delete]]
+    (doseq [event [:event/rows.created
+                   :event/rows.updated
+                   :event/rows.deleted]]
       (notification.tu/with-system-event-notification!
-        [_create-categories {:notification-system-event {:event_name :event/action.success
-                                                         :action     action
+        [_create-categories {:notification-system-event {:event_name event
                                                          :table_id   (mt/id :categories)}}]
 
         (notification.tu/with-system-event-notification!
-          [create-orders {:notification-system-event {:event_name :event/action.success
-                                                      :action     action
+          [create-orders {:notification-system-event {:event_name event
                                                       :table_id   (mt/id :orders)}}]
           (is (= [(:id create-orders)]
                  (map :id (#'events.notification/notifications-for-topic
-                           :event/action.success
-                           {:action action
-                            :args {:table_id (mt/id :orders)}})))))))))
+                           event
+                           {:args {:table_id (mt/id :orders)}})))))))))
 
 (deftest example-payload-row-create-test
   (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
@@ -161,8 +157,7 @@
            :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/action.success
-                                                          :action     :bulk/create}
+                                           :payload      {:event_name :event/rows.created}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-update-test
@@ -173,8 +168,7 @@
            :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/action.success
-                                                          :action     :bulk/update}
+                                           :payload      {:event_name :event/rows.updated}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-delete-test
@@ -185,6 +179,5 @@
            :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/action.success
-                                                          :action     :bulk/delete}
+                                           :payload      {:event_name :event/rows.deleted}
                                            :creator_id   (mt/user->id :crowberto)})))))
