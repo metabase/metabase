@@ -2398,7 +2398,7 @@
 
   - `expression-mode` specifies what type of thing `expr` is: an \"expression\" (custom column),
     an \"aggregation\" expression, or a \"filter\" condition.
-  - `legacy-expression` is a legacy MBQL expression created using the custom column editor in the FE.
+  - `expression` is an expression created using the custom column editor in the FE.
   - `expression-position` is provided when editing an existing custom column, and `nil` otherwise.
 
   Cyclic references are checked only when `expression-mode` is `\"expression\"` and `expression-position` is non-`nil`.
@@ -2406,20 +2406,16 @@
 
   Returns an i18n error message describing the problem, or `nil` (JS `null`) if there are no issues.
 
-  > **Code health:** Legacy, Single use. The expression parser should be refactored to support MLv2 expressions, and
-  then several of these functions for dealing with legacy can be removed."
-  [a-query stage-number expression-mode legacy-expression expression-position]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (as-> legacy-expression expr
-                 (js->clj expr :keywordize-keys true)
-                 (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))
-                 (lib.convert/->pMBQL expr)
-                 (lib.core/normalize expr))]
-      (-> (lib.expression/diagnose-expression a-query stage-number
-                                              (keyword expression-mode)
-                                              expr
-                                              expression-position)
-          clj->js))))
+  > **Code health:** Single use."
+  [a-query stage-number expression-mode an-expression expression-position]
+  (let [expr (-> an-expression
+                 (js->clj :keywordize-keys true)
+                 lib.normalize/normalize)]
+    (-> (lib.expression/diagnose-expression a-query stage-number
+                                            (keyword expression-mode)
+                                            expr
+                                            expression-position)
+        clj->js)))
 
 ;; TODO: [[field-values-search-info]] seems over-specific - I feel like we can do a better job of extracting search info
 ;; from arbitrary entities, akin to [[display-info]].
