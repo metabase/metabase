@@ -115,7 +115,7 @@ describe("parameters/utils/field-filters", () => {
       });
     });
 
-    it("should return a predicate that evaluates to false for a coordinate dimension when given a number parameter", () => {
+    it("should return a predicate that evaluates to true for a coordinate dimension when given a number parameter", () => {
       const coordinateDimension = createMockDimension({
         field: () => ({
           ...field,
@@ -127,7 +127,7 @@ describe("parameters/utils/field-filters", () => {
       const predicate = dimensionFilterForParameter(
         createMockParameter({ type: "number/between" }),
       );
-      expect(predicate(coordinateDimension)).toBe(false);
+      expect(predicate(coordinateDimension)).toBe(true);
     });
 
     it("should return a predicate that evaluates to false for a location dimension when given a category parameter", () => {
