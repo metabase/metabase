@@ -25,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(System/setProperty "clickhouse.jdbc.v2" "true")
+(System/setProperty "clickhouse.jdbc.v1" "true")
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
