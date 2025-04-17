@@ -132,7 +132,7 @@
     (let [is-neg?        (< num 1)
           has-neg?       (< min 0)
           normalized-max (clojure.core/max (abs min) (abs max))
-          pct-full       (int (* (/ (abs num) normalized-max) 100))
+          pct-full       (if (zero? normalized-max) 0 (int (* (/ (abs num) normalized-max) 100)))
           pct-left       (- style/mb-width pct-full)
           neg-pct-full   (int (Math/floor (* pct-full 0.49)))
           neg-pct-left   (- 49 neg-pct-full)
