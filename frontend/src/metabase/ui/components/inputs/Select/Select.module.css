@@ -160,3 +160,7 @@
     text-transform: capitalize;
   }
 }
+
+.SelectClearButton {
+  color: var(--mb-color-text-dark) !important;
+}

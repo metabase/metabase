@@ -120,6 +120,7 @@ describe("issue 14636", () => {
       task_details: null,
       name: "Item $page}",
       model: "card",
+      status: "success",
     };
 
     const pageRows = [limit, total - limit];
@@ -191,15 +192,78 @@ describe("issue 14636", () => {
     cy.go("back");
     cy.location("pathname").should("eq", "/admin/troubleshooting/tasks");
     cy.location("search").should("eq", "");
-  });
 
-  it("should respect page query param on page load", () => {
+    cy.log("it should respect page query param on page load");
     cy.visit("/admin/troubleshooting/tasks?page=1");
     cy.wait("@second");
 
     cy.findByLabelText("pagination")
       .findByText(`51 - ${total}`)
       .should("be.visible");
+  });
+
+  it("filtering should work", () => {
+    cy.visit(
+      "/admin/troubleshooting/tasks?status=success&task=field+values+scanning",
+    );
+
+    cy.findByPlaceholderText("Filter by task").should(
+      "have.value",
+      "field values scanning",
+    );
+    cy.findByPlaceholderText("Filter by status").should(
+      "have.value",
+      "Success",
+    );
+    cy.findAllByTestId("task").should("have.length", 1);
+    cy.findByTestId("task")
+      .should("contain.text", "field values scanning")
+      .and("contain.text", "Sample Database")
+      .and("contain.text", "Success");
+
+    cy.findByPlaceholderText("Filter by status").click();
+    H.popover().findByText("Failed").click();
+    cy.location("search").should(
+      "eq",
+      "?status=failed&task=field+values+scanning",
+    );
+    cy.findAllByTestId("task").should("have.length", 0);
+    cy.findByTestId("admin-layout-content").should(
+      "contain.text",
+      "No results",
+    );
+
+    cy.findByPlaceholderText("Filter by status")
+      .parent()
+      .findByLabelText("Clear")
+      .click();
+    cy.location("search").should("eq", "?task=field+values+scanning");
+    cy.findByPlaceholderText("Filter by status").should("have.value", "");
+    cy.findAllByTestId("task").should("have.length", 1);
+    cy.findByTestId("task")
+      .should("contain.text", "field values scanning")
+      .and("contain.text", "Sample Database")
+      .and("contain.text", "Success");
+
+    cy.findByPlaceholderText("Filter by task")
+      .parent()
+      .findByLabelText("Clear")
+      .click();
+    cy.location("search").should("eq", "");
+    cy.wait("@first");
+    cy.findAllByTestId("task").should("have.length", 50);
+    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+
+    cy.log("should reset pagination when changing filters");
+    cy.visit("/admin/troubleshooting/tasks?page=1");
+    cy.findByPlaceholderText("Filter by status").click();
+    H.popover().findByText("Success").click();
+    cy.location("search").should("eq", "?status=success");
+
+    cy.log("should remove invalid query params");
+    cy.visit("/admin/troubleshooting/tasks?status=foobar");
+    cy.location("search").should("eq", "");
+    cy.findByPlaceholderText("Filter by status").should("have.value", "");
   });
 });
 
