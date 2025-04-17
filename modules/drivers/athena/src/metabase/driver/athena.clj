@@ -331,18 +331,6 @@
   [driver [_ arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
 
-;; keyword function converts database-type variable to a symbol, so we use symbols above to map the types
-(defn- database-type->base-type-or-warn
-  "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
-  [driver schema table-name column-name database-type]
-  (or (sql-jdbc.sync/database-type->base-type driver (keyword database-type))
-      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type for '%s' '%s' '%s', falling back to :type/*."
-                     database-type
-                     schema
-                     table-name
-                     column-name)
-          :type/*)))
-
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
@@ -396,7 +384,9 @@
      (merge
       {:name              column-name
        :database-type     database-type
-       :base-type         (database-type->base-type-or-warn driver schema table-name column-name database-type)
+       :base-type         (sql-jdbc.sync/database-type->base-type-or-warn driver
+                                                                          [schema table-name column-name]
+                                                                          database-type)
        :database-position idx}
       (when (not (str/blank? remarks))
         {:field-comment remarks})))))

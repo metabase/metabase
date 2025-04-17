@@ -54,15 +54,19 @@
   (with-open [rs (.getCatalogs metadata)]
     (set (map :table_cat (jdbc/metadata-result rs)))))
 
-(defn- database-type->base-type-or-warn
+(defn database-type->base-type-or-warn
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
-  [driver col]
-  (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword (:database-type col)))
-      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type for '%s' '%s' '%s', falling back to :type/*."
-                     (:database-type col)
-                     (:table-schema col)
-                     (:table-name col)
-                     (:name col))
+  [driver namespaced-col database-type]
+  (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
+      (do (let [pretty-column (str/join "."
+                                        (reverse
+                                         (into []
+                                               (comp (take-while some?)
+                                                     (map #(str "'" % "'")))
+                                               (reverse namespaced-col))))]
+            (log/warnf "Don't know how to map column type '%s' to a Field base_type for %s, falling back to :type/*."
+                       database-type
+                       pretty-column))
           :type/*)))
 
 (defn- calculated-semantic-type
@@ -173,12 +177,22 @@
          init
          [jdbc-metadata fallback-metadata])))))
 
+(def ^:private ^:dynamic *table-info*
+  "To be bound in [[describe-table-fields]] to convey table schema and name into [[describe-fields-xf]]. Reason
+  being, that describe-fields-xf is used in driver/describe-fields and driver/describe-table-fields, where transducer's
+  `col` arg is missing this information for the latter."
+  {})
+
 (defn describe-fields-xf
   "Returns a transducer for computing metadata about the fields in `db`."
   [driver db]
-  (def ddd db)
   (map (fn [col]
-         (let [base-type (or (:base-type col) (database-type->base-type-or-warn driver col))
+         (let [base-type (or (:base-type col) (database-type->base-type-or-warn
+                                               driver
+                                               [((some-fn :table-schema) col *table-info*)
+                                                ((some-fn :table-name)   col *table-info*)
+                                                (:name col)]
+                                               (:database-type col)))
                semantic-type (calculated-semantic-type driver (:name col) (:database-type col))
                json? (isa? base-type :type/JSON)
                database-position (some-> (:database-position col) int)]
@@ -217,10 +231,13 @@
 
 (defmethod describe-table-fields :sql-jdbc
   [driver conn table db-name-or-nil]
-  (into
-   #{}
-   (describe-table-fields-xf driver (table/database table))
-   (fields-metadata driver conn table db-name-or-nil)))
+  (binding [*table-info* (merge {:table-name (:name table)}
+                                (when (:schema table)
+                                  {:table-schema (:schema table)}))]
+    (into
+     #{}
+     (describe-table-fields-xf driver (table/database table))
+     (fields-metadata driver conn table db-name-or-nil))))
 
 ;;; TODO -- it seems like in practice we usually call this without passing in a DB name, so `db-name-or-nil` is almost
 ;;; always just `nil`. There's currently not a great driver-agnostic way to determine the actual physical Database name
@@ -327,6 +344,7 @@
           (and table-names (empty? table-names)))
     []
     (let [sql (describe-fields-sql driver (assoc args :details (:details db)))]
+      (def sss sql)
       (try
         (log/debugf "`describe-fields` sql query:\n```\n%s\n```\n`describe-fields` args:\n```\n%s\n```"
                     (driver/prettify-native-form driver (first sql))
@@ -339,6 +357,10 @@
         (m/mapply describe-fields-pre-process-xf driver db args)
         (describe-fields-xf driver db))
        (sql-jdbc.execute/reducible-query db sql)))))
+
+(comment
+
+  (filter (complement :table-schema) ahoj))
 
 (defmulti describe-indexes-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-indexes]],
