@@ -390,7 +390,7 @@
   "The default options for sending a notification."
   {:notification/sync? false})
 
-(setting/defsetting notification-cutoff-timestamp
+(setting/defsetting notification-suppression-cutoff
   "Timestamp that serves as an anchor point for notifications.
   Timestamp should be ISO 8601 format and in UTC.
   Tip: Use the `date -u -Iseconds` command to get the current time in UTC.
@@ -400,7 +400,7 @@
   :default    nil
   :encryption :no
   :export?    false
-  :cache? false
+  :cache?     false
   :getter     (fn []
                 (when-let [timestamp (some-> (setting/get-value-of-type :string :notification-cutoff-timestamp)
                                              u.date/parse ;; expects ISO 8601 format
@@ -410,15 +410,14 @@
   :visibility :internal)
 
 (defn- skip-notification-because-of-cutoff?
-  "If `notification-cutoff-timestamp2` is set, returns true for notifications that have updated_at older than the cutoff timestamp.
+  "If `notification-suppression-cutoff` is set, returns true for notifications that have updated_at older than the cutoff timestamp.
 
-  This should be done on staging instances only.
-  IMPORTANT: DO NOT LET THIS MERGE TO MASTER."
+  This should be set on staging instances only."
   [notification]
   (and (:updated_at notification)
-       (notification-cutoff-timestamp)
+       (notification-suppression-cutoff)
        (t/< (:updated_at notification)
-            (notification-cutoff-timestamp))))
+            (notification-suppression-cutoff))))
 
 (mu/defn send-notification!
   "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
@@ -433,4 +432,4 @@
           (send-notification-sync! notification)
           (send-notification-async! notification))))
     (log/infof "Skipping notification %s because it is older than the cutoff timestamp: %s. YOU SHOULDN'T SEE THIS ON PROD, REPORT IF YOU ARE!!!"
-               (:id notification) (notification-cutoff-timestamp))))
+               (:id notification) (notification-suppression-cutoff))))

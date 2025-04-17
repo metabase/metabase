@@ -699,7 +699,7 @@
                                  (#'notification.send/send-notification! notification :notification/sync? true))
                                @yes))]
     (testing "if not set, send any notifications"
-      (mt/with-temporary-setting-values [notification-cutoff-timestamp nil]
+      (mt/with-temporary-setting-values [notification-suppression-cutoff nil]
         (doseq [updated-at [(t/zoned-date-time)
                             (t/plus (t/zoned-date-time) (t/days 1))
                             (t/minus (t/zoned-date-time) (t/days 1))
@@ -707,7 +707,7 @@
           (is (true? (sent-went-through? {:updated_at updated-at}))))))
     (testing "if set"
       (let [cutoff (t/offset-date-time)]
-        (mt/with-temporary-setting-values [notification-cutoff-timestamp (str cutoff)]
+        (mt/with-temporary-setting-values [notification-suppression-cutoff (str cutoff)]
           (doseq [[went-through? updated-at context]
                   [[false (t/minus cutoff (t/seconds 1)) "skip if notifications were updated before cut off"]
                    [true  (t/plus cutoff (t/seconds 1)) "send if notifications were updated after cut off"]
