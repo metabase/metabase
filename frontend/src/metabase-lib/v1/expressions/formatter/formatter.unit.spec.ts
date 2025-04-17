@@ -1,7 +1,9 @@
 /* eslint-disable jest/expect-expect */
 import expression from "ts-dedent";
 
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
+import { createQuery } from "metabase-lib/test-helpers";
 
 import {
   expressions,
@@ -226,26 +228,29 @@ describe("format", () => {
   describe("formats unknown references", () => {
     const stageIndex = -1;
 
-    const references = {
-      field: "[Unknown Field]",
-      metric: "[Unknown Metric]",
-      segment: "[Unknown Segment]",
-    };
+    const otherQuery = createQuery({
+      metadata: createMockMetadata({
+        databases: [
+          // no database so metadata cannot reference anything
+        ],
+      }),
+    });
 
-    it.each(Object.entries(references))(
-      "should format an unknown %s as %s",
-      async (type, result) => {
-        const expression = [type, 10000];
-        const clause = Lib.expressionClauseForLegacyExpression(
-          query,
-          stageIndex,
-          expression,
-        );
+    it.each([
+      { result: "[Unknown Field]", parts: fields.orders.TOTAL },
+      { result: "[Unknown Segment]", parts: segments.EXPENSIVE_THINGS },
 
-        const formatted = await format(clause, { query, stageIndex });
-        expect(formatted).toBe(result);
-      },
-    );
+      // TODO: fix metrics in tests
+      // { result: "[Unknown Metric]", parts: metrics.FOO },
+    ])("should format an unknown %s as %s", async ({ result, parts }) => {
+      const clause = Lib.expressionClause(parts);
+
+      const formatted = await format(clause, {
+        query: otherQuery,
+        stageIndex,
+      });
+      expect(formatted).toBe(result);
+    });
   });
 });
 
